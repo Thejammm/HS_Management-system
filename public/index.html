@@ -2261,7 +2261,7 @@ function renderForm() {
     card.className = 'card';
     card.style.animationDelay = (0.04 + si*0.06) + 's';
 
-    let html = `<div class="card-band"><h3><span class="dot">●</span> ${sec.name}</h3></div><div class="card-body" style="display:flex;flex-direction:column;gap:14px;">`;
+    let html = `<div class="card-band"><h3><span class="dot">●</span> ${esc(sec.name)}</h3></div><div class="card-body" style="display:flex;flex-direction:column;gap:14px;">`;
 
     // Walk with an index so we can pair adjacent halfWidth fields onto one row.
     let pendingRow = null;
@@ -2302,22 +2302,22 @@ function renderForm() {
 function renderFormField(f, data) {
   const v = data[f.id];
   const req = f.required ? ' <span style="color:var(--danger);">*</span>' : '';
-  const label = `<label class="field-label">${f.label||''}${req}</label>`;
+  const label = `<label class="field-label">${esc(f.label)}${req}</label>`;
 
   switch(f.type){
     case 'instruction':
-      return `<div style="padding:14px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-left:4px solid var(--accent);border-radius:8px;font-size:13px;color:var(--accent-dark);line-height:1.6;white-space:pre-line;">${f.content||''}</div>`;
+      return `<div style="padding:14px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-left:4px solid var(--accent);border-radius:8px;font-size:13px;color:var(--accent-dark);line-height:1.6;white-space:pre-line;">${esc(f.content)}</div>`;
 
     case 'checklist': {
       // Read-only briefing checklist. Items are displayed pre-ticked since the
       // driver/operator acknowledges them by signing below — no per-item
       // interaction needed. PDF renders these as ticked checkboxes too.
       const items = Array.isArray(f.items) ? f.items : [];
-      const labelHtml = f.label ? `<div style="font-size:12px;font-weight:700;text-transform:none;letter-spacing:.06em;color:var(--accent-dark);margin-bottom:10px;">${f.label.replace(/</g,'&lt;')}</div>` : '';
+      const labelHtml = f.label ? `<div style="font-size:12px;font-weight:700;text-transform:none;letter-spacing:.06em;color:var(--accent-dark);margin-bottom:10px;">${esc(f.label)}</div>` : '';
       const itemsHtml = items.map(it => `
         <div style="display:flex;align-items:flex-start;gap:10px;padding:7px 2px;border-bottom:1px dashed var(--border);">
           <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;flex-shrink:0;border:2px solid var(--accent);border-radius:4px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;line-height:1;">✓</span>
-          <span style="font-size:14px;line-height:1.45;color:var(--text);">${String(it).replace(/</g,'&lt;')}</span>
+          <span style="font-size:14px;line-height:1.45;color:var(--text);">${esc(it)}</span>
         </div>`).join('');
       return `<div style="padding:14px 16px;background:var(--surface);border:1.5px solid var(--accent);border-left:4px solid var(--accent);border-radius:8px;">${labelHtml}${itemsHtml}</div>`;
     }
@@ -2327,7 +2327,7 @@ function renderFormField(f, data) {
       // signature in the section below is what records the acknowledgment.
       return `<div style="padding:14px 18px;background:#fffbeb;border:1.5px solid #f59e0b;border-left:4px solid #f59e0b;border-radius:8px;font-size:13.5px;line-height:1.55;color:#78350f;font-style:italic;">
         <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.08em;color:#92400e;margin-bottom:6px;font-style:normal;">Acknowledgment</div>
-        ${(f.content||'').replace(/</g,'&lt;')}
+        ${esc(f.content)}
       </div>`;
 
     case 'text':
@@ -2335,11 +2335,11 @@ function renderFormField(f, data) {
       // LastPass / 1Password trying to autofill the signed-in user's email
       // into "name"-ish fields (e.g. "Delivery Driver's Name").
       return `<div class="field-group">${label}
-        <input type="text" id="ff-${f.id}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" value="${(v||'').replace(/"/g,'&quot;')}" placeholder="${f.placeholder||''}" oninput="updateFormField('${f.id}', this.value)"></div>`;
+        <input type="text" id="ff-${f.id}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" value="${esc(v)}" placeholder="${esc(f.placeholder)}" oninput="updateFormField('${f.id}', this.value)"></div>`;
 
     case 'textarea':
       return `<div class="field-group">${label}
-        <textarea id="ff-${f.id}" rows="3" autocomplete="off" data-lpignore="true" data-1p-ignore="true" placeholder="${f.placeholder||''}" oninput="updateFormField('${f.id}', this.value)">${v||''}</textarea></div>`;
+        <textarea id="ff-${f.id}" rows="3" autocomplete="off" data-lpignore="true" data-1p-ignore="true" placeholder="${esc(f.placeholder)}" oninput="updateFormField('${f.id}', this.value)">${esc(v)}</textarea></div>`;
 
     case 'date':
       return `<div class="field-group">${label}
@@ -2350,7 +2350,7 @@ function renderFormField(f, data) {
         <input type="datetime-local" id="ff-${f.id}" autocomplete="off" value="${v||''}" oninput="updateFormField('${f.id}', this.value)"></div>`;
 
     case 'select': {
-      const opts = (f.options||[]).map(o => `<option value="${o.value}"${o.value===v?' selected':''}>${o.label}</option>`).join('');
+      const opts = (f.options||[]).map(o => `<option value="${esc(o.value)}"${o.value===v?' selected':''}>${esc(o.label)}</option>`).join('');
       return `<div class="field-group">${label}
         <select id="ff-${f.id}" onchange="updateFormField('${f.id}', this.value)">
           <option value="">— Select —</option>${opts}
@@ -2361,7 +2361,7 @@ function renderFormField(f, data) {
       return `<div class="field-group">
         <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;padding:9px 11px;border:1.5px solid var(--border);border-radius:6px;background:var(--input-bg);">
           <input type="checkbox" id="ff-${f.id}" ${v?'checked':''} onchange="updateFormField('${f.id}', this.checked)" style="width:18px;height:18px;margin:0;flex-shrink:0;">
-          <span>${f.label||''}${req}</span>
+          <span>${esc(f.label)}${req}</span>
         </label></div>`;
 
     case 'photo': {
@@ -2755,7 +2755,7 @@ function renderChecklist() {
 
     const card = document.createElement('div');
     card.className='card'; card.style.animationDelay=(0.04+si*0.06)+'s';
-    let html = `<div class="card-band"><h3><span class="dot">●</span> ${section.name}</h3>${progressEl}</div><div class="card-body" style="padding-bottom:8px;">`;
+    let html = `<div class="card-band"><h3><span class="dot">●</span> ${esc(section.name)}</h3>${progressEl}</div><div class="card-body" style="padding-bottom:8px;">`;
 
     if (!section.items.length) {
       html += `<p style="font-size:13px;color:var(--text-muted);padding:12px 0;">No items. Add items in the Checklist Builder.</p>`;
@@ -2775,13 +2775,13 @@ function renderChecklist() {
       // select/textarea, or an array of data URLs for photo.
       if(item.input === 'select'){
         const v = String(st || '');
-        const opts = (item.options||[]).map(o => `<option value="${o.replace(/"/g,'&quot;')}"${v===o?' selected':''}>${o}</option>`).join('');
+        const opts = (item.options||[]).map(o => `<option value="${esc(o)}"${v===o?' selected':''}>${esc(o)}</option>`).join('');
         html += `
           <div class="ci-wrap" id="ciw-${item.id}">
             <div class="ci-row">
               <div class="ci-main">
-                <div class="ci-name">${item.name}</div>
-                ${item.desc?`<div class="ci-desc">${item.desc}</div>`:''}
+                <div class="ci-name">${esc(item.name)}</div>
+                ${item.desc?`<div class="ci-desc">${esc(item.desc)}</div>`:''}
               </div>
               <div class="ci-controls" style="min-width:220px;">
                 <select id="sel-${item.id}" onchange="setStatus('${item.id}', this.value)" style="width:100%;">
@@ -2800,10 +2800,10 @@ function renderChecklist() {
           <div class="ci-wrap" id="ciw-${item.id}">
             <div class="ci-row" style="flex-direction:column;align-items:stretch;gap:6px;">
               <div class="ci-main">
-                <div class="ci-name">${item.name}</div>
-                ${item.desc?`<div class="ci-desc">${item.desc}</div>`:''}
+                <div class="ci-name">${esc(item.name)}</div>
+                ${item.desc?`<div class="ci-desc">${esc(item.desc)}</div>`:''}
               </div>
-              <textarea id="ta-${item.id}" rows="3" placeholder="${(item.placeholder||'').replace(/"/g,'&quot;')}" oninput="setStatus('${item.id}', this.value)" style="width:100%;">${v.replace(/</g,'&lt;')}</textarea>
+              <textarea id="ta-${item.id}" rows="3" placeholder="${esc(item.placeholder)}" oninput="setStatus('${item.id}', this.value)" style="width:100%;">${esc(v)}</textarea>
             </div>
           </div>`;
         return;
@@ -2816,8 +2816,8 @@ function renderChecklist() {
           <div class="ci-wrap" id="ciw-${item.id}">
             <div class="ci-row" style="flex-direction:column;align-items:stretch;gap:8px;">
               <div class="ci-main">
-                <div class="ci-name">${item.name}</div>
-                ${item.desc?`<div class="ci-desc">${item.desc}</div>`:''}
+                <div class="ci-name">${esc(item.name)}</div>
+                ${item.desc?`<div class="ci-desc">${esc(item.desc)}</div>`:''}
               </div>
               <div class="photo-upload-zone" id="ip-zone-${item.id}">
                 ${renderItemPhotoThumbs(photos, item.id)}
@@ -2836,8 +2836,8 @@ function renderChecklist() {
         <div class="ci-wrap" id="ciw-${item.id}">
           <div class="ci-row">
             <div class="ci-main">
-              <div class="ci-name">${item.name}</div>
-              <div class="ci-desc">${item.desc}</div>
+              <div class="ci-name">${esc(item.name)}</div>
+              <div class="ci-desc">${esc(item.desc)}</div>
             </div>
             <div class="ci-controls">
               <button class="stt-btn ${st==='pass'      ?'stt-pass':''}"      onclick="setStatus('${item.id}','pass')">✓ Pass</button>
@@ -2852,18 +2852,18 @@ function renderChecklist() {
               <div class="rp-label-green">✔ Rectified on Site</div>
               <div class="field-grid cols-1" style="margin-bottom:10px;">
                 <div class="field-group"><label class="field-label">What was found &amp; what was done to rectify it</label>
-                  <textarea id="rdi-${item.id}" rows="2" placeholder="Describe the issue found and the corrective action taken on the spot…" oninput="cacheRD('${item.id}')">${itRd.note||''}</textarea></div>
+                  <textarea id="rdi-${item.id}" rows="2" placeholder="Describe the issue found and the corrective action taken on the spot…" oninput="cacheRD('${item.id}')">${esc(itRd.note)}</textarea></div>
                 <div class="field-group"><label class="field-label">Rectified by</label>
-                  <input type="text" id="rdb-${item.id}" placeholder="Name of person who rectified" value="${itRd.by||''}" oninput="cacheRD('${item.id}')"></div>
+                  <input type="text" id="rdb-${item.id}" placeholder="Name of person who rectified" value="${esc(itRd.by)}" oninput="cacheRD('${item.id}')"></div>
               </div>
             </div>
             <div class="action-panel ${st==='action'?'open':''}" id="ap-${item.id}">
               <div class="ap-label">⚠️ Action Required</div>
               <div class="field-grid" style="margin-bottom:10px;">
                 <div class="field-group span-2"><label class="field-label">Describe the issue precisely</label>
-                  <textarea id="adi-${item.id}" rows="2" placeholder="What specifically is wrong? Location, extent, context." oninput="cacheAD('${item.id}')">${itAd.issue||''}</textarea></div>
+                  <textarea id="adi-${item.id}" rows="2" placeholder="What specifically is wrong? Location, extent, context." oninput="cacheAD('${item.id}')">${esc(itAd.issue)}</textarea></div>
                 <div class="field-group"><label class="field-label">Action taken / assigned to</label>
-                  <input type="text" id="ada-${item.id}" placeholder="Fixed by [name] / Assigned to [name]" value="${itAd.assignedTo||''}" oninput="cacheAD('${item.id}')"></div>
+                  <input type="text" id="ada-${item.id}" placeholder="Fixed by [name] / Assigned to [name]" value="${esc(itAd.assignedTo)}" oninput="cacheAD('${item.id}')"></div>
                 <div class="field-group"><label class="field-label">Target date</label>
                   <input type="date" id="add-${item.id}" value="${itAd.dueDate||''}" onchange="cacheAD('${item.id}')"></div>
                 <div class="field-group span-2">
@@ -3404,20 +3404,20 @@ function renderActions() {
       <div class="ac-top">
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span class="ac-title">${a.itemName}</span>
+            <span class="ac-title">${esc(a.itemName)}</span>
             ${a.resolved?`<span class="badge badge-success">✓ Resolved</span>`:overdue?`<span class="badge badge-danger">Overdue</span>`:`<span class="badge badge-warning">Open</span>`}
           </div>
           <div class="ac-meta">
-            <span>📍 ${a.location}</span><span>📅 ${fmtDate(a.periodTo)}</span>
-            <span>👤 ${a.manager}</span><span>📂 ${a.sectionName}</span>
+            <span>📍 ${esc(a.location)}</span><span>📅 ${fmtDate(a.periodTo)}</span>
+            <span>👤 ${esc(a.manager)}</span><span>📂 ${esc(a.sectionName)}</span>
             ${a.dueDate&&!a.resolved?`<span>⏰ Due ${fmtDate(a.dueDate)}</span>`:''}
-            ${a.resolved?`<span style="color:var(--success)">✓ ${fmtDate(a.resolvedAt?.slice(0,10))} · ${a.resolvedBy}</span>`:''}
+            ${a.resolved?`<span style="color:var(--success)">✓ ${fmtDate(a.resolvedAt?.slice(0,10))} · ${esc(a.resolvedBy)}</span>`:''}
           </div>
         </div>
       </div>
-      <div style="font-size:13px;margin-bottom:${a.assignedTo?'6px':'0'};"><strong>Issue:</strong> ${a.issue}</div>
-      ${a.assignedTo?`<div style="font-size:13px;color:var(--text-muted);"><strong>Assigned:</strong> ${a.assignedTo}</div>`:''}
-      ${a.note?`<div style="font-size:13px;color:var(--info);margin-top:6px;padding:8px 10px;background:var(--info-bg);border:1px solid var(--info-brd);border-radius:6px;">💬 ${a.note}</div>`:''}
+      <div style="font-size:13px;margin-bottom:${a.assignedTo?'6px':'0'};"><strong>Issue:</strong> ${esc(a.issue)}</div>
+      ${a.assignedTo?`<div style="font-size:13px;color:var(--text-muted);"><strong>Assigned:</strong> ${esc(a.assignedTo)}</div>`:''}
+      ${a.note?`<div style="font-size:13px;color:var(--info);margin-top:6px;padding:8px 10px;background:var(--info-bg);border:1px solid var(--info-brd);border-radius:6px;">💬 ${esc(a.note)}</div>`:''}
       ${(a.beforePhotos&&a.beforePhotos.length)||(a.afterPhotos&&a.afterPhotos.length)?`
         <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:10px;">
           ${a.beforePhotos&&a.beforePhotos.length?`<div>
@@ -3433,9 +3433,9 @@ function renderActions() {
         <div class="resolve-panel">
           <div class="rp-label">✓ Mark as Resolved</div>
           <div class="field-grid" style="margin-bottom:10px;">
-            <div class="field-group"><label class="field-label">Resolved by</label><input type="text" id="rb-${a.id}" placeholder="Name" value="${a.resolvedBy||''}"></div>
+            <div class="field-group"><label class="field-label">Resolved by</label><input type="text" id="rb-${a.id}" placeholder="Name" value="${esc(a.resolvedBy)}"></div>
             <div class="field-group"><label class="field-label">Date resolved</label><input type="date" id="rd-${a.id}" value="${new Date().toISOString().split('T')[0]}"></div>
-            <div class="field-group span-2"><label class="field-label">What was done</label><textarea id="rn-${a.id}" rows="2" placeholder="Brief description of corrective action…">${a.resolvedNote||''}</textarea></div>
+            <div class="field-group span-2"><label class="field-label">What was done</label><textarea id="rn-${a.id}" rows="2" placeholder="Brief description of corrective action…">${esc(a.resolvedNote)}</textarea></div>
             <div class="field-group span-2">
               <label class="field-label">📷 After Photo — Evidence of Resolution</label>
               <div class="photo-upload-zone" id="after-zone-${a.id}">
@@ -3450,7 +3450,7 @@ function renderActions() {
           <button class="btn btn-success btn-sm" onclick="resolveAction('${a.id}')">✓ Confirm Resolution</button>
         </div>`:`
         <div style="margin-top:10px;padding:10px 12px;background:var(--success-bg);border:1px solid var(--success-brd);border-radius:7px;font-size:13px;color:var(--success);">
-          <strong>Resolution:</strong> ${a.resolvedNote||'(no notes recorded)'}
+          <strong>Resolution:</strong> ${a.resolvedNote?esc(a.resolvedNote):'(no notes recorded)'}
         </div>`}`;
     cont.appendChild(div);
   });
@@ -3581,7 +3581,7 @@ function populateReportLocationFilter() {
   const current = sel.value;
   const locs = [...new Set(S.inspections.map(i=>i.location).filter(Boolean))].sort();
   sel.innerHTML = '<option value="">All Locations</option>' +
-    locs.map(l=>`<option value="${l}"${l===current?' selected':''}>${l}</option>`).join('');
+    locs.map(l=>`<option value="${esc(l)}"${l===current?' selected':''}>${esc(l)}</option>`).join('');
 }
 
 function clearReportFilters() {
@@ -3679,7 +3679,7 @@ function _renderFormReportCard(insp){
       const fieldsToShow = sec.fields.filter(f => !['instruction','checklist','disclaimer'].includes(f.type));
       if(!fieldsToShow.length) return;
       html += `<div style="margin-bottom:16px;">
-        <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.06em;color:var(--primary);margin-bottom:8px;padding-bottom:4px;border-bottom:1.5px solid var(--border);">${sec.name}</div>
+        <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.06em;color:var(--primary);margin-bottom:8px;padding-bottom:4px;border-bottom:1.5px solid var(--border);">${esc(sec.name)}</div>
         <div style="display:flex;flex-direction:column;gap:8px;">`;
       fieldsToShow.forEach(f => {
         // Honour conditional visibility — hidden fields shouldn't appear in the report either
@@ -3707,10 +3707,10 @@ function _renderFormReportCard(insp){
           const arr = Array.isArray(v) ? v : [v];
           displayed = `<div style="display:flex;gap:6px;flex-wrap:wrap;">${arr.map((p,i) => `<img class="photo-thumb" src="${p}" onclick="openLightbox('${p}','${(f.label||'Photo').replace(/'/g,"\\'")}')" alt="Photo ${i+1}">`).join('')}</div>`;
         } else {
-          displayed = String(v).replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+          displayed = esc(v).replace(/\n/g,'<br>');
         }
         html += `<div style="padding:8px 12px;background:var(--muted-bg);border:1px solid var(--border);border-radius:6px;">
-          <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.04em;color:var(--text-muted);margin-bottom:4px;">${(f.label||f.id).replace(/</g,'&lt;')}</div>
+          <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.04em;color:var(--text-muted);margin-bottom:4px;">${esc(f.label||f.id)}</div>
           <div style="font-size:13px;line-height:1.5;">${displayed}</div>
         </div>`;
       });
@@ -3810,7 +3810,7 @@ function renderMonthlyReport(){
   if (filterPills.length) {
     html += `<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px;padding:10px 14px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:8px;font-size:12px;">
       <span style="font-weight:700;color:var(--accent-dark);">Active filters:</span>
-      ${filterPills.map(p=>`<span style="background:#fff;border:1px solid var(--accent);color:var(--accent-dark);border-radius:4px;padding:2px 8px;font-weight:600;">${p}</span>`).join('')}
+      ${filterPills.map(p=>`<span style="background:#fff;border:1px solid var(--accent);color:var(--accent-dark);border-radius:4px;padding:2px 8px;font-weight:600;">${esc(p)}</span>`).join('')}
       <button class="btn btn-xs btn-ghost" onclick="clearReportFilters()" style="margin-left:auto;">✕ Clear</button>
     </div>`;
   }
@@ -3887,7 +3887,7 @@ function renderMonthlyReport(){
       <div class="card-band">
         <h3 style="flex:1;min-width:0;">
           <span class="dot">●</span>
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${cardHeading}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(cardHeading)}</span>
         </h3>
         <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;align-items:center;">
           ${typeLabel?`<span class="badge badge-accent">${typeLabel}</span>`:''}
@@ -3906,11 +3906,11 @@ function renderMonthlyReport(){
 
         <!-- Meta row -->
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:14px;">
-          ${cardSubHeading?`<span style="font-size:13px;font-weight:600;color:var(--text-muted);">📅 ${cardSubHeading}</span>`:''}
-          <span style="font-size:13px;color:var(--text-muted);">📍 ${insp.location||'—'}</span>
-          <span style="font-size:13px;color:var(--text-muted);">👤 ${insp.manager||'—'}</span>
-          <span style="font-size:13px;color:var(--text-muted);">🔁 ${freqLabels[insp.freq]||insp.freq}</span>
-          ${insp.ref?`<span style="font-size:13px;color:var(--text-muted);">🔖 ${insp.ref}</span>`:''}
+          ${cardSubHeading?`<span style="font-size:13px;font-weight:600;color:var(--text-muted);">📅 ${esc(cardSubHeading)}</span>`:''}
+          <span style="font-size:13px;color:var(--text-muted);">📍 ${esc(insp.location||'—')}</span>
+          <span style="font-size:13px;color:var(--text-muted);">👤 ${esc(insp.manager||'—')}</span>
+          <span style="font-size:13px;color:var(--text-muted);">🔁 ${esc(freqLabels[insp.freq]||insp.freq)}</span>
+          ${insp.ref?`<span style="font-size:13px;color:var(--text-muted);">🔖 ${esc(insp.ref)}</span>`:''}
         </div>
 
         <!-- Per-inspection stat pills -->
@@ -3923,7 +3923,7 @@ function renderMonthlyReport(){
           ${iOverdue>0?`<div style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--danger-bg);border:1px solid var(--danger-brd);border-radius:6px;font-size:12px;font-weight:700;color:var(--danger);">🔴 ${iOverdue} Overdue</div>`:''}
         </div>
 
-        ${insp.generalNotes?`<div style="font-size:13px;color:var(--text-muted);font-style:italic;padding:10px 14px;background:var(--muted-bg);border-radius:6px;margin-bottom:14px;">"${insp.generalNotes}"</div>`:''}`;
+        ${insp.generalNotes?`<div style="font-size:13px;color:var(--text-muted);font-style:italic;padding:10px 14px;background:var(--muted-bg);border-radius:6px;margin-bottom:14px;">"${esc(insp.generalNotes)}"</div>`:''}`;
 
     // Item notes
     const notedItems=[];
@@ -3935,7 +3935,7 @@ function renderMonthlyReport(){
         <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.06em;color:var(--info);margin-bottom:6px;">Item Notes</div>`;
       notedItems.forEach(ni=>{
         html+=`<div style="font-size:13px;padding:7px 10px;margin-bottom:5px;background:var(--info-bg);border:1px solid var(--info-brd);border-radius:6px;display:flex;gap:8px;">
-          <span>💬</span><div><strong>${ni.item.name}</strong> — ${ni.note}</div></div>`;
+          <span>💬</span><div><strong>${esc(ni.item.name)}</strong> — ${esc(ni.note)}</div></div>`;
       });
       html+=`</div>`;
     }
@@ -3953,10 +3953,10 @@ function renderMonthlyReport(){
         <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.06em;color:#065f46;margin-bottom:8px;">✔ Rectified On Site</div>`;
       rectItems.forEach(({item,sec,rd})=>{
         html+=`<div style="padding:8px 12px;margin-bottom:6px;background:#ecfdf5;border:1.5px solid #6ee7b7;border-left:4px solid #059669;border-radius:7px;">
-          <div style="font-size:13px;font-weight:600;color:#065f46;margin-bottom:2px;">✔ ${item.name}</div>
-          <div style="font-size:11px;color:#6ee7b7;font-weight:600;text-transform:none;letter-spacing:.04em;margin-bottom:4px;">${sec.name}</div>
-          ${rd.note?`<div style="font-size:13px;color:#065f46;">${rd.note}</div>`:''}
-          ${rd.by?`<div style="font-size:12px;color:#059669;margin-top:2px;">By: ${rd.by}</div>`:''}
+          <div style="font-size:13px;font-weight:600;color:#065f46;margin-bottom:2px;">✔ ${esc(item.name)}</div>
+          <div style="font-size:11px;color:#6ee7b7;font-weight:600;text-transform:none;letter-spacing:.04em;margin-bottom:4px;">${esc(sec.name)}</div>
+          ${rd.note?`<div style="font-size:13px;color:#065f46;">${esc(rd.note)}</div>`:''}
+          ${rd.by?`<div style="font-size:12px;color:#059669;margin-top:2px;">By: ${esc(rd.by)}</div>`:''}
         </div>`;
       });
       html+=`</div>`;
@@ -3969,17 +3969,17 @@ function renderMonthlyReport(){
         const isOverdue=!a.resolved&&a.dueDate&&new Date(a.dueDate)<today;
         html+=`<div class="journey-item" style="padding:12px 0;">
           <div class="journey-title" style="margin-bottom:10px;">
-            ${a.itemName}
-            <span style="font-size:12px;font-weight:400;color:var(--text-muted);">${a.sectionName}</span>
+            ${esc(a.itemName)}
+            <span style="font-size:12px;font-weight:400;color:var(--text-muted);">${esc(a.sectionName)}</span>
             ${a.resolved?`<span class="badge badge-success">✓ Closed</span>`:isOverdue?`<span class="badge badge-danger">Overdue</span>`:`<span class="badge badge-warning">Open</span>`}
           </div>
           <div class="jt-row">
             <div class="jt-spine"><div class="jt-dot found">1</div><div class="jt-line"></div></div>
             <div class="jt-content">
               <div class="jt-step-lbl found">Identified</div>
-              <div class="jt-text">${a.issue||'—'}</div>
-              <div class="jt-small">Period to ${fmtDate(a.periodTo)} · ${a.manager}</div>
-              ${a.note?`<div style="font-size:12px;margin-top:5px;padding:6px 9px;background:var(--info-bg);border:1px solid var(--info-brd);border-radius:5px;color:var(--info);">💬 ${a.note}</div>`:''}
+              <div class="jt-text">${a.issue?esc(a.issue):'—'}</div>
+              <div class="jt-small">Period to ${fmtDate(a.periodTo)} · ${esc(a.manager)}</div>
+              ${a.note?`<div style="font-size:12px;margin-top:5px;padding:6px 9px;background:var(--info-bg);border:1px solid var(--info-brd);border-radius:5px;color:var(--info);">💬 ${esc(a.note)}</div>`:''}
               ${a.beforePhotos&&a.beforePhotos.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${a.beforePhotos.map((p,pi)=>`<img class="photo-thumb" src="${p}" onclick="openLightbox('${p}','Before — ${a.itemName}')" alt="Before ${pi+1}" title="Before photo — click to enlarge">`).join('')}</div>`:''}
             </div>
           </div>
@@ -3988,7 +3988,7 @@ function renderMonthlyReport(){
             <div class="jt-content">
               <div class="jt-step-lbl actioned">Actioned</div>
               ${a.assignedTo
-                ?`<div class="jt-text">${a.assignedTo}</div>${a.dueDate?`<div class="jt-small">Due: ${fmtDate(a.dueDate)}${isOverdue?' <strong style="color:var(--danger)">— OVERDUE</strong>':''}</div>`:''}`
+                ?`<div class="jt-text">${esc(a.assignedTo)}</div>${a.dueDate?`<div class="jt-small">Due: ${fmtDate(a.dueDate)}${isOverdue?' <strong style="color:var(--danger)">— OVERDUE</strong>':''}</div>`:''}`
                 :`<div class="jt-text" style="color:var(--text-muted);font-style:italic;">No assignment recorded</div>`}
             </div>
           </div>
@@ -3997,7 +3997,7 @@ function renderMonthlyReport(){
             <div class="jt-content last">
               <div class="jt-step-lbl ${a.resolved?'resolved':'pending'}">${a.resolved?'Resolved':'Awaiting Resolution'}</div>
               ${a.resolved
-                ?`<div class="jt-text" style="color:var(--success);">✓ ${a.resolvedNote||'Completed'}</div><div class="jt-small">By ${a.resolvedBy} · ${fmtDate(a.resolvedAt?.slice(0,10))}</div>${a.afterPhotos&&a.afterPhotos.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${a.afterPhotos.map((p,pi)=>`<img class="photo-thumb" src="${p}" onclick="openLightbox('${p}','After — ${a.itemName}')" alt="After ${pi+1}" title="After photo — click to enlarge">`).join('')}</div>`:''}`
+                ?`<div class="jt-text" style="color:var(--success);">✓ ${a.resolvedNote?esc(a.resolvedNote):'Completed'}</div><div class="jt-small">By ${esc(a.resolvedBy)} · ${fmtDate(a.resolvedAt?.slice(0,10))}</div>${a.afterPhotos&&a.afterPhotos.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${a.afterPhotos.map((p,pi)=>`<img class="photo-thumb" src="${p}" onclick="openLightbox('${p}','After — ${a.itemName}')" alt="After ${pi+1}" title="After photo — click to enlarge">`).join('')}</div>`:''}`
                 :`<div class="jt-text" style="color:var(--text-muted);font-style:italic;">Not yet resolved</div>`}
             </div>
           </div>
@@ -4065,7 +4065,7 @@ function renderAuditSections(){
   const coms=S.audit?.sectionComments||{};
   cont.innerHTML=S.checklist.map((sec,i)=>`
     <div style="margin-bottom:${i<S.checklist.length-1?'20px':'0'};">
-      <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.08em;color:var(--primary);padding-bottom:8px;border-bottom:1.5px solid var(--border);margin-bottom:10px;">${sec.name}</div>
+      <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.08em;color:var(--primary);padding-bottom:8px;border-bottom:1.5px solid var(--border);margin-bottom:10px;">${esc(sec.name)}</div>
       <div class="field-group"><label class="field-label">Audit observations</label>
         <textarea id="asc-${sec.id}" rows="2" placeholder="Recurring issues, good practice, concerns for this area." oninput="cacheAuditSec('${sec.id}')">${coms[sec.id]||''}</textarea>
       </div>
@@ -4289,7 +4289,7 @@ function renderMyChecklist(){
     let html=`
       <div class="cl-sec-head">
         <span class="cl-sec-drag" title="Drag to reorder">${_ic('grip',16)}</span>
-        <span class="cl-sec-name">${sec.name}</span>
+        <span class="cl-sec-name">${esc(sec.name)}</span>
         <span class="cl-sec-count">${sec.items.length} item${sec.items.length!==1?'s':''}</span>
         <div class="cl-sec-actions">
           <button class="btn btn-xs btn-outline" onclick="openEditSection('${sec.id}')">${_ic('pencil',13)} Rename</button>
@@ -4324,7 +4324,7 @@ function renderScenarioGrid(){
   LIBRARY.forEach(scenario=>{
     const div=document.createElement('div');
     div.className=`scenario-card${_activeScenario===scenario.id?' active':''}`;
-    div.innerHTML=`<div class="scenario-icon">${_typeIcon(scenario.id)}</div><div class="scenario-name">${scenario.name}</div><div class="scenario-regs">${scenario.regs}</div>`;
+    div.innerHTML=`<div class="scenario-icon">${_typeIcon(scenario.id)}</div><div class="scenario-name">${esc(scenario.name)}</div><div class="scenario-regs">${esc(scenario.regs)}</div>`;
     div.onclick=()=>loadScenario(scenario.id);
     grid.appendChild(div);
   });
@@ -4350,7 +4350,7 @@ function renderLibrarySections(scenario){
     let html=`
       <div class="lib-sec-head" onclick="toggleLibSection('lsb-${sec.id}','lsbt-${sec.id}')">
         <span class="lib-sec-icon">${_secIcon(sec)}</span>
-        <span class="lib-sec-name">${sec.name}</span>
+        <span class="lib-sec-name">${esc(sec.name)}</span>
         <span class="lib-sec-meta">${sec.items.length} items</span>
         ${alreadyAdded?`<span class="badge badge-success" style="flex-shrink:0;">✓ In checklist</span>`:''}
         <span class="lib-sec-toggle" id="lsbt-${sec.id}">▼</span>
@@ -4472,9 +4472,9 @@ function renderTemplates(){
     const itemCount=t.checklist?.reduce((n,s)=>n+(s.items?.length||0),0)||0;
     div.innerHTML=`
       <div class="tmpl-info">
-        <div class="tmpl-name">${t.name}</div>
-        <div class="tmpl-meta">${t.client?`Client: ${t.client} · `:''} ${sectionCount} sections · ${itemCount} items · Saved ${fmtDate(t.savedAt?.slice(0,10))}</div>
-        ${t.description?`<div style="font-size:13px;color:var(--text-muted);margin-top:4px;">${t.description}</div>`:''}
+        <div class="tmpl-name">${esc(t.name)}</div>
+        <div class="tmpl-meta">${t.client?`Client: ${esc(t.client)} · `:''} ${sectionCount} sections · ${itemCount} items · Saved ${fmtDate(t.savedAt?.slice(0,10))}</div>
+        ${t.description?`<div style="font-size:13px;color:var(--text-muted);margin-top:4px;">${esc(t.description)}</div>`:''}
       </div>
       <div class="tmpl-actions">
         <button class="btn btn-outline btn-sm" onclick="loadTemplate('${t.id}')"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>Load</button>
@@ -4494,7 +4494,7 @@ function openSaveTemplate(){
   }
   openModal('Save to Library',
     `<div style="display:flex;flex-direction:column;gap:12px;">
-       <div class="field-group"><label class="field-label">Name in Library</label><input type="text" id="mTmplName" placeholder="e.g. Light Engineering Workshop" value="${editingName.replace(/"/g,'&quot;')}"></div>
+       <div class="field-group"><label class="field-label">Name in Library</label><input type="text" id="mTmplName" placeholder="e.g. Light Engineering Workshop" value="${esc(editingName)}"></div>
        <div class="field-group"><label class="field-label">Client / Business (optional)</label><input type="text" id="mTmplClient" placeholder="e.g. Acme Manufacturing Ltd"></div>
        <div class="field-group"><label class="field-label">Description (optional)</label><textarea id="mTmplDesc" rows="2" placeholder="Notes about this entry — industry type, specific hazards, any custom items…"></textarea></div>
        <div style="padding:12px;background:var(--muted-bg);border-radius:7px;font-size:13px;color:var(--text-muted);">
@@ -4550,7 +4550,7 @@ function openAddSection(){
 function openEditSection(secId){
   const sec=_editingSections().find(s=>s.id===secId); _ctx={secId};
   openModal('Rename Section',
-    `<div class="field-group"><label class="field-label">Section Name</label><input type="text" id="mSecName" value="${sec.name}"></div>`,
+    `<div class="field-group"><label class="field-label">Section Name</label><input type="text" id="mSecName" value="${esc(sec.name)}"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveSection('${secId}')">Save</button>`
   );
 }
@@ -5098,7 +5098,7 @@ function _updateAuthIndicator(){
       ind.title = 'Click to change your password';
       ind.onclick = openChangeMyPasswordModal;
       const tenantBit = user.tenantName ? ` · ${user.tenantName}` : (user.role === 'consultant' ? ' · consultant' : '');
-      ind.innerHTML = `${_ic('shield',13)} <span style="vertical-align:middle;">${(user.name || user.email)}${tenantBit}</span>`;
+      ind.innerHTML = `${_ic('shield',13)} <span style="vertical-align:middle;">${esc(user.name || user.email)}${esc(tenantBit)}</span>`;
     }
     // Admin nav visibility is handled by applyViewMode() (consultant-only).
     // Consultant client picker (dial in to a client)
@@ -5262,17 +5262,17 @@ function renderAdminUsers(users, tenants){
             : `<button class="btn btn-outline btn-xs" style="border-color:var(--success);color:var(--success);" onclick="toggleUserActive('${u.id}','${safeEmail}',true)">Reactivate</button>`;
           const pwdCell = reveal
             ? `<td style="padding:8px 12px;">${u.password_plain
-                ? `<span style="font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:12px;">${String(u.password_plain).replace(/</g,'&lt;')}</span>`
+                ? `<span style="font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:12px;">${esc(u.password_plain)}</span>`
                 : `<span style="color:var(--text-muted);font-size:11px;">— (reset to reveal)</span>`}</td>`
             : '';
           return `
           <tr style="border-top:1px solid var(--border);background:${i%2?'transparent':'var(--muted-bg)'};${active?'':'opacity:.55;'}">
             <td style="padding:8px 12px;">
-              <div style="font-weight:600;">${u.email}</div>
-              ${u.display_name ? `<div style="font-size:11px;color:var(--text-muted);">${u.display_name}</div>` : ''}
+              <div style="font-weight:600;">${esc(u.email)}</div>
+              ${u.display_name ? `<div style="font-size:11px;color:var(--text-muted);">${esc(u.display_name)}</div>` : ''}
             </td>
             <td style="padding:8px 12px;">${roleLabel}</td>
-            <td style="padding:8px 12px;">${tName}</td>
+            <td style="padding:8px 12px;">${esc(tName)}</td>
             <td style="padding:8px 12px;">${statusBadge}</td>
             ${pwdCell}
             <td style="padding:8px 12px;color:var(--text-muted);font-size:12px;">${u.last_login_at ? fmtDate(u.last_login_at.slice(0,10)) : 'Never'}</td>
@@ -5319,11 +5319,11 @@ function openEditUserModal(userId){
     `<div style="display:flex;flex-direction:column;gap:12px;">
        <div class="field-group">
          <label class="field-label">Email</label>
-         <input type="email" id="mEditEmail" value="${String(u.email).replace(/"/g,'&quot;')}">
+         <input type="email" id="mEditEmail" value="${esc(u.email)}">
        </div>
        <div class="field-group">
          <label class="field-label">Display name</label>
-         <input type="text" id="mEditName" value="${u.display_name?String(u.display_name).replace(/"/g,'&quot;'):''}">
+         <input type="text" id="mEditName" value="${esc(u.display_name)}">
        </div>
        <div class="field-group">
          <label class="field-label">Role</label>
@@ -5497,9 +5497,12 @@ async function submitAddTenant(){
 
   // 3. Success — show the credentials in a copy-friendly modal
   closeModal();
-  const escName  = String(name).replace(/</g,'&lt;');
-  const escEmail = String(email).replace(/</g,'&lt;');
-  const escPwd   = String(password).replace(/</g,'&lt;');
+  const escName  = esc(name);
+  const escEmail = esc(email);
+  const escPwd   = esc(password);
+  // JS-string-safe copies for the clipboard onclick (raw values, not HTML-escaped)
+  const jsEmail  = String(email).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const jsPwd    = String(password).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   openModal('✓ Client created — credentials',
     `<div style="display:flex;flex-direction:column;gap:14px;">
        <div style="padding:12px 14px;background:var(--success-bg);border:1.5px solid var(--success-brd);border-radius:8px;">
@@ -5512,7 +5515,7 @@ async function submitAddTenant(){
            <div><strong>Password:</strong> ${escPwd}</div>
          </div>
        </div>
-       <button class="btn btn-outline btn-sm" onclick="(async()=>{try{await navigator.clipboard.writeText('URL: https://hsms.archerhs.co.uk\\nEmail: ${escEmail}\\nPassword: ${escPwd}');showToast('Login details copied','success');}catch(e){showToast('Clipboard copy failed','error');}})()">${_ic('list',13)} Copy login details</button>
+       <button class="btn btn-outline btn-sm" onclick="(async()=>{try{await navigator.clipboard.writeText('URL: https://hsms.archerhs.co.uk\\nEmail: ${jsEmail}\\nPassword: ${jsPwd}');showToast('Login details copied','success');}catch(e){showToast('Clipboard copy failed','error');}})()">${_ic('list',13)} Copy login details</button>
        <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">
          The password is shown here only once — make sure to copy it before you close this. The client should change their password on first sign-in (click their email in the top-right corner once signed in).
        </div>
@@ -8020,10 +8023,10 @@ function drilldown(type) {
         // Form-style submissions show a different summary
         if(insp.kind === 'form'){
           html+=`<div class="drilldown-item" style="background:var(--accent-light);border:1px solid var(--accent);flex-direction:column;gap:4px;">
-            <div style="font-weight:700;font-size:14px;">${insp.title||insp.typeName||'Form submission'}</div>
-            <div style="font-size:12px;color:var(--text-muted);">📍 ${insp.location||'—'} · 👤 ${insp.manager||'—'} · 📅 ${fmtDate(insp.periodTo)}</div>
+            <div style="font-weight:700;font-size:14px;">${esc(insp.title||insp.typeName||'Form submission')}</div>
+            <div style="font-size:12px;color:var(--text-muted);">📍 ${esc(insp.location||'—')} · 👤 ${esc(insp.manager||'—')} · 📅 ${fmtDate(insp.periodTo)}</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-              <span style="font-size:11px;font-weight:700;color:var(--accent-dark);">📋 ${insp.typeName||'Form'}</span>
+              <span style="font-size:11px;font-weight:700;color:var(--accent-dark);">📋 ${esc(insp.typeName||'Form')}</span>
             </div>
           </div>`;
           return;
@@ -8033,8 +8036,8 @@ function drilldown(type) {
         const rc=Object.values(results).filter(r=>r==='rectified').length;
         const a=Object.values(results).filter(r=>r==='action').length;
         html+=`<div class="drilldown-item" style="background:var(--muted-bg);border:1px solid var(--border);flex-direction:column;gap:4px;">
-          <div style="font-weight:700;font-size:14px;">${insp.title||fmtPeriod(insp)}</div>
-          <div style="font-size:12px;color:var(--text-muted);">📍 ${insp.location} · 👤 ${insp.manager} · 📅 ${fmtPeriod(insp)}</div>
+          <div style="font-weight:700;font-size:14px;">${insp.title?esc(insp.title):fmtPeriod(insp)}</div>
+          <div style="font-size:12px;color:var(--text-muted);">📍 ${esc(insp.location)} · 👤 ${esc(insp.manager)} · 📅 ${fmtPeriod(insp)}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
             <span style="font-size:11px;font-weight:700;color:var(--success);">✓ ${p} Pass</span>
             ${rc?`<span style="font-size:11px;font-weight:700;color:#065f46;">✔ ${rc} Rectified</span>`:''}
@@ -8061,11 +8064,11 @@ function drilldown(type) {
         byInsp[insp.id].rows.push({item,sec});
       });
       Object.values(byInsp).forEach(({insp,rows})=>{
-        html+=`<div class="drilldown-group"><div class="drilldown-group-title">📋 ${insp.title||fmtDate(insp.periodTo)}</div>`;
+        html+=`<div class="drilldown-group"><div class="drilldown-group-title">📋 ${insp.title?esc(insp.title):fmtDate(insp.periodTo)}</div>`;
         rows.forEach(({item,sec})=>{
           html+=`<div class="drilldown-item drilldown-item-pass">
             <span style="color:var(--success);font-size:15px;flex-shrink:0;">✓</span>
-            <div><div style="font-weight:600;">${item.name}</div><div style="font-size:11px;color:var(--text-muted);">${sec.name}</div></div>
+            <div><div style="font-weight:600;">${esc(item.name)}</div><div style="font-size:11px;color:var(--text-muted);">${esc(sec.name)}</div></div>
           </div>`;
         });
         html+=`</div>`;
@@ -8091,12 +8094,12 @@ function drilldown(type) {
         byInsp[insp.id].rows.push({item,sec,rd});
       });
       Object.values(byInsp).forEach(({insp,rows})=>{
-        html+=`<div class="drilldown-group"><div class="drilldown-group-title">📋 ${insp.title||fmtDate(insp.periodTo)}</div>`;
+        html+=`<div class="drilldown-group"><div class="drilldown-group-title">📋 ${insp.title?esc(insp.title):fmtDate(insp.periodTo)}</div>`;
         rows.forEach(({item,sec,rd})=>{
           html+=`<div class="drilldown-item drilldown-item-rect" style="flex-direction:column;gap:3px;">
-            <div style="display:flex;align-items:center;gap:8px;"><span style="color:#065f46;font-size:15px;">✔</span><span style="font-weight:600;">${item.name}</span><span style="font-size:11px;color:var(--text-muted);">${sec.name}</span></div>
-            ${rd.note?`<div style="font-size:12px;color:#065f46;padding-left:23px;">${rd.note}</div>`:''}
-            ${rd.by?`<div style="font-size:11px;color:#059669;padding-left:23px;">By: ${rd.by}</div>`:''}
+            <div style="display:flex;align-items:center;gap:8px;"><span style="color:#065f46;font-size:15px;">✔</span><span style="font-weight:600;">${esc(item.name)}</span><span style="font-size:11px;color:var(--text-muted);">${esc(sec.name)}</span></div>
+            ${rd.note?`<div style="font-size:12px;color:#065f46;padding-left:23px;">${esc(rd.note)}</div>`:''}
+            ${rd.by?`<div style="font-size:11px;color:#059669;padding-left:23px;">By: ${esc(rd.by)}</div>`:''}
           </div>`;
         });
         html+=`</div>`;
@@ -8113,16 +8116,16 @@ function drilldown(type) {
         byInsp[a.inspId].rows.push(a);
       });
       Object.values(byInsp).forEach(({insp,rows})=>{
-        html+=`<div class="drilldown-group"><div class="drilldown-group-title">📋 ${insp?.title||fmtDate(insp?.periodTo||'')}</div>`;
+        html+=`<div class="drilldown-group"><div class="drilldown-group-title">📋 ${insp?.title?esc(insp.title):fmtDate(insp?.periodTo||'')}</div>`;
         rows.forEach(a=>{
           const overdue=!a.resolved&&a.dueDate&&new Date(a.dueDate)<today;
           html+=`<div class="drilldown-item ${a.resolved?'drilldown-item-resolved':overdue?'drilldown-item-overdue':'drilldown-item-action'}" style="flex-direction:column;gap:3px;">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <span style="font-weight:600;">${a.itemName}</span>
+              <span style="font-weight:600;">${esc(a.itemName)}</span>
               ${a.resolved?`<span class="badge badge-success" style="font-size:10px;">✓ Resolved</span>`:overdue?`<span class="badge badge-danger" style="font-size:10px;">Overdue</span>`:`<span class="badge badge-warning" style="font-size:10px;">Open</span>`}
             </div>
-            <div style="font-size:12px;color:var(--text-muted);">${a.sectionName} · ${a.issue||'—'}</div>
-            ${a.assignedTo?`<div style="font-size:11px;">→ ${a.assignedTo}${a.dueDate?' · Due '+fmtDate(a.dueDate):''}</div>`:''}
+            <div style="font-size:12px;color:var(--text-muted);">${esc(a.sectionName)} · ${a.issue?esc(a.issue):'—'}</div>
+            ${a.assignedTo?`<div style="font-size:11px;">→ ${esc(a.assignedTo)}${a.dueDate?' · Due '+fmtDate(a.dueDate):''}</div>`:''}
           </div>`;
         });
         html+=`</div>`;
@@ -8140,9 +8143,9 @@ function drilldown(type) {
             <span style="font-weight:600;">${a.itemName}</span>
             <span class="badge badge-success" style="font-size:10px;">✓ Resolved</span>
           </div>
-          <div style="font-size:12px;color:var(--text-muted);">${a.sectionName} · 📍 ${a.location}</div>
-          <div style="font-size:12px;color:var(--success);">${a.resolvedNote||'—'}</div>
-          <div style="font-size:11px;color:var(--text-muted);">By ${a.resolvedBy} · ${fmtDate(a.resolvedAt?.slice(0,10))}</div>
+          <div style="font-size:12px;color:var(--text-muted);">${esc(a.sectionName)} · 📍 ${esc(a.location)}</div>
+          <div style="font-size:12px;color:var(--success);">${a.resolvedNote?esc(a.resolvedNote):'—'}</div>
+          <div style="font-size:11px;color:var(--text-muted);">By ${esc(a.resolvedBy)} · ${fmtDate(a.resolvedAt?.slice(0,10))}</div>
         </div>`;
       });
     }
@@ -8166,9 +8169,9 @@ function drilldown(type) {
             <span style="font-weight:600;">${a.itemName}</span>
             ${overdue?`<span class="badge badge-danger" style="font-size:10px;">Overdue</span>`:`<span class="badge badge-warning" style="font-size:10px;">Open</span>`}
           </div>
-          <div style="font-size:12px;color:var(--text-muted);">${a.sectionName} · 📍 ${a.location}</div>
-          <div style="font-size:12px;">${a.issue||'—'}</div>
-          ${a.assignedTo?`<div style="font-size:11px;">→ ${a.assignedTo}</div>`:''}
+          <div style="font-size:12px;color:var(--text-muted);">${esc(a.sectionName)} · 📍 ${esc(a.location)}</div>
+          <div style="font-size:12px;">${a.issue?esc(a.issue):'—'}</div>
+          ${a.assignedTo?`<div style="font-size:11px;">→ ${esc(a.assignedTo)}</div>`:''}
           ${a.dueDate?`<div style="font-size:11px;font-weight:700;color:${overdue?'var(--danger)':'var(--warning)'};">Due: ${fmtDate(a.dueDate)}${overdue?' — OVERDUE':''}</div>`:''}
         </div>`;
       });
@@ -8836,7 +8839,7 @@ function renderCockpit(){
 
   cont.innerHTML = `
     <div class="ck-head">
-      <h2>${_cockpitClientName()}</h2>
+      <h2>${esc(_cockpitClientName())}</h2>
       <span class="ck-sub">${_consultantView ? 'Consultant view (read only)' : 'Client cockpit'}</span>
     </div>
 
@@ -8870,7 +8873,7 @@ function renderCockpit(){
       ${modCard('Risk priorities', risks.length ? `
         <div class="ck-row"><span>Critical and high</span><span style="color:${highRisk.length?'var(--danger)':'inherit'};font-weight:600;">${highRisk.length}</span></div>
         <div class="ck-row"><span>Medium</span><span style="font-weight:600;">${modRisk.length}</span></div>
-        ${highRisk.slice(0,3).map(r=>`<div style="font-size:13px;color:var(--text-muted);">${r.activity||r.hazard||'Unnamed risk'}</div>`).join('')}
+        ${highRisk.slice(0,3).map(r=>`<div style="font-size:13px;color:var(--text-muted);">${esc(r.activity||r.hazard||'Unnamed risk')}</div>`).join('')}
         <button class="ck-link" onclick="switchTab('risk')">Open risk profile</button>`
       : pending('No risks recorded yet.') + `<button class="ck-link" onclick="switchTab('risk')">Set up risk profile</button>`)}
       ${modCard('Management system', reqG.assessed ? `
@@ -8881,7 +8884,7 @@ function renderCockpit(){
       ${modCard('Last review', lastRev ? `
         <div style="font-size:20px;color:var(--warning);line-height:1.2;letter-spacing:2px;">${'★'.repeat(lastRev.score)}${'☆'.repeat(Math.max(0,5-lastRev.score))}</div>
         <div class="ck-row"><span>Rated</span><span>${fmtDate(lastRev.date)}</span></div>
-        ${lastRev.note?`<div style="font-size:13px;color:var(--text-muted);">${lastRev.note}</div>`:''}
+        ${lastRev.note?`<div style="font-size:13px;color:var(--text-muted);">${esc(lastRev.note)}</div>`:''}
         <button class="ck-link" onclick="switchTab('review')">Open review</button>`
       : pending('No review recorded yet.') + `<button class="ck-link" onclick="switchTab('review')">Open review</button>`)}
     </div>`;
@@ -9013,7 +9016,7 @@ function _renderRiskDashboard(){
   const emerging = risks.filter(r => r.trend==='Increasing').length;
   const topImpacts = scored.filter(x => x.r.businessImpact)
     .sort((a,b)=>(b.sc.rating||0)-(a.sc.rating||0)).slice(0,4)
-    .map(x => `<li><strong style="color:${_RISK_PRIO_COLOR[x.sc.priority]||'var(--text-muted)'};">${x.sc.priority||'Unrated'}</strong> &mdash; ${(x.r.businessImpact||'').replace(/</g,'&lt;')}</li>`).join('')
+    .map(x => `<li><strong style="color:${_RISK_PRIO_COLOR[x.sc.priority]||'var(--text-muted)'};">${x.sc.priority||'Unrated'}</strong> &mdash; ${esc(x.r.businessImpact)}</li>`).join('')
     || '<li style="color:var(--text-muted);list-style:none;margin-left:-18px;">No business impacts recorded yet.</li>';
   const card = (num,label,colour) => `<div class="rp-stat"><div class="rp-stat-num"${colour?` style="color:${colour};"`:''}>${num}</div><div class="rp-stat-label">${label}</div></div>`;
   el.innerHTML = `
@@ -9082,8 +9085,8 @@ function renderRiskProfile(){
   const dis = ro ? ' disabled' : '';
   const sel  = (id,f,v,opts) => `<select${dis} onchange="updateRiskField('${id}','${f}',this.value)"><option value="">— Select —</option>${opts.map(o=>`<option${o===v?' selected':''}>${o}</option>`).join('')}</select>`;
   const selv = (id,f,v,opts) => `<select${dis} onchange="updateRiskField('${id}','${f}',this.value)"><option value="">— Select —</option>${opts.map(o=>`<option value="${o.v}"${o.v===String(v)?' selected':''}>${o.label}</option>`).join('')}</select>`;
-  const txt  = (id,f,v,ph) => `<input type="text"${dis} value="${(v||'').replace(/"/g,'&quot;')}" placeholder="${ph||''}" oninput="updateRiskField('${id}','${f}',this.value)">`;
-  const ta   = (id,f,v,ph) => `<textarea${dis} rows="2" placeholder="${ph||''}" oninput="updateRiskField('${id}','${f}',this.value)">${v||''}</textarea>`;
+  const txt  = (id,f,v,ph) => `<input type="text"${dis} value="${esc(v)}" placeholder="${ph||''}" oninput="updateRiskField('${id}','${f}',this.value)">`;
+  const ta   = (id,f,v,ph) => `<textarea${dis} rows="2" placeholder="${ph||''}" oninput="updateRiskField('${id}','${f}',this.value)">${esc(v)}</textarea>`;
   const fg   = (label,inner) => `<div class="field-group"><label class="field-label">${label}</label>${inner}</div>`;
   const persons = (r) => RISK_PERSONS.map(p =>
     `<button type="button" class="chip${(r.personsAtRisk||[]).includes(p)?' on':''}"${dis} onclick="togglePersonAtRisk('${r.id}','${p.replace(/'/g,"\\'")}')">${p}</button>`).join('');
@@ -9096,7 +9099,7 @@ function renderRiskProfile(){
     <div class="card">
       <div class="card-band">
         <h3 style="flex:1;min-width:0;"><span class="dot">●</span>
-          <span id="ract-${r.id}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.activity ? r.activity : 'New risk'}</span>
+          <span id="ract-${r.id}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.activity ? esc(r.activity) : 'New risk'}</span>
         </h3>
         <span id="rprio-${r.id}">${_riskPrioBadge(sc.priority, sc.rating)}</span>
         ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete this risk" onclick="deleteRiskEntry('${r.id}')">${_ic('trash',14)}</button>`}
@@ -9409,9 +9412,9 @@ function renderRequirements(){
   }
   const dis = ro ? ' disabled' : '';
   const sel = (sid,iid,f,v,opts) => `<select${dis} onchange="updateReqField('${sid}','${iid}','${f}',this.value)"><option value="">— Select —</option>${opts.map(o=>`<option${o===v?' selected':''}>${o}</option>`).join('')}</select>`;
-  const txt = (sid,iid,f,v,ph) => `<input type="text"${dis} value="${(v||'').replace(/"/g,'&quot;')}" placeholder="${ph||''}" oninput="updateReqField('${sid}','${iid}','${f}',this.value)">`;
-  const dt  = (sid,iid,f,v) => `<input type="date"${dis} value="${v||''}" oninput="updateReqField('${sid}','${iid}','${f}',this.value)">`;
-  const ta  = (sid,iid,f,v,ph) => `<textarea${dis} rows="2" placeholder="${ph||''}" oninput="updateReqField('${sid}','${iid}','${f}',this.value)">${v||''}</textarea>`;
+  const txt = (sid,iid,f,v,ph) => `<input type="text"${dis} value="${esc(v)}" placeholder="${ph||''}" oninput="updateReqField('${sid}','${iid}','${f}',this.value)">`;
+  const dt  = (sid,iid,f,v) => `<input type="date"${dis} value="${esc(v)}" oninput="updateReqField('${sid}','${iid}','${f}',this.value)">`;
+  const ta  = (sid,iid,f,v,ph) => `<textarea${dis} rows="2" placeholder="${ph||''}" oninput="updateReqField('${sid}','${iid}','${f}',this.value)">${esc(v)}</textarea>`;
   const fg  = (label,inner) => `<div class="field-group"><label class="field-label">${label}</label>${inner}</div>`;
 
   const sectionCard = (sec) => {
@@ -9450,8 +9453,8 @@ function renderRequirements(){
       <div class="card-band">
         <h3 style="flex:1;min-width:0;"><span class="dot">●</span>
           ${ro
-            ? `<span style="overflow:hidden;text-overflow:ellipsis;">${sec.heading||'(untitled duty)'}</span>`
-            : `<input type="text" value="${(sec.heading||'').replace(/"/g,'&quot;')}" placeholder="Duty heading" oninput="updateReqHeading('${sec.id}',this.value)" style="font-size:14px;font-weight:600;color:var(--text);background:var(--muted-bg);border:1px solid var(--border);border-radius:6px;padding:4px 8px;max-width:420px;">`}
+            ? `<span style="overflow:hidden;text-overflow:ellipsis;">${sec.heading?esc(sec.heading):'(untitled duty)'}</span>`
+            : `<input type="text" value="${esc(sec.heading)}" placeholder="Duty heading" oninput="updateReqHeading('${sec.id}',this.value)" style="font-size:14px;font-weight:600;color:var(--text);background:var(--muted-bg);border:1px solid var(--border);border-radius:6px;padding:4px 8px;max-width:420px;">`}
         </h3>
         ${stageControl}
         ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete duty heading" onclick="deleteReqSection('${sec.id}')">${_ic('trash',14)}</button>`}
@@ -9664,7 +9667,7 @@ function renderMonitoring(){
     const valCell = m.auto
       ? `<div style="font-weight:800;font-size:18px;padding:4px 0;">${autoVal} <span style="font-size:11px;font-weight:600;color:var(--accent-dark);">from your inspections</span></div>`
       : (m.type==='text'
-          ? `<input type="text"${dis} value="${(md[m.key]||'').toString().replace(/"/g,'&quot;')}" oninput="updateMonValue('${month}','${m.key}',this.value)">`
+          ? `<input type="text"${dis} value="${esc(md[m.key])}" oninput="updateMonValue('${month}','${m.key}',this.value)">`
           : `<input type="number"${dis} min="0" value="${md[m.key]??''}" placeholder="0" oninput="updateMonValue('${month}','${m.key}',this.value)">`);
     return `
       <div style="border:1.5px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">
@@ -9673,8 +9676,8 @@ function renderMonitoring(){
         <details style="margin-top:8px;">
           <summary style="font-size:11px;color:var(--text-muted);cursor:pointer;">Owner &amp; collection method</summary>
           <div class="field-grid" style="margin-top:8px;">
-            <div class="field-group"><label class="field-label">Owner</label><input type="text"${dis} value="${(meta[m.key]?.owner||'').replace(/"/g,'&quot;')}" placeholder="Who owns this" oninput="updateMonMeta('${m.key}','owner',this.value)"></div>
-            <div class="field-group"><label class="field-label">Collection method</label><input type="text"${dis} value="${(meta[m.key]?.method||'').replace(/"/g,'&quot;')}" placeholder="How it is collected" oninput="updateMonMeta('${m.key}','method',this.value)"></div>
+            <div class="field-group"><label class="field-label">Owner</label><input type="text"${dis} value="${esc(meta[m.key]?.owner)}" placeholder="Who owns this" oninput="updateMonMeta('${m.key}','owner',this.value)"></div>
+            <div class="field-group"><label class="field-label">Collection method</label><input type="text"${dis} value="${esc(meta[m.key]?.method)}" placeholder="How it is collected" oninput="updateMonMeta('${m.key}','method',this.value)"></div>
           </div>
         </details>
       </div>`;
@@ -9695,7 +9698,7 @@ function renderMonitoring(){
         ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete" onclick="deleteRegItem('${r.id}')">${_ic('trash',14)}</button>`}
       </div>
       <div class="field-grid cols-1" style="margin-bottom:8px;">
-        <div class="field-group"><label class="field-label">Statutory item</label><input type="text"${dis} value="${(r.item||'').replace(/"/g,'&quot;')}" oninput="updateRegField('${r.id}','item',this.value)"></div>
+        <div class="field-group"><label class="field-label">Statutory item</label><input type="text"${dis} value="${esc(r.item)}" oninput="updateRegField('${r.id}','item',this.value)"></div>
       </div>
       <div class="field-grid" style="margin-bottom:8px;">
         <div class="field-group"><label class="field-label">Due date</label><input type="date"${dis} value="${r.dueDate||''}" oninput="updateRegField('${r.id}','dueDate',this.value)"></div>

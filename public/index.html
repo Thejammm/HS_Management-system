@@ -10297,6 +10297,26 @@ function _casInScope(qnum){
   return true;
 }
 function _casRowInScope(qstr){ return _casRowNums(qstr).some(_casInScope); }
+// The kind of document/evidence the client must produce for a criterion,
+// classified from the requirement wording. A guide, not a substitute for the
+// assessor's judgement.
+function _casDocType(q){
+  const ev = String(q.evidence||'').toLowerCase();
+  const t  = ((q.req||'') + ' ' + (q.evidence||'')).toLowerCase();
+  if(ev==='selection') return 'Role selection (gate)';
+  if(/^facts?$/.test(ev) || /^figures?$/.test(ev) || /^number$/.test(ev)) return 'Company detail';
+  // Certificate = a named certifiable scheme/standard or insurance/licence — not
+  // a mere "policy number" or a referenced BS standard.
+  if(/certificate|insurance|cyber essentials|\bssip\b|ukas|ukca|licen[cs]e|accreditation|iso ?45001|iso ?14001|iso ?9001|iso ?27001|iso ?19650|bs ?99001|\bemas\b/.test(t)) return 'Certificate';
+  if(/\bpolic(y|ies)\b/.test(t)) return 'Policy';
+  if(/\bsample|\bexample|construction phase plan|\bcpp\b/.test(t)) return 'Sample / example';
+  if(/procedure|method statement|arrangements|process map/.test(t)) return 'Procedure / arrangements';
+  if(/\breport\b|\baccounts\b|statistics/.test(t)) return 'Report';
+  if(/\brecords?\b|\bregisters?\b|\blogs?\b|matri(x|ces)/.test(t)) return 'Records';
+  if(/statement|declaration|disclos/.test(t)) return 'Statement / declaration';
+  if(/\blink\b|portal|\.gov/.test(t)) return 'Link';
+  return 'Evidence document';
+}
 function _casFlagBadges(f){
   const b = [];
   if(f.gate)         b.push('<span class="badge badge-accent" style="font-size:10px;">GATE</span>');
@@ -10568,7 +10588,7 @@ function renderCAS(){
         <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
           <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;">
             <th style="padding:8px 10px;width:50px;">Q</th><th style="padding:8px 10px;">Requirement (our summary)</th>
-            <th style="padding:8px 10px;width:96px;">Evidence</th><th style="padding:8px 10px;width:96px;">In the app</th>
+            <th style="padding:8px 10px;width:150px;">Document required</th>
             <th style="padding:8px 10px;width:230px;">Readiness &amp; evidence</th>
           </tr></thead>
           <tbody>
@@ -10577,8 +10597,7 @@ function renderCAS(){
               return `<tr style="border-top:1px solid var(--border);background:${i%2?'transparent':'var(--muted-bg)'};${inScope?'':'opacity:.5;'}">
               <td style="padding:8px 10px;font-weight:600;white-space:nowrap;">${esc(q.q)}</td>
               <td style="padding:8px 10px;">${esc(q.req)}${_casFlagBadges(q.flags)}${_casProportionateOptional(q)?' <span class="badge badge-muted" style="font-size:10px;">Proportionate — statement/N-A OK</span>':''}</td>
-              <td style="padding:8px 10px;color:var(--text-muted);">${esc(q.evidence)}</td>
-              <td style="padding:8px 10px;color:var(--text-muted);">${esc(q.app)}</td>
+              <td style="padding:8px 10px;color:var(--text-muted);">${esc(_casDocType(q))}</td>
               <td style="padding:8px 10px;">${inScope?(_casStatusControl(q.q)+_casEvidenceCell(q)):'<span style="font-size:11px;color:var(--text-muted);">Not in scope</span>'}</td>
             </tr>`;
             }).join('')}

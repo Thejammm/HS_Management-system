@@ -13,6 +13,7 @@ node_modules/
 Thumbs.db
 
 # Backups & local working files
+_backups/
 *.backup-*
 *.bak
 

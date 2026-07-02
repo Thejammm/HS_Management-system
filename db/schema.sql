@@ -11,6 +11,13 @@ CREATE TABLE IF NOT EXISTS tenants (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Per-tenant client configuration: icon, location, default inspection type,
+-- pack selection and branding. Replaces the hardcoded CLIENTS constant that used
+-- to live in the front-end (house rule: no customer data in source). Additive so
+-- existing tenants keep working; DEFAULT '{}' backfills every existing row with an
+-- empty config the front-end reads as neutral defaults.
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS config JSONB NOT NULL DEFAULT '{}'::jsonb;
+
 -- Users: anyone who can log in.
 -- role = 'consultant' → can see/manage all tenants (Archer staff)
 -- role = 'client_user' → scoped to one tenant

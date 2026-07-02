@@ -1260,7 +1260,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                 <button class="btn btn-xs btn-outline" onclick="applyPreset('#3d1e6b','#9b59b6','#2d2d2d')" style="border-left:4px solid #9b59b6;">Purple</button>
                 <button class="btn btn-xs btn-outline" onclick="applyPreset('#7f1d1d','#ef4444','#2d2d2d')" style="border-left:4px solid #ef4444;">Deep Red</button>
                 <button class="btn btn-xs btn-outline" onclick="applyPreset('#1c1c1c','#f59e0b','#1c1c1c')" style="border-left:4px solid #f59e0b;">Black / Gold</button>
-                <button class="btn btn-xs btn-outline" onclick="applyPreset('#1D428A','#FFCD00','#1a1a1a')" style="border-left:4px solid #1D428A;border-right:4px solid #FFCD00;">⚽ Leeds United</button>
+                <button class="btn btn-xs btn-outline" onclick="applyPreset('#1e3a8a','#f59e0b','#1a1a1a')" style="border-left:4px solid #1e3a8a;border-right:4px solid #f59e0b;">Blue / Amber</button>
                 <button class="btn btn-xs btn-outline" onclick="applyPreset('#0a0a0a','#00d4aa','#e8e8e8')" style="border-left:4px solid #00d4aa;">Midnight Teal</button>
                 <button class="btn btn-xs btn-outline" onclick="applyPreset('#2d2d2d','#ff6b35','#2d2d2d')" style="border-left:4px solid #ff6b35;">Slate / Orange</button>
                 <button class="btn btn-xs btn-outline" onclick="applyPreset('#0f2027','#00b4d8','#e0e0e0')" style="border-left:4px solid #00b4d8;">Steel Blue</button>
@@ -1395,27 +1395,36 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 //    checklist— 'default' to use workshop default
 //    branding — optional colour overrides { primary, accent, textColor }
 // ══════════════════════════════════════════════════════════════
-const CLIENTS = [
-  {
-    id:       'easy-travel',
-    name:     'Easy Travel Leeds',
-    icon:     '✈️',
-    location: 'Easy Travel Leeds',
-    inspType: 'general',
-    checklist:'default',
-    branding: { primary:'#1D428A', accent:'#FFCD00', textColor:'#1a1a1a' }
-  },
-  // ── Add more clients below this line ──
-  // {
-  //   id:       'client-id',
-  //   name:     'Client Name',
-  //   icon:     '🏢',
-  //   location: 'Site Address',
-  //   inspType: 'general',
-  //   checklist:'default',
-  //   branding: { primary:'#1a1a2e', accent:'#4BBFD6', textColor:'#3a3a3a' }
-  // },
-];
+// ── Central HTML-escape helper (house rule 1) ──
+// Every user-entered value that reaches innerHTML or an attribute goes through
+// this. Escapes & < > " ' so a client name like O'Brien </textarea>" renders as
+// text, never markup.
+function esc(v){
+  return String(v == null ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Client configuration (house rule 2: no customer data in source) ──
+// Client name, icon, location, default inspection type and branding used to live
+// in a hardcoded CLIENTS constant here. That data now lives in each tenant's
+// record in the database and is served after sign-in:
+//   - a signed-in client_user gets their own config on Auth.user().config
+//   - a consultant dialled into a client gets it on _consultantView.config
+// Signed out / offline there is no served config, so these return neutral
+// defaults and the app carries on with no customer data baked into the source.
+function activeClientConfig(){
+  if (typeof _consultantView !== 'undefined' && _consultantView) return _consultantView.config || {};
+  const u = (typeof Auth !== 'undefined' && Auth.user) ? Auth.user() : null;
+  if (u && u.role === 'client_user') return u.config || {};
+  return {};
+}
+function activeClientName(){
+  if (typeof _consultantView !== 'undefined' && _consultantView) return _consultantView.name || '';
+  const u = (typeof Auth !== 'undefined' && Auth.user) ? Auth.user() : null;
+  if (u && u.role === 'client_user') return u.tenantName || '';
+  return '';
+}
 
 // ── Consultant passphrase — change this before sending each file ──
 const CONSULTANT_PASS = 'archer';
@@ -1478,62 +1487,21 @@ function showSetupTab() {
 function _updateActiveClientBar() {
   const bar = document.getElementById('activeClientBar');
   if (!bar) return;
-  if (S.activeClient && !_consultantUnlocked) {
-    const client = CLIENTS.find(c=>c.id===S.activeClient);
-    if (client) {
-      document.getElementById('activeClientIcon').textContent = client.icon;
-      document.getElementById('activeClientName').textContent = client.name;
-      bar.style.display = 'flex';
-    }
+  const name = activeClientName();
+  if (S.activeClient && !_consultantUnlocked && name) {
+    document.getElementById('activeClientIcon').textContent = activeClientConfig().icon || '';
+    document.getElementById('activeClientName').textContent = name;
+    bar.style.display = 'flex';
   } else {
     bar.style.display = 'none';
   }
 }
 
-function renderClientList() {
-  const el = document.getElementById('clientListEl');
-  if (!el) return;
-  el.innerHTML = CLIENTS.map(c => `
-    <button class="client-btn" onclick="selectClient('${c.id}')">
-      <span class="client-btn-icon">${c.icon}</span>
-      <div>
-        <div class="client-btn-name">${c.name}</div>
-        <div class="client-btn-sub">${c.location}</div>
-      </div>
-    </button>`).join('');
-}
-
-function selectClient(id) {
-  const client = CLIENTS.find(c => c.id === id);
-  if (!client) return;
-
-  const isFirstTime = !S.activeClient;
-  S.activeClient = id;
-
-  if (isFirstTime) {
-    if (client.location) S.draft.location = client.location;
-    if (client.inspType) S.draft.inspType  = client.inspType;
-    if (client.branding) {
-      S.branding.primary   = client.branding.primary   || S.branding.primary;
-      S.branding.accent    = client.branding.accent    || S.branding.accent;
-      S.branding.textColor = client.branding.textColor || S.branding.textColor;
-    }
-    if (client.checklist === 'default') {
-      S.checklist = JSON.parse(JSON.stringify(DEFAULT_CHECKLIST));
-    }
-    populateInspectionForm();
-    renderChecklist();
-    populateBrandingForm();
-  }
-
-  saveData();
-  document.getElementById('clientSelector').style.display  = 'none';
-  document.getElementById('consultantContent').style.display = 'block';
-  _updateActiveClientBar();
-  updateHeaderTitle();
-  renderMyChecklist(); renderTemplates();
-  showToast(`✓ Welcome, ${client.name}`, 'info');
-}
+// The old localStorage-only client picker (renderClientList / selectClient) has
+// been removed along with the hardcoded CLIENTS constant. Client identity now
+// comes from sign-in: a client_user gets their own tenant, a consultant dials in
+// via the header picker. Config (branding, location, inspection type) is applied
+// from the served tenant config in loadFromServerAndRender / enterConsultantView.
 
 function toggleConsultantPass() {
   const row = document.getElementById('consultantPassRow');
@@ -2191,13 +2159,12 @@ function updateHeaderTitle() {
   // app title "H&S Management System" stands alone.
   const sub = document.getElementById('headerSub');
   if (!sub) return;
-  let label = '';
-  if (_consultantView && _consultantView.name) {
-    label = _consultantView.name;
-  } else if (S.activeClient) {
-    const client = CLIENTS.find(c=>c.id===S.activeClient);
-    if (client) label = `${client.icon} ${client.name}`;
-  }
+  // Name the client in context: a consultant dialled in, or the signed-in client
+  // themselves. Sourced from served config, not a hardcoded constant. textContent
+  // keeps it safe even though the name/icon are user-entered.
+  const name = activeClientName();
+  const icon = activeClientConfig().icon || '';
+  const label = name ? (icon ? `${icon} ${name}` : name) : '';
   sub.textContent = label;
   sub.style.display = label ? '' : 'none';
 }
@@ -5009,6 +4976,11 @@ async function loadFromServerAndRender(){
   // Consultants have no tenant of their own — they dial in to clients via the
   // picker. Don't offer to upload the consultant's local workspace anywhere.
   if(Auth.user()?.role === 'consultant') return false;
+  // Client with no saved state yet (first sign-in): seed branding and defaults
+  // from the tenant config the consultant set, so a brand-new tenant shows its
+  // own look and defaults straight away instead of the bootstrap greys.
+  _applyClientConfigDefaults();
+  _rerenderEverything();
   // Server is empty: offer to push local data up (one-time migration)
   if(localStorage.getItem('ahs:workplace-inspection:v3')){
     if(confirm('No data found on the server for your account. Would you like to upload your local data to the server?')){
@@ -5018,6 +4990,26 @@ async function loadFromServerAndRender(){
     }
   }
   return false;
+}
+
+// Apply the tenant's served config as first-sign-in defaults for a client_user
+// whose server state is still empty. Only runs in the empty-server branch, so a
+// client who already has saved state keeps whatever branding they've set (the
+// server copy wins — house rule 5). Replaces what the old selectClient() used to
+// seed from the hardcoded CLIENTS constant.
+function _applyClientConfigDefaults(){
+  const u = (typeof Auth !== 'undefined' && Auth.user) ? Auth.user() : null;
+  if(!u || u.role !== 'client_user') return;
+  const cfg = u.config || {};
+  if(cfg.branding){
+    if(!S.branding) S.branding = {};
+    if(cfg.branding.primary)   S.branding.primary   = cfg.branding.primary;
+    if(cfg.branding.accent)    S.branding.accent    = cfg.branding.accent;
+    if(cfg.branding.textColor) S.branding.textColor = cfg.branding.textColor;
+  }
+  if(!S.draft) S.draft = {};
+  if(cfg.location && !S.draft.location) S.draft.location = cfg.location;
+  if(cfg.inspType && !S.draft.inspType) S.draft.inspType = cfg.inspType;
 }
 
 function _rerenderEverything(){
@@ -5180,6 +5172,7 @@ function updateAdminOverview(tenants, users){
 function renderAdminTenants(tenants){
   const el = document.getElementById('adminTenantsList');
   if(!el) return;
+  _adminTenantsCache = tenants || [];   // handlers read name/config back from here
   if(!tenants.length){
     el.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px;">No tenants yet. Click "+ Add Client" to create your first one.</div>`;
     return;
@@ -5195,16 +5188,24 @@ function renderAdminTenants(tenants){
       </tr></thead>
       <tbody>
         ${tenants.map((t,i) => {
-          const tname = String(t.name||'').replace(/'/g,"\\'");
+          // Handlers take only the tenant id (safe [a-z0-9-] charset); they read
+          // the name/config back from _adminTenantsCache, so a name containing
+          // quotes or </tags> can never break the onclick attribute or inject.
+          const cfg   = (t.config && typeof t.config === 'object') ? t.config : {};
+          const icon  = cfg.icon ? `${esc(cfg.icon)} ` : '';
+          const brand = cfg.branding && cfg.branding.primary
+            ? `<span title="Brand colour ${esc(cfg.branding.primary)}" style="display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-left:6px;border:1px solid var(--border);background:${esc(cfg.branding.primary)};"></span>`
+            : '';
           return `
           <tr style="border-top:1px solid var(--border);background:${i%2?'transparent':'var(--muted-bg)'};">
-            <td style="padding:8px 12px;font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:12px;">${t.id}</td>
-            <td style="padding:8px 12px;font-weight:600;">${t.name}</td>
+            <td style="padding:8px 12px;font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:12px;">${esc(t.id)}</td>
+            <td style="padding:8px 12px;font-weight:600;">${icon}${esc(t.name)}${brand}</td>
             <td style="padding:8px 12px;text-align:center;">${t.user_count || 0}</td>
             <td style="padding:8px 12px;color:var(--text-muted);font-size:12px;">${t.last_state_update ? fmtDate(t.last_state_update.slice(0,10)) : '—'}</td>
             <td style="padding:8px 12px;text-align:right;white-space:nowrap;">
-              <button class="btn btn-outline btn-xs" onclick="renameTenant('${t.id}','${tname}')">Rename</button>
-              <button class="btn btn-outline btn-xs" style="border-color:var(--danger);color:var(--danger);" onclick="deleteTenant('${t.id}','${tname}',${t.user_count||0})">Delete</button>
+              <button class="btn btn-outline btn-xs" onclick="openEditTenantConfig('${esc(t.id)}')">Config</button>
+              <button class="btn btn-outline btn-xs" onclick="renameTenant('${esc(t.id)}')">Rename</button>
+              <button class="btn btn-outline btn-xs" style="border-color:var(--danger);color:var(--danger);" onclick="deleteTenant('${esc(t.id)}')">Delete</button>
             </td>
           </tr>`;
         }).join('')}
@@ -5396,11 +5397,11 @@ function openAddTenantModal(){
          <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">1. The Client (Tenant)</div>
          <div class="field-group" style="margin-bottom:10px;">
            <label class="field-label">Client business name</label>
-           <input type="text" id="mTenantName" placeholder="e.g. Easy Travel Leeds" autocomplete="off" autofocus>
+           <input type="text" id="mTenantName" placeholder="e.g. Acme Engineering Ltd" autocomplete="off" autofocus>
          </div>
          <div class="field-group">
            <label class="field-label">Tenant ID (optional — auto-generated from name)</label>
-           <input type="text" id="mTenantId" placeholder="e.g. easy-travel-leeds" pattern="[a-z0-9-]+" autocomplete="off">
+           <input type="text" id="mTenantId" placeholder="e.g. acme-engineering" pattern="[a-z0-9-]+" autocomplete="off">
            <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Lowercase letters, numbers, dashes only. Cannot be changed later.</div>
          </div>
        </div>
@@ -5409,7 +5410,7 @@ function openAddTenantModal(){
          <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">2. The Login</div>
          <div class="field-group" style="margin-bottom:10px;">
            <label class="field-label">Email <span style="color:var(--danger);">*</span></label>
-           <input type="email" id="mClientEmail" placeholder="liam@egsleeds.com" autocomplete="off">
+           <input type="email" id="mClientEmail" placeholder="manager@company.co.uk" autocomplete="off">
          </div>
          <div class="field-group" style="margin-bottom:10px;">
            <label class="field-label">Display name</label>
@@ -5499,12 +5500,12 @@ async function submitAddTenant(){
            <strong>${escName}</strong> is set up. Send these to your client.
          </div>
          <div style="font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:13px;background:#fff;padding:12px 14px;border-radius:6px;border:1px solid var(--success-brd);line-height:1.7;">
-           <div><strong>URL:</strong> https://mansys.archerhs.co.uk</div>
+           <div><strong>URL:</strong> https://hsms.archerhs.co.uk</div>
            <div><strong>Email:</strong> ${escEmail}</div>
            <div><strong>Password:</strong> ${escPwd}</div>
          </div>
        </div>
-       <button class="btn btn-outline btn-sm" onclick="(async()=>{try{await navigator.clipboard.writeText('URL: https://mansys.archerhs.co.uk\\nEmail: ${escEmail}\\nPassword: ${escPwd}');showToast('Login details copied','success');}catch(e){showToast('Clipboard copy failed','error');}})()">${_ic('list',13)} Copy login details</button>
+       <button class="btn btn-outline btn-sm" onclick="(async()=>{try{await navigator.clipboard.writeText('URL: https://hsms.archerhs.co.uk\\nEmail: ${escEmail}\\nPassword: ${escPwd}');showToast('Login details copied','success');}catch(e){showToast('Clipboard copy failed','error');}})()">${_ic('list',13)} Copy login details</button>
        <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">
          The password is shown here only once — make sure to copy it before you close this. The client should change their password on first sign-in (click their email in the top-right corner once signed in).
        </div>
@@ -5528,7 +5529,7 @@ async function openAddUserModal(){
     `<div style="display:flex;flex-direction:column;gap:12px;">
        <div class="field-group">
          <label class="field-label">Email</label>
-         <input type="email" id="mUserEmail" placeholder="liam@egsleeds.com" autofocus>
+         <input type="email" id="mUserEmail" placeholder="manager@company.co.uk" autofocus>
        </div>
        <div class="field-group">
          <label class="field-label">Display name (optional)</label>
@@ -5595,7 +5596,7 @@ async function submitAddUser(){
          <div style="padding:14px 16px;background:var(--success-bg);border:1.5px solid var(--success-brd);border-radius:8px;">
            <div style="font-size:13px;color:var(--success);margin-bottom:10px;">User account created. <strong>Send these credentials to them now</strong> — the password won't be shown again.</div>
            <div style="font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:13px;background:#fff;padding:10px 12px;border-radius:6px;border:1px solid var(--success-brd);">
-             <div style="margin-bottom:4px;"><strong>URL:</strong> https://mansys.archerhs.co.uk</div>
+             <div style="margin-bottom:4px;"><strong>URL:</strong> https://hsms.archerhs.co.uk</div>
              <div style="margin-bottom:4px;"><strong>Email:</strong> ${email}</div>
              <div><strong>Password:</strong> ${password}</div>
            </div>
@@ -5699,7 +5700,9 @@ async function toggleUserActive(userId, email, makeActive){
 }
 
 // ── Rename a tenant ──
-async function renameTenant(tenantId, currentName){
+async function renameTenant(tenantId){
+  const t = _adminTenantsCache.find(x => x.id === tenantId);
+  const currentName = t ? String(t.name||'') : '';
   const next = prompt(`Rename tenant "${currentName}":\n\n(The Tenant ID stays the same — it's baked into stored data.)`, currentName);
   if(next === null) return;                      // cancelled
   const name = String(next).trim();
@@ -5725,7 +5728,10 @@ async function renameTenant(tenantId, currentName){
 }
 
 // ── Delete a tenant (only if it has zero users) ──
-async function deleteTenant(tenantId, name, userCount){
+async function deleteTenant(tenantId){
+  const t = _adminTenantsCache.find(x => x.id === tenantId);
+  const name = t ? String(t.name||'') : tenantId;
+  const userCount = t ? (t.user_count || 0) : 0;
   if(userCount > 0){
     showToast(`Remove the ${userCount} user${userCount>1?'s':''} from "${name}" before deleting the tenant.`,'error');
     return;
@@ -5748,6 +5754,78 @@ async function deleteTenant(tenantId, name, userCount){
   } catch(err){
     console.error(err);
     showToast('Network error deleting tenant','error');
+  }
+}
+
+// ── Edit a tenant's client config (icon, location, default inspection type,
+//    branding). Consultant-only, opened from the Config button in the tenant
+//    table. All rendered values go through esc() (house rule 1). ──
+function openEditTenantConfig(tenantId){
+  const t = _adminTenantsCache.find(x => x.id === tenantId);
+  if(!t){ showToast('Tenant not found — refresh and try again','error'); return; }
+  const cfg = (t.config && typeof t.config === 'object') ? t.config : {};
+  const b   = (cfg.branding && typeof cfg.branding === 'object') ? cfg.branding : {};
+  const primary   = /^#[0-9a-fA-F]{6}$/.test(b.primary||'')   ? b.primary   : '#1E3A5F';
+  const accent    = /^#[0-9a-fA-F]{6}$/.test(b.accent||'')    ? b.accent    : '#2563EB';
+  const textColor = /^#[0-9a-fA-F]{6}$/.test(b.textColor||'') ? b.textColor : '#111827';
+  openModal(`Client config — ${t.name}`,   // title goes to textContent (safe); body is innerHTML and esc()'d
+    `<div style="display:flex;flex-direction:column;gap:12px;">
+       <div style="font-size:12px;color:var(--text-muted);">Tenant <code>${esc(t.id)}</code>. This is served to the client after sign-in; it replaces the old hardcoded client list.</div>
+       <div class="field-group">
+         <label class="field-label">Icon (emoji)</label>
+         <input type="text" id="cfgIcon" maxlength="4" placeholder="🏢" value="${esc(cfg.icon||'')}" style="width:80px;">
+       </div>
+       <div class="field-group">
+         <label class="field-label">Location / site</label>
+         <input type="text" id="cfgLocation" placeholder="e.g. main workshop" value="${esc(cfg.location||'')}">
+       </div>
+       <div class="field-group">
+         <label class="field-label">Default inspection type (id)</label>
+         <input type="text" id="cfgInspType" placeholder="e.g. general" value="${esc(cfg.inspType||'')}">
+       </div>
+       <div class="field-group">
+         <label class="field-label">Branding</label>
+         <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+           <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">Primary <input type="color" id="cfgPrimary" value="${esc(primary)}"></label>
+           <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">Accent <input type="color" id="cfgAccent" value="${esc(accent)}"></label>
+           <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">Text <input type="color" id="cfgTextColor" value="${esc(textColor)}"></label>
+         </div>
+       </div>
+     </div>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="saveTenantConfig('${esc(t.id)}')">Save config</button>`
+  );
+}
+
+async function saveTenantConfig(tenantId){
+  const val = id => (document.getElementById(id)?.value || '').trim();
+  const config = {
+    icon:     val('cfgIcon'),
+    location: val('cfgLocation'),
+    inspType: val('cfgInspType'),
+    branding: {
+      primary:   val('cfgPrimary'),
+      accent:    val('cfgAccent'),
+      textColor: val('cfgTextColor')
+    }
+  };
+  try {
+    const res = await fetch(`/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ config })
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>({}));
+      showToast(`Failed: ${body.error||res.status}`, 'error');
+      return;
+    }
+    closeModal();
+    showToast('✓ Client config saved', 'success');
+    renderAdminPane();
+  } catch(err){
+    console.error(err);
+    showToast('Network error saving config','error');
   }
 }
 
@@ -6208,7 +6286,7 @@ function generateSingleFormPDF(insp){
   addHeaderBand();
 
   // Meta block — 4-column header with auto-growing height so long values
-  // (e.g. tenant names like "Easy Travel Leeds Workshop & Depot") wrap
+  // (e.g. a long tenant name like "Acme Engineering & Fabrication Ltd") wrap
   // inside their cell instead of being clipped to a single line.
   const meta = [
     {label:'Submitted by',  value:insp.manager||'—'},
@@ -8436,7 +8514,7 @@ function resetAppData(){
 //
 //  This lets the same app work for:
 //    * Local testing without a server (anonymous)
-//    * A signed-in client (Easy Travel manager) with permanent storage
+//    * A signed-in client (a company manager) with permanent storage
 //    * A signed-in consultant (Simon) with multi-tenant access
 // ══════════════════════════════════════════════════════════════
 const Auth = (() => {
@@ -8594,18 +8672,18 @@ async function populateClientPicker(){
 function onConsultantPick(tenantId){
   if(!tenantId){ exitConsultantView(); return; }
   const t = _consultantTenants.find(x => x.id === tenantId);
-  enterConsultantView(tenantId, t?.name || tenantId);
+  enterConsultantView(tenantId, t?.name || tenantId, t?.config || {});
 }
 
 async function _fetchTenantState(tenantId){
   return fetch(`/api/state?tenantId=${encodeURIComponent(tenantId)}`, { credentials:'include' }).then(r=>r.json());
 }
 
-async function enterConsultantView(tenantId, name){
+async function enterConsultantView(tenantId, name, config){
   let payload;
   try { payload = await _fetchTenantState(tenantId); }
   catch(e){ showToast('Could not load that client','error'); return; }
-  _consultantView    = { tenantId, name };
+  _consultantView    = { tenantId, name, config: config || {} };
   Auth.setActiveTenant(tenantId);
   _consultantLastUpd = payload?.updatedAt || null;
   S = (payload && payload.state && typeof payload.state === 'object' && Object.keys(payload.state).length)

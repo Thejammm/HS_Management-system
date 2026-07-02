@@ -108,7 +108,7 @@ router.get('/me', requireAuth, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT u.id, u.email, u.tenant_id, u.role, u.display_name, u.is_active,
-              t.name AS tenant_name
+              t.name AS tenant_name, t.config AS tenant_config
          FROM users u
          LEFT JOIN tenants t ON t.id = u.tenant_id
         WHERE u.id = $1 LIMIT 1`,
@@ -131,6 +131,7 @@ router.get('/me', requireAuth, async (req, res) => {
         role:       u.role,
         tenantId:   u.tenant_id,
         tenantName: u.tenant_name,
+        config:     u.tenant_config || {},
         name:       u.display_name
       }
     });

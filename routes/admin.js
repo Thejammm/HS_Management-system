@@ -18,13 +18,34 @@ const router = express.Router();
 // All admin routes require an authenticated consultant
 router.use(requireAuth, requireConsultant);
 
+// Whitelist + shape the tenant config so only known client-configuration fields
+// are stored (icon, location, default inspection type, pack, branding). Anything
+// else the client sends is dropped. Returns a plain object (never null/array).
+function _cleanConfig(input){
+  const src = (input && typeof input === 'object' && !Array.isArray(input)) ? input : {};
+  const out = {};
+  const str = v => (v === undefined || v === null) ? undefined : String(v);
+  if(str(src.icon)     !== undefined) out.icon     = str(src.icon).slice(0, 8);
+  if(str(src.location) !== undefined) out.location = str(src.location).slice(0, 200);
+  if(str(src.inspType) !== undefined) out.inspType = str(src.inspType).slice(0, 60);
+  if(str(src.checklist)!== undefined) out.checklist= str(src.checklist).slice(0, 60);
+  if(src.branding && typeof src.branding === 'object' && !Array.isArray(src.branding)){
+    const b = {};
+    ['primary','accent','textColor'].forEach(k => {
+      if(str(src.branding[k]) !== undefined) b[k] = str(src.branding[k]).slice(0, 32);
+    });
+    if(Object.keys(b).length) out.branding = b;
+  }
+  return out;
+}
+
 // ── Tenants ─────────────────────────────────────────────────────
 
 // GET /api/admin/tenants — list all tenants
 router.get('/tenants', async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT t.id, t.name, t.created_at,
+      `SELECT t.id, t.name, t.config, t.created_at,
               (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id) AS user_count,
               (SELECT updated_at FROM app_state s WHERE s.tenant_id = t.id) AS last_state_update
          FROM tenants t
@@ -45,12 +66,13 @@ router.post('/tenants', async (req, res) => {
   if(!id){
     id = name.toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-|-$/g,'').slice(0, 50) || ('tenant-'+Date.now());
   }
+  const config = _cleanConfig(req.body?.config);
   try {
     await pool.query(
-      `INSERT INTO tenants (id, name) VALUES ($1, $2)`,
-      [id, name]
+      `INSERT INTO tenants (id, name, config) VALUES ($1, $2, $3::jsonb)`,
+      [id, name, JSON.stringify(config)]
     );
-    res.json({ tenant: { id, name } });
+    res.json({ tenant: { id, name, config } });
   } catch(err){
     if(err.code === '23505'){
       return res.status(409).json({ error: 'tenant_id_exists' });
@@ -60,18 +82,30 @@ router.post('/tenants', async (req, res) => {
   }
 });
 
-// PATCH /api/admin/tenants/:id  body: { name } — rename only (id is immutable)
+// PATCH /api/admin/tenants/:id  body: { name?, config? }
+// Updates the display name and/or the client config. id is immutable. Any field
+// left out is kept as-is; config is merged over the current config so a partial
+// edit (e.g. just branding) doesn't wipe the rest.
 router.patch('/tenants/:id', async (req, res) => {
-  const id   = req.params.id;
-  const name = String(req.body?.name||'').trim();
-  if(!name){ return res.status(400).json({ error: 'name_required' }); }
+  const id = req.params.id;
+  const hasName   = req.body?.name   !== undefined;
+  const hasConfig = req.body?.config !== undefined;
+  if(!hasName && !hasConfig){ return res.status(400).json({ error: 'nothing_to_update' }); }
+  const name = hasName ? String(req.body.name||'').trim() : null;
+  if(hasName && !name){ return res.status(400).json({ error: 'name_required' }); }
   try {
-    const r = await pool.query(
-      `UPDATE tenants SET name = $1 WHERE id = $2`,
-      [name, id]
+    const cur = await pool.query(`SELECT name, config FROM tenants WHERE id = $1 LIMIT 1`, [id]);
+    if(!cur.rows.length){ return res.status(404).json({ error: 'tenant_not_found' }); }
+
+    const newName   = hasName ? name : cur.rows[0].name;
+    const curConfig = (cur.rows[0].config && typeof cur.rows[0].config === 'object') ? cur.rows[0].config : {};
+    const newConfig = hasConfig ? { ...curConfig, ..._cleanConfig(req.body.config) } : curConfig;
+
+    await pool.query(
+      `UPDATE tenants SET name = $1, config = $2::jsonb WHERE id = $3`,
+      [newName, JSON.stringify(newConfig), id]
     );
-    if(r.rowCount === 0){ return res.status(404).json({ error: 'tenant_not_found' }); }
-    res.json({ ok: true, tenant: { id, name } });
+    res.json({ ok: true, tenant: { id, name: newName, config: newConfig } });
   } catch(err){
     console.error('PATCH /tenants/:id error:', err);
     res.status(500).json({ error: 'server_error' });

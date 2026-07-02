@@ -771,7 +771,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div id="tab-cas" class="tab-panel">
     <div class="card no-print" style="margin-bottom:18px;">
       <div class="card-band"><h3><span class="dot">●</span> Accreditation readiness</h3>
-        <select id="casSchemeFilter" class="ms-stage-select no-print" onchange="renderCAS()" title="Scheme view"></select>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <select id="casSchemeFilter" class="ms-stage-select no-print" onchange="renderCAS()" title="Scheme view"></select>
+          <button class="btn btn-primary btn-sm no-print" onclick="downloadCasSubmissionPack()">📄 Submission pack</button>
+        </div>
       </div>
       <div class="card-body">
         <div style="font-size:13px;color:var(--text-muted);">Common Assessment Standard (Build UK, Version 5). Summaries are our own wording plus question numbers, not the Build UK source text. Use this to see what each scheme needs and where the app already holds the evidence.</div>
@@ -10427,6 +10430,63 @@ function _casProportionateOptional(q){
   return _casRowNums(q.q).some(n => n>=126 && n<=129);   // advisory-instead-of-fail
 }
 
+// ── Submission pack: one-action cover index mapping in-scope criteria to their
+//    status and evidence (linked document names + links, or the live app data),
+//    for the currently selected scheme. Reuses jsPDF. ──
+function downloadCasSubmissionPack(){
+  try { buildCasSubmissionPackPDF(); showToast('✓ Submission pack created','success'); }
+  catch(e){ console.error('CAS submission pack failed:', e); showToast('Could not build the pack — see console','error'); }
+}
+function buildCasSubmissionPackPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const ML=16, RM=194; let y=18;
+  const text=(t,size,bold,colour)=>{ doc.setFont('helvetica',bold?'bold':'normal'); doc.setFontSize(size); doc.setTextColor(colour?colour[0]:60,colour?colour[1]:60,colour?colour[2]:60); doc.splitTextToSize(String(t),RM-ML).forEach(w=>{ if(y>282){doc.addPage();y=18;} doc.text(w,ML,y); y+=size*0.5; }); };
+  const head=(t)=>{ y+=3; if(y>270){doc.addPage();y=18;} text(t,12,true,[30,58,95]); y+=1; };
+
+  const sel=document.getElementById('casSchemeFilter');
+  const scheme = CAS_SCHEMES.find(s=>s.id===(sel && sel.value)) || CAS_SCHEMES[0];
+  const sections = CAS_FRAMEWORK.sections.filter(s=>!scheme.sections||scheme.sections.includes(s.id));
+  const client = (_consultantView && _consultantView.name) || (Auth.user && Auth.user() && Auth.user().tenantName) || (S.branding && S.branding.name) || 'Client';
+  const smallCo = _casSmallCo();
+
+  let inScope=0,ready=0,partial=0,gap=0,na=0,prop=0;
+  sections.forEach(s=>s.questions.forEach(q=>{ if(!_casRowInScope(q.q))return; inScope++; const st=(S.cas&&S.cas.status&&S.cas.status[q.q]||{}).v;
+    if(st==='ready')ready++;else if(st==='partial')partial++;else if(st==='gap')gap++;else if(st==='na')na++;else if(_casProportionateOptional(q))prop++; }));
+  const assessable=inScope-na-prop; const pct=assessable>0?Math.round(ready/assessable*100):null;
+
+  doc.setFillColor(30,58,95); doc.rect(0,0,210,26,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('CAS Submission Pack — cover index',ML,12);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(String(client)+'  ·  '+scheme.label,ML,19);
+  y=34;
+  text('Common Assessment Standard (Build UK, Version 5). Generated '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+(smallCo?'  ·  Small-company mode':''),9,false,[110,110,110]);
+  text('Readiness: '+(pct==null?'not yet assessed':pct+'% ready')+'  ('+ready+' ready, '+partial+' partial, '+gap+' gap, '+na+' N/A'+(prop?', '+prop+' proportionate':'')+' of '+inScope+' in scope)',10,true,[30,58,95]);
+  text('This cover index maps each in-scope CAS criterion to your evidence. Attach the referenced documents when you submit. Summaries are our own wording, not the Build UK source text.',9,false,[110,110,110]);
+
+  const STLABEL={ready:'READY',partial:'PARTIAL',gap:'GAP',na:'N/A'};
+  sections.forEach(s=>{
+    const rows=s.questions.filter(q=>_casRowInScope(q.q));
+    if(!rows.length) return;
+    head(s.id+'. '+s.name+(s.id===7?'   [Building Safety Act — mandatory]':''));
+    rows.forEach(q=>{
+      const st=(S.cas&&S.cas.status&&S.cas.status[q.q]||{}).v;
+      const stTxt=st?STLABEL[st]:(_casProportionateOptional(q)?'proportionate':'not assessed');
+      text('Q'+q.q+'  '+q.req+'   ['+stTxt+']',9.5);
+      const docs=_casLinkedDocs(q.q);
+      if(docs.length){ docs.forEach(d=>{ text('   • '+(d.name||'document')+(d.link?('  '+d.link):''),8.5,false,[90,90,90]); }); }
+      else if(/LIVE/.test(q.app)){ const sn=_casLiveSnapshot(); text('   • App data: '+sn.inspections+' inspections, '+sn.closedActions+' closed actions, '+sn.months+' months monitored',8.5,false,[90,90,90]); }
+      y+=1;
+    });
+  });
+
+  doc.setFontSize(8); doc.setTextColor(150,150,150);
+  const pages=doc.internal.getNumberOfPages();
+  for(let p=1;p<=pages;p++){ doc.setPage(p); doc.text('Archer Health & Safety  ·  CAS submission cover index  ·  Page '+p+' of '+pages, ML, 290); }
+
+  const safeClient=String(client).replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')||'client';
+  doc.save(safeClient+'_CAS-submission-pack_'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
 function renderCAS(){
   const sel = document.getElementById('casSchemeFilter');
   if(sel && !sel.options.length){ sel.innerHTML = CAS_SCHEMES.map(s=>`<option value="${esc(s.id)}">${esc(s.label)}</option>`).join(''); }
@@ -10501,6 +10561,9 @@ function renderCAS(){
       <div class="card-band"><h3><span class="dot">●</span> ${esc(s.id + '. ' + s.name)} <span style="font-size:11px;color:var(--text-muted);font-weight:400;">Q${esc(s.range)}</span></h3>
         ${bsa?'<span class="badge badge-accent" style="font-size:10px;">Building Safety Act — mandatory for BSA work</span>':''}
       </div>
+      ${bsa?`<div style="margin:0;padding:11px 16px;background:var(--accent-light);border-bottom:1px solid var(--accent);font-size:12px;color:var(--accent-dark);line-height:1.5;">
+        <strong>Mandatory under CAS V5 for Building Safety Act work.</strong> These duties cover competence, dutyholder roles and (for Higher-Risk Buildings) the golden thread and mandatory occurrence reporting. AHS supports these through its BR Principal Designer / Principal Contractor services — the natural upsell for clients doing BSA-scope work.
+      </div>`:''}
       <div class="card-body" style="padding:0;overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
           <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;">

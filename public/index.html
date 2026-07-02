@@ -1805,6 +1805,100 @@ const LIBRARY = [
       ]},
     ]
   },
+  // ── CONSTRUCTION PACK (DRAFT — pending Simon's verification against real site
+  //    practice before it is treated as final; Stage 2 item 3). Standard UK
+  //    site-inspection content across the 11 topic areas. pack:'construction'
+  //    so pack selection can show it only to construction tenants. ──
+  {
+    id:'construction_inspection', name:'Construction Site Inspection', icon:'🏗',
+    regs:'CDM 2015 · Work at Height Regs 2005 · PUWER 1998 · LOLER 1998 · COSHH 2002',
+    color:'#fff4e3', pack:'construction',
+    sections:[
+      { id:'cs_rams', name:'RAMS & documentation', icon:'📋', items:[
+        { id:'cs_rams_1', name:'Is a task-specific risk assessment and method statement (RAMS) in place for the works in progress?' },
+        { id:'cs_rams_2', name:'Have operatives been briefed on the RAMS and signed the briefing record?' },
+        { id:'cs_rams_3', name:'Is the construction phase plan available on site and up to date?' },
+        { id:'cs_rams_4', name:'Are the relevant permits to work in place where required (hot works, confined space, excavation, isolation)?' },
+        { id:'cs_rams_5', name:'Are statutory inspection records (scaffold, excavation, lifting equipment) present and current?' },
+      ]},
+      { id:'cs_traffic', name:'Site set-up & traffic management', icon:'🚧', items:[
+        { id:'cs_traffic_1', name:'Is the site perimeter secure with controlled access and egress points?' },
+        { id:'cs_traffic_2', name:'Is pedestrian and vehicle movement segregated, and is the segregation being followed?' },
+        { id:'cs_traffic_3', name:'Are traffic routes, one-way systems and speed limits signed and observed?' },
+        { id:'cs_traffic_4', name:'Are trained banksmen / traffic marshals in place for reversing and deliveries?' },
+        { id:'cs_traffic_5', name:'Is site signage (site rules, PPE, hazard warnings) displayed and legible?' },
+      ]},
+      { id:'cs_welfare', name:'Welfare facilities', icon:'🚪', items:[
+        { id:'cs_welfare_1', name:'Are toilets provided, clean and adequate for the number of people on site?' },
+        { id:'cs_welfare_2', name:'Are washing facilities provided with hot and cold (or warm) running water, soap and towels?' },
+        { id:'cs_welfare_3', name:'Is a rest area / canteen with means to heat food and water and to make hot drinks provided?' },
+        { id:'cs_welfare_4', name:'Is drinking water available and clearly labelled?' },
+        { id:'cs_welfare_5', name:'Is a means of drying wet clothing and storing personal belongings provided?' },
+      ]},
+      { id:'cs_height', name:'Work at height', icon:'🪜', items:[
+        { id:'cs_height_1', name:'Is work at height avoided where reasonably practicable and otherwise properly planned and supervised?' },
+        { id:'cs_height_2', name:'Is edge protection / guardrailing fitted to all open edges, leading edges and openings?' },
+        { id:'cs_height_3', name:'Are ladders the right equipment for the task, in good condition, secured and at the correct angle?' },
+        { id:'cs_height_4', name:'Are MEWPs / podiums used by trained operatives, with a rescue plan in place?' },
+        { id:'cs_height_5', name:'Are fragile surfaces (rooflights, fibre-cement roofs) identified, covered or guarded?' },
+        { id:'cs_height_6', name:'Are falling materials and tools prevented (toe boards, nets, brick guards, exclusion zones)?' },
+      ]},
+      { id:'cs_scaffold', name:'Scaffolds', icon:'🏗', items:[
+        { id:'cs_scaffold_1', name:'Has the scaffold been erected by a competent person and handed over (scaffold tag in place and signed)?' },
+        { id:'cs_scaffold_2', name:'Is a current inspection record available (within the last 7 days and after any alteration or adverse weather)?' },
+        { id:'cs_scaffold_3', name:'Are guardrails, toe boards and fully boarded platforms in place with no dangerous gaps?' },
+        { id:'cs_scaffold_4', name:'Is the scaffold adequately tied, founded on sole boards / base plates and standing plumb?' },
+        { id:'cs_scaffold_5', name:'Are access points (ladders, gates) safe, with self-closing gates where fitted?' },
+        { id:'cs_scaffold_6', name:'Is the scaffold free from unauthorised alteration and not overloaded with materials?' },
+      ]},
+      { id:'cs_excav', name:'Excavations', icon:'⛏', items:[
+        { id:'cs_excav_1', name:'Is the excavation supported, battered back or benched to prevent collapse?' },
+        { id:'cs_excav_2', name:'Has a competent person inspected it at the start of each shift, with a record kept?' },
+        { id:'cs_excav_3', name:'Are barriers / edge protection preventing people, plant and materials falling in?' },
+        { id:'cs_excav_4', name:'Have underground services been located (drawings and CAT scan) before and during digging?' },
+        { id:'cs_excav_5', name:'Is safe access and egress (secured ladder) provided into the excavation?' },
+        { id:'cs_excav_6', name:'Are spoil, plant and materials kept a safe distance back from the excavation edge?' },
+      ]},
+      { id:'cs_tempworks', name:'Temporary works', icon:'📐', items:[
+        { id:'cs_tempworks_1', name:'Is there a temporary works register and an appointed Temporary Works Coordinator?' },
+        { id:'cs_tempworks_2', name:'Have temporary works (props, formwork, façade retention, trench support) been designed and independently checked?' },
+        { id:'cs_tempworks_3', name:'Is a permit to load / permit to strike in place before loading or dismantling?' },
+        { id:'cs_tempworks_4', name:'Are the temporary works being erected, used and dismantled in line with the design?' },
+      ]},
+      { id:'cs_plant', name:'Plant & equipment', icon:'🔧', items:[
+        { id:'cs_plant_1', name:'Is plant (excavators, telehandlers, dumpers, hoists) operated only by trained, certificated operators?' },
+        { id:'cs_plant_2', name:'Are daily pre-use checks recorded, and are defects reported and defective plant removed from use?' },
+        { id:'cs_plant_3', name:'Is lifting equipment within its thorough examination date and used within its safe working load?' },
+        { id:'cs_plant_4', name:'Are quick-hitches, buckets and attachments correctly fitted and secured?' },
+        { id:'cs_plant_5', name:'Is plant kept clear of pedestrians, excavations and overhead power lines?' },
+        { id:'cs_plant_6', name:'Is plant immobilised, keys removed and secured when left unattended?' },
+      ]},
+      { id:'cs_fire', name:'Fire & emergency', icon:'🔥', items:[
+        { id:'cs_fire_1', name:'Is there a site fire and emergency plan with assembly points, and has it been communicated?' },
+        { id:'cs_fire_2', name:'Are suitable fire extinguishers provided and in date at hot-work and high-risk areas?' },
+        { id:'cs_fire_3', name:'Are escape routes kept clear, signed and usable?' },
+        { id:'cs_fire_4', name:'Is hot work controlled by permit, with a fire watch and post-work checks?' },
+        { id:'cs_fire_5', name:'Are flammable materials and gas bottles stored safely, upright and secured?' },
+        { id:'cs_fire_6', name:'Are means of raising the alarm in place and understood by everyone on site?' },
+      ]},
+      { id:'cs_house', name:'Housekeeping & environment', icon:'🗑', items:[
+        { id:'cs_house_1', name:'Are walkways, stairs and work areas kept clear of trip hazards, debris and trailing leads?' },
+        { id:'cs_house_2', name:'Is waste segregated and removed regularly, with skips not overfilled?' },
+        { id:'cs_house_3', name:'Are materials stored safely, stacked stable and not blocking routes or exits?' },
+        { id:'cs_house_4', name:'Are spills (fuel, oils, chemicals) controlled, with spill kits available?' },
+        { id:'cs_house_5', name:'Is dust controlled at source (on-tool extraction, water suppression) rather than dry sweeping?' },
+        { id:'cs_house_6', name:'Is lighting adequate for the tasks and for access routes?' },
+      ]},
+      { id:'cs_subs', name:'Subcontractors, competence & PPE', icon:'🦺', items:[
+        { id:'cs_subs_1', name:'Have all subcontractors and operatives been inducted before starting work on site?' },
+        { id:'cs_subs_2', name:'Do operatives hold the right competence cards (e.g. CSCS / CPCS) for their role and plant?' },
+        { id:'cs_subs_3', name:'Is the correct PPE (hi-vis, hard hat, safety footwear and task-specific PPE) worn by everyone?' },
+        { id:'cs_subs_4', name:'Are subcontractor RAMS reviewed and activities coordinated to avoid conflicting works?' },
+        { id:'cs_subs_5', name:'Are toolbox talks being delivered and recorded?' },
+        { id:'cs_subs_6', name:'Is supervision present and adequate for the activities underway?' },
+      ]},
+    ]
+  },
 ];
 
 

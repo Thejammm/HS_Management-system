@@ -10412,6 +10412,21 @@ function saveCasEvidence(qkey){
   _persistCas(); closeModal(); renderCAS();
 }
 
+// Small-company (micro-business) proportionality: statements instead of policies,
+// N/A where permitted, advisory-instead-of-fail on 126–129. A "proportionate
+// optional" question doesn't count against readiness when left unassessed.
+function _casSmallCo(){ return !!(S.cas && S.cas.smallCompany); }
+function setCasSmallCompany(val){
+  if(!S.cas) S.cas = {gates:{},roles:{},status:{},evidence:{}};
+  S.cas.smallCompany = !!val;
+  _persistCas(); renderCAS();
+}
+function _casProportionateOptional(q){
+  if(!_casSmallCo()) return false;
+  if(q.flags.micro) return true;
+  return _casRowNums(q.q).some(n => n>=126 && n<=129);   // advisory-instead-of-fail
+}
+
 function renderCAS(){
   const sel = document.getElementById('casSchemeFilter');
   if(sel && !sel.options.length){ sel.innerHTML = CAS_SCHEMES.map(s=>`<option value="${esc(s.id)}">${esc(s.label)}</option>`).join(''); }
@@ -10419,15 +10434,18 @@ function renderCAS(){
   const sections = CAS_FRAMEWORK.sections.filter(s => !scheme.sections || scheme.sections.includes(s.id));
   const ro = !!_consultantView && false;   // CAS is a consultant-prep tool; editable during dial-in
 
-  // Readiness tally over in-scope rows that carry a status
-  let inScope=0, ready=0, partial=0, gap=0, na=0;
+  // Readiness tally over in-scope rows. In small-company mode a proportionate
+  // question left unassessed doesn't count against readiness (statement/N-A/
+  // advisory permitted); if the consultant marks it, it still counts.
+  let inScope=0, ready=0, partial=0, gap=0, na=0, propOptional=0;
   sections.forEach(s => s.questions.forEach(q => {
     if(!_casRowInScope(q.q)) return;
     inScope++;
     const st=(S.cas?.status?.[q.q]||{}).v;
     if(st==='ready')ready++; else if(st==='partial')partial++; else if(st==='gap')gap++; else if(st==='na')na++;
+    else if(_casProportionateOptional(q)) propOptional++;   // unassessed + proportionate → optional
   }));
-  const assessable = inScope - na;
+  const assessable = inScope - na - propOptional;
   const pctReady = assessable>0 ? Math.round(ready/assessable*100) : null;
 
   const sumEl = document.getElementById('casSummary');
@@ -10440,7 +10458,8 @@ function renderCAS(){
       chip(partial,'partial','badge-warning'),
       chip(gap,'gap','badge-danger'),
       chip(na,'N/A','badge-muted'),
-    ].join(' ');
+      propOptional?chip(propOptional,'proportionate','badge-muted'):'',
+    ].filter(Boolean).join(' ');
   }
 
   const cont = document.getElementById('casContainer'); if(!cont) return;
@@ -10462,9 +10481,14 @@ function renderCAS(){
       <div style="display:flex;gap:4px;flex-wrap:wrap;">${chips}</div>
     </div>`;
   };
+  const smallCo = _casSmallCo();
   const scopePanel = `<div class="card no-print" style="margin-bottom:14px;">
     <div class="card-band"><h3><span class="dot">●</span> Scope for this client</h3></div>
     <div class="card-body">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0 10px;border-bottom:1px solid var(--border);margin-bottom:8px;cursor:pointer;">
+        <input type="checkbox" ${smallCo?'checked':''} onchange="setCasSmallCompany(this.checked)">
+        <span><strong>Small-company mode</strong> — micro-business (under 10 employees, under £1.8m turnover): statements instead of policies, N/A where permitted, advisory on 126–129.</span>
+      </label>
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Answer the gate questions to switch whole blocks in or out of scope. Unanswered gates leave everything in scope.</div>
       ${CAS_GATE_RULES.filter(g=>g.type==='bool').map(boolGate).join('')}
       ${CAS_GATE_RULES.filter(g=>g.type==='roles').map(roleGate).join('')}
@@ -10489,7 +10513,7 @@ function renderCAS(){
               const inScope = _casRowInScope(q.q);
               return `<tr style="border-top:1px solid var(--border);background:${i%2?'transparent':'var(--muted-bg)'};${inScope?'':'opacity:.5;'}">
               <td style="padding:8px 10px;font-weight:600;white-space:nowrap;">${esc(q.q)}</td>
-              <td style="padding:8px 10px;">${esc(q.req)}${_casFlagBadges(q.flags)}</td>
+              <td style="padding:8px 10px;">${esc(q.req)}${_casFlagBadges(q.flags)}${_casProportionateOptional(q)?' <span class="badge badge-muted" style="font-size:10px;">Proportionate — statement/N-A OK</span>':''}</td>
               <td style="padding:8px 10px;color:var(--text-muted);">${esc(q.evidence)}</td>
               <td style="padding:8px 10px;color:var(--text-muted);">${esc(q.app)}</td>
               <td style="padding:8px 10px;">${inScope?(_casStatusControl(q.q)+_casEvidenceCell(q)):'<span style="font-size:11px;color:var(--text-muted);">Not in scope</span>'}</td>

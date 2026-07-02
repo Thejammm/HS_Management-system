@@ -6329,6 +6329,7 @@ function migrateLoadedState(){
   if(!S.cas.gates  || typeof S.cas.gates  !== 'object') S.cas.gates = {};
   if(!S.cas.roles  || typeof S.cas.roles  !== 'object') S.cas.roles = {};
   if(!S.cas.status || typeof S.cas.status !== 'object') S.cas.status = {};
+  if(!S.cas.evidence || typeof S.cas.evidence !== 'object') S.cas.evidence = {}; // Stage 3: criterion → document-register links
 
   if(!S.review || typeof S.review !== 'object') S.review = { ratings:[], feedback:'', suggestions:'' };
   if(!Array.isArray(S.review.ratings)) S.review.ratings = [];
@@ -10344,6 +10345,73 @@ function _casStatusControl(qkey){
   ).join('') + '</div>';
 }
 
+// ── Evidence mapping: link criteria to document-register entries and surface the
+//    live app data (inspections, closed actions, monitoring) behind LIVE-mapped
+//    criteria; auto-suggest a status where the app already holds evidence. ──
+function _casLinkedDocs(qkey){
+  const ids = (S.cas?.evidence?.[qkey]?.docs) || [];
+  const byId = {}; (S.documents||[]).forEach(d=>byId[d.id]=d);
+  return ids.map(id=>byId[id]).filter(Boolean);
+}
+function _casLiveSnapshot(){
+  return {
+    inspections:   (S.inspections||[]).length,
+    closedActions: (S.actions||[]).filter(a=>a.resolved).length,
+    months:        Object.keys((S.monitoring&&S.monitoring.months)||{}).length,
+  };
+}
+function _casAutoStatus(q){
+  const docs = _casLinkedDocs(q.q);
+  if(docs.length){
+    const cls = docs.map(d=>_docStatus(d.reviewDate).cls);
+    if(cls.includes('badge-danger'))  return 'gap';
+    if(cls.includes('badge-warning')) return 'partial';
+    return 'ready';
+  }
+  if(/LIVE/.test(q.app)){
+    const s=_casLiveSnapshot();
+    if(s.inspections>0 || s.closedActions>0 || s.months>0) return 'partial';   // data exists — consultant confirms
+  }
+  return null;
+}
+function _casEvidenceCell(q){
+  const bits=[];
+  const docs=_casLinkedDocs(q.q);
+  if(docs.length){
+    bits.push(docs.map(d=>{ const st=_docStatus(d.reviewDate); return `<span class="badge ${st.cls}" style="font-size:10px;" title="${esc(st.label)}">📄 ${esc(d.name||'doc')}</span>`; }).join(' '));
+  }
+  if(/DR|UP/.test(q.app)){
+    bits.push(`<button class="btn btn-xs btn-outline" style="padding:1px 6px;font-size:10px;" onclick="openCasEvidenceModal('${esc(q.q)}')">${docs.length?'Edit links':'＋ Link docs'}</button>`);
+  }
+  if(/LIVE/.test(q.app)){
+    const s=_casLiveSnapshot();
+    bits.push(`<span style="font-size:10px;color:var(--text-muted);">🔎 ${s.inspections} insp · ✔ ${s.closedActions} closed · 📊 ${s.months} mo</span>`);
+  }
+  const auto=_casAutoStatus(q);
+  const explicit=(S.cas?.status?.[q.q]||{}).v;
+  if(auto && !explicit){
+    const meta=_CAS_STATUS.find(x=>x.v===auto);
+    if(meta) bits.push(`<span style="font-size:10px;color:${meta.col};">suggested: ${meta.label}</span>`);
+  }
+  return bits.length ? `<div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;">${bits.join(' ')}</div>` : '';
+}
+function openCasEvidenceModal(qkey){
+  const docs=S.documents||[];
+  const linked=new Set(((S.cas&&S.cas.evidence&&S.cas.evidence[qkey]&&S.cas.evidence[qkey].docs)||[]));
+  const body = docs.length
+    ? `<div style="display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow:auto;">${docs.map(d=>{const st=_docStatus(d.reviewDate);return `<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" data-doc="${esc(d.id)}" ${linked.has(d.id)?'checked':''}> <span style="flex:1;">${esc(d.name||'(untitled)')} <span style="color:var(--text-muted);font-size:11px;">${esc(d.category||'')}</span></span><span class="badge ${st.cls}" style="font-size:10px;">${st.label}</span></label>`;}).join('')}</div>`
+    : `<div style="font-size:13px;color:var(--text-muted);">No documents in the register yet. Add them on the Documents tab, then link them here.</div>`;
+  openModal('Link evidence — Q'+esc(qkey), body,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>${docs.length?`<button class="btn btn-primary" onclick="saveCasEvidence('${esc(qkey)}')">Save links</button>`:''}`);
+}
+function saveCasEvidence(qkey){
+  const ids=Array.from(document.querySelectorAll('#modalBody input[data-doc]:checked')).map(el=>el.getAttribute('data-doc'));
+  if(!S.cas) S.cas={gates:{},roles:{},status:{},evidence:{}};
+  if(!S.cas.evidence) S.cas.evidence={};
+  if(ids.length) S.cas.evidence[qkey]={docs:ids}; else delete S.cas.evidence[qkey];
+  _persistCas(); closeModal(); renderCAS();
+}
+
 function renderCAS(){
   const sel = document.getElementById('casSchemeFilter');
   if(sel && !sel.options.length){ sel.innerHTML = CAS_SCHEMES.map(s=>`<option value="${esc(s.id)}">${esc(s.label)}</option>`).join(''); }
@@ -10414,7 +10482,7 @@ function renderCAS(){
           <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;">
             <th style="padding:8px 10px;width:50px;">Q</th><th style="padding:8px 10px;">Requirement (our summary)</th>
             <th style="padding:8px 10px;width:96px;">Evidence</th><th style="padding:8px 10px;width:96px;">In the app</th>
-            <th style="padding:8px 10px;width:180px;">Readiness</th>
+            <th style="padding:8px 10px;width:230px;">Readiness &amp; evidence</th>
           </tr></thead>
           <tbody>
             ${s.questions.map((q,i)=>{
@@ -10424,7 +10492,7 @@ function renderCAS(){
               <td style="padding:8px 10px;">${esc(q.req)}${_casFlagBadges(q.flags)}</td>
               <td style="padding:8px 10px;color:var(--text-muted);">${esc(q.evidence)}</td>
               <td style="padding:8px 10px;color:var(--text-muted);">${esc(q.app)}</td>
-              <td style="padding:8px 10px;">${inScope?_casStatusControl(q.q):'<span style="font-size:11px;color:var(--text-muted);">Not in scope</span>'}</td>
+              <td style="padding:8px 10px;">${inScope?(_casStatusControl(q.q)+_casEvidenceCell(q)):'<span style="font-size:11px;color:var(--text-muted);">Not in scope</span>'}</td>
             </tr>`;
             }).join('')}
           </tbody>

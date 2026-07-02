@@ -600,6 +600,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="tab-btn" data-tab="requirements" onclick="switchTab('requirements')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg> Management system</button>
     <button class="tab-btn" data-tab="monitoring" onclick="switchTab('monitoring')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Monitoring</button>
     <button class="tab-btn" data-tab="review" onclick="switchTab('review')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Review</button>
+    <button class="tab-btn" data-tab="documents" onclick="switchTab('documents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Documents</button>
     <button class="tab-btn active" data-tab="inspection" onclick="switchTab('inspection')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg> Inspection</button>
     <button class="tab-btn" data-tab="actions" onclick="switchTab('actions')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Actions <span class="tb-badge" id="badgeActions"></span></button>
     <button class="tab-btn" data-tab="monthly" onclick="switchTab('monthly')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg> Monthly report</button>
@@ -745,6 +746,22 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
     </div>
     <div id="reviewContainer"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       TAB — DOCUMENT REGISTER
+  ══════════════════════════════════════ -->
+  <div id="tab-documents" class="tab-panel">
+    <div class="card no-print" style="margin-bottom:18px;">
+      <div class="card-band"><h3><span class="dot">●</span> Document register</h3>
+        <button class="btn btn-primary btn-sm no-print" onclick="openDocModal()">＋ Add document</button>
+      </div>
+      <div class="card-body">
+        <div style="font-size:13px;color:var(--text-muted);">Key H&amp;S documents for this client — policies, assessments, certificates, insurances. Links only (OneDrive / SharePoint); nothing is uploaded here. Each document's status is worked out from its review date.</div>
+        <div id="docSummary" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"></div>
+      </div>
+    </div>
+    <div id="documentsContainer"></div>
   </div>
 
   <!-- ══════════════════════════════════════
@@ -2226,6 +2243,7 @@ function switchTab(id) {
   if(id==='requirements'){ renderRequirements(); }
   if(id==='monitoring'){ renderMonitoring(); }
   if(id==='review')   { renderReview(); }
+  if(id==='documents'){ renderDocuments(); }
   if(id==='inspection'){ renderInspectionTypeGrid(); renderActiveInspectionBody(); }
   if(id==='actions')  { renderActions(); renderActionStats(); }
   if(id==='monthly')  { populateReportLocationFilter(); renderMonthlyReport(); }
@@ -6066,6 +6084,8 @@ function migrateLoadedState(){
   if(!S.draft) S.draft = {};
   if(!S.draft.typeId) S.draft.typeId = 'garage_inspection';
   if(!S.draft.formData) S.draft.formData = {};
+  // Stage 1: per-client document register. Additive; older saves get an empty one.
+  if(!Array.isArray(S.documents)) S.documents = [];
   // Phase 2: per-client risk profile. Additive; older saves get an empty one.
   if(!Array.isArray(S.riskProfile)) S.riskProfile = [];
   // Migrate legacy risk entries (register-style) to the HSG65 risk-profile model.
@@ -8876,7 +8896,7 @@ function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null;
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),
     draft:{typeId:'garage_inspection',results:{},notes:{},actionDetails:{},rectifyDetails:{},formData:{},periodFrom:'',periodTo:'',manager:'',location:'',ref:'',freq:'weekly',generalNotes:'',title:'',inspType:''},
-    inspections:[], actions:[], audit:{}, templates:[], riskProfile:[], requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, activeClient:null, branding:S.branding };
+    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, activeClient:null, branding:S.branding };
 }
 
 // ── Cockpit home: at-a-glance picture for the selected client ──
@@ -9859,6 +9879,135 @@ function saveMonthlyFigures(){
   saveData();
   showToast('✓ Figures saved for ' + month, 'success');
   renderMonitoring();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DOCUMENT REGISTER (Stage 1)
+//  Per-client register of key H&S documents. Links only (OneDrive/SharePoint),
+//  no file storage. Status chips are computed from each review date. Rides the
+//  existing per-tenant S.documents; consultant + client can add/edit, every
+//  write is attribution-stamped, and read-only during a consultant dial-in.
+// ══════════════════════════════════════════════════════════════
+const DOC_CATEGORIES = ['Policy','Risk assessment','Procedure / SSOW','Certificate','Insurance','Training record','Register / log','Other'];
+
+// Compute a document's status chip from its review date.
+function _docStatus(reviewDate){
+  if(!reviewDate) return { label:'No review date', cls:'badge-muted' };
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(reviewDate+'T00:00:00');
+  if(isNaN(d.getTime())) return { label:'No review date', cls:'badge-muted' };
+  const days = Math.round((d - today)/86400000);
+  if(days < 0)   return { label:'Overdue', cls:'badge-danger' };
+  if(days <= 30) return { label:'Review due', cls:'badge-warning' };
+  return { label:'Current', cls:'badge-success' };
+}
+// Only allow http(s) links to become clickable — never javascript:/data: URIs.
+function _safeUrl(u){ u = String(u||'').trim(); return /^https?:\/\//i.test(u) ? u : ''; }
+
+function renderDocSummary(docs){
+  const el = document.getElementById('docSummary'); if(!el) return;
+  docs = docs || S.documents || [];
+  let cur=0,due=0,over=0;
+  docs.forEach(d=>{ const c=_docStatus(d.reviewDate).cls; if(c==='badge-danger')over++; else if(c==='badge-warning')due++; else if(c==='badge-success')cur++; });
+  const chip=(n,label,cls)=>`<span class="badge ${cls}">${n} ${label}</span>`;
+  el.innerHTML = `${chip(docs.length,'total','badge-muted')} ${chip(cur,'current','badge-success')} ${chip(due,'review due','badge-warning')} ${chip(over,'overdue','badge-danger')}`;
+}
+
+function renderDocuments(){
+  const cont = document.getElementById('documentsContainer'); if(!cont) return;
+  const docs = Array.isArray(S.documents) ? S.documents : [];
+  renderDocSummary(docs);
+  if(!docs.length){
+    cont.innerHTML = `<div class="card"><div class="card-body" style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px;">No documents yet. Click “＋ Add document” to record your first policy, assessment or certificate.</div></div>`;
+    return;
+  }
+  const rank = s => s.cls==='badge-danger'?0 : s.cls==='badge-warning'?1 : s.cls==='badge-success'?2 : 3;
+  const rows = docs.slice().sort((a,b)=> rank(_docStatus(a.reviewDate)) - rank(_docStatus(b.reviewDate)));
+  const ro = !!_consultantView;
+  cont.innerHTML = `<div class="card"><div class="card-body" style="padding:0;overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;">
+        <th style="padding:10px 12px;">Document</th><th style="padding:10px 12px;">Category</th>
+        <th style="padding:10px 12px;">Version</th><th style="padding:10px 12px;">Owner</th>
+        <th style="padding:10px 12px;">Review date</th><th style="padding:10px 12px;">Status</th>
+        <th style="padding:10px 12px;text-align:right;">Actions</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map((doc,i)=>{
+          const st = _docStatus(doc.reviewDate);
+          const url = _safeUrl(doc.link);
+          const nameCell = url
+            ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-weight:600;">${esc(doc.name||'(untitled)')}</a>`
+            : `<span style="font-weight:600;">${esc(doc.name||'(untitled)')}</span>`;
+          const attr = _attrLine(doc,'updated') || _attrLine(doc,'created');
+          return `<tr style="border-top:1px solid var(--border);background:${i%2?'transparent':'var(--muted-bg)'};">
+            <td style="padding:10px 12px;">${nameCell}${attr?`<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${attr}</div>`:''}</td>
+            <td style="padding:10px 12px;">${esc(doc.category||'—')}</td>
+            <td style="padding:10px 12px;">${esc(doc.version||'—')}</td>
+            <td style="padding:10px 12px;">${esc(doc.owner||'—')}</td>
+            <td style="padding:10px 12px;">${doc.reviewDate?fmtDate(doc.reviewDate):'—'}</td>
+            <td style="padding:10px 12px;"><span class="badge ${st.cls}">${st.label}</span></td>
+            <td style="padding:10px 12px;text-align:right;white-space:nowrap;">
+              ${url?`<a class="btn btn-outline btn-xs" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open</a>`:''}
+              ${ro?'':`<button class="btn btn-outline btn-xs" onclick="openDocModal('${esc(doc.id)}')">Edit</button>
+              <button class="btn btn-outline btn-xs" style="border-color:var(--danger);color:var(--danger);" onclick="deleteDocument('${esc(doc.id)}')">Delete</button>`}
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div></div>`;
+}
+
+function openDocModal(id){
+  if(_blockIfReadOnly()) return;
+  const doc = id ? (S.documents||[]).find(d=>d.id===id) : null;
+  const v = f => (doc && doc[f]!=null) ? doc[f] : '';
+  const catOpts = DOC_CATEGORIES.map(c=>`<option value="${esc(c)}"${doc&&doc.category===c?' selected':''}>${esc(c)}</option>`).join('');
+  openModal(doc?'Edit document':'Add document',
+    `<div style="display:flex;flex-direction:column;gap:12px;">
+       <div class="field-group"><label class="field-label">Document name</label><input type="text" id="docName" placeholder="e.g. Health &amp; Safety Policy" value="${esc(v('name'))}"></div>
+       <div class="field-grid">
+         <div class="field-group"><label class="field-label">Category</label><select id="docCategory"><option value="">— Select —</option>${catOpts}</select></div>
+         <div class="field-group"><label class="field-label">Version</label><input type="text" id="docVersion" placeholder="e.g. v2.1" value="${esc(v('version'))}"></div>
+       </div>
+       <div class="field-grid">
+         <div class="field-group"><label class="field-label">Owner</label><input type="text" id="docOwner" placeholder="Who maintains it" value="${esc(v('owner'))}"></div>
+         <div class="field-group"><label class="field-label">Review date</label><input type="date" id="docReview" value="${esc(v('reviewDate'))}"></div>
+       </div>
+       <div class="field-group"><label class="field-label">Link (OneDrive / SharePoint URL)</label><input type="url" id="docLink" placeholder="https://…" value="${esc(v('link'))}"><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Links only — the file itself is not stored here. Must start with http:// or https://.</div></div>
+     </div>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="saveDocument(${doc?`'${esc(doc.id)}'`:'null'})">${doc?'Save changes':'Add document'}</button>`
+  );
+}
+
+function saveDocument(id){
+  if(_blockIfReadOnly()) return;
+  const g = f => (document.getElementById(f)?.value||'').trim();
+  const name = g('docName');
+  if(!name){ showToast('Please enter a document name','error'); return; }
+  const link = g('docLink');
+  if(link && !/^https?:\/\//i.test(link)){ showToast('Link must start with http:// or https://','error'); return; }
+  if(!Array.isArray(S.documents)) S.documents = [];
+  const fields = { name, category:g('docCategory'), version:g('docVersion'), owner:g('docOwner'), reviewDate:g('docReview'), link };
+  let doc = id ? S.documents.find(d=>d.id===id) : null;
+  if(doc){ Object.assign(doc, fields); _stamp(doc,'updated'); }
+  else { doc = Object.assign({ id:'doc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6) }, fields); _stamp(doc,'created'); S.documents.push(doc); }
+  saveData();
+  closeModal();
+  showToast(id?'✓ Document updated':'✓ Document added','success');
+  renderDocuments();
+}
+
+function deleteDocument(id){
+  if(_blockIfReadOnly()) return;
+  const doc = (S.documents||[]).find(d=>d.id===id);
+  if(!confirm(`Delete "${doc?doc.name:'this document'}" from the register?`)) return;
+  S.documents = (S.documents||[]).filter(d=>d.id!==id);
+  saveData();
+  renderDocuments();
+  showToast('Document deleted','info');
 }
 
 // ══════════════════════════════════════════════════════════════

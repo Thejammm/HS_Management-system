@@ -5773,8 +5773,17 @@ async function openAddUserModal(){
 }
 function _generatePassword(){
   const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%';
+  const n = chars.length;
+  // Cryptographically secure character selection with rejection sampling to
+  // avoid the modulo bias an unguarded reduction would introduce.
+  const limit = Math.floor(0x100000000 / n) * n;
+  const buf = new Uint32Array(1);
   let p = '';
-  for(let i = 0; i < 12; i++) p += chars[Math.floor(Math.random() * chars.length)];
+  while(p.length < 12){
+    crypto.getRandomValues(buf);
+    if(buf[0] >= limit) continue;   // reject the biased tail
+    p += chars[buf[0] % n];
+  }
   return p;
 }
 async function submitAddUser(){

@@ -6269,12 +6269,15 @@ function migrateLoadedState(){
     S.requirements.forEach(sec => {
       if(sec && typeof sec === 'object'){
         if(!sec.stage) sec.stage = _REQ_STAGE_BY_HEADING[sec.heading] || 'Plan';
+        // Stage 2: backfill the verified statutory citation for known duty
+        // headings (only if the section doesn't already carry one).
+        if(!sec.citation && _REQ_CITATION_BY_HEADING[sec.heading]) sec.citation = _REQ_CITATION_BY_HEADING[sec.heading];
         if(sec.stage === 'Act') hasAct = true;
       }
     });
     if(!hasAct){
       const act = REQ_DUTY_SEED.find(d => d.stage === 'Act');
-      if(act) S.requirements.push({ id:_reqUid('reqsec'), heading:act.heading, stage:'Act', items:[] });
+      if(act) S.requirements.push({ id:_reqUid('reqsec'), heading:act.heading, stage:'Act', citation:act.citation, items:[] });
     }
   }
   // Phase 4: monthly monitoring dashboard. Additive.
@@ -9529,24 +9532,28 @@ const REQ_STAGE_META = {
   Act:   { desc:'Review performance, learn the lessons and act to improve.',          color:'#10B981' }
 };
 // Duty HEADINGS only, mapped to a PDCA stage. No regulation wording or citations.
+// Statutory anchor for each seeded duty. Every citation below was verified
+// against primary legislation on legislation.gov.uk (2026-07-02) before commit —
+// house rule: unverified citations do not ship.
 const REQ_DUTY_SEED = [
-  { heading:'Health and safety policy', stage:'Plan' },
-  { heading:'Risk assessment', stage:'Plan' },
-  { heading:'Management arrangements (planning, organising, control, monitoring and review)', stage:'Plan' },
-  { heading:'Competence and training', stage:'Do' },
-  { heading:'Consultation', stage:'Do' },
-  { heading:'Emergency procedures', stage:'Do' },
-  { heading:'Incident reporting and investigation', stage:'Check' },
-  { heading:'Review and continual improvement', stage:'Act' }
+  { heading:'Health and safety policy', stage:'Plan', citation:'HSWA 1974 s.2(3)' },
+  { heading:'Risk assessment', stage:'Plan', citation:'MHSWR 1999 reg 3' },
+  { heading:'Management arrangements (planning, organising, control, monitoring and review)', stage:'Plan', citation:'MHSWR 1999 reg 5' },
+  { heading:'Competence and training', stage:'Do', citation:'MHSWR 1999 reg 13; HSWA 1974 s.2(2)(c)' },
+  { heading:'Consultation', stage:'Do', citation:'SRSC 1977; HSCER 1996' },
+  { heading:'Emergency procedures', stage:'Do', citation:'MHSWR 1999 regs 8 & 9' },
+  { heading:'Incident reporting and investigation', stage:'Check', citation:'RIDDOR 2013' },
+  { heading:'Review and continual improvement', stage:'Act', citation:'MHSWR 1999 reg 5' }
 ];
 const _REQ_STAGE_BY_HEADING = {};
-REQ_DUTY_SEED.forEach(d => { _REQ_STAGE_BY_HEADING[d.heading] = d.stage; });
+const _REQ_CITATION_BY_HEADING = {};
+REQ_DUTY_SEED.forEach(d => { _REQ_STAGE_BY_HEADING[d.heading] = d.stage; _REQ_CITATION_BY_HEADING[d.heading] = d.citation; });
 const REQ_PRESENT  = ['Yes','No','Partial'];
 const REQ_ADEQUATE = ['Yes','No','Partial'];
 
 function _reqUid(p){ return p+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,6); }
 function _seedRequirements(){
-  return REQ_DUTY_SEED.map(d => ({ id:_reqUid('reqsec'), heading:d.heading, stage:d.stage, items:[] }));
+  return REQ_DUTY_SEED.map(d => ({ id:_reqUid('reqsec'), heading:d.heading, stage:d.stage, citation:d.citation, items:[] }));
 }
 // Overall assessment stats across all duty lines. Used by the dashboard + report.
 function _reqStats(){
@@ -9739,6 +9746,7 @@ function renderRequirements(){
             ? `<span style="overflow:hidden;text-overflow:ellipsis;">${sec.heading?esc(sec.heading):'(untitled duty)'}</span>`
             : `<input type="text" value="${esc(sec.heading)}" placeholder="Duty heading" oninput="updateReqHeading('${sec.id}',this.value)" style="font-size:14px;font-weight:600;color:var(--text);background:var(--muted-bg);border:1px solid var(--border);border-radius:6px;padding:4px 8px;max-width:420px;">`}
         </h3>
+        ${sec.citation?`<span class="badge badge-accent" title="Statutory basis (verified against primary legislation)" style="font-size:11px;">${esc(sec.citation)}</span>`:''}
         ${stageControl}
         ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete duty heading" onclick="deleteReqSection('${sec.id}')">${_ic('trash',14)}</button>`}
       </div>
@@ -9802,6 +9810,7 @@ function buildManagementSystemReportPDF(){
     grp.forEach(sec => {
       if(y>262){doc.addPage();y=18;}
       text(sec.heading || '(untitled duty)', 10.5, true, [20,20,20]);
+      if(sec.citation) text('Statutory basis: '+sec.citation, 9, false, [110,110,110]);
       const items = sec.items || [];
       if(!items.length){ text('No requirement lines recorded.', 9.5, false, [130,130,130]); }
       items.forEach(it => {

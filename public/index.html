@@ -155,6 +155,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 /* Checklist items */
 .ci-wrap{border-bottom:1px solid var(--border);}
+.ci-wrap.ci-missing{outline:2px solid var(--danger);outline-offset:-2px;border-radius:8px;background:var(--danger-bg);}
+.form-field-wrap.ff-missing{outline:2px solid var(--danger);outline-offset:2px;border-radius:8px;}
+.ci-radio{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;user-select:none;}
+.ci-radio:has(input:checked){border-color:var(--accent);background:var(--accent-light);color:var(--accent-dark);}
+.ci-radio input{width:auto;min-height:auto;margin:0;cursor:pointer;accent-color:var(--accent);}
 .ci-wrap:last-child{border-bottom:none;}
 .ci-row{display:flex;align-items:flex-start;gap:10px;padding:14px 0;}
 .ci-main{flex:1;min-width:0;}
@@ -1783,8 +1788,9 @@ const LIBRARY = [
         { id:'gqc_2', name:'Is job card write-up complete, including mileage and any parts used?' },
         { id:'gqc_3', name:"Are clocking's complete?" },
         { id:'gqc_4', name:'Was the vehicle parked correctly after completion?' },
-        { id:'gqc_5', name:'Details of any items that have been rechecked' },
-        { id:'gqc_6', name:'Please give details of any shortcomings' },
+      ]},
+      { id:'gqc_outcome_sec', name:'QC Outcome', icon:'📋', items:[
+        { id:'gqc_outcome', name:'QC Outcome', input:'table', columns:['Items Checked','Outcome',{label:'Result',type:'passfail'}] },
       ]},
     ]
   },
@@ -1794,8 +1800,8 @@ const LIBRARY = [
     color:'#e3f2fd',
     sections:[
       { id:'mqc_setup', name:'Test Setup', icon:'⚙️', items:[
-        { id:'mqc_s1', name:'Quality check type', input:'select', options:['Closely observe','Full re-inspection'] },
-        { id:'mqc_s2', name:'Test class',         input:'select', options:['1','2','4','5','7'] },
+        { id:'mqc_s1', name:'Quality check type', input:'radio', options:['Closely observe','Full re-inspection'] },
+        { id:'mqc_s2', name:'Test class',         input:'radio', options:['1','2','4','5','7'] },
       ]},
       { id:'mqc_inspection', name:'Vehicle Inspection Items', icon:'🔧', items:[
         { id:'mqc_i1', name:'Have pre-checks of the vehicle been carried out correctly?' },
@@ -1949,7 +1955,7 @@ const LIBRARY = [
 
 const DEFAULT_CHECKLIST = LIBRARY.find(s=>s.id==='garage_inspection').sections.map(s=>({
   id: s.id, name: s.name,
-  items: s.items.map(i=>({id:i.id, name:i.name, desc:i.desc}))
+  items: s.items.map(i=>({id:i.id, name:i.name, desc:i.desc, ...(i.input?{input:i.input}:{}), ...(i.options?{options:i.options.slice()}:{}), ...(i.columns?{columns:i.columns.slice()}:{})}))
 }));
 
 // ── CAS Version 5 framework (seed data, committed as data not code) ──
@@ -2221,7 +2227,7 @@ function buildDefaultInspectionTypes() {
       pack:     lib.pack || 'garage',   // existing checklists = the Garage pack
       sections: lib.sections.map(s => ({
         id: s.id, name: s.name,
-        items: s.items.map(i => ({ id:i.id, name:i.name, desc:i.desc||'' }))
+        items: s.items.map(i => ({ id:i.id, name:i.name, desc:i.desc||'', ...(i.input?{input:i.input}:{}), ...(i.options?{options:i.options.slice()}:{}), ...(i.columns?{columns:i.columns.slice()}:{}) }))
       }))
     };
   });
@@ -2957,6 +2963,7 @@ function renderChecklist() {
     const nTyped  = section.items.filter(i => {
       if(!i.input) return false;
       const v = results[i.id];
+      if(i.input === 'table') return _tableHasContent(v);
       if(Array.isArray(v)) return v.length > 0;
       return typeof v === 'string' && v.trim().length > 0;
     }).length;
@@ -3002,6 +3009,47 @@ function renderChecklist() {
                   ${opts}
                 </select>
               </div>
+            </div>
+          </div>`;
+        return;
+      }
+
+      if(item.input === 'radio'){
+        // Single-choice radio buttons — one option selected, stored like a select.
+        const v = String(st || '');
+        const radios = (item.options||[]).map(o => {
+          const val = String(o);
+          return `<label class="ci-radio">
+            <input type="radio" name="rad-${item.id}" value="${esc(val)}"${v===val?' checked':''} onchange="setStatus('${item.id}', this.value)">
+            <span>${esc(o)}</span>
+          </label>`;
+        }).join('');
+        html += `
+          <div class="ci-wrap" id="ciw-${item.id}">
+            <div class="ci-row">
+              <div class="ci-main">
+                <div class="ci-name">${esc(item.name)}</div>
+                ${item.desc?`<div class="ci-desc">${esc(item.desc)}</div>`:''}
+              </div>
+              <div class="ci-controls" style="display:flex;flex-wrap:wrap;gap:8px;">
+                ${radios}
+              </div>
+            </div>
+          </div>`;
+        return;
+      }
+
+      if(item.input === 'table'){
+        // Editable multi-row table (e.g. Garage Q/C "QC Outcome"). The section
+        // heading already shows the title, so the item name isn't repeated here.
+        const cols = item.columns || ['Items Checked','Outcome'];
+        const rows = Array.isArray(st) ? st : [];
+        html += `
+          <div class="ci-wrap" id="ciw-${item.id}" style="border-bottom:none;">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              ${item.desc?`<div class="ci-desc">${esc(item.desc)}</div>`:''}
+              <div id="tbl-${item.id}">${_renderQcTableInner(item.id, cols, rows)}</div>
+              ${_consultantView?'':`<div><button type="button" class="btn btn-ghost btn-sm" onclick="addTableRow('${item.id}')">+ Add row</button></div>`}
             </div>
           </div>`;
         return;
@@ -3106,10 +3154,125 @@ function renderChecklist() {
   });
 }
 
+// ── Validation highlighting (ported from the inspection app) ──
+// On a failed submit, mark every unanswered item and jump focus to the first.
+function _clearMissingHighlights(){
+  document.querySelectorAll('.ci-wrap.ci-missing').forEach(el => el.classList.remove('ci-missing'));
+}
+function _highlightMissingItems(ids){
+  _clearMissingHighlights();
+  ids.forEach(id => { const el = document.getElementById('ciw-'+id); if(el) el.classList.add('ci-missing'); });
+  const first = document.getElementById('ciw-'+ids[0]);
+  if(first){
+    first.scrollIntoView({ behavior:'smooth', block:'center' });
+    const ctl = first.querySelector('select, textarea, input, button');
+    if(ctl){ try { ctl.focus({ preventScroll:true }); } catch(e){ ctl.focus(); } }
+  }
+}
+
+// ── Editable table item (Garage Q/C "QC Outcome"), ported from the inspection
+//    app. Stored in S.draft.results[itemId] as an array of rows (arrays of cell
+//    strings). User cell text is esc()'d to match this app's convention. ──
+function _tableHasContent(val){
+  return Array.isArray(val) && val.some(r => Array.isArray(r) && r.some(c => String(c||'').trim()));
+}
+function _tallyTableScores(insp){
+  let pass = 0, fail = 0;
+  const secs = insp.checklistSnapshot || insp.checklist || [];
+  secs.forEach(sec => (sec.items||[]).forEach(it => {
+    if(it.input !== 'table') return;
+    const scoreCols = [];
+    (it.columns||[]).forEach((c, ci) => { if(c && typeof c === 'object' && c.type === 'passfail') scoreCols.push(ci); });
+    if(!scoreCols.length) return;
+    const rows = Array.isArray(insp.results?.[it.id]) ? insp.results[it.id] : [];
+    rows.forEach(row => scoreCols.forEach(ci => { const v = row && row[ci]; if(v==='pass') pass++; else if(v==='fail') fail++; }));
+  }));
+  return { pass, fail };
+}
+function _findChecklistItem(itemId){
+  for(const sec of (S.checklist||[])){ for(const it of (sec.items||[])){ if(it.id === itemId) return it; } }
+  return null;
+}
+function _colLabel(c){ return typeof c === 'string' ? c : (c && c.label) || ''; }
+function _colType(c){ return typeof c === 'string' ? 'text' : (c && c.type) || 'text'; }
+function _renderQcCell(itemId, ri, ci, col, val){
+  if(_colType(col) === 'passfail'){
+    const v = String(val||'');
+    const btn = (label, value, onCol) => `<button type="button" onclick="setTableScore('${itemId}',${ri},${ci},'${value}')" style="flex:1;padding:6px 4px;border:1.5px solid ${v===value?onCol:'var(--border)'};border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;background:${v===value?onCol:'transparent'};color:${v===value?'#fff':onCol};">${label}</button>`;
+    return `<div style="display:flex;gap:6px;min-width:120px;">${btn('Pass','pass','var(--success)')}${btn('Fail','fail','var(--danger)')}</div>`;
+  }
+  return `<textarea rows="2" placeholder="${esc(_colLabel(col))}…" oninput="updateTableCell('${itemId}',${ri},${ci},this.value)" style="width:100%;min-height:auto;resize:vertical;">${esc(String(val||''))}</textarea>`;
+}
+function _renderQcTableInner(itemId, cols, rows){
+  const th = `<tr>${cols.map(c=>`<th style="text-align:left;padding:8px 10px;background:var(--muted-bg);border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text);${_colType(c)==='passfail'?'width:150px;':''}">${esc(_colLabel(c))}</th>`).join('')}<th style="width:38px;border:1px solid var(--border);background:var(--muted-bg);"></th></tr>`;
+  let body;
+  if(rows.length){
+    body = rows.map((row,ri)=>`<tr>
+      ${cols.map((c,ci)=>`<td style="padding:4px;border:1px solid var(--border);vertical-align:top;">${_renderQcCell(itemId, ri, ci, c, row&&row[ci])}</td>`).join('')}
+      <td style="padding:4px;border:1px solid var(--border);text-align:center;vertical-align:top;"><button type="button" title="Remove row" onclick="removeTableRow('${itemId}',${ri})" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:28px;height:28px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">✕</button></td>
+    </tr>`).join('');
+  } else {
+    body = `<tr><td colspan="${cols.length+1}" style="padding:12px;border:1px solid var(--border);text-align:center;font-size:13px;color:var(--text-muted);">No rows yet — use "+ Add row".</td></tr>`;
+  }
+  return `<table style="width:100%;border-collapse:collapse;">${th}${body}</table>`;
+}
+function _refreshQcTable(itemId){
+  const cont = document.getElementById('tbl-'+itemId);
+  const item = _findChecklistItem(itemId);
+  if(!cont || !item) return;
+  const cols = item.columns || ['Items Checked','Outcome'];
+  const rows = Array.isArray(S.draft.results?.[itemId]) ? S.draft.results[itemId] : [];
+  cont.innerHTML = _renderQcTableInner(itemId, cols, rows);
+}
+function addTableRow(itemId){
+  if(_blockIfReadOnly()) return;
+  if(!S.draft.results) S.draft.results = {};
+  const rows = Array.isArray(S.draft.results[itemId]) ? S.draft.results[itemId] : [];
+  rows.push([]);
+  S.draft.results[itemId] = rows;
+  _refreshQcTable(itemId);
+  const tbl = document.getElementById('tbl-'+itemId);
+  const lastRowFirstCell = tbl?.querySelector('tr:nth-last-child(1) textarea');
+  if(lastRowFirstCell) lastRowFirstCell.focus();
+  saveData();
+}
+function removeTableRow(itemId, ri){
+  if(_blockIfReadOnly()) return;
+  const rows = Array.isArray(S.draft.results?.[itemId]) ? S.draft.results[itemId] : [];
+  rows.splice(ri, 1);
+  S.draft.results[itemId] = rows;
+  _refreshQcTable(itemId);
+  saveData();
+}
+function updateTableCell(itemId, ri, ci, value){
+  if(_consultantView) return;
+  if(!S.draft.results) S.draft.results = {};
+  const rows = Array.isArray(S.draft.results[itemId]) ? S.draft.results[itemId] : [];
+  while(rows.length <= ri) rows.push([]);
+  if(!Array.isArray(rows[ri])) rows[ri] = [];
+  rows[ri][ci] = value;
+  S.draft.results[itemId] = rows;
+  if(String(value||'').trim()) document.getElementById('ciw-'+itemId)?.classList.remove('ci-missing');
+  scheduleAutoSave();
+}
+function setTableScore(itemId, ri, ci, value){
+  if(_blockIfReadOnly()) return;
+  if(!S.draft.results) S.draft.results = {};
+  const rows = Array.isArray(S.draft.results[itemId]) ? S.draft.results[itemId] : [];
+  while(rows.length <= ri) rows.push([]);
+  if(!Array.isArray(rows[ri])) rows[ri] = [];
+  rows[ri][ci] = (rows[ri][ci] === value) ? '' : value;
+  S.draft.results[itemId] = rows;
+  document.getElementById('ciw-'+itemId)?.classList.remove('ci-missing');
+  _refreshQcTable(itemId);
+  saveData();
+}
+
 function setStatus(itemId, status) {
   if(!S.draft.results) S.draft.results={};
   S.draft.results[itemId]=status;
   const wrap = document.getElementById('ciw-'+itemId);
+  if(wrap && status!==undefined && status!==null && status!=='') wrap.classList.remove('ci-missing');
   if(wrap) {
     const btns = wrap.querySelectorAll('.stt-btn');
     btns.forEach(b=>b.classList.remove('stt-pass','stt-rectified','stt-action','stt-na'));
@@ -3266,18 +3429,20 @@ function submitInspection() {
       const firstLabel = (first.label||first.id).replace(/^\s*\d+(\.\d+)*\s*[—-]\s*/, '');
       const msg = missingFields.length === 1
         ? `Missing: "${firstLabel}"`
-        : `${missingFields.length} required fields still need a value (first: "${firstLabel}")`;
+        : `${missingFields.length} required fields still need a value — jumped to the first one.`;
       showToast(msg, 'error');
+      // Highlight EVERY missing field, then jump focus to the first.
+      document.querySelectorAll('.form-field-wrap.ff-missing').forEach(el => el.classList.remove('ff-missing'));
+      missingFields.forEach(f => { document.getElementById('ffw-'+f.id)?.classList.add('ff-missing'); });
       const el = document.getElementById('ffw-'+first.id);
-      if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
-      // Briefly highlight the missing field for clarity
       if(el){
-        const orig = el.style.boxShadow;
-        el.style.boxShadow = '0 0 0 3px var(--danger)';
-        setTimeout(()=>{ el.style.boxShadow = orig; }, 1800);
+        el.scrollIntoView({behavior:'smooth', block:'center'});
+        const ctl = el.querySelector('input, select, textarea, button');
+        if(ctl){ try { ctl.focus({preventScroll:true}); } catch(e){ ctl.focus(); } }
       }
       return null;
     }
+    document.querySelectorAll('.form-field-wrap.ff-missing').forEach(el => el.classList.remove('ff-missing'));
 
     const insp = {
       id:'insp_'+Date.now(),
@@ -3320,11 +3485,22 @@ function submitInspection() {
   const missing=[];
   S.checklist.forEach(s=>s.items.forEach(i=>{
     const v = d.results[i.id];
-    if(v === undefined || v === null || v === '') missing.push(i.name);
-    else if(Array.isArray(v) && v.length === 0) missing.push(i.name);
-    else if(typeof v === 'string' && v.trim() === '') missing.push(i.name);
+    let empty;
+    if(i.input === 'table'){
+      empty = !_tableHasContent(v);          // needs at least one row with content
+    } else {
+      empty = (v === undefined || v === null || v === '') ||
+              (Array.isArray(v) && v.length === 0) ||
+              (typeof v === 'string' && v.trim() === '');
+    }
+    if(empty) missing.push(i.id);
   }));
-  if(missing.length){ showToast(`${missing.length} item${missing.length>1?'s':''} still need a status.`,'error'); return null; }
+  if(missing.length){
+    _highlightMissingItems(missing);        // mark every empty item and jump to the first
+    showToast(`${missing.length} item${missing.length>1?'s':''} still need a status — jumped to the first one.`,'error');
+    return null;
+  }
+  _clearMissingHighlights();                // all answered — clear any leftover highlights
 
   const insp={
     id:'insp_'+Date.now(),
@@ -3630,6 +3806,7 @@ function renderActions() {
             ${a.resolved?`<span style="color:var(--success)">✓ ${fmtDate(a.resolvedAt?.slice(0,10))} · ${esc(a.resolvedBy)}</span>`:''}
           </div>
         </div>
+        ${_consultantView?'':`<button class="no-print" onclick="deleteAction('${a.id}')" title="Remove this action item" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:28px;height:28px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;align-self:flex-start;">✕</button>`}
       </div>
       <div style="font-size:13px;margin-bottom:${a.assignedTo?'6px':'0'};"><strong>Issue:</strong> ${esc(a.issue)}</div>
       ${a.assignedTo?`<div style="font-size:13px;color:var(--text-muted);"><strong>Assigned:</strong> ${esc(a.assignedTo)}</div>`:''}
@@ -3672,6 +3849,17 @@ function renderActions() {
   });
 }
 
+function deleteAction(id){
+  if(_blockIfReadOnly()) return;
+  const a = S.actions.find(x => x.id === id);
+  if(!a) return;
+  if(!confirm(`Remove this action?\n\n"${a.itemName}"\n\nThis deletes the action item itself; the inspection it came from is not changed. This cannot be undone.`)) return;
+  S.actions = S.actions.filter(x => x.id !== id);
+  saveData(); updateBadge();
+  renderActions(); renderActionStats();
+  if(typeof renderMonthlyReport === 'function'){ try { renderMonthlyReport(); } catch(e){} }
+  showToast('Action removed','success');
+}
 function resolveAction(id){
   if(_blockIfReadOnly()) return;
   const a=S.actions.find(x=>x.id===id); if(!a) return;
@@ -3724,6 +3912,10 @@ function signOffInspection(inspId){
   if(_blockIfReadOnly()) return;
   const insp = S.inspections.find(i => i.id === inspId);
   if(!insp){ showToast('Inspection not found','error'); return; }
+  if(_isInspArchived(insp)){
+    showToast('This month is archived (read-only) — sign-off is no longer available.','info');
+    return;
+  }
   if(insp.status === 'signed_off'){
     showToast('Already signed off','info');
     return;
@@ -3754,6 +3946,10 @@ function signOffInspection(inspId){
 function reopenInspection(inspId){
   const insp = S.inspections.find(i => i.id === inspId);
   if(!insp) return;
+  if(_isInspArchived(insp)){
+    showToast('This month is archived (read-only) — re-opening is no longer available.','info');
+    return;
+  }
   if(!confirm(`Re-open this inspection? This removes the sign-off so it can be amended again.\n\n(Useful if the manager spots something after signing off.)`)) return;
   insp.status = 'open';
   insp.awaitingReview = true;
@@ -3793,6 +3989,46 @@ const INSP_TYPE_LABELS = {
   construction:'Construction / CDM', other:'Other / Custom'
 };
 
+// ── Month grouping / archive ──────────────────────────────────
+// Submitted inspections are permanent records. The current month plus the
+// previous two stay "live" (sign-off / re-open still available); older months
+// archive to read-only. Records are retained either way — nothing submitted is
+// deletable. (Ported from the inspection app so both apps behave identically.)
+function monthBucketKey(insp){
+  const s = (insp.submittedAt || insp.periodTo || '');
+  return s ? s.slice(0,7) : 'unknown';   // 'YYYY-MM'
+}
+function _activeMonthKeys(){
+  // current, current-1, current-2. Uses the browser clock (this app has no
+  // server-time subsystem); month boundaries are coarse enough that clock skew
+  // of a few hours is immaterial.
+  const now = new Date();
+  const keys = [];
+  for(let i=0;i<3;i++){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    keys.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  return keys;
+}
+function _isInspArchived(insp){
+  return !_activeMonthKeys().includes(monthBucketKey(insp));
+}
+function _monthLongLabel(mk){
+  if(!mk || mk==='unknown') return 'Undated';
+  try { return new Date(mk+'-01T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }
+  catch(e){ return mk; }
+}
+function _monthHeaderHTML(mk, count, archived){
+  const badge = archived
+    ? `<span class="badge" style="background:var(--muted-bg);color:var(--text-muted);border:1px solid var(--border);">🔒 Archived — read-only</span>`
+    : `<span class="badge badge-success">Live</span>`;
+  return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--border);">
+      <h3 style="font-size:15px;font-weight:800;color:var(--text);margin:0;">${_monthLongLabel(mk)}</h3>
+      <span class="badge badge-accent">${count} inspection${count!==1?'s':''}</span>
+      ${badge}
+    </div>`;
+}
+
 function populateReportLocationFilter() {
   const sel = document.getElementById('reportLocationFilter');
   if (!sel) return;
@@ -3811,29 +4047,11 @@ function clearReportFilters() {
   renderMonthlyReport();
 }
 
-// Delete an inspection (and any actions associated with it) after confirmation.
-// Triggered from the red ✕ button on each Monthly Report card.
+// Submitted inspections are permanent records — matching the inspection app.
+// This function is retained as a guarded no-op so any stale caller can't delete
+// a record; the red ✕ buttons that used to call it have been removed.
 function deleteInspection(inspId){
-  const insp = S.inspections.find(i => i.id === inspId);
-  if(!insp){ showToast('Inspection not found','error'); return; }
-
-  const heading = insp.title || insp.typeName || fmtPeriod(insp);
-  const linkedActions = S.actions.filter(a => a.inspId === inspId);
-  const actionsBit = linkedActions.length
-    ? `\n\nThis will also delete ${linkedActions.length} linked action${linkedActions.length!==1?'s':''}.`
-    : '';
-
-  if(!confirm(`Delete this inspection?\n\n"${heading}"${actionsBit}\n\nThis cannot be undone.`)) return;
-
-  S.inspections = S.inspections.filter(i => i.id !== inspId);
-  S.actions     = S.actions.filter(a => a.inspId !== inspId);
-
-  saveData();
-  renderMonthlyReport();
-  // Also refresh anything that might show counts/lists for inspections
-  if(typeof renderActions === 'function')   try { renderActions(); }   catch(e){}
-  if(typeof renderDashboard === 'function') try { renderDashboard(); } catch(e){}
-  showToast('Inspection deleted','success');
+  showToast('Submitted inspections are permanent records and cannot be deleted.','info');
 }
 
 // Generate a PDF for a single inspection (from the per-card "📄 PDF" button
@@ -3855,12 +4073,15 @@ function generateSingleInspectionPDF(inspId){
 }
 
 // Render a Monthly Report card for a form-style inspection submission
-function _renderFormReportCard(insp){
+function _renderFormReportCard(insp, archived){
   const form = insp.formSnapshot;
   const data = insp.formData || {};
   const heading = insp.title || insp.typeName || 'Form Submission';
   const subHeading = insp.title && (insp.typeName !== insp.title)
     ? (insp.typeName||'') : '';
+  const archivedBadge = archived
+    ? `<span class="badge" style="background:var(--muted-bg);color:var(--text-muted);border:1px solid var(--border);">🔒 Archived</span>`
+    : '';
 
   let html = `<div class="card" style="border-top:3px solid var(--accent);">
     <div class="card-band">
@@ -3869,16 +4090,13 @@ function _renderFormReportCard(insp){
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${heading}</span>
       </h3>
       <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;align-items:center;">
-        <span class="badge badge-accent">${insp.typeName||'Form'}</span>
+        <span class="badge badge-accent">${esc(insp.typeName||'Form')}</span>
         <span class="badge badge-success">✓ Submitted</span>
+        ${archivedBadge}
         <button class="no-print" onclick="generateSingleInspectionPDF('${insp.id}')" title="Generate PDF for this submission"
           style="background:var(--accent);color:#fff;border:1px solid var(--accent);height:26px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;line-height:1;"
           onmouseover="this.style.background='var(--accent-dark, var(--accent))';this.style.opacity='0.9';"
           onmouseout="this.style.background='var(--accent)';this.style.opacity='1';">📄 PDF</button>
-        <button class="no-print" onclick="deleteInspection('${insp.id}')" title="Delete this submission"
-          style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:26px;height:26px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1;padding:0;"
-          onmouseover="this.style.background='var(--danger)';this.style.color='#fff';"
-          onmouseout="this.style.background='transparent';this.style.color='var(--danger)';">✕</button>
       </div>
     </div>
     <div class="card-body">
@@ -4006,6 +4224,9 @@ function renderMonthlyReport(){
   const nPass    = allRes.filter(r=>r==='pass').length;
   const nAct     = allRes.filter(r=>r==='action').length;
   const nRect    = allRes.filter(r=>r==='rectified').length;
+  // QC Outcome Pass/Fail totals across the filtered period (e.g. Garage Q/C scored rows).
+  let nQcPass=0, nQcFail=0;
+  checklistInsps.forEach(i=>{ const t=_tallyTableScores(i); nQcPass+=t.pass; nQcFail+=t.fail; });
   const inspIds  = new Set(insps.map(i=>i.id));
   const pActs    = S.actions.filter(a=>inspIds.has(a.inspId));
   const nRes     = pActs.filter(a=>a.resolved).length;
@@ -4048,6 +4269,9 @@ function renderMonthlyReport(){
           <div class="stat-card clickable" onclick="drilldown('raised')"><div class="stat-num" style="color:var(--warning)">${nAct}</div><div class="stat-lbl">Issues Raised</div></div>
           <div class="stat-card clickable" onclick="drilldown('resolved')"><div class="stat-num" style="color:var(--success)">${nRes}</div><div class="stat-lbl">Resolved</div></div>
           <div class="stat-card clickable" onclick="drilldown('open')"><div class="stat-num" style="color:${nOpen>0?'var(--danger)':'var(--text-muted)'}">${nOpen}</div><div class="stat-lbl">Still Open</div></div>
+          ${(nQcPass+nQcFail>0)?`
+          <div class="stat-card"><div class="stat-num" style="color:var(--success)">${nQcPass}</div><div class="stat-lbl">QC Outcome Pass</div></div>
+          <div class="stat-card"><div class="stat-num" style="color:${nQcFail>0?'var(--danger)':'var(--text-muted)'}">${nQcFail}</div><div class="stat-lbl">QC Outcome Fail</div></div>`:''}
         </div>
         ${insps.length>1?`<div class="info-grid" style="margin-top:0;">
           <div class="info-block"><div class="info-block-label">Location${[...new Set(insps.map(i=>i.location))].length>1?'s':''}</div>
@@ -4058,17 +4282,34 @@ function renderMonthlyReport(){
       </div>
     </div>`;
 
-  // ── One card per inspection ───────────────────────────────────
-  insps.forEach(insp => {
+  // ── One card per inspection, grouped by month ─────────────────
+  // Newest month first, newest inspection first within each month. Live months
+  // (current + previous two) allow sign-off / re-open; older months are locked
+  // read-only, matching the inspection app's immutable + month-archive model.
+  const _sorted = insps.slice().sort((a,b) =>
+    String(monthBucketKey(b) + (b.submittedAt||b.periodTo||''))
+      .localeCompare(String(monthBucketKey(a) + (a.submittedAt||a.periodTo||''))));
+  const _activeKeys = _activeMonthKeys();
+  let _lastMonthKey = null;
+  _sorted.forEach(insp => {
+    const archived = !_activeKeys.includes(monthBucketKey(insp));
+    // Emit a month header whenever the bucket changes.
+    const _mk = monthBucketKey(insp);
+    if(_mk !== _lastMonthKey){
+      _lastMonthKey = _mk;
+      const _monthCount = _sorted.filter(i => monthBucketKey(i) === _mk).length;
+      html += _monthHeaderHTML(_mk, _monthCount, archived);
+    }
     // Form-style submissions get their own card layout
     if(insp.kind === 'form'){
-      html += _renderFormReportCard(insp);
+      html += _renderFormReportCard(insp, archived);
       return;
     }
     const wPass   = Object.values(insp.results||{}).filter(r=>r==='pass').length;
     const wAct    = Object.values(insp.results||{}).filter(r=>r==='action').length;
     const wNA     = Object.values(insp.results||{}).filter(r=>r==='na').length;
     const wRect   = Object.values(insp.results||{}).filter(r=>r==='rectified').length;
+    const wQc     = _tallyTableScores(insp);   // QC Outcome scored rows (Garage Q/C etc.)
     const wActions= S.actions.filter(a=>a.inspId===insp.id);
     const typeLabel= INSP_TYPE_LABELS[insp.inspType]||insp.inspType||'';
     const iOpen   = wActions.filter(a=>!a.resolved).length;
@@ -4091,7 +4332,10 @@ function renderMonthlyReport(){
         : wAct>0
           ? `<span class="badge badge-success">All Resolved</span>`
           : `<span class="badge badge-success">No Issues</span>`;
-    const statusBadge = signedOffBadge + actionsBadge;
+    const archivedBadge = archived
+      ? `<span class="badge" style="background:var(--muted-bg);color:var(--text-muted);border:1px solid var(--border);">🔒 Archived</span>`
+      : '';
+    const statusBadge = signedOffBadge + actionsBadge + archivedBadge;
 
     // Heading: title takes priority, fallback to date range
     const cardHeading = insp.title
@@ -4114,10 +4358,6 @@ function renderMonthlyReport(){
             style="background:var(--accent);color:#fff;border:1px solid var(--accent);height:26px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;line-height:1;"
             onmouseover="this.style.background='var(--accent-dark, var(--accent))';this.style.opacity='0.9';"
             onmouseout="this.style.background='var(--accent)';this.style.opacity='1';">📄 PDF</button>
-          <button class="no-print" onclick="deleteInspection('${insp.id}')" title="Delete this inspection"
-            style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:26px;height:26px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1;padding:0;"
-            onmouseover="this.style.background='var(--danger)';this.style.color='#fff';"
-            onmouseout="this.style.background='transparent';this.style.color='var(--danger)';">✕</button>
         </div>
       </div>
       <div class="card-body">
@@ -4140,6 +4380,8 @@ function renderMonthlyReport(){
           ${wNA>0?`<div style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--muted-bg);border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:700;color:var(--text-muted);">— ${wNA} N/A</div>`:''}
           ${iRes>0?`<div style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--success-bg);border:1px solid var(--success-brd);border-radius:6px;font-size:12px;font-weight:700;color:var(--success);">✓ ${iRes} Resolved</div>`:''}
           ${iOverdue>0?`<div style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--danger-bg);border:1px solid var(--danger-brd);border-radius:6px;font-size:12px;font-weight:700;color:var(--danger);">🔴 ${iOverdue} Overdue</div>`:''}
+          ${wQc.pass>0?`<div style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--success-bg);border:1px solid var(--success-brd);border-radius:6px;font-size:12px;font-weight:700;color:var(--success);">✓ ${wQc.pass} QC Pass</div>`:''}
+          ${wQc.fail>0?`<div style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--danger-bg);border:1px solid var(--danger-brd);border-radius:6px;font-size:12px;font-weight:700;color:var(--danger);">✕ ${wQc.fail} QC Fail</div>`:''}
         </div>
 
         ${insp.generalNotes?`<div style="font-size:13px;color:var(--text-muted);font-style:italic;padding:10px 14px;background:var(--muted-bg);border-radius:6px;margin-bottom:14px;">"${esc(insp.generalNotes)}"</div>`:''}`;
@@ -4237,13 +4479,21 @@ function renderMonthlyReport(){
     const allActionsResolved = wActions.length === 0 || wActions.every(a => a.resolved);
 
     if(isSignedOff){
+      // Archived months are read-only — keep the signed-off summary but drop Re-open.
+      const reopenBtn = archived ? '' :
+        `<button class="btn btn-ghost btn-xs" onclick="reopenInspection('${insp.id}')" title="Re-open this inspection if something needs changing">${_ic('reset',13)} Re-open</button>`;
       html += `<div class="no-print" style="margin-top:14px;padding:14px 16px;background:var(--success-bg);border:1.5px solid var(--success-brd);border-radius:9px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
         <div style="font-size:24px;line-height:1;">✓</div>
         <div style="flex:1;min-width:200px;">
           <div style="font-size:13px;font-weight:700;color:var(--success);">Inspection signed off — complete</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Signed off by ${insp.signedOffBy || 'manager'} on ${insp.signedOffAt ? fmtDate(insp.signedOffAt.slice(0,10)) : ''}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Signed off by ${esc(insp.signedOffBy || 'manager')} on ${insp.signedOffAt ? fmtDate(insp.signedOffAt.slice(0,10)) : ''}</div>
         </div>
-        <button class="btn btn-ghost btn-xs" onclick="reopenInspection('${insp.id}')" title="Re-open this inspection if something needs changing">${_ic('reset',13)} Re-open</button>
+        ${reopenBtn}
+      </div>`;
+    } else if(archived){
+      // Older month, never signed off — locked for the record. No controls.
+      html += `<div class="no-print" style="margin-top:14px;padding:12px 14px;background:var(--muted-bg);border:1.5px dashed var(--border);border-radius:9px;font-size:12px;color:var(--text-muted);">
+        🔒 <strong>Archived month — read-only.</strong> This inspection was not signed off and is retained as-is.
       </div>`;
     } else if(allActionsResolved){
       html += `<div class="no-print" style="margin-top:14px;padding:14px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:9px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
@@ -4837,7 +5087,7 @@ function resetToDefaults(){
     if(!confirm(`Reset "${t.name}" to its built-in default? All customisations to this type will be removed.`)) return;
     t.sections = lib.sections.map(s => ({
       id: s.id, name: s.name,
-      items: s.items.map(i => ({ id:i.id, name:i.name, desc:i.desc||'' }))
+      items: s.items.map(i => ({ id:i.id, name:i.name, desc:i.desc||'', ...(i.input?{input:i.input}:{}), ...(i.options?{options:i.options.slice()}:{}), ...(i.columns?{columns:i.columns.slice()}:{}) }))
     }));
   }
   saveData(); renderMyChecklist(); _syncEditingToActiveDraft(); showToast('✓ Reset complete');
@@ -5168,16 +5418,28 @@ function saveData(){
     const el=document.getElementById('saveIndicator');
     if(el) el.textContent='Saved '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   }catch(e){if(!_quotaWarn){_quotaWarn=true;showToast('Local storage full','error');}}
-  // If signed in, ALSO sync to server (best-effort, async)
+  // If signed in, ALSO sync to server (best-effort, async). A failed server
+  // save used to be silent — which made changes appear to "come back" after a
+  // refresh (the server still held the old data). Surface it now.
   if(Auth.isSignedIn() && Auth.activeTenantId()){
     _ownSaveInFlight = true;   // pause the freshness poll from reloading our own change
     Auth.saveToServer(S).then(res => {
       if(res && res.updatedAt) _ownLastUpd = res.updatedAt;   // our own updatedAt; poll won't treat it as new
       const el=document.getElementById('saveIndicator');
-      if(el && res) el.textContent='Saved to server '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      if(res){
+        if(el){ el.textContent='Saved to server '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); el.style.color=''; }
+        _serverSaveWarned = false;
+      } else {
+        if(el){ el.textContent='⚠ Not saved to server — changes are on this device only'; el.style.color='var(--danger)'; }
+        if(!_serverSaveWarned){
+          _serverSaveWarned = true;
+          showToast('⚠ Could not save to the server — your changes are on this device only and may revert on refresh.','error');
+        }
+      }
     }).finally(()=>{ _ownSaveInFlight = false; });
   }
 }
+let _serverSaveWarned = false;
 
 function loadData(){
   try{
@@ -6272,6 +6534,52 @@ function migrateLoadedState(){
   if(!S.draft) S.draft = {};
   if(!S.draft.typeId) S.draft.typeId = 'garage_inspection';
   if(!S.draft.formData) S.draft.formData = {};
+  // Garage Q/C — the two "details" items (gqc_5/gqc_6) are replaced by a
+  // "QC Outcome" two-column table (ported from the inspection app). Update the
+  // stored type definition and the active draft to the new library structure;
+  // submitted inspections are untouched (they render from their own snapshot).
+  try {
+    const libGqc = (typeof LIBRARY !== 'undefined') && LIBRARY.find(l => l.id === 'garage_qc');
+    const hasOld   = secs => (secs||[]).some(s => (s.items||[]).some(i => i.id === 'gqc_5' || i.id === 'gqc_6'));
+    const hasTable = secs => (secs||[]).some(s => (s.items||[]).some(i => i.input === 'table'));
+    if(libGqc){
+      const fresh = () => JSON.parse(JSON.stringify(libGqc.sections));
+      const t = S.inspectionTypes?.garage_qc;
+      if(t && hasOld(t.sections) && !hasTable(t.sections)) t.sections = fresh();
+      if(S.draft?.typeId === 'garage_qc' && hasOld(S.checklist) && !hasTable(S.checklist)){
+        S.checklist = fresh();
+        if(S.draft.results){ delete S.draft.results['gqc_5']; delete S.draft.results['gqc_6']; }
+      }
+      let libCols = null;
+      libGqc.sections.forEach(s => s.items.forEach(i => { if(i.id === 'gqc_outcome') libCols = i.columns; }));
+      const syncCols = secs => (secs||[]).forEach(s => (s.items||[]).forEach(it => { if(it.id === 'gqc_outcome' && libCols) it.columns = JSON.parse(JSON.stringify(libCols)); }));
+      if(t) syncCols(t.sections);
+      if(S.draft?.typeId === 'garage_qc') syncCols(S.checklist);
+    }
+  } catch(e){}
+  // MOT Q/C — re-sync each item's input/options from the library by id (older
+  // state could have radio/photo/text items stripped to pass/fail). Ported from
+  // the inspection app.
+  try {
+    const libMot = (typeof LIBRARY !== 'undefined') && LIBRARY.find(l => l.id === 'mot_qc');
+    if(libMot){
+      const libItems = {};
+      libMot.sections.forEach(s => s.items.forEach(i => { libItems[i.id] = i; }));
+      const sync = sections => (sections||[]).forEach(sec => (sec.items||[]).forEach(it => {
+        const li = libItems[it.id];
+        if(!li || !li.input) return;
+        it.input = li.input;
+        if(li.options) it.options = li.options.slice();
+        if(li.columns) it.columns = JSON.parse(JSON.stringify(li.columns));
+      }));
+      if(S.inspectionTypes?.mot_qc) sync(S.inspectionTypes.mot_qc.sections);
+      if(S.draft?.typeId === 'mot_qc'){
+        sync(S.checklist);
+        const STALE = new Set(['pass','action','na','rectified']);
+        if(S.draft.results){ Object.keys(libItems).forEach(id => { if(libItems[id].input && STALE.has(S.draft.results[id])) delete S.draft.results[id]; }); }
+      }
+    }
+  } catch(e){}
   // Stage 1: per-client document register. Additive; older saves get an empty one.
   if(!Array.isArray(S.documents)) S.documents = [];
   // Phase 2: per-client risk profile. Additive; older saves get an empty one.
@@ -6984,6 +7292,9 @@ function generatePDF(inspsOverride){
   const nOpen=pActs.length-nRes;
   const today=new Date(); today.setHours(0,0,0,0);
   const nOverdue=pActs.filter(a=>!a.resolved&&a.dueDate&&new Date(a.dueDate)<today).length;
+  // QC Outcome Pass/Fail totals across the report (e.g. Garage Q/C scored rows).
+  let nQcPass=0, nQcFail=0;
+  insps.forEach(i => { const t=_tallyTableScores(i); nQcPass+=t.pass; nQcFail+=t.fail; });
 
   // Options
   const clientName   = document.getElementById('pdfClientName')?.value.trim()||insps[0]?.location||'Client';
@@ -7435,6 +7746,14 @@ function generatePDF(inspsOverride){
     {label:'Overdue',            value:nOverdue,      color:nOverdue>0?C.danger:C.muted, bgColor:nOverdue>0?C.dangerBg:C.mutedBg},
   ]);
 
+  // QC Outcome scores (Garage Q/C etc.) on their own row — only when present.
+  if(nQcPass + nQcFail > 0){
+    statBoxes([
+      {label:'QC Outcome Pass', value:nQcPass, color:C.success, bgColor:C.successBg},
+      {label:'QC Outcome Fail', value:nQcFail, color:nQcFail>0?C.danger:C.muted, bgColor:nQcFail>0?C.dangerBg:C.mutedBg},
+    ]);
+  }
+
   // Cover footer
   doc.setFillColor(...C.mutedBg);
   doc.rect(0,PH-18,PW,18,'F');
@@ -7723,8 +8042,21 @@ function generatePDF(inspsOverride){
               const s = String(rawStatus || '').trim();
               statusLabel = s ? (s.length > 40 ? s.slice(0,37)+'…' : s) : '— not answered —';
               if(!s) iconColor = C.muted;
+            } else if(item.input === 'table'){
+              // QC Outcome table — summarise as filled-row count plus pass/fail
+              // tally rather than dumping the raw cell array.
+              const rows = Array.isArray(rawStatus) ? rawStatus : [];
+              const filled = rows.filter(r => Array.isArray(r) && r.some(c => String(c||'').trim())).length;
+              const scoreCols = [];
+              (item.columns||[]).forEach((c,ci)=>{ if(c && typeof c === 'object' && c.type === 'passfail') scoreCols.push(ci); });
+              let tp=0, tf=0;
+              rows.forEach(r => scoreCols.forEach(ci => { const v=r&&r[ci]; if(v==='pass')tp++; else if(v==='fail')tf++; }));
+              statusLabel = filled
+                ? `${filled} row${filled>1?'s':''}${scoreCols.length?` — ${tp} pass / ${tf} fail`:''}`
+                : '— no entries —';
+              if(!filled) iconColor = C.muted;
             } else {
-              // select (or any future typed input)
+              // select / radio (or any future typed input)
               statusLabel = String(rawStatus || '').trim() || '— not answered —';
               if(!statusLabel || statusLabel === '— not answered —') iconColor = C.muted;
             }

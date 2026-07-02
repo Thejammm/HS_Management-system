@@ -2055,6 +2055,16 @@ const FORMS = {
 //  consultant can customise them in the Builder.
 //  Form-style types are code-defined and not editable in Builder.
 // ══════════════════════════════════════════════════════════════
+// Inspection packs group inspection types by the kind of site they suit. A
+// tenant's config.packs decides which packs they see (Stage 2). Existing garage
+// checklists all belong to the Garage pack; near-miss/form types are 'common'
+// (useful on any site). Construction types are added under the Construction pack.
+const PACKS = {
+  garage:       { id:'garage',       name:'Garage' },
+  construction: { id:'construction', name:'Construction' },
+  common:       { id:'common',       name:'Common' }
+};
+
 function buildDefaultInspectionTypes() {
   const types = {};
   LIBRARY.forEach(lib => {
@@ -2064,6 +2074,7 @@ function buildDefaultInspectionTypes() {
       name:     lib.name,
       icon:     lib.icon,
       enabled:  true,
+      pack:     lib.pack || 'garage',   // existing checklists = the Garage pack
       sections: lib.sections.map(s => ({
         id: s.id, name: s.name,
         items: s.items.map(i => ({ id:i.id, name:i.name, desc:i.desc||'' }))
@@ -2077,6 +2088,7 @@ function buildDefaultInspectionTypes() {
       name:    form.name,
       icon:    form.icon,
       enabled: true,
+      pack:    form.pack || 'common',   // forms (near miss etc.) suit any site
       formId:  form.id
     };
   });
@@ -2667,7 +2679,7 @@ function renderInspectionTypeGrid() {
       <div class="scenario-card${isActive?' active':''}" onclick="switchInspectionType('${t.id}')">
         ${badgeHtml}${delHtml}
         <div class="scenario-icon">${_typeIcon(t.id)}</div>
-        <div class="scenario-name">${t.name}</div>
+        <div class="scenario-name">${esc(t.name)}</div>
         <div class="scenario-regs">${meta}</div>
       </div>`;
   }).join('');
@@ -4192,7 +4204,7 @@ function renderBuilderTypeSelector(){
   }
   sel.innerHTML = types.map(t => {
     const tag = _isCustomType(t.id) ? ' (custom)' : '';
-    return `<option value="${t.id}"${t.id===_editingTypeId?' selected':''}>${t.name}${tag}</option>`;
+    return `<option value="${esc(t.id)}"${t.id===_editingTypeId?' selected':''}>${esc(t.name)}${tag}</option>`;
   }).join('');
 
   // Toggle Delete button visibility — only show for custom types
@@ -4230,7 +4242,7 @@ function openCreateInspectionType(){
          <select id="mNewTypeStart">
            <option value="blank">Blank checklist (add sections yourself)</option>
            ${Object.values(S.inspectionTypes||{}).filter(t=>t.kind==='checklist').map(t =>
-             `<option value="copy:${t.id}">Copy from "${t.name}"</option>`
+             `<option value="copy:${esc(t.id)}">Copy from "${esc(t.name)}"</option>`
            ).join('')}
          </select>
        </div>
@@ -4274,6 +4286,7 @@ function saveNewInspectionType(){
 
   S.inspectionTypes[id] = {
     id, kind:'checklist', name, icon, enabled:true,
+    pack: (_editingType()?.pack) || 'garage',   // inherit the pack, default Garage
     sections
   };
 
@@ -4359,7 +4372,7 @@ function renderMyChecklist(){
     sec.items.forEach(item=>{
       html+=`<div class="cl-item">
         <div class="cl-item-text">
-          <div class="cl-item-name">${item.name}</div>
+          <div class="cl-item-name">${esc(item.name)}</div>
           <div class="cl-item-desc">${item.desc}</div>
         </div>
         <div class="cl-item-btns">
@@ -4419,7 +4432,7 @@ function renderLibrarySections(scenario){
       html+=`<div class="lib-item-row">
         <input type="checkbox" class="lib-item-check" id="libchk-${item.id}" checked>
         <div class="lib-item-text">
-          <div class="lib-item-name">${item.name}</div>
+          <div class="lib-item-name">${esc(item.name)}</div>
           <div class="lib-item-desc">${item.desc}</div>
           ${item.reg?`<div class="lib-item-reg">${item.reg}</div>`:''}
         </div>
@@ -5378,7 +5391,7 @@ function openEditUserModal(userId){
   if(!u){ showToast('User not found','error'); return; }
   const isConsultant = u.role === 'consultant';
   const tenantOptions = (_adminTenantsCache||[])
-    .map(t => `<option value="${t.id}" ${t.id===u.tenant_id?'selected':''}>${t.name}</option>`).join('');
+    .map(t => `<option value="${esc(t.id)}" ${t.id===u.tenant_id?'selected':''}>${esc(t.name)}</option>`).join('');
   openModal('Edit user',
     `<div style="display:flex;flex-direction:column;gap:12px;">
        <div class="field-group">
@@ -5597,7 +5610,7 @@ async function openAddUserModal(){
     const r = await fetch('/api/admin/tenants', { credentials: 'include' }).then(r => r.json());
     tenants = r.tenants || [];
   } catch(e){ /* leave empty */ }
-  const tenantOptions = tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  const tenantOptions = tenants.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');
 
   openModal('Add User (Login)',
     `<div style="display:flex;flex-direction:column;gap:12px;">
@@ -6075,6 +6088,11 @@ function migrateLoadedState(){
       if(!S.inspectionTypes[id]) S.inspectionTypes[id] = defaults[id];
     });
   }
+  // Stage 2: tag every type with a pack. Older saves and custom types get a
+  // sensible default (forms = common, checklists = garage) so pack selection works.
+  Object.values(S.inspectionTypes).forEach(t => {
+    if(t && !t.pack) t.pack = (t.kind === 'form' ? 'common' : 'garage');
+  });
   // Garage inspection renamed to "(Full Walkround)". Update default-named saves
   // only, so any consultant rename in the Builder is preserved.
   if(S.inspectionTypes?.garage_inspection?.name === 'Garage Inspection'){

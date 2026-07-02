@@ -4990,10 +4990,12 @@ function saveData(){
   }catch(e){if(!_quotaWarn){_quotaWarn=true;showToast('Local storage full','error');}}
   // If signed in, ALSO sync to server (best-effort, async)
   if(Auth.isSignedIn() && Auth.activeTenantId()){
-    Auth.saveToServer(S).then(ok => {
+    _ownSaveInFlight = true;   // pause the freshness poll from reloading our own change
+    Auth.saveToServer(S).then(res => {
+      if(res && res.updatedAt) _ownLastUpd = res.updatedAt;   // our own updatedAt; poll won't treat it as new
       const el=document.getElementById('saveIndicator');
-      if(el && ok) el.textContent='Saved to server '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    });
+      if(el && res) el.textContent='Saved to server '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    }).finally(()=>{ _ownSaveInFlight = false; });
   }
 }
 
@@ -5018,6 +5020,7 @@ async function loadFromServerAndRender(){
     try{ localStorage.setItem('ahs:workplace-inspection:v3', JSON.stringify({meta:{version:3,savedAt:new Date().toISOString()},S})); }catch(e){}
     _rerenderEverything();
     showToast('✓ Loaded from server','info');
+    if(Auth.user()?.role === 'client_user') _startOwnPoll();   // keep this device fresh
     return true;
   }
   // Consultants have no tenant of their own — they dial in to clients via the
@@ -5028,6 +5031,7 @@ async function loadFromServerAndRender(){
   // own look and defaults straight away instead of the bootstrap greys.
   _applyClientConfigDefaults();
   _rerenderEverything();
+  _startOwnPoll();   // client_user with an empty server: poll picks up their first save / other devices
   // Server is empty: offer to push local data up (one-time migration)
   if(localStorage.getItem('ahs:workplace-inspection:v3')){
     if(confirm('No data found on the server for your account. Would you like to upload your local data to the server?')){
@@ -5120,8 +5124,10 @@ async function handleLoginSubmit(event){
 }
 async function handleSignOut(){
   if(!confirm('Sign out? Your local data stays on this device but new saves won\'t sync to the server.')) return;
+  _stopOwnPoll();
   await Auth.logout();
   _updateAuthIndicator();
+  const el=document.getElementById('saveIndicator'); if(el) el.textContent='';
   showToast('Signed out','info');
 }
 function _updateAuthIndicator(){
@@ -8628,12 +8634,15 @@ const Auth = (() => {
   function activeTenantId(){ return _activeTenantId; }
   function setActiveTenant(id){ _activeTenantId = id; }
 
+  let _lastServerUpd = null;   // updatedAt of the last server state we loaded/saved
+
   async function loadFromServer(){
     if(!_currentUser) return null;
     const tenantId = _activeTenantId;
     if(!tenantId) return null;        // consultant hasn't picked a tenant yet
     try {
       const r = await _api(`/api/state?tenantId=${encodeURIComponent(tenantId)}`);
+      _lastServerUpd = r.updatedAt || null;
       return r.state; // may be null if server has no state yet
     } catch(e){
       console.warn('Failed to load state from server:', e);
@@ -8652,8 +8661,9 @@ const Auth = (() => {
       body: JSON.stringify({ tenantId, state })
     });
     try {
-      await _syncInFlight;
-      return true;
+      const res = await _syncInFlight;   // { ok, tenantId, updatedAt }
+      if(res && res.updatedAt) _lastServerUpd = res.updatedAt;
+      return res || true;                // object is truthy; callers treat as ok
     } catch(e){
       console.warn('Failed to save state to server:', e);
       return false;
@@ -8662,7 +8672,9 @@ const Auth = (() => {
     }
   }
 
-  return { login, logout, refresh, user, isSignedIn, activeTenantId, setActiveTenant, loadFromServer, saveToServer };
+  function lastServerUpd(){ return _lastServerUpd; }
+
+  return { login, logout, refresh, user, isSignedIn, activeTenantId, setActiveTenant, loadFromServer, saveToServer, lastServerUpd };
 })();
 
 // ══════════════════════════════════════════════════════════════
@@ -8747,6 +8759,7 @@ async function enterConsultantView(tenantId, name, config){
   migrateLoadedState();
   _rerenderEverything();
   _applyConsultantChrome();
+  _stopOwnPoll();            // dial-in uses its own read-only poll
   _startConsultantPoll();
   switchTab('cockpit');
   showToast('👁 Viewing ' + name + ' (read only)','info');
@@ -8807,6 +8820,58 @@ async function refreshConsultantView(){
 
 function _startConsultantPoll(){ _stopConsultantPoll(); _consultantPoll = setInterval(refreshConsultantView, 30000); }
 function _stopConsultantPoll(){ if(_consultantPoll){ clearInterval(_consultantPoll); _consultantPoll = null; } }
+
+// ══════════════════════════════════════════════════════════════
+//  UNIVERSAL FRESHNESS POLL (all signed-in users)
+//  A signed-in client viewing their OWN tenant polls the server for newer
+//  state and refreshes when it arrives — unless they are mid-edit or a save
+//  of their own is in flight, so it never fights a draft in progress. The
+//  header shows "Live · updated HH:MM". Consultants dialled into a client use
+//  the read-only dial-in poll (refreshConsultantView) instead.
+// ══════════════════════════════════════════════════════════════
+let _ownPoll = null;
+let _ownLastUpd = null;         // server updatedAt we've already applied or saved
+let _ownSaveInFlight = false;   // true while our own save is being written
+
+function _isEditing(){
+  const el = document.activeElement;
+  if(!el) return false;
+  const tag = el.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable === true;
+}
+
+function _setLiveLabel(ts){
+  const el = document.getElementById('saveIndicator');
+  if(!el) return;
+  const t = ts ? new Date(ts) : new Date();
+  el.textContent = 'Live · updated ' + t.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+
+async function _pollOwnState(){
+  if(_consultantView) return;                                   // dial-in has its own poll
+  if(!Auth.isSignedIn() || !Auth.activeTenantId()) return;      // offline / no tenant
+  if(_isEditing() || _ownSaveInFlight) return;                  // don't fight an edit or our own save
+  try {
+    const r = await fetch(`/api/state?tenantId=${encodeURIComponent(Auth.activeTenantId())}`, { credentials:'include' }).then(r=>r.json());
+    const upd = r?.updatedAt || null;
+    if(upd && upd !== _ownLastUpd){
+      _ownLastUpd = upd;
+      if(r.state && typeof r.state === 'object' && Object.keys(r.state).length){
+        S = r.state; migrateLoadedState(); _rerenderEverything();
+        showToast('↻ Updated with the latest from the server','info');
+      }
+    }
+    _setLiveLabel(upd);
+  } catch(e){ /* keep showing the last good copy */ }
+}
+
+function _startOwnPoll(){
+  _stopOwnPoll();
+  _ownLastUpd = Auth.lastServerUpd();
+  _setLiveLabel(_ownLastUpd);
+  _ownPoll = setInterval(_pollOwnState, 30000);
+}
+function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null; } }
 
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),

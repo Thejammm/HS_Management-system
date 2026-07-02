@@ -2228,6 +2228,7 @@ let S = {
   riskProfile: [],      // Phase 2: per-client risk register (the cockpit spine)
   requirements: [],     // Phase 3: per-client requirements assessment (duty headings)
   monitoring: { months:{}, meta:{}, regulatory:[] }, // Phase 4: monthly monitoring dashboard
+  review:      { ratings:[], feedback:'', suggestions:'' }, // Stage 2: consultant review (syncs to server)
   activeClient: null,   // stores selected client id — saved with the file
   branding:    {
     name:      'AHS Compliance Consulting',
@@ -6286,6 +6287,26 @@ function migrateLoadedState(){
   if(!S.monitoring.meta   || typeof S.monitoring.meta   !== 'object') S.monitoring.meta = {};
   if(!Array.isArray(S.monitoring.regulatory)) S.monitoring.regulatory = [];
 
+  // Stage 2: consultant review (rating history + feedback) moves into per-tenant
+  // state so it syncs to the server instead of living only in this device's
+  // localStorage. Additive; one-time migration from the old localStorage keys
+  // for the client currently loaded.
+  if(!S.review || typeof S.review !== 'object') S.review = { ratings:[], feedback:'', suggestions:'' };
+  if(!Array.isArray(S.review.ratings)) S.review.ratings = [];
+  if(typeof S.review.feedback !== 'string') S.review.feedback = '';
+  if(typeof S.review.suggestions !== 'string') S.review.suggestions = '';
+  try {
+    if(!S.review.ratings.length && !S.review.feedback && !S.review.suggestions){
+      const ck = (typeof _reviewClientKey === 'function') ? _reviewClientKey() : null;
+      if(ck){
+        const oldR = localStorage.getItem('ahs:consultant:rating:'+ck);
+        const oldF = localStorage.getItem('ahs:consultant:feedback:'+ck);
+        if(oldR){ const r = JSON.parse(oldR); if(Array.isArray(r)) S.review.ratings = r; }
+        if(oldF){ const f = JSON.parse(oldF); if(f && typeof f==='object'){ S.review.feedback = f.feedback||''; S.review.suggestions = f.suggestions||''; } }
+      }
+    }
+  } catch(e){}
+
   // Sanitise: clear any prior values that look like email addresses out of
   // free-text fields where an email has no business being. Earlier builds
   // (and over-eager browser autofill) could leak the signed-in user's
@@ -9050,7 +9071,7 @@ function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null;
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),
     draft:{typeId:'garage_inspection',results:{},notes:{},actionDetails:{},rectifyDetails:{},formData:{},periodFrom:'',periodTo:'',manager:'',location:'',ref:'',freq:'weekly',generalNotes:'',title:'',inspType:''},
-    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, activeClient:null, branding:S.branding };
+    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, activeClient:null, branding:S.branding };
 }
 
 // ── Cockpit home: at-a-glance picture for the selected client ──
@@ -10176,12 +10197,32 @@ function deleteDocument(id){
 //  time (in the consultant's browser, never the client's data), and a
 //  feedback report PDF reusing the existing jsPDF engine.
 // ══════════════════════════════════════════════════════════════
+// Review now lives in S.review (per-tenant state) and syncs to the server.
+// _reviewClientKey is kept only for the one-time localStorage migration.
 function _reviewClientKey(){ return _consultantView?.tenantId || S.activeClient || 'self'; }
-function _revLoad(key, fb){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fb; }catch(e){ return fb; } }
-function _revSave(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
-function _reviewRatingKey(){ return 'ahs:consultant:rating:' + _reviewClientKey(); }
-function _reviewFeedbackKey(){ return 'ahs:consultant:feedback:' + _reviewClientKey(); }
-function _reviewLastRating(){ const r=_revLoad(_reviewRatingKey(),[]); return r.length?r[r.length-1]:null; }
+function _review(){ if(!S.review||typeof S.review!=='object') S.review={ratings:[],feedback:'',suggestions:''}; return S.review; }
+function _reviewLastRating(){ const r=_review().ratings||[]; return r.length?r[r.length-1]:null; }
+
+// Persist the consultant review. During a dial-in, saveData() is a deliberate
+// no-op (read-only), so write just the review through to the viewed tenant with
+// a read-modify-write: fetch the latest client state, overlay the review, and
+// save — without disturbing the in-memory S the consultant is editing. Outside a
+// dial-in the normal saveData() path handles it.
+let _reviewSaveTimer = null;
+async function _persistReview(){
+  const review = JSON.parse(JSON.stringify(_review()));
+  if(!_consultantView){ saveData(); return true; }
+  let base = null;
+  try {
+    const payload = await _fetchTenantState(_consultantView.tenantId);
+    if(payload && payload.state && typeof payload.state==='object' && Object.keys(payload.state).length) base = payload.state;
+  } catch(e){ /* fall back to saving current S */ }
+  const toSave = base ? Object.assign({}, base, { review }) : S;
+  const ok = await Auth.saveToServer(toSave);
+  if(ok && ok.updatedAt) _consultantLastUpd = ok.updatedAt;
+  return ok;
+}
+function _scheduleReviewSave(){ clearTimeout(_reviewSaveTimer); _reviewSaveTimer = setTimeout(_persistReview, 1200); }
 
 let _revPendingScore = 0;
 
@@ -10212,11 +10253,11 @@ function reviewScorecard(){
 function renderReview(){
   const cont=document.getElementById('reviewContainer'); if(!cont) return;
   const sc=reviewScorecard();
-  const ratings=_revLoad(_reviewRatingKey(),[]);
-  const fb=_revLoad(_reviewFeedbackKey(),{feedback:'',suggestions:''});
+  const ratings=_review().ratings||[];
+  const fb={ feedback:_review().feedback||'', suggestions:_review().suggestions||'' };
   const stat=(label,val,sub,colour)=>`<div class="ck-card"><h4>${label}</h4><div class="ck-big" style="color:${colour||'var(--text)'};">${val}</div>${sub?`<div class="ck-pending" style="font-style:normal;">${sub}</div>`:''}</div>`;
   const stars=[1,2,3,4,5].map(n=>`<button type="button" onclick="setReviewRating(${n})" style="font-size:24px;line-height:1;background:none;border:none;cursor:pointer;padding:2px;color:${n<=_revPendingScore?'#f59e0b':'var(--border)'};">★</button>`).join('');
-  const hist=ratings.length?ratings.slice(-5).reverse().map(r=>`<div style="font-size:12px;color:var(--text-muted);">${fmtDate(r.date)}: ${'★'.repeat(r.score)}${r.note?' · '+r.note:''}</div>`).join(''):`<div style="font-size:12px;color:var(--text-muted);">No ratings recorded yet.</div>`;
+  const hist=ratings.length?ratings.slice(-5).reverse().map(r=>`<div style="font-size:12px;color:var(--text-muted);">${fmtDate(r.date)}: ${'★'.repeat(Math.max(0,Math.min(5,r.score||0)))}${r.note?' · '+esc(r.note):''}${r.by?' · '+esc(r.by):''}</div>`).join(''):`<div style="font-size:12px;color:var(--text-muted);">No ratings recorded yet.</div>`;
   cont.innerHTML = `
     <div class="card"><div class="card-band"><h3><span class="dot">●</span> Progress &amp; quality</h3></div>
       <div class="card-body">
@@ -10255,14 +10296,18 @@ function setReviewRating(n){ _revPendingScore=n; renderReview(); }
 function addReviewRating(){
   if(!_revPendingScore){ showToast('Pick a star rating first','info'); return; }
   const note=document.getElementById('revRatingNote')?.value.trim()||'';
-  const ratings=_revLoad(_reviewRatingKey(),[]);
-  ratings.push({date:new Date().toISOString().split('T')[0],score:_revPendingScore,note});
-  _revSave(_reviewRatingKey(),ratings); _revPendingScore=0;
+  const a=_actor();
+  _review().ratings.push({date:new Date().toISOString().split('T')[0],score:_revPendingScore,note,by:a.name,byId:a.id});
+  _revPendingScore=0;
+  _persistReview();
   showToast('✓ Rating saved','success'); renderReview();
   if(typeof renderCockpit==='function') renderCockpit();
 }
 function saveReviewFeedback(){
-  _revSave(_reviewFeedbackKey(),{ feedback:document.getElementById('revFeedback')?.value||'', suggestions:document.getElementById('revSuggestions')?.value||'' });
+  const r=_review();
+  r.feedback=document.getElementById('revFeedback')?.value||'';
+  r.suggestions=document.getElementById('revSuggestions')?.value||'';
+  _scheduleReviewSave();   // debounced so typing doesn't hammer the server
 }
 
 function downloadFeedbackReport(){
@@ -10275,7 +10320,7 @@ function buildFeedbackReportPDF(){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const sc=reviewScorecard();
-  const fb=_revLoad(_reviewFeedbackKey(),{feedback:'',suggestions:''});
+  const fb={ feedback:_review().feedback||'', suggestions:_review().suggestions||'' };
   const lastRating=_reviewLastRating();
   const client=_consultantView?.name || S.branding?.name || 'Client';
   const consultant=Auth.user()?.name || Auth.user()?.email || 'AHS Consultant';

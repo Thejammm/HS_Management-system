@@ -2251,6 +2251,7 @@ let S = {
   requirements: [],     // Phase 3: per-client requirements assessment (duty headings)
   monitoring: { months:{}, meta:{}, regulatory:[] }, // Phase 4: monthly monitoring dashboard
   review:      { ratings:[], feedback:'', suggestions:'' }, // Stage 2: consultant review (syncs to server)
+  cas:         { gates:{}, roles:{}, status:{} }, // Stage 3: CAS accreditation readiness (per tenant)
   activeClient: null,   // stores selected client id — saved with the file
   branding:    {
     name:      'AHS Compliance Consulting',
@@ -6323,6 +6324,12 @@ function migrateLoadedState(){
   // state so it syncs to the server instead of living only in this device's
   // localStorage. Additive; one-time migration from the old localStorage keys
   // for the client currently loaded.
+  // Stage 3: CAS accreditation readiness (gate answers, role selections, per-question RAG). Additive.
+  if(!S.cas || typeof S.cas !== 'object') S.cas = { gates:{}, roles:{}, status:{} };
+  if(!S.cas.gates  || typeof S.cas.gates  !== 'object') S.cas.gates = {};
+  if(!S.cas.roles  || typeof S.cas.roles  !== 'object') S.cas.roles = {};
+  if(!S.cas.status || typeof S.cas.status !== 'object') S.cas.status = {};
+
   if(!S.review || typeof S.review !== 'object') S.review = { ratings:[], feedback:'', suggestions:'' };
   if(!Array.isArray(S.review.ratings)) S.review.ratings = [];
   if(typeof S.review.feedback !== 'string') S.review.feedback = '';
@@ -9103,7 +9110,7 @@ function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null;
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),
     draft:{typeId:'garage_inspection',results:{},notes:{},actionDetails:{},rectifyDetails:{},formData:{},periodFrom:'',periodTo:'',manager:'',location:'',ref:'',freq:'weekly',generalNotes:'',title:'',inspType:''},
-    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, activeClient:null, branding:S.branding };
+    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, activeClient:null, branding:S.branding };
 }
 
 // ── Cockpit home: at-a-glance picture for the selected client ──
@@ -10233,7 +10240,31 @@ const CAS_SCHEMES = [
   { id:'full', label:'Full CAS (Constructionline Gold)', sections:null },
   { id:'ssip', label:'SSIP only (Health & Safety, Q71–110)', sections:[4] },
 ];
-// How many actual question numbers a row's Q cell covers (e.g. '1–4' = 4).
+// Gate answers that switch whole blocks of questions in or out of scope for a
+// tenant. Skip lists taken from the verified framework. Role gates (89, 142)
+// record which dutyholder roles apply.
+function _casRange(a,b){ const r=[]; for(let i=a;i<=b;i++) r.push(i); return r; }
+const CAS_GATE_RULES = [
+  { q:21,  label:'Employs sub-contractors?',                type:'bool',  skipWhenNo:[38,116,130,139,160,165,166] },
+  { q:22,  label:'In-scope Building Safety Act work?',      type:'bool',  skipWhenNo:_casRange(135,154) },
+  { q:23,  label:'Higher-Risk Building work?',              type:'bool',  skipWhenNo:[151,152,153,154] },
+  { q:24,  label:'Structured Information Management work?', type:'bool',  skipWhenNo:_casRange(170,176) },
+  { q:71,  label:'SSIP or ISO 45001 held?',                type:'bool',  skipWhenYes:_casRange(73,110) },
+  { q:111, label:'ISO 14001 / EMAS held?',                 type:'bool',  skipWhenYes:_casRange(112,116) },
+  { q:122, label:'BS 99001 held?',                         type:'bool',  skipWhenYes:_casRange(125,134).concat(_casRange(135,154)) },
+  { q:123, label:'ISO 9001 held?',                         type:'bool',  skipWhenYes:_casRange(125,134) },
+  { q:161, label:'Cyber Essentials Plus / ISO 27001 held?',type:'bool',  skipWhenYes:_casRange(163,169) },
+  { q:170, label:'ISO 19650-2 held?',                      type:'bool',  skipWhenYes:_casRange(171,176) },
+  { q:89,  label:'CDM dutyholder roles (Q89)',             type:'roles', roles:['Principal Contractor','Contractor','Principal Designer','Designer'] },
+  { q:142, label:'BSA dutyholder roles (Q142)',            type:'roles', roles:['Principal Contractor','Contractor','Principal Designer','Designer'] },
+];
+const _CAS_STATUS = [
+  { v:'ready',   label:'Ready',   col:'var(--success)' },
+  { v:'partial', label:'Partial', col:'var(--warning)' },
+  { v:'gap',     label:'Gap',     col:'var(--danger)'  },
+  { v:'na',      label:'N/A',     col:'var(--text-muted)' },
+];
+
 function _casQSpan(qstr){
   let total = 0;
   String(qstr).split(',').forEach(part => {
@@ -10243,6 +10274,25 @@ function _casQSpan(qstr){
   });
   return total || 1;
 }
+function _casRowNums(qstr){
+  const nums = [];
+  String(qstr).split(',').forEach(part => {
+    const m = part.trim().match(/^(\d+)\s*[–-]\s*(\d+)$/);
+    if(m){ for(let i=+m[1];i<=+m[2];i++) nums.push(i); }
+    else if(/^\d+$/.test(part.trim())) nums.push(+part.trim());
+  });
+  return nums;
+}
+// A question number is out of scope if an answered gate skips it.
+function _casInScope(qnum){
+  for(const g of CAS_GATE_RULES){
+    const ans = S.cas?.gates?.[g.q];
+    if(g.skipWhenNo  && ans===false && g.skipWhenNo.includes(qnum))  return false;
+    if(g.skipWhenYes && ans===true  && g.skipWhenYes.includes(qnum)) return false;
+  }
+  return true;
+}
+function _casRowInScope(qstr){ return _casRowNums(qstr).some(_casInScope); }
 function _casFlagBadges(f){
   const b = [];
   if(f.gate)         b.push('<span class="badge badge-accent" style="font-size:10px;">GATE</span>');
@@ -10251,25 +10301,110 @@ function _casFlagBadges(f){
   if(f.micro)        b.push('<span class="badge badge-muted" style="font-size:10px;">Micro N/A</span>');
   return b.length ? ' ' + b.join(' ') : '';
 }
+
+// ── CAS state writes (dial-in safe, like the review module) ──
+async function _persistCas(){
+  const cas = JSON.parse(JSON.stringify(S.cas || {gates:{},roles:{},status:{}}));
+  if(!_consultantView){ saveData(); return true; }
+  let base = null;
+  try {
+    const payload = await _fetchTenantState(_consultantView.tenantId);
+    if(payload && payload.state && typeof payload.state==='object' && Object.keys(payload.state).length) base = payload.state;
+  } catch(e){}
+  const toSave = base ? Object.assign({}, base, { cas }) : S;
+  const ok = await Auth.saveToServer(toSave);
+  if(ok && ok.updatedAt) _consultantLastUpd = ok.updatedAt;
+  return ok;
+}
+function setCasGate(q, val){
+  if(_blockIfReadOnly && false) return;   // consultant edits allowed in dial-in
+  if(!S.cas) S.cas = {gates:{},roles:{},status:{}};
+  if(S.cas.gates[q] === val) delete S.cas.gates[q]; else S.cas.gates[q] = val;   // toggle back to unset
+  _persistCas(); renderCAS();
+}
+function toggleCasRole(q, role){
+  if(!S.cas) S.cas = {gates:{},roles:{},status:{}};
+  const arr = S.cas.roles[q] || [];
+  const i = arr.indexOf(role);
+  if(i>=0) arr.splice(i,1); else arr.push(role);
+  S.cas.roles[q] = arr;
+  _persistCas(); renderCAS();
+}
+function setCasStatus(qkey, v){
+  if(!S.cas) S.cas = {gates:{},roles:{},status:{}};
+  const cur = (S.cas.status[qkey]||{}).v;
+  if(cur === v){ delete S.cas.status[qkey]; }
+  else { S.cas.status[qkey] = { v, by:_actor().name, byId:_actor().id, at:new Date().toISOString() }; }
+  _persistCas(); renderCAS();
+}
+function _casStatusControl(qkey){
+  const cur = (S.cas?.status?.[qkey]||{}).v || '';
+  return '<div style="display:flex;gap:3px;flex-wrap:wrap;">' + _CAS_STATUS.map(s =>
+    `<button class="btn btn-xs" style="padding:2px 7px;font-size:10px;${cur===s.v?`background:${s.col};color:#fff;border:1px solid transparent;`:'background:transparent;border:1px solid var(--border);color:var(--text-muted);'}" onclick="setCasStatus('${esc(qkey)}','${s.v}')">${s.label}</button>`
+  ).join('') + '</div>';
+}
+
 function renderCAS(){
   const sel = document.getElementById('casSchemeFilter');
   if(sel && !sel.options.length){ sel.innerHTML = CAS_SCHEMES.map(s=>`<option value="${esc(s.id)}">${esc(s.label)}</option>`).join(''); }
   const scheme = CAS_SCHEMES.find(s=>s.id===(sel && sel.value)) || CAS_SCHEMES[0];
   const sections = CAS_FRAMEWORK.sections.filter(s => !scheme.sections || scheme.sections.includes(s.id));
+  const ro = !!_consultantView && false;   // CAS is a consultant-prep tool; editable during dial-in
+
+  // Readiness tally over in-scope rows that carry a status
+  let inScope=0, ready=0, partial=0, gap=0, na=0;
+  sections.forEach(s => s.questions.forEach(q => {
+    if(!_casRowInScope(q.q)) return;
+    inScope++;
+    const st=(S.cas?.status?.[q.q]||{}).v;
+    if(st==='ready')ready++; else if(st==='partial')partial++; else if(st==='gap')gap++; else if(st==='na')na++;
+  }));
+  const assessable = inScope - na;
+  const pctReady = assessable>0 ? Math.round(ready/assessable*100) : null;
 
   const sumEl = document.getElementById('casSummary');
   if(sumEl){
-    const totalQ = sections.reduce((n,s)=>n + s.questions.reduce((m,q)=>m+_casQSpan(q.q),0), 0);
-    const gateN  = sections.reduce((n,s)=>n + s.questions.filter(q=>q.flags.gate).length, 0);
-    const tcN    = sections.reduce((n,s)=>n + s.questions.filter(q=>q.flags.timeCritical).length, 0);
-    const advN   = sections.reduce((n,s)=>n + s.questions.filter(q=>q.flags.advisory).length, 0);
     const chip=(n,l,cls)=>`<span class="badge ${cls}">${n} ${l}</span>`;
-    sumEl.innerHTML = [chip(totalQ,'questions','badge-muted'), chip(sections.length,'sections','badge-muted'), chip(gateN,'gates','badge-accent'), chip(tcN,'time-critical','badge-warning'), chip(advN,'advisory','badge-muted')].join(' ');
+    sumEl.innerHTML = [
+      chip(pctReady==null?'—':pctReady+'%','ready','badge-success'),
+      chip(inScope,'in scope','badge-muted'),
+      chip(ready,'ready','badge-success'),
+      chip(partial,'partial','badge-warning'),
+      chip(gap,'gap','badge-danger'),
+      chip(na,'N/A','badge-muted'),
+    ].join(' ');
   }
 
   const cont = document.getElementById('casContainer'); if(!cont) return;
-  cont.innerHTML = sections.map(s => {
-    const bsa = s.id === 7;   // Building Safety — flagged distinctly
+
+  // Scope panel — gate answers that switch blocks on/off
+  const boolGate = g => {
+    const ans = S.cas?.gates?.[g.q];
+    const btn = (label,val,col)=>`<button class="btn btn-xs" style="padding:2px 9px;font-size:11px;${ans===val?`background:${col};color:#fff;border:1px solid transparent;`:'background:transparent;border:1px solid var(--border);color:var(--text-muted);'}" onclick="setCasGate(${g.q},${val})">${label}</button>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px dashed var(--border);">
+      <span style="font-size:12px;flex:1;">Q${g.q}. ${esc(g.label)}</span>
+      <div style="display:flex;gap:4px;">${btn('Yes',true,'var(--primary)')}${btn('No',false,'var(--text-muted)')}</div>
+    </div>`;
+  };
+  const roleGate = g => {
+    const sel = S.cas?.roles?.[g.q] || [];
+    const chips = g.roles.map(r=>`<button class="btn btn-xs" style="padding:2px 8px;font-size:11px;${sel.includes(r)?'background:var(--accent);color:#fff;border:1px solid transparent;':'background:transparent;border:1px solid var(--border);color:var(--text-muted);'}" onclick="toggleCasRole(${g.q},'${esc(r)}')">${esc(r)}</button>`).join(' ');
+    return `<div style="padding:6px 0;border-bottom:1px dashed var(--border);">
+      <div style="font-size:12px;margin-bottom:5px;">Q${g.q}. ${esc(g.label)}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;">${chips}</div>
+    </div>`;
+  };
+  const scopePanel = `<div class="card no-print" style="margin-bottom:14px;">
+    <div class="card-band"><h3><span class="dot">●</span> Scope for this client</h3></div>
+    <div class="card-body">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Answer the gate questions to switch whole blocks in or out of scope. Unanswered gates leave everything in scope.</div>
+      ${CAS_GATE_RULES.filter(g=>g.type==='bool').map(boolGate).join('')}
+      ${CAS_GATE_RULES.filter(g=>g.type==='roles').map(roleGate).join('')}
+    </div>
+  </div>`;
+
+  cont.innerHTML = scopePanel + sections.map(s => {
+    const bsa = s.id === 7;
     return `<div class="card" style="margin-bottom:14px;${bsa?'border:1.5px solid var(--accent);':''}">
       <div class="card-band"><h3><span class="dot">●</span> ${esc(s.id + '. ' + s.name)} <span style="font-size:11px;color:var(--text-muted);font-weight:400;">Q${esc(s.range)}</span></h3>
         ${bsa?'<span class="badge badge-accent" style="font-size:10px;">Building Safety Act — mandatory for BSA work</span>':''}
@@ -10277,16 +10412,21 @@ function renderCAS(){
       <div class="card-body" style="padding:0;overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
           <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;">
-            <th style="padding:8px 10px;width:54px;">Q</th><th style="padding:8px 10px;">Requirement (our summary)</th>
-            <th style="padding:8px 10px;width:110px;">Evidence</th><th style="padding:8px 10px;width:130px;">In the app</th>
+            <th style="padding:8px 10px;width:50px;">Q</th><th style="padding:8px 10px;">Requirement (our summary)</th>
+            <th style="padding:8px 10px;width:96px;">Evidence</th><th style="padding:8px 10px;width:96px;">In the app</th>
+            <th style="padding:8px 10px;width:180px;">Readiness</th>
           </tr></thead>
           <tbody>
-            ${s.questions.map((q,i)=>`<tr style="border-top:1px solid var(--border);background:${i%2?'transparent':'var(--muted-bg)'};">
+            ${s.questions.map((q,i)=>{
+              const inScope = _casRowInScope(q.q);
+              return `<tr style="border-top:1px solid var(--border);background:${i%2?'transparent':'var(--muted-bg)'};${inScope?'':'opacity:.5;'}">
               <td style="padding:8px 10px;font-weight:600;white-space:nowrap;">${esc(q.q)}</td>
               <td style="padding:8px 10px;">${esc(q.req)}${_casFlagBadges(q.flags)}</td>
               <td style="padding:8px 10px;color:var(--text-muted);">${esc(q.evidence)}</td>
               <td style="padding:8px 10px;color:var(--text-muted);">${esc(q.app)}</td>
-            </tr>`).join('')}
+              <td style="padding:8px 10px;">${inScope?_casStatusControl(q.q):'<span style="font-size:11px;color:var(--text-muted);">Not in scope</span>'}</td>
+            </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>

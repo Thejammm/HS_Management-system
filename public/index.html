@@ -1426,6 +1426,40 @@ function activeClientName(){
   return '';
 }
 
+// ── Per-user attribution (house rule 4) ──
+// Every meaningful write stamps who did it and when, so nothing is anonymous.
+// _actor() resolves the current signed-in user; offline it falls back to a
+// local marker. These stamps cannot be retrofitted, so they are captured now.
+function _actor(){
+  const u = (typeof Auth !== 'undefined' && Auth.user) ? Auth.user() : null;
+  if(u) return { id: u.id || null, name: u.name || u.email || 'User' };
+  return { id: null, name: 'Local (offline)' };
+}
+// Write event stamps onto a record: rec.{event}By / {event}ById / {event}At.
+function _stamp(rec, event){
+  if(!rec) return rec;
+  const a = _actor();
+  rec[event+'By']   = a.name;
+  rec[event+'ById'] = a.id;
+  rec[event+'At']   = new Date().toISOString();
+  return rec;
+}
+// Compact, esc()'d "Name · 2 Jul 2026" line for subtle attribution display.
+function _attrLine(rec, event){
+  if(!rec) return '';
+  const by = rec[event+'By'], at = rec[event+'At'];
+  if(!by && !at) return '';
+  const d = at ? new Date(at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
+  return `${by?esc(by):''}${by&&d?' · ':''}${d}`;
+}
+// Subtle "Added/Updated by …" footer for a record card (prefers the latest event).
+function _attrFooter(rec){
+  if(!rec) return '';
+  const upd = _attrLine(rec,'updated'), cre = _attrLine(rec,'created');
+  const txt = upd ? ('Updated '+upd) : (cre ? ('Added '+cre) : '');
+  return txt ? `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">${txt}</div>` : '';
+}
+
 // ── Consultant passphrase — change this before sending each file ──
 const CONSULTANT_PASS = 'archer';
 
@@ -3079,6 +3113,7 @@ function submitInspection() {
       formData:JSON.parse(JSON.stringify(data)),
       formSnapshot:JSON.parse(JSON.stringify(form)),
       submittedAt:new Date().toISOString(),
+      submittedBy:_actor().name, submittedById:_actor().id,
       // ── Lifecycle ──
       status:'open',          // 'open' until manager signs off; then 'signed_off'
       awaitingReview:true,    // set true on submit; set false when manager has reviewed
@@ -3124,6 +3159,7 @@ function submitInspection() {
     actionDetails:{...d.actionDetails}, rectifyDetails:{...(d.rectifyDetails||{})},
     checklistSnapshot:JSON.parse(JSON.stringify(S.checklist)),
     submittedAt:new Date().toISOString(),
+    submittedBy:_actor().name, submittedById:_actor().id,
     // ── Lifecycle ──
     status:'open',          // 'open' until manager signs off; then 'signed_off'
     awaitingReview:true,    // set true on submit; cleared by manager
@@ -3143,6 +3179,7 @@ function submitInspection() {
             issue:itAd.issue||item.desc, note:d.notes[item.id]||'',
             assignedTo:itAd.assignedTo||'', dueDate:itAd.dueDate||'',
             beforePhotos:itAd.beforePhotos||[],
+            raisedBy:_actor().name, raisedById:_actor().id, raisedAt:new Date().toISOString(),
             resolved:false, resolvedBy:'', resolvedAt:'', resolvedNote:'', afterPhotos:[]
           });
         }
@@ -3464,6 +3501,7 @@ function resolveAction(id){
   const notes=document.getElementById('rn-'+id)?.value.trim();
   if(!by){showToast('Please enter who resolved this.','error');return;}
   a.resolved=true; a.resolvedBy=by; a.resolvedAt=dt||new Date().toISOString().split('T')[0]; a.resolvedNote=notes;
+  a.resolvedById=_actor().id; a.resolvedLoggedBy=_actor().name; a.resolvedLoggedAt=new Date().toISOString();
   // afterPhotos are already written into a.afterPhotos by addActionAfterPhoto()
   saveData(); updateBadge(); showToast('✓ Action resolved');
   renderActions(); renderActionStats();
@@ -3527,6 +3565,7 @@ function signOffInspection(inspId){
   insp.awaitingReview = false;
   insp.signedOffBy = signedOffBy.trim();
   insp.signedOffAt = new Date().toISOString();
+  insp.signedOffById = _actor().id;
   saveData();
   showToast('✓ Inspection signed off — ready for PDF / handover');
   renderMonthlyReport();
@@ -3911,6 +3950,7 @@ function renderMonthlyReport(){
           <span style="font-size:13px;color:var(--text-muted);">👤 ${esc(insp.manager||'—')}</span>
           <span style="font-size:13px;color:var(--text-muted);">🔁 ${esc(freqLabels[insp.freq]||insp.freq)}</span>
           ${insp.ref?`<span style="font-size:13px;color:var(--text-muted);">🔖 ${esc(insp.ref)}</span>`:''}
+          ${insp.submittedBy?`<span style="font-size:13px;color:var(--text-muted);" title="Recorded by the signed-in user at submission">✍ ${esc(insp.submittedBy)}</span>`:''}
         </div>
 
         <!-- Per-inspection stat pills -->
@@ -8930,9 +8970,11 @@ function _riskRatingText(r){
 function addRiskEntry(){
   if(_blockIfReadOnly()) return;
   if(!Array.isArray(S.riskProfile)) S.riskProfile = [];
-  S.riskProfile.push({ id:'risk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+  const entry = { id:'risk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
     category:'', activity:'', hazard:'', personsAtRisk:[], harm:'', businessImpact:'',
-    controls:'', likelihood:'', severity:'', trend:'', furtherActions:'' });
+    controls:'', likelihood:'', severity:'', trend:'', furtherActions:'' };
+  _stamp(entry, 'created');
+  S.riskProfile.push(entry);
   saveData();
   renderRiskProfile();
 }
@@ -8950,6 +8992,7 @@ function updateRiskField(id, field, value){
   const r = (S.riskProfile||[]).find(x => x.id === id);
   if(!r) return;
   r[field] = value;
+  _stamp(r, 'updated');
   scheduleAutoSave();
   // Live recompute rating + priority without a full re-render (keeps input focus)
   if(field === 'likelihood' || field === 'severity'){
@@ -9133,6 +9176,7 @@ function renderRiskProfile(){
         <div class="field-grid cols-1">
           ${fg('Further actions required', ta(r.id,'furtherActions',r.furtherActions,'Additional actions needed to reduce the risk'))}
         </div>
+        ${_attrFooter(r)}
       </div>
     </div>`;
   }).join('');
@@ -9325,7 +9369,9 @@ function addReqLine(sectionId){
   if(_blockIfReadOnly()) return;
   const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
   if(!Array.isArray(s.items)) s.items = [];
-  s.items.push({ id:_reqUid('reqitem'), requirement:'', citation:'', present:'', adequate:'', action:'', dueDate:'' });
+  const line = { id:_reqUid('reqitem'), requirement:'', citation:'', present:'', adequate:'', action:'', dueDate:'' };
+  _stamp(line, 'created');
+  s.items.push(line);
   saveData(); renderRequirements();
 }
 function deleteReqLine(sectionId, itemId){
@@ -9338,7 +9384,7 @@ function updateReqField(sectionId, itemId, field, value){
   if(_consultantView) return;
   const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
   const it = (s.items||[]).find(i => i.id === itemId); if(!it) return;
-  it[field] = value; scheduleAutoSave();
+  it[field] = value; _stamp(it, 'updated'); scheduleAutoSave();
   if(field==='present' || field==='adequate'){
     const st = _reqItemStatus(it);
     const b = document.getElementById('reqstatus-'+itemId);
@@ -9441,6 +9487,7 @@ function renderRequirements(){
         <div class="field-grid cols-1">
           ${fg('Action where short', txt(sec.id,it.id,'action',it.action,'What needs doing if it falls short'))}
         </div>
+        ${_attrFooter(it)}
       </div>`;
     }).join('') : `<div class="ck-pending" style="padding:6px 0 12px;">No requirement lines yet${ro?'.':' — add the lines and references for this duty.'}</div>`;
 
@@ -9743,6 +9790,7 @@ function saveMonthlyFigures(){
   const month = _curMonMonth();
   if(!S.monitoring.months[month]) S.monitoring.months[month] = {};
   S.monitoring.months[month].enteredAt = new Date().toISOString().split('T')[0];
+  _stamp(S.monitoring.months[month], 'updated');
   saveData();
   showToast('✓ Figures saved for ' + month, 'success');
   renderMonitoring();

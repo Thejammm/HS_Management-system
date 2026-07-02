@@ -1443,6 +1443,31 @@ function activeClientName(){
   return '';
 }
 
+// ── Inspection pack selection (Stage 2) ──
+// Which inspection packs the current client sees, from their served config.
+// null = show all (signed out, consultant's own workspace, or no packs set).
+function _activePacks(){
+  const cfg = activeClientConfig();
+  const packs = (cfg && Array.isArray(cfg.packs)) ? cfg.packs.filter(Boolean) : null;
+  return (packs && packs.length) ? packs : null;
+}
+// A type is visible if it's enabled and either a 'common' type (forms — useful
+// on any site) or belongs to one of the client's selected packs.
+function _typeVisible(t){
+  if(!t || t.enabled === false) return false;
+  const packs = _activePacks();
+  if(!packs) return true;
+  return t.pack === 'common' || packs.includes(t.pack);
+}
+// If the drafted inspection type is hidden for this client, switch the draft to
+// the first visible type so the form never shows a pack they don't have.
+function _ensureVisibleType(){
+  const cur = S.inspectionTypes?.[S.draft?.typeId];
+  if(cur && _typeVisible(cur)) return;
+  const first = Object.values(S.inspectionTypes||{}).find(_typeVisible);
+  if(first && S.draft) S.draft.typeId = first.id;
+}
+
 // ── Per-user attribution (house rule 4) ──
 // Every meaningful write stamps who did it and when, so nothing is anonymous.
 // _actor() resolves the current signed-in user; offline it falls back to a
@@ -2754,8 +2779,10 @@ function _typeIcon(id){
 function renderInspectionTypeGrid() {
   const grid = document.getElementById('inspectionTypeGrid');
   if(!grid) return;
+  _ensureVisibleType();   // keep the active type within the client's packs
   const activeId = S.draft?.typeId || 'garage_inspection';
-  const types = Object.values(S.inspectionTypes||{}).filter(t => t.enabled !== false);
+  // Filter by the client's selected packs (common/form types always shown).
+  const types = Object.values(S.inspectionTypes||{}).filter(_typeVisible);
 
   const tilesHtml = types.map(t => {
     const isActive = t.id === activeId;
@@ -5970,6 +5997,14 @@ function openEditTenantConfig(tenantId){
          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Where this client's Near Miss reports are emailed. Leave blank to disable.</div>
        </div>
        <div class="field-group">
+         <label class="field-label">Inspection packs shown</label>
+         <div style="display:flex;gap:16px;flex-wrap:wrap;">
+           <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="cfgPackGarage" ${(cfg.packs||[]).includes('garage')?'checked':''}> Garage</label>
+           <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="cfgPackConstruction" ${(cfg.packs||[]).includes('construction')?'checked':''}> Construction</label>
+         </div>
+         <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Which inspection packs this client sees on the Inspection tab. Leave both unticked to show everything.</div>
+       </div>
+       <div class="field-group">
          <label class="field-label">Branding</label>
          <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
            <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">Primary <input type="color" id="cfgPrimary" value="${esc(primary)}"></label>
@@ -5985,11 +6020,15 @@ function openEditTenantConfig(tenantId){
 
 async function saveTenantConfig(tenantId){
   const val = id => (document.getElementById(id)?.value || '').trim();
+  const packs = [];
+  if(document.getElementById('cfgPackGarage')?.checked)       packs.push('garage');
+  if(document.getElementById('cfgPackConstruction')?.checked) packs.push('construction');
   const config = {
     icon:        val('cfgIcon'),
     location:    val('cfgLocation'),
     inspType:    val('cfgInspType'),
     notifyEmail: val('cfgNotifyEmail'),
+    packs:       packs,
     branding: {
       primary:   val('cfgPrimary'),
       accent:    val('cfgAccent'),

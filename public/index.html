@@ -1797,11 +1797,12 @@ const FORMS = {
     id: 'near_miss',
     name: 'Near Miss Reporting',
     icon: '⚠️',
-    // Post-submit hook: after the form is saved + PDF generated,
-    // open the user's email client pre-addressed to liam@egsleeds.com.
-    // The user attaches the just-downloaded PDF themselves.
+    // Post-submit hook: after the form is saved + PDF generated, open the user's
+    // email client pre-addressed to the tenant's Near Miss notify address (set
+    // per client in Admin > Config, served as config.notifyEmail — no customer
+    // email is baked into source). If unset, no email is opened. The user
+    // attaches the just-downloaded PDF themselves.
     notify: {
-      email: 'liam@egsleeds.com',
       subjectTemplate: 'NEAR MISS REPORT — {date}',
       bodyTemplate:
         '*** NEAR MISS REPORTED ***\n\n' +
@@ -3164,8 +3165,9 @@ function submitInspection() {
 // Works for BOTH inspection kinds — routes to the right generator:
 //   • form-style    → generateSingleFormPDF(insp)
 //   • checklist-style → generatePDF([insp])
-// If the type has a notify-email hook (e.g. Near Miss → liam@egsleeds.com)
-// the user's mail client is opened pre-addressed AFTER the PDF download.
+// If the type has a notify-email hook (e.g. Near Miss) and the tenant has a
+// notify address configured, the user's mail client is opened pre-addressed
+// to it AFTER the PDF download.
 function submitFormAndPDF(){
   const insp = submitInspection();
   if(!insp) return; // validation failed; user already informed
@@ -3185,11 +3187,13 @@ function submitFormAndPDF(){
       showToast('PDF generation failed — check console for details. Submission was saved.','error');
       return;
     }
-    // Notify-email hook (form-style only — checklist types don't have one)
+    // Notify-email hook (form-style only — checklist types don't have one).
+    // The recipient comes from the tenant's served config, not from source.
     if(insp.kind === 'form'){
       const form = FORMS[insp.typeId];
-      if(form?.notify?.email){
-        setTimeout(() => _openNotifyEmail(insp, form.notify), 600);
+      const notifyEmail = String(activeClientConfig().notifyEmail || '').trim();
+      if(form?.notify && notifyEmail){
+        setTimeout(() => _openNotifyEmail(insp, form.notify, notifyEmail), 600);
       }
     }
   }, 200);
@@ -3254,8 +3258,11 @@ function _fillTemplate(tpl, insp){
   return out;
 }
 
-// Open the user's default email client with subject + body prefilled
-async function _openNotifyEmail(insp, notify){
+// Open the user's default email client with subject + body prefilled.
+// `email` is the tenant's notify address (from served config), passed in rather
+// than read from the form so no recipient is hardcoded in source.
+async function _openNotifyEmail(insp, notify, email){
+  if(!email) return;
   const subject = _fillTemplate(notify.subjectTemplate || 'Notification', insp);
   const body    = _fillTemplate(notify.bodyTemplate    || '',             insp);
 
@@ -3279,7 +3286,7 @@ async function _openNotifyEmail(insp, notify){
     // Non-fatal — continue with email open even if clipboard copy fails
   }
 
-  const mailto  = `mailto:${encodeURIComponent(notify.email)}`
+  const mailto  = `mailto:${encodeURIComponent(email)}`
                 + `?subject=${encodeURIComponent(subject)}`
                 + `&body=${encodeURIComponent(body)}`;
   window.location.href = mailto;
@@ -3287,7 +3294,7 @@ async function _openNotifyEmail(insp, notify){
   if(photoCopied){
     showToast(`📧 Email opened — click in the body and press Ctrl+V to paste the photo`, 'info');
   } else {
-    showToast(`📧 Email opened to ${notify.email} — attach the PDF that just downloaded`, 'info');
+    showToast(`📧 Email opened to ${email} — attach the PDF that just downloaded`, 'info');
   }
 }
 
@@ -5414,7 +5421,7 @@ function openAddTenantModal(){
          </div>
          <div class="field-group" style="margin-bottom:10px;">
            <label class="field-label">Display name</label>
-           <input type="text" id="mClientName" placeholder="e.g. Liam Briggs" autocomplete="off">
+           <input type="text" id="mClientName" placeholder="e.g. Jane Smith" autocomplete="off">
          </div>
          <div class="field-group">
            <label class="field-label">Starter password (8+ chars) <span style="color:var(--danger);">*</span></label>
@@ -5533,7 +5540,7 @@ async function openAddUserModal(){
        </div>
        <div class="field-group">
          <label class="field-label">Display name (optional)</label>
-         <input type="text" id="mUserName" placeholder="e.g. Liam Gartland">
+         <input type="text" id="mUserName" placeholder="e.g. Sam Jones">
        </div>
        <div class="field-group">
          <label class="field-label">Role</label>
@@ -5784,6 +5791,11 @@ function openEditTenantConfig(tenantId){
          <input type="text" id="cfgInspType" placeholder="e.g. general" value="${esc(cfg.inspType||'')}">
        </div>
        <div class="field-group">
+         <label class="field-label">Near Miss notify email</label>
+         <input type="email" id="cfgNotifyEmail" placeholder="manager@company.co.uk" value="${esc(cfg.notifyEmail||'')}">
+         <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Where this client's Near Miss reports are emailed. Leave blank to disable.</div>
+       </div>
+       <div class="field-group">
          <label class="field-label">Branding</label>
          <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
            <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">Primary <input type="color" id="cfgPrimary" value="${esc(primary)}"></label>
@@ -5800,9 +5812,10 @@ function openEditTenantConfig(tenantId){
 async function saveTenantConfig(tenantId){
   const val = id => (document.getElementById(id)?.value || '').trim();
   const config = {
-    icon:     val('cfgIcon'),
-    location: val('cfgLocation'),
-    inspType: val('cfgInspType'),
+    icon:        val('cfgIcon'),
+    location:    val('cfgLocation'),
+    inspType:    val('cfgInspType'),
+    notifyEmail: val('cfgNotifyEmail'),
     branding: {
       primary:   val('cfgPrimary'),
       accent:    val('cfgAccent'),

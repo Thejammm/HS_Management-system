@@ -29,6 +29,8 @@ function _cleanConfig(input){
   if(str(src.location) !== undefined) out.location = str(src.location).slice(0, 200);
   if(str(src.inspType) !== undefined) out.inspType = str(src.inspType).slice(0, 60);
   if(str(src.checklist)!== undefined) out.checklist= str(src.checklist).slice(0, 60);
+  // Near Miss notify recipient (per-tenant; replaces the old hardcoded address).
+  if(str(src.notifyEmail) !== undefined) out.notifyEmail = str(src.notifyEmail).trim().slice(0, 200);
   if(src.branding && typeof src.branding === 'object' && !Array.isArray(src.branding)){
     const b = {};
     ['primary','accent','textColor'].forEach(k => {

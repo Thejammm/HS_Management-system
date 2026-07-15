@@ -946,10 +946,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="card no-print" style="margin-bottom:18px;">
       <div class="card-band"><h3><span class="dot">●</span> Review &amp; feedback</h3></div>
       <div class="card-body">
-        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">
-          A quality and progress picture for this client, with your rating tracked over time. Generate a feedback report to send.
+        <div style="font-size:13px;color:var(--text-muted);">
+          A quality and progress picture for this client, with your rating tracked over time. Generate the <strong>Consultant Feedback</strong> report from the <strong>Reports</strong> tab.
         </div>
-        <button class="btn btn-primary no-print" onclick="downloadFeedbackReport()">📄 Download feedback report</button>
       </div>
     </div>
     <div id="reviewContainer"></div>
@@ -9979,6 +9978,10 @@ function renderReports(){
   const stt = (typeof _reqStats==='function') ? _reqStats() : { assessed:0, total:0 };
   const riskMeta = RD.risks.length ? (RD.risks.length+' risk'+(RD.risks.length!==1?'s':'')+' · '+RD.completeness+'% complete') : 'No risks recorded yet';
   const mgmtMeta = stt.assessed ? (stt.assessed+' of '+stt.total+' lines assessed') : 'Not assessed yet';
+  const _av = (S.audit && S.audit.overall) || '';
+  const auditMeta = _av ? ({satisfactory:'Satisfactory',improvement:'Improvement required',unsatisfactory:'Unsatisfactory'}[_av]||'Recorded') : 'Not yet recorded';
+  const _lr = (typeof _reviewLastRating==='function') ? _reviewLastRating() : null;
+  const feedbackMeta = _lr ? (_lr.score+' / 5 rated') : 'For the consultant review';
   const svg = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   const reports = [
     { title:'Board Report', accent:'#DC2626', tint:'#FCE9E9', fn:'downloadBoardReport()', meta:riskMeta,
@@ -9997,6 +10000,14 @@ function renderReports(){
       icon:svg('<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>'),
       desc:'How the organisation meets its HSG65 duties, reported by exception — only what needs action, never empty scaffolding.',
       tags:['HSG65','By exception'] },
+    { title:'H&S Audit', accent:'#0D9488', tint:'#E6F4F2', fn:'downloadAuditReport()', meta:auditMeta,
+      icon:svg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'),
+      desc:'The periodic audit of the H&S process: overall assessment, process observations, a section-by-section review and recommendations.',
+      tags:['Periodic','Process','Sign-off'] },
+    { title:'Consultant Feedback', accent:'#7C3AED', tint:'#F0E9FD', fn:'downloadFeedbackReport()', meta:feedbackMeta,
+      icon:svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+      desc:'The progress-and-feedback summary to send the client: compliance, priorities, gaps and the consultant’s written feedback and suggestions.',
+      tags:['Progress','Feedback','To send'] },
   ];
   const dl = svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>');
   const card = (r) => `<div class="rep-card" style="--rep:${r.accent};--rep-tint:${r.tint};">
@@ -13629,8 +13640,10 @@ function addReviewRating(){
 }
 function saveReviewFeedback(){
   const r=_review();
-  r.feedback=document.getElementById('revFeedback')?.value||'';
-  r.suggestions=document.getElementById('revSuggestions')?.value||'';
+  // Only capture the fields when the review form is actually on screen — otherwise (e.g. generating
+  // the report from the Reports tab) we must NOT overwrite the saved feedback with blanks.
+  const f=document.getElementById('revFeedback'); if(f) r.feedback=f.value||'';
+  const s=document.getElementById('revSuggestions'); if(s) r.suggestions=s.value||'';
   _scheduleReviewSave();   // debounced so typing doesn't hammer the server
 }
 
@@ -13641,49 +13654,99 @@ function downloadFeedbackReport(){
 }
 
 function buildFeedbackReportPDF(){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const sc=reviewScorecard();
   const fb={ feedback:_review().feedback||'', suggestions:_review().suggestions||'' };
   const lastRating=_reviewLastRating();
-  const client=_consultantView?.name || S.branding?.name || 'Client';
-  const consultant=Auth.user()?.name || Auth.user()?.email || 'AHS Consultant';
-  const ML=16, RM=194; let y=18;
-  const text=(t,size,bold,colour)=>{ doc.setFont('helvetica',bold?'bold':'normal'); doc.setFontSize(size); doc.setTextColor(colour?colour[0]:60,colour?colour[1]:60,colour?colour[2]:60); doc.splitTextToSize(String(t),RM-ML).forEach(w=>{ if(y>278){doc.addPage();y=18;} doc.text(w,ML,y); y+=size*0.52; }); };
-  const head=(t)=>{ y+=2; text(t,12,true,[15,118,110]); y+=1; };
-  doc.setFillColor(15,118,110); doc.rect(0,0,210,26,'F');
-  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('Consultant Review and Feedback',ML,12);
-  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(client,ML,19);
-  y=36;
-  text('Prepared by: '+consultant,10); text('Date: '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}),10);
-  head('Progress summary');
-  [['Compliance', sc.compliance==null?'No data':sc.compliance+'%'],
-   ['Sign-off rate', sc.signOffRate==null?'No data':sc.signOffRate+'% ('+sc.signedOff+' of '+sc.total+')'],
-   ['Open actions', sc.openA+' ('+sc.overdueA+' overdue)'],
-   ['Average time to close an action', sc.avgResolveDays==null?'No data':sc.avgResolveDays+' days'],
-   ['Inspections per month', sc.trend.map(t=>t.label+': '+t.count).join(',  ')]].forEach(r=>text(r[0]+': '+r[1],10));
-  head('Priority risks');
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+  const d=S.riskDoc||{};
+  const NAVY=[30,58,95], GREEN=[22,120,60], AMBER=[180,110,10], RED=[197,32,32], GREY=[110,110,110];
+  const K=_mkPdf('Consultant Review & Feedback', client, d, 'Progress, priorities and the consultant’s feedback for this client.');
+  const { doc, ML, RM, st, A } = K;
+  // Progress at a glance (tiles)
+  K.section('Progress at a glance', NAVY);
+  K.tiles([
+    {num: sc.compliance==null?'-':sc.compliance+'%', label:'Compliance', color: sc.compliance==null?GREY:sc.compliance>=80?GREEN:AMBER, sub:'Inspection items'},
+    {num: sc.signOffRate==null?'-':sc.signOffRate+'%', label:'Sign-off rate', color:NAVY, sub:sc.signedOff+' of '+sc.total},
+    {num: String(sc.openA)+(sc.overdueA?(' / '+sc.overdueA):''), label:'Open actions', color: sc.overdueA?RED:NAVY, sub: sc.overdueA?(sc.overdueA+' overdue'):'none overdue'},
+    {num: sc.avgResolveDays==null?'-':String(sc.avgResolveDays), label:'Avg days to close', color:NAVY, sub:'per action'}
+  ], {cols:4});
+  K.text('Inspections per month: '+sc.trend.map(t=>t.label+' '+t.count).join('   '), 8.5, {color:GREY, gap:1});
+  // Priority risks
+  K.section('Priority risks', RED);
   const priRisks=(S.riskProfile||[]).map(r=>({r,sc:_riskScore(r)})).filter(x=>x.sc.priority==='Critical'||x.sc.priority==='High').sort((a,b)=>(b.sc.rating||0)-(a.sc.rating||0));
-  if(priRisks.length){ priRisks.forEach(x=>text('- ['+x.sc.priority+' '+x.sc.rating+'] '+(x.r.activity||x.r.hazard||'Risk')+(x.r.controls?(' (controls: '+x.r.controls+')'):''),10)); }
-  else text('No critical or high risks recorded.',10);
-  head('Management system gaps');
+  if(priRisks.length){
+    K.table([{header:'RISK',w:104},{header:'PRIORITY',w:34},{header:'CONTROLS',w:40}],
+      priRisks.map(x=>[{text:x.r.activity||x.r.hazard||'Risk', bold:true}, {text:x.sc.priority+' '+x.sc.rating, bold:true, color:x.sc.priority==='Critical'?RED:AMBER}, {text:x.r.controls||'-', color:GREY}]),
+      {headFill:NAVY, headText:[255,255,255]});
+  } else K.text('No critical or high risks recorded.', 9.5, {color:GREY});
+  // Management system gaps
+  K.section('Management system gaps', AMBER);
   const gaps=[]; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if((it.present||it.adequate)&&!(it.present==='Yes'&&it.adequate==='Yes')) gaps.push((s.heading?s.heading+': ':'')+(it.requirement||'requirement')+(it.action?(' (action: '+it.action+')'):'')); }));
-  if(gaps.length){ gaps.forEach(g=>text('- '+g,10)); } else text('No management system gaps recorded.',10);
-  head('Monitoring picture');
-  const m=new Date().toISOString().slice(0,7); const md=S.monitoring?.months?.[m]||{}; const a=_monAutoScores(m);
-  text('Inspections this month: '+a.inspectionsCarried+'  (compliant '+a.scoreCompliant+', opportunity '+a.scoreOpportunity+', non-compliant '+a.scoreNonCompliant+')',10);
-  text('Near misses: '+(md.nearMisses||'0')+'   RIDDORs: '+(md.riddors||'0')+'   Lost time injuries: '+(md.lostTime||'0'),10);
-  head('Open actions');
+  if(gaps.length) gaps.forEach(g=>K.text('- '+g, 9)); else K.text('No management system gaps recorded.', 9.5, {color:GREY});
+  // Monitoring picture
+  K.section('Monitoring picture', NAVY);
+  const m=new Date().toISOString().slice(0,7); const md=(S.monitoring&&S.monitoring.months&&S.monitoring.months[m])||{}; const a2=_monAutoScores(m);
+  K.text('Inspections this month: '+a2.inspectionsCarried+'  (compliant '+a2.scoreCompliant+', opportunity '+a2.scoreOpportunity+', non-compliant '+a2.scoreNonCompliant+')', 9);
+  K.text('Near misses: '+(md.nearMisses||'0')+'    RIDDORs: '+(md.riddors||'0')+'    Lost-time injuries: '+(md.lostTime||'0'), 9);
+  // Open actions
+  K.section('Open actions', NAVY);
   const openActs=(S.actions||[]).filter(x=>!x.resolved);
-  if(openActs.length){ openActs.slice(0,15).forEach(x=>text('- '+(x.itemName||x.issue||'Action')+(x.dueDate?(' (due '+fmtDate(x.dueDate)+')'):''),10)); }
-  else text('No open actions.',10);
-  if(lastRating){ head('Quality rating'); text('Latest: '+lastRating.score+' of 5'+(lastRating.note?(' ('+lastRating.note+')'):'')+' on '+fmtDate(lastRating.date),10); }
-  head('Feedback'); text(fb.feedback||'No feedback entered.',10);
-  head('Suggestions for better ways of working'); text(fb.suggestions||'No suggestions entered.',10);
-  doc.setFontSize(8); doc.setTextColor(150,150,150); doc.text('AHS - Archer Health and Safety  ·  Confidential client feedback',ML,290);
-  const safe=client.replace(/[^a-z0-9]+/gi,'-').toLowerCase();
-  doc.save('feedback-'+safe+'-'+new Date().toISOString().split('T')[0]+'.pdf');
+  if(openActs.length) openActs.slice(0,15).forEach(x=>K.text('- '+(x.itemName||x.issue||'Action')+(x.dueDate?(' (due '+fmtDate(x.dueDate)+')'):''), 9)); else K.text('No open actions.', 9.5, {color:GREY});
+  // Quality rating
+  if(lastRating){ K.section('Quality rating', NAVY); K.text('Latest: '+lastRating.score+' of 5'+(lastRating.note?(' - '+lastRating.note):'')+' on '+fmtDate(lastRating.date), 9.5); }
+  // Feedback + suggestions
+  K.section('Feedback', NAVY);
+  K.text(fb.feedback||'No feedback entered.', 9.5, {color:fb.feedback?[70,70,70]:GREY});
+  K.section('Suggestions for better ways of working', NAVY);
+  K.text(fb.suggestions||'No suggestions entered.', 9.5, {color:fb.suggestions?[70,70,70]:GREY});
+  _pdfFooter(K, d, 'Consultant Review & Feedback');
+  doc.save('feedback-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+new Date().toISOString().split('T')[0]+'.pdf');
   showToast('📄 Feedback report downloaded','success');
+}
+
+// ── H&S Audit report — captures the periodic audit sections, same design language ──
+function downloadAuditReport(){ try{ buildAuditReportPDF(); showToast('✓ Audit report created','success'); }catch(e){ console.error('Audit report failed',e); showToast('Could not build the audit report — see console','error'); } }
+function buildAuditReportPDF(){
+  const a=S.audit||{};
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+  const d=S.riskDoc||{};
+  const RED=[197,32,32], AMBER=[180,110,10], GREEN=[22,120,60], NAVY=[30,58,95], GREY=[110,110,110];
+  const K=_mkPdf('Health & Safety Audit', client, d, 'A periodic review of how the health & safety management process is working.');
+  const { doc, ML, RM, st, A } = K;
+  const fd=(s)=> s ? new Date(s+(s.length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '-';
+  const pm=(s)=> s ? new Date(s+'-01T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}) : '-';
+  const ovMap={ satisfactory:{c:GREEN,t:'Satisfactory - the health & safety process is working well.'}, improvement:{c:AMBER,t:'Improvement required - some areas of the process need attention.'}, unsatisfactory:{c:RED,t:'Unsatisfactory - immediate action is needed.'} };
+  const ovInfo=ovMap[a.overall||'']||{c:GREY,t:'Overall assessment not yet recorded for this audit.'};
+  // 1. Overall verdict
+  K.verdictBox(ovInfo.t, ovInfo.c);
+  // 2. Audit details
+  K.section('Audit details', NAVY);
+  K.kv('Audit date', fd(a.date));
+  K.kv('Period under review', pm(a.period));
+  K.kv('Auditor', a.auditor||'-');
+  // 3. Process observations
+  K.section('Process observations', NAVY);
+  let anyObs=false;
+  [['Consistency of inspections', a.consistency],['Quality of response to issues', a.response],['Trends & recurring issues', a.trends]].forEach(function(o){ const label=o[0], val=o[1]; if(val && String(val).trim()){ anyObs=true; K.text(label, 9.5, {bold:true, color:NAVY}); K.text(String(val), 9.5, {color:[70,70,70], gap:2}); } });
+  if(!anyObs) K.text('No process observations recorded.', 9.5, {color:GREY});
+  // 4. Section-by-section review (table)
+  K.section('Section-by-section review', NAVY);
+  const coms=a.sectionComments||{}; const secs=(S.checklist||[]);
+  if(secs.length){
+    K.table([{header:'SECTION',w:58},{header:'AUDIT OBSERVATIONS',w:120}],
+      secs.map(s=>[{text:s.name, bold:true}, (coms[s.id]&&String(coms[s.id]).trim())?coms[s.id]:{text:'No observations recorded', color:[150,150,150]}]),
+      {headFill:NAVY, headText:[255,255,255]});
+  } else K.text('No checklist sections defined.', 9.5, {color:GREY});
+  // 5. Recommendations
+  K.section('Recommendations & improvements', NAVY);
+  K.text((a.recs&&String(a.recs).trim())?a.recs:'No recommendations recorded.', 9.5, {color:(a.recs&&String(a.recs).trim())?[70,70,70]:GREY});
+  // 6. Sign-off
+  K.section('Sign-off', NAVY);
+  K.text('Auditor: '+(a.sig||a.auditor||'-'), 9.5);
+  K.text('Date signed: '+fd(a.sigDate), 9.5);
+  st.y+=6; K.ensure(24); doc.setDrawColor(180,185,192); doc.line(ML,st.y+14,ML+80,st.y+14); doc.setFontSize(8.5); doc.setTextColor(120,120,120); doc.text('Signature', ML, st.y+19); doc.line(ML+95,st.y+14,ML+95+60,st.y+14); doc.text('Date', ML+95, st.y+19);
+  _pdfFooter(K, d, 'H&S Audit');
+  doc.save('hs-audit-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
 }
 
 let _toastTimer=null;

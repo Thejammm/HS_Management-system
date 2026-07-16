@@ -436,6 +436,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ckx-kpi .ckx-lbl{font-size:14px;font-weight:500;color:var(--text-muted);overflow-wrap:anywhere;}
 .ckx-kpi .ckx-num{font-size:clamp(28px,5.2vw,40px);font-weight:700;line-height:1.05;letter-spacing:-.02em;color:var(--text);overflow-wrap:anywhere;}
 .ckx-kpi .ckx-sub{font-size:12px;color:var(--text-muted);}
+.ckx-kpi.ck-clickable{cursor:pointer;transition:border-color .12s,box-shadow .12s,transform .12s;}
+.ckx-kpi.ck-clickable:hover{border-color:var(--accent);box-shadow:var(--shadow-md);transform:translateY(-2px);}
+.ckx-kpi .ckx-go{font-size:11.5px;font-weight:700;color:var(--accent);opacity:0;transition:opacity .12s;margin-top:2px;}
+.ckx-kpi.ck-clickable:hover .ckx-go{opacity:1;}
 .ckx-row2{display:grid;grid-template-columns:1.7fr 1fr;gap:24px;margin-bottom:24px;}
 @media(max-width:820px){.ckx-row2{grid-template-columns:1fr;}}
 .ckx-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;box-shadow:var(--shadow);}
@@ -624,6 +628,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <!-- View-as switch: preview what each role sees (consultant only) -->
       <span id="viewModeWrap" class="no-print" title="Preview what each role sees">
         <select id="viewModeSelect" onchange="setViewMode(this.value)">
+          <option value="consultant">View: Consultant</option>
           <option value="management">View: Management</option>
           <option value="inspector">View: Inspector</option>
         </select>
@@ -641,23 +646,68 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 </header>
 
+<!-- ══════════ CLIENT HUB — consultant landing (tiles of all clients) ══════════ -->
+<style>
+  #clientHub{display:none;position:fixed;inset:0;z-index:400;background:var(--bg);overflow-y:auto;}
+  #clientHub.on{display:block;}
+  .hub-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1;}
+  .hub-brand{display:flex;align-items:center;gap:12px;min-width:0;}
+  .hub-title{font-size:16px;font-weight:700;line-height:1.2;}
+  .hub-sub{font-size:12px;color:var(--text-muted);}
+  .hub-body{max-width:1140px;margin:0 auto;padding:34px 24px 60px;}
+  .hub-head h1{font-size:clamp(24px,4vw,34px);margin:0 0 6px;}
+  .hub-head p{font-size:14px;color:var(--text-muted);margin:0 0 26px;max-width:660px;line-height:1.5;}
+  .hub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,244px),1fr));gap:18px;}
+  .hub-tile{position:relative;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);padding:22px 20px;cursor:pointer;transition:transform .12s,box-shadow .12s,border-color .12s;text-align:left;min-height:158px;display:flex;flex-direction:column;font-family:inherit;}
+  .hub-tile:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:var(--accent);}
+  .hub-tile .ht-mark{width:46px;height:46px;border-radius:12px;background:var(--accent-light);color:var(--accent-dark);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;margin-bottom:14px;}
+  .hub-tile .ht-name{font-size:16px;font-weight:700;line-height:1.3;overflow-wrap:anywhere;}
+  .hub-tile .ht-meta{font-size:12px;color:var(--text-muted);margin-top:4px;overflow-wrap:anywhere;}
+  .hub-tile .ht-open{margin-top:auto;font-size:12.5px;font-weight:700;color:var(--accent);padding-top:14px;}
+  .hub-tile.ht-add{border-style:dashed;align-items:center;justify-content:center;text-align:center;color:var(--text-muted);}
+  .hub-tile.ht-add:hover{color:var(--accent);}
+  .hub-tile.ht-add .ht-plus{font-size:34px;font-weight:300;line-height:1;margin-bottom:8px;}
+  .hub-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);padding:30px;font-size:14px;}
+</style>
+<div id="clientHub" class="no-print">
+  <div class="hub-top">
+    <div class="hub-brand">
+      <div class="logo-mark">AHS</div>
+      <div>
+        <div class="hub-title">Archer Health &amp; Safety</div>
+        <div class="hub-sub" id="hubUser"></div>
+      </div>
+    </div>
+    <div class="hub-actions">
+      <button class="btn btn-ghost btn-sm" onclick="handleSignOut()">Sign out</button>
+    </div>
+  </div>
+  <div class="hub-body">
+    <div class="hub-head">
+      <h1>My clients</h1>
+      <p>Pick a client to work on. Everything you record is saved to that client and is waiting for you next time you come back — whether that is days, weeks or years.</p>
+    </div>
+    <div class="hub-grid" id="hubGrid"></div>
+  </div>
+</div>
+
 <!-- ══════════ APP SHELL: SIDEBAR + CONTENT ══════════ -->
 <div class="app-shell">
 <aside class="sidebar no-print" id="sidebar">
   <nav class="sidebar-nav">
     <button class="tab-btn" data-tab="cockpit" onclick="switchTab('cockpit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg> Cockpit</button>
+    <button class="tab-btn" data-tab="company" onclick="switchTab('company')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg> Company setup</button>
     <button class="tab-btn" data-tab="risk" onclick="switchTab('risk')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg> Risk profile</button>
-    <button class="tab-btn" data-tab="riskreview" onclick="switchTab('riskreview')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="12" y="6" width="3" height="12"/><rect x="17" y="13" width="3" height="5"/></svg> Risk review</button>
     <button class="tab-btn" data-tab="requirements" onclick="switchTab('requirements')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg> Management system</button>
-    <button class="tab-btn" data-tab="monitoring" onclick="switchTab('monitoring')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Monitoring</button>
-    <button class="tab-btn" data-tab="review" onclick="switchTab('review')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Review</button>
+    <button class="tab-btn" data-tab="monitoring" onclick="switchTab('monitoring')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Assurance records</button>
+    <button class="tab-btn" data-tab="review" onclick="switchTab('review')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Consultant review</button>
     <button class="tab-btn" data-tab="documents" onclick="switchTab('documents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Documents</button>
     <button class="tab-btn" data-tab="reports" onclick="switchTab('reports')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg> Reports</button>
     <button class="tab-btn" data-tab="cas" onclick="switchTab('cas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg> Accreditation</button>
     <button class="tab-btn active" data-tab="inspection" onclick="switchTab('inspection')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg> Inspection</button>
     <button class="tab-btn" data-tab="actions" onclick="switchTab('actions')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Actions <span class="tb-badge" id="badgeActions"></span></button>
     <button class="tab-btn" data-tab="monthly" onclick="switchTab('monthly')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg> Monthly report</button>
-    <button class="tab-btn" data-tab="audit" onclick="switchTab('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg> H&amp;S audit</button>
+    <button class="tab-btn" data-tab="audit" onclick="switchTab('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg> Consultants audit</button>
     <button class="tab-btn" data-tab="setup" onclick="switchTab('setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg> Checklist builder</button>
     <button class="tab-btn" data-tab="admin" id="navAdmin" data-consultant="1" onclick="switchTab('admin')" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg> Admin</button>
   </nav>
@@ -665,17 +715,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <div class="sidebar-backdrop no-print" id="sidebarBackdrop" onclick="toggleSidebar(false)"></div>
 <div class="app-content">
 
-<!-- ══════════ CONSULTANT READ-ONLY BANNER ══════════ -->
+<!-- ══════════ CONSULTANT "WORKING ON CLIENT" BANNER ══════════ -->
 <div id="consultantBar" class="no-print">
   <div class="cbar-inner">
-    <span class="cbar-eye">👁</span>
-    <span>Viewing <span class="cbar-name" id="cbarClientName">client</span></span>
-    <span class="cbar-ro">Read only</span>
+    <span class="cbar-eye">✎</span>
+    <span>Working on <span class="cbar-name" id="cbarClientName">client</span></span>
+    <span class="cbar-ro">Changes saved to this client</span>
     <span class="cbar-fresh" id="cbarFresh"></span>
     <span class="cbar-spacer"></span>
     <button class="cbar-btn" onclick="refreshConsultantView()">↻ Refresh</button>
     <button class="cbar-btn solid" onclick="switchTab('cockpit')">🧭 Cockpit</button>
-    <button class="cbar-btn" onclick="exitConsultantView()">✕ Return to my workspace</button>
+    <button class="cbar-btn" onclick="exitConsultantView()">✕ My clients</button>
   </div>
 </div>
 
@@ -833,6 +883,35 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .risk-card[open]>summary{border-bottom:1px solid var(--border);}
     .risk-card .card-body{padding-top:14px;}
   </style>
+  <!-- ══════════════════════════════════════
+       TAB — COMPANY SETUP (per-client company profile)
+  ══════════════════════════════════════ -->
+  <style>
+    .co-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px;}
+    .co-field{display:flex;flex-direction:column;gap:5px;min-width:0;}
+    .co-field label{font-size:12px;font-weight:600;color:var(--text-muted);}
+    .co-field input,.co-field select,.co-field textarea{width:100%;font-family:inherit;font-size:13.5px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);}
+    .co-field textarea{resize:vertical;min-height:70px;}
+    .co-field.co-wide{grid-column:1/-1;}
+    .co-rowlist{display:flex;flex-direction:column;gap:8px;}
+    .co-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:center;}
+    .co-row.co-row2{grid-template-columns:1fr 2fr auto;}
+    @media(max-width:640px){.co-row,.co-row2{grid-template-columns:1fr;}}
+    .co-row input{width:100%;font-family:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);}
+    .co-del{background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:32px;height:32px;border-radius:7px;font-size:15px;font-weight:700;cursor:pointer;flex-shrink:0;}
+  </style>
+  <div id="tab-company" class="tab-panel">
+    <div class="card no-print" style="margin-bottom:18px;">
+      <div class="card-band"><h3><span class="dot">●</span> Company setup</h3></div>
+      <div class="card-body">
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.5;">
+          Set up this client's company profile. These details identify the business across the system and feed the report headers. Everything here is saved to this client.
+        </div>
+      </div>
+    </div>
+    <div id="companyContainer"></div>
+  </div>
+
   <div id="tab-risk" class="tab-panel">
     <div class="card no-print" style="margin-bottom:18px;">
       <div class="card-band"><h3><span class="dot">●</span> Risk profile</h3>
@@ -840,7 +919,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="card-body">
         <div id="riskRegisterIntro" style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
-          Record the significant health and safety risks — from the activity library, or add your own. Each is tagged with a hazard type and business area. The <strong>Risk review</strong> tab summarises them by category and, with the maturity assessment, gives the overall score.
+          Record the significant health and safety risks — from the activity library, or add your own. Each is tagged with a hazard type and business area. The <strong>Risk review</strong> section further down summarises them by category and, with the maturity assessment, gives the overall score.
         </div>
         <div id="riskRegisterTools" style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-primary no-print" id="addRiskBtn" onclick="addRiskEntry()">＋ Add risk</button>
@@ -860,6 +939,15 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div id="riskAssurance"></div>
     </div>
     <div id="riskProfilerView" style="display:none;"></div>
+
+    <!-- Risk review (merged in from the former Risk review tab) -->
+    <div class="card no-print" id="riskReviewIntro" style="margin:26px 0 18px;">
+      <div class="card-band"><h3><span class="dot">●</span> Risk review</h3></div>
+      <div class="card-body">
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.5;">Everything recorded above, grouped by <strong>hazard type</strong> with its business area, and where each risk sits in the <strong>Plan-Do-Check-Act</strong> cycle, together with the management maturity assessment and overall score. Generate PDFs from the <strong>Reports</strong> tab.</div>
+      </div>
+    </div>
+    <div id="riskReviewContainer"></div>
   </div>
 
   <!-- ══════════════════════════════════════
@@ -889,15 +977,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rr-typetile .rt-n{font-size:26px;font-weight:700;line-height:1;}
     .rr-typetile .rt-l{font-size:12px;font-weight:600;color:var(--text-muted);margin-top:5px;}
   </style>
-  <div id="tab-riskreview" class="tab-panel">
-    <div class="card no-print" style="margin-bottom:18px;">
-      <div class="card-band"><h3><span class="dot">●</span> Risk profile review</h3></div>
-      <div class="card-body">
-        <div style="font-size:13px;color:var(--text-muted);line-height:1.5;">Everything recorded in the risk profile, grouped by <strong>hazard type</strong> with its business area, and where each risk sits in the <strong>Plan-Do-Check-Act</strong> cycle. This is where the improvement work is organised. Generate PDFs from the <strong>Reports</strong> tab.</div>
-      </div>
-    </div>
-    <div id="riskReviewContainer"></div>
-  </div>
+  <!-- Risk review tab merged into Risk profile (#tab-risk) -->
 
   <!-- ══════════════════════════════════════
        TAB — REQUIREMENTS
@@ -2466,6 +2546,7 @@ let S = {
   monitoring: { months:{}, meta:{}, regulatory:[] }, // Phase 4: monthly monitoring dashboard
   review:      { ratings:[], feedback:'', suggestions:'' }, // Stage 2: consultant review (syncs to server)
   cas:         { gates:{}, roles:{}, status:{} }, // Stage 3: CAS accreditation readiness (per tenant)
+  company:     { legalName:'', tradingName:'', regNo:'', sector:'', description:'', phone:'', email:'', website:'', address:'', employees:'', siteCount:'', shifts:'', elciInsurer:'', elciPolicy:'', elciRenewal:'', personnel:[], siteList:[], notes:'' }, // Company setup: per-client company profile
   activeClient: null,   // stores selected client id — saved with the file
   branding:    {
     name:      'AHS Compliance Consulting',
@@ -2608,9 +2689,9 @@ function switchTab(id) {
   // On mobile, selecting a nav item closes the sidebar drawer.
   if(window.matchMedia('(max-width:900px)').matches) toggleSidebar(false);
   if(id==='cockpit')  { renderCockpit(); }
+  if(id==='company')  { renderCompany(); }
   if(id==='reports')  { renderReports(); }
-  if(id==='risk')     { renderRiskProfile(); }
-  if(id==='riskreview'){ renderRiskReview(); }
+  if(id==='risk')     { renderRiskProfile(); renderRiskReview(); }
   if(id==='requirements'){ renderRequirements(); }
   if(id==='monitoring'){ renderMonitoring(); }
   if(id==='review')   { renderReview(); }
@@ -3256,7 +3337,7 @@ function renderChecklist() {
             <div style="display:flex;flex-direction:column;gap:10px;">
               ${item.desc?`<div class="ci-desc">${esc(item.desc)}</div>`:''}
               <div id="tbl-${item.id}">${_renderQcTableInner(item.id, cols, rows)}</div>
-              ${_consultantView?'':`<div><button type="button" class="btn btn-ghost btn-sm" onclick="addTableRow('${item.id}')">+ Add row</button></div>`}
+              ${_roLocked()?'':`<div><button type="button" class="btn btn-ghost btn-sm" onclick="addTableRow('${item.id}')">+ Add row</button></div>`}
             </div>
           </div>`;
         return;
@@ -3452,7 +3533,7 @@ function removeTableRow(itemId, ri){
   saveData();
 }
 function updateTableCell(itemId, ri, ci, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   if(!S.draft.results) S.draft.results = {};
   const rows = Array.isArray(S.draft.results[itemId]) ? S.draft.results[itemId] : [];
   while(rows.length <= ri) rows.push([]);
@@ -4013,7 +4094,7 @@ function renderActions() {
             ${a.resolved?`<span style="color:var(--success)">✓ ${fmtDate(a.resolvedAt?.slice(0,10))} · ${esc(a.resolvedBy)}</span>`:''}
           </div>
         </div>
-        ${_consultantView?'':`<button class="no-print" onclick="deleteAction('${a.id}')" title="Remove this action item" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:28px;height:28px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;align-self:flex-start;">✕</button>`}
+        ${_roLocked()?'':`<button class="no-print" onclick="deleteAction('${a.id}')" title="Remove this action item" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:28px;height:28px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;align-self:flex-start;">✕</button>`}
       </div>
       <div style="font-size:13px;margin-bottom:${a.assignedTo?'6px':'0'};"><strong>Issue:</strong> ${esc(a.issue)}</div>
       ${a.assignedTo?`<div style="font-size:13px;color:var(--text-muted);"><strong>Assigned:</strong> ${esc(a.assignedTo)}</div>`:''}
@@ -5614,27 +5695,38 @@ function flushDraft(){
 }
 
 function saveData(){
-  // Consultant read-only dial-in: never write anywhere (not localStorage, not the
-  // server) so viewing a client cannot overwrite their data. See cockpit module.
-  if(_consultantView) return;
+  // Consultant working on a client (dial-in) is READ-WRITE: the edits go to the
+  // client's server record (Auth.activeTenantId() is the client's tenant while
+  // dialled in). We do NOT cache the client's data in the consultant's own
+  // localStorage — that would overwrite the consultant's workspace on exit — so
+  // during dial-in we skip the local write and sync to the server only.
+  const inClient = !!_consultantView;
   flushDraft();
-  const payload={meta:{version:3,savedAt:new Date().toISOString(),appKey:'ahs:workplace-inspection:v3'},S};
-  // Always write to localStorage as a cache / offline fallback
-  try{
-    localStorage.setItem('ahs:workplace-inspection:v3',JSON.stringify(payload));
-    const el=document.getElementById('saveIndicator');
-    if(el) el.textContent='Saved '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  }catch(e){if(!_quotaWarn){_quotaWarn=true;showToast('Local storage full','error');}}
+  if(!inClient){
+    const payload={meta:{version:3,savedAt:new Date().toISOString(),appKey:'ahs:workplace-inspection:v3'},S};
+    // Own workspace: write to localStorage as a cache / offline fallback
+    try{
+      localStorage.setItem('ahs:workplace-inspection:v3',JSON.stringify(payload));
+      const el=document.getElementById('saveIndicator');
+      if(el) el.textContent='Saved '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    }catch(e){if(!_quotaWarn){_quotaWarn=true;showToast('Local storage full','error');}}
+  }
   // If signed in, ALSO sync to server (best-effort, async). A failed server
   // save used to be silent — which made changes appear to "come back" after a
   // refresh (the server still held the old data). Surface it now.
   if(Auth.isSignedIn() && Auth.activeTenantId()){
     _ownSaveInFlight = true;   // pause the freshness poll from reloading our own change
     Auth.saveToServer(S).then(res => {
-      if(res && res.updatedAt) _ownLastUpd = res.updatedAt;   // our own updatedAt; poll won't treat it as new
+      if(res && res.updatedAt){
+        _ownLastUpd = res.updatedAt;   // our own updatedAt; poll won't treat it as new
+        // Dial-in has its own poll keyed on _consultantLastUpd — keep it in step
+        // so the consultant's own save is not reloaded as if it were remote.
+        if(inClient){ _consultantLastUpd = res.updatedAt; _setFreshLabel(); }
+      }
       const el=document.getElementById('saveIndicator');
       if(res){
-        if(el){ el.textContent='Saved to server '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); el.style.color=''; }
+        const where = inClient ? ('Saved to '+ (_consultantView?.name||'client')) : 'Saved to server';
+        if(el){ el.textContent=where+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); el.style.color=''; }
         _serverSaveWarned = false;
       } else {
         if(el){ el.textContent='⚠ Not saved to server — changes are on this device only'; el.style.color='var(--danger)'; }
@@ -5802,7 +5894,12 @@ function _updateAuthIndicator(){
       if(user.role === 'consultant'){ cPick.classList.add('on'); populateClientPicker(); }
       else cPick.classList.remove('on');
     }
+    // A signed-in consultant who is not currently in a client lands on the
+    // client hub (tiles of all clients).
+    if(user.role === 'consultant' && !_consultantView) showClientHub();
+    else if(user.role !== 'consultant') hideClientHub();
   } else {
+    hideClientHub();
     if(inBtn)  inBtn.style.display  = 'inline-flex';
     if(outBtn) outBtn.style.display = 'none';
     if(ind){
@@ -5815,8 +5912,9 @@ function _updateAuthIndicator(){
   }
   // Refresh dashboard visibility
   renderManagerDashboard();
-  // Role drives the view: a client_user is locked to the inspector view.
-  _viewMode = (Auth.user()?.role === 'client_user') ? 'inspector' : 'management';
+  // Role drives the view: a client_user is locked to the inspector view;
+  // the consultant defaults to the full consultant view.
+  _viewMode = (Auth.user()?.role === 'client_user') ? 'inspector' : 'consultant';
   applyViewMode();
 }
 
@@ -6218,6 +6316,9 @@ async function submitAddTenant(){
     `<button class="btn btn-primary" onclick="closeModal()">Done</button>`
   );
   loadAndRenderAdminData();
+  // Keep the client hub tiles and the header picker in step with the new client.
+  if(document.getElementById('clientHub')?.classList.contains('on')) renderClientHub();
+  if(typeof populateClientPicker === 'function') populateClientPicker();
 }
 
 // ── Add User modal ──
@@ -6893,6 +6994,11 @@ function migrateLoadedState(){
   if(!Array.isArray(S.review.ratings)) S.review.ratings = [];
   if(typeof S.review.feedback !== 'string') S.review.feedback = '';
   if(typeof S.review.suggestions !== 'string') S.review.suggestions = '';
+  // Company setup: per-client company profile (additive; older saves get the shape)
+  if(!S.company || typeof S.company !== 'object') S.company = {};
+  ['legalName','tradingName','regNo','sector','description','phone','email','website','address','employees','siteCount','shifts','elciInsurer','elciPolicy','elciRenewal','notes'].forEach(k=>{ if(typeof S.company[k] !== 'string') S.company[k] = ''; });
+  if(!Array.isArray(S.company.personnel)) S.company.personnel = [];
+  if(!Array.isArray(S.company.siteList))  S.company.siteList  = [];
   try {
     if(!S.review.ratings.length && !S.review.feedback && !S.review.suggestions){
       const ck = (typeof _reviewClientKey === 'function') ? _reviewClientKey() : null;
@@ -9506,25 +9612,35 @@ let _consultantPoll    = null;  // polling timer id
 let _consultantLastUpd = null;  // last seen server updatedAt
 let _consultantTenants = [];    // cached tenant list for the picker
 
-// ── Role-based views: management (consultant) vs inspector (client staff) ──
-// A logged-in client_user only sees the operational tabs; the consultant sees
-// everything and can preview the inspector view with the header switch.
-let _viewMode = 'management';
-const INSPECTOR_TABS = ['inspection','actions'];
+// ── Role-based views: three tiers ─────────────────────────────────
+//   consultant  — everything, incl. Admin + client switching (Simon)
+//   management  — client owner: everything except Admin / cross-client
+//   inspector   — client staff: operational tabs only
+// A logged-in client_user is locked to inspector; the consultant defaults
+// to consultant view and can preview the other tiers with the header switch.
+let _viewMode = 'consultant';
+const INSPECTOR_TABS = ['inspection','actions','monthly'];
+const VIEW_MODES = ['consultant','management','inspector'];
 function _canSwitchView(){ return (Auth.user()?.role) !== 'client_user'; }
-function setViewMode(mode){ _viewMode = (mode==='inspector') ? 'inspector' : 'management'; applyViewMode(); }
+function setViewMode(mode){ _viewMode = VIEW_MODES.includes(mode) ? mode : 'management'; applyViewMode(); }
 function applyViewMode(){
-  const insp = _viewMode === 'inspector';
+  const mode = _viewMode;
+  const insp = mode === 'inspector';
   const isConsultant = (Auth.user()?.role) === 'consultant';
   document.querySelectorAll('.tab-btn').forEach(b=>{
     const t=b.getAttribute('data-tab');
-    let show = (!insp || INSPECTOR_TABS.includes(t));
-    // Consultant-only tabs (e.g. Admin) stay hidden for everyone else.
+    // Base visibility by tier.
+    let show;
+    if(insp)                    show = INSPECTOR_TABS.includes(t);
+    else if(mode==='management') show = (t!=='admin');   // owner sees all but Admin
+    else                         show = true;            // consultant sees all
+    // Admin (and any data-consultant tab) is reserved for the consultant role.
     if(b.hasAttribute('data-consultant') && !isConsultant) show = false;
     b.style.display = show ? '' : 'none';
   });
   const active = document.querySelector('.tab-btn.active');
   if(insp && active && !INSPECTOR_TABS.includes(active.getAttribute('data-tab'))){ switchTab('inspection'); }
+  if(mode==='management' && active && active.getAttribute('data-tab')==='admin'){ switchTab('cockpit'); }
   if(insp){ const cp=document.getElementById('consultantPicker'); if(cp) cp.classList.remove('on'); }
   const ib=document.getElementById('inspectorBar'); if(ib) ib.classList.toggle('on', insp && _canSwitchView());
   const vw=document.getElementById('viewModeWrap'); if(vw) vw.classList.toggle('on', _canSwitchView());
@@ -9534,9 +9650,16 @@ function applyViewMode(){
   document.body.classList.toggle('inspector-mode', insp);
 }
 
+// Consultant dial-in is READ-WRITE: when Simon picks a client to work on, his
+// edits save to that client's record. _consultantEdit stays true so the old
+// read-only gates (routed through _roLocked) never fire. Flip it to false if a
+// read-only "just viewing" mode is ever wanted again — every guard honours it.
+let _consultantEdit = true;
+function _roLocked(){ return !!(_consultantView && !_consultantEdit); }
+
 function _blockIfReadOnly(){
-  if(_consultantView){
-    showToast('Read only: viewing ' + _consultantView.name, 'info');
+  if(_roLocked()){
+    showToast('Read only: viewing ' + (_consultantView?.name||'client'), 'info');
     return true;
   }
   return false;
@@ -9560,6 +9683,54 @@ function onConsultantPick(tenantId){
   enterConsultantView(tenantId, t?.name || tenantId, t?.config || {});
 }
 
+// ── Client hub: the consultant's landing screen of client tiles ──
+function _isConsultantUser(){ return (Auth.user && Auth.user()?.role) === 'consultant'; }
+
+function showClientHub(){
+  const h = document.getElementById('clientHub');
+  if(h) h.classList.add('on');
+  renderClientHub();
+}
+function hideClientHub(){
+  const h = document.getElementById('clientHub');
+  if(h) h.classList.remove('on');
+}
+
+async function renderClientHub(){
+  const uEl = document.getElementById('hubUser');
+  if(uEl){ const me = Auth.user && Auth.user(); uEl.textContent = me ? ('Signed in as ' + (me.name || me.email)) : ''; }
+  const grid = document.getElementById('hubGrid');
+  if(!grid) return;
+  grid.innerHTML = '<div class="hub-empty">Loading your clients...</div>';
+  let tenants = [];
+  try { const r = await fetch('/api/admin/tenants', { credentials:'include' }).then(r=>r.json()); tenants = r.tenants || []; }
+  catch(e){ tenants = []; }
+  _consultantTenants = tenants;
+  const initials = n => (n||'?').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase() || '?';
+  const tiles = tenants.map(t => `
+    <button class="hub-tile" onclick="openClientFromHub('${esc(t.id)}')">
+      <div class="ht-mark">${esc(initials(t.name||t.id))}</div>
+      <div class="ht-name">${esc(t.name||t.id)}</div>
+      <div class="ht-meta">${esc(t.id)}</div>
+      <div class="ht-open">Open workspace &rarr;</div>
+    </button>`).join('');
+  const addTile = `
+    <button class="hub-tile ht-add" onclick="openAddTenantModal()">
+      <div class="ht-plus">+</div>
+      <div class="ht-name" style="color:inherit;">Add client</div>
+      <div class="ht-meta">Create a company and its login</div>
+    </button>`;
+  grid.innerHTML = (tenants.length ? tiles : '<div class="hub-empty">No clients yet. Add your first one below.</div>') + addTile;
+}
+
+function openClientFromHub(tenantId){
+  const t = _consultantTenants.find(x => x.id === tenantId);
+  hideClientHub();
+  enterConsultantView(tenantId, t?.name || tenantId, t?.config || {});
+  const sel = document.getElementById('consultantClientSelect');
+  if(sel) sel.value = tenantId;
+}
+
 async function _fetchTenantState(tenantId){
   return fetch(`/api/state?tenantId=${encodeURIComponent(tenantId)}`, { credentials:'include' }).then(r=>r.json());
 }
@@ -9568,6 +9739,7 @@ async function enterConsultantView(tenantId, name, config){
   let payload;
   try { payload = await _fetchTenantState(tenantId); }
   catch(e){ showToast('Could not load that client','error'); return; }
+  hideClientHub();
   _consultantView    = { tenantId, name, config: config || {} };
   Auth.setActiveTenant(tenantId);
   _consultantLastUpd = payload?.updatedAt || null;
@@ -9579,7 +9751,7 @@ async function enterConsultantView(tenantId, name, config){
   _stopOwnPoll();            // dial-in uses its own read-only poll
   _startConsultantPoll();
   switchTab('cockpit');
-  showToast('👁 Viewing ' + name + ' (read only)','info');
+  showToast('✎ Working on ' + name,'info');
 }
 
 function exitConsultantView(silent){
@@ -9594,7 +9766,10 @@ function exitConsultantView(silent){
   _applyConsultantChrome();
   const sel = document.getElementById('consultantClientSelect');
   if(sel) sel.value = '';
-  if(!silent && was) showToast('Returned to your workspace','info');
+  // A consultant returns to their client hub (the tiles landing), not a blank
+  // workspace. Client_users / offline never see the hub.
+  if(_isConsultantUser()) showClientHub();
+  if(!silent && was) showToast('Back to my clients','info');
 }
 
 function _applyConsultantChrome(){
@@ -9619,8 +9794,11 @@ function _setFreshLabel(){
     : '';
 }
 
-async function refreshConsultantView(){
+async function refreshConsultantView(auto){
   if(!_consultantView) return;
+  // Auto (30s) refresh must never fight the consultant's own edit or in-flight
+  // save — dial-in is read-write now. A manual Refresh (auto falsy) still pulls.
+  if(auto && (_isEditing() || _ownSaveInFlight)) return;
   try {
     const payload = await _fetchTenantState(_consultantView.tenantId);
     const upd = payload?.updatedAt || null;
@@ -9635,7 +9813,7 @@ async function refreshConsultantView(){
   } catch(e){ /* keep showing the last good copy */ }
 }
 
-function _startConsultantPoll(){ _stopConsultantPoll(); _consultantPoll = setInterval(refreshConsultantView, 30000); }
+function _startConsultantPoll(){ _stopConsultantPoll(); _consultantPoll = setInterval(()=>refreshConsultantView(true), 30000); }
 function _stopConsultantPoll(){ if(_consultantPoll){ clearInterval(_consultantPoll); _consultantPoll = null; } }
 
 // ══════════════════════════════════════════════════════════════
@@ -9693,8 +9871,108 @@ function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null;
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),
     draft:{typeId:'garage_inspection',results:{},notes:{},actionDetails:{},rectifyDetails:{},formData:{},periodFrom:'',periodTo:'',manager:'',location:'',ref:'',freq:'weekly',generalNotes:'',title:'',inspType:''},
-    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, activeClient:null, branding:S.branding };
+    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, activeClient:null, branding:S.branding };
 }
+
+// ══════════════════════════════════════════════════════════════
+//  COMPANY SETUP — per-client company profile (the tab that "builds
+//  the client and sets up the company"). Stored in S.company, syncs
+//  per tenant. The company name mirrors into S.branding.name so it
+//  flows to the header, cockpit and report letterheads.
+// ══════════════════════════════════════════════════════════════
+function _companyState(){
+  if(!S.company || typeof S.company !== 'object') S.company = {};
+  if(!Array.isArray(S.company.personnel)) S.company.personnel = [];
+  if(!Array.isArray(S.company.siteList))  S.company.siteList  = [];
+  return S.company;
+}
+
+function renderCompany(){
+  const cont = document.getElementById('companyContainer');
+  if(!cont) return;
+  const c = _companyState();
+  const dis = _roLocked() ? ' disabled' : '';
+  const f  = (key,label,ph,type)=>`<div class="co-field"><label>${label}</label><input type="${type||'text'}" value="${esc(c[key]||'')}" placeholder="${esc(ph||'')}" oninput="updateCompanyField('${key}',this.value)"${dis}></div>`;
+  const ta = (key,label,ph)=>`<div class="co-field co-wide"><label>${label}</label><textarea placeholder="${esc(ph||'')}" oninput="updateCompanyField('${key}',this.value)"${dis}>${esc(c[key]||'')}</textarea></div>`;
+  const sectorOpts = ['','Construction','Manufacturing','Warehouse & logistics','Transport & logistics','Retail','Hospitality & catering','Office / professional services','Healthcare','Care home','Education','Agriculture','Motor trade','Property / facilities management','Other'];
+  const sectorSel = `<div class="co-field"><label>Sector / industry</label><select oninput="updateCompanyField('sector',this.value)"${dis}>${sectorOpts.map(o=>`<option value="${esc(o)}"${(c.sector||'')===o?' selected':''}>${esc(o||'Select...')}</option>`).join('')}</select></div>`;
+
+  const personnel = c.personnel.map((p,i)=>`
+    <div class="co-row">
+      <input value="${esc(p.role||'')}" placeholder="Role (e.g. Responsible person, First aider)" oninput="updateCompanyPerson(${i},'role',this.value)"${dis}>
+      <input value="${esc(p.name||'')}" placeholder="Name" oninput="updateCompanyPerson(${i},'name',this.value)"${dis}>
+      <input value="${esc(p.contact||'')}" placeholder="Phone / email" oninput="updateCompanyPerson(${i},'contact',this.value)"${dis}>
+      ${dis?'':`<button class="co-del" title="Remove" onclick="removeCompanyPerson(${i})">&times;</button>`}
+    </div>`).join('') || '<div style="font-size:12.5px;color:var(--text-muted);">No key people added yet.</div>';
+
+  const sites = c.siteList.map((s,i)=>`
+    <div class="co-row co-row2">
+      <input value="${esc(s.name||'')}" placeholder="Site name" oninput="updateCompanySite(${i},'name',this.value)"${dis}>
+      <input value="${esc(s.address||'')}" placeholder="Address" oninput="updateCompanySite(${i},'address',this.value)"${dis}>
+      ${dis?'':`<button class="co-del" title="Remove" onclick="removeCompanySite(${i})">&times;</button>`}
+    </div>`).join('') || '<div style="font-size:12.5px;color:var(--text-muted);">No sites added yet. Add each site or location the client operates from.</div>';
+
+  cont.innerHTML = `
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Company identity</h3></div><div class="card-body"><div class="co-grid">
+      ${f('legalName','Registered / legal name','As registered at Companies House')}
+      ${f('tradingName','Trading name','If different from the legal name')}
+      ${f('regNo','Company registration no.','e.g. 01234567')}
+      ${sectorSel}
+      ${ta('description','Nature of business','A short description of what the business does')}
+    </div></div></div>
+
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Contact</h3></div><div class="card-body"><div class="co-grid">
+      ${f('phone','Main phone','','tel')}
+      ${f('email','Main email','name@company.co.uk','email')}
+      ${f('website','Website','https://')}
+      ${ta('address','Registered / main address','Street, town, postcode')}
+    </div></div></div>
+
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Scale of the business</h3></div><div class="card-body"><div class="co-grid">
+      ${f('employees','Number of employees','e.g. 24','number')}
+      ${f('siteCount','Number of sites / locations','e.g. 3','number')}
+      ${f('shifts','Working hours / shift pattern','e.g. Mon-Fri 08:00-17:00')}
+    </div></div></div>
+
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Key personnel</h3></div><div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;line-height:1.5;">The people with health and safety responsibilities: the responsible person / senior manager, the competent person, first aiders, fire wardens.</div>
+      <div class="co-rowlist">${personnel}</div>
+      ${dis?'':`<button class="btn btn-outline btn-sm no-print" style="margin-top:10px;" onclick="addCompanyPerson()">+ Add person</button>`}
+    </div></div>
+
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Sites &amp; locations</h3></div><div class="card-body">
+      <div class="co-rowlist">${sites}</div>
+      ${dis?'':`<button class="btn btn-outline btn-sm no-print" style="margin-top:10px;" onclick="addCompanySite()">+ Add site</button>`}
+    </div></div>
+
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Employers' liability insurance</h3></div><div class="card-body"><div class="co-grid">
+      ${f('elciInsurer','Insurer','')}
+      ${f('elciPolicy','Policy number','')}
+      ${f('elciRenewal','Renewal date','','date')}
+    </div></div></div>
+
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Notes</h3></div><div class="card-body"><div class="co-grid">
+      ${ta('notes','Any other useful background','')}
+    </div></div></div>`;
+}
+
+function updateCompanyField(key, val){
+  if(_roLocked()) return;
+  _companyState()[key] = val;
+  // Mirror the client's name into branding.name so it flows to the header,
+  // cockpit and report letterheads. Trading name wins, else the legal name.
+  if(key === 'legalName' || key === 'tradingName'){
+    const nm = (_companyState().tradingName || _companyState().legalName || '').trim();
+    if(nm){ if(!S.branding) S.branding = {}; S.branding.name = nm; if(typeof updateHeaderTitle === 'function') updateHeaderTitle(); }
+  }
+  scheduleAutoSave();
+}
+function updateCompanyPerson(i, key, val){ if(_roLocked()) return; const a=_companyState().personnel; if(a[i]){ a[i][key]=val; scheduleAutoSave(); } }
+function updateCompanySite(i, key, val){ if(_roLocked()) return; const a=_companyState().siteList; if(a[i]){ a[i][key]=val; scheduleAutoSave(); } }
+function addCompanyPerson(){ if(_roLocked()) return; _companyState().personnel.push({role:'',name:'',contact:''}); saveData(); renderCompany(); }
+function removeCompanyPerson(i){ if(_roLocked()) return; _companyState().personnel.splice(i,1); saveData(); renderCompany(); }
+function addCompanySite(){ if(_roLocked()) return; _companyState().siteList.push({name:'',address:''}); saveData(); renderCompany(); }
+function removeCompanySite(i){ if(_roLocked()) return; _companyState().siteList.splice(i,1); saveData(); renderCompany(); }
 
 // ── Cockpit home: at-a-glance picture for the selected client ──
 function _cockpitClientName(){
@@ -9726,7 +10004,9 @@ function _casStats(){
 // renderCockpit computes the context ONCE (x) and renders an ordered layout of
 // widget ids. The default layout reproduces the original fixed cockpit exactly;
 // a per-client layout (Phase 2) will simply reorder / omit ids here.
-const _ckKpi  = (label,num,sub,colour) => `<div class="ckx-kpi"><div class="ckx-lbl">${label}</div><div class="ckx-num"${colour?` style="color:${colour};"`:''}>${num}</div>${sub?`<div class="ckx-sub">${sub}</div>`:''}</div>`;
+// A KPI tile. Pass `link` (a tab id) to make the whole tile a click-through to
+// the tab it summarises — the cockpit is a "viewer with a link to what it shows".
+const _ckKpi  = (label,num,sub,colour,link) => `<div class="ckx-kpi${link?' ck-clickable':''}"${link?` onclick="switchTab('${link}')" title="Open ${label}"`:''}><div class="ckx-lbl">${label}</div><div class="ckx-num"${colour?` style="color:${colour};"`:''}>${num}</div>${sub?`<div class="ckx-sub">${sub}</div>`:''}${link?'<div class="ckx-go">Open &rarr;</div>':''}</div>`;
 const _ckLeg  = (colour,label,val) => `<div class="row"><span><span class="dot" style="background:${colour};"></span>${label}</span><span style="font-weight:600;color:var(--text);">${val}</span></div>`;
 const _ckMod  = (title,body) => `<div class="ck-card"><h4>${title}</h4>${body}</div>`;
 const _ckPend = note => `<div class="ck-pending">${note}</div>`;
@@ -9796,12 +10076,12 @@ function _cockpitContext(){
 
 // The registry. group = which zone/container the widget belongs in.
 const COCKPIT_WIDGETS = {
-  kpiFatal:       { id:'kpiFatal', label:'Fatal-potential risks', group:'KPI', render:x=>_ckKpi('Fatal-potential risks', x.RD.sif.length, x.RD.sifUncontrolled.length?(x.RD.sifUncontrolled.length+' uncontrolled'):(x.RD.sif.length?'all have controls':'none recorded'), x.RD.sifUncontrolled.length?'var(--danger)':(x.RD.sif.length?'var(--warning)':'')) },
-  kpiHighCrit:    { id:'kpiHighCrit', label:'High and critical risks', group:'KPI', render:x=>_ckKpi('High and critical risks', x.highRisk.length, x.risks.length+' in the profile', x.highRisk.length?'var(--danger)':'') },
-  kpiOpenActions: { id:'kpiOpenActions', label:'Open actions', group:'KPI', render:x=>_ckKpi('Open actions', x.openA, x.overdueA?(x.overdueA+' overdue'):'None overdue', x.overdueA?'var(--danger)':'') },
-  kpiMgmtGaps:    { id:'kpiMgmtGaps', label:'Management system gaps', group:'KPI', render:x=>_ckKpi('Management system gaps', x.reqG.gaps, x.reqG.assessed+' assessed', x.reqG.gaps?'var(--warning)':'') },
-  kpiCompleteness:{ id:'kpiCompleteness', label:'Assessment completeness', group:'KPI', render:x=>_ckKpi('Assessment completeness', x.RD.completeness+'%', x.RD.completeness<100?'still being built':'complete', x.RD.completeness<60?'var(--warning)':'') },
-  kpiInspections: { id:'kpiInspections', label:'Inspections', group:'KPI', render:x=>_ckKpi('Inspections', x.insps.length, x.signedOff+' signed off · '+x.awaiting+' awaiting') },
+  kpiFatal:       { id:'kpiFatal', label:'Fatal-potential risks', group:'KPI', render:x=>_ckKpi('Fatal-potential risks', x.RD.sif.length, x.RD.sifUncontrolled.length?(x.RD.sifUncontrolled.length+' uncontrolled'):(x.RD.sif.length?'all have controls':'none recorded'), x.RD.sifUncontrolled.length?'var(--danger)':(x.RD.sif.length?'var(--warning)':''), 'risk') },
+  kpiHighCrit:    { id:'kpiHighCrit', label:'High and critical risks', group:'KPI', render:x=>_ckKpi('High and critical risks', x.highRisk.length, x.risks.length+' in the profile', x.highRisk.length?'var(--danger)':'', 'risk') },
+  kpiOpenActions: { id:'kpiOpenActions', label:'Open actions', group:'KPI', render:x=>_ckKpi('Open actions', x.openA, x.overdueA?(x.overdueA+' overdue'):'None overdue', x.overdueA?'var(--danger)':'', 'actions') },
+  kpiMgmtGaps:    { id:'kpiMgmtGaps', label:'Management system gaps', group:'KPI', render:x=>_ckKpi('Management system gaps', x.reqG.gaps, x.reqG.assessed+' assessed', x.reqG.gaps?'var(--warning)':'', 'requirements') },
+  kpiCompleteness:{ id:'kpiCompleteness', label:'Assessment completeness', group:'KPI', render:x=>_ckKpi('Assessment completeness', x.RD.completeness+'%', x.RD.completeness<100?'still being built':'complete', x.RD.completeness<60?'var(--warning)':'', 'risk') },
+  kpiInspections: { id:'kpiInspections', label:'Inspections', group:'KPI', render:x=>_ckKpi('Inspections', x.insps.length, x.signedOff+' signed off · '+x.awaiting+' awaiting', '', 'inspection') },
   chartInspections:{ id:'chartInspections', label:'Inspections by month', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Inspections by month</h4><svg viewBox="0 0 ${x.BW} ${x.BH}" width="100%" style="max-height:200px;">${x.barSvg}</svg></div>` },
   chartCompliance:{ id:'chartCompliance', label:'Compliance', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Compliance</h4><div class="ckx-donut-wrap">${x.donut}<div class="ckx-legend">${_ckLeg('var(--success)','Pass',x.pass)}${_ckLeg('#6EE7B7','Rectified',x.rect)}${_ckLeg('var(--warning)','Action',x.act)}</div><button class="ck-link" onclick="switchTab('monthly')">View monthly report</button></div></div>` },
   riskVsMaturity: { id:'riskVsMaturity', label:'Risk exposure vs maturity', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;">${_riskVsMaturityHTML({heading:'Risk exposure vs management maturity'})}</div>` },
@@ -9845,11 +10125,11 @@ const COCKPIT_WIDGETS = {
   // Dials & gauges — richer visuals, OFF by default (enable per client in the customiser).
   gaugeCompleteness:{ id:'gaugeCompleteness', label:'Completeness gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Assessment completeness', `${_gaugeSVG(x.RD.completeness)}<div class="ck-pending" style="text-align:center;margin-top:2px;">of the assessment complete</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Open risk profile</button>`) },
   gaugeCompliance:  { id:'gaugeCompliance', label:'Compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Inspection compliance', `${_gaugeSVG(x.compliance==null?0:x.compliance,{text:x.compliance==null?'--':x.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">pass + rectified</div><button class="ck-link" onclick="switchTab('monthly')" style="align-self:center;">Monthly report</button>`) },
-  gaugeMaturity:    { id:'gaugeMaturity', label:'Maturity gauge', group:'Gauge', defaultOff:true, render:x=>{ const a=x.RD.overallMat.avg; return _ckMod('Management maturity', `${_gaugeSVG(a==null?0:a/5*100,{text:a==null?'--':a.toFixed(1)})}<div class="ck-pending" style="text-align:center;margin-top:2px;">out of 5 (HSG65)</div><button class="ck-link" onclick="switchTab('riskreview')" style="align-self:center;">Risk review</button>`); } },
-  tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><button class="ck-link" onclick="switchTab('riskreview')" style="align-self:center;">Risk review</button>`) },
+  gaugeMaturity:    { id:'gaugeMaturity', label:'Maturity gauge', group:'Gauge', defaultOff:true, render:x=>{ const a=x.RD.overallMat.avg; return _ckMod('Management maturity', `${_gaugeSVG(a==null?0:a/5*100,{text:a==null?'--':a.toFixed(1)})}<div class="ck-pending" style="text-align:center;margin-top:2px;">out of 5 (HSG65)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk review</button>`); } },
+  tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk review</button>`) },
   gaugeAccreditation:{ id:'gaugeAccreditation', label:'Accreditation gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Accreditation readiness', `${_gaugeSVG(x.cas.pctReady==null?0:x.cas.pctReady,{text:x.cas.pctReady==null?'--':x.cas.pctReady+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">criteria ready</div><button class="ck-link" onclick="switchTab('cas')" style="align-self:center;">Open accreditation</button>`) },
   gaugeMgmtCompliance:{ id:'gaugeMgmtCompliance', label:'Mgmt-system compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Management-system compliance', `${_gaugeSVG(x.reqStats.compliance==null?0:x.reqStats.compliance,{text:x.reqStats.compliance==null?'--':x.reqStats.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">requirements met</div><button class="ck-link" onclick="switchTab('requirements')" style="align-self:center;">Open management system</button>`) },
-  gaugeSifControl:  { id:'gaugeSifControl', label:'Fatal-risk control gauge', group:'Gauge', defaultOff:true, render:x=>{ const t=x.RD.sif.length, pct=t?Math.round((t-x.RD.sifUncontrolled.length)/t*100):0; return _ckMod('Fatal-risk control', `${_gaugeSVG(pct,{text:t?pct+'%':'n/a'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${t?('of '+t+' fatal-potential controlled'):'no fatal-potential risks'}</div><button class="ck-link" onclick="switchTab('riskreview')" style="align-self:center;">Risk review</button>`); } },
+  gaugeSifControl:  { id:'gaugeSifControl', label:'Fatal-risk control gauge', group:'Gauge', defaultOff:true, render:x=>{ const t=x.RD.sif.length, pct=t?Math.round((t-x.RD.sifUncontrolled.length)/t*100):0; return _ckMod('Fatal-risk control', `${_gaugeSVG(pct,{text:t?pct+'%':'n/a'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${t?('of '+t+' fatal-potential controlled'):'no fatal-potential risks'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk review</button>`); } },
 };
 
 // Cockpit zones = ordered containers, one per widget group. The default order.
@@ -9960,7 +10240,7 @@ function renderCockpit(){
   const x = _cockpitContext();
   const custom = _canCustomiseCockpit()
     ? `<button class="btn btn-ghost btn-sm no-print" style="margin-left:auto;" onclick="toggleCockpitEditor()">${_cockpitEditorOpen?'Close customiser':'⚙ Customise'}</button>` : '';
-  const head = `<div class="ck-head"><h2>${esc(_cockpitClientName())}</h2><span class="ck-sub">${_consultantView ? 'Consultant view (read only)' : 'Client cockpit'}</span>${custom}</div>`;
+  const head = `<div class="ck-head"><h2>${esc(_cockpitClientName())}</h2><span class="ck-sub">${_consultantView ? 'Consultant · working on this client' : 'Client cockpit'}</span>${custom}</div>`;
   const editor = (_cockpitEditorOpen && _canCustomiseCockpit()) ? _cockpitEditorHTML() : '';
   const zones = _cockpitLayout().map(z => {
     const inner = z.ids.map(id => { const w = COCKPIT_WIDGETS[id]; return (w && w.render) ? w.render(x) : ''; }).join('');
@@ -10314,7 +10594,7 @@ function deleteRiskEntry(id){
 }
 
 function updateRiskField(id, field, value){
-  if(_consultantView) return; // read-only safety
+  if(_roLocked()) return; // read-only safety
   const r = (S.riskProfile||[]).find(x => x.id === id);
   if(!r) return;
   r[field] = value;
@@ -10339,7 +10619,7 @@ function updateRiskField(id, field, value){
 }
 
 function togglePersonAtRisk(id, p){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const r = (S.riskProfile||[]).find(x => x.id === id);
   if(!r) return;
   if(!Array.isArray(r.personsAtRisk)) r.personsAtRisk = [];
@@ -10350,7 +10630,7 @@ function togglePersonAtRisk(id, p){
   if(wrap){ const btn = [...wrap.querySelectorAll('.chip')].find(b => b.textContent === p); if(btn) btn.classList.toggle('on'); }
 }
 function toggleEnergy(id, k){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const r = (S.riskProfile||[]).find(x => x.id === id); if(!r) return;
   if(!Array.isArray(r.energy)) r.energy = [];
   const i = r.energy.indexOf(k);
@@ -10360,12 +10640,12 @@ function toggleEnergy(id, k){
   if(wrap){ const btn = [...wrap.querySelectorAll('.chip')].find(b => b.textContent === _energyLabel(k)); if(btn) btn.classList.toggle('on'); }
 }
 function setSif(id, val){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const r = (S.riskProfile||[]).find(x => x.id === id); if(!r) return;
   r.sif = !!val; _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
 }
 function setReviewed(id, val){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const r = (S.riskProfile||[]).find(x => x.id === id); if(!r) return;
   r.reviewed = !!val; _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
 }
@@ -10488,7 +10768,7 @@ function _riskFlowHTML(r){
   return part(inh,'Inherent') + `<span class="rf-arrow">→</span>` + part(cur,'Current') + `<span class="rf-arrow">→</span>` + part(tgt,'Target') + effHtml;
 }
 function updateRiskRating(id, field, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
   r[field]=value; _stamp(r,'updated'); scheduleAutoSave();
   const flow=document.getElementById('rflow-'+id); if(flow) flow.innerHTML=_riskFlowHTML(r);
@@ -10500,14 +10780,14 @@ function updateRiskRating(id, field, value){
 
 // Structured business-impact dimensions (spec #7).
 function updateRiskImpact(id, dim, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
   if(!r.impacts) r.impacts={}; r.impacts[dim]=value; _stamp(r,'updated'); scheduleAutoSave();
   const chips=document.getElementById('rimp-'+id); if(chips) chips.innerHTML=_impactChipsHTML(r);
   _renderRiskDashboard();
 }
 function updateRiskImpactNote(id, dim, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
   if(!r.impactNotes) r.impactNotes={}; r.impactNotes[dim]=value; scheduleAutoSave();
 }
@@ -10538,7 +10818,7 @@ function deleteRiskAction(rid, aid){
   r.actions=(r.actions||[]).filter(a=>a.id!==aid); _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
 }
 function updateRiskAction(rid, aid, field, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
   const a=(r.actions||[]).find(x=>x.id===aid); if(!a) return;
   a[field]=value; _stamp(r,'updated'); scheduleAutoSave();
@@ -10578,7 +10858,7 @@ function deleteRiskLink(rid, lid){
   r.linked=(r.linked||[]).filter(l=>l.id!==lid); _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
 }
 function updateRiskLink(rid, lid, field, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
   const l=(r.linked||[]).find(x=>x.id===lid); if(!l) return;
   l[field]=value; _stamp(r,'updated'); scheduleAutoSave();
@@ -10596,7 +10876,7 @@ function _riskLinksHTML(r, dis){
 
 // ── Document control (spec #4) ──
 function updateRiskDoc(field, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   if(!S.riskDoc) S.riskDoc={}; S.riskDoc[field]=value; scheduleAutoSave();
   if(field==='nextReview'){ const f=document.getElementById('riskDocFlag'); if(f) f.innerHTML=_docReviewFlagHTML(); }
 }
@@ -10606,7 +10886,7 @@ function _docReviewFlagHTML(){
 }
 function _renderRiskDocControl(){
   const el=document.getElementById('riskDocControl'); if(!el) return;
-  const d=S.riskDoc||{}; const dis=_consultantView?' disabled':'';
+  const d=S.riskDoc||{}; const dis=_roLocked()?' disabled':'';
   const f=(label,field,type)=>`<div class="field-group"><label class="field-label">${label}</label><input type="${type||'text'}"${dis} value="${esc(d[field]||'')}" oninput="updateRiskDoc('${field}',this.value)"${type==='date'?` onchange="updateRiskDoc('${field}',this.value)"`:''}></div>`;
   el.innerHTML = `<details class="rp-subcard" open>
     <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('fileText',17)} Document control <span id="riskDocFlag">${_docReviewFlagHTML()}</span></summary>
@@ -10631,13 +10911,13 @@ function _renderRiskDocControl(){
 
 // ── Scoring key (spec #1) ──
 function updateScoreKey(kind, idx, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const c=S.riskConfig=S.riskConfig||{};
   if(!Array.isArray(c[kind]) || c[kind].length!==5) c[kind]=(kind==='likelihood'?RISK_LIKELIHOOD_DEF:RISK_SEVERITY_DEF).slice();
   c[kind][idx]=value; scheduleAutoSave();
 }
 function updateScoreBand(which, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const c=S.riskConfig=S.riskConfig||{}; c.bands=Object.assign({},RISK_BANDS_DEF,c.bands||{});
   const n=parseInt(value,10); if(n>0 && n<=25) c.bands[which]=n; scheduleAutoSave(); renderRiskProfile();
 }
@@ -10649,7 +10929,7 @@ function resetScoreKey(){
 }
 function _renderScoringKey(){
   const el=document.getElementById('riskScoreKey'); if(!el) return;
-  const cfg=_riskCfg(); const dis=_consultantView?' disabled':'';
+  const cfg=_riskCfg(); const dis=_roLocked()?' disabled':'';
   const line=(kind,i,t)=>`<div class="sk-line"><span class="sk-n">${i+1}</span><input type="text"${dis} value="${esc(t)}" oninput="updateScoreKey('${kind}',${i},this.value)"></div>`;
   const bandInput=(w,v)=>`<input type="number" min="1" max="25"${dis} value="${v}" onchange="updateScoreBand('${w}',this.value)">`;
   const b=cfg.bands;
@@ -10784,7 +11064,7 @@ function deleteAssurRow(kind, id){
   S.riskAssurance[kind]=S.riskAssurance[kind].filter(r=>r.id!==id); saveData(); _renderAssurance();
 }
 function updateAssurRow(kind, id, field, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const arr=S.riskAssurance&&S.riskAssurance[kind]; if(!Array.isArray(arr)) return;
   const row=arr.find(r=>r.id===id); if(!row) return; row[field]=value; scheduleAutoSave();
 }
@@ -10799,7 +11079,7 @@ function _assurTableHTML(kind, dis){
 }
 function _renderAssurance(){
   const el=document.getElementById('riskAssurance'); if(!el) return;
-  const dis=_consultantView?' disabled':'';
+  const dis=_roLocked()?' disabled':'';
   el.innerHTML=`<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Monitoring &amp; assurance</h3></div>
     <div class="card-body">
       <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:4px;">The framework for monitoring and assurance HSG65 expects — how the organisation will check the risk profile stays under control.</div>
@@ -11288,8 +11568,8 @@ function _applyRiskMode(){
 const PROF_STAGES=[{n:0,t:'Client & scope'},{n:1,t:'Scoping'},{n:2,t:'Incidents'},{n:3,t:'Maturity'},{n:4,t:'Requirements'},{n:5,t:'Outputs'}];
 let _profStage=0;
 function setProfStage(n){ _profStage=Math.max(0,Math.min(5,n)); renderProfiler(); const el=document.getElementById('riskProfilerView'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
-function setExposure(id, val){ if(_consultantView) return; _profState().exposure[id]=val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
-function setMaturity(id, val){ if(_consultantView) return; const cur=_profState().maturity[id]; _profState().maturity[id]=(String(cur)===String(val))?'':val; _stamp(S.profiler,'updated'); saveData(); _keepScroll(renderRiskReview); }
+function setExposure(id, val){ if(_roLocked()) return; _profState().exposure[id]=val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
+function setMaturity(id, val){ if(_roLocked()) return; const cur=_profState().maturity[id]; _profState().maturity[id]=(String(cur)===String(val))?'':val; _stamp(S.profiler,'updated'); saveData(); _keepScroll(renderRiskReview); }
 // ── Maturity assessment + combined score (drives the Risk review tab) ──
 const MATURITY_ORDER = ['leadership','contractor','ohealth','opcontrol','assurance','resilience'];
 function _maturityDomains(){ return MATURITY_ORDER.map(id=>PROF_LIBRARY.domains.find(d=>d.id===id)).filter(Boolean); }
@@ -11343,16 +11623,16 @@ function _renderMaturityAssessment(dis){
     return head+items;
   }).join('');
 }
-function setIncident(id, val){ if(_consultantView) return; _profState().incidents[id]=val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
-function setProfMetaText(field, val){ if(_consultantView) return; _profState().meta[field]=val; scheduleAutoSave(); }
-function setProfMeta(field, val){ if(_consultantView) return; _profState().meta[field]=val; _stamp(S.profiler,'updated'); saveData(); }
-function setReqStatus(id, val){ if(_consultantView) return; const rv=_profState().reqReview; if(!rv[id]) rv[id]={status:'',evidence:'',accepted:false,override:''}; rv[id].status=(rv[id].status===val)?'':val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
-function toggleReqAccept(id){ if(_consultantView) return; const rv=_profState().reqReview; if(!rv[id]) rv[id]={status:'',evidence:'',accepted:false,override:''}; rv[id].accepted=!rv[id].accepted; saveData(); renderProfiler(); }
-function setReqText(id, field, val){ if(_consultantView) return; const rv=_profState().reqReview; if(!rv[id]) rv[id]={status:'',evidence:'',accepted:false,override:''}; rv[id][field]=val; scheduleAutoSave(); }
-function setProfActionText(id, field, val){ if(_consultantView) return; const a=_profState().actions; if(!a[id]) a[id]={owner:'',due:'',status:'Not started',priority:''}; a[id][field]=val; scheduleAutoSave(); }
-function setProfActionSel(id, field, val){ if(_consultantView) return; const a=_profState().actions; if(!a[id]) a[id]={owner:'',due:'',status:'Not started',priority:''}; a[id][field]=val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
-function setProfRisk(id, field, val){ if(_consultantView) return; const sr=_profState().significantRisks; if(!sr[id]) sr[id]={}; sr[id][field]=val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
-function dismissProfRisk(id, val){ if(_consultantView) return; const sr=_profState().significantRisks; if(!sr[id]) sr[id]={}; sr[id].dismissed=val; saveData(); renderProfiler(); }
+function setIncident(id, val){ if(_roLocked()) return; _profState().incidents[id]=val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
+function setProfMetaText(field, val){ if(_roLocked()) return; _profState().meta[field]=val; scheduleAutoSave(); }
+function setProfMeta(field, val){ if(_roLocked()) return; _profState().meta[field]=val; _stamp(S.profiler,'updated'); saveData(); }
+function setReqStatus(id, val){ if(_roLocked()) return; const rv=_profState().reqReview; if(!rv[id]) rv[id]={status:'',evidence:'',accepted:false,override:''}; rv[id].status=(rv[id].status===val)?'':val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
+function toggleReqAccept(id){ if(_roLocked()) return; const rv=_profState().reqReview; if(!rv[id]) rv[id]={status:'',evidence:'',accepted:false,override:''}; rv[id].accepted=!rv[id].accepted; saveData(); renderProfiler(); }
+function setReqText(id, field, val){ if(_roLocked()) return; const rv=_profState().reqReview; if(!rv[id]) rv[id]={status:'',evidence:'',accepted:false,override:''}; rv[id][field]=val; scheduleAutoSave(); }
+function setProfActionText(id, field, val){ if(_roLocked()) return; const a=_profState().actions; if(!a[id]) a[id]={owner:'',due:'',status:'Not started',priority:''}; a[id][field]=val; scheduleAutoSave(); }
+function setProfActionSel(id, field, val){ if(_roLocked()) return; const a=_profState().actions; if(!a[id]) a[id]={owner:'',due:'',status:'Not started',priority:''}; a[id][field]=val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
+function setProfRisk(id, field, val){ if(_roLocked()) return; const sr=_profState().significantRisks; if(!sr[id]) sr[id]={}; sr[id][field]=val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
+function dismissProfRisk(id, val){ if(_roLocked()) return; const sr=_profState().significantRisks; if(!sr[id]) sr[id]={}; sr[id].dismissed=val; saveData(); renderProfiler(); }
 
 // Heat map: each significant risk plotted at (exposure severity, maturity of its controlling domain).
 function _profHeatHTML(){
@@ -11372,7 +11652,7 @@ function _domHeadHTML(d){ const typ=d.type==='exposure'?'Exposure':d.type==='mat
 function renderProfiler(){
   const el=document.getElementById('riskProfilerView'); if(!el) return;
   _profState();
-  const ex=S.profiler.exposure, m=S.profiler.maturity, inc=S.profiler.incidents, dis=_consultantView?' disabled':'';
+  const ex=S.profiler.exposure, m=S.profiler.maturity, inc=S.profiler.incidents, dis=_roLocked()?' disabled':'';
   const gen=_profGenerate();
 
   // Progress stepper
@@ -11704,7 +11984,7 @@ function _riskVsMaturityHTML(o){
     ${bar('Risk exposure', rvm.riskIndex, rvm.riskIndex>=60?'#DC2626':rvm.riskIndex>=35?'#F59E0B':'#16A34A', rvm.riskLabel+' ('+rvm.riskIndex+')')}
     ${bar('Management maturity', rvm.matPct==null?0:rvm.matPct, rvm.matPct==null?'#9CA3AF':rvm.matPct>=70?'#16A34A':rvm.matPct>=40?'#F59E0B':'#DC2626', rvm.matAvg==null?'not scored':rvm.matAvg.toFixed(1)+'/5')}
     <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(rvm.verdict)}</div>
-    ${o.link===false?'':`<button class="ck-link" onclick="switchTab('riskreview')" style="margin-top:8px;">Open risk review</button>`}`;
+    ${o.link===false?'':`<button class="ck-link" onclick="switchTab('risk')" style="margin-top:8px;">Open risk review</button>`}`;
 }
 function _pdfCompleteness(K, data, rgb){
   K.section('Data completeness', rgb||[180,110,10]);
@@ -11916,7 +12196,7 @@ function _profBoardReport_dead(){
 function renderRiskProfile(){
   const cont = document.getElementById('riskContainer');
   if(!cont) return;
-  const ro   = !!_consultantView;
+  const ro   = _roLocked();
   const all  = (S.riskProfile||[]).slice().sort((a,b)=>{
     const d = _RISK_PRIO_RANK[_riskScore(a).priority||''] - _RISK_PRIO_RANK[_riskScore(b).priority||''];
     return d !== 0 ? d : ((_riskScore(b).rating||0) - (_riskScore(a).rating||0));
@@ -12410,7 +12690,7 @@ function downloadRiskProfileReport(){
 function renderRiskReview(){
   const cont=document.getElementById('riskReviewContainer'); if(!cont) return;
   const risks=(S.riskProfile||[]);
-  const dis=_consultantView?' disabled':'';
+  const dis=_roLocked()?' disabled':'';
 
   // 1) Combined score — the risk profile against the management maturity.
   const os=_overallScore(); const rl=os.rl;
@@ -12539,7 +12819,7 @@ function _reqStats(){
   return { met, gap, notInPlace, assessed, total, overdue, compliance };
 }
 function updateReqStage(id, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const s = (S.requirements||[]).find(x => x.id === id); if(!s) return;
   s.stage = value; scheduleAutoSave(); _keepScroll(renderRequirements);
 }
@@ -12591,7 +12871,7 @@ function deleteReqSection(id){
   saveData(); renderRequirements();
 }
 function updateReqHeading(id, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const s = (S.requirements||[]).find(x => x.id === id); if(!s) return;
   s.heading = value; scheduleAutoSave();
 }
@@ -12611,7 +12891,7 @@ function deleteReqLine(sectionId, itemId){
   saveData(); renderRequirements();
 }
 function updateReqField(sectionId, itemId, field, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
   const it = (s.items||[]).find(i => i.id === itemId); if(!it) return;
   it[field] = value; _stamp(it, 'updated'); scheduleAutoSave();
@@ -12664,7 +12944,7 @@ function _renderReqFilters(show){
 function renderRequirements(){
   const cont = document.getElementById('requirementsContainer');
   if(!cont) return;
-  const ro = !!_consultantView;
+  const ro = _roLocked();
   // Seed the duty headings once for a client that has none (owner only).
   if(!ro && (!Array.isArray(S.requirements) || !S.requirements.length)){
     S.requirements = _seedRequirements();
@@ -12878,17 +13158,17 @@ function _curMonMonth(){
 }
 
 function updateMonValue(month, key, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   if(!S.monitoring.months[month]) S.monitoring.months[month] = {};
   S.monitoring.months[month][key] = value; scheduleAutoSave();
 }
 function updateMonMeta(key, field, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   if(!S.monitoring.meta[key]) S.monitoring.meta[key] = {};
   S.monitoring.meta[key][field] = value; scheduleAutoSave();
 }
 function updateMonReview(){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const month = _curMonMonth();
   if(!S.monitoring.months[month]) S.monitoring.months[month] = {};
   S.monitoring.months[month].monthlyReviewDate = document.getElementById('monReviewDate')?.value || '';
@@ -12907,7 +13187,7 @@ function deleteRegItem(id){
   saveData(); renderMonitoring();
 }
 function updateRegField(id, field, value){
-  if(_consultantView) return;
+  if(_roLocked()) return;
   const r = S.monitoring.regulatory.find(x => x.id === id); if(!r) return;
   r[field] = value; scheduleAutoSave();
   if(field==='result'){
@@ -12919,7 +13199,7 @@ function updateRegField(id, field, value){
 function renderMonitoring(){
   const cont = document.getElementById('monitoringContainer');
   if(!cont) return;
-  const ro = !!_consultantView;
+  const ro = _roLocked();
   const monthEl = document.getElementById('monMonth');
   if(monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0,7);
   const month = _curMonMonth();
@@ -13065,7 +13345,7 @@ function renderDocuments(){
   }
   const rank = s => s.cls==='badge-danger'?0 : s.cls==='badge-warning'?1 : s.cls==='badge-success'?2 : 3;
   const rows = docs.slice().sort((a,b)=> rank(_docStatus(a.reviewDate)) - rank(_docStatus(b.reviewDate)));
-  const ro = !!_consultantView;
+  const ro = _roLocked();
   cont.innerHTML = `<div class="card"><div class="card-body" style="padding:0;overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:13px;">
       <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;">

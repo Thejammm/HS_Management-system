@@ -119,19 +119,20 @@ router.patch('/tenants/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/tenants/:id — fails if any users still belong to it
+// DELETE /api/admin/tenants/:id — removes the client outright: its saved
+// app_state, its logins, and the tenant row, in one go. This is deliberate:
+// a consultant deleting a client wants it gone, not blocked because a login
+// still hangs off it. Never removes a consultant login (they have no tenant),
+// so the admin can't lock themselves out.
 router.delete('/tenants/:id', async (req, res) => {
   const id = req.params.id;
   try {
-    const u = await pool.query(`SELECT COUNT(*)::int AS n FROM users WHERE tenant_id = $1`, [id]);
-    if(u.rows[0].n > 0){
-      return res.status(409).json({ error: 'tenant_has_users', count: u.rows[0].n });
-    }
-    // Cascade-delete the tenant's saved app_state if any
+    const exists = await pool.query(`SELECT 1 FROM tenants WHERE id = $1 LIMIT 1`, [id]);
+    if(!exists.rows.length){ return res.status(404).json({ error: 'tenant_not_found' }); }
+    const usr = await pool.query(`DELETE FROM users WHERE tenant_id = $1`, [id]);
     await pool.query(`DELETE FROM app_state WHERE tenant_id = $1`, [id]);
-    const r = await pool.query(`DELETE FROM tenants WHERE id = $1`, [id]);
-    if(r.rowCount === 0){ return res.status(404).json({ error: 'tenant_not_found' }); }
-    res.json({ ok: true });
+    await pool.query(`DELETE FROM tenants WHERE id = $1`, [id]);
+    res.json({ ok: true, usersRemoved: usr.rowCount });
   } catch(err){
     console.error('DELETE /tenants/:id error:', err);
     res.status(500).json({ error: 'server_error' });
@@ -248,6 +249,24 @@ router.patch('/users/:id/active', async (req, res) => {
     res.json({ ok: true, id, is_active: active });
   } catch(err){
     console.error('PATCH /users/:id/active error:', err);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// DELETE /api/admin/users/:id — hard-delete a single login. Refuses to delete
+// the currently signed-in user (would lock them out). The tenant and its saved
+// data are untouched — this removes one login only.
+router.delete('/users/:id', async (req, res) => {
+  const id = req.params.id;
+  if(req.user && String(req.user.id) === String(id)){
+    return res.status(400).json({ error: 'cannot_delete_self' });
+  }
+  try {
+    const r = await pool.query(`DELETE FROM users WHERE id = $1`, [id]);
+    if(r.rowCount === 0){ return res.status(404).json({ error: 'user_not_found' }); }
+    res.json({ ok: true, id });
+  } catch(err){
+    console.error('DELETE /users/:id error:', err);
     res.status(500).json({ error: 'server_error' });
   }
 });

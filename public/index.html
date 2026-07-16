@@ -664,6 +664,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .hub-tile .ht-name{font-size:16px;font-weight:700;line-height:1.3;overflow-wrap:anywhere;}
   .hub-tile .ht-meta{font-size:12px;color:var(--text-muted);margin-top:4px;overflow-wrap:anywhere;}
   .hub-tile .ht-open{margin-top:auto;font-size:12.5px;font-weight:700;color:var(--accent);padding-top:14px;}
+  .hub-tile .ht-del{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);font-size:16px;font-weight:700;line-height:1;cursor:pointer;opacity:0;transition:opacity .12s,color .12s,border-color .12s;display:flex;align-items:center;justify-content:center;padding:0;}
+  .hub-tile:hover .ht-del{opacity:1;}
+  .hub-tile .ht-del:hover{color:var(--danger);border-color:var(--danger);}
+  @media(hover:none){.hub-tile .ht-del{opacity:1;}}
   .hub-tile.ht-add{border-style:dashed;align-items:center;justify-content:center;text-align:center;color:var(--text-muted);}
   .hub-tile.ht-add:hover{color:var(--accent);}
   .hub-tile.ht-add .ht-plus{font-size:34px;font-weight:300;line-height:1;margin-bottom:8px;}
@@ -6073,6 +6077,7 @@ function renderAdminUsers(users, tenants){
               <button class="btn btn-outline btn-xs" onclick="openEditUserModal('${u.id}')">Edit</button>
               <button class="btn btn-outline btn-xs" onclick="openResetPasswordModal('${u.id}','${safeEmail}')">Reset password</button>
               ${toggleBtn}
+              <button class="btn btn-outline btn-xs" style="border-color:var(--danger);color:var(--danger);" onclick="deleteUser('${u.id}','${safeEmail}')">Delete</button>
             </td>
           </tr>`;
         }).join('')}
@@ -6514,6 +6519,35 @@ async function toggleUserActive(userId, email, makeActive){
   }
 }
 
+// Hard-delete a single login. Removes the user only — the client and its data
+// stay. To delete a whole client, use Delete on the client (hub tile or table).
+async function deleteUser(userId, email){
+  const me = Auth.user();
+  if(me && String(me.id) === String(userId)){
+    showToast('You cannot delete the account you are signed in as.','error');
+    return;
+  }
+  if(!confirm(`Delete the login "${email}"?\n\nThis removes the login for good. The client and its data are kept. This cannot be undone.`)) return;
+  try {
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+      method: 'DELETE', credentials: 'include'
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>({}));
+      const msg = body.error === 'cannot_delete_self' ? 'You cannot delete the account you are signed in as.'
+                : body.error === 'user_not_found'     ? 'User no longer exists.'
+                : `Failed: ${body.error||res.status}`;
+      showToast(msg, 'error');
+      return;
+    }
+    showToast(`✓ Login "${email}" deleted`, 'success');
+    renderAdminPane();
+  } catch(err){
+    console.error(err);
+    showToast('Network error deleting user','error');
+  }
+}
+
 // ── Rename a tenant ──
 async function renameTenant(tenantId){
   const t = _adminTenantsCache.find(x => x.id === tenantId);
@@ -6543,32 +6577,37 @@ async function renameTenant(tenantId){
 }
 
 // ── Delete a tenant (only if it has zero users) ──
+// Delete a whole client in one step: the client, all its saved data/reports
+// and its logins. Used by both the Admin table and the client hub tiles.
 async function deleteTenant(tenantId){
-  const t = _adminTenantsCache.find(x => x.id === tenantId);
+  const t = _adminTenantsCache.find(x => x.id === tenantId)
+         || (typeof _consultantTenants !== 'undefined' ? _consultantTenants.find(x => x.id === tenantId) : null);
   const name = t ? String(t.name||'') : tenantId;
   const userCount = t ? (t.user_count || 0) : 0;
-  if(userCount > 0){
-    showToast(`Remove the ${userCount} user${userCount>1?'s':''} from "${name}" before deleting the tenant.`,'error');
-    return;
-  }
-  if(!confirm(`Permanently delete the tenant "${name}" (id: ${tenantId})?\n\nAny stored inspection data for this tenant will also be deleted. This cannot be undone.`)) return;
+  const loginBit = userCount > 0 ? ` and its ${userCount} login${userCount>1?'s':''}` : '';
+  if(!confirm(`Delete the client "${name}"?\n\nThis permanently removes the client, all its saved data and reports${loginBit}. This cannot be undone.`)) return;
   try {
     const res = await fetch(`/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
       method: 'DELETE', credentials: 'include'
     });
     if(!res.ok){
       const body = await res.json().catch(()=>({}));
-      const msg = body.error === 'tenant_has_users'  ? `Tenant still has ${body.count} user(s) — remove them first.`
-                : body.error === 'tenant_not_found'  ? 'Tenant no longer exists.'
-                : `Failed: ${body.error||res.status}`;
+      const msg = body.error === 'tenant_not_found' ? 'Client no longer exists.' : `Failed: ${body.error||res.status}`;
       showToast(msg, 'error');
       return;
     }
-    showToast(`✓ Tenant "${name}" deleted`, 'success');
-    renderAdminPane();
+    showToast(`✓ Client "${name}" deleted`, 'success');
+    // If we were dialled into the client we just deleted, drop back to the hub.
+    if(typeof _consultantView !== 'undefined' && _consultantView && _consultantView.tenantId === tenantId){
+      exitConsultantView(true);
+    }
+    // Refresh whichever views are open.
+    if(document.getElementById('tab-admin')?.classList.contains('active')) renderAdminPane();
+    if(document.getElementById('clientHub')?.classList.contains('on')) renderClientHub();
+    if(typeof populateClientPicker === 'function') populateClientPicker();
   } catch(err){
     console.error(err);
-    showToast('Network error deleting tenant','error');
+    showToast('Network error deleting client','error');
   }
 }
 
@@ -9708,12 +9747,13 @@ async function renderClientHub(){
   _consultantTenants = tenants;
   const initials = n => (n||'?').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase() || '?';
   const tiles = tenants.map(t => `
-    <button class="hub-tile" onclick="openClientFromHub('${esc(t.id)}')">
+    <div class="hub-tile" role="button" tabindex="0" onclick="openClientFromHub('${esc(t.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openClientFromHub('${esc(t.id)}');}">
+      <button class="ht-del" title="Remove this client" onclick="event.stopPropagation();deleteTenant('${esc(t.id)}')">&times;</button>
       <div class="ht-mark">${esc(initials(t.name||t.id))}</div>
       <div class="ht-name">${esc(t.name||t.id)}</div>
       <div class="ht-meta">${esc(t.id)}</div>
       <div class="ht-open">Open workspace &rarr;</div>
-    </button>`).join('');
+    </div>`).join('');
   const addTile = `
     <button class="hub-tile ht-add" onclick="openAddTenantModal()">
       <div class="ht-plus">+</div>

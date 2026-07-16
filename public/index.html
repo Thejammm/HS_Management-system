@@ -873,6 +873,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .coll>summary h3{margin:0;font-size:16px;display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
     .coll>summary .coll-meta{font-size:12px;color:var(--text-muted);font-weight:400;}
     .coll>.coll-body{padding:0 18px 16px;}
+    /* ── Numbered workflow sections on the Risk profile tab ── */
+    .wf-sec>summary h3 .wf-step{display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;border-radius:50%;background:var(--accent);color:#fff;font-size:12.5px;font-weight:800;flex:0 0 auto;}
+    .wf-sec[open]>summary{border-bottom:1px solid var(--border);}
     /* ── Collapsible risk cards ── */
     .risk-card{border-left:5px solid var(--border);}
     .risk-card>summary{list-style:none;cursor:pointer;user-select:none;display:flex;align-items:center;gap:10px;padding:12px 15px;}
@@ -917,41 +920,69 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 
   <div id="tab-risk" class="tab-panel">
-    <div class="card no-print" style="margin-bottom:18px;">
+    <div class="card no-print" style="margin-bottom:14px;">
       <div class="card-band"><h3><span class="dot">●</span> Risk profile</h3>
         <span class="badge badge-muted" id="riskCountBadge"></span>
       </div>
       <div class="card-body">
-        <div id="riskRegisterIntro" style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
-          Record the significant health and safety risks — from the activity library, or add your own. Each is tagged with a hazard type and business area. The <strong>Risk review</strong> section further down summarises them by category and, with the maturity assessment, gives the overall score.
-        </div>
-        <div id="riskRegisterTools" style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-primary no-print" id="addRiskBtn" onclick="addRiskEntry()">＋ Add risk</button>
-          <button class="btn btn-outline no-print" id="addLibRiskBtn" onclick="openHazardLibrary()">＋ From hazard library</button>
-          <button class="btn btn-ghost no-print" id="riskBackupBtn" onclick="backupRiskData()" title="Download a JSON backup of this client's risk data">Backup data (JSON)</button>
+        <div id="riskRegisterIntro" style="font-size:13px;color:var(--text-muted);line-height:1.5;">
+          Build the profile top to bottom: <strong>1</strong> set the document control, <strong>2</strong> add and complete the risks, <strong>3</strong> record monitoring &amp; assurance, <strong>4</strong> score the management maturity. The summary stays at the top; each panel below opens and closes on click.
         </div>
       </div>
     </div>
+
+    <!-- SUMMARIES — always at the top -->
+    <div id="riskScorePanel"></div>
+    <div id="riskDashboard"></div>
+
     <div id="riskRegisterView">
-      <div id="riskDocControl"></div>
-      <div id="riskScoreKey"></div>
-      <div id="riskLibrary" class="no-print"></div>
-      <div id="riskDashboard"></div>
-      <div id="riskFilters" class="no-print"></div>
-      <div id="riskContainer"></div>
-      <div id="riskActionPlan"></div>
-      <div id="riskAssurance"></div>
+      <!-- 1 · Document control -->
+      <details class="coll wf-sec" id="wfDocControl">
+        <summary><h3><span class="wf-step">1</span> Document control &amp; scoring key</h3><span class="coll-meta">version, review dates, approval</span></summary>
+        <div class="coll-body">
+          <div id="riskDocControl"></div>
+          <div id="riskScoreKey"></div>
+        </div>
+      </details>
+
+      <!-- 2 · Add & complete the risks -->
+      <details class="coll wf-sec" id="wfRegister" open>
+        <summary><h3><span class="wf-step">2</span> Risks — add &amp; complete the profile</h3><span class="coll-meta" id="wfRegisterMeta"></span></summary>
+        <div class="coll-body">
+          <div id="riskRegisterTools" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+            <button class="btn btn-primary no-print" id="addRiskBtn" onclick="addRiskEntry()">＋ Add risk</button>
+            <button class="btn btn-outline no-print" id="addLibRiskBtn" onclick="openHazardLibrary()">＋ From hazard library</button>
+            <button class="btn btn-ghost no-print" id="riskBackupBtn" onclick="backupRiskData()" title="Download a JSON backup of this client's risk data">Backup data (JSON)</button>
+          </div>
+          <div id="riskLibrary" class="no-print"></div>
+          <div id="riskFilters" class="no-print"></div>
+          <div id="riskContainer"></div>
+          <div id="riskActionPlan"></div>
+        </div>
+      </details>
+
+      <!-- 3 · Monitoring & assurance -->
+      <details class="coll wf-sec" id="wfAssurance">
+        <summary><h3><span class="wf-step">3</span> Monitoring &amp; assurance</h3><span class="coll-meta">leading &amp; lagging indicators</span></summary>
+        <div class="coll-body"><div id="riskAssurance"></div></div>
+      </details>
+
+      <!-- 4 · Management maturity assessment -->
+      <details class="coll wf-sec" id="wfMaturity">
+        <summary><h3><span class="wf-step">4</span> Management maturity assessment</h3><span class="coll-meta">six domains, 0-5</span></summary>
+        <div class="coll-body"><div id="riskMaturity"></div></div>
+      </details>
+
+      <!-- Risk review — summary & energy analysis (below the workflow) -->
+      <details class="coll wf-sec" id="wfReview">
+        <summary><h3><span class="dot">●</span> Risk review — by hazard type &amp; SIF register</h3><span class="coll-meta">summary &amp; energy analysis</span></summary>
+        <div class="coll-body">
+          <div id="riskReviewSummary"></div>
+          <div id="riskReviewAnalysis"></div>
+        </div>
+      </details>
     </div>
     <div id="riskProfilerView" style="display:none;"></div>
-
-    <!-- Risk review (merged in from the former Risk review tab) -->
-    <div class="card no-print" id="riskReviewIntro" style="margin:26px 0 18px;">
-      <div class="card-band"><h3><span class="dot">●</span> Risk review</h3></div>
-      <div class="card-body">
-        <div style="font-size:13px;color:var(--text-muted);line-height:1.5;">Everything recorded above, grouped by <strong>hazard type</strong> with its business area, and where each risk sits in the <strong>Plan-Do-Check-Act</strong> cycle, together with the management maturity assessment and overall score. Generate PDFs from the <strong>Reports</strong> tab.</div>
-      </div>
-    </div>
-    <div id="riskReviewContainer"></div>
   </div>
 
   <!-- ══════════════════════════════════════
@@ -1105,6 +1136,26 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rar-open{background:var(--accent);color:#fff;}
     .rar-copy{background:var(--surface);color:var(--accent-dark);}
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
+    /* Quick links to other apps */
+    .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;}
+    .ql-card{position:relative;border:1px solid var(--border);border-top:4px solid var(--accent);border-radius:14px;background:var(--surface);box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0;transition:transform .12s,box-shadow .12s;}
+    .ql-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);}
+    .ql-top{display:flex;align-items:center;gap:11px;}
+    .ql-badge{width:42px;height:42px;border-radius:11px;background:var(--accent-light);color:var(--accent-dark);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
+    .ql-badge svg{width:22px;height:22px;}
+    .ql-badge img{width:100%;height:100%;object-fit:cover;}
+    .ql-name{font-size:15px;font-weight:700;line-height:1.25;overflow-wrap:anywhere;}
+    .ql-url{font-size:11px;color:var(--text-muted);overflow-wrap:anywhere;}
+    .ql-qr{align-self:center;width:96px;height:96px;border:1px solid var(--border);border-radius:8px;padding:5px;background:#fff;cursor:pointer;}
+    .ql-qr img{width:100%;height:100%;object-fit:contain;}
+    .ql-open{margin-top:auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:700;padding:9px 12px;border-radius:9px;background:var(--accent);color:#fff;border:none;cursor:pointer;text-decoration:none;}
+    .ql-actions{display:flex;gap:6px;}
+    .ql-mini{font-size:11px;font-weight:700;padding:5px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;}
+    .ql-mini.ql-del{border-color:var(--danger-brd);color:var(--danger);}
+    .ql-add{border:1px dashed var(--border);border-radius:14px;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:20px;color:var(--text-muted);cursor:pointer;min-height:150px;font-family:inherit;}
+    .ql-add:hover{border-color:var(--accent);color:var(--accent);}
+    .ql-add .ql-plus{font-size:30px;font-weight:300;line-height:1;}
+    .ql-empty{grid-column:1/-1;color:var(--text-muted);font-size:13px;}
   </style>
   <div id="tab-monitoring" class="tab-panel">
     <div class="card no-print" style="margin-bottom:18px;">
@@ -1149,6 +1200,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
     </div>
     <div id="raRegisterContainer"></div>
+
+    <!-- Quick links to the client's other apps (bespoke, per client) -->
+    <div id="appLinksContainer"></div>
   </div>
 
   <!-- ══════════════════════════════════════
@@ -2599,6 +2653,7 @@ let S = {
   cas:         { gates:{}, roles:{}, status:{} }, // Stage 3: CAS accreditation readiness (per tenant)
   company:     { legalName:'', tradingName:'', regNo:'', sector:'', description:'', phone:'', email:'', website:'', address:'', employees:'', siteCount:'', shifts:'', elciInsurer:'', elciPolicy:'', elciRenewal:'', personnel:[], siteList:[], notes:'' }, // Company setup: per-client company profile
   raRegister:  [],      // Assurance records: register of the client's risk assessments / RAMS (each points at its PDF)
+  appLinks:    [],      // Quick links: per-client links to other apps (label, url, optional QR image)
   activeClient: null,   // stores selected client id — saved with the file
   branding:    {
     name:      'AHS Compliance Consulting',
@@ -2746,7 +2801,7 @@ function switchTab(id) {
   if(id==='reports')  { renderReports(); }
   if(id==='risk')     { renderRiskProfile(); renderRiskReview(); }
   if(id==='requirements'){ renderRequirements(); }
-  if(id==='monitoring'){ renderMonitoring(); renderRaRegister(); }
+  if(id==='monitoring'){ renderMonitoring(); renderRaRegister(); renderAppLinks(); }
   if(id==='review')   { renderReview(); }
   if(id==='documents'){ renderDocuments(); }
   if(id==='cas')      { renderCAS(); }
@@ -7089,6 +7144,8 @@ function migrateLoadedState(){
   if(!Array.isArray(S.company.siteList))  S.company.siteList  = [];
   // Assurance records: risk assessment register (additive)
   if(!Array.isArray(S.raRegister)) S.raRegister = [];
+  // Quick links to other apps (additive)
+  if(!Array.isArray(S.appLinks)) S.appLinks = [];
   try {
     if(!S.review.ratings.length && !S.review.feedback && !S.review.suggestions){
       const ck = (typeof _reviewClientKey === 'function') ? _reviewClientKey() : null;
@@ -9962,7 +10019,7 @@ function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null;
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),
     draft:{typeId:'garage_inspection',results:{},notes:{},actionDetails:{},rectifyDetails:{},formData:{},periodFrom:'',periodTo:'',manager:'',location:'',ref:'',freq:'weekly',generalNotes:'',title:'',inspType:''},
-    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], activeClient:null, branding:S.branding };
+    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], activeClient:null, branding:S.branding };
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -10769,8 +10826,15 @@ function _gotoRisk(id){
   setTimeout(()=>{
     const t=document.getElementById('ract-'+id);
     const card=t?t.closest('.risk-card'):null;
-    if(card){ if(!card.open) card.open=true; card.scrollIntoView({behavior:'smooth',block:'center'});
-      card.classList.add('rc-flash'); setTimeout(()=>card.classList.remove('rc-flash'),1700); }
+    if(card){
+      // Open every collapsible ancestor (the numbered register section) so the
+      // card is actually visible before we scroll to it.
+      let p=card.parentElement;
+      while(p){ if(p.tagName==='DETAILS' && !p.open) p.open=true; p=p.parentElement; }
+      if(!card.open) card.open=true;
+      card.scrollIntoView({behavior:'smooth',block:'center'});
+      card.classList.add('rc-flash'); setTimeout(()=>card.classList.remove('rc-flash'),1700);
+    }
   },80);
 }
 
@@ -12786,7 +12850,14 @@ function downloadRiskProfileReport(){
 
 // ── Risk profile review: overall score + risks by hazard type + PDCA + maturity ──
 function renderRiskReview(){
-  const cont=document.getElementById('riskReviewContainer'); if(!cont) return;
+  // Rendered into the ordered workflow panels on the Risk profile tab:
+  // score panel (top summary), review summary + energy analysis, and the
+  // maturity assessment (its own numbered section).
+  const scoreEl=document.getElementById('riskScorePanel');
+  const sumEl=document.getElementById('riskReviewSummary');
+  const anaEl=document.getElementById('riskReviewAnalysis');
+  const matEl=document.getElementById('riskMaturity');
+  if(!scoreEl && !matEl) return;
   const risks=(S.riskProfile||[]);
   const dis=_roLocked()?' disabled':'';
 
@@ -12857,11 +12928,13 @@ function renderRiskReview(){
   }
 
   // 4) Management maturity assessment (six domains, scored 0-5).
-  const maturity=`<div class="card" style="margin-top:20px;"><div class="card-band"><h3><span class="dot">●</span> Management maturity assessment</h3></div><div class="card-body">
-    <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:6px;line-height:1.5;">Score how well the organisation manages health &amp; safety, 0 (absent) to 5 (embedded and evidenced), against the written anchors. This drives the maturity half of the score above.</div>
-    ${_renderMaturityAssessment(dis)}</div></div>`;
+  const maturity=`<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:8px;line-height:1.5;">Score how well the organisation manages health &amp; safety, 0 (absent) to 5 (embedded and evidenced), against the written anchors. This drives the maturity half of the overall score at the top.</div>
+    ${_renderMaturityAssessment(dis)}`;
 
-  cont.innerHTML = scorePanel + summary + analysis + maturity;
+  if(scoreEl) scoreEl.innerHTML = scorePanel;
+  if(sumEl)   sumEl.innerHTML   = summary;
+  if(anaEl)   anaEl.innerHTML   = analysis;
+  if(matEl)   matEl.innerHTML   = maturity;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -13393,6 +13466,93 @@ function copyRaLocation(id){
     ()=>showToast('Location copied — paste into File Explorer','success'),
     ()=>showToast('Could not copy','error')
   );
+}
+
+// ══════════════════════════════════════════════════════════════
+//  QUICK LINKS — bespoke per-client links to other apps, each with an
+//  optional uploaded QR image. Consultant edits; the client sees + uses.
+//  Stored in S.appLinks so they sync per tenant.
+// ══════════════════════════════════════════════════════════════
+function _appLinksState(){ if(!Array.isArray(S.appLinks)) S.appLinks=[]; return S.appLinks; }
+function _canEditLinks(){ const u=(typeof Auth!=='undefined'&&Auth.user)?Auth.user():null; return !u || u.role==='consultant'; }
+const _QL_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+
+function renderAppLinks(){
+  const cont=document.getElementById('appLinksContainer'); if(!cont) return;
+  const list=_appLinksState(); const canEdit=_canEditLinks();
+  if(!list.length && !canEdit){ cont.innerHTML=''; return; }
+  const cards=list.map(l=>{
+    const badge = l.qr ? `<div class="ql-badge"><img src="${esc(l.qr)}" alt=""></div>` : `<div class="ql-badge">${_QL_ICON}</div>`;
+    const qrBig = l.qr ? `<div class="ql-qr" onclick="openLinkQr('${l.id}')" title="Tap to enlarge for scanning"><img src="${esc(l.qr)}" alt="QR code"></div>` : '';
+    return `<div class="ql-card">
+      <div class="ql-top">${badge}<div style="min-width:0;"><div class="ql-name">${esc(l.label||'Untitled link')}</div>${l.url?`<div class="ql-url">${esc(l.url.replace(/^https?:\/\//,''))}</div>`:''}</div></div>
+      ${qrBig}
+      ${l.url?`<a class="ql-open" href="${esc(l.url)}" target="_blank" rel="noopener">Open &#8599;</a>`:''}
+      ${canEdit?`<div class="ql-actions no-print"><button class="ql-mini" onclick="openAppLinkModal('${l.id}')">Edit</button><button class="ql-mini ql-del" onclick="deleteAppLink('${l.id}')">Delete</button></div>`:''}
+    </div>`;
+  }).join('');
+  const addTile = canEdit ? `<button class="ql-add no-print" onclick="openAppLinkModal()"><div class="ql-plus">+</div><div style="font-weight:700;">Add link</div><div style="font-size:11.5px;text-align:center;">Link to another app, with an optional QR</div></button>` : '';
+  cont.innerHTML = `<div class="card" style="margin:26px 0 16px;">
+    <div class="card-band"><h3><span class="dot">●</span> Quick links</h3><span class="badge badge-muted">${list.length||''}</span></div>
+    <div class="card-body">
+      <div class="no-print" style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;">Jump straight to the client's other apps — their risk assessment tool, portals, anything in their package. ${canEdit?'Add a link and, if you like, upload a QR code the client can scan on their phone.':'Tap Open to launch, or scan a QR code with your phone.'}</div>
+      <div class="ql-grid">${cards}${addTile}</div>
+    </div>
+  </div>`;
+}
+
+function openLinkQr(id){
+  const l=_appLinksState().find(x=>x.id===id); if(!l||!l.qr) return;
+  openModal(l.label||'QR code',
+    `<div style="text-align:center;"><img src="${esc(l.qr)}" alt="QR code" style="max-width:280px;width:100%;border:1px solid var(--border);border-radius:10px;padding:10px;background:#fff;"><div style="font-size:12px;color:var(--text-muted);margin-top:10px;">Scan with a phone camera.${l.url?` Or <a href="${esc(l.url)}" target="_blank" rel="noopener">open the link</a>.`:''}</div></div>`,
+    `<button class="btn btn-primary" onclick="closeModal()">Done</button>`);
+}
+
+function openAppLinkModal(id){
+  if(!_canEditLinks()) return;
+  const l = id ? _appLinksState().find(x=>x.id===id) : null;
+  window._qlPendingQr = l ? (l.qr||'') : '';
+  openModal(l?'Edit link':'Add link',
+    `<div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="field-group"><label class="field-label">Label</label><input type="text" id="qlLabel" placeholder="e.g. Risk assessment app" value="${l?esc(l.label||''):''}"></div>
+      <div class="field-group"><label class="field-label">Link (URL)</label><input type="text" id="qlUrl" placeholder="oprams.archerhs.co.uk" value="${l?esc(l.url||''):''}"></div>
+      <div class="field-group"><label class="field-label">QR code image (optional)</label>
+        <input type="file" id="qlQrFile" accept="image/*" onchange="_qlReadQr(this)">
+        <div id="qlQrPreview" style="margin-top:8px;">${l&&l.qr?`<img src="${esc(l.qr)}" style="width:90px;height:90px;object-fit:contain;border:1px solid var(--border);border-radius:8px;padding:4px;background:#fff;">`:''}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Upload a QR you generated elsewhere pointing at anything you want the client to use.</div>
+      </div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitAppLink('${id||''}')">${l?'Save':'Add link'}</button>`);
+}
+
+function _qlReadQr(input){
+  const f=input.files&&input.files[0]; if(!f){ return; }
+  const rd=new FileReader();
+  rd.onload=()=>{ window._qlPendingQr=rd.result; const p=document.getElementById('qlQrPreview'); if(p) p.innerHTML=`<img src="${rd.result}" style="width:90px;height:90px;object-fit:contain;border:1px solid var(--border);border-radius:8px;padding:4px;background:#fff;">`; };
+  rd.readAsDataURL(f);
+}
+
+function submitAppLink(id){
+  if(!_canEditLinks()) return;
+  const label=(document.getElementById('qlLabel')?.value||'').trim();
+  let url=(document.getElementById('qlUrl')?.value||'').trim();
+  const qr=window._qlPendingQr||'';
+  if(!label){ showToast('Please give the link a label','error'); return; }
+  // Force http(s) so a pasted "javascript:" or bare host can't become an unsafe href.
+  if(url && !/^https?:\/\//i.test(url)) url='https://'+url;
+  const list=_appLinksState();
+  if(id){ const l=list.find(x=>x.id===id); if(l){ l.label=label; l.url=url; l.qr=qr; } }
+  else { list.push({id:'ql_'+Math.random().toString(36).slice(2,9), label, url, qr}); }
+  window._qlPendingQr='';
+  saveData(); closeModal(); renderAppLinks();
+  showToast('✓ Link saved','success');
+}
+
+function deleteAppLink(id){
+  if(!_canEditLinks()) return;
+  const list=_appLinksState(); const i=list.findIndex(x=>x.id===id); if(i<0) return;
+  if(!confirm('Remove the link "'+(list[i].label||'this link')+'"?')) return;
+  list.splice(i,1); saveData(); renderAppLinks();
 }
 
 function renderMonitoring(){

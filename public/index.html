@@ -1076,9 +1076,39 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <!-- ══════════════════════════════════════
        TAB — MONITORING
   ══════════════════════════════════════ -->
+  <style>
+    .rar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:16px;}
+    .rar-card{position:relative;border:1px solid var(--border);border-top:4px solid var(--accent);border-radius:14px;background:var(--surface);box-shadow:var(--shadow);padding:16px 16px 14px;display:flex;flex-direction:column;gap:10px;min-width:0;}
+    .rar-card.rar-overdue{border-top-color:var(--danger);}
+    .rar-card.rar-due{border-top-color:var(--warning);}
+    .rar-card.rar-ok{border-top-color:#16A34A;}
+    .rar-top{display:flex;align-items:flex-start;gap:10px;}
+    .rar-icon{width:38px;height:38px;border-radius:10px;background:var(--accent-light);color:var(--accent-dark);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .rar-icon svg{width:20px;height:20px;}
+    .rar-title{flex:1;min-width:0;font-family:inherit;font-size:14.5px;font-weight:700;color:var(--text);border:none;background:transparent;padding:4px 2px;border-bottom:1px solid transparent;}
+    .rar-title:hover,.rar-title:focus{border-bottom-color:var(--border);outline:none;}
+    .rar-del{background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:26px;height:26px;border-radius:7px;font-size:15px;font-weight:700;line-height:1;cursor:pointer;flex-shrink:0;padding:0;}
+    .rar-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;}
+    .rar-fld{display:flex;flex-direction:column;gap:3px;min-width:0;}
+    .rar-fld label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);}
+    .rar-fld input{width:100%;font-family:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);}
+    .rar-status{align-self:flex-start;font-size:11px;font-weight:700;padding:3px 10px;border-radius:11px;}
+    .rar-status.rar-overdue{background:var(--danger-bg);color:var(--danger);}
+    .rar-status.rar-due{background:var(--warning-bg);color:var(--warning);}
+    .rar-status.rar-ok{background:#DCFCE7;color:#15803D;}
+    .rar-status.rar-none{background:var(--muted-bg);color:var(--text-muted);}
+    .rar-loc{display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--border);padding-top:10px;}
+    .rar-loc label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);}
+    .rar-loc-row{display:flex;gap:6px;align-items:center;}
+    .rar-loc-input{flex:1;min-width:0;font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:11.5px;padding:6px 8px;border:1px solid var(--border);border-radius:7px;background:var(--muted-bg);color:var(--text);}
+    .rar-open,.rar-copy{flex-shrink:0;font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:7px;border:1px solid var(--accent);cursor:pointer;white-space:nowrap;text-decoration:none;}
+    .rar-open{background:var(--accent);color:#fff;}
+    .rar-copy{background:var(--surface);color:var(--accent-dark);}
+    .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
+  </style>
   <div id="tab-monitoring" class="tab-panel">
     <div class="card no-print" style="margin-bottom:18px;">
-      <div class="card-band"><h3><span class="dot">●</span> Monitoring</h3>
+      <div class="card-band"><h3><span class="dot">●</span> Assurance records</h3>
         <span class="badge badge-muted">Monthly capture, quarterly review</span>
       </div>
       <div class="card-body">
@@ -1102,6 +1132,20 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
     </div>
     <div id="monitoringContainer"></div>
+
+    <!-- Risk assessment register -->
+    <div class="card no-print" style="margin:26px 0 16px;">
+      <div class="card-band"><h3><span class="dot">●</span> Risk assessment register</h3>
+        <span class="badge badge-muted" id="raRegBadge"></span>
+      </div>
+      <div class="card-body">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
+          A register of this client's risk assessments and RAMS, with where each PDF lives. A web link (SharePoint, OneDrive, a URL) opens the document; a file path on the client's system is shown with a Copy button to paste into File Explorer.
+        </div>
+        <button class="btn btn-primary no-print" onclick="addRaRegEntry()">＋ Add risk assessment</button>
+      </div>
+    </div>
+    <div id="raRegisterContainer"></div>
   </div>
 
   <!-- ══════════════════════════════════════
@@ -2551,6 +2595,7 @@ let S = {
   review:      { ratings:[], feedback:'', suggestions:'' }, // Stage 2: consultant review (syncs to server)
   cas:         { gates:{}, roles:{}, status:{} }, // Stage 3: CAS accreditation readiness (per tenant)
   company:     { legalName:'', tradingName:'', regNo:'', sector:'', description:'', phone:'', email:'', website:'', address:'', employees:'', siteCount:'', shifts:'', elciInsurer:'', elciPolicy:'', elciRenewal:'', personnel:[], siteList:[], notes:'' }, // Company setup: per-client company profile
+  raRegister:  [],      // Assurance records: register of the client's risk assessments / RAMS (each points at its PDF)
   activeClient: null,   // stores selected client id — saved with the file
   branding:    {
     name:      'AHS Compliance Consulting',
@@ -2698,7 +2743,7 @@ function switchTab(id) {
   if(id==='reports')  { renderReports(); }
   if(id==='risk')     { renderRiskProfile(); renderRiskReview(); }
   if(id==='requirements'){ renderRequirements(); }
-  if(id==='monitoring'){ renderMonitoring(); }
+  if(id==='monitoring'){ renderMonitoring(); renderRaRegister(); }
   if(id==='review')   { renderReview(); }
   if(id==='documents'){ renderDocuments(); }
   if(id==='cas')      { renderCAS(); }
@@ -7039,6 +7084,8 @@ function migrateLoadedState(){
   ['legalName','tradingName','regNo','sector','description','phone','email','website','address','employees','siteCount','shifts','elciInsurer','elciPolicy','elciRenewal','notes'].forEach(k=>{ if(typeof S.company[k] !== 'string') S.company[k] = ''; });
   if(!Array.isArray(S.company.personnel)) S.company.personnel = [];
   if(!Array.isArray(S.company.siteList))  S.company.siteList  = [];
+  // Assurance records: risk assessment register (additive)
+  if(!Array.isArray(S.raRegister)) S.raRegister = [];
   try {
     if(!S.review.ratings.length && !S.review.feedback && !S.review.suggestions){
       const ck = (typeof _reviewClientKey === 'function') ? _reviewClientKey() : null;
@@ -9912,7 +9959,7 @@ function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null;
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),
     draft:{typeId:'garage_inspection',results:{},notes:{},actionDetails:{},rectifyDetails:{},formData:{},periodFrom:'',periodTo:'',manager:'',location:'',ref:'',freq:'weekly',generalNotes:'',title:'',inspType:''},
-    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, activeClient:null, branding:S.branding };
+    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], activeClient:null, branding:S.branding };
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -13235,6 +13282,107 @@ function updateRegField(id, field, value){
     const b = document.getElementById('regresult-'+id);
     if(b){ b.textContent = value || ''; b.className = 'badge ' + (value==='Pass'?'badge-success':value==='Fail'?'badge-danger':'badge-muted'); b.style.display = value?'inline-flex':'none'; }
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RISK ASSESSMENT REGISTER (in Assurance records)
+//  A per-client list of the client's risk assessments / RAMS, each
+//  pointing at where its PDF lives. A web link opens; a local path is
+//  copied for pasting into File Explorer (browsers can't open file:// ).
+// ══════════════════════════════════════════════════════════════
+function _raRegState(){ if(!Array.isArray(S.raRegister)) S.raRegister = []; return S.raRegister; }
+function _raLocIsUrl(loc){ return /^https?:\/\//i.test((loc||'').trim()); }
+function _raRegStatus(e){
+  const rv = (e.reviewDate||'').trim();
+  if(!rv) return { key:'none', label:'No review date' };
+  const today = new Date().toISOString().slice(0,10);
+  if(rv < today) return { key:'overdue', label:'Review overdue' };
+  const soon = new Date(); soon.setDate(soon.getDate()+30);
+  if(rv <= soon.toISOString().slice(0,10)) return { key:'due', label:'Review due soon' };
+  return { key:'ok', label:'In date' };
+}
+const _RA_DOC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M9 11h2"/></svg>';
+
+function renderRaRegister(){
+  const cont = document.getElementById('raRegisterContainer');
+  if(!cont) return;
+  const list = _raRegState();
+  const badge = document.getElementById('raRegBadge');
+  if(badge){
+    const overdue = list.filter(e=>_raRegStatus(e).key==='overdue').length;
+    badge.textContent = list.length ? (list.length + (list.length===1?' assessment':' assessments') + (overdue?(' · '+overdue+' review overdue'):'')) : '';
+  }
+  const ro = _roLocked();
+  if(!list.length){
+    cont.innerHTML = '<div class="rar-grid"><div class="rar-empty">No risk assessments recorded yet. Add one and paste the link or file path to its PDF.</div></div>';
+    return;
+  }
+  cont.innerHTML = '<div class="rar-grid">' + list.map(e=>{
+    const st = _raRegStatus(e);
+    const loc = (e.location||'').trim();
+    const locCtrl = loc
+      ? (_raLocIsUrl(loc)
+          ? `<a class="rar-open" href="${esc(loc)}" target="_blank" rel="noopener">Open &#8599;</a>`
+          : `<button class="rar-copy no-print" onclick="copyRaLocation('${e.id}')">Copy</button>`)
+      : '';
+    return `<div class="rar-card rar-${st.key}">
+      <div class="rar-top">
+        <div class="rar-icon">${_RA_DOC_ICON}</div>
+        <input class="rar-title" value="${esc(e.title||'')}" placeholder="Risk assessment / RAMS title" oninput="updateRaRegField('${e.id}','title',this.value)"${ro?' disabled':''}>
+        ${ro?'':`<button class="rar-del no-print" title="Remove" onclick="deleteRaRegEntry('${e.id}')">&times;</button>`}
+      </div>
+      <div class="rar-meta">
+        <div class="rar-fld"><label>Reference</label><input value="${esc(e.ref||'')}" placeholder="Ref / version" oninput="updateRaRegField('${e.id}','ref',this.value)"${ro?' disabled':''}></div>
+        <div class="rar-fld"><label>Area / site</label><input value="${esc(e.area||'')}" placeholder="e.g. Workshop" oninput="updateRaRegField('${e.id}','area',this.value)"${ro?' disabled':''}></div>
+        <div class="rar-fld"><label>Assessed</label><input type="date" value="${esc(e.date||'')}" onchange="updateRaRegDate('${e.id}','date',this.value)"${ro?' disabled':''}></div>
+        <div class="rar-fld"><label>Review due</label><input type="date" value="${esc(e.reviewDate||'')}" onchange="updateRaRegDate('${e.id}','reviewDate',this.value)"${ro?' disabled':''}></div>
+      </div>
+      <span class="rar-status rar-${st.key}">${st.label}</span>
+      <div class="rar-loc">
+        <label>PDF location</label>
+        <div class="rar-loc-row">
+          <input class="rar-loc-input" value="${esc(loc)}" placeholder="https://...  or  S:\\H&S\\RAMS\\file.pdf" onchange="updateRaRegLoc('${e.id}',this.value)"${ro?' disabled':''}>
+          ${locCtrl}
+        </div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function addRaRegEntry(){
+  if(_roLocked()) return;
+  _raRegState().push({ id:'rar_'+Math.random().toString(36).slice(2,9), title:'', ref:'', area:'', date:'', reviewDate:'', location:'', notes:'' });
+  saveData();
+  renderRaRegister();
+}
+function deleteRaRegEntry(id){
+  if(_roLocked()) return;
+  const list=_raRegState(); const i=list.findIndex(e=>e.id===id); if(i<0) return;
+  if(!confirm('Remove "'+(list[i].title||'this risk assessment')+'" from the register?\n\nThis removes the register entry only, not the PDF itself.')) return;
+  list.splice(i,1); saveData(); renderRaRegister();
+}
+function updateRaRegField(id, field, val){
+  if(_roLocked()) return;
+  const e=_raRegState().find(x=>x.id===id); if(!e) return;
+  e[field]=val; scheduleAutoSave();   // text edit: no re-render, keep focus
+}
+function updateRaRegDate(id, field, val){
+  if(_roLocked()) return;
+  const e=_raRegState().find(x=>x.id===id); if(!e) return;
+  e[field]=val; saveData(); _keepScroll(renderRaRegister);   // re-render to refresh status
+}
+function updateRaRegLoc(id, val){
+  if(_roLocked()) return;
+  const e=_raRegState().find(x=>x.id===id); if(!e) return;
+  e.location=val; saveData(); _keepScroll(renderRaRegister);  // re-render to swap Open/Copy
+}
+function copyRaLocation(id){
+  const e=_raRegState().find(x=>x.id===id); if(!e) return;
+  const loc=(e.location||'').trim();
+  navigator.clipboard.writeText(loc).then(
+    ()=>showToast('Location copied — paste into File Explorer','success'),
+    ()=>showToast('Could not copy','error')
+  );
 }
 
 function renderMonitoring(){

@@ -1142,7 +1142,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
           A register of this client's risk assessments and RAMS, with where each PDF lives. A web link (SharePoint, OneDrive, a URL) opens the document; a file path on the client's system is shown with a Copy button to paste into File Explorer.
         </div>
-        <button class="btn btn-primary no-print" onclick="addRaRegEntry()">＋ Add risk assessment</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-primary no-print" onclick="addRaRegEntry()">＋ Add risk assessment</button>
+          <button class="btn btn-ghost no-print" onclick="switchTab('reports')" title="Print the register as a PDF">Print register (Reports tab) →</button>
+        </div>
       </div>
     </div>
     <div id="raRegisterContainer"></div>
@@ -10350,6 +10353,9 @@ function renderReports(){
   const auditMeta = _av ? ({satisfactory:'Satisfactory',improvement:'Improvement required',unsatisfactory:'Unsatisfactory'}[_av]||'Recorded') : 'Not yet recorded';
   const _lr = (typeof _reviewLastRating==='function') ? _reviewLastRating() : null;
   const feedbackMeta = _lr ? (_lr.score+' / 5 rated') : 'For the consultant review';
+  const _raList = (typeof _raRegState==='function') ? _raRegState() : (S.raRegister||[]);
+  const _raOverdue = _raList.filter(e=>_raRegStatus(e).key==='overdue').length;
+  const raRegMeta = _raList.length ? (_raList.length+' on file'+(_raOverdue?(' · '+_raOverdue+' review overdue'):'')) : 'None recorded yet';
   const svg = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   const reports = [
     { title:'Board Report', accent:'#DC2626', tint:'#FCE9E9', fn:'downloadBoardReport()', meta:riskMeta,
@@ -10376,6 +10382,10 @@ function renderReports(){
       icon:svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
       desc:'The progress-and-feedback summary to send the client: compliance, priorities, gaps and the consultant’s written feedback and suggestions.',
       tags:['Progress','Feedback','To send'] },
+    { title:'Risk Assessment Register', accent:'#0EA5E9', tint:'#E0F2FE', fn:'downloadRaRegisterReport()', meta:raRegMeta,
+      icon:svg('<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M9 11h2"/>'),
+      desc:'The client’s register of risk assessments and RAMS: reference, dates, review status and where each PDF is filed. Print or send it as one document.',
+      tags:['Register','Document links','Review status'] },
   ];
   const dl = svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>');
   const card = (r) => `<div class="rep-card" style="--rep:${r.accent};--rep-tint:${r.tint};">
@@ -14216,6 +14226,58 @@ function buildAuditReportPDF(){
   st.y+=6; K.ensure(24); doc.setDrawColor(180,185,192); doc.line(ML,st.y+14,ML+80,st.y+14); doc.setFontSize(8.5); doc.setTextColor(120,120,120); doc.text('Signature', ML, st.y+19); doc.line(ML+95,st.y+14,ML+95+60,st.y+14); doc.text('Date', ML+95, st.y+19);
   _pdfFooter(K, d, 'H&S Audit');
   doc.save('hs-audit-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+}
+
+function downloadRaRegisterReport(){ try{ buildRaRegisterReportPDF(); showToast('✓ Risk assessment register created','success'); }catch(e){ console.error('RA register report failed',e); showToast('Could not build the register — see console','error'); } }
+function buildRaRegisterReportPDF(){
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+  const d=S.riskDoc||{};
+  const list=(typeof _raRegState==='function')?_raRegState():(S.raRegister||[]);
+  const RED=[197,32,32], AMBER=[180,110,10], GREEN=[22,120,60], NAVY=[30,58,95], GREY=[110,110,110];
+  const K=_mkPdf('Risk Assessment Register', client, d, 'The register of risk assessments and RAMS held for this client, and where each document is filed.');
+  const { doc } = K;
+  const fd=(s)=> s ? new Date(s+(s.length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '-';
+  if(!list.length){
+    K.verdictBox('No risk assessments have been recorded in the register yet. Add them in the Assurance records tab.', GREY);
+    _pdfFooter(K, d, 'Risk Assessment Register');
+    doc.save('risk-assessment-register-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+    return;
+  }
+  const stMap={ overdue:{t:'Overdue',c:RED}, due:{t:'Due soon',c:AMBER}, ok:{t:'In date',c:GREEN}, none:{t:'No date',c:GREY} };
+  const overdue=list.filter(e=>_raRegStatus(e).key==='overdue').length;
+  const due=list.filter(e=>_raRegStatus(e).key==='due').length;
+  const summary = list.length+' risk assessment'+(list.length!==1?'s':'')+' on file.'
+    + (overdue? ('  '+overdue+' review'+(overdue!==1?'s':'')+' overdue.') : '')
+    + (due? ('  '+due+' due within 30 days.') : '')
+    + ((!overdue&&!due)? '  All reviews in date.' : '');
+  K.verdictBox(summary, overdue?RED:(due?AMBER:GREEN));
+  K.section('Register', NAVY);
+  const cols=[
+    {header:'#',w:7},
+    {header:'RISK ASSESSMENT',w:40},
+    {header:'REF',w:18},
+    {header:'AREA',w:22},
+    {header:'ASSESSED',w:20},
+    {header:'REVIEW DUE',w:22},
+    {header:'STATUS',w:17},
+    {header:'DOCUMENT LOCATION',w:34}
+  ];
+  const rows=list.map((e,i)=>{
+    const sm=stMap[_raRegStatus(e).key]||stMap.none;
+    return [
+      String(i+1),
+      {text:e.title||'-', bold:true},
+      e.ref||'-',
+      e.area||'-',
+      fd(e.date),
+      {text:fd(e.reviewDate), color:sm.c},
+      {text:sm.t, color:sm.c, bold:true},
+      e.location||'-'
+    ];
+  });
+  K.table(cols, rows, {headFill:NAVY, headText:[255,255,255]});
+  _pdfFooter(K, d, 'Risk Assessment Register');
+  doc.save('risk-assessment-register-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
 }
 
 let _toastTimer=null;

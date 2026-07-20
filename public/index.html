@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AHS H&S Management System</title>
+<title>H&S Manager</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -46,6 +46,18 @@
 [data-theme="dark"] [style*="background: #fff"],
 [data-theme="dark"] [style*="background:#FFFFFF"],
 [data-theme="dark"] [style*="background:#FFF"]{ background:var(--surface)!important; }
+/* Catch dark inline TEXT colours so they don't go dark-on-dark (invisible) */
+[data-theme="dark"] [style*="color:#3a3a3a"],
+[data-theme="dark"] [style*="color:#3A3A3A"],
+[data-theme="dark"] [style*="color:#333"],
+[data-theme="dark"] [style*="color:#222"],
+[data-theme="dark"] [style*="color:#111"],
+[data-theme="dark"] [style*="color:#1e293b"],
+[data-theme="dark"] [style*="color:#1E293B"],
+[data-theme="dark"] [style*="color:#1e3a5f"],
+[data-theme="dark"] [style*="color:#1E3A5F"]{ color:var(--text)!important; }
+[data-theme="dark"] [style*="color:#065f46"],
+[data-theme="dark"] [style*="color:#15803d"]{ color:var(--success)!important; }
 /* Keep printing / PDF light regardless of the on-screen theme */
 @media print{
   [data-theme="dark"]{
@@ -60,7 +72,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .app-header{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);}
 .header-inner{max-width:none;margin:0;width:100%;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .header-brand{display:flex;align-items:center;gap:12px;flex-shrink:0;}
-.logo-mark{width:36px;height:36px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;letter-spacing:.02em;}
+.logo-mark{width:40px;height:40px;background:none;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.logo-mark svg{width:100%;height:100%;display:block;}
 .header-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.01em;}
 .header-sub{font-size:12px;color:var(--text-muted);}
 .header-right{display:flex;align-items:center;gap:8px;}
@@ -579,9 +592,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="modal login-modal">
     <button class="login-close" onclick="closeLoginModal()" aria-label="Close">✕</button>
     <div class="login-head">
-      <div class="logo-mark login-logo">AHS</div>
+      <div class="logo-mark login-logo"><svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="21" cy="20" r="16.5" stroke="var(--accent)" stroke-width="2.3"/><circle cx="21" cy="20" r="9.5" stroke="var(--accent)" stroke-width="2.3"/><line x1="21" y1="20" x2="40" y2="8" stroke="#8b9096" stroke-width="2.3" stroke-linecap="round"/></svg></div>
       <div class="login-title">Sign in</div>
-      <div class="login-sub">Access your H&amp;S Management System and sync your records to the server.</div>
+      <div class="login-sub">Access your H&amp;S <em>Manager</em> and sync your records to the server.</div>
     </div>
     <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="login-form">
       <div class="field-group">
@@ -595,7 +608,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div id="loginError" style="display:none;font-size:13px;padding:9px 12px;background:var(--danger-bg);border:1px solid var(--danger-brd);border-radius:8px;color:var(--danger);"></div>
       <button type="submit" class="btn btn-primary login-submit" id="loginSubmitBtn">Sign in</button>
     </form>
-    <div class="login-foot">Trouble signing in? Contact Archer Health &amp; Safety.</div>
+    <div class="login-foot">Trouble signing in? Contact AHS Compliance Consulting.</div>
   </div>
 </div>
 
@@ -637,9 +650,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="header-inner">
     <button id="sidebarToggle" class="no-print" onclick="toggleSidebar()" aria-label="Toggle navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/></svg></button>
     <div class="header-brand">
-      <div class="logo-mark">AHS</div>
+      <div class="logo-mark"><svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="21" cy="20" r="16.5" stroke="var(--accent)" stroke-width="2.3"/><circle cx="21" cy="20" r="9.5" stroke="var(--accent)" stroke-width="2.3"/><line x1="21" y1="20" x2="40" y2="8" stroke="#8b9096" stroke-width="2.3" stroke-linecap="round"/></svg></div>
       <div>
-        <div class="header-title">H&amp;S Management System</div>
+        <div class="header-title">H&amp;S <em style="font-style:italic;font-weight:600;">Manager</em></div>
         <div class="header-sub" id="headerSub" style="display:none;"></div>
       </div>
     </div>
@@ -707,9 +720,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <div id="clientHub" class="no-print">
   <div class="hub-top">
     <div class="hub-brand">
-      <div class="logo-mark">AHS</div>
+      <div class="logo-mark"><svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="21" cy="20" r="16.5" stroke="var(--accent)" stroke-width="2.3"/><circle cx="21" cy="20" r="9.5" stroke="var(--accent)" stroke-width="2.3"/><line x1="21" y1="20" x2="40" y2="8" stroke="#8b9096" stroke-width="2.3" stroke-linecap="round"/></svg></div>
       <div>
-        <div class="hub-title">Archer Health &amp; Safety</div>
+        <div class="hub-title">AHS Compliance Consulting</div>
         <div class="hub-sub" id="hubUser"></div>
       </div>
     </div>
@@ -2436,7 +2449,7 @@ const FORMS = {
         'and can be attached to this email if a more formal record is needed.\n' +
         '------------------------------------------------------------\n' +
         '\n' +
-        'Sent from the Archer H&S Management System'
+        'Sent from H&S Manager (AHS Compliance Consulting)'
     },
     sections: [
       {
@@ -2798,7 +2811,7 @@ function onInspDateChange(){
 function updateHeaderTitle() {
   // The header subtitle names the client being worked on; it no longer echoes
   // the current inspection title. With no client selected it is hidden so the
-  // app title "H&S Management System" stands alone.
+  // app title "H&S Manager" stands alone.
   const sub = document.getElementById('headerSub');
   if (!sub) return;
   // Name the client in context: a consultant dialled in, or the signed-in client
@@ -5632,8 +5645,12 @@ function applyBrandingToCSS(){
       return `rgb(${Math.round(r*(1-amount))},${Math.round(g*(1-amount))},${Math.round(b*(1-amount))})`;
     }
   };
-  const accentLight = mix(accent, true, 0.85);   // very light tint for backgrounds
-  const accentDark  = mix(accent, false, 0.18);  // slightly darker for hover
+  // Theme-aware derived shades. In dark mode a "light tint" chip background would
+  // be pale with light text on it (the reported "impossible to see" bug), so we
+  // tint the chip background toward BLACK and lighten the hover instead.
+  const _dark = document.documentElement.getAttribute('data-theme')==='dark';
+  const accentLight = _dark ? mix(accent, false, 0.66) : mix(accent, true, 0.85);  // chip / badge background
+  const accentDark  = _dark ? mix(accent, true, 0.32)  : mix(accent, false, 0.18); // hover shade
 
   const root = document.documentElement.style;
   root.setProperty('--primary', primary);
@@ -11909,9 +11926,12 @@ function _pdfAscii(t){ return String(t).replace(/→/g,'>').replace(/×/g,'x').r
 // Report masthead: logo mark + practice name + client/date meta + rule + big title. Returns the y to continue from. Page 1 only.
 function _pdfMasthead(doc, ML, RM, title, subtitle, client, d){
   const A=_pdfAscii, NAVY=[30,58,95], MUT=[102,112,128];
-  doc.setFillColor(NAVY[0],NAVY[1],NAVY[2]); doc.roundedRect(ML,11.5,9,9,1.6,1.6,'F');
-  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.text('A', ML+4.5, 18, {align:'center'});
-  doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); doc.setFontSize(12); doc.text('Archer Health & Safety', ML+12.5, 16);
+  // Logo mark: concentric teal rings + grey needle (AHS Compliance Consulting)
+  const _TEAL=[75,191,214];
+  doc.setLineWidth(0.7); doc.setDrawColor(_TEAL[0],_TEAL[1],_TEAL[2]);
+  doc.circle(ML+4.5, 16, 4.4, 'S'); doc.circle(ML+4.5, 16, 2.5, 'S');
+  doc.setDrawColor(150,154,160); doc.line(ML+4.5, 16, ML+8.4, 12.6); doc.setLineWidth(0.2);
+  doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('AHS Compliance Consulting', ML+12.5, 16);
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(MUT[0],MUT[1],MUT[2]); doc.text('Health, safety & environmental advisers', ML+12.5, 20);
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(40,48,60); doc.text(A(client), RM, 14, {align:'right'});
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(MUT[0],MUT[1],MUT[2]);
@@ -12251,7 +12271,7 @@ function _profBoardReport_dead(){
     head('Prioritised action plan',[22,163,74]);
     if(findings.length) findings.forEach(f=>{ const a=_profAction(f.id); text('• '+f.text+'  [owner: '+(a.owner||'—')+' · '+(a.due||'no date')+' · '+(a.status||'Not started')+']',9); });
     else text('No gaps recorded — all reviewed requirements are present or N/A.',9.5);
-    const pages=doc.getNumberOfPages(); for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setDrawColor(220,224,230); doc.line(ML,288,RM,288); doc.setFontSize(8); doc.setTextColor(150,150,150); doc.text('AHS - Archer Health and Safety  ·  Risk profile board report  ·  '+client,ML,292); doc.text('Page '+i+' of '+pages,RM,292,{align:'right'}); }
+    const pages=doc.getNumberOfPages(); for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setDrawColor(220,224,230); doc.line(ML,288,RM,288); doc.setFontSize(8); doc.setTextColor(150,150,150); doc.text('AHS Compliance Consulting  ·  Risk profile board report  ·  '+client,ML,292); doc.text('Page '+i+' of '+pages,RM,292,{align:'right'}); }
     doc.save('risk-profile-board-report-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
     showToast('✓ Board report created','success');
   }catch(e){ console.error('Board report failed',e); showToast('Could not build the board report — see console','error'); }
@@ -14543,6 +14563,7 @@ function setTheme(t){
   if(t==='dark') document.documentElement.setAttribute('data-theme','dark');
   else document.documentElement.removeAttribute('data-theme');
   try{ localStorage.setItem('hsms_theme', t); }catch(e){}
+  try{ if(typeof applyBrandingToCSS==='function') applyBrandingToCSS(); }catch(e){}   // recompute brand-derived shades for the new theme
   var ic=document.getElementById('themeToggleIcon');
   if(ic) ic.innerHTML = (t==='dark') ? _SUN : _MOON;   // show what you'll switch TO
 }

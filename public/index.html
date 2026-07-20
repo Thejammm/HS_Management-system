@@ -2843,6 +2843,7 @@ function switchTab(id) {
   if(id==='audit')    { renderAuditSections(); populateAuditForm(); }
   if(id==='setup')    { showSetupTab(); }
   if(id==='admin')    { renderAdminPane(); }
+  try{ window._sectionRail && window._sectionRail.build(); }catch(e){}
 }
 
 function switchSetupPane(id) {
@@ -13930,51 +13931,67 @@ function downloadCasSubmissionPack(){
   catch(e){ console.error('CAS submission pack failed:', e); showToast('Could not build the pack — see console','error'); }
 }
 function buildCasSubmissionPackPDF(){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const ML=16, RM=194; let y=18;
-  const text=(t,size,bold,colour)=>{ doc.setFont('helvetica',bold?'bold':'normal'); doc.setFontSize(size); doc.setTextColor(colour?colour[0]:60,colour?colour[1]:60,colour?colour[2]:60); doc.splitTextToSize(String(t),RM-ML).forEach(w=>{ if(y>282){doc.addPage();y=18;} doc.text(w,ML,y); y+=size*0.5; }); };
-  const head=(t)=>{ y+=3; if(y>270){doc.addPage();y=18;} text(t,12,true,[30,58,95]); y+=1; };
-
   const sel=document.getElementById('casSchemeFilter');
   const scheme = CAS_SCHEMES.find(s=>s.id===(sel && sel.value)) || CAS_SCHEMES[0];
   const sections = CAS_FRAMEWORK.sections.filter(s=>!scheme.sections||scheme.sections.includes(s.id));
   const client = (_consultantView && _consultantView.name) || (Auth.user && Auth.user() && Auth.user().tenantName) || (S.branding && S.branding.name) || 'Client';
   const smallCo = _casSmallCo();
+  const d = S.riskDoc || {};
+  const RED=[197,32,32], AMBER=[180,110,10], GREEN=[22,120,60], NAVY=[30,58,95], GREY=[120,120,120], BLUE=[37,99,235];
 
   let inScope=0,ready=0,partial=0,gap=0,na=0,prop=0;
   sections.forEach(s=>s.questions.forEach(q=>{ if(!_casRowInScope(q.q))return; inScope++; const st=(S.cas&&S.cas.status&&S.cas.status[q.q]||{}).v;
     if(st==='ready')ready++;else if(st==='partial')partial++;else if(st==='gap')gap++;else if(st==='na')na++;else if(_casProportionateOptional(q))prop++; }));
   const assessable=inScope-na-prop; const pct=assessable>0?Math.round(ready/assessable*100):null;
 
-  doc.setFillColor(30,58,95); doc.rect(0,0,210,26,'F');
-  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('CAS Submission Pack — cover index',ML,12);
-  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(String(client)+'  ·  '+scheme.label,ML,19);
-  y=34;
-  text('Common Assessment Standard (Build UK, Version 5). Generated '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+(smallCo?'  ·  Small-company mode':''),9,false,[110,110,110]);
-  text('Readiness: '+(pct==null?'not yet assessed':pct+'% ready')+'  ('+ready+' ready, '+partial+' partial, '+gap+' gap, '+na+' N/A'+(prop?', '+prop+' proportionate':'')+' of '+inScope+' in scope)',10,true,[30,58,95]);
-  text('This cover index maps each in-scope CAS criterion to your evidence. Attach the referenced documents when you submit. Summaries are our own wording, not the Build UK source text.',9,false,[110,110,110]);
+  const K=_mkPdf('CAS Submission Pack', client, d, 'Common Assessment Standard (Build UK v5), readiness and evidence index'+(smallCo?', small-company mode':'')+'. Scheme: '+scheme.label+'.');
+  const { doc } = K;
 
-  const STLABEL={ready:'READY',partial:'PARTIAL',gap:'GAP',na:'N/A'};
+  // Lead with the overall readiness verdict
+  const vRgb = pct==null?GREY:(pct>=80?GREEN:pct>=50?AMBER:RED);
+  const vTxt = (pct==null?'Not yet assessed':pct+'% ready')+' - '+ready+' ready, '+partial+' partial, '+gap+' gap, '+na+' N/A'+(prop?', '+prop+' proportionate':'')+' of '+inScope+' criteria in scope.';
+  K.verdictBox(vTxt, vRgb);
+
+  // Readiness tiles + status distribution
+  K.section('Readiness at a glance', NAVY);
+  K.tiles([
+    {num: pct==null?'-':pct+'%', label:'Ready', color:vRgb, sub:ready+' of '+Math.max(0,assessable)+' assessable'},
+    {num:String(partial), label:'Partial', color:partial?AMBER:NAVY, sub:'needs work'},
+    {num:String(gap), label:'Gap', color:gap?RED:NAVY, sub:'not met'},
+    {num:String(na+prop), label:'N/A / proportionate', color:NAVY, sub:'out of scope'}
+  ], {cols:4});
+  K.segBar([
+    {label:'Ready', val:ready, color:GREEN},
+    {label:'Partial', val:partial, color:AMBER},
+    {label:'Gap', val:gap, color:RED},
+    {label:'N/A', val:na, color:[160,166,175]}
+  ].concat(prop?[{label:'Proportionate', val:prop, color:BLUE}]:[]).concat([
+    {label:'Not assessed', val:Math.max(0, inScope-ready-partial-gap-na-prop), color:[210,214,220]}
+  ]));
+  K.text('Attach the referenced documents when you submit. Summaries are our own wording, not the Build UK source text.', 8.5, {color:GREY, gap:1});
+
+  // Per-section evidence tables
+  const stMeta={ ready:{t:'Ready',c:GREEN}, partial:{t:'Partial',c:AMBER}, gap:{t:'Gap',c:RED}, na:{t:'N/A',c:[160,166,175]} };
   sections.forEach(s=>{
     const rows=s.questions.filter(q=>_casRowInScope(q.q));
     if(!rows.length) return;
-    head(s.id+'. '+s.name+(s.id===7?'   [Building Safety Act — mandatory]':''));
-    rows.forEach(q=>{
+    K.section(s.id+'. '+s.name, NAVY);
+    if(s.id===7){ K.text('Building Safety Act, mandatory section. Where duty-holder or competence gaps show, the BRPD service can close them.', 8.5, {color:BLUE, gap:1}); }
+    const trows=rows.map(q=>{
       const st=(S.cas&&S.cas.status&&S.cas.status[q.q]||{}).v;
-      const stTxt=st?STLABEL[st]:(_casProportionateOptional(q)?'proportionate':'not assessed');
-      text('Q'+q.q+'  '+q.req+'   ['+stTxt+']',9.5);
+      const meta = st?stMeta[st]:null;
+      const pill = meta?meta.t:(_casProportionateOptional(q)?'Proportionate':'Not assessed');
+      const pc   = meta?meta.c:(_casProportionateOptional(q)?BLUE:[170,175,182]);
       const docs=_casLinkedDocs(q.q);
-      if(docs.length){ docs.forEach(d=>{ text('   • '+(d.name||'document')+(d.link?('  '+d.link):''),8.5,false,[90,90,90]); }); }
-      else if(/LIVE/.test(q.app)){ const sn=_casLiveSnapshot(); text('   • App data: '+sn.inspections+' inspections, '+sn.closedActions+' closed actions, '+sn.months+' months monitored',8.5,false,[90,90,90]); }
-      y+=1;
+      let ev='-';
+      if(docs.length) ev=docs.map(x=>(x.name||'document')+(x.link?(' ('+x.link+')'):'')).join('; ');
+      else if(/LIVE/.test(q.app)){ const sn=_casLiveSnapshot(); ev='App data: '+sn.inspections+' inspections, '+sn.closedActions+' closed actions, '+sn.months+' months monitored'; }
+      return [ {text:'Q'+q.q+'  '+q.req, bold:true}, {pill:pill, pillColor:pc}, {text:ev, color:[90,90,90]} ];
     });
+    K.table([{header:'CRITERION',w:92},{header:'STATUS',w:30},{header:'EVIDENCE',w:64}], trows, {headFill:NAVY, headText:[255,255,255]});
   });
 
-  doc.setFontSize(8); doc.setTextColor(150,150,150);
-  const pages=doc.internal.getNumberOfPages();
-  for(let p=1;p<=pages;p++){ doc.setPage(p); doc.text('Archer Health & Safety  ·  CAS submission cover index  ·  Page '+p+' of '+pages, ML, 290); }
-
+  _pdfFooter(K, d, 'CAS Submission Pack');
   const safeClient=String(client).replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')||'client';
   doc.save(safeClient+'_CAS-submission-pack_'+new Date().toISOString().slice(0,10)+'.pdf');
 }
@@ -14444,6 +14461,79 @@ function showToast(msg,type='success'){
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initBackToTop);
   else initBackToTop();
+})();
+
+/* ── Section navigator rail (all tabs): a slim scroll bar with a stop mark for
+   each section on the current screen. Hover a mark for its name, click to jump. ── */
+(function(){
+  var rail, track, thumb, dots=[], raf=0, buildT=0;
+  function css(){
+    if(document.getElementById('secRailCss')) return;
+    var s=document.createElement('style'); s.id='secRailCss';
+    s.textContent='#secRail{position:fixed;right:8px;top:50%;transform:translateY(-50%);height:min(64vh,520px);width:20px;z-index:480;display:none;}'
+      +'#secRail.on{display:block;}'
+      +'#secRail .sr-track{position:absolute;left:9px;top:0;bottom:0;width:2px;background:var(--border,#e0e4e9);border-radius:2px;}'
+      +'#secRail .sr-thumb{position:absolute;left:7px;width:6px;height:22px;margin-top:-11px;background:var(--accent,#4BBFD6);border-radius:3px;opacity:.55;transition:top .08s linear;}'
+      +'.sr-dot{position:absolute;left:4px;width:12px;height:12px;margin-top:-6px;border-radius:50%;background:var(--surface,#fff);border:2px solid var(--border,#c3c8d0);cursor:pointer;transition:transform .12s,background .12s,border-color .12s;}'
+      +'.sr-dot:hover{transform:scale(1.35);border-color:var(--accent,#4BBFD6);}'
+      +'.sr-dot.active{background:var(--accent,#4BBFD6);border-color:var(--accent,#4BBFD6);transform:scale(1.25);}'
+      +'.sr-dot .sr-lab{position:absolute;right:20px;top:50%;transform:translateY(-50%);white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis;background:var(--text,#26303a);color:#fff;font-size:11px;line-height:1;padding:5px 9px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .12s;box-shadow:0 3px 10px rgba(0,0,0,.25);}'
+      +'.sr-dot:hover .sr-lab{opacity:1;}'
+      +'@media(max-width:820px){#secRail{display:none!important;}}@media print{#secRail{display:none!important;}}';
+    document.head.appendChild(s);
+  }
+  function ensureRail(){
+    css(); rail=document.getElementById('secRail'); if(rail) return;
+    rail=document.createElement('div'); rail.id='secRail'; rail.className='no-print';
+    track=document.createElement('div'); track.className='sr-track';
+    thumb=document.createElement('div'); thumb.className='sr-thumb';
+    track.appendChild(thumb); rail.appendChild(track); document.body.appendChild(rail);
+  }
+  function activePanel(){ return document.querySelector('.tab-panel.active'); }
+  function collect(panel){
+    var nodes=panel.querySelectorAll('h2, h3, details.coll > summary'); var out=[], last=-999;
+    nodes.forEach(function(el){
+      if(el.closest('#secRail')) return;
+      if(el.closest('.risk-card')) return;               // skip the many per-risk-card headers
+      if(!el.getClientRects().length) return;            // visible only
+      var hEl=el.matches('summary')?(el.querySelector('h3,h4,strong,b')||el):el;
+      var txt=(hEl.textContent||'').replace(/\s+/g,' ').trim().replace(/^[•●∙\s]+/,''); if(txt.length<2) return;
+      var top=el.getBoundingClientRect().top+window.pageYOffset;
+      if(top-last<26) return; last=top;
+      out.push({el:el,label:txt.slice(0,50)});
+    });
+    return out.slice(0,20);
+  }
+  function build(){
+    ensureRail(); if(track){ track.querySelectorAll('.sr-dot').forEach(function(d){d.remove();}); } dots=[];
+    var panel=activePanel(); if(!panel){ rail.classList.remove('on'); return; }
+    var secs=collect(panel), docH=document.documentElement.scrollHeight, vp=window.innerHeight;
+    if(secs.length<2 || docH<=vp+120){ rail.classList.remove('on'); return; }
+    secs.forEach(function(s){
+      var dot=document.createElement('div'); dot.className='sr-dot';
+      var lab=document.createElement('span'); lab.className='sr-lab'; lab.textContent=s.label; dot.appendChild(lab);
+      dot.addEventListener('click',function(){ var t=Math.max(0,s.el.getBoundingClientRect().top+window.pageYOffset-74); try{ window.scrollTo({top:t,behavior:'smooth'}); }catch(_){ window.scrollTo(0,t); } });
+      track.appendChild(dot); dots.push({el:s.el,dot:dot});
+    });
+    rail.classList.add('on'); reposition();
+  }
+  function reposition(){
+    if(!rail || !rail.classList.contains('on')) return;
+    var docH=document.documentElement.scrollHeight, vp=window.innerHeight, sy=window.pageYOffset;
+    if(docH<=vp+120){ rail.classList.remove('on'); return; }
+    var activeIdx=-1;
+    dots.forEach(function(o,i){ var top=o.el.getBoundingClientRect().top+sy; o.dot.style.top=(Math.max(0,Math.min(1,top/docH))*100)+'%'; if(top-sy-96<=0) activeIdx=i; o.dot.classList.remove('active'); });
+    if(activeIdx<0) activeIdx=0; if(dots[activeIdx]) dots[activeIdx].dot.classList.add('active');
+    var sp=docH-vp; thumb.style.top=((sp>0?sy/sp:0)*100)+'%';
+  }
+  function onScroll(){ if(raf) return; raf=requestAnimationFrame(function(){ raf=0; reposition(); }); }
+  function schedBuild(){ clearTimeout(buildT); buildT=setTimeout(build,80); }
+  window._sectionRail={ build:schedBuild, reposition:reposition };
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',schedBuild,{passive:true});
+  // Recompute after a collapsible opens/closes (they animate), without a heavy observer.
+  document.addEventListener('click',function(e){ if(e.target && e.target.closest && e.target.closest('.tab-panel')) setTimeout(reposition,380); },true);
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',schedBuild); else schedBuild();
 })();
 
 /* ── Light / dark theme toggle ── */

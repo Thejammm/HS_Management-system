@@ -13150,20 +13150,34 @@ function buildManagementSystemReportPDF(){
       {num:String(stt.notInPlace), label:'Not in place', color:stt.notInPlace?RED:NAVY, sub:'Missing entirely'},
       {num:String(stt.overdue), label:'Overdue actions', color:stt.overdue?RED:NAVY, sub:'Past target date'}
     ]);
+    // Status distribution across all duty lines (same visual the other reports use)
+    K.segBar([
+      {label:'Met', val:stt.met, color:GREEN},
+      {label:'Gap', val:stt.gap, color:AMBER},
+      {label:'Not in place', val:stt.notInPlace, color:RED},
+      {label:'Not assessed', val:Math.max(0,(stt.total||0)-(stt.assessed||0)), color:[160,166,175]}
+    ]);
   }
 
-  // Exception reporting — only what needs action (spec D2/D3)
+  // Exception reporting — only what needs action, as a table (spec D2/D3)
   K.section('What needs action', RED);
-  let any=false;
+  const actRows=[];
   REQ_STAGES.concat(['__other']).forEach(stage=>{
     const grp = stage==='__other' ? secs.filter(s=>!REQ_STAGES.includes(s.stage)) : secs.filter(s=>s.stage===stage);
-    grp.forEach(sec=>{ (sec.items||[]).forEach(it=>{ const s2=_reqItemStatus(it); if(s2 && (s2.label==='Gap'||s2.label==='Not in place')){ any=true;
-      K.text('- '+(it.requirement||'(requirement)')+'  ['+s2.label+']', 9.5, {color: s2.label==='Not in place'?RED:AMBER});
-      const bits=[]; if(it.action) bits.push('Action: '+it.action); if(it.dueDate) bits.push('Due: '+fmtDate(it.dueDate)); if(it.citation) bits.push(it.citation);
-      if(bits.length) K.text('   '+bits.join('   -   '), 8.5, {color:[120,120,120], x:ML+2});
+    grp.forEach(sec=>{ (sec.items||[]).forEach(it=>{ const s2=_reqItemStatus(it); if(s2 && (s2.label==='Gap'||s2.label==='Not in place')){
+      const overdue = it.dueDate && new Date(it.dueDate) < new Date();
+      actRows.push([
+        {text:(it.requirement||'(requirement)'), bold:true},
+        {pill: s2.label==='Not in place'?'Not in place':'Gap', pillColor: s2.label==='Not in place'?RED:AMBER},
+        {text: it.action||'-', color:[90,90,90]},
+        {text: it.dueDate?fmtDate(it.dueDate):'-', color: overdue?RED:[90,90,90], bold: overdue}
+      ]);
     }}); });
   });
-  if(!any) K.text('No gaps — every assessed requirement is met or not applicable.', 9.5, {color:GREEN});
+  if(actRows.length){
+    K.table([{header:'REQUIREMENT',w:80},{header:'STATUS',w:30},{header:'ACTION',w:52},{header:'DUE',w:22}],
+      actRows, {headFill:NAVY, headText:[255,255,255]});
+  } else K.text('No gaps — every assessed requirement is met or not applicable.', 9.5, {color:GREEN});
 
   if(msComplete<100 && _reportSectionOn('mgmt.completeness')){ K.section('Data completeness', AMBER); K.text(msComplete+'% of duty lines assessed', 13, {bold:true, color:AMBER}); K.text('- '+(stt.total-stt.assessed)+' requirement line(s) not yet assessed', 9.5, {color:[110,110,110]}); }
 
@@ -14203,6 +14217,12 @@ function buildFeedbackReportPDF(){
   const NAVY=[30,58,95], GREEN=[22,120,60], AMBER=[180,110,10], RED=[197,32,32], GREY=[110,110,110];
   const K=_mkPdf('Consultant Review & Feedback', client, d, 'Progress, priorities and the consultant’s feedback for this client.');
   const { doc, ML, RM, st, A } = K;
+  // Lead with an overall verdict, like the other reports
+  const _gapsN=(function(){ let n=0; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if((it.present||it.adequate)&&!(it.present==='Yes'&&it.adequate==='Yes')) n++; })); return n; })();
+  const _openN=(S.actions||[]).filter(x=>!x.resolved).length;
+  const _vRgb=(sc.overdueA||_gapsN>3)?RED:((_openN||_gapsN)?AMBER:GREEN);
+  const _vTxt='Compliance '+(sc.compliance==null?'not yet measured':sc.compliance+'%')+', '+_openN+' open action'+(_openN!==1?'s':'')+(sc.overdueA?(' ('+sc.overdueA+' overdue)'):'')+' and '+_gapsN+' management-system gap'+(_gapsN!==1?'s':'')+' for this client.';
+  K.verdictBox(_vTxt, _vRgb);
   // Progress at a glance (tiles)
   K.section('Progress at a glance', NAVY);
   K.tiles([
@@ -14212,6 +14232,14 @@ function buildFeedbackReportPDF(){
     {num: sc.avgResolveDays==null?'-':String(sc.avgResolveDays), label:'Avg days to close', color:NAVY, sub:'per action'}
   ], {cols:4});
   K.text('Inspections per month: '+sc.trend.map(t=>t.label+' '+t.count).join('   '), 8.5, {color:GREY, gap:1});
+  // Risk exposure vs management maturity (signature comparison used across the reports)
+  try{ const rvm=_riskVsMaturity(); K.section('Risk exposure vs management maturity', NAVY);
+    K.bars([
+      {label:'Risk exposure', val:rvm.riskIndex, color: rvm.riskIndex>=60?RED:rvm.riskIndex>=35?AMBER:GREEN, valLabel: rvm.riskLabel+' ('+rvm.riskIndex+')'},
+      {label:'Management maturity', val: rvm.matPct==null?0:rvm.matPct, color: rvm.matPct==null?GREY:rvm.matPct>=70?GREEN:rvm.matPct>=40?AMBER:RED, valLabel: rvm.matAvg==null?'not scored':rvm.matAvg.toFixed(1)+'/5'}
+    ]);
+    K.text(rvm.verdict, 9, {color:GREY, gap:1});
+  }catch(e){}
   // Priority risks
   K.section('Priority risks', RED);
   const priRisks=(S.riskProfile||[]).map(r=>({r,sc:_riskScore(r)})).filter(x=>x.sc.priority==='Critical'||x.sc.priority==='High').sort((a,b)=>(b.sc.rating||0)-(a.sc.rating||0));
@@ -14220,19 +14248,29 @@ function buildFeedbackReportPDF(){
       priRisks.map(x=>[{text:x.r.activity||x.r.hazard||'Risk', bold:true}, {text:x.sc.priority+' '+x.sc.rating, bold:true, color:x.sc.priority==='Critical'?RED:AMBER}, {text:x.r.controls||'-', color:GREY}]),
       {headFill:NAVY, headText:[255,255,255]});
   } else K.text('No critical or high risks recorded.', 9.5, {color:GREY});
-  // Management system gaps
+  // Management system gaps (table)
   K.section('Management system gaps', AMBER);
-  const gaps=[]; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if((it.present||it.adequate)&&!(it.present==='Yes'&&it.adequate==='Yes')) gaps.push((s.heading?s.heading+': ':'')+(it.requirement||'requirement')+(it.action?(' (action: '+it.action+')'):'')); }));
-  if(gaps.length) gaps.forEach(g=>K.text('- '+g, 9)); else K.text('No management system gaps recorded.', 9.5, {color:GREY});
-  // Monitoring picture
-  K.section('Monitoring picture', NAVY);
+  const gapRows=[]; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if((it.present||it.adequate)&&!(it.present==='Yes'&&it.adequate==='Yes')) gapRows.push([{text:(it.requirement||'requirement'), bold:true},{text:s.heading||'-', color:GREY},{text:it.action||'-', color:GREY}]); }));
+  if(gapRows.length){ K.table([{header:'REQUIREMENT',w:78},{header:'DUTY AREA',w:52},{header:'ACTION',w:48}], gapRows, {headFill:AMBER, headText:[255,255,255]}); }
+  else K.text('No management system gaps recorded.', 9.5, {color:GREY});
+  // Monitoring picture (tiles)
+  K.section('Monitoring picture (this month)', NAVY);
   const m=new Date().toISOString().slice(0,7); const md=(S.monitoring&&S.monitoring.months&&S.monitoring.months[m])||{}; const a2=_monAutoScores(m);
-  K.text('Inspections this month: '+a2.inspectionsCarried+'  (compliant '+a2.scoreCompliant+', opportunity '+a2.scoreOpportunity+', non-compliant '+a2.scoreNonCompliant+')', 9);
-  K.text('Near misses: '+(md.nearMisses||'0')+'    RIDDORs: '+(md.riddors||'0')+'    Lost-time injuries: '+(md.lostTime||'0'), 9);
-  // Open actions
+  K.tiles([
+    {num:String(a2.inspectionsCarried), label:'Inspections', color:NAVY, sub:'comp '+a2.scoreCompliant+' / opp '+a2.scoreOpportunity+' / nc '+a2.scoreNonCompliant},
+    {num:String(md.nearMisses||0), label:'Near misses', color:(+md.nearMisses>0)?AMBER:NAVY, sub:'reported'},
+    {num:String(md.riddors||0), label:'RIDDORs', color:(+md.riddors>0)?RED:GREEN, sub:'reportable'},
+    {num:String(md.lostTime||0), label:'Lost-time injuries', color:(+md.lostTime>0)?RED:GREEN, sub:'this month'}
+  ], {cols:4});
+  // Open actions (table)
   K.section('Open actions', NAVY);
   const openActs=(S.actions||[]).filter(x=>!x.resolved);
-  if(openActs.length) openActs.slice(0,15).forEach(x=>K.text('- '+(x.itemName||x.issue||'Action')+(x.dueDate?(' (due '+fmtDate(x.dueDate)+')'):''), 9)); else K.text('No open actions.', 9.5, {color:GREY});
+  if(openActs.length){
+    K.table([{header:'ACTION',w:132},{header:'DUE',w:46}],
+      openActs.slice(0,20).map(x=>{ const od=x.dueDate && new Date(x.dueDate) < new Date(); return [{text:(x.itemName||x.issue||'Action'), bold:true},{text:x.dueDate?fmtDate(x.dueDate):'-', color:od?RED:[90,90,90], bold:od}]; }),
+      {headFill:NAVY, headText:[255,255,255]});
+    if(openActs.length>20) K.text('... and '+(openActs.length-20)+' more.', 8.5, {color:GREY});
+  } else K.text('No open actions.', 9.5, {color:GREY});
   // Quality rating
   if(lastRating){ K.section('Quality rating', NAVY); K.text('Latest: '+lastRating.score+' of 5'+(lastRating.note?(' - '+lastRating.note):'')+' on '+fmtDate(lastRating.date), 9.5); }
   // Feedback + suggestions

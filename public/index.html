@@ -647,6 +647,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <span class="save-indicator" id="saveIndicator"></span>
       <button class="btn btn-ghost btn-sm no-print" id="themeToggle" onclick="toggleTheme()" title="Toggle light / dark mode" aria-label="Toggle light or dark mode" style="color:var(--text-muted);border-color:var(--border);padding:6px 9px;line-height:0;"><span id="themeToggleIcon"></span></button>
       <button class="btn btn-ghost btn-sm no-print" id="backupBtn" onclick="exportEverything()" title="Download a full JSON backup of your local data" style="color:var(--text-muted);border-color:var(--border);">⭳ Backup</button>
+      <button class="btn btn-ghost btn-sm no-print" id="importBtn" onclick="importData()" title="Import a client data JSON into the client you are working on (or restore a full backup)" style="color:var(--text-muted);border-color:var(--border);">⭱ Import</button>
       <!-- User indicator: shows current signed-in user when authenticated -->
       <span id="userIndicator" class="no-print" style="display:none;font-size:11px;color:var(--text-muted);padding:4px 10px;background:var(--accent-light);border:1px solid var(--accent);border-radius:14px;font-weight:600;"></span>
       <!-- Consultant client picker (consultants only) -->
@@ -14645,6 +14646,49 @@ function exportEverything(){
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); },1000);
     if(typeof showToast==='function') showToast('✓ Backup downloaded','success');
   }catch(e){ console.error('Backup failed',e); if(typeof showToast==='function') showToast('Backup failed — see console','error'); }
+}
+
+/* ── One-click import: partner to the Backup button ──
+   Accepts either a FULL backup (the exportEverything format -> restores this
+   browser's local data) OR a per-client data file (-> merges the recognised
+   client-data sections into the client you are currently working on, then
+   saves; on the live app that writes to that client's tenant). */
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions'];
+function importData(){
+  try{
+    var inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
+    inp.onchange=function(){
+      var f=inp.files&&inp.files[0]; if(!f) return;
+      var rd=new FileReader();
+      rd.onload=function(){ var obj; try{ obj=JSON.parse(rd.result); }catch(e){ if(typeof showToast==='function') showToast('That is not a valid JSON file','error'); return; } _applyImport(obj); };
+      rd.readAsText(f);
+    };
+    inp.click();
+  }catch(e){ console.error('Import failed',e); if(typeof showToast==='function') showToast('Import failed — see console','error'); }
+}
+function _applyImport(obj){
+  if(!obj || typeof obj!=='object'){ if(typeof showToast==='function') showToast('Nothing to import','error'); return; }
+  // Full-backup format -> restore local storage keys (offline restore).
+  if(obj.app && obj.keys && typeof obj.keys==='object'){
+    if(!confirm('Restore a full local backup?\n\nThis replaces the data stored in THIS browser. It does not change any client on the server until you next work on them.')) return;
+    Object.keys(obj.keys).forEach(function(k){ try{ localStorage.setItem(k, typeof obj.keys[k]==='string'?obj.keys[k]:JSON.stringify(obj.keys[k])); }catch(e){} });
+    if(typeof showToast==='function') showToast('✓ Backup restored — reloading','success');
+    setTimeout(function(){ location.reload(); },700); return;
+  }
+  // Per-client data file -> merge recognised sections into the active client.
+  var present=_IMPORT_KEYS.filter(function(k){ return obj[k]!==undefined; });
+  var hasBrand=!!obj.branding_name;
+  if(!present.length && !hasBrand){ if(typeof showToast==='function') showToast('No recognised client data in that file','error'); return; }
+  var who=(obj.company&&(obj.company.legalName||obj.company.tradingName))||'this client';
+  var label=present.slice(); if(hasBrand) label.push('company name');
+  if(!confirm('Import data for "'+who+'" into the client you are working on?\n\nThis REPLACES these sections for the current client: '+label.join(', ')+'.\n\nMake sure you have dialled in to the right client first.')) return;
+  _IMPORT_KEYS.forEach(function(k){ if(obj[k]!==undefined) S[k]=obj[k]; });
+  if(hasBrand){ S.branding=S.branding||{}; S.branding.name=obj.branding_name; }
+  try{ if(typeof migrateLoadedState==='function') migrateLoadedState(); }catch(e){}
+  saveData();
+  try{ applyBrandingToCSS(); updateHeaderTitle(); }catch(e){}
+  try{ switchTab('cockpit'); }catch(e){}
+  if(typeof showToast==='function') showToast('✓ Imported '+label.length+' section'+(label.length===1?'':'s'),'success');
 }
 </script>
 

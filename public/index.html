@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>try{if(localStorage.getItem('hsms_theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -25,6 +26,33 @@
   /* 8px spacing scale */
   --s1:4px; --s2:8px; --s3:16px; --s4:24px; --s5:32px; --s6:48px;
   --radius:12px;
+}
+/* ── Dark theme (overrides the tokens above) ── */
+[data-theme="dark"]{
+  --bg:#0F172A; --surface:#1E293B; --primary:#2563EB;
+  --accent:#3B82F6; --accent-light:#1E3A5F; --accent-dark:#93C5FD;
+  --text:#E5E9F0; --text-muted:#9AA6B8; --border:#334155;
+  --input-bg:#0F172A; --muted-bg:#273244;
+  --success:#34D399; --success-bg:#0B3D2E; --success-brd:#0F5137;
+  --warning:#FBBF24; --warning-bg:#3F2E0A; --warning-brd:#6B4D0E;
+  --danger:#F87171; --danger-bg:#3F1A1A; --danger-brd:#6B2626;
+  --info:#60A5FA; --info-bg:#12253F; --info-brd:#1D4ED8;
+  --shadow:0 1px 3px rgba(0,0,0,.45),0 1px 2px rgba(0,0,0,.35);
+  --shadow-md:0 4px 14px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+/* Catch inline white backgrounds so panels aren't blinding in dark mode */
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background:#FFFFFF"],
+[data-theme="dark"] [style*="background:#FFF"]{ background:var(--surface)!important; }
+/* Keep printing / PDF light regardless of the on-screen theme */
+@media print{
+  [data-theme="dark"]{
+    --bg:#FFFFFF; --surface:#FFFFFF; --text:#111827; --text-muted:#6B7280;
+    --border:#E5E7EB; --muted-bg:#F3F4F6; --input-bg:#F9FAFB;
+    --accent-light:#EFF6FF; --accent-dark:#1D4ED8;
+  }
 }
 body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
 
@@ -617,6 +645,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
     <div class="header-right">
       <span class="save-indicator" id="saveIndicator"></span>
+      <button class="btn btn-ghost btn-sm no-print" id="themeToggle" onclick="toggleTheme()" title="Toggle light / dark mode" aria-label="Toggle light or dark mode" style="color:var(--text-muted);border-color:var(--border);padding:6px 9px;line-height:0;"><span id="themeToggleIcon"></span></button>
+      <button class="btn btn-ghost btn-sm no-print" id="backupBtn" onclick="exportEverything()" title="Download a full JSON backup of your local data" style="color:var(--text-muted);border-color:var(--border);">⭳ Backup</button>
       <!-- User indicator: shows current signed-in user when authenticated -->
       <span id="userIndicator" class="no-print" style="display:none;font-size:11px;color:var(--text-muted);padding:4px 10px;background:var(--accent-light);border:1px solid var(--accent);border-radius:14px;font-weight:600;"></span>
       <!-- Consultant client picker (consultants only) -->
@@ -920,16 +950,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 
   <div id="tab-risk" class="tab-panel">
-    <div class="card no-print" style="margin-bottom:14px;">
-      <div class="card-band"><h3><span class="dot">●</span> Risk profile</h3>
+    <details class="coll no-print" open style="margin-bottom:14px;">
+      <summary><h3><span class="dot">●</span> Risk profile</h3>
         <span class="badge badge-muted" id="riskCountBadge"></span>
-      </div>
-      <div class="card-body">
+      </summary>
+      <div class="coll-body">
         <div id="riskRegisterIntro" style="font-size:13px;color:var(--text-muted);line-height:1.5;">
           Build the profile top to bottom: <strong>1</strong> set the document control, <strong>2</strong> add and complete the risks, <strong>3</strong> record monitoring &amp; assurance, <strong>4</strong> score the management maturity. The summary stays at the top; each panel below opens and closes on click.
         </div>
       </div>
-    </div>
+    </details>
 
     <!-- SUMMARIES — always at the top -->
     <div id="riskScorePanel"></div>
@@ -982,7 +1012,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </details>
     </div>
-    <div id="riskProfilerView" style="display:none;"></div>
   </div>
 
   <!-- ══════════════════════════════════════
@@ -1102,6 +1131,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
     </div>
     <div id="casContainer"></div>
+    <div id="approvedPartner"></div>
   </div>
 
   <!-- ══════════════════════════════════════
@@ -2651,6 +2681,7 @@ let S = {
   monitoring: { months:{}, meta:{}, regulatory:[] }, // Phase 4: monthly monitoring dashboard
   review:      { ratings:[], feedback:'', suggestions:'' }, // Stage 2: consultant review (syncs to server)
   cas:         { gates:{}, roles:{}, status:{} }, // Stage 3: CAS accreditation readiness (per tenant)
+  acp:         {}, // Approved Compliance Partner — per-client audit engagement responses
   company:     { legalName:'', tradingName:'', regNo:'', sector:'', description:'', phone:'', email:'', website:'', address:'', employees:'', siteCount:'', shifts:'', elciInsurer:'', elciPolicy:'', elciRenewal:'', personnel:[], siteList:[], notes:'' }, // Company setup: per-client company profile
   raRegister:  [],      // Assurance records: register of the client's risk assessments / RAMS (each points at its PDF)
   appLinks:    [],      // Quick links: per-client links to other apps (label, url, optional QR image)
@@ -10735,7 +10766,7 @@ function addRiskEntry(){
     trend:'', actions:[], linked:[], furtherActions:'' };
   _stamp(entry, 'created');
   S.riskProfile.push(entry);
-  _openRiskCards.add(entry.id);   // open the new card so it can be filled in
+  _openRiskCards = new Set([entry.id]);   // open the new card (and close others) so it can be filled in
   saveData();
   renderRiskProfile();
 }
@@ -10809,7 +10840,14 @@ function setReviewed(id, val){
 let _riskFilter = { category:'', priority:'', trend:'' };
 // Which risk cards are expanded (collapsed by default so the list stays scannable).
 let _openRiskCards = new Set();
-function _setRiskOpen(id, open){ if(open) _openRiskCards.add(id); else _openRiskCards.delete(id); }
+function _setRiskOpen(id, open){
+  if(open){
+    // Single-open: opening one risk card collapses the others (no full re-render, keeps it snappy)
+    _openRiskCards = new Set([id]);
+    var cont=document.getElementById('riskContainer');
+    if(cont) cont.querySelectorAll('details.risk-card[open]').forEach(function(el){ if(el.getAttribute('data-rid')!==id) el.open=false; });
+  } else { _openRiskCards.delete(id); }
+}
 function _expandAllRisks(open){ _openRiskCards = open ? new Set((S.riskProfile||[]).map(r=>r.id)) : new Set(); renderRiskProfile(); }
 // Collapse a single risk card from its own footer and scroll its header into view.
 function _collapseRiskCard(ev, id){
@@ -11714,23 +11752,6 @@ function _profMaturity(domainId){
   return { avg, worst, critFail, scored:scored.length, total:dom.items.length };
 }
 
-let _riskMode='register';
-function setRiskMode(m){ _riskMode=(m==='profiler')?'profiler':'register'; renderRiskProfile(); }
-function _applyRiskMode(){
-  const prof=_riskMode==='profiler'; const g=(id)=>document.getElementById(id);
-  if(g('riskRegisterView'))  g('riskRegisterView').style.display  = prof?'none':'';
-  if(g('riskProfilerView'))  g('riskProfilerView').style.display  = prof?'':'none';
-  if(g('riskRegisterTools')) g('riskRegisterTools').style.display = prof?'none':'flex';
-  if(g('riskRegisterIntro')) g('riskRegisterIntro').style.display = prof?'none':'';
-  if(g('riskProfilerIntro')) g('riskProfilerIntro').style.display = prof?'':'none';
-  const rb=g('rpModeRegister'), pb=g('rpModeProfiler');
-  if(rb) rb.classList.toggle('on', !prof); if(pb) pb.classList.toggle('on', prof);
-}
-// ── Profiler handlers ──
-const PROF_STAGES=[{n:0,t:'Client & scope'},{n:1,t:'Scoping'},{n:2,t:'Incidents'},{n:3,t:'Maturity'},{n:4,t:'Requirements'},{n:5,t:'Outputs'}];
-let _profStage=0;
-function setProfStage(n){ _profStage=Math.max(0,Math.min(5,n)); renderProfiler(); const el=document.getElementById('riskProfilerView'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
-function setExposure(id, val){ if(_roLocked()) return; _profState().exposure[id]=val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
 function setMaturity(id, val){ if(_roLocked()) return; const cur=_profState().maturity[id]; _profState().maturity[id]=(String(cur)===String(val))?'':val; _stamp(S.profiler,'updated'); saveData(); _keepScroll(renderRiskReview); }
 // ── Maturity assessment + combined score (drives the Risk review tab) ──
 const MATURITY_ORDER = ['leadership','contractor','ohealth','opcontrol','assurance','resilience'];
@@ -11784,175 +11805,6 @@ function _renderMaturityAssessment(dis){
     }).join('');
     return head+items;
   }).join('');
-}
-function setIncident(id, val){ if(_roLocked()) return; _profState().incidents[id]=val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
-function setProfMetaText(field, val){ if(_roLocked()) return; _profState().meta[field]=val; scheduleAutoSave(); }
-function setProfMeta(field, val){ if(_roLocked()) return; _profState().meta[field]=val; _stamp(S.profiler,'updated'); saveData(); }
-function setReqStatus(id, val){ if(_roLocked()) return; const rv=_profState().reqReview; if(!rv[id]) rv[id]={status:'',evidence:'',accepted:false,override:''}; rv[id].status=(rv[id].status===val)?'':val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
-function toggleReqAccept(id){ if(_roLocked()) return; const rv=_profState().reqReview; if(!rv[id]) rv[id]={status:'',evidence:'',accepted:false,override:''}; rv[id].accepted=!rv[id].accepted; saveData(); renderProfiler(); }
-function setReqText(id, field, val){ if(_roLocked()) return; const rv=_profState().reqReview; if(!rv[id]) rv[id]={status:'',evidence:'',accepted:false,override:''}; rv[id][field]=val; scheduleAutoSave(); }
-function setProfActionText(id, field, val){ if(_roLocked()) return; const a=_profState().actions; if(!a[id]) a[id]={owner:'',due:'',status:'Not started',priority:''}; a[id][field]=val; scheduleAutoSave(); }
-function setProfActionSel(id, field, val){ if(_roLocked()) return; const a=_profState().actions; if(!a[id]) a[id]={owner:'',due:'',status:'Not started',priority:''}; a[id][field]=val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
-function setProfRisk(id, field, val){ if(_roLocked()) return; const sr=_profState().significantRisks; if(!sr[id]) sr[id]={}; sr[id][field]=val; _stamp(S.profiler,'updated'); saveData(); renderProfiler(); }
-function dismissProfRisk(id, val){ if(_roLocked()) return; const sr=_profState().significantRisks; if(!sr[id]) sr[id]={}; sr[id].dismissed=val; saveData(); renderProfiler(); }
-
-// Heat map: each significant risk plotted at (exposure severity, maturity of its controlling domain).
-function _profHeatHTML(){
-  const risks=_profSignificantRisks();
-  const counts={}; risks.forEach(r=>{ const k=r.ceiling+'_'+r.pr.matRounded; counts[k]=(counts[k]||0)+1; });
-  let rows='';
-  for(let e=5;e>=1;e--){ let tds='';
-    for(let mm=0;mm<=5;mm++){ const val=e*(5-mm), c=_RISK_PRIO_COLOR[_bandFor(val)]; const n=counts[e+'_'+mm]||0;
-      tds+=`<td class="h-cell" title="Exposure ${e} × maturity ${mm}" style="background:${n?c:c+'2e'};color:${n?'#fff':'transparent'};">${n||'0'}</td>`; }
-    rows+=`<tr><th class="h-axis">${e}</th>${tds}</tr>`; }
-  const head=`<tr><th class="h-axis" style="font-size:8.5px;">Exp↕/Mat→</th>${[0,1,2,3,4,5].map(m=>`<th class="h-axis">${m}</th>`).join('')}</tr>`;
-  return `<table class="heat"><tbody>${rows}${head}</tbody></table>
-    <div style="font-size:10.5px;color:var(--text-muted);margin-top:7px;line-height:1.5;">Vertical = <strong>exposure severity</strong> (5 top). Horizontal = <strong>maturity of the controlling domain</strong> (0-5). Top-left (high exposure, low maturity) is the plan.</div>`;
-}
-function _domHeadHTML(d){ const typ=d.type==='exposure'?'Exposure':d.type==='maturity'?'Maturity':'Evidence'; return `<div class="prof-domain-head"><span class="pdh-badge" style="background:${d.badge};">${typ}</span><h4>${d.n}. ${esc(d.name)}</h4></div>`; }
-
-function renderProfiler(){
-  const el=document.getElementById('riskProfilerView'); if(!el) return;
-  _profState();
-  const ex=S.profiler.exposure, m=S.profiler.maturity, inc=S.profiler.incidents, dis=_roLocked()?' disabled':'';
-  const gen=_profGenerate();
-
-  // Progress stepper
-  const stepper=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;">`+PROF_STAGES.map(s=>`<button class="btn btn-xs ${_profStage===s.n?'btn-primary':'btn-ghost'}" onclick="setProfStage(${s.n})" style="border:1px solid var(--border);">${s.n}. ${s.t}</button>`).join('')+`</div>`;
-
-  let main='';
-  if(_profStage===0){
-    const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
-    const meta=S.profiler.meta;
-    const f=(lab,field,type)=>`<div class="field-group"><label class="field-label">${lab}</label><input type="${type||'text'}"${dis} value="${esc(meta[field]||'')}" ${type==='date'?`onchange="setProfMeta('${field}',this.value)"`:`oninput="setProfMetaText('${field}',this.value)"`}></div>`;
-    main=`<h3 style="margin:0 0 4px;">Stage 0 — Client & scope</h3><p style="font-size:12.5px;color:var(--text-muted);margin:0 0 16px;">Who is being assessed, by whom, and against which library version.</p>
-      <div class="docctl-grid">
-        <div class="field-group"><label class="field-label">Client</label><input type="text" value="${esc(client)}" disabled></div>
-        ${f('Assessment date','date','date')}
-        ${f('Consultant','consultant')}
-        ${f('Profile version','version')}
-        <div class="field-group"><label class="field-label">Library version</label><input type="text" value="${esc(PROF_LIBRARY.version)}" disabled></div>
-      </div>
-      <div class="field-group" style="margin-top:14px;"><label class="field-label">Scope / sites in scope</label><textarea${dis} rows="2" oninput="setProfMetaText('scope',this.value)">${esc(meta.scope||'')}</textarea></div>`;
-  } else if(_profStage===1){
-    const yn=(id)=>{ const v=ex[id]; return `<div class="yesno"><button class="${v===true?'on-yes':''}"${dis} onclick="setExposure('${id}',true)">Yes</button><button class="${v===false?'on-no':''}"${dis} onclick="setExposure('${id}',false)">No</button></div>`; };
-    main=`<h3 style="margin:0 0 4px;">Stage 1 — Scoping</h3><p style="font-size:12.5px;color:var(--text-muted);margin:0 0 14px;">Fact-gathering, no scoring. Each Yes tells the rules layer what must exist — watch the profile build on the right.</p>`
-      + PROF_LIBRARY.domains.filter(d=>d.type==='exposure').map(d=>_domHeadHTML(d)+d.items.map(it=>`<div class="exp-item${ex[it.id]===true?' ei-on':''}"><div class="ei-q">${esc(it.q)}${it.help?`<div class="ei-help">${esc(it.help)}</div>`:''}</div>${yn(it.id)}</div>`).join('')).join('');
-  } else if(_profStage===2){
-    const d=PROF_LIBRARY.domains.find(x=>x.id==='incident');
-    main=`<h3 style="margin:0 0 4px;">Stage 2 — Incident evidence</h3><p style="font-size:12.5px;color:var(--text-muted);margin:0 0 14px;">Facts before opinions. This is the cross-check the maturity scores are tested against.</p>`+_domHeadHTML(d)
-      + d.items.map(it=>{
-          if(it.kind==='bool'){ const v=inc[it.id]; return `<div class="exp-item"><div class="ei-q">${esc(it.q)}</div><div class="yesno"><button class="${v===true?'on-yes':''}"${dis} onclick="setIncident('${it.id}',true)">Yes</button><button class="${v===false?'on-no':''}"${dis} onclick="setIncident('${it.id}',false)">No</button></div></div>`; }
-          return `<div class="exp-item"><div class="ei-q">${esc(it.q)}</div><input type="number" min="0"${dis} value="${inc[it.id]!==undefined?esc(inc[it.id]):''}" style="width:90px;padding:7px;" onchange="setIncident('${it.id}',this.value)"></div>`;
-        }).join('');
-  } else if(_profStage===3){
-    const opened=_profOpenedDomains();
-    const accidents=(+inc.i_accidents||0)+(+inc.i_riddor||0)+(+inc.i_illhealth||0);
-    main=`<h3 style="margin:0 0 4px;">Stage 3 — Maturity</h3><p style="font-size:12.5px;color:var(--text-muted);margin:0 0 14px;">Only the ${opened.length} domain(s) opened by the exposure answers, scored 0-5 against written anchors. Critical items cannot be skipped.</p>`
-      + opened.map(d=>{
-          const mat=_profMaturity(d.id);
-          const contra = (mat.avg!=null && mat.avg>=4 && accidents>0)
-            ? `<div class="contradict">${esc(d.name)} scored strong (${mat.avg.toFixed(1)}), but ${accidents} accident/RIDDOR/ill-health case(s) were recorded in the last 12 months. Does the score hold up against the evidence?</div>`
-            : (mat.avg!=null && mat.avg>=4 && _profSignificantRisks().some(r=>r.ceiling===5 && r.controls===d.id))
-              ? `<div class="contradict">${esc(d.name)} scored strong (${mat.avg.toFixed(1)}), but it governs a fatal-potential exposure. Is the control regime really that mature?</div>` : '';
-          return _domHeadHTML(d)+contra+d.items.map(it=>{
-            const mv=m[it.id];
-            const scale=[0,1,2,3,4,5].map(n=>`<button class="mat-dot${String(mv)===String(n)?' on':''}"${dis} style="${String(mv)===String(n)?`background:${_matColor(n)};`:''}" onclick="setMaturity('${it.id}',${n})">${n}</button>`).join('');
-            const anchor=(mv!==undefined&&mv!=='')?_profAnchor(it.anchors,+mv):'Score 0 (absent) to 5 (embedded and evidenced). Select a score to see the descriptor.';
-            return `<div class="mat-item${it.crit?' crit':''}"><div class="mat-q">${esc(it.q)}${it.crit?'<span class="crit-tag">Critical</span>':''}</div><div class="mat-scale">${scale}</div><div class="mat-anchor">${esc(anchor)}</div></div>`;
-          }).join('');
-        }).join('');
-  } else if(_profStage===4){
-    const byRule={}; gen.reqs.forEach(r=>{ (byRule[r.rule]=byRule[r.rule]||[]).push(r); });
-    const stBtn=(id,val,cur,lab,col)=>`<button class="btn btn-xs"${dis} onclick="setReqStatus('${id}','${val}')" style="border:1px solid ${cur===val?col:'var(--border)'};background:${cur===val?col:'transparent'};color:${cur===val?'#fff':'var(--text-muted)'};">${lab}</button>`;
-    main=`<h3 style="margin:0 0 4px;">Stage 4 — Requirements review <span style="font-size:12px;font-weight:400;color:var(--text-muted);">(liability gate)</span></h3><p style="font-size:12.5px;color:var(--text-muted);margin:0 0 14px;">Mark each generated requirement, attach evidence, and accept it. Nothing reaches an output until you accept it; overrides need a reason.</p>`
-      + (gen.reqs.length? Object.keys(byRule).map(rid=>{ const rule=PROF_RULES.find(x=>x.id===rid);
-          return `<div class="prof-domain-head" style="margin:16px 0 8px;"><span class="pdh-badge" style="background:#475569;">${esc(rule?rule.legal:rid)}</span></div>`
-            + byRule[rid].map(rq=>{ const rv=_profReqReview(rq.id);
-              return `<div class="mat-item">
-                <div style="font-size:13px;font-weight:600;margin-bottom:7px;">${esc(rq.text)}</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-                  ${stBtn(rq.id,'present',rv.status,'Present','#16A34A')}${stBtn(rq.id,'partial',rv.status,'Partial','#F59E0B')}${stBtn(rq.id,'absent',rv.status,'Absent','#DC2626')}${stBtn(rq.id,'na',rv.status,'N/A','#9CA3AF')}
-                </div>
-                <input type="text"${dis} value="${esc(rv.evidence||'')}" placeholder="Evidence (document reference)" style="width:100%;padding:6px 8px;font-size:12px;box-sizing:border-box;margin-bottom:6px;" oninput="setReqText('${rq.id}','evidence',this.value)">
-                <label style="font-size:12px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox"${dis} ${rv.accepted?'checked':''} onchange="toggleReqAccept('${rq.id}')"> Consultant accepts this requirement</label>
-                ${rv.status==='na'?`<input type="text"${dis} value="${esc(rv.override||'')}" placeholder="Reason for N/A (required, logged)" style="width:100%;padding:6px 8px;font-size:12px;box-sizing:border-box;margin-top:6px;" oninput="setReqText('${rq.id}','override',this.value)">`:''}
-              </div>`;
-            }).join('');
-        }).join('') : '<p style="color:var(--text-muted);">No requirements generated yet — complete Stage 1.</p>');
-  } else if(_profStage===5){
-    main=`<h3 style="margin:0 0 4px;">Stage 5 — Outputs</h3><p style="font-size:12.5px;color:var(--text-muted);margin:0 0 14px;">Four renders of the same profile. No re-keying.</p>`
-      + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"><button class="btn btn-primary" onclick="profBoardReport()">Download board report (PDF)</button></div>`
-      + `<div class="prof-domain-head"><span class="pdh-badge" style="background:#4F46E5;">Heat map</span></div><div class="card"><div class="card-body">${_profHeatHTML()}</div></div>`
-      + _profRegisterHTML(dis) + _profActionPlanHTML(dis);
-  }
-
-  el.innerHTML = `${stepper}<div class="prof-layout"><div class="prof-main">${main}
-      <div style="display:flex;justify-content:space-between;margin-top:22px;">
-        <button class="btn btn-outline" ${_profStage===0?'disabled':''} onclick="setProfStage(${_profStage-1})">← Back</button>
-        <button class="btn btn-primary" ${_profStage===5?'disabled':''} onclick="setProfStage(${_profStage+1})">Next →</button>
-      </div>
-    </div><div class="prof-rail">${_profRailHTML()}</div></div>`;
-}
-
-function _profRailHTML(){
-  const gen=_profGenerate(); const risks=_profSignificantRisks();
-  const exposuresRecorded=PROF_LIBRARY.domains.filter(d=>d.type==='exposure').reduce((a,d)=>a+d.items.filter(it=>S.profiler.exposure[it.id]===true).length,0);
-  const opened=_profOpenedDomains(); const findings=_profFindings().length;
-  const crit=risks.filter(r=>r.pr.band==='Critical').length, high=risks.filter(r=>r.pr.band==='High').length;
-  const accepted=gen.reqs.filter(r=>_profReqReview(r.id).accepted).length;
-  const stat=(num,lab,col)=>`<div class="prof-stat"><div class="ps-num"${col?` style="color:${col};"`:''}>${num}</div><div class="ps-lab">${lab}</div></div>`;
-  return `
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:8px;">Live profile</div>
-    ${stat(opened.length+' of 6','Maturity domains opened')}
-    ${stat(gen.reqs.length,'Requirements ('+accepted+' accepted)', gen.reqs.length?'#2563EB':'')}
-    ${stat(risks.length,'Significant risks', risks.length?_RISK_PRIO_COLOR.High:'')}
-    <div style="display:flex;gap:10px;">${stat(crit,'Critical', crit?_RISK_PRIO_COLOR.Critical:'')}${stat(high,'High', high?_RISK_PRIO_COLOR.High:'')}</div>
-    ${stat(findings,'Findings (gaps)', findings?_RISK_PRIO_COLOR.High:'')}
-    <div class="card" style="margin:6px 0 10px;"><div class="card-band"><h3 style="font-size:13px;"><span class="dot">●</span> Heat map</h3></div><div class="card-body" style="padding:13px;">${_profHeatHTML()}</div></div>
-    <div style="font-size:10.5px;color:var(--text-muted);line-height:1.6;">This profile has opened ${opened.length} maturity domain(s), generated ${gen.reqs.length} requirements and ${risks.length} significant risks from ${exposuresRecorded} recorded exposure(s).</div>`;
-}
-
-// Generated significant-risk register (Phase 4 output) — editable current/target ratings.
-function _profRegisterHTML(dis){
-  const risks=_profSignificantRisks();
-  if(!risks.length) return `<div class="prof-domain-head" style="margin-top:20px;"><span class="pdh-badge" style="background:#15233a;">Significant risk register</span></div><p style="color:var(--text-muted);font-size:12.5px;">No significant risks generated yet.</p>`;
-  // Fixed-width so the paired L/S selects don't stretch to 100% and overflow the column.
-  const sel=(id,f,v)=>`<select${dis} onchange="setProfRisk('${id}','${f}',this.value)" style="width:50px;min-width:50px;padding:4px 3px;font-size:12px;"><option value="">–</option>${[1,2,3,4,5].map(n=>`<option value="${n}"${String(v)===String(n)?' selected':''}>${n}</option>`).join('')}</select>`;
-  const pair=(a,b)=>`<span style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;">${a}<span style="color:var(--text-muted);">×</span>${b}</span>`;
-  const body=risks.sort((a,b)=>b.pr.priority-a.pr.priority).map(r=>{
-    const c=_RISK_PRIO_COLOR[r.pr.band];
-    return `<tr>
-      <td>${esc(r.hazard)}<div style="font-size:10.5px;color:var(--text-muted);">${esc(r.category)}${r.legal?' · '+esc(r.legal):''}</div></td>
-      <td style="white-space:nowrap;text-align:center;">4×${r.ceiling}<br><strong>${4*r.ceiling}</strong></td>
-      <td style="white-space:nowrap;">${pair(sel(r.id,'likelihood',r.likelihood),sel(r.id,'severity',r.severity))}</td>
-      <td style="white-space:nowrap;">${pair(sel(r.id,'targetL',r.targetL),sel(r.id,'targetS',r.targetS))}</td>
-      <td style="white-space:nowrap;"><span style="color:${c};font-weight:700;">${r.pr.band||'—'}</span><div style="font-size:10px;color:var(--text-muted);">priority ${r.pr.priority}</div></td>
-      ${dis?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs" title="Dismiss this risk" onclick="dismissProfRisk('${r.id}',true)">${_ic('trash',13)}</button></td>`}
-    </tr>`;
-  }).join('');
-  return `<div class="prof-domain-head" style="margin-top:20px;justify-content:space-between;">
-      <span class="pdh-badge" style="background:#15233a;">Significant risk register (${risks.length})</span>
-      <button class="btn btn-primary btn-xs no-print" onclick="profBoardReport()">${_ic('printer',13)} Download PDF report</button>
-    </div>
-    <div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Hazard</th><th style="text-align:center;">Inherent</th><th>Current L×S</th><th>Target L×S</th><th>Priority</th>${dis?'':'<th></th>'}</tr></thead><tbody>${body}</tbody></table></div>
-    <div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;">Inherent = pre-control (likelihood 4 × severity ceiling). Current and Target are your judgement. Priority = exposure × (5 − maturity) × (ceiling / 5).</div>`;
-}
-// Prioritised action plan (Phase 4 output) — one action per finding.
-function _profActionPlanHTML(dis){
-  const findings=_profFindings();
-  if(!findings.length) return `<div class="prof-domain-head" style="margin-top:20px;"><span class="pdh-badge" style="background:#16A34A;">Action plan</span></div><p style="color:var(--text-muted);font-size:12.5px;">No gaps yet — mark requirements Partial or Absent in Stage 4 to generate actions.</p>`;
-  const stOpts=(cur)=>['Not started','In progress','Complete'].map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
-  const body=findings.map(f=>{ const a=_profAction(f.id); const rv=_profReqReview(f.id);
-    return `<tr>
-      <td>${esc(f.text)}<div style="font-size:10.5px;color:var(--text-muted);">${esc(f.legal||'')} · ${rv.status}</div></td>
-      <td><input type="text"${dis} value="${esc(a.owner||'')}" placeholder="Owner" oninput="setProfActionText('${f.id}','owner',this.value)"></td>
-      <td><input type="date"${dis} value="${esc(a.due||'')}" onchange="setProfActionSel('${f.id}','due',this.value)"></td>
-      <td><select${dis} onchange="setProfActionSel('${f.id}','status',this.value)">${stOpts(a.status||'Not started')}</select></td>
-    </tr>`;
-  }).join('');
-  return `<div class="prof-domain-head" style="margin-top:20px;"><span class="pdh-badge" style="background:#16A34A;">Action plan (${findings.length})</span></div>
-    <div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Required action</th><th>Owner</th><th>Target</th><th>Status</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -12421,7 +12273,7 @@ function renderRiskProfile(){
     const htC = HAZARD_TYPE_COLOR[r.category] || '#9CA3AF';
     const pdca = _riskPdca(r), pdcaC = RISK_PDCA_COLOR[pdca];
     return `
-    <details class="card risk-card"${_openRiskCards.has(r.id)?' open':''} ontoggle="_setRiskOpen('${r.id}',this.open)" style="border-left-color:${htC};">
+    <details class="card risk-card" data-rid="${r.id}"${_openRiskCards.has(r.id)?' open':''} ontoggle="_setRiskOpen('${r.id}',this.open)" style="border-left-color:${htC};">
       <summary>
         <span class="rc-left">
           <span class="dot" style="color:${htC};flex:0 0 auto;">●</span>
@@ -12864,7 +12716,7 @@ function renderRiskReview(){
   // 1) Combined score — the risk profile against the management maturity.
   const os=_overallScore(); const rl=os.rl;
   const chip=(n,lab,col)=>`<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:${n?col:'var(--text-muted)'};line-height:1;">${n}</div><div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;">${lab}</div></div>`;
-  const scorePanel=`<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Overall H&S position</h3></div><div class="card-body">
+  const scorePanel=`<details class="coll" open style="margin-bottom:18px;"><summary><h3><span class="dot">●</span> Overall H&S position</h3></summary><div class="coll-body">
       <div style="display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;">
         <div style="text-align:center;background:${os.rag}1a;border:2px solid ${os.rag};border-radius:14px;padding:16px 22px;min-width:150px;">
           <div style="font-size:22px;font-weight:800;color:${os.rag};line-height:1.1;">${os.ragLabel}</div>
@@ -12884,7 +12736,7 @@ function renderRiskReview(){
         <div class="card"><div class="card-band"><h3 style="font-size:13px;"><span class="dot">●</span> Severity vs maturity</h3></div><div class="card-body" style="padding:14px;">${_reviewHeatHTML()}</div></div>
         <div class="card"><div class="card-band"><h3 style="font-size:13px;"><span class="dot">●</span> Manage cycle (PDCA)</h3></div><div class="card-body" style="padding:14px 16px;">${(()=>{const pc={Plan:0,Do:0,Check:0,Act:0};risks.forEach(r=>{const p=_riskPdca(r);if(pc[p]!==undefined)pc[p]++;});return `<div class="rr-pdcabar" style="margin:0;">${RISK_PDCA.map(p=>`<div class="rr-pdcaseg" style="background:${RISK_PDCA_COLOR[p]};flex:${Math.max(pc[p],0.4)};">${p}<span class="seg-n">${pc[p]}</span></div>`).join('')}</div><div style="font-size:10.5px;color:var(--text-muted);margin-top:8px;">Number of risks at each stage of the manage-for-H&S cycle (Plan → Do → Check → Act).</div>`;})()}</div></div>
       </div>
-    </div></div>`;
+    </div></details>`;
 
   // 2) Risks summarised by hazard type (with area sub-tag + PDCA pill).
   let summary='';
@@ -14163,6 +14015,7 @@ function renderCAS(){
       </div>
     </div>`;
   }).join('');
+  if(typeof renderApprovedPartner==='function') renderApprovedPartner();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -14449,6 +14302,349 @@ function showToast(msg,type='success'){
   t.classList.add('show');
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(()=>t.classList.remove('show'), 3200);
+}
+</script>
+
+<script>
+/* ── Risk profile tab: accordion tuning (one workflow section open at a time) ──
+   Purely UI behaviour — reduces scrolling by collapsing the other numbered
+   sections when you open one, then scrolls that section to the top. */
+(function(){
+  function initRiskAccordion(){
+    var view = document.getElementById('riskRegisterView');
+    if(!view) return;
+    var secs = Array.prototype.slice.call(view.querySelectorAll(':scope > details.wf-sec'));
+    secs.forEach(function(d){
+      if(d.__accWired) return; d.__accWired = true;
+      d.addEventListener('toggle', function(){
+        if(!d.open) return;
+        secs.forEach(function(o){ if(o !== d && o.open) o.open = false; });
+        var s = d.querySelector('summary');
+        if(s) s.scrollIntoView({behavior:'smooth', block:'start'});
+      });
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initRiskAccordion);
+  else initRiskAccordion();
+})();
+
+/* ── Floating "back to top" button (all tabs) ── */
+(function(){
+  function initBackToTop(){
+    if(document.getElementById('backToTopBtn')) return;
+    var b=document.createElement('button');
+    b.id='backToTopBtn';
+    b.className='no-print';
+    b.type='button';
+    b.setAttribute('aria-label','Back to top');
+    b.title='Back to top';
+    b.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
+    b.style.cssText='position:fixed;bottom:22px;right:22px;width:46px;height:46px;border-radius:50%;border:none;'
+      +'background:var(--primary,#2563EB);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.22);cursor:pointer;'
+      +'display:flex;align-items:center;justify-content:center;z-index:500;opacity:0;visibility:hidden;'
+      +'transition:opacity .2s ease,visibility .2s ease,transform .12s ease;';
+    b.addEventListener('mouseenter',function(){b.style.transform='translateY(-2px)';});
+    b.addEventListener('mouseleave',function(){b.style.transform='';});
+    b.addEventListener('click',function(){ window.scrollTo({top:0,behavior:'smooth'}); });
+    document.body.appendChild(b);
+    function onScroll(){
+      var show=(window.scrollY||document.documentElement.scrollTop)>300;
+      b.style.opacity=show?'1':'0';
+      b.style.visibility=show?'visible':'hidden';
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initBackToTop);
+  else initBackToTop();
+})();
+
+/* ── Light / dark theme toggle ── */
+var _SUN='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+var _MOON='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>';
+function setTheme(t){
+  if(t==='dark') document.documentElement.setAttribute('data-theme','dark');
+  else document.documentElement.removeAttribute('data-theme');
+  try{ localStorage.setItem('hsms_theme', t); }catch(e){}
+  var ic=document.getElementById('themeToggleIcon');
+  if(ic) ic.innerHTML = (t==='dark') ? _SUN : _MOON;   // show what you'll switch TO
+}
+function toggleTheme(){
+  var isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  setTheme(isDark ? 'light' : 'dark');
+}
+(function initTheme(){
+  var t='light';
+  try{ t = localStorage.getItem('hsms_theme') || 'light'; }catch(e){}
+  setTheme(t);
+})();
+</script>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   APPROVED COMPLIANCE PARTNER — audit evidence (Once for All / Constructionline)
+   Sits in the Accreditation tab. Two stores:
+     • "My practice" (Modules 1–7) → global, this device only (hsms_acp_v1)
+     • "This client" (Modules 8–15) → per-client, saved in S.acp with the client
+   ════════════════════════════════════════════════════════════════ */
+const ACP_MODULES = [
+  {n:1, scope:'practice', title:'Company Information', qs:[
+    'Overview of your organisation (size, structure, years of experience).',
+    'Which sectors you primarily work with, and how familiar you are with CAS and SSIP.',
+    'Key contacts for service delivery and escalation.']},
+  {n:2, scope:'practice', title:'Legal & Compliance', qs:[
+    'Professional Indemnity (PI) Insurance — level of cover and current certificate.',
+    'Public Liability Insurance — level of cover and annual review.',
+    'Registered as a legal entity in the UK (or relevant jurisdiction).',
+    'GDPR / data protection compliance, secure handling of client data, documented Data Protection Policy.',
+    'Cyber Security Policy or certification (e.g. Cyber Essentials); protecting sensitive supplier information.',
+    'Terms & Conditions of Service; how liability and disclaimers are managed.',
+    'Complaints and Dispute Resolution Policy; handling disputes or claims.']},
+  {n:3, scope:'practice', title:'Service Approach & Onboarding', qs:[
+    'Your onboarding process for new clients.',
+    'How you assess a supplier’s compliance position before starting support.',
+    'Steps you take to help suppliers understand requirements and legal standards.',
+    'How you tailor support for suppliers of different sizes or risk profiles.',
+    'Whether you sign up a supplier on their behalf.',
+    'Whether you complete/submit applications for suppliers — the client reviews the information and gives approval before submission.',
+    'Examples of how you’ve helped suppliers improve compliance knowledge.']},
+  {n:4, scope:'practice', title:'Support Delivery', qs:[
+    'Ongoing support provided during the PQQ process.',
+    'Additional support beyond initial submission; keeping suppliers compliant afterwards.',
+    'Guidance on evidence gathering and documentation.',
+    'Handling queries on interpretation of CAS or SSIP requirements.']},
+  {n:5, scope:'practice', title:'Ethics & Governance', qs:[
+    'Your organisation’s approach to ethical behaviour and integrity.']},
+  {n:6, scope:'practice', title:'Competence & Training', qs:[
+    'Relevant accreditations or memberships held.',
+    'How you ensure your team has the right skills, knowledge and behaviours.',
+    'Training your team receives on CAS, SSIP and legislative changes.',
+    'How you keep the team updated on new regulations and best practice.']},
+  {n:7, scope:'practice', title:'Continuous Improvement', qs:[
+    'How you monitor and measure the effectiveness of your support services.',
+    'How you collect supplier feedback and use it to improve.',
+    'Examples of improvements made based on client feedback.']},
+  {n:8, scope:'client', title:'CAS — Environmental', qs:[
+    'Evidence of supporting this client to develop/implement environmental management policies tailored to their scale and sector.',
+    'How you assessed their current environmental arrangements and identified improvements.',
+    'How you maintain your own competence in environmental legislation and best practice.']},
+  {n:9, scope:'client', title:'CAS — Quality', qs:[
+    'How you identified gaps in this client’s quality/risk management and tailored advice to their context.',
+    'How you ensured your advice on quality, risk and supply-chain assurance is current and best practice.',
+    'How you maintain your own competence in quality legislation and best practice.']},
+  {n:10, scope:'client', title:'CAS — CPS (Compliance, Probity & Standards)', qs:[
+    'Experience supporting this client to evidence legal/regulatory/ethical compliance (Procurement Act, Modern Slavery Act, ECCTA) — with examples.',
+    'How you assessed their readiness for governance questionnaires and tailored the approach.',
+    'How you keep advice up to date (legal updates, CPD, peer review).']},
+  {n:11, scope:'client', title:'CAS — Building Safety', qs:[
+    'Experience evidencing workforce/subcontractor competency (BS 8670, PAS 8671/8672) and how you assess and record it.',
+    'How you keep your own and clients’ knowledge current (Building Safety Act, Building Regulations) — with examples.',
+    'How you support duty-holder communication and cooperation (Principal Contractor, Principal Designer, Client).']},
+  {n:12, scope:'client', title:'CAS — Information Security', qs:[
+    'How you assessed this client’s data protection and cyber posture (gap analysis / risk assessment example).',
+    'How you stay current with data protection legislation and cyber best practice.',
+    'How you tailored advice to their size and complexity.',
+    'Tools/information provided to help them document data flows, sharing and processing.']},
+  {n:13, scope:'client', title:'CAS — Fairness, Inclusion & Respect (FIR)', qs:[
+    'Experience supporting this client to develop/evidence FIR / EDI policies — with outcomes.',
+    'Standards used to assess whether FIR/EDI policies and practice meet requirements.',
+    'How you helped them gather robust FIR evidence (policies, training records, comms).']},
+  {n:14, scope:'client', title:'CAS — Information Management', qs:[
+    'How you assessed this client’s information-management policies and aligned them to current standards.',
+    'Types of evidence gathered to demonstrate compliance and how you ensured it is robust and audit-ready.']},
+  {n:15, scope:'client', title:'SSIP & CAS — Health & Safety', qs:[
+    'H&S qualifications/memberships underpinning your advice and your construction/allied-sector experience.',
+    'Types of clients, works and risk profiles supported in the last 12 months; material SSIP/Core Criteria areas.',
+    'How you keep advice aligned to the SSIP Threshold Standard and CAS as they evolve, and document that alignment for clients.',
+    'How you monitor scheme changes (SSIP, CAS) and how quickly you update this client’s templates and guidance.',
+    'Whether you assist with SSIP application/renewal, and how you communicate scheme changes to clients.']}
+];
+
+function _acpLoad(){ try{ return JSON.parse(localStorage.getItem('hsms_acp_v1'))||{}; }catch(e){ return {}; } }
+var ACP = _acpLoad();
+if(!ACP.practice) ACP.practice = {};
+if(!ACP.schemes) ACP.schemes = { casVersion:'5', casChecked:'', ssipVersion:'', ssipChecked:'', log:[] };
+function _acpSaveGlobal(){ ACP.updated = new Date().toISOString(); try{ localStorage.setItem('hsms_acp_v1', JSON.stringify(ACP)); }catch(e){} }
+function _acpClient(){ if(typeof S==='undefined') return {}; if(!S.acp || typeof S.acp!=='object') S.acp={}; return S.acp; }
+function _acpStore(scope){ return scope==='practice' ? ACP.practice : _acpClient(); }
+function _acpGet(scope, qid){ return _acpStore(scope)[qid] || {}; }
+
+function setAcpEvidence(scope, qid, val){
+  var st=_acpStore(scope); if(!st[qid]) st[qid]={}; st[qid].ev=val;
+  if(scope==='practice') _acpSaveGlobal(); else if(typeof saveData==='function') saveData();
+  _acpUpdateProgress();
+}
+function setAcpOutcome(scope, qid, val){
+  var st=_acpStore(scope); if(!st[qid]) st[qid]={}; st[qid].out=(st[qid].out===val?'':val);
+  if(scope==='practice') _acpSaveGlobal(); else if(typeof saveData==='function') saveData();
+  renderApprovedPartner();
+}
+function setAcpScheme(field, val){ ACP.schemes[field]=val; _acpSaveGlobal(); }
+function addAcpLog(){
+  var d=document.getElementById('acpLogDate'), n=document.getElementById('acpLogNote');
+  var note=n && n.value.trim(); if(!note){ if(typeof showToast==='function') showToast('Add a note first','info'); return; }
+  ACP.schemes.log = ACP.schemes.log || [];
+  ACP.schemes.log.unshift({ date:(d&&d.value)||new Date().toISOString().slice(0,10), note:note });
+  _acpSaveGlobal(); renderApprovedPartner();
+}
+function delAcpLog(i){ (ACP.schemes.log||[]).splice(i,1); _acpSaveGlobal(); renderApprovedPartner(); }
+
+function _acpProgress(scope){
+  var t=0,d=0;
+  ACP_MODULES.filter(function(m){return m.scope===scope;}).forEach(function(m){
+    m.qs.forEach(function(q,i){ t++; if(_acpGet(scope,'m'+m.n+'q'+i).out) d++; });
+  });
+  return { t:t, d:d, pct: t?Math.round(d/t*100):0 };
+}
+function _acpUpdateProgress(){
+  var p=document.getElementById('acpPracticeProg'), c=document.getElementById('acpClientProg');
+  if(p){ var x=_acpProgress('practice'); p.textContent=x.d+'/'+x.t; }
+  if(c){ var y=_acpProgress('client'); c.textContent=y.d+'/'+y.t; }
+}
+
+function renderApprovedPartner(){
+  var el=document.getElementById('approvedPartner'); if(!el) return;
+  var _e=(typeof esc==='function')?esc:function(v){return (v==null?'':String(v)).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+  var pP=_acpProgress('practice'), pC=_acpProgress('client'), sc=ACP.schemes||{};
+
+  var outBtn=function(scope,qid,val,label,col){
+    var on=_acpGet(scope,qid).out===val;
+    return '<button type="button" class="btn btn-xs" style="padding:3px 11px;font-size:11px;'+(on?('background:'+col+';color:#fff;border:1px solid transparent;'):'background:transparent;border:1px solid var(--border);color:var(--text-muted);')+'" onclick="setAcpOutcome(\''+scope+'\',\''+qid+'\',\''+val+'\')">'+label+'</button>';
+  };
+  var qRow=function(m,i){
+    var qid='m'+m.n+'q'+i, e=_acpGet(m.scope,qid);
+    return '<div style="padding:11px 0;border-top:1px solid var(--border);">'
+      + '<div style="font-size:13px;font-weight:600;margin-bottom:7px;">'+_e(m.qs[i])+'</div>'
+      + '<textarea rows="2" placeholder="Evidence / how you do this — reference documents, examples, links…" oninput="setAcpEvidence(\''+m.scope+'\',\''+qid+'\',this.value)" style="width:100%;font-family:inherit;font-size:12.5px;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--input-bg);color:var(--text);resize:vertical;">'+_e(e.ev||'')+'</textarea>'
+      + '<div style="display:flex;gap:5px;margin-top:6px;align-items:center;"><span style="font-size:11px;color:var(--text-muted);margin-right:2px;">Outcome:</span>'
+      + outBtn(m.scope,qid,'yes','Yes','var(--success)') + outBtn(m.scope,qid,'no','No','var(--danger)') + outBtn(m.scope,qid,'na','N/A','var(--text-muted)')
+      + '</div>' + _acpDocLine(qid) + '</div>';
+  };
+  var moduleCard=function(m){
+    return '<details class="coll" style="margin-bottom:10px;"><summary><h3 style="font-size:14px;"><span class="dot">●</span> Module '+m.n+' — '+_e(m.title)+'</h3><span class="coll-meta">'+m.qs.length+' question'+(m.qs.length!==1?'s':'')+'</span></summary>'
+      + '<div class="coll-body">'+m.qs.map(function(q,i){return qRow(m,i);}).join('')+'</div></details>';
+  };
+  var practiceMods=ACP_MODULES.filter(function(m){return m.scope==='practice';}).map(moduleCard).join('');
+  var clientMods  =ACP_MODULES.filter(function(m){return m.scope==='client';}).map(moduleCard).join('');
+
+  var fld=function(label,field,type){
+    return '<div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:4px;">'+label+'</label>'
+      + '<input '+(type?('type="'+type+'"'):'')+' value="'+_e(sc[field]||'')+'" oninput="setAcpScheme(\''+field+'\',this.value)" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--input-bg);color:var(--text);font-family:inherit;font-size:13px;"></div>';
+  };
+  var logRows=(sc.log||[]).map(function(l,i){
+    return '<div style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);"><span style="color:var(--text-muted);white-space:nowrap;">'+_e(l.date||'')+'</span><span style="flex:1;">'+_e(l.note||'')+'</span><button class="btn btn-xs no-print" onclick="delAcpLog('+i+')" style="border:1px solid var(--danger-brd);color:var(--danger);padding:1px 7px;">✕</button></div>';
+  }).join('') || '<div style="font-size:12px;color:var(--text-muted);padding:6px 0;">No scheme changes logged yet.</div>';
+
+  var schemeWatch='<div class="card" style="margin-bottom:16px;"><div class="card-band"><h3 style="font-size:14px;"><span class="dot">●</span> Scheme version watch</h3></div><div class="card-body">'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Track the current CAS &amp; SSIP versions and log when you update client templates after a change — this answers the audit questions on monitoring scheme changes.</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">'
+    + fld('CAS version','casVersion','') + fld('CAS last checked','casChecked','date') + fld('SSIP version','ssipVersion','') + fld('SSIP last checked','ssipChecked','date')
+    + '</div>'
+    + '<div style="margin-top:14px;"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:6px;">Change log</label>'
+    + '<div class="no-print" style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;"><input type="date" id="acpLogDate" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;background:var(--input-bg);color:var(--text);"><input id="acpLogNote" placeholder="e.g. CAS v5.1 published — client templates updated" style="flex:1;min-width:200px;padding:6px 9px;border:1px solid var(--border);border-radius:7px;background:var(--input-bg);color:var(--text);"><button class="btn btn-outline btn-sm" onclick="addAcpLog()">Add</button></div>'
+    + logRows + '</div></div></div>';
+
+  el.innerHTML = '<details class="coll" open style="margin-bottom:18px;border:1.5px solid var(--accent);"><summary><h3><span class="dot">●</span> Approved Compliance Partner — audit evidence</h3>'
+    + '<span class="coll-meta">Once for All / Constructionline · practice <b id="acpPracticeProg">'+pP.d+'/'+pP.t+'</b> · client <b id="acpClientProg">'+pC.d+'/'+pC.t+'</b></span></summary>'
+    + '<div class="coll-body">'
+    + '<div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:14px;">Evidence for the Once for All Approved Compliance Partner audit. <strong>My practice</strong> answers are the same for every client (saved once on this device). <strong>This client</strong> answers demonstrate how you supported <em>this</em> client’s submission and are saved with the client.</div>'
+    + schemeWatch
+    + '<div class="prof-domain-head"><span class="pdh-badge" style="background:var(--primary);">My practice</span><h4>Modules 1–7 · about your consultancy (fill once)</h4></div>' + practiceMods
+    + '<div class="prof-domain-head"><span class="pdh-badge" style="background:var(--accent);">This client</span><h4>Modules 8–15 · how you supported this client’s submission</h4></div>' + clientMods
+    + '<div style="margin-top:16px;"><button class="btn btn-primary no-print" onclick="downloadApprovedPartnerPack()">📄 Generate Approved Partner evidence pack (PDF)</button></div>'
+    + '</div></details>';
+}
+
+function downloadApprovedPartnerPack(){
+  try{ _buildAcpPackPDF(); if(typeof showToast==='function') showToast('✓ Evidence pack created','success'); }
+  catch(e){ console.error('ACP pack failed:', e); if(typeof showToast==='function') showToast('Could not build the pack — see console','error'); }
+}
+function _buildAcpPackPDF(){
+  var client=(typeof _consultantView!=='undefined'&&_consultantView&&_consultantView.name)||(typeof S!=='undefined'&&S.branding&&S.branding.name)||'Client';
+  var d=(typeof S!=='undefined'&&S.riskDoc)||{};
+  var NAVY=[30,58,95], GREEN=[22,120,60], RED=[197,32,32], GREY=[120,120,120], TEAL=[13,110,150], AMBER=[170,120,60];
+  var sc=ACP.schemes||{}, pP=_acpProgress('practice'), pC=_acpProgress('client');
+  var OUT={ yes:{t:'YES',c:GREEN}, no:{t:'NO',c:RED}, na:{t:'N/A',c:GREY} };
+  var fd=function(s){ return s ? new Date(s+(s.length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '-'; };
+
+  // Built on the shared AHS report toolkit — same masthead, tiles, sections, tables & footer as every other report.
+  var K=_mkPdf('Approved Compliance Partner — Evidence Pack', client, d, 'Evidence for the Once for All / Constructionline approved-consultant audit.');
+  var doc=K.doc;
+
+  K.tiles([
+    {num:pP.d+'/'+pP.t, label:'My practice answered', color:NAVY},
+    {num:pC.d+'/'+pC.t, label:'This client answered', color:TEAL},
+    {num:'v'+(sc.casVersion||'-'), label:'CAS version', sub:sc.casChecked?('checked '+fd(sc.casChecked)):'', color:NAVY},
+    {num:(sc.ssipVersion||'-'), label:'SSIP version', sub:sc.ssipChecked?('checked '+fd(sc.ssipChecked)):'', color:NAVY}
+  ], {cols:4});
+
+  if((sc.log||[]).length){
+    K.section('Scheme version watch', NAVY);
+    K.table([{header:'Date',w:20},{header:'Scheme change / client template update',w:80}],
+      sc.log.slice(0,12).map(function(l){ return [ fd(l.date), l.note||'' ]; }),
+      {headFill:[236,239,244], headText:GREY});
+  }
+
+  var moduleTable=function(m){
+    K.section('Module '+m.n+' - '+m.title+'   -   '+(m.scope==='practice'?'My practice':'This client'), m.scope==='practice'?NAVY:TEAL);
+    var rows=m.qs.map(function(q,i){
+      var e=_acpGet(m.scope,'m'+m.n+'q'+i);
+      var out = e.out ? {pill:OUT[e.out].t, pillColor:OUT[e.out].c} : {text:'-', color:[165,165,165]};
+      var ev  = (e.ev&&String(e.ev).trim()) ? e.ev : {text:'Not yet evidenced', color:AMBER};
+      return [ q, ev, out ];
+    });
+    K.table([{header:'Item',w:38},{header:'Evidence & findings',w:52},{header:'Outcome',w:18}], rows,
+      {headFill: m.scope==='practice'?[236,239,244]:[227,240,245], headText:GREY, fs:8});
+  };
+  ACP_MODULES.filter(function(m){return m.scope==='practice';}).forEach(moduleTable);
+  ACP_MODULES.filter(function(m){return m.scope==='client';}).forEach(moduleTable);
+
+  _pdfFooter(K, d, 'Approved Compliance Partner');
+  var safe=String(client).replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').toLowerCase()||'client';
+  doc.save('approved-partner-evidence-pack-'+safe+'.pdf');
+}
+
+/* ── ACP: auto-link matching documents from the Documents vault ──
+   Maps document-backed audit questions to keyword matchers, then scans S.documents. */
+var ACP_DOC_HINTS = {
+  'm2q0':[/professional indemnity|\bindemnity\b|\bPI\b/i],
+  'm2q1':[/public liability|\bPL\b/i],
+  'm2q3':[/data protection|\bGDPR\b|privacy/i],
+  'm2q4':[/cyber|\bIASME\b/i],
+  'm2q5':[/terms (and|&) conditions|\bT&C\b|terms of (service|business)/i],
+  'm2q6':[/complaint|dispute/i],
+  'm6q0':[/accreditation|membership|certificate|\bISO\b|SSIP|CHAS|SafeContractor/i],
+  'm8q0':[/environment/i],
+  'm13q0':[/fairness|inclusion|\bFIR\b|equality|diversity|\bEDI\b/i],
+  'm14q0':[/information management|document control/i]
+};
+function _acpDocMatches(qid){
+  var hints=ACP_DOC_HINTS[qid]; if(!hints) return [];
+  var docs=(typeof S!=='undefined' && Array.isArray(S.documents))?S.documents:[];
+  return docs.filter(function(d){ var hay=((d.name||'')+' '+(d.category||'')); return hints.some(function(rx){ return rx.test(hay); }); });
+}
+function _acpDocLine(qid){
+  if(!ACP_DOC_HINTS[qid]) return '';
+  var _e=(typeof esc==='function')?esc:function(v){return String(v==null?'':v);};
+  var docs=_acpDocMatches(qid);
+  var badge=function(d){ var st=(typeof _docStatus==='function')?_docStatus(d.reviewDate):{cls:'badge-muted',label:''}; return '<span class="badge '+st.cls+'" style="font-size:10px;" title="'+_e(st.label)+'">📄 '+_e(d.name||'document')+'</span>'; };
+  if(docs.length){
+    return '<div style="margin-top:7px;font-size:11.5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;"><span style="color:var(--text-muted);">Linked from Documents:</span> '+docs.map(badge).join(' ')+'</div>';
+  }
+  return '<div style="margin-top:7px;font-size:11.5px;"><span class="badge badge-warning" style="font-size:10px;">No matching document on file</span> <span style="color:var(--text-muted);cursor:pointer;text-decoration:underline;" onclick="switchTab(\'documents\')">Add one</span></div>';
+}
+
+/* ── One-click backup of all local app data ── */
+function exportEverything(){
+  try{
+    var bundle={ app:'AHS HSMS backup', version:1, exportedAt:new Date().toISOString(), keys:{} };
+    for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(/^(ahs:|hsms_)/i.test(k)){ var raw=localStorage.getItem(k); try{ bundle.keys[k]=JSON.parse(raw); }catch(e){ bundle.keys[k]=raw; } } }
+    var blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});
+    var url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download='ahs-hsms-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+    if(typeof showToast==='function') showToast('✓ Backup downloaded','success');
+  }catch(e){ console.error('Backup failed',e); if(typeof showToast==='function') showToast('Backup failed — see console','error'); }
 }
 </script>
 

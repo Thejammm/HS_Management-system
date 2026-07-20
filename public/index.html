@@ -6325,32 +6325,37 @@ async function submitEditUser(userId){
 // in a single submission so the consultant doesn't have to do two steps.
 // Any extra users can still be added later via the "+ Add User" button.
 function openAddTenantModal(){
-  openModal('Add Client + Login',
+  openModal('Add Client',
     `<div style="display:flex;flex-direction:column;gap:14px;">
 
        <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">
-         Creates the client company AND the first user login in one go.
-         You'll get the credentials on the next screen — copy them, then
-         email them to your client.
+         Creates the client. You can work on every client yourself from your
+         client list without a separate login, so the login below is optional.
+         Only add one if the client will sign in themselves.
        </div>
 
        <div style="border-top:1px solid var(--border);padding-top:10px;">
-         <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">1. The Client (Tenant)</div>
+         <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">1. The client</div>
          <div class="field-group" style="margin-bottom:10px;">
            <label class="field-label">Client business name</label>
            <input type="text" id="mTenantName" placeholder="e.g. Acme Engineering Ltd" autocomplete="off" autofocus>
          </div>
          <div class="field-group">
-           <label class="field-label">Tenant ID (optional — auto-generated from name)</label>
+           <label class="field-label">Tenant ID (optional, auto-generated from name)</label>
            <input type="text" id="mTenantId" placeholder="e.g. acme-engineering" pattern="[a-z0-9-]+" autocomplete="off">
            <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Lowercase letters, numbers, dashes only. Cannot be changed later.</div>
          </div>
        </div>
 
        <div style="border-top:1px solid var(--border);padding-top:10px;">
-         <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">2. The Login</div>
+         <div style="font-size:11px;font-weight:700;text-transform:none;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">2. Client login (optional)</div>
+         <div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:8px;">
+           Leave blank if only you will access this client. If the client will log in,
+           use <strong>their own</strong> email here, not yours: every login needs its own
+           email address, and your consultant account already reaches every client.
+         </div>
          <div class="field-group" style="margin-bottom:10px;">
-           <label class="field-label">Email <span style="color:var(--danger);">*</span></label>
+           <label class="field-label">Email</label>
            <input type="email" id="mClientEmail" placeholder="manager@company.co.uk" autocomplete="off">
          </div>
          <div class="field-group" style="margin-bottom:10px;">
@@ -6358,7 +6363,7 @@ function openAddTenantModal(){
            <input type="text" id="mClientName" placeholder="e.g. Jane Smith" autocomplete="off">
          </div>
          <div class="field-group">
-           <label class="field-label">Starter password (8+ chars) <span style="color:var(--danger);">*</span></label>
+           <label class="field-label">Starter password (8+ chars)</label>
            <div style="display:flex;gap:6px;">
              <input type="text" id="mClientPwd" placeholder="ChangeMe2026!" autocomplete="off" style="flex:1;">
              <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('mClientPwd').value=_generatePassword();">Generate</button>
@@ -6369,7 +6374,7 @@ function openAddTenantModal(){
 
      </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-     <button class="btn btn-primary" onclick="submitAddTenant()">＋ Create Client &amp; Login</button>`
+     <button class="btn btn-primary" onclick="submitAddTenant()">＋ Create client</button>`
   );
 }
 
@@ -6381,11 +6386,17 @@ async function submitAddTenant(){
   const password = document.getElementById('mClientPwd')?.value;
 
   if(!name)  { showToast('Please enter a client business name','error'); return; }
-  if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
-    showToast('Please enter a valid email','error'); return;
-  }
-  if(!password || password.length < 8){
-    showToast('Password must be at least 8 characters','error'); return;
+  // The login is optional. If either login field is filled, treat it as
+  // "create a login too" and validate both; if both are blank, create the
+  // client only (you reach every client from your client list without a login).
+  const wantLogin = !!email || !!password;
+  if(wantLogin){
+    if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
+      showToast('Enter a valid email for the login, or clear both login fields to skip it','error'); return;
+    }
+    if(!password || password.length < 8){
+      showToast('Login password must be at least 8 characters','error'); return;
+    }
   }
 
   // 1. Create the tenant
@@ -6408,7 +6419,29 @@ async function submitAddTenant(){
     return;
   }
 
-  // 2. Create the login attached to the tenant we just made
+  // 2. No login requested: the client is ready and you reach it from your
+  //    client list (dial in). No per-client login is needed for you.
+  if(!wantLogin){
+    closeModal();
+    openModal('✓ Client created',
+      `<div style="display:flex;flex-direction:column;gap:14px;">
+         <div style="padding:12px 14px;background:var(--success-bg);border:1.5px solid var(--success-brd);border-radius:8px;font-size:13px;color:var(--success);line-height:1.5;">
+           <strong>${esc(name)}</strong> is ready. Open it from your client list to start working on it. No login was created, so only you can access this client for now.
+         </div>
+         <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">
+           If the client needs to sign in later, add a login for them from Admin, using their own email address.
+         </div>
+       </div>`,
+      `<button class="btn btn-primary" onclick="closeModal()">Done</button>`
+    );
+    loadAndRenderAdminData();
+    if(document.getElementById('clientHub')?.classList.contains('on')) renderClientHub();
+    if(typeof populateClientPicker === 'function') populateClientPicker();
+    return;
+  }
+
+  // 2b. A login was requested: create it. Keep the client even if this fails, so
+  //     a duplicate email never throws away the client you just created.
   try {
     const uRes = await fetch('/api/admin/users', {
       method: 'POST', credentials: 'include',
@@ -6417,15 +6450,30 @@ async function submitAddTenant(){
     });
     const uBody = await uRes.json();
     if(!uRes.ok){
-      // Roll back the tenant we just created so the consultant can retry cleanly
-      try { await fetch(`/api/admin/tenants/${encodeURIComponent(tenantId)}`, { method:'DELETE', credentials:'include' }); } catch(e){}
-      const msg = uBody.error === 'email_exists' ? `A user with the email ${email} already exists.` : `Failed to create login: ${uBody.error||uRes.status}`;
-      showToast(msg, 'error');
+      closeModal();
+      const dup = uBody.error === 'email_exists';
+      openModal(dup ? '✓ Client created (login skipped)' : '✓ Client created (login failed)',
+        `<div style="display:flex;flex-direction:column;gap:14px;">
+           <div style="padding:12px 14px;background:var(--success-bg);border:1.5px solid var(--success-brd);border-radius:8px;font-size:13px;color:var(--success);line-height:1.5;">
+             <strong>${esc(name)}</strong> was created. You can open it from your client list now.
+           </div>
+           <div style="padding:12px 14px;background:var(--warning-bg,#FEF3C7);border:1.5px solid var(--warning-brd,#F59E0B);border-radius:8px;font-size:12px;line-height:1.55;">
+             ${dup
+               ? `The email <strong>${esc(email)}</strong> already has a login, so no new one was created. You do not need a separate login per client: your consultant account already reaches every client from the client list. If the client needs their own login, add one from Admin using an email address that is unique to them.`
+               : `The client login could not be created (${esc(uBody.error||('HTTP '+uRes.status))}). The client itself is fine. You can add a login later from Admin.`}
+           </div>
+         </div>`,
+        `<button class="btn btn-primary" onclick="closeModal()">Done</button>`
+      );
+      loadAndRenderAdminData();
+      if(document.getElementById('clientHub')?.classList.contains('on')) renderClientHub();
+      if(typeof populateClientPicker === 'function') populateClientPicker();
       return;
     }
   } catch(err){
     console.error(err);
-    showToast('Network error creating login','error');
+    showToast('Network error creating login (the client was created)','error');
+    loadAndRenderAdminData();
     return;
   }
 

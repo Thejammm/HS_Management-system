@@ -7146,8 +7146,18 @@ function migrateLoadedState(){
       localStorage.setItem('hsms_risk_premigration_backup', JSON.stringify({ at:new Date().toISOString(), riskProfile:S.riskProfile }));
     }
   }catch(e){}
-  S.riskProfile = S.riskProfile.map(r => {
+  const _seenRiskIds = new Set();
+  S.riskProfile = S.riskProfile.map((r, _ri) => {
     if(!r || typeof r !== 'object') return r;
+    // Every risk needs a unique, stable id so it can be edited and deleted.
+    // Imported client files may carry entries with no id (or duplicate ids),
+    // which otherwise makes the delete/edit buttons target nothing (or the
+    // wrong row). Only regenerate when missing/blank/duplicate, so ids stay
+    // stable across reloads.
+    if(!r.id || typeof r.id !== 'string' || _seenRiskIds.has(r.id)){
+      r.id = 'risk_' + Date.now() + '_' + _ri + '_' + Math.random().toString(36).slice(2,6);
+    }
+    _seenRiskIds.add(r.id);
     if(r.hazard === undefined && r.risk !== undefined) r.hazard = r.risk;
     if(r.harm === undefined && r.injury !== undefined) r.harm = r.injury;
     if(r.businessImpact === undefined && r.impact !== undefined) r.businessImpact = r.impact;

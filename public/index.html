@@ -11413,7 +11413,7 @@ function addGapToPlan(srcKey){
 // so who/why/when write straight back to it (and travel with the client data).
 function _acceptedActions(){
   const out=[];
-  (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>{ if(a.status==='Accepted') out.push({ kind:'risk', id:a.id, riskId:r.id, ref:a, desc:a.desc, source:(r.activity||r.hazard||'From a risk') }); }));
+  (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>{ if(a.status==='Accepted' && !a.hideFromPlan) out.push({ kind:'risk', id:a.id, riskId:r.id, ref:a, desc:a.desc, source:(r.activity||r.hazard||'From a risk') }); }));
   (_apList()||[]).forEach(a=>{ if(a.status==='Accepted') out.push({ kind:'free', id:a.id, riskId:'', ref:a, desc:a.desc, source:'Added directly' }); });
   return out;
 }
@@ -11424,10 +11424,30 @@ function updateAcceptField(kind, id, riskId, field, value){
   else { obj=_apList().find(x=>x.id===id); }
   if(!obj) return; obj[field]=value; _stamp(obj,'updated'); scheduleAutoSave();
 }
+// Remove a risk-profile action from THIS plan only (added in error). It stays on
+// the risk and is still managed there; `hideFromPlan` just filters it out of the
+// action plan (screen, PDF, acceptance register). Recoverable via Restore.
+let _apShowHidden=false;
+function toggleApHidden(){ _apShowHidden=!_apShowHidden; _keepScroll(renderActionPlanTab); }
+function dismissRiskActionFromPlan(riskId, actId){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===riskId); if(!r) return;
+  const a=(r.actions||[]).find(x=>x.id===actId); if(!a) return;
+  a.hideFromPlan=true; _stamp(a,'updated'); saveData(); _keepScroll(renderActionPlanTab);
+  if(typeof showToast==='function') showToast('Removed from the action plan (still on the risk)','info');
+}
+function restoreRiskActionToPlan(riskId, actId){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===riskId); if(!r) return;
+  const a=(r.actions||[]).find(x=>x.id===actId); if(!a) return;
+  delete a.hideFromPlan; _stamp(a,'updated'); saveData(); _keepScroll(renderActionPlanTab);
+}
 function renderActionPlanTab(){
   const root=document.getElementById('actionPlanRoot'); if(!root) return;
   const ro=_roLocked(); const dis=ro?' disabled':'';
-  const riskActs=_allRiskActions();
+  const _allRA=_allRiskActions();
+  const riskActs=_allRA.filter(x=>!(x.a&&x.a.hideFromPlan));
+  const hiddenActs=_allRA.filter(x=>x.a&&x.a.hideFromPlan);
   const free=_apList();
   // Unified stats across risk-derived and free-form actions.
   const allStatuses=riskActs.map(x=>x.status).concat(free.map(a=>_actionStatus(a)));
@@ -11446,11 +11466,15 @@ function renderActionPlanTab(){
       <td style="${ov?'color:#DC2626;font-weight:600;':''}">${a.due?fmtDate(a.due):'—'}</td>
       <td><span style="color:${prColor(a.priority)};font-weight:700;">${esc(a.priority||'—')}</span></td>
       <td><select${dis} onchange="setRiskActionStatus('${x.r.id}','${a.id}',this.value)">${_AP_STATUSES.map(s=>`<option${s===(a.status||'Not started')?' selected':''}>${s}</option>`).join('')}</select>${ov?' <span class="badge" style="border-color:#DC2626;color:#DC2626;">Overdue</span>':''}</td>
+      ${ro?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs no-print" title="Remove from this plan (added by mistake). It stays on the risk." onclick="dismissRiskActionFromPlan('${x.r.id}','${a.id}')">✕</button></td>`}
     </tr>`;
   }).join('');
-  const riskCard = riskActs.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Actions from the risk profile</h3><span class="badge badge-muted">${riskActs.length}</span></div>
-    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">These come from the actions recorded on each risk. Update status here as you work through them; edit the detail on the risk itself.</div>
-    <div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Action</th><th>Risk</th><th>Owner</th><th>Target</th><th>Priority</th><th>Status</th></tr></thead><tbody>${riskRows}</tbody></table></div></div></div>` : '';
+  const hiddenLine = hiddenActs.length ? `<div style="font-size:11px;color:var(--text-muted);margin-top:10px;">${hiddenActs.length} action${hiddenActs.length!==1?'s':''} removed from this plan (still on the risk). <button class="btn btn-ghost btn-xs no-print" onclick="toggleApHidden()">${_apShowHidden?'Hide':'Show'}</button></div>
+    ${_apShowHidden?`<div style="margin-top:4px;">${hiddenActs.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--border);padding:6px 0;font-size:12px;color:var(--text-muted);"><span>${esc(x.a.desc||'(no description)')} <span style="opacity:.7;">— ${esc((x.r.activity||x.r.hazard||'Risk').slice(0,30))}</span></span>${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="restoreRiskActionToPlan('${x.r.id}','${x.a.id}')">Restore</button>`}</div>`).join('')}</div>`:''}` : '';
+  const riskCard = (riskActs.length || hiddenActs.length) ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Actions from the risk profile</h3><span class="badge badge-muted">${riskActs.length}</span></div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">These come from the actions recorded on each risk. Update status here as you work through them; edit the detail on the risk itself. Use ✕ to remove one added by mistake from this plan (it stays on the risk).</div>
+    ${riskActs.length?`<div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Action</th><th>Risk</th><th>Owner</th><th>Target</th><th>Priority</th><th>Status</th>${ro?'':'<th></th>'}</tr></thead><tbody>${riskRows}</tbody></table></div>`:'<div style="font-size:12.5px;color:var(--text-muted);">No risk actions in this plan.</div>'}
+    ${hiddenLine}</div></div>` : '';
   // Open gaps from the management system + maturity, offered as one-click actions.
   const gaps=_apGaps();
   const gapCard = gaps.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Suggested from gaps</h3><span class="badge badge-muted">${gaps.length}</span></div>
@@ -12468,7 +12492,7 @@ function buildActionPlanReport(){
     const rk=(S.riskProfile||[]).find(r=>r.id===a.riskId);
     return { a:{ desc:a.desc, owner:a.owner, due:a.due, priority:a.priority, status:a.status }, r:{ activity: rk?(rk.activity||rk.hazard):'Added directly' }, status:_actionStatus(a) };
   });
-  const items=data.acts.filter(x=>x.a.desc||x.a.owner||x.a.due).concat(freeItems);
+  const items=data.acts.filter(x=>(x.a.desc||x.a.owner||x.a.due) && !(x.a&&x.a.hideFromPlan)).concat(freeItems);
   if(!items.length){ K.section('Action plan', RED); K.text('No actions have been recorded yet. Add actions to the significant risks or in the Action plan tab to build the plan.', 10); _pdfFooter(K, d, 'Action Plan'); doc.save('action-plan-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf'); return; }
   const apDone=items.filter(x=>x.status==='Complete').length;
   const apAccepted=items.filter(x=>x.status==='Accepted').length;

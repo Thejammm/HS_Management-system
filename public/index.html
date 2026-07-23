@@ -11052,7 +11052,7 @@ function _riskFlowHTML(r){
     const c=_RISK_PRIO_COLOR[sc.priority]; return `<span title="${lab}: ${sc.l} × ${sc.s}">${lab} <strong style="color:${c};">${sc.rating}</strong></span>`; };
   const eff=_controlEffectiveness(r);
   const effHtml = eff ? `<span class="eff-badge" style="background:${eff.colour}1a;color:${eff.colour};">Controls: ${eff.band}</span>` : '';
-  return part(inh,'Inherent') + `<span class="rf-arrow">→</span>` + part(cur,'Current') + `<span class="rf-arrow">→</span>` + part(tgt,'Target') + effHtml;
+  return part(inh,'Inherent') + `<span class="rf-arrow">→</span>` + part(cur,'Residual') + `<span class="rf-arrow">→</span>` + part(tgt,'Target') + effHtml;
 }
 function updateRiskRating(id, field, value){
   if(_roLocked()) return;
@@ -12347,23 +12347,29 @@ function buildBoardReport(){
   if(data.sifNoOwner.length) decisions.push(['Assign a named owner to every fatal-potential risk.',data.sifNoOwner.length+' currently have no one accountable.']);
   if(!decisions.length) decisions.push(['Maintain and verify the existing controls at the next review.','Profile is controlled; the duty is to keep it that way.']);
 
-  // 1. Verdict
+  // 1. Verdict — lead with the honest residual position, not the raw worst case.
+  const sifResHigh = data.sif.filter(r=>{ const p=_riskScore(r).priority; return p==='Critical'||p==='High'; }).length;
   let verdict;
-  if(nFatal===0) verdict='No activities with the credible potential to kill or seriously injure are currently recorded. Confirm the profile is complete before relying on this.';
-  else verdict=nFatal+' activit'+(nFatal===1?'y':'ies')+' carried out by this business have the credible potential to kill or permanently disable someone'+(nUnc>0?('. '+nUnc+' of '+(nUnc===1?'them has':'them have')+' no control currently recorded.'):', and controls are recorded against all of them.');
-  K.verdictBox(verdict, (nUnc>0||nFatal>0)?RED:GREEN);
+  if(nFatal===0) verdict='No activities with the inherent potential to kill or seriously injure are currently recorded. Confirm the profile is complete before relying on this.';
+  else {
+    verdict=nFatal+' activit'+(nFatal===1?'y has':'ies have')+' the inherent potential to cause fatal or major harm in the worst case. That is the starting point before controls, not the day-to-day risk. ';
+    if(nUnc>0) verdict+=nUnc+' of '+(nUnc===1?'them has':'them have')+' no control recorded yet and '+(nUnc===1?'is':'are')+' the priority. ';
+    else verdict+='Controls are recorded against all of them. ';
+    verdict+='With those controls in place the residual risk is '+(sifResHigh?(sifResHigh+' still High or above'):'Medium or lower on all of them')+'.';
+  }
+  K.verdictBox(verdict, nUnc>0 ? RED : (sifResHigh>0 ? AMBER : GREEN));
 
   // 2. Numbers + written board summary (side by side)
   K.section('The numbers that matter', NAVY);
   K.heroSplit(
-    [ {num:data.highestHarm.split(' /')[0], label:'Highest credible harm', color:data.maxSev>=4?RED:GREY, sub:'Worst-case outcome'},
-      {num:String(data.sif.length), label:'Fatal-potential risks', color:data.sif.length?RED:NAVY, sub:'Can kill or maim'},
+    [ {num:data.highestHarm.split(' /')[0], label:'Highest credible harm', color:data.maxSev>=4?RED:GREY, sub:'Worst-case, before controls'},
+      {num:String(data.sif.length), label:'Fatal-potential risks', color:data.sifUncontrolled.length?RED:(data.sif.length?AMBER:NAVY), sub:'Inherent worst case'},
       {num:String(data.sifUncontrolled.length), label:'Of those, uncontrolled', color:data.sifUncontrolled.length?RED:NAVY, sub:'No completed control'},
       {num:data.actOverdue+' / '+data.acts.length, label:'Actions overdue', color:data.actOverdue?AMBER:NAVY, sub:'Past target date'},
       {num:data.completeness+'%', label:'Assessment completeness', color:data.completeness<100?AMBER:GREEN, sub:'Profile built to date'},
       {num:(data.overallMat.avg==null?'-':data.overallMat.avg.toFixed(1)+' / 5'), label:'Management maturity', color:data.overallMat.avg==null?GREY:data.overallMat.avg>=3.5?GREEN:AMBER, sub:'HSG65 average'} ],
     { title:'Board summary',
-      paras:['Significant risks scored against the HSG65 framework. The profile is '+data.completeness+'% complete, so these figures reflect exposure recorded to date and firm up as the rest is scored.'],
+      paras:['Significant risks scored against the HSG65 framework, both before controls (inherent) and after (residual). '+(nFatal?(nFatal+(nFatal===1?' activity carries':' activities carry')+' inherent fatal or major potential; with the controls in place '+(sifResHigh?(sifResHigh+' remain High or above'):'all sit at Medium or lower')+'. '):'')+'The profile is '+data.completeness+'% complete, so these figures firm up as the rest is scored.'],
       subhead:'What the board must decide',
       bullets:decisions.slice(0,3).map(dz=>dz[0]),
       caption:'Reserved space - your written commentary and recommendations sit here on every report.' }
@@ -12382,16 +12388,18 @@ function buildBoardReport(){
 
   // Page 2 — what can kill someone here
   doc.addPage(); st.y=K.TOP;
-  K.section('What can kill or seriously injure someone here', RED);
+  K.section('Inherent fatal or major-harm activities, and their residual risk', [71,85,105]);
   if(data.sif.length){
     const stRank={None:0,Partial:1,'In place':2};
     const list=data.sif.slice().sort((a,b)=>stRank[_riskControlStatus(a)]-stRank[_riskControlStatus(b)]);
+    const ratingCell=(sc)=> sc.rating ? {text: sc.rating+' '+(sc.priority||''), bold:true, color:_RISK_PRIO_RGB[sc.priority]||[110,110,110]} : {text:'-', color:[150,150,150]};
     K.table(
-      [{header:'Risk',w:74},{header:'Energy source',w:40},{header:'Control status',w:34},{header:'Owner',w:30}],
+      [{header:'Activity / risk',w:64},{header:'Inherent',w:24},{header:'Residual',w:24},{header:'Control',w:32},{header:'Owner',w:28}],
       list.map(r=>{ const cs=_riskControlStatus(r), owner=_riskOwner(r); const csCol=cs==='None'?RED:cs==='Partial'?AMBER:GREEN;
-        return [ {text:r.activity||r.hazard||'Unnamed risk', bold:true}, {text:(r.energy||[]).map(_energyLabel).join(', ')||'-', color:[110,116,126]}, {pill:cs, pillColor:csCol}, owner?{text:owner}:{pill:'Unassigned', pillColor:RED} ]; }),
+        return [ {text:r.activity||r.hazard||'Unnamed risk', bold:true}, ratingCell(_riskInherent(r)), ratingCell(_riskScore(r)), {pill:cs, pillColor:csCol}, owner?{text:owner}:{pill:'Unassigned', pillColor:RED} ]; }),
       {headFill:NAVY, headText:[255,255,255]}
     );
+    K.text('Inherent = the risk before controls (the worst-case reason it matters, and the basis for deciding whether the activity is worth doing). Residual = the risk with the controls now in place. Controls do not lower the severity of the worst case; they lower its likelihood, which is where the residual reduction comes from.', 8, {color:[120,120,120], gap:2});
     K.whatBlocks(
       {title:'What this means', bullets:[
         (nUnc||'No')+' fatal-potential risk'+(nUnc===1?'':'s')+' '+(nUnc===1?'has':'have')+' no completed controls in place.',
@@ -12659,7 +12667,7 @@ function renderRiskProfile(){
           <label class="field-label" style="margin:0;">Risk rating — Likelihood (L) × Severity (S), each 1–5</label>
           <div class="rating-trio">
             ${ratingBox(r,'Inherent (pre-control)','','inherentL','inherentS')}
-            ${ratingBox(r,'Current (residual)','rt-current','likelihood','severity')}
+            ${ratingBox(r,'Residual (after controls)','rt-current','likelihood','severity')}
             ${ratingBox(r,'Target (after actions)','','targetL','targetS')}
           </div>
           <div class="risk-flow" id="rflow-${r.id}">${_riskFlowHTML(r)}</div>
@@ -12931,7 +12939,7 @@ function buildRiskProfileReportPDF(){
       field('Best control level', _controlLevelLabel(r.controlLevel));
       const inh=_riskInherent(r), tgt=_riskTarget(r), eff=_controlEffectiveness(r);
       const fmtR=(s)=> s.rating ? (s.l+'x'+s.s+'='+s.rating+' ('+s.priority+')') : '-';
-      field('Risk rating', 'Inherent '+fmtR(inh)+'  >  Current '+fmtR(sc)+'  >  Target '+fmtR(tgt)+(eff?('     Controls: '+eff.band):''));
+      field('Risk rating', 'Inherent '+fmtR(inh)+'  >  Residual '+fmtR(sc)+'  >  Target '+fmtR(tgt)+(eff?('     Controls: '+eff.band):''));
       field('Risk trend', r.trend);
       const actLines=(r.actions||[]).filter(a=>a.desc||a.owner||a.due).map((a,i)=>(a.desc||'(action)')+'  ['+_actionStatus(a)+(a.owner?(' · '+a.owner):'')+(a.due?(' · due '+fd(a.due)):'')+(a.priority?(' · '+a.priority):'')+']');
       if(actLines.length) field('Actions', actLines.join('\n'));

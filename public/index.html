@@ -660,6 +660,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <span class="save-indicator" id="saveIndicator"></span>
       <button class="btn btn-ghost btn-sm no-print" id="themeToggle" onclick="toggleTheme()" title="Toggle light / dark mode" aria-label="Toggle light or dark mode" style="color:var(--text-muted);border-color:var(--border);padding:6px 9px;line-height:0;"><span id="themeToggleIcon"></span></button>
       <button class="btn btn-ghost btn-sm no-print" id="backupBtn" onclick="exportEverything()" title="Download a full JSON backup of your local data" style="color:var(--text-muted);border-color:var(--border);">⭳ Backup</button>
+      <button class="btn btn-ghost btn-sm no-print" id="exportClientBtn" onclick="exportClient()" title="Download THIS client's data as an import-compatible JSON baseline — a timestamped snapshot you can re-import at any time" style="color:var(--text-muted);border-color:var(--border);">⭳ Export client</button>
       <button class="btn btn-ghost btn-sm no-print" id="importBtn" onclick="importData()" title="Import a client data JSON into the client you are working on (or restore a full backup)" style="color:var(--text-muted);border-color:var(--border);">⭱ Import</button>
       <!-- User indicator: shows current signed-in user when authenticated -->
       <span id="userIndicator" class="no-print" style="display:none;font-size:11px;color:var(--text-muted);padding:4px 10px;background:var(--accent-light);border:1px solid var(--accent);border-radius:14px;font-weight:600;"></span>
@@ -1517,24 +1518,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   ══════════════════════════════════════ -->
   <div id="tab-setup" class="tab-panel">
 
-    <!-- ── Client selector ── -->
-    <div id="clientSelector" class="client-selector" style="display:none;">
-      <div class="client-selector-title">👋 Welcome</div>
-      <div class="client-selector-sub">Please select your workplace below. Your checklist and settings will load automatically. If you need changes made, contact your AHS consultant.</div>
-      <div class="client-list" id="clientListEl"></div>
-      <hr class="client-divider">
-      <div class="client-btn consultant" onclick="toggleConsultantPass()">
-        <span class="client-btn-icon">🔑</span>
-        <div><div class="client-btn-name">AHS Consultant</div><div class="client-btn-sub">Configure checklists &amp; settings</div></div>
-      </div>
-      <div class="client-consultant-pass" id="consultantPassRow">
-        <input class="gate-input" id="gateInput" type="password" placeholder="Access code" autocomplete="off" onkeydown="if(event.key==='Enter')checkGate()" style="text-align:left;letter-spacing:normal;">
-        <button class="btn btn-primary" onclick="checkGate()">Go →</button>
-      </div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:8px;" id="gateHint"></div>
-    </div>
+    <!-- Legacy client-side "access code" gate removed — access is via server
+         sign-in (a client_user gets their own tenant; a consultant dials in). -->
 
-    <!-- ── Consultant content (shown after unlock) ── -->
+    <!-- ── Consultant content ── -->
     <div id="consultantContent">
 
     <!-- Active client bar — shown when a client is selected -->
@@ -1956,9 +1943,8 @@ function _attrFooter(rec){
   return txt ? `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">${txt}</div>` : '';
 }
 
-// ── Consultant passphrase — change this before sending each file ──
-const CONSULTANT_PASS = 'archer';
-
+// Legacy flag from the old client-side gate. It is never set true now (access
+// is via server sign-in); a few display checks still read it, so keep it false.
 let _consultantUnlocked = false;
 
 // ── Inline Lucide-style icons (one consistent set across the whole app) ──
@@ -2033,38 +2019,8 @@ function _updateActiveClientBar() {
 // via the header picker. Config (branding, location, inspection type) is applied
 // from the served tenant config in loadFromServerAndRender / enterConsultantView.
 
-function toggleConsultantPass() {
-  const row = document.getElementById('consultantPassRow');
-  const isOpen = row.classList.toggle('open');
-  if (isOpen) {
-    document.getElementById('gateInput')?.focus();
-    document.getElementById('gateHint').textContent = '';
-  }
-}
-
-function checkGate() {
-  const inp   = document.getElementById('gateInput');
-  const hint  = document.getElementById('gateHint');
-  const entry = (inp?.value||'').trim().toLowerCase();
-
-  if (entry === CONSULTANT_PASS.toLowerCase()) {
-    _consultantUnlocked = true;
-    document.getElementById('clientSelector').style.display    = 'none';
-    document.getElementById('consultantContent').style.display = 'block';
-    document.getElementById('consultantPassRow').classList.remove('open');
-    hint.textContent = '';
-    renderMyChecklist(); renderTemplates();
-    showToast('✓ Consultant access granted', 'info');
-  } else {
-    inp.classList.remove('shake');
-    void inp.offsetWidth;
-    inp.classList.add('shake');
-    inp.value = '';
-    hint.textContent = 'Incorrect — please try again or contact AHS.';
-    inp.focus();
-    setTimeout(()=>inp.classList.remove('shake'), 400);
-  }
-}
+// (Legacy toggleConsultantPass / checkGate access-code functions removed — the
+//  gate UI they drove is gone; access is via server sign-in.)
 
 //  Easy Garage Services — checklist library
 //  Inspection + per-vehicle QC templates derived from the
@@ -5875,6 +5831,20 @@ function saveData(){
   if(Auth.isSignedIn() && Auth.activeTenantId()){
     _ownSaveInFlight = true;   // pause the freshness poll from reloading our own change
     Auth.saveToServer(S).then(res => {
+      if(res && res.conflict){
+        // Another editor saved this company between our load and this save.
+        // Adopt their version (server wins) so nothing they did is lost; our
+        // in-progress edit is dropped, so warn clearly and refresh the view.
+        if(res.state && typeof res.state === 'object' && Object.keys(res.state).length){
+          S = res.state; migrateLoadedState(); _rerenderEverything();
+        }
+        _ownLastUpd = res.updatedAt || _ownLastUpd;
+        if(inClient){ _consultantLastUpd = res.updatedAt || _consultantLastUpd; _setFreshLabel(); }
+        const elC=document.getElementById('saveIndicator');
+        if(elC){ elC.textContent='↻ Reloaded — someone else had just saved'; elC.style.color='var(--danger)'; }
+        showToast('Someone else saved changes to this company, so your view was refreshed with their version. Please re-apply your last change.','error');
+        return;
+      }
       if(res && res.updatedAt){
         _ownLastUpd = res.updatedAt;   // our own updatedAt; poll won't treat it as new
         // Dial-in has its own poll keyed on _consultantLastUpd — keep it in step
@@ -6248,12 +6218,9 @@ function togglePasswordReveal(){
     renderAdminUsers(_adminUsersCache, _adminTenantsCache);
     return;
   }
-  const code = prompt('Enter the consultant access code to reveal passwords:');
-  if(code === null) return;
-  if(String(code).trim().toLowerCase() !== CONSULTANT_PASS.toLowerCase()){
-    showToast('Incorrect access code','error');
-    return;
-  }
+  // No client-side access code: the Admin area is consultant-only and the
+  // server only returns passwords to an authenticated consultant, so the reveal
+  // is already protected server-side.
   _passwordsRevealed = true;
   if(btn) btn.innerHTML = 'Hide passwords';
   renderAdminUsers(_adminUsersCache, _adminTenantsCache);
@@ -9834,15 +9801,26 @@ const Auth = (() => {
     if(!tenantId) return false;
     // Debounce concurrent saves
     if(_syncInFlight) await _syncInFlight.catch(()=>{});
+    // Optimistic concurrency: tell the server which version we last synced to.
+    // If someone else (the consultant, or the client) saved this same company
+    // since then, the server replies 409 rather than letting us silently
+    // overwrite their work.
+    const baseUpdatedAt = _lastServerUpd;
     _syncInFlight = _api('/api/state', {
       method: 'POST',
-      body: JSON.stringify({ tenantId, state })
+      body: JSON.stringify({ tenantId, state, baseUpdatedAt })
     });
     try {
       const res = await _syncInFlight;   // { ok, tenantId, updatedAt }
       if(res && res.updatedAt) _lastServerUpd = res.updatedAt;
       return res || true;                // object is truthy; callers treat as ok
     } catch(e){
+      if(e && e.status === 409){
+        // Conflict — adopt the server's newer version so the caller can
+        // reconcile instead of clobbering the other party's changes.
+        if(e.body && e.body.updatedAt) _lastServerUpd = e.body.updatedAt;
+        return { conflict:true, updatedAt: e.body && e.body.updatedAt, state: e.body && e.body.state };
+      }
       console.warn('Failed to save state to server:', e);
       return false;
     } finally {
@@ -9851,8 +9829,12 @@ const Auth = (() => {
   }
 
   function lastServerUpd(){ return _lastServerUpd; }
+  // Keep the concurrency base in step whenever we adopt a server version by a
+  // path other than load/save (dial-in fetch, freshness poll) — otherwise the
+  // next save would send a stale base and trip a false conflict.
+  function setLastServerUpd(ts){ _lastServerUpd = ts || null; }
 
-  return { login, logout, refresh, user, isSignedIn, activeTenantId, setActiveTenant, loadFromServer, saveToServer, lastServerUpd };
+  return { login, logout, refresh, user, isSignedIn, activeTenantId, setActiveTenant, loadFromServer, saveToServer, lastServerUpd, setLastServerUpd };
 })();
 
 // ══════════════════════════════════════════════════════════════
@@ -9999,6 +9981,7 @@ async function enterConsultantView(tenantId, name, config){
   _consultantView    = { tenantId, name, config: config || {} };
   Auth.setActiveTenant(tenantId);
   _consultantLastUpd = payload?.updatedAt || null;
+  Auth.setLastServerUpd(payload?.updatedAt || null);   // concurrency base for saves to this client
   S = (payload && payload.state && typeof payload.state === 'object' && Object.keys(payload.state).length)
         ? payload.state : _emptyConsultantState();
   migrateLoadedState();
@@ -10060,6 +10043,7 @@ async function refreshConsultantView(auto){
     const upd = payload?.updatedAt || null;
     if(upd !== _consultantLastUpd){
       _consultantLastUpd = upd;
+      Auth.setLastServerUpd(upd);   // keep the save base in step with what we just pulled
       S = (payload && payload.state && Object.keys(payload.state).length) ? payload.state : _emptyConsultantState();
       migrateLoadedState();
       _rerenderEverything();
@@ -10107,6 +10091,7 @@ async function _pollOwnState(){
     const upd = r?.updatedAt || null;
     if(upd && upd !== _ownLastUpd){
       _ownLastUpd = upd;
+      Auth.setLastServerUpd(upd);   // keep the save base in step with what we just pulled
       if(r.state && typeof r.state === 'object' && Object.keys(r.state).length){
         S = r.state; migrateLoadedState(); _rerenderEverything();
         showToast('↻ Updated with the latest from the server','info');
@@ -14861,6 +14846,28 @@ function exportEverything(){
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
 var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions'];
+/* ── Export THIS client as an import-compatible baseline snapshot ──
+   The exact inverse of the per-client branch of _applyImport: writes the
+   recognised client-data sections plus the company name at top level, with an
+   exportedAt timestamp, so the file can be re-imported at any time to restore a
+   client to this point ("where the company started"). Exports whatever client
+   is currently loaded (the consultant's dialled-in client, or a client_user's
+   own company). */
+function exportClient(){
+  try{
+    var who=(S.company&&(S.company.legalName||S.company.tradingName))||(S.branding&&S.branding.name)||'client';
+    var snap={ exportedAt:new Date().toISOString() };
+    _IMPORT_KEYS.forEach(function(k){ if(S[k]!==undefined) snap[k]=S[k]; });
+    if(S.branding&&S.branding.name) snap.branding_name=S.branding.name;
+    if(Object.keys(snap).length<=1){ if(typeof showToast==='function') showToast('Nothing to export for this client yet','info'); return; }
+    var blob=new Blob([JSON.stringify(snap,null,2)],{type:'application/json'});
+    var url=URL.createObjectURL(blob), a=document.createElement('a');
+    var safe=String(who).replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').slice(0,40)||'client';
+    a.href=url; a.download=safe+'_HSMS_'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+    if(typeof showToast==='function') showToast('✓ Client baseline exported','success');
+  }catch(e){ console.error('Client export failed',e); if(typeof showToast==='function') showToast('Export failed — see console','error'); }
+}
 function importData(){
   try{
     var inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';

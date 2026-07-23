@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>H&S Manager</title>
+<title>AHS Compass</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -594,7 +594,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="login-head">
       <div class="logo-mark login-logo"><svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="21" cy="20" r="16.5" stroke="var(--accent)" stroke-width="2.3"/><circle cx="21" cy="20" r="9.5" stroke="var(--accent)" stroke-width="2.3"/><line x1="21" y1="20" x2="40" y2="8" stroke="#8b9096" stroke-width="2.3" stroke-linecap="round"/></svg></div>
       <div class="login-title">Sign in</div>
-      <div class="login-sub">Access your H&amp;S <em>Manager</em> and sync your records to the server.</div>
+      <div class="login-sub">Access your <strong>AHS</strong> Compass and sync your records to the server.</div>
     </div>
     <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="login-form">
       <div class="field-group">
@@ -652,7 +652,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="header-brand">
       <div class="logo-mark"><svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="21" cy="20" r="16.5" stroke="var(--accent)" stroke-width="2.3"/><circle cx="21" cy="20" r="9.5" stroke="var(--accent)" stroke-width="2.3"/><line x1="21" y1="20" x2="40" y2="8" stroke="#8b9096" stroke-width="2.3" stroke-linecap="round"/></svg></div>
       <div>
-        <div class="header-title">H&amp;S <em style="font-style:italic;font-weight:600;">Manager</em></div>
+        <div class="header-title"><strong>AHS</strong> <em style="font-style:italic;font-weight:600;">Compass</em></div>
         <div class="header-sub" id="headerSub" style="display:none;"></div>
       </div>
     </div>
@@ -674,8 +674,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <span id="viewModeWrap" class="no-print" title="Preview what each role sees">
         <select id="viewModeSelect" onchange="setViewMode(this.value)">
           <option value="consultant">View: Consultant</option>
-          <option value="management">View: Management</option>
-          <option value="inspector">View: Inspector</option>
+          <option value="management">View: Client</option>
+          <option value="inspector">View: Employee</option>
         </select>
       </span>
       <!-- Sign-in / Sign-out button -->
@@ -781,9 +781,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <!-- ══════════ INSPECTOR VIEW PREVIEW BANNER ══════════ -->
 <div id="inspectorBar" class="no-print">
   <div class="ibar-inner">
-    <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Inspector view: this is all a member of staff sees</span>
+    <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Employee view: this is all a member of staff sees</span>
     <span style="flex:1;"></span>
-    <button class="ibar-btn" onclick="setViewMode('management')">← Back to management view</button>
+    <button class="ibar-btn" onclick="setViewMode('management')">← Back to client view</button>
   </div>
 </div>
 
@@ -2405,7 +2405,7 @@ const FORMS = {
         'and can be attached to this email if a more formal record is needed.\n' +
         '------------------------------------------------------------\n' +
         '\n' +
-        'Sent from H&S Manager (AHS Compliance Consulting)'
+        'Sent from AHS Compass (AHS Compliance Consulting)'
     },
     sections: [
       {
@@ -2767,7 +2767,7 @@ function onInspDateChange(){
 function updateHeaderTitle() {
   // The header subtitle names the client being worked on; it no longer echoes
   // the current inspection title. With no client selected it is hidden so the
-  // app title "H&S Manager" stands alone.
+  // app title "AHS Compass" stands alone.
   const sub = document.getElementById('headerSub');
   if (!sub) return;
   // Name the client in context: a consultant dialled in, or the signed-in client
@@ -12072,11 +12072,25 @@ function _pdfCompleteness(K, data, rgb){
   else K.text('- All expected data points are populated.', 9.5, {color:[110,110,110]});
   K.st.y+=2;
 }
-function _pdfFooter(K, d, reportName){
-  const doc=K.doc, pages=doc.getNumberOfPages();
-  const prov='AHS Compliance Consulting  -  '+reportName+'  -  v'+String((d&&d.version)||'1.0');
-  for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setDrawColor(220,224,230); doc.line(K.ML,286,K.RM,286); doc.setFontSize(7.5); doc.setTextColor(150,150,150); doc.text(K.A(prov),K.ML,291); doc.text('Page '+i+' of '+pages,K.RM,291,{align:'right'}); }
+// App brand line stamped on every page footer: "AHS Compass, Guiding you to Safety"
+// (AHS bold, tagline italic) with page numbers on the right. Single source of truth
+// so every report footer reads the same.
+function _pdfBrandFooter(doc, ML, RM){
+  const pages=doc.getNumberOfPages();
+  for(let i=1;i<=pages;i++){
+    doc.setPage(i);
+    doc.setDrawColor(220,224,230); doc.setLineWidth(0.2); doc.line(ML,286,RM,286);
+    doc.setFontSize(7.5); let x=ML;
+    doc.setFont('helvetica','bold');   doc.setTextColor(120,128,140); doc.text('AHS',x,291); x+=doc.getTextWidth('AHS');
+    doc.setFont('helvetica','normal'); doc.setTextColor(150,150,150); doc.text(' Compass, ',x,291); x+=doc.getTextWidth(' Compass, ');
+    doc.setFont('helvetica','italic'); doc.text('Guiding you to Safety',x,291);
+    doc.setFont('helvetica','normal'); doc.setTextColor(150,150,150);
+    doc.text('Page '+i+' of '+pages,RM,291,{align:'right'});
+  }
 }
+// Kept for compatibility: all reports call this; d/reportName no longer used in the
+// footer (the masthead already carries the report title, version and provider).
+function _pdfFooter(K, d, reportName){ _pdfBrandFooter(K.doc, K.ML, K.RM); }
 
 // ── C1. Board Report — narrative-led, for directors ──
 function buildBoardReport(){
@@ -12266,7 +12280,7 @@ function _profBoardReport_dead(){
     head('Prioritised action plan',[22,163,74]);
     if(findings.length) findings.forEach(f=>{ const a=_profAction(f.id); text('• '+f.text+'  [owner: '+(a.owner||'—')+' · '+(a.due||'no date')+' · '+(a.status||'Not started')+']',9); });
     else text('No gaps recorded — all reviewed requirements are present or N/A.',9.5);
-    const pages=doc.getNumberOfPages(); for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setDrawColor(220,224,230); doc.line(ML,288,RM,288); doc.setFontSize(8); doc.setTextColor(150,150,150); doc.text('AHS Compliance Consulting  ·  Risk profile board report  ·  '+client,ML,292); doc.text('Page '+i+' of '+pages,RM,292,{align:'right'}); }
+    _pdfBrandFooter(doc, ML, RM);
     doc.save('risk-profile-board-report-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
     showToast('✓ Board report created','success');
   }catch(e){ console.error('Board report failed',e); showToast('Could not build the board report — see console','error'); }
@@ -12747,14 +12761,7 @@ function buildRiskProfileReportPDF(){
   text('Hazard model: a hazard is an energy source; harm occurs on the unplanned release of, or contact with, that energy (energy-damage model - Haddon; HSE). SIF (serious injury / fatality) potential is flagged independently of likelihood.', 8.5, false, [120,120,120]);
 
   // ── Per-page footer ──
-  const pages = doc.getNumberOfPages();
-  for(let i=1;i<=pages;i++){
-    doc.setPage(i);
-    doc.setDrawColor(220,224,230); doc.line(ML,286,RM,286);
-    doc.setFontSize(7.5); doc.setTextColor(150,150,150);
-    doc.text('AHS Compliance Consulting  -  Risk Profile  -  v'+String(d.version||'1.0'), ML, 291);
-    doc.text('Page '+i+' of '+pages, RM, 291, {align:'right'});
-  }
+  _pdfBrandFooter(doc, ML, RM);
   doc.save('risk-profile-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
 }
 
@@ -13139,7 +13146,7 @@ function buildManagementSystemReportPDF(){
   const { doc, ML, RM, st, A } = K;
   const RED=[197,32,32], AMBER=[180,110,10], NAVY=[30,58,95], GREEN=[22,120,60];
   const msComplete = stt.total ? Math.round(stt.assessed/stt.total*100) : 0;
-  const footer=()=>{ const pages=doc.getNumberOfPages(); const prov='AHS Compliance Consulting  -  Management System Assessment  -  v'+String(d.version||'1.0'); for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setDrawColor(220,224,230); doc.line(ML,286,RM,286); doc.setFontSize(7.5); doc.setTextColor(150,150,150); doc.text(A(prov),ML,291); doc.text('Page '+i+' of '+pages,RM,291,{align:'right'}); } };
+  const footer=()=>{ _pdfBrandFooter(doc, ML, RM); };
 
   // E8 — nothing assessed → a single honest cover page, not eight empty sections.
   if(!stt.assessed){

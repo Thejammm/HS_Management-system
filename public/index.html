@@ -11806,13 +11806,17 @@ function _profAnchor(anchors, n){ if(!anchors) return ''; if(anchors[n]!==undefi
 // Maturity of a domain: weighted mean + worst item + critical-veto (a critical item ≤1 forces RED).
 function _profMaturity(domainId){
   const dom=PROF_LIBRARY.domains.find(d=>d.id===domainId); const m=_profState().maturity;
-  const scored=dom.items.filter(it=>m[it.id]!==undefined && m[it.id]!=='');
-  if(!scored.length) return { avg:null, worst:null, critFail:false, scored:0, total:dom.items.length };
+  // 'na' = not applicable to this business: excluded from the average and never
+  // triggers the critical veto, so a control that genuinely does not apply does
+  // not drag the maturity down.
+  const scored=dom.items.filter(it=>m[it.id]!==undefined && m[it.id]!=='' && m[it.id]!=='na');
+  const na=dom.items.filter(it=>m[it.id]==='na').length;
+  if(!scored.length) return { avg:null, worst:null, critFail:false, scored:0, na, total:dom.items.length };
   const vals=scored.map(it=>+m[it.id]);
   const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
   const worst=Math.min(...vals);
-  const critFail=dom.items.some(it=>it.crit && m[it.id]!==undefined && m[it.id]!=='' && +m[it.id]<=1);
-  return { avg, worst, critFail, scored:scored.length, total:dom.items.length };
+  const critFail=dom.items.some(it=>it.crit && m[it.id]!==undefined && m[it.id]!=='' && m[it.id]!=='na' && +m[it.id]<=1);
+  return { avg, worst, critFail, scored:scored.length, na, total:dom.items.length };
 }
 
 function setMaturity(id, val){ if(_roLocked()) return; const cur=_profState().maturity[id]; _profState().maturity[id]=(String(cur)===String(val))?'':val; _stamp(S.profiler,'updated'); saveData(); _keepScroll(renderRiskReview); }
@@ -11859,11 +11863,19 @@ function _renderMaturityAssessment(dis){
   const doms=_maturityDomains(); const m=(S.profiler&&S.profiler.maturity)||{};
   return doms.map((d,idx)=>{
     const mat=_profMaturity(d.id);
-    const head=`<div class="prof-domain-head"><span class="pdh-badge" style="background:${d.badge};">${idx+1}</span><h4>${idx+1}. ${esc(d.name)}</h4>${mat.avg!=null?`<span style="font-size:12.5px;color:${_matColor(Math.round(mat.avg))};font-weight:700;">${mat.avg.toFixed(1)}/5${mat.critFail?' · veto':''}</span>`:'<span style="font-size:11px;color:var(--text-muted);">not scored</span>'}</div>`;
+    const statusChip = mat.avg!=null
+      ? `<span style="font-size:12.5px;color:${_matColor(Math.round(mat.avg))};font-weight:700;">${mat.avg.toFixed(1)}/5${mat.critFail?' · veto':''}</span>`
+      : (mat.na>0 ? '<span style="font-size:11px;color:var(--text-muted);">not applicable</span>' : '<span style="font-size:11px;color:var(--text-muted);">not scored</span>');
+    const naNote = mat.na>0 ? `<span style="font-size:11px;color:var(--text-muted);margin-left:6px;">${mat.na} N/A</span>` : '';
+    const head=`<div class="prof-domain-head"><span class="pdh-badge" style="background:${d.badge};">${idx+1}</span><h4>${idx+1}. ${esc(d.name)}</h4>${statusChip}${naNote}</div>`;
     const items=d.items.map(it=>{
       const mv=m[it.id];
-      const scale=[0,1,2,3,4,5].map(n=>`<button class="mat-dot${String(mv)===String(n)?' on':''}"${dis} style="${String(mv)===String(n)?`background:${_matColor(n)};`:''}" onclick="setMaturity('${it.id}',${n})">${n}</button>`).join('');
-      const anchor=(mv!==undefined&&mv!=='')?_profAnchor(it.anchors,+mv):'Score 0 (absent) to 5 (embedded and evidenced). Select a score to see the descriptor.';
+      const isNa=String(mv)==='na';
+      const scale=[0,1,2,3,4,5].map(n=>`<button class="mat-dot${String(mv)===String(n)?' on':''}"${dis} style="${String(mv)===String(n)?`background:${_matColor(n)};`:''}" onclick="setMaturity('${it.id}',${n})">${n}</button>`).join('')
+        + `<button class="mat-dot${isNa?' on':''}"${dis} style="width:auto;padding:0 9px;border-radius:11px;font-size:11px;${isNa?'background:#6B7280;color:#fff;border-color:#6B7280;':''}" onclick="setMaturity('${it.id}','na')" title="Not applicable to this business: excluded from the maturity score">N/A</button>`;
+      const anchor=isNa
+        ? 'Not applicable to this business: excluded from the maturity score.'
+        : ((mv!==undefined&&mv!=='')?_profAnchor(it.anchors,+mv):'Score 0 (absent) to 5 (embedded and evidenced), or mark N/A if it does not apply. Select a score to see the descriptor.');
       return `<div class="mat-item${it.crit?' crit':''}"><div class="mat-q">${esc(it.q)}${it.crit?'<span class="crit-tag">Critical</span>':''}</div><div class="mat-scale">${scale}</div><div class="mat-anchor">${esc(anchor)}</div></div>`;
     }).join('');
     return head+items;

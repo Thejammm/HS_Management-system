@@ -10521,6 +10521,8 @@ function renderReports(){
   const _raList = (typeof _raRegState==='function') ? _raRegState() : (S.raRegister||[]);
   const _raOverdue = _raList.filter(e=>_raRegStatus(e).key==='overdue').length;
   const raRegMeta = _raList.length ? (_raList.length+' on file'+(_raOverdue?(' · '+_raOverdue+' review overdue'):'')) : 'None recorded yet';
+  const _accCount = (typeof _acceptedActions==='function') ? _acceptedActions().length : 0;
+  const accMeta = _accCount ? (_accCount+' accepted risk'+(_accCount!==1?'s':'')) : 'None accepted yet';
   const svg = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   const reports = [
     { title:'Board Report', accent:'#DC2626', tint:'#FCE9E9', fn:'downloadBoardReport()', meta:riskMeta,
@@ -10551,6 +10553,10 @@ function renderReports(){
       icon:svg('<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M9 11h2"/>'),
       desc:'The client’s register of risk assessments and RAMS: reference, dates, review status and where each PDF is filed. Print or send it as one document.',
       tags:['Register','Document links','Review status'] },
+    { title:'Risk Acceptance Register', accent:'#6B7280', tint:'#F1F2F4', fn:'downloadRiskAcceptanceReport()', meta:accMeta,
+      icon:svg('<path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>'),
+      desc:'Every risk the client has consciously accepted rather than actioned: what it is, who accepted it, why, and when. The defensible record of accepted risk, with a client acknowledgement sign-off.',
+      tags:['Accepted risk','Who / why / when','Sign-off'] },
   ];
   const dl = svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>');
   const card = (r) => `<div class="rep-card" style="--rep:${r.accent};--rep-tint:${r.tint};">
@@ -11344,7 +11350,12 @@ function updateActionPlanItem(id, field, value){
   if(_roLocked()) return;
   const it=_apList().find(x=>x.id===id); if(!it) return;
   it[field]=value;
-  if(field==='status'){ const closed=(value==='Complete'||value==='Accepted'); if(closed && !it.completedDate){ it.completedDate=new Date().toISOString().slice(0,10); } if(!closed){ it.completedDate=''; } }
+  if(field==='status'){
+    const today=new Date().toISOString().slice(0,10);
+    if(value==='Complete'){ if(!it.completedDate) it.completedDate=today; it.acceptDate=''; }
+    else if(value==='Accepted'){ if(!it.acceptDate) it.acceptDate=today; it.completedDate=''; }
+    else { it.completedDate=''; it.acceptDate=''; }
+  }
   _stamp(it,'updated'); scheduleAutoSave();
   if(field==='due'||field==='priority'||field==='status'){ _keepScroll(renderActionPlanTab); }
 }
@@ -11358,7 +11369,9 @@ function setRiskActionStatus(riskId, actId, value){
   if(_roLocked()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===riskId); if(!r) return;
   const a=(r.actions||[]).find(x=>x.id===actId); if(!a) return;
-  a.status=value; _stamp(a,'updated'); saveData(); _keepScroll(renderActionPlanTab);
+  a.status=value;
+  if(value==='Accepted'){ if(!a.acceptDate) a.acceptDate=new Date().toISOString().slice(0,10); }
+  _stamp(a,'updated'); saveData(); _keepScroll(renderActionPlanTab);
 }
 function _apGotoRisk(riskId){ switchTab('risk'); setTimeout(()=>{ try{ if(typeof _gotoRisk==='function') _gotoRisk(riskId); }catch(e){} }, 60); }
 // Open gaps from the management system and maturity assessment, offered as
@@ -11394,6 +11407,22 @@ function addGapToPlan(srcKey){
   const it={ id:'ap_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), desc:g.desc||'', owner:'', due:g.due||'', priority:g.priority||'', status:'Not started', riskId:'', docId:'', note:g.note||'', completedDate:'', srcKey:srcKey };
   _stamp(it,'created'); _apList().push(it); saveData(); renderActionPlanTab();
   if(typeof showToast==='function') showToast('✓ Added to the action plan','success');
+}
+// Every action (risk-derived or free-form) whose status is Accepted, for the
+// risk-acceptance register. Each carries a ref to the underlying action object
+// so who/why/when write straight back to it (and travel with the client data).
+function _acceptedActions(){
+  const out=[];
+  (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>{ if(a.status==='Accepted') out.push({ kind:'risk', id:a.id, riskId:r.id, ref:a, desc:a.desc, source:(r.activity||r.hazard||'From a risk') }); }));
+  (_apList()||[]).forEach(a=>{ if(a.status==='Accepted') out.push({ kind:'free', id:a.id, riskId:'', ref:a, desc:a.desc, source:'Added directly' }); });
+  return out;
+}
+function updateAcceptField(kind, id, riskId, field, value){
+  if(_roLocked()) return;
+  let obj=null;
+  if(kind==='risk'){ const r=(S.riskProfile||[]).find(x=>x.id===riskId); obj=r&&(r.actions||[]).find(x=>x.id===id); }
+  else { obj=_apList().find(x=>x.id===id); }
+  if(!obj) return; obj[field]=value; _stamp(obj,'updated'); scheduleAutoSave();
 }
 function renderActionPlanTab(){
   const root=document.getElementById('actionPlanRoot'); if(!root) return;
@@ -11451,21 +11480,37 @@ function renderActionPlanTab(){
         <select${dis} onchange="updateActionPlanItem('${a.id}','riskId',this.value)" style="flex:1;min-width:150px;">${riskOpts(a.riskId||'')}</select>
         <select${dis} onchange="updateActionPlanItem('${a.id}','docId',this.value)" style="flex:1;min-width:150px;">${docOpts(a.docId||'')}</select>
       </div>
-      <input type="text"${dis} value="${esc(a.note||'')}" placeholder="${acc?'Reason the risk is accepted, and by whom (the client is the duty holder)':'What was done / revision note (evidence trail)'}" oninput="updateActionPlanItem('${a.id}','note',this.value)" style="margin-top:8px;width:100%;">
-      ${a.completedDate?`<div style="font-size:11px;color:${acc?'#6B7280':'#16A34A'};margin-top:6px;">${acc?'Risk accepted':'Completed'} ${fmtDate(a.completedDate)}</div>`:''}
+      <input type="text"${dis} value="${esc(a.note||'')}" placeholder="What was done / revision note (evidence trail)" oninput="updateActionPlanItem('${a.id}','note',this.value)" style="margin-top:8px;width:100%;">
+      ${acc ? (a.acceptDate?`<div style="font-size:11px;color:#6B7280;margin-top:6px;">Risk accepted ${fmtDate(a.acceptDate)} · record who and why in the acceptance register below</div>`:'') : (a.completedDate?`<div style="font-size:11px;color:#16A34A;margin-top:6px;">Completed ${fmtDate(a.completedDate)}</div>`:'')}
     </div></div>`;
   }).join('');
   const freeCard=`<div class="card"><div class="card-band"><h3><span class="dot">●</span> Additional actions</h3><span class="badge badge-muted">${free.length}</span></div>
     <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Anything the risk profile does not already cover: new dynamic risks, improvements, or things you agree with the client. Link a risk and the document that evidences it if you want the golden thread, but it is optional.</div>
     ${freeCards||'<div style="color:var(--text-muted);font-size:13px;">No additional actions yet.</div>'}
     ${ro?'':`<button class="btn btn-outline btn-sm no-print" style="margin-top:12px;" onclick="addActionPlanItem()">＋ Add action</button>`}</div></div>`;
+  // Risk acceptance register: who accepted each tolerated risk, why, and when.
+  const acceptedList=_acceptedActions();
+  const regCard = acceptedList.length ? `<div class="card" style="margin-top:18px;border-left:3px solid #6B7280;"><div class="card-band"><h3><span class="dot">●</span> Risk acceptance register</h3><span class="badge badge-muted">${acceptedList.length}</span></div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Risks the client has consciously accepted rather than actioned. Record who accepted each one (the client is the duty holder), why, and when. This is the audit trail, and it prints as its own report from the Reports tab.</div>
+    ${acceptedList.map(x=>{ const a=x.ref; return `<div class="card" style="margin-bottom:10px;"><div class="card-body">
+      <div style="font-size:13px;font-weight:600;">${esc(a.desc||'(no description)')}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">${esc(x.source)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input type="text"${dis} value="${esc(a.acceptedBy||'')}" placeholder="Accepted by (name / role)" oninput="updateAcceptField('${x.kind}','${x.id}','${x.riskId||''}','acceptedBy',this.value)" style="flex:1;min-width:150px;">
+        <input type="date"${dis} value="${esc(a.acceptDate||'')}" onchange="updateAcceptField('${x.kind}','${x.id}','${x.riskId||''}','acceptDate',this.value)">
+      </div>
+      <textarea${dis} rows="2" placeholder="Reason for accepting the risk (e.g. the cost of the control is disproportionate to the risk)" oninput="updateAcceptField('${x.kind}','${x.id}','${x.riskId||''}','acceptReason',this.value)" style="margin-top:8px;width:100%;">${esc(a.acceptReason||'')}</textarea>
+    </div></div>`; }).join('')}
+    <div style="margin-top:6px;"><button class="btn btn-ghost btn-sm no-print" onclick="downloadRiskAcceptanceReport()">⭳ Acceptance register PDF</button></div>
+    </div></div>` : '';
   root.innerHTML = `<div class="card no-print" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Action plan</h3></div>
       <div class="card-body"><div style="font-size:13px;color:var(--text-muted);line-height:1.5;">Everything that needs doing for this client in one place. It closes the loop: risks and gaps generate actions, you work them through, and the Action Plan report is your record of what you have delivered.</div></div></div>
     ${stats}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 6px;"><span style="font-size:12px;font-weight:600;color:var(--text-muted);">Report:</span><button class="btn btn-ghost btn-sm no-print" onclick="downloadActionPlanReport()">⭳ Action plan PDF</button></div>
     ${riskCard}
     ${gapCard}
-    ${freeCard}`;
+    ${freeCard}
+    ${regCard}`;
 }
 
 // ── Monitoring & assurance (spec #5) ──
@@ -14569,6 +14614,31 @@ function buildAuditReportPDF(){
 }
 
 function downloadRaRegisterReport(){ try{ buildRaRegisterReportPDF(); showToast('✓ Risk assessment register created','success'); }catch(e){ console.error('RA register report failed',e); showToast('Could not build the register — see console','error'); } }
+function downloadRiskAcceptanceReport(){ try{ buildRiskAcceptanceRegisterPDF(); showToast('✓ Risk acceptance register created','success'); }catch(e){ console.error('Risk acceptance register failed',e); showToast('Could not build the register — see console','error'); } }
+// Risk Acceptance Register PDF: the defensible record of risks the client has
+// consciously accepted (who, why, when) with a client acknowledgement sign-off.
+function buildRiskAcceptanceRegisterPDF(){
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+  const d=S.riskDoc||{};
+  const NAVY=[30,58,95], GREY=[110,110,110], SLATE=[107,114,128], AMBER=[180,110,10];
+  const K=_mkPdf('Risk Acceptance Register', client, d, 'Risks the client has consciously accepted rather than actioned.');
+  const { doc, ML, RM, st } = K;
+  const fd=(s)=> s ? new Date(s+(s.length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '-';
+  const list=_acceptedActions();
+  if(!list.length){ K.section('Risk acceptance register', SLATE); K.text('No risks have been recorded as accepted. When the client accepts a risk rather than actioning it, mark that action Accepted in the action plan and it will appear here.', 10, {color:GREY}); _pdfFooter(K, d, 'Risk Acceptance Register'); doc.save('risk-acceptance-register-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf'); return; }
+  K.tiles([{num:list.length,label:'Accepted risks',color:SLATE,sub:'On record'}]);
+  K.section('Accepted risks', NAVY);
+  K.table(
+    [{header:'RISK / ACTION',w:64},{header:'SOURCE',w:30},{header:'ACCEPTED BY',w:34},{header:'REASON',w:70},{header:'DATE',w:22}],
+    list.map(x=>{ const a=x.ref; return [ a.desc||'(no description)', {text:x.source, color:[130,130,130]}, a.acceptedBy?a.acceptedBy:{text:'not recorded', color:AMBER}, a.acceptReason?a.acceptReason:{text:'not recorded', color:AMBER}, {text:fd(a.acceptDate), color:[100,100,100]} ]; }),
+    {headFill:NAVY, headText:[255,255,255]}
+  );
+  K.section('Client acknowledgement', NAVY);
+  K.text('By signing, the client confirms that the risks listed above have been considered and consciously accepted as the duty holder, and that the reasons recorded are accurate.', 9, {color:GREY});
+  st.y+=6; K.ensure(24); doc.setDrawColor(180,185,192); doc.line(ML,st.y+14,ML+80,st.y+14); doc.setFontSize(8.5); doc.setTextColor(120,120,120); doc.text('Client signature', ML, st.y+19); doc.line(ML+95,st.y+14,ML+95+60,st.y+14); doc.text('Date', ML+95, st.y+19);
+  _pdfFooter(K, d, 'Risk Acceptance Register');
+  doc.save('risk-acceptance-register-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+}
 function buildRaRegisterReportPDF(){
   const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
   const d=S.riskDoc||{};

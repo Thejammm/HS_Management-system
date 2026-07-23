@@ -10260,7 +10260,7 @@ function _casStats(){
 // a per-client layout (Phase 2) will simply reorder / omit ids here.
 // A KPI tile. Pass `link` (a tab id) to make the whole tile a click-through to
 // the tab it summarises — the cockpit is a "viewer with a link to what it shows".
-const _ckKpi  = (label,num,sub,colour,link) => `<div class="ckx-kpi${link?' ck-clickable':''}"${link?` onclick="switchTab('${link}')" title="Open ${label}"`:''}><div class="ckx-lbl">${label}</div><div class="ckx-num"${colour?` style="color:${colour};"`:''}>${num}</div>${sub?`<div class="ckx-sub">${sub}</div>`:''}${link?'<div class="ckx-go">Open &rarr;</div>':''}</div>`;
+const _ckKpi  = (label,num,sub,colour,link,action) => { const oc=action||(link?`switchTab('${link}')`:''); return `<div class="ckx-kpi${oc?' ck-clickable':''}"${oc?` onclick="${oc}" title="Open ${label}"`:''}><div class="ckx-lbl">${label}</div><div class="ckx-num"${colour?` style="color:${colour};"`:''}>${num}</div>${sub?`<div class="ckx-sub">${sub}</div>`:''}${oc?'<div class="ckx-go">Open &rarr;</div>':''}</div>`; };
 const _ckLeg  = (colour,label,val) => `<div class="row"><span><span class="dot" style="background:${colour};"></span>${label}</span><span style="font-weight:600;color:var(--text);">${val}</span></div>`;
 const _ckMod  = (title,body) => `<div class="ck-card"><h4>${title}</h4>${body}</div>`;
 const _ckPend = note => `<div class="ck-pending">${note}</div>`;
@@ -10337,7 +10337,7 @@ const COCKPIT_WIDGETS = {
       const resHigh=x.RD.sif.filter(r=>{const p=_riskScore(r).priority;return p==='Critical'||p==='High';}).length;
       const col=nUnc?'var(--danger)':(resHigh?'var(--warning)':(nSif?'var(--success)':''));
       const sub=nSif===0?'none recorded':(nUnc?(nUnc+' uncontrolled — priority'):(resHigh?(resHigh+' still high after controls'):'all controlled to lower residual'));
-      return _ckKpi('Fatal-potential (inherent)', nSif, sub, col, 'risk');
+      return _ckKpi('Fatal-potential (inherent)', nSif, sub, col, 'risk', nSif?'gotoSifRisks()':'');
     } },
   kpiHighCrit:    { id:'kpiHighCrit', label:'High and critical risks', group:'KPI', render:x=>_ckKpi('High and critical risks', x.highRisk.length, x.risks.length+' in the profile', x.highRisk.length?'var(--danger)':'', 'risk') },
   kpiOpenActions: { id:'kpiOpenActions', label:'Open actions', group:'KPI', render:x=>_ckKpi('Open actions', x.openA, x.overdueA?(x.overdueA+' overdue'):'None overdue', x.overdueA?'var(--danger)':'', 'actions') },
@@ -10357,7 +10357,7 @@ const COCKPIT_WIDGETS = {
         <div class="ck-row"><span>Critical and high (residual)</span><span style="color:${x.highRisk.length?'var(--danger)':'inherit'};font-weight:600;">${x.highRisk.length}</span></div>
         <div class="ck-row"><span>Fatal-potential (inherent)</span><span style="color:${sifCol};font-weight:600;">${nSif}${sifNote}</span></div>
         <div class="ck-row"><span>Medium (residual)</span><span style="font-weight:600;">${x.modRisk.length}</span></div>
-        ${listSrc.map(r=>{ const res=_riskScore(r); return `<div style="font-size:13px;color:var(--text-muted);display:flex;justify-content:space-between;gap:8px;"><span>${esc(r.activity||r.hazard||'Unnamed risk')}</span><span style="opacity:.75;white-space:nowrap;">${res.priority?('residual '+res.priority):_riskControlStatus(r)}</span></div>`; }).join('')}
+        ${listSrc.map(r=>{ const res=_riskScore(r); return `<div onclick="_gotoRisk('${r.id}')" title="Open this risk" style="cursor:pointer;font-size:13px;color:var(--text-muted);display:flex;justify-content:space-between;gap:8px;padding:2px 0;"><span>${esc(r.activity||r.hazard||'Unnamed risk')} ↗</span><span style="opacity:.75;white-space:nowrap;">${res.priority?('residual '+res.priority):_riskControlStatus(r)}</span></div>`; }).join('')}
         <button class="ck-link" onclick="switchTab('risk')">Open risk profile</button>`
       : _ckPend('No risks recorded yet.') + `<button class="ck-link" onclick="switchTab('risk')">Set up risk profile</button>`);
     } },
@@ -10937,7 +10937,7 @@ function setReviewed(id, val){
 }
 
 // ── Filter state for the risk profile ──
-let _riskFilter = { category:'', priority:'', trend:'' };
+let _riskFilter = { category:'', priority:'', trend:'', sif:false };
 // Which risk cards are expanded (collapsed by default so the list stays scannable).
 let _openRiskCards = new Set();
 function _setRiskOpen(id, open){
@@ -10956,7 +10956,13 @@ function _collapseRiskCard(ev, id){
   if(det){ det.open=false; det.scrollIntoView({block:'nearest'}); }
 }
 function setRiskFilter(f, v){ _riskFilter[f] = v; renderRiskProfile(); }
-function clearRiskFilters(){ _riskFilter = { category:'', priority:'', trend:'' }; renderRiskProfile(); }
+function clearRiskFilters(){ _riskFilter = { category:'', priority:'', trend:'', sif:false }; renderRiskProfile(); }
+// Jump from the cockpit to just the fatal-potential (SIF) risks.
+function gotoSifRisks(){
+  _riskFilter = { category:'', priority:'', trend:'', sif:true };
+  switchTab('risk');
+  setTimeout(()=>{ const el=document.getElementById('riskFilters'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }, 90);
+}
 // Jump from a summary row (risk review tab) to the actual risk in the register, open it and flag it.
 function _gotoRisk(id){
   _openRiskCards.add(id);
@@ -11049,7 +11055,8 @@ function _renderRiskFilters(show){
       <select onchange="setRiskFilter('category',this.value)">${opt(_riskFilter.category,RISK_CATEGORIES)}</select>
       <select onchange="setRiskFilter('priority',this.value)">${opt(_riskFilter.priority,['Critical','High','Medium','Low'])}</select>
       <select onchange="setRiskFilter('trend',this.value)">${opt(_riskFilter.trend,RISK_TREND)}</select>
-      ${(_riskFilter.category||_riskFilter.priority||_riskFilter.trend)?`<button class="btn btn-ghost btn-xs" onclick="clearRiskFilters()">Clear filters</button>`:''}
+      <button class="btn btn-xs ${_riskFilter.sif?'btn-primary':'btn-ghost'}" onclick="setRiskFilter('sif', ${_riskFilter.sif?'false':'true'})" title="Show only fatal-potential (SIF) risks">Fatal-potential only</button>
+      ${(_riskFilter.category||_riskFilter.priority||_riskFilter.trend||_riskFilter.sif)?`<button class="btn btn-ghost btn-xs" onclick="clearRiskFilters()">Clear filters</button>`:''}
     </div>`;
 }
 
@@ -12612,6 +12619,7 @@ function renderRiskProfile(){
     if(_riskFilter.category && r.category !== _riskFilter.category) return false;
     if(_riskFilter.priority && sc.priority !== _riskFilter.priority) return false;
     if(_riskFilter.trend && r.trend !== _riskFilter.trend) return false;
+    if(_riskFilter.sif && !_riskSif(r)) return false;
     return true;
   });
   if(!rows.length){

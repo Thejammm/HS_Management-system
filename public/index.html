@@ -11352,6 +11352,40 @@ function setRiskActionStatus(riskId, actId, value){
   a.status=value; _stamp(a,'updated'); saveData(); _keepScroll(renderActionPlanTab);
 }
 function _apGotoRisk(riskId){ switchTab('risk'); setTimeout(()=>{ try{ if(typeof _gotoRisk==='function') _gotoRisk(riskId); }catch(e){} }, 60); }
+// Open gaps from the management system and maturity assessment, offered as
+// one-click actions. Each carries a stable srcKey so it drops off this list
+// once it has been added to the plan (no duplicates).
+let _apGapCache={};
+function _apGaps(){
+  const gaps=[];
+  // Management-system gaps: any assessed requirement line that is not fully Met.
+  (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{
+    const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
+    if(st && st.label!=='Met'){
+      const what=(it.action&&it.action.trim())||(it.requirement&&it.requirement.trim())||(sec.heading||'Requirement');
+      gaps.push({ srcKey:'req:'+it.id, desc:what, due:it.dueDate||'', priority: st.label==='Not in place'?'High':'Medium',
+        context:(sec.heading||'Management system')+' ('+st.label+')', note:'From the management system: '+(sec.heading||'')+(it.requirement?(': '+it.requirement):'') });
+    }
+  }));
+  // Maturity gaps: a critical veto, or a domain scored weak (under 2.5/5).
+  if(typeof _maturityDomains==='function'){
+    _maturityDomains().forEach(d=>{
+      const mt=_profMaturity(d.id);
+      if(mt.critFail){ gaps.push({ srcKey:'mat:'+d.id, desc:'Close the critical gap in '+d.name, due:'', priority:'High', context:'Maturity: '+d.name+' (critical)', note:'Critical maturity gap in '+d.name }); }
+      else if(mt.avg!=null && mt.avg<2.5){ gaps.push({ srcKey:'mat:'+d.id, desc:'Improve management maturity: '+d.name, due:'', priority:'Medium', context:'Maturity: '+d.name+' ('+mt.avg.toFixed(1)+'/5)', note:'Weak maturity in '+d.name }); }
+    });
+  }
+  _apGapCache={}; gaps.forEach(g=>_apGapCache[g.srcKey]=g);
+  const added=new Set(_apList().map(a=>a.srcKey).filter(Boolean));
+  return gaps.filter(g=>!added.has(g.srcKey));
+}
+function addGapToPlan(srcKey){
+  if(_blockIfReadOnly()) return;
+  const g=_apGapCache[srcKey]; if(!g) return;
+  const it={ id:'ap_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), desc:g.desc||'', owner:'', due:g.due||'', priority:g.priority||'', status:'Not started', riskId:'', docId:'', note:g.note||'', completedDate:'', srcKey:srcKey };
+  _stamp(it,'created'); _apList().push(it); saveData(); renderActionPlanTab();
+  if(typeof showToast==='function') showToast('✓ Added to the action plan','success');
+}
 function renderActionPlanTab(){
   const root=document.getElementById('actionPlanRoot'); if(!root) return;
   const ro=_roLocked(); const dis=ro?' disabled':'';
@@ -11379,6 +11413,14 @@ function renderActionPlanTab(){
   const riskCard = riskActs.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Actions from the risk profile</h3><span class="badge badge-muted">${riskActs.length}</span></div>
     <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">These come from the actions recorded on each risk. Update status here as you work through them; edit the detail on the risk itself.</div>
     <div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Action</th><th>Risk</th><th>Owner</th><th>Target</th><th>Priority</th><th>Status</th></tr></thead><tbody>${riskRows}</tbody></table></div></div></div>` : '';
+  // Open gaps from the management system + maturity, offered as one-click actions.
+  const gaps=_apGaps();
+  const gapCard = gaps.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Suggested from gaps</h3><span class="badge badge-muted">${gaps.length}</span></div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Gaps found in the management system and the maturity assessment. Add any to the plan to track and close it.</div>
+    ${gaps.map(g=>`<div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border);padding:8px 0;">
+      <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${esc(g.desc)}</div><div style="font-size:11px;color:var(--text-muted);">${esc(g.context)}${g.due?(' · due '+fmtDate(g.due)):''}</div></div>
+      ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="addGapToPlan('${g.srcKey}')">＋ Add</button>`}</div>`).join('')}
+    </div></div>` : '';
   // Free-form "what's needed" actions with full edit + soft golden-thread links.
   const riskOpts=(sel)=>`<option value="">Link a risk (optional)</option>`+(S.riskProfile||[]).map(r=>`<option value="${r.id}"${sel===r.id?' selected':''}>${esc((r.activity||r.hazard||'Risk').slice(0,55))}</option>`).join('');
   const docOpts=(sel)=>`<option value="">Link a document (optional)</option>`+((S.documents||[]).map(d=>`<option value="${d.id}"${sel===d.id?' selected':''}>${esc((d.name||d.title||'Document').slice(0,55))}</option>`).join(''));
@@ -11413,6 +11455,7 @@ function renderActionPlanTab(){
     ${stats}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 6px;"><span style="font-size:12px;font-weight:600;color:var(--text-muted);">Report:</span><button class="btn btn-ghost btn-sm no-print" onclick="downloadActionPlanReport()">⭳ Action plan PDF</button></div>
     ${riskCard}
+    ${gapCard}
     ${freeCard}`;
 }
 
@@ -12340,11 +12383,20 @@ function buildActionPlanReport(){
   const { doc, ML, RM, st, A } = K;
   const fd=(s)=> s ? new Date(s+(s.length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'no date';
   const AMBER=[180,110,10], NAVY=[30,58,95];
-  const items=data.acts.filter(x=>x.a.desc||x.a.owner||x.a.due);
-  if(!items.length){ K.section('Action plan', RED); K.text('No actions have been recorded yet. Add actions to the significant risks to build the plan.', 10); _pdfFooter(K, d, 'Action Plan'); doc.save('action-plan-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf'); return; }
+  // Combine risk actions with the free-form action-plan items so the report is
+  // the single record of everything needed and delivered for this client.
+  const freeItems=(S.actionPlan||[]).filter(a=>a.desc||a.owner||a.due).map(a=>{
+    const rk=(S.riskProfile||[]).find(r=>r.id===a.riskId);
+    return { a:{ desc:a.desc, owner:a.owner, due:a.due, priority:a.priority, status:a.status }, r:{ activity: rk?(rk.activity||rk.hazard):'Added directly' }, status:_actionStatus(a) };
+  });
+  const items=data.acts.filter(x=>x.a.desc||x.a.owner||x.a.due).concat(freeItems);
+  if(!items.length){ K.section('Action plan', RED); K.text('No actions have been recorded yet. Add actions to the significant risks or in the Action plan tab to build the plan.', 10); _pdfFooter(K, d, 'Action Plan'); doc.save('action-plan-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf'); return; }
+  const apDone=items.filter(x=>x.status==='Complete').length;
+  const apOutstanding=items.length-apDone;
+  const apOverdue=items.filter(x=>x.status==='Overdue').length;
   if(_reportSectionOn('action.summary')){
     K.section('At a glance', NAVY);
-    K.tiles([{num:items.length,label:'Actions',color:NAVY,sub:'Total recorded'},{num:data.actOverdue,label:'Overdue',color:data.actOverdue?RED:NAVY,sub:'Past target date'},{num:data.actNoOwner,label:'No owner',color:data.actNoOwner?AMBER:NAVY,sub:'Unassigned'},{num:data.actNoDate,label:'No target date',color:data.actNoDate?AMBER:NAVY,sub:'Undated'}]);
+    K.tiles([{num:items.length,label:'Actions',color:NAVY,sub:'Total'},{num:apDone,label:'Complete',color:apDone?[22,120,60]:NAVY,sub:'Delivered'},{num:apOutstanding,label:'Outstanding',color:apOutstanding?AMBER:NAVY,sub:'Still open'},{num:apOverdue,label:'Overdue',color:apOverdue?RED:NAVY,sub:'Past target date'}]);
   }
   // group by owner ('Unassigned' first), overdue rows to the top within each group
   const byOwner={}; items.forEach(x=>{ const o=(x.a.owner&&x.a.owner.trim())||'Unassigned'; (byOwner[o]=byOwner[o]||[]).push(x); });

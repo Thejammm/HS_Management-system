@@ -6040,9 +6040,10 @@ function _updateAuthIndicator(){
   }
   // Refresh dashboard visibility
   renderManagerDashboard();
-  // Role drives the view: a client_user is locked to the inspector view;
-  // the consultant defaults to the full consultant view.
-  _viewMode = (Auth.user()?.role === 'client_user') ? 'inspector' : 'consultant';
+  // Role drives the view: a client_user is locked to the Client view (all of
+  // their company's pages except Admin); the consultant defaults to the full
+  // consultant view.
+  _viewMode = (Auth.user()?.role === 'client_user') ? 'management' : 'consultant';
   applyViewMode();
 }
 
@@ -9853,7 +9854,7 @@ let _consultantTenants = [];    // cached tenant list for the picker
 //   consultant  — everything, incl. Admin + client switching (Simon)
 //   management  — client owner: everything except Admin / cross-client
 //   inspector   — client staff: operational tabs only
-// A logged-in client_user is locked to inspector; the consultant defaults
+// A logged-in client_user is locked to the Client view; the consultant defaults
 // to consultant view and can preview the other tiers with the header switch.
 let _viewMode = 'consultant';
 const INSPECTOR_TABS = ['inspection','actions','monthly'];
@@ -9883,7 +9884,7 @@ function applyViewMode(){
   const vw=document.getElementById('viewModeWrap'); if(vw) vw.classList.toggle('on', _canSwitchView());
   const sel=document.getElementById('viewModeSelect'); if(sel) sel.value=_viewMode;
   // Inspector view: hide management-only header actions (Reset clears all data).
-  const rb=document.getElementById('resetBtn'); if(rb) rb.style.display = insp ? 'none' : '';
+  const rb=document.getElementById('resetBtn'); if(rb) rb.style.display = (insp || (Auth.user()?.role === 'client_user')) ? 'none' : '';
   document.body.classList.toggle('inspector-mode', insp);
 }
 

@@ -10339,8 +10339,8 @@ const COCKPIT_WIDGETS = {
       const sub=nSif===0?'none recorded':(nUnc?(nUnc+' uncontrolled — priority'):(resHigh?(resHigh+' still high after controls'):'all controlled to lower residual'));
       return _ckKpi('Fatal-potential (inherent)', nSif, sub, col, 'risk', nSif?'gotoSifRisks()':'');
     } },
-  kpiHighCrit:    { id:'kpiHighCrit', label:'High and critical risks', group:'KPI', render:x=>_ckKpi('High and critical risks', x.highRisk.length, x.risks.length+' in the profile', x.highRisk.length?'var(--danger)':'', 'risk') },
-  kpiOpenActions: { id:'kpiOpenActions', label:'Open actions', group:'KPI', render:x=>_ckKpi('Open actions', x.openA, x.overdueA?(x.overdueA+' overdue'):'None overdue', x.overdueA?'var(--danger)':'', 'actions') },
+  kpiHighCrit:    { id:'kpiHighCrit', label:'High and critical risks', group:'KPI', render:x=>_ckKpi('High and critical risks', x.highRisk.length, x.risks.length+' in the profile', x.highRisk.length?'var(--danger)':'', 'risk', x.highRisk.length?'gotoHighCritRisks()':'') },
+  kpiOpenActions: { id:'kpiOpenActions', label:'Open actions', group:'KPI', render:x=>_ckKpi('Open actions', x.openA, x.overdueA?(x.overdueA+' overdue'):'None overdue', x.overdueA?'var(--danger)':'', 'actions', x.openA?'gotoOpenActions()':'') },
   kpiMgmtGaps:    { id:'kpiMgmtGaps', label:'Management system gaps', group:'KPI', render:x=>_ckKpi('Management system gaps', x.reqG.gaps, x.reqG.assessed+' assessed', x.reqG.gaps?'var(--warning)':'', 'requirements') },
   kpiCompleteness:{ id:'kpiCompleteness', label:'Assessment completeness', group:'KPI', render:x=>_ckKpi('Assessment completeness', x.RD.completeness+'%', x.RD.completeness<100?'still being built':'complete', x.RD.completeness<60?'var(--warning)':'', 'risk') },
   kpiInspections: { id:'kpiInspections', label:'Inspections', group:'KPI', render:x=>_ckKpi('Inspections', x.insps.length, x.signedOff+' signed off · '+x.awaiting+' awaiting', '', 'inspection') },
@@ -10937,7 +10937,7 @@ function setReviewed(id, val){
 }
 
 // ── Filter state for the risk profile ──
-let _riskFilter = { category:'', priority:'', trend:'', sif:false };
+let _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false };
 // Which risk cards are expanded (collapsed by default so the list stays scannable).
 let _openRiskCards = new Set();
 function _setRiskOpen(id, open){
@@ -10956,12 +10956,24 @@ function _collapseRiskCard(ev, id){
   if(det){ det.open=false; det.scrollIntoView({block:'nearest'}); }
 }
 function setRiskFilter(f, v){ _riskFilter[f] = v; renderRiskProfile(); }
-function clearRiskFilters(){ _riskFilter = { category:'', priority:'', trend:'', sif:false }; renderRiskProfile(); }
+function clearRiskFilters(){ _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false }; renderRiskProfile(); }
 // Jump from the cockpit to just the fatal-potential (SIF) risks.
 function gotoSifRisks(){
-  _riskFilter = { category:'', priority:'', trend:'', sif:true };
+  _riskFilter = { category:'', priority:'', trend:'', sif:true, highcrit:false };
   switchTab('risk');
   setTimeout(()=>{ const el=document.getElementById('riskFilters'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }, 90);
+}
+// Jump from the cockpit to just the High and Critical (residual) risks.
+function gotoHighCritRisks(){
+  _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:true };
+  switchTab('risk');
+  setTimeout(()=>{ const el=document.getElementById('riskFilters'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }, 90);
+}
+// Jump from the cockpit to the open (unresolved) actions. Uncheck "show resolved"
+// first so the tab renders open-only immediately (no flash of resolved items).
+function gotoOpenActions(){
+  const cb=document.getElementById('showResolved'); if(cb) cb.checked=false;
+  switchTab('actions');
 }
 // Jump from a summary row (risk review tab) to the actual risk in the register, open it and flag it.
 function _gotoRisk(id){
@@ -11056,7 +11068,8 @@ function _renderRiskFilters(show){
       <select onchange="setRiskFilter('priority',this.value)">${opt(_riskFilter.priority,['Critical','High','Medium','Low'])}</select>
       <select onchange="setRiskFilter('trend',this.value)">${opt(_riskFilter.trend,RISK_TREND)}</select>
       <button class="btn btn-xs ${_riskFilter.sif?'btn-primary':'btn-ghost'}" onclick="setRiskFilter('sif', ${_riskFilter.sif?'false':'true'})" title="Show only fatal-potential (SIF) risks">Fatal-potential only</button>
-      ${(_riskFilter.category||_riskFilter.priority||_riskFilter.trend||_riskFilter.sif)?`<button class="btn btn-ghost btn-xs" onclick="clearRiskFilters()">Clear filters</button>`:''}
+      <button class="btn btn-xs ${_riskFilter.highcrit?'btn-primary':'btn-ghost'}" onclick="setRiskFilter('highcrit', ${_riskFilter.highcrit?'false':'true'})" title="Show only High and Critical residual risks">High + critical only</button>
+      ${(_riskFilter.category||_riskFilter.priority||_riskFilter.trend||_riskFilter.sif||_riskFilter.highcrit)?`<button class="btn btn-ghost btn-xs" onclick="clearRiskFilters()">Clear filters</button>`:''}
     </div>`;
 }
 
@@ -12683,6 +12696,7 @@ function renderRiskProfile(){
     if(_riskFilter.priority && sc.priority !== _riskFilter.priority) return false;
     if(_riskFilter.trend && r.trend !== _riskFilter.trend) return false;
     if(_riskFilter.sif && !_riskSif(r)) return false;
+    if(_riskFilter.highcrit && !(sc.priority==='High'||sc.priority==='Critical')) return false;
     return true;
   });
   if(!rows.length){

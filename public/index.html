@@ -750,6 +750,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="tab-btn" data-tab="requirements" onclick="switchTab('requirements')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg> Management system</button>
     <button class="tab-btn" data-tab="monitoring" onclick="switchTab('monitoring')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Assurance records</button>
     <button class="tab-btn" data-tab="review" onclick="switchTab('review')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Consultant review</button>
+    <button class="tab-btn" data-tab="actionplan" onclick="switchTab('actionplan')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg> Action plan <span class="tb-badge" id="badgeActionPlan"></span></button>
     <button class="tab-btn" data-tab="documents" onclick="switchTab('documents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Documents</button>
     <button class="tab-btn" data-tab="reports" onclick="switchTab('reports')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg> Reports</button>
     <button class="tab-btn" data-tab="cas" onclick="switchTab('cas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg> Accreditation</button>
@@ -1078,6 +1079,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .req-pill.on{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);}
     .ms-stage-select{font-size:11px;font-weight:600;color:var(--text);background:var(--muted-bg);border:1px solid var(--border);border-radius:6px;padding:3px 7px;width:auto;flex:0 0 auto;}
   </style>
+  <div id="tab-actionplan" class="tab-panel">
+    <div id="actionPlanRoot"></div>
+  </div>
+
   <div id="tab-requirements" class="tab-panel">
     <div class="card no-print" style="margin-bottom:18px;">
       <div class="card-band"><h3><span class="dot">●</span> Management system</h3>
@@ -2642,6 +2647,7 @@ let S = {
   audit:       {},
   templates:   [],
   riskProfile: [],      // Phase 2: per-client risk register (the cockpit spine)
+  actionPlan:  [],      // Step 2: consolidated action plan (free-form "what's needed" items)
   // HSG65 upgrade — scoring key, document control, monitoring & assurance (defaults inlined; migrateLoadedState re-seeds on load)
   riskConfig:  { likelihood:['Rare','Unlikely','Possible','Likely','Almost certain'], severity:['Insignificant','Minor injury','Moderate injury','Major injury','Fatality / catastrophic'], bands:{ med:5, high:10, crit:16 } },
   riskDoc:     { version:'1.0', author:'', created:new Date().toISOString().slice(0,10), lastReview:'', nextReview:'', approvedName:'', approvedRole:'', approvedDate:'', consulted:'' },
@@ -2802,6 +2808,7 @@ function switchTab(id) {
   if(id==='reports')  { renderReports(); }
   if(id==='risk')     { renderRiskProfile(); renderRiskReview(); }
   if(id==='requirements'){ renderRequirements(); }
+  if(id==='actionplan'){ renderActionPlanTab(); }
   if(id==='monitoring'){ renderMonitoring(); renderRaRegister(); renderAppLinks(); }
   if(id==='review')   { renderReview(); }
   if(id==='documents'){ renderDocuments(); }
@@ -7103,6 +7110,8 @@ function migrateLoadedState(){
   if(!S.config || typeof S.config !== 'object') S.config = {};
   // Phase 2: per-client risk profile. Additive; older saves get an empty one.
   if(!Array.isArray(S.riskProfile)) S.riskProfile = [];
+  // Step 2: consolidated action plan (free-form items). Additive.
+  if(!Array.isArray(S.actionPlan)) S.actionPlan = [];
   // Migrate legacy risk entries (register-style) to the HSG65 risk-profile model.
   // Old fields: risk, injury, impact, mitigation, likelihood(Low/Moderate/High),
   // trend(Decreasing), priority(Low/Moderate/High). New: hazard, harm, businessImpact,
@@ -11307,6 +11316,106 @@ function _renderActionPlan(){
     </div></div>`;
 }
 
+// ══════════════════════════════════════════════════════════════
+//  ACTION PLAN TAB — the single worklist that closes the loop.
+//  Brings together the actions recorded against risks and free-form
+//  actions you add here ("what's needed"). Free-form actions can be
+//  softly linked to a source risk and an evidencing document (the
+//  golden thread) but nothing is compulsory. Work items through by
+//  status; the Action Plan report is the client deliverable.
+// ══════════════════════════════════════════════════════════════
+const _AP_STATUSES = ['Not started','In progress','Complete'];
+function _apList(){ if(!Array.isArray(S.actionPlan)) S.actionPlan = []; return S.actionPlan; }
+function addActionPlanItem(){
+  if(_blockIfReadOnly()) return;
+  const it={ id:'ap_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), desc:'', owner:'', due:'', priority:'', status:'Not started', riskId:'', docId:'', note:'', completedDate:'' };
+  _stamp(it,'created'); _apList().push(it); saveData(); renderActionPlanTab();
+}
+function updateActionPlanItem(id, field, value){
+  if(_roLocked()) return;
+  const it=_apList().find(x=>x.id===id); if(!it) return;
+  it[field]=value;
+  if(field==='status'){ if(value==='Complete' && !it.completedDate){ it.completedDate=new Date().toISOString().slice(0,10); } if(value!=='Complete'){ it.completedDate=''; } }
+  _stamp(it,'updated'); scheduleAutoSave();
+  if(field==='due'||field==='priority'||field==='status'){ _keepScroll(renderActionPlanTab); }
+}
+function deleteActionPlanItem(id){
+  if(_blockIfReadOnly()) return;
+  if(!confirm('Delete this action?')) return;
+  S.actionPlan=_apList().filter(x=>x.id!==id); saveData(); renderActionPlanTab();
+}
+// Status on a risk-sourced row writes back to that risk's action.
+function setRiskActionStatus(riskId, actId, value){
+  if(_roLocked()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===riskId); if(!r) return;
+  const a=(r.actions||[]).find(x=>x.id===actId); if(!a) return;
+  a.status=value; _stamp(a,'updated'); saveData(); _keepScroll(renderActionPlanTab);
+}
+function _apGotoRisk(riskId){ switchTab('risk'); setTimeout(()=>{ try{ if(typeof _gotoRisk==='function') _gotoRisk(riskId); }catch(e){} }, 60); }
+function renderActionPlanTab(){
+  const root=document.getElementById('actionPlanRoot'); if(!root) return;
+  const ro=_roLocked(); const dis=ro?' disabled':'';
+  const riskActs=_allRiskActions();
+  const free=_apList();
+  // Unified stats across risk-derived and free-form actions.
+  const allStatuses=riskActs.map(x=>x.status).concat(free.map(a=>_actionStatus(a)));
+  const total=allStatuses.length, overdue=allStatuses.filter(s=>s==='Overdue').length, done=allStatuses.filter(s=>s==='Complete').length, open=total-done;
+  const badge=document.getElementById('badgeActionPlan'); if(badge) badge.textContent=open||'';
+  const prColor=(p)=>({Critical:'#DC2626',High:'#EA580C',Medium:'#F59E0B',Low:'#16A34A'})[p]||'var(--text-muted)';
+  const stat=(n,l,c)=>`<div class="rp-stat"><div class="rp-stat-num"${c?` style="color:${c};"`:''}>${n}</div><div class="rp-stat-label">${l}</div></div>`;
+  const stats=`<div class="rp-stats">${stat(total,'Total actions')}${stat(open,'Open', open?'#2563EB':'')}${stat(overdue,'Overdue', overdue?'#DC2626':'')}${stat(done,'Complete', done?'#16A34A':'')}</div>`;
+  // Risk-derived actions: update status here; edit the detail on the risk itself.
+  const riskSorted=riskActs.slice().sort((a,b)=>String(a.a.due||'9999').localeCompare(String(b.a.due||'9999')));
+  const riskRows=riskSorted.map(x=>{ const a=x.a, ov=x.status==='Overdue';
+    return `<tr>
+      <td>${esc(a.desc||'(no description)')}</td>
+      <td><button class="btn btn-ghost btn-xs no-print" onclick="_apGotoRisk('${x.r.id}')" title="Open this risk">${esc((x.r.activity||x.r.hazard||'Risk').slice(0,40))} ↗</button></td>
+      <td>${esc(a.owner||'—')}</td>
+      <td style="${ov?'color:#DC2626;font-weight:600;':''}">${a.due?fmtDate(a.due):'—'}</td>
+      <td><span style="color:${prColor(a.priority)};font-weight:700;">${esc(a.priority||'—')}</span></td>
+      <td><select${dis} onchange="setRiskActionStatus('${x.r.id}','${a.id}',this.value)">${_AP_STATUSES.map(s=>`<option${s===(a.status||'Not started')?' selected':''}>${s}</option>`).join('')}</select>${ov?' <span class="badge" style="border-color:#DC2626;color:#DC2626;">Overdue</span>':''}</td>
+    </tr>`;
+  }).join('');
+  const riskCard = riskActs.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Actions from the risk profile</h3><span class="badge badge-muted">${riskActs.length}</span></div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">These come from the actions recorded on each risk. Update status here as you work through them; edit the detail on the risk itself.</div>
+    <div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Action</th><th>Risk</th><th>Owner</th><th>Target</th><th>Priority</th><th>Status</th></tr></thead><tbody>${riskRows}</tbody></table></div></div></div>` : '';
+  // Free-form "what's needed" actions with full edit + soft golden-thread links.
+  const riskOpts=(sel)=>`<option value="">Link a risk (optional)</option>`+(S.riskProfile||[]).map(r=>`<option value="${r.id}"${sel===r.id?' selected':''}>${esc((r.activity||r.hazard||'Risk').slice(0,55))}</option>`).join('');
+  const docOpts=(sel)=>`<option value="">Link a document (optional)</option>`+((S.documents||[]).map(d=>`<option value="${d.id}"${sel===d.id?' selected':''}>${esc((d.name||d.title||'Document').slice(0,55))}</option>`).join(''));
+  const prOpts=(cur)=>['','Critical','High','Medium','Low'].map(p=>`<option value="${p}"${p===cur?' selected':''}>${p||'Priority'}</option>`).join('');
+  const freeCards=free.map(a=>{ const cs=_actionStatus(a), ov=cs==='Overdue';
+    return `<div class="card" style="margin-bottom:10px;border-left:3px solid ${ov?'#DC2626':cs==='Complete'?'#16A34A':'var(--border)'};"><div class="card-body">
+      <div style="display:flex;gap:8px;align-items:flex-start;">
+        <textarea${dis} rows="2" style="flex:1;" placeholder="What needs doing" oninput="updateActionPlanItem('${a.id}','desc',this.value)">${esc(a.desc||'')}</textarea>
+        ${ro?'':`<button class="btn btn-ghost btn-xs" title="Delete" onclick="deleteActionPlanItem('${a.id}')">${_ic('trash',14)}</button>`}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <input type="text"${dis} value="${esc(a.owner||'')}" placeholder="Owner" oninput="updateActionPlanItem('${a.id}','owner',this.value)" style="flex:1;min-width:120px;">
+        <input type="date"${dis} value="${esc(a.due||'')}" onchange="updateActionPlanItem('${a.id}','due',this.value)">
+        <select${dis} onchange="updateActionPlanItem('${a.id}','priority',this.value)">${prOpts(a.priority||'')}</select>
+        <select${dis} onchange="updateActionPlanItem('${a.id}','status',this.value)">${_AP_STATUSES.map(s=>`<option${s===(a.status||'Not started')?' selected':''}>${s}</option>`).join('')}</select>
+        ${ov?'<span class="badge" style="border-color:#DC2626;color:#DC2626;align-self:center;">Overdue</span>':''}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <select${dis} onchange="updateActionPlanItem('${a.id}','riskId',this.value)" style="flex:1;min-width:150px;">${riskOpts(a.riskId||'')}</select>
+        <select${dis} onchange="updateActionPlanItem('${a.id}','docId',this.value)" style="flex:1;min-width:150px;">${docOpts(a.docId||'')}</select>
+      </div>
+      <input type="text"${dis} value="${esc(a.note||'')}" placeholder="What was done / revision note (evidence trail)" oninput="updateActionPlanItem('${a.id}','note',this.value)" style="margin-top:8px;width:100%;">
+      ${a.completedDate?`<div style="font-size:11px;color:#16A34A;margin-top:6px;">Completed ${fmtDate(a.completedDate)}</div>`:''}
+    </div></div>`;
+  }).join('');
+  const freeCard=`<div class="card"><div class="card-band"><h3><span class="dot">●</span> Additional actions</h3><span class="badge badge-muted">${free.length}</span></div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Anything the risk profile does not already cover: new dynamic risks, improvements, or things you agree with the client. Link a risk and the document that evidences it if you want the golden thread, but it is optional.</div>
+    ${freeCards||'<div style="color:var(--text-muted);font-size:13px;">No additional actions yet.</div>'}
+    ${ro?'':`<button class="btn btn-outline btn-sm no-print" style="margin-top:12px;" onclick="addActionPlanItem()">＋ Add action</button>`}</div></div>`;
+  root.innerHTML = `<div class="card no-print" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Action plan</h3></div>
+      <div class="card-body"><div style="font-size:13px;color:var(--text-muted);line-height:1.5;">Everything that needs doing for this client in one place. It closes the loop: risks and gaps generate actions, you work them through, and the Action Plan report is your record of what you have delivered.</div></div></div>
+    ${stats}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 6px;"><span style="font-size:12px;font-weight:600;color:var(--text-muted);">Report:</span><button class="btn btn-ghost btn-sm no-print" onclick="downloadActionPlanReport()">⭳ Action plan PDF</button></div>
+    ${riskCard}
+    ${freeCard}`;
+}
+
 // ── Monitoring & assurance (spec #5) ──
 const ASSUR_KINDS={
   leading:{ title:'Leading indicators', hint:'Proactive measures — e.g. % risk assessments completed, training compliance %, inspections done vs planned', cols:['metric','target','current','frequency','owner'], heads:['Indicator','Target','Current','Frequency','Owner'] },
@@ -14865,7 +14974,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions'];
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

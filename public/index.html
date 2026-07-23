@@ -10332,7 +10332,13 @@ function _cockpitContext(){
 
 // The registry. group = which zone/container the widget belongs in.
 const COCKPIT_WIDGETS = {
-  kpiFatal:       { id:'kpiFatal', label:'Fatal-potential risks', group:'KPI', render:x=>_ckKpi('Fatal-potential risks', x.RD.sif.length, x.RD.sifUncontrolled.length?(x.RD.sifUncontrolled.length+' uncontrolled'):(x.RD.sif.length?'all have controls':'none recorded'), x.RD.sifUncontrolled.length?'var(--danger)':(x.RD.sif.length?'var(--warning)':''), 'risk') },
+  kpiFatal:       { id:'kpiFatal', label:'Fatal-potential (inherent)', group:'KPI', render:x=>{
+      const nSif=x.RD.sif.length, nUnc=x.RD.sifUncontrolled.length;
+      const resHigh=x.RD.sif.filter(r=>{const p=_riskScore(r).priority;return p==='Critical'||p==='High';}).length;
+      const col=nUnc?'var(--danger)':(resHigh?'var(--warning)':(nSif?'var(--success)':''));
+      const sub=nSif===0?'none recorded':(nUnc?(nUnc+' uncontrolled — priority'):(resHigh?(resHigh+' still high after controls'):'all controlled to lower residual'));
+      return _ckKpi('Fatal-potential (inherent)', nSif, sub, col, 'risk');
+    } },
   kpiHighCrit:    { id:'kpiHighCrit', label:'High and critical risks', group:'KPI', render:x=>_ckKpi('High and critical risks', x.highRisk.length, x.risks.length+' in the profile', x.highRisk.length?'var(--danger)':'', 'risk') },
   kpiOpenActions: { id:'kpiOpenActions', label:'Open actions', group:'KPI', render:x=>_ckKpi('Open actions', x.openA, x.overdueA?(x.overdueA+' overdue'):'None overdue', x.overdueA?'var(--danger)':'', 'actions') },
   kpiMgmtGaps:    { id:'kpiMgmtGaps', label:'Management system gaps', group:'KPI', render:x=>_ckKpi('Management system gaps', x.reqG.gaps, x.reqG.assessed+' assessed', x.reqG.gaps?'var(--warning)':'', 'requirements') },
@@ -10341,13 +10347,20 @@ const COCKPIT_WIDGETS = {
   chartInspections:{ id:'chartInspections', label:'Inspections by month', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Inspections by month</h4><svg viewBox="0 0 ${x.BW} ${x.BH}" width="100%" style="max-height:200px;">${x.barSvg}</svg></div>` },
   chartCompliance:{ id:'chartCompliance', label:'Compliance', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Compliance</h4><div class="ckx-donut-wrap">${x.donut}<div class="ckx-legend">${_ckLeg('var(--success)','Pass',x.pass)}${_ckLeg('#6EE7B7','Rectified',x.rect)}${_ckLeg('var(--warning)','Action',x.act)}</div><button class="ck-link" onclick="switchTab('monthly')">View monthly report</button></div></div>` },
   riskVsMaturity: { id:'riskVsMaturity', label:'Risk exposure vs maturity', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;">${_riskVsMaturityHTML({heading:'Risk exposure vs management maturity'})}</div>` },
-  cardRiskPriorities:{ id:'cardRiskPriorities', label:'Risk priorities', group:'Card', render:x=>_ckMod('Risk priorities', x.risks.length ? `
-        <div class="ck-row"><span>Critical and high</span><span style="color:${x.highRisk.length?'var(--danger)':'inherit'};font-weight:600;">${x.highRisk.length}</span></div>
-        <div class="ck-row"><span>Fatal-potential (SIF)</span><span style="color:${x.RD.sif.length?'var(--danger)':'inherit'};font-weight:600;">${x.RD.sif.length}${x.RD.sifUncontrolled.length?(' · '+x.RD.sifUncontrolled.length+' uncontrolled'):''}</span></div>
-        <div class="ck-row"><span>Medium</span><span style="font-weight:600;">${x.modRisk.length}</span></div>
-        ${(x.RD.sifUncontrolled.length?x.RD.sifUncontrolled:x.highRisk).slice(0,3).map(r=>`<div style="font-size:13px;color:var(--text-muted);">${esc(r.activity||r.hazard||'Unnamed risk')}</div>`).join('')}
+  cardRiskPriorities:{ id:'cardRiskPriorities', label:'Risk priorities', group:'Card', render:x=>{
+      const nSif=x.RD.sif.length, nUnc=x.RD.sifUncontrolled.length;
+      const resHigh=x.RD.sif.filter(r=>{const p=_riskScore(r).priority;return p==='Critical'||p==='High';}).length;
+      const sifCol=nUnc?'var(--danger)':(resHigh?'var(--warning)':'var(--text-muted)');
+      const sifNote=nSif===0?'':(nUnc?(' · '+nUnc+' uncontrolled'):(resHigh?(' · '+resHigh+' high residual'):' · all controlled'));
+      const listSrc=(nSif?x.RD.sif:x.highRisk).slice(0,3);
+      return _ckMod('Risk priorities', x.risks.length ? `
+        <div class="ck-row"><span>Critical and high (residual)</span><span style="color:${x.highRisk.length?'var(--danger)':'inherit'};font-weight:600;">${x.highRisk.length}</span></div>
+        <div class="ck-row"><span>Fatal-potential (inherent)</span><span style="color:${sifCol};font-weight:600;">${nSif}${sifNote}</span></div>
+        <div class="ck-row"><span>Medium (residual)</span><span style="font-weight:600;">${x.modRisk.length}</span></div>
+        ${listSrc.map(r=>{ const res=_riskScore(r); return `<div style="font-size:13px;color:var(--text-muted);display:flex;justify-content:space-between;gap:8px;"><span>${esc(r.activity||r.hazard||'Unnamed risk')}</span><span style="opacity:.75;white-space:nowrap;">${res.priority?('residual '+res.priority):_riskControlStatus(r)}</span></div>`; }).join('')}
         <button class="ck-link" onclick="switchTab('risk')">Open risk profile</button>`
-      : _ckPend('No risks recorded yet.') + `<button class="ck-link" onclick="switchTab('risk')">Set up risk profile</button>`) },
+      : _ckPend('No risks recorded yet.') + `<button class="ck-link" onclick="switchTab('risk')">Set up risk profile</button>`);
+    } },
   cardMgmtSystem: { id:'cardMgmtSystem', label:'Management system', group:'Card', render:x=>_ckMod('Management system', x.reqG.assessed ? `
         <div class="ck-row"><span>Gaps</span><span style="color:${x.reqG.gaps?'var(--warning)':'var(--success)'};font-weight:600;">${x.reqG.gaps}</span></div>
         <div class="ck-row"><span>Assessed</span><span style="font-weight:600;">${x.reqG.assessed}</span></div>

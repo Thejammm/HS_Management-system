@@ -754,9 +754,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="tab-btn" data-tab="documents" onclick="switchTab('documents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Documents</button>
     <button class="tab-btn" data-tab="reports" onclick="switchTab('reports')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg> Reports</button>
     <button class="tab-btn" data-tab="cas" onclick="switchTab('cas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg> Accreditation</button>
+    <div class="nav-op-group" style="border:1px solid var(--border);border-radius:8px;padding:3px;margin:8px 0;">
+      <div style="font-size:10px;color:var(--text-muted);padding:3px 8px 4px;">Site tools (some clients)</div>
     <button class="tab-btn" data-tab="inspection" onclick="switchTab('inspection')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg> Inspection</button>
     <button class="tab-btn" data-tab="actions" onclick="switchTab('actions')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Actions <span class="tb-badge" id="badgeActions"></span></button>
     <button class="tab-btn" data-tab="monthly" onclick="switchTab('monthly')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg> Monthly report</button>
+    </div>
     <button class="tab-btn" data-tab="audit" onclick="switchTab('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg> Consultants audit</button>
     <button class="tab-btn" data-tab="setup" onclick="switchTab('setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg> Checklist builder</button>
     <button class="tab-btn" data-tab="admin" id="navAdmin" data-consultant="1" onclick="switchTab('admin')" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg> Admin</button>
@@ -10273,7 +10276,9 @@ function _gaugeSVG(pct, o){ o=o||{}; pct=Math.max(0,Math.min(100, pct||0)); cons
 // Tachometer — RAG zone bands + a needle pointing to value (0-100).
 function _tachoSVG(value, o){ o=o||{}; value=Math.max(0,Math.min(100, value||0)); const cx=100, cy=100, r=80;
   const pt=(f,rr)=>{ const a=Math.PI*(1-f); rr=rr==null?r:rr; return [cx+rr*Math.cos(a), cy-rr*Math.sin(a)]; };
-  const zones=o.zones||[{to:35,color:'#16A34A'},{to:60,color:'#F59E0B'},{to:100,color:'#DC2626'}];
+  // Western reading: worse on the left, better (green) on the right. Callers pass
+  // a "higher is better" value (e.g. 100 - risk) so the needle points right when good.
+  const zones=o.zones||[{to:40,color:'#DC2626'},{to:70,color:'#F59E0B'},{to:100,color:'#16A34A'}];
   let from=0, arcs=''; zones.forEach(z=>{ const [x1,y1]=pt(from/100),[x2,y2]=pt(z.to/100); arcs+=`<path d="M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${z.color}" stroke-width="13"/>`; from=z.to; });
   const [nx,ny]=pt(value/100, r-16);
   return `<svg viewBox="0 0 200 112" width="100%" style="max-width:230px;display:block;margin:2px auto 0;">${arcs}`
@@ -10377,7 +10382,7 @@ const COCKPIT_WIDGETS = {
   gaugeCompleteness:{ id:'gaugeCompleteness', label:'Completeness gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Assessment completeness', `${_gaugeSVG(x.RD.completeness)}<div class="ck-pending" style="text-align:center;margin-top:2px;">of the assessment complete</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Open risk profile</button>`) },
   gaugeCompliance:  { id:'gaugeCompliance', label:'Compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Inspection compliance', `${_gaugeSVG(x.compliance==null?0:x.compliance,{text:x.compliance==null?'--':x.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">pass + rectified</div><button class="ck-link" onclick="switchTab('monthly')" style="align-self:center;">Monthly report</button>`) },
   gaugeMaturity:    { id:'gaugeMaturity', label:'Maturity gauge', group:'Gauge', defaultOff:true, render:x=>{ const a=x.RD.overallMat.avg; return _ckMod('Management maturity', `${_gaugeSVG(a==null?0:a/5*100,{text:a==null?'--':a.toFixed(1)})}<div class="ck-pending" style="text-align:center;margin-top:2px;">out of 5 (HSG65)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk review</button>`); } },
-  tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk review</button>`) },
+  tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(100 - x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk review</button>`) },
   gaugeAccreditation:{ id:'gaugeAccreditation', label:'Accreditation gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Accreditation readiness', `${_gaugeSVG(x.cas.pctReady==null?0:x.cas.pctReady,{text:x.cas.pctReady==null?'--':x.cas.pctReady+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">criteria ready</div><button class="ck-link" onclick="switchTab('cas')" style="align-self:center;">Open accreditation</button>`) },
   gaugeMgmtCompliance:{ id:'gaugeMgmtCompliance', label:'Mgmt-system compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Management-system compliance', `${_gaugeSVG(x.reqStats.compliance==null?0:x.reqStats.compliance,{text:x.reqStats.compliance==null?'--':x.reqStats.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">requirements met</div><button class="ck-link" onclick="switchTab('requirements')" style="align-self:center;">Open management system</button>`) },
   gaugeSifControl:  { id:'gaugeSifControl', label:'Fatal-risk control gauge', group:'Gauge', defaultOff:true, render:x=>{ const t=x.RD.sif.length, pct=t?Math.round((t-x.RD.sifUncontrolled.length)/t*100):0; return _ckMod('Fatal-risk control', `${_gaugeSVG(pct,{text:t?pct+'%':'n/a'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${t?('of '+t+' fatal-potential controlled'):'no fatal-potential risks'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk review</button>`); } },
@@ -11954,7 +11959,23 @@ function _profReqReview(id){ const r=_profState().reqReview[id]; return r||{ sta
 function _profFindings(){ return _profGenerate().reqs.filter(rq=>{ const st=_profReqReview(rq.id).status; return st==='partial'||st==='absent'; }); }
 function _profAction(id){ const a=_profState().actions[id]; return a||{ owner:'', due:'', status:'Not started', priority:'' }; }
 function _matColor(n){ return ['#DC2626','#DC2626','#EA580C','#F59E0B','#84CC16','#16A34A'][Math.max(0,Math.min(5,n))]; }
-function _profAnchor(anchors, n){ if(!anchors) return ''; if(anchors[n]!==undefined) return anchors[n]; for(let k=n;k>=0;k--){ if(anchors[k]!==undefined) return '≈ '+anchors[k]; } for(let k=n;k<=5;k++){ if(anchors[k]!==undefined) return '≈ '+anchors[k]; } return ''; }
+// Generic 0-5 maturity ladder, distinct at every level. Aligned to the HSE
+// Safety Culture Maturity Model (emerging, managing, involving, cooperating,
+// continually improving) within the HSG65 "managing for health and safety"
+// framework, with 0 = absent added. Used as the descriptor for any level an
+// item does not define its own anchor for, so every score reads differently.
+const MATURITY_LEVELS = {
+  0: 'Absent: no arrangement in place; this is left to chance.',
+  1: 'Emerging: informal and reactive; it happens mainly after something goes wrong.',
+  2: 'Managing: a basic documented arrangement exists but is compliance-driven and applied inconsistently.',
+  3: 'Involving: established and applied in practice; managers own it and workers are consulted.',
+  4: 'Cooperating: embedded in day-to-day work; workers actively contribute and performance is monitored.',
+  5: 'Continually improving: proactive, resourced and evidenced; the organisation learns and keeps improving.'
+};
+function _profAnchor(anchors, n){
+  if(anchors && anchors[n]!==undefined) return anchors[n];
+  return MATURITY_LEVELS[n]!==undefined ? MATURITY_LEVELS[n] : '';
+}
 // Maturity of a domain: weighted mean + worst item + critical-veto (a critical item ≤1 forces RED).
 function _profMaturity(domainId){
   const dom=PROF_LIBRARY.domains.find(d=>d.id===domainId); const m=_profState().maturity;
@@ -12013,7 +12034,8 @@ function _reviewHeatHTML(){
 }
 function _renderMaturityAssessment(dis){
   const doms=_maturityDomains(); const m=(S.profiler&&S.profiler.maturity)||{};
-  return doms.map((d,idx)=>{
+  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Scored 0 (absent) to 5 (continually improving), aligned to the HSE Safety Culture Maturity Model (emerging, managing, involving, cooperating, continually improving) within the HSG65 framework. Select a score to see what it means, or mark N/A if a domain does not apply.</div>`;
+  return note + doms.map((d,idx)=>{
     const mat=_profMaturity(d.id);
     const statusChip = mat.avg!=null
       ? `<span style="font-size:12.5px;color:${_matColor(Math.round(mat.avg))};font-weight:700;">${mat.avg.toFixed(1)}/5${mat.critFail?' · veto':''}</span>`

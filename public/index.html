@@ -10672,7 +10672,10 @@ const RISK_IMPACT_DIMS = [
   { k:'reputational', label:'Reputational / client confidence' },
   { k:'operational',  label:'Operational disruption' }
 ];
-const RISK_ACTION_STATUS = ['Not started','In progress','Complete'];
+// 'Accepted' closes an action WITHOUT it being done: the client, as duty holder,
+// has consciously accepted/tolerated the risk (e.g. the fix costs more than the
+// risk warrants). It is a terminal state like Complete, but recorded distinctly.
+const RISK_ACTION_STATUS = ['Not started','In progress','Complete','Accepted'];
 const _RISK_PRIO_RANK  = { Critical:0, High:1, Medium:2, Low:3, '':4 };
 const _RISK_PRIO_COLOR = { Critical:'#DC2626', High:'#EA580C', Medium:'#F59E0B', Low:'#16A34A', '':'#9CA3AF' };
 
@@ -10744,6 +10747,7 @@ function _impactMax(r){ const im=r.impacts||{}; return Math.max(0,...RISK_IMPACT
 function _actionStatus(a){
   if(!a) return 'Not started';
   if(a.status==='Complete') return 'Complete';
+  if(a.status==='Accepted') return 'Accepted';   // terminal: risk accepted, never overdue
   if(a.due){ const d=new Date(a.due+'T23:59:59'); if(!isNaN(d) && d < new Date()) return 'Overdue'; }
   return a.status || 'Not started';
 }
@@ -11329,7 +11333,7 @@ function _renderActionPlan(){
 //  golden thread) but nothing is compulsory. Work items through by
 //  status; the Action Plan report is the client deliverable.
 // ══════════════════════════════════════════════════════════════
-const _AP_STATUSES = ['Not started','In progress','Complete'];
+const _AP_STATUSES = RISK_ACTION_STATUS;   // Not started / In progress / Complete / Accepted
 function _apList(){ if(!Array.isArray(S.actionPlan)) S.actionPlan = []; return S.actionPlan; }
 function addActionPlanItem(){
   if(_blockIfReadOnly()) return;
@@ -11340,7 +11344,7 @@ function updateActionPlanItem(id, field, value){
   if(_roLocked()) return;
   const it=_apList().find(x=>x.id===id); if(!it) return;
   it[field]=value;
-  if(field==='status'){ if(value==='Complete' && !it.completedDate){ it.completedDate=new Date().toISOString().slice(0,10); } if(value!=='Complete'){ it.completedDate=''; } }
+  if(field==='status'){ const closed=(value==='Complete'||value==='Accepted'); if(closed && !it.completedDate){ it.completedDate=new Date().toISOString().slice(0,10); } if(!closed){ it.completedDate=''; } }
   _stamp(it,'updated'); scheduleAutoSave();
   if(field==='due'||field==='priority'||field==='status'){ _keepScroll(renderActionPlanTab); }
 }
@@ -11398,11 +11402,11 @@ function renderActionPlanTab(){
   const free=_apList();
   // Unified stats across risk-derived and free-form actions.
   const allStatuses=riskActs.map(x=>x.status).concat(free.map(a=>_actionStatus(a)));
-  const total=allStatuses.length, overdue=allStatuses.filter(s=>s==='Overdue').length, done=allStatuses.filter(s=>s==='Complete').length, open=total-done;
+  const total=allStatuses.length, overdue=allStatuses.filter(s=>s==='Overdue').length, done=allStatuses.filter(s=>s==='Complete').length, accepted=allStatuses.filter(s=>s==='Accepted').length, open=total-done-accepted;
   const badge=document.getElementById('badgeActionPlan'); if(badge) badge.textContent=open||'';
   const prColor=(p)=>({Critical:'#DC2626',High:'#EA580C',Medium:'#F59E0B',Low:'#16A34A'})[p]||'var(--text-muted)';
   const stat=(n,l,c)=>`<div class="rp-stat"><div class="rp-stat-num"${c?` style="color:${c};"`:''}>${n}</div><div class="rp-stat-label">${l}</div></div>`;
-  const stats=`<div class="rp-stats">${stat(total,'Total actions')}${stat(open,'Open', open?'#2563EB':'')}${stat(overdue,'Overdue', overdue?'#DC2626':'')}${stat(done,'Complete', done?'#16A34A':'')}</div>`;
+  const stats=`<div class="rp-stats">${stat(total,'Total actions')}${stat(open,'Open', open?'#2563EB':'')}${stat(overdue,'Overdue', overdue?'#DC2626':'')}${stat(done,'Complete', done?'#16A34A':'')}${stat(accepted,'Risk accepted', accepted?'#6B7280':'')}</div>`;
   // Risk-derived actions: update status here; edit the detail on the risk itself.
   const riskSorted=riskActs.slice().sort((a,b)=>String(a.a.due||'9999').localeCompare(String(b.a.due||'9999')));
   const riskRows=riskSorted.map(x=>{ const a=x.a, ov=x.status==='Overdue';
@@ -11430,8 +11434,8 @@ function renderActionPlanTab(){
   const riskOpts=(sel)=>`<option value="">Link a risk (optional)</option>`+(S.riskProfile||[]).map(r=>`<option value="${r.id}"${sel===r.id?' selected':''}>${esc((r.activity||r.hazard||'Risk').slice(0,55))}</option>`).join('');
   const docOpts=(sel)=>`<option value="">Link a document (optional)</option>`+((S.documents||[]).map(d=>`<option value="${d.id}"${sel===d.id?' selected':''}>${esc((d.name||d.title||'Document').slice(0,55))}</option>`).join(''));
   const prOpts=(cur)=>['','Critical','High','Medium','Low'].map(p=>`<option value="${p}"${p===cur?' selected':''}>${p||'Priority'}</option>`).join('');
-  const freeCards=free.map(a=>{ const cs=_actionStatus(a), ov=cs==='Overdue';
-    return `<div class="card" style="margin-bottom:10px;border-left:3px solid ${ov?'#DC2626':cs==='Complete'?'#16A34A':'var(--border)'};"><div class="card-body">
+  const freeCards=free.map(a=>{ const cs=_actionStatus(a), ov=cs==='Overdue', acc=cs==='Accepted';
+    return `<div class="card" style="margin-bottom:10px;border-left:3px solid ${ov?'#DC2626':cs==='Complete'?'#16A34A':acc?'#6B7280':'var(--border)'};"><div class="card-body">
       <div style="display:flex;gap:8px;align-items:flex-start;">
         <textarea${dis} rows="2" style="flex:1;" placeholder="What needs doing" oninput="updateActionPlanItem('${a.id}','desc',this.value)">${esc(a.desc||'')}</textarea>
         ${ro?'':`<button class="btn btn-ghost btn-xs" title="Delete" onclick="deleteActionPlanItem('${a.id}')">${_ic('trash',14)}</button>`}
@@ -11447,8 +11451,8 @@ function renderActionPlanTab(){
         <select${dis} onchange="updateActionPlanItem('${a.id}','riskId',this.value)" style="flex:1;min-width:150px;">${riskOpts(a.riskId||'')}</select>
         <select${dis} onchange="updateActionPlanItem('${a.id}','docId',this.value)" style="flex:1;min-width:150px;">${docOpts(a.docId||'')}</select>
       </div>
-      <input type="text"${dis} value="${esc(a.note||'')}" placeholder="What was done / revision note (evidence trail)" oninput="updateActionPlanItem('${a.id}','note',this.value)" style="margin-top:8px;width:100%;">
-      ${a.completedDate?`<div style="font-size:11px;color:#16A34A;margin-top:6px;">Completed ${fmtDate(a.completedDate)}</div>`:''}
+      <input type="text"${dis} value="${esc(a.note||'')}" placeholder="${acc?'Reason the risk is accepted, and by whom (the client is the duty holder)':'What was done / revision note (evidence trail)'}" oninput="updateActionPlanItem('${a.id}','note',this.value)" style="margin-top:8px;width:100%;">
+      ${a.completedDate?`<div style="font-size:11px;color:${acc?'#6B7280':'#16A34A'};margin-top:6px;">${acc?'Risk accepted':'Completed'} ${fmtDate(a.completedDate)}</div>`:''}
     </div></div>`;
   }).join('');
   const freeCard=`<div class="card"><div class="card-band"><h3><span class="dot">●</span> Additional actions</h3><span class="badge badge-muted">${free.length}</span></div>
@@ -12414,11 +12418,12 @@ function buildActionPlanReport(){
   const items=data.acts.filter(x=>x.a.desc||x.a.owner||x.a.due).concat(freeItems);
   if(!items.length){ K.section('Action plan', RED); K.text('No actions have been recorded yet. Add actions to the significant risks or in the Action plan tab to build the plan.', 10); _pdfFooter(K, d, 'Action Plan'); doc.save('action-plan-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf'); return; }
   const apDone=items.filter(x=>x.status==='Complete').length;
-  const apOutstanding=items.length-apDone;
+  const apAccepted=items.filter(x=>x.status==='Accepted').length;
   const apOverdue=items.filter(x=>x.status==='Overdue').length;
+  const apOutstanding=items.length-apDone-apAccepted;
   if(_reportSectionOn('action.summary')){
     K.section('At a glance', NAVY);
-    K.tiles([{num:items.length,label:'Actions',color:NAVY,sub:'Total'},{num:apDone,label:'Complete',color:apDone?[22,120,60]:NAVY,sub:'Delivered'},{num:apOutstanding,label:'Outstanding',color:apOutstanding?AMBER:NAVY,sub:'Still open'},{num:apOverdue,label:'Overdue',color:apOverdue?RED:NAVY,sub:'Past target date'}]);
+    K.tiles([{num:items.length,label:'Actions',color:NAVY,sub:'Total'},{num:apDone,label:'Complete',color:apDone?[22,120,60]:NAVY,sub:'Delivered'},{num:apAccepted,label:'Risk accepted',color:apAccepted?[107,114,128]:NAVY,sub:'Tolerated'},{num:apOutstanding,label:'Outstanding',color:apOutstanding?AMBER:NAVY,sub:'Still open'},{num:apOverdue,label:'Overdue',color:apOverdue?RED:NAVY,sub:'Past target'}]);
   }
   // group by owner ('Unassigned' first), overdue rows to the top within each group
   const byOwner={}; items.forEach(x=>{ const o=(x.a.owner&&x.a.owner.trim())||'Unassigned'; (byOwner[o]=byOwner[o]||[]).push(x); });
@@ -12429,7 +12434,7 @@ function buildActionPlanReport(){
     K.table(
       [{header:'',w:6,align:'left'},{header:'ACTION',w:82},{header:'RISK',w:40},{header:'TARGET',w:20},{header:'PRIORITY',w:18},{header:'STATUS',w:20}],
       rows.map(x=>{ const a=x.a, ov=x.status==='Overdue';
-        return [ {tick:true}, a.desc||'(no description)', {text:x.r.activity||x.r.hazard||'-', color:[130,130,130]}, {text:fd(a.due), color:ov?RED:[100,100,100]}, {text:a.priority||'-', color:[110,110,110]}, {text:x.status, bold:true, color:ov?RED:x.status==='Complete'?[22,120,60]:[110,110,110]} ]; }),
+        return [ {tick:true}, a.desc||'(no description)', {text:x.r.activity||x.r.hazard||'-', color:[130,130,130]}, {text:fd(a.due), color:ov?RED:[100,100,100]}, {text:a.priority||'-', color:[110,110,110]}, {text:x.status, bold:true, color:ov?RED:x.status==='Complete'?[22,120,60]:x.status==='Accepted'?[107,114,128]:[110,110,110]} ]; }),
       {headFill:NAVY, headText:[255,255,255]}
     );
   });

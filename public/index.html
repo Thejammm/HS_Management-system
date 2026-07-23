@@ -11403,8 +11403,8 @@ function _apGaps(){
   // Management-system gaps: any assessed requirement line that is not fully Met.
   (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{
     const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
-    if(st && st.label!=='Met'){
-      const what=(it.action&&it.action.trim())||(it.requirement&&it.requirement.trim())||(sec.heading||'Requirement');
+    if(st && st.label!=='Met' && !(it.action && String(it.action).trim())){
+      const what=(it.requirement&&it.requirement.trim())||(sec.heading||'Requirement');
       gaps.push({ srcKey:'req:'+it.id, desc:what, due:it.dueDate||'', priority: st.label==='Not in place'?'High':'Medium',
         context:(sec.heading||'Management system')+' ('+st.label+')', note:'From the management system: '+(sec.heading||'')+(it.requirement?(': '+it.requirement):'') });
     }
@@ -11435,12 +11435,14 @@ function _acceptedActions(){
   const out=[];
   (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>{ if(a.status==='Accepted' && !a.hideFromPlan) out.push({ kind:'risk', id:a.id, riskId:r.id, ref:a, desc:a.desc, source:(r.activity||r.hazard||'From a risk') }); }));
   (_apList()||[]).forEach(a=>{ if(a.status==='Accepted') out.push({ kind:'free', id:a.id, riskId:'', ref:a, desc:a.desc, source:'Added directly' }); });
+  (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{ if(it.actionStatus==='Accepted' && it.action && String(it.action).trim() && !it.hideFromPlan) out.push({ kind:'mgmt', id:it.id, riskId:sec.id, ref:it, desc:it.action, source:(sec.heading||'Management system') }); }));
   return out;
 }
 function updateAcceptField(kind, id, riskId, field, value){
   if(_roLocked()) return;
   let obj=null;
   if(kind==='risk'){ const r=(S.riskProfile||[]).find(x=>x.id===riskId); obj=r&&(r.actions||[]).find(x=>x.id===id); }
+  else if(kind==='mgmt'){ const sec=(S.requirements||[]).find(x=>x.id===riskId); obj=sec&&(sec.items||[]).find(x=>x.id===id); }
   else { obj=_apList().find(x=>x.id===id); }
   if(!obj) return; obj[field]=value; _stamp(obj,'updated'); scheduleAutoSave();
 }
@@ -11462,15 +11464,55 @@ function restoreRiskActionToPlan(riskId, actId){
   const a=(r.actions||[]).find(x=>x.id===actId); if(!a) return;
   delete a.hideFromPlan; _stamp(a,'updated'); saveData(); _keepScroll(renderActionPlanTab);
 }
+// Management-system requirement lines that carry an action are tracked in the
+// action plan exactly like risk actions. Status/owner/dismiss live on the line
+// (S.requirements) so they travel with the client data. Priority is derived from
+// the line's gap status.
+function _allMgmtActions(){
+  const out=[];
+  (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{
+    if(it.action && String(it.action).trim()){
+      const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
+      const pr = st && st.label==='Not in place' ? 'High' : (st && st.label==='Gap' ? 'Medium' : '');
+      out.push({ secId:sec.id, id:it.id, it, desc:it.action, owner:it.actionOwner||'', due:it.dueDate||'', priority:pr, status:_actionStatus({status:it.actionStatus, due:it.dueDate}), source:(sec.heading||'Management system') });
+    }
+  }));
+  return out;
+}
+function setMgmtActionStatus(secId, itemId, value){
+  if(_roLocked()) return;
+  const sec=(S.requirements||[]).find(x=>x.id===secId); if(!sec) return;
+  const it=(sec.items||[]).find(x=>x.id===itemId); if(!it) return;
+  it.actionStatus=value;
+  if(value==='Accepted'){ if(!it.acceptDate) it.acceptDate=new Date().toISOString().slice(0,10); }
+  _stamp(it,'updated'); saveData(); _keepScroll(renderActionPlanTab);
+}
+function dismissMgmtActionFromPlan(secId, itemId){
+  if(_blockIfReadOnly()) return;
+  const sec=(S.requirements||[]).find(x=>x.id===secId); if(!sec) return;
+  const it=(sec.items||[]).find(x=>x.id===itemId); if(!it) return;
+  it.hideFromPlan=true; _stamp(it,'updated'); saveData(); _keepScroll(renderActionPlanTab);
+  if(typeof showToast==='function') showToast('Removed from the action plan (still on the management system)','info');
+}
+function restoreMgmtActionToPlan(secId, itemId){
+  if(_blockIfReadOnly()) return;
+  const sec=(S.requirements||[]).find(x=>x.id===secId); if(!sec) return;
+  const it=(sec.items||[]).find(x=>x.id===itemId); if(!it) return;
+  delete it.hideFromPlan; _stamp(it,'updated'); saveData(); _keepScroll(renderActionPlanTab);
+}
+function _apGotoMgmt(itemId){ switchTab('requirements'); setTimeout(()=>{ const el=document.getElementById('reqstatus-'+itemId); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); }, 90); }
 function renderActionPlanTab(){
   const root=document.getElementById('actionPlanRoot'); if(!root) return;
   const ro=_roLocked(); const dis=ro?' disabled':'';
   const _allRA=_allRiskActions();
   const riskActs=_allRA.filter(x=>!(x.a&&x.a.hideFromPlan));
   const hiddenActs=_allRA.filter(x=>x.a&&x.a.hideFromPlan);
+  const _allMA=_allMgmtActions();
+  const mgmtActs=_allMA.filter(x=>!(x.it&&x.it.hideFromPlan));
+  const hiddenMgmt=_allMA.filter(x=>x.it&&x.it.hideFromPlan);
   const free=_apList();
-  // Unified stats across risk-derived and free-form actions.
-  const allStatuses=riskActs.map(x=>x.status).concat(free.map(a=>_actionStatus(a)));
+  // Unified stats across risk-derived, management-system and free-form actions.
+  const allStatuses=riskActs.map(x=>x.status).concat(mgmtActs.map(x=>x.status)).concat(free.map(a=>_actionStatus(a)));
   const total=allStatuses.length, overdue=allStatuses.filter(s=>s==='Overdue').length, done=allStatuses.filter(s=>s==='Complete').length, accepted=allStatuses.filter(s=>s==='Accepted').length, open=total-done-accepted;
   const badge=document.getElementById('badgeActionPlan'); if(badge) badge.textContent=open||'';
   const prColor=(p)=>({Critical:'#DC2626',High:'#EA580C',Medium:'#F59E0B',Low:'#16A34A'})[p]||'var(--text-muted)';
@@ -11489,12 +11531,30 @@ function renderActionPlanTab(){
       ${ro?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs no-print" title="Remove from this plan (added by mistake). It stays on the risk." onclick="dismissRiskActionFromPlan('${x.r.id}','${a.id}')">✕</button></td>`}
     </tr>`;
   }).join('');
-  const hiddenLine = hiddenActs.length ? `<div style="font-size:11px;color:var(--text-muted);margin-top:10px;">${hiddenActs.length} action${hiddenActs.length!==1?'s':''} removed from this plan (still on the risk). <button class="btn btn-ghost btn-xs no-print" onclick="toggleApHidden()">${_apShowHidden?'Hide':'Show'}</button></div>
-    ${_apShowHidden?`<div style="margin-top:4px;">${hiddenActs.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--border);padding:6px 0;font-size:12px;color:var(--text-muted);"><span>${esc(x.a.desc||'(no description)')} <span style="opacity:.7;">— ${esc((x.r.activity||x.r.hazard||'Risk').slice(0,30))}</span></span>${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="restoreRiskActionToPlan('${x.r.id}','${x.a.id}')">Restore</button>`}</div>`).join('')}</div>`:''}` : '';
-  const riskCard = (riskActs.length || hiddenActs.length) ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Actions from the risk profile</h3><span class="badge badge-muted">${riskActs.length}</span></div>
+  const riskCard = riskActs.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Actions from the risk profile</h3><span class="badge badge-muted">${riskActs.length}</span></div>
     <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">These come from the actions recorded on each risk. Update status here as you work through them; edit the detail on the risk itself. Use ✕ to remove one added by mistake from this plan (it stays on the risk).</div>
-    ${riskActs.length?`<div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Action</th><th>Risk</th><th>Owner</th><th>Target</th><th>Priority</th><th>Status</th>${ro?'':'<th></th>'}</tr></thead><tbody>${riskRows}</tbody></table></div>`:'<div style="font-size:12.5px;color:var(--text-muted);">No risk actions in this plan.</div>'}
-    ${hiddenLine}</div></div>` : '';
+    <div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Action</th><th>Risk</th><th>Owner</th><th>Target</th><th>Priority</th><th>Status</th>${ro?'':'<th></th>'}</tr></thead><tbody>${riskRows}</tbody></table></div></div></div>` : '';
+  // Management-system actions: requirement lines that carry an action. Same function.
+  const mgmtSorted=mgmtActs.slice().sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999')));
+  const mgmtRows=mgmtSorted.map(x=>{ const ov=x.status==='Overdue';
+    return `<tr>
+      <td>${esc(x.desc||'(no description)')}</td>
+      <td><button class="btn btn-ghost btn-xs no-print" onclick="_apGotoMgmt('${x.id}')" title="Open in the management system">${esc((x.source||'Duty').slice(0,40))} ↗</button></td>
+      <td>${esc(x.owner||'—')}</td>
+      <td style="${ov?'color:#DC2626;font-weight:600;':''}">${x.due?fmtDate(x.due):'—'}</td>
+      <td><span style="color:${prColor(x.priority)};font-weight:700;">${esc(x.priority||'—')}</span></td>
+      <td><select${dis} onchange="setMgmtActionStatus('${x.secId}','${x.id}',this.value)">${_AP_STATUSES.map(s=>`<option${s===(x.it.actionStatus||'Not started')?' selected':''}>${s}</option>`).join('')}</select>${ov?' <span class="badge" style="border-color:#DC2626;color:#DC2626;">Overdue</span>':''}</td>
+      ${ro?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs no-print" title="Remove from this plan (added by mistake). It stays on the management system." onclick="dismissMgmtActionFromPlan('${x.secId}','${x.id}')">✕</button></td>`}
+    </tr>`;
+  }).join('');
+  const mgmtCard = mgmtActs.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Actions from the management system</h3><span class="badge badge-muted">${mgmtActs.length}</span></div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">These come from the action recorded on each management-system requirement line. Update status here as you work through them; edit the detail on the management system. Use ✕ to remove one added by mistake (it stays there).</div>
+    <div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Action</th><th>Duty</th><th>Owner</th><th>Target</th><th>Priority</th><th>Status</th>${ro?'':'<th></th>'}</tr></thead><tbody>${mgmtRows}</tbody></table></div></div></div>` : '';
+  // Combined "removed from this plan" list (risk + management system), recoverable.
+  const hiddenAll = hiddenActs.map(x=>({kind:'risk', a:x.r.id, b:x.a.id, desc:x.a.desc, src:(x.r.activity||x.r.hazard||'Risk')}))
+    .concat(hiddenMgmt.map(x=>({kind:'mgmt', a:x.secId, b:x.id, desc:x.desc, src:x.source})));
+  const hiddenBlock = hiddenAll.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-body"><div style="font-size:11px;color:var(--text-muted);">${hiddenAll.length} action${hiddenAll.length!==1?'s':''} removed from this plan (still on the source). <button class="btn btn-ghost btn-xs no-print" onclick="toggleApHidden()">${_apShowHidden?'Hide':'Show'}</button></div>
+    ${_apShowHidden?`<div style="margin-top:4px;">${hiddenAll.map(h=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--border);padding:6px 0;font-size:12px;color:var(--text-muted);"><span>${esc(h.desc||'(no description)')} <span style="opacity:.7;">— ${esc(String(h.src).slice(0,30))}</span></span>${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="${h.kind==='risk'?`restoreRiskActionToPlan('${h.a}','${h.b}')`:`restoreMgmtActionToPlan('${h.a}','${h.b}')`}">Restore</button>`}</div>`).join('')}</div>`:''}</div></div>` : '';
   // Open gaps from the management system + maturity, offered as one-click actions.
   const gaps=_apGaps();
   const gapCard = gaps.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Suggested from gaps</h3><span class="badge badge-muted">${gaps.length}</span></div>
@@ -11552,6 +11612,8 @@ function renderActionPlanTab(){
     ${stats}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 6px;"><span style="font-size:12px;font-weight:600;color:var(--text-muted);">Report:</span><button class="btn btn-ghost btn-sm no-print" onclick="downloadActionPlanReport()">⭳ Action plan PDF</button></div>
     ${riskCard}
+    ${mgmtCard}
+    ${hiddenBlock}
     ${gapCard}
     ${freeCard}
     ${regCard}`;
@@ -12512,7 +12574,8 @@ function buildActionPlanReport(){
     const rk=(S.riskProfile||[]).find(r=>r.id===a.riskId);
     return { a:{ desc:a.desc, owner:a.owner, due:a.due, priority:a.priority, status:a.status }, r:{ activity: rk?(rk.activity||rk.hazard):'Added directly' }, status:_actionStatus(a) };
   });
-  const items=data.acts.filter(x=>(x.a.desc||x.a.owner||x.a.due) && !(x.a&&x.a.hideFromPlan)).concat(freeItems);
+  const mgmtItems=(typeof _allMgmtActions==='function'?_allMgmtActions():[]).filter(x=>!(x.it&&x.it.hideFromPlan)).map(x=>({ a:{desc:x.desc,owner:x.owner,due:x.due,priority:x.priority,status:x.it.actionStatus}, r:{activity:x.source}, status:x.status }));
+  const items=data.acts.filter(x=>(x.a.desc||x.a.owner||x.a.due) && !(x.a&&x.a.hideFromPlan)).concat(freeItems).concat(mgmtItems);
   if(!items.length){ K.section('Action plan', RED); K.text('No actions have been recorded yet. Add actions to the significant risks or in the Action plan tab to build the plan.', 10); _pdfFooter(K, d, 'Action Plan'); doc.save('action-plan-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf'); return; }
   const apDone=items.filter(x=>x.status==='Complete').length;
   const apAccepted=items.filter(x=>x.status==='Accepted').length;

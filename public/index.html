@@ -7262,6 +7262,7 @@ function migrateLoadedState(){
   if(!S.monitoring.months || typeof S.monitoring.months !== 'object') S.monitoring.months = {};
   if(!S.monitoring.meta   || typeof S.monitoring.meta   !== 'object') S.monitoring.meta = {};
   if(!Array.isArray(S.monitoring.regulatory)) S.monitoring.regulatory = [];
+  if(!Array.isArray(S.training)) S.training = [];   // training-matrix records (one per person-per-course)
   // Regulatory tracker is now organised into named sections, each holding statutory
   // items. Migrate the legacy flat list into a default section the first time.
   if(!Array.isArray(S.monitoring.regSections)){
@@ -14488,6 +14489,158 @@ function deleteAppLink(id){
   list.splice(i,1); saveData(); renderAppLinks();
 }
 
+// ══════════════════════════════════════════════════════════════
+//  SPREADSHEET (CSV) IMPORT — statutory inspections + training matrix.
+//  Clients keep data in Excel; they save the filled template as CSV and upload
+//  it. Parsed in plain JS (no library) into the Regulatory tracker and a new
+//  Training matrix. Consultant-side.
+// ══════════════════════════════════════════════════════════════
+function _trainingState(){ if(!Array.isArray(S.training)) S.training=[]; return S.training; }
+function _parseCSV(text){
+  const rows=[]; let row=[], cur='', inQ=false;
+  text=String(text||'').replace(/^﻿/,'');
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(inQ){ if(c==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else inQ=false; } else cur+=c; }
+    else if(c==='"'){ inQ=true; }
+    else if(c===','){ row.push(cur); cur=''; }
+    else if(c==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; }
+    else if(c==='\r'){ /* ignore */ }
+    else cur+=c;
+  }
+  if(cur!=='' || row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r=>r.some(x=>String(x).trim()!==''));
+}
+function _csvDate(s){
+  s=String(s||'').trim(); if(!s) return ''; let m;
+  if(m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/)) return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+  if(m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/)){ let y=m[3]; if(y.length===2) y='20'+y; return y+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0'); }
+  return s;
+}
+function _csvHeaderMap(headerRow){ const map={}; (headerRow||[]).forEach((h,i)=>{ const k=String(h||'').trim().toLowerCase(); if(k && !(k in map)) map[k]=i; }); return map; }
+function _csvGet(row, map, keys){ for(const k of keys){ const i=map[k]; if(i!==undefined && row[i]!==undefined && String(row[i]).trim()!=='') return String(row[i]).trim(); } return ''; }
+
+function _trainingRag(expiry){
+  if(!expiry) return 'grey';
+  const d=new Date(String(expiry)+'T00:00:00'); if(isNaN(d)) return 'grey';
+  const now=new Date(); now.setHours(0,0,0,0);
+  if(d<now) return 'red';
+  const soon=new Date(now); soon.setDate(soon.getDate()+60);
+  if(d<=soon) return 'amber';
+  return 'green';
+}
+// Raise/refresh an execution-plan action for an expired/expiring training record.
+function _syncTrainingAction(rec){
+  if(!rec) return;
+  const rag=_trainingRag(rec.expiry);
+  if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
+  const key='train|'+(rec.employee||'')+'|'+(rec.course||'');
+  const existing=S.actionPlan.find(a=>a.trainingKey===key);
+  if(rag==='red' || rag==='amber'){
+    if(existing){ existing.due=rec.expiry||existing.due; }
+    else { const it={ id:_reqUid('act'), trainingKey:key, desc:'Renew '+(rec.course||'training')+' — '+(rec.employee||''), owner:'', due:rec.expiry||'', status:'Not started', priority:(rag==='red'?'High':'Medium'), source:'Training', sourceLabel:(rec.employee||'') };
+      if(typeof _stamp==='function') _stamp(it,'created'); S.actionPlan.push(it); }
+  }
+}
+function _syncAllTrainingActions(){ _trainingState().forEach(_syncTrainingAction); }
+
+function importStatutoryCSV(text){
+  const rows=_parseCSV(text); if(rows.length<2){ showToast('No data rows found in that file','error'); return; }
+  const map=_csvHeaderMap(rows[0]); const secs=_regSections(); let added=0;
+  for(let i=1;i<rows.length;i++){ const r=rows[i];
+    const item=_csvGet(r,map,['item','statutory item','inspection','description']); if(!item) continue;
+    const secName=_csvGet(r,map,['section','category','type'])||'Statutory inspections';
+    const area=_csvGet(r,map,['area','location','area/location','site']);
+    const lastDone=_csvDate(_csvGet(r,map,['last done','date carried out','completed','last','done']));
+    const nextDue=_csvDate(_csvGet(r,map,['next due','due','due date','next']));
+    const result=(function(v){ v=v.toLowerCase(); return v.startsWith('p')?'Pass':v.startsWith('f')?'Fail':''; })(_csvGet(r,map,['result','outcome','pass/fail','status']));
+    const notes=_csvGet(r,map,['notes','comment','comments']);
+    let sec=secs.find(s=>(s.name||'').toLowerCase()===secName.toLowerCase());
+    if(!sec){ sec={ id:_reqUid('regsec'), name:secName, items:[] }; secs.push(sec); }
+    if(!Array.isArray(sec.items)) sec.items=[];
+    sec.items.push({ id:_reqUid('reg'), item:item, area:area, dueDate:nextDue, resultDate:lastDone, result:result, notes:notes }); added++;
+  }
+  S.monitoring.regSeeded=true; saveData(); renderMonitoring();
+  showToast('✓ Imported '+added+' statutory item'+(added!==1?'s':'')+' into the regulatory tracker','success');
+}
+function importTrainingCSV(text){
+  const rows=_parseCSV(text); if(rows.length<2){ showToast('No data rows found in that file','error'); return; }
+  const map=_csvHeaderMap(rows[0]); const t=_trainingState(); let added=0;
+  for(let i=1;i<rows.length;i++){ const r=rows[i];
+    const employee=_csvGet(r,map,['employee','name','staff','person']);
+    const course=_csvGet(r,map,['course','training','qualification','competency','competence']);
+    if(!employee || !course) continue;
+    const completed=_csvDate(_csvGet(r,map,['completed','date completed','completed date','achieved','date']));
+    const expiry=_csvDate(_csvGet(r,map,['expiry','expires','expiry date','renewal','renewal date','valid until']));
+    let rec=t.find(x=>(x.employee||'').toLowerCase()===employee.toLowerCase() && (x.course||'').toLowerCase()===course.toLowerCase());
+    if(rec){ rec.completed=completed||rec.completed; rec.expiry=expiry||rec.expiry; }
+    else { t.push({ id:_reqUid('trn'), employee:employee, course:course, completed:completed, expiry:expiry }); }
+    added++;
+  }
+  _syncAllTrainingActions(); saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
+  showToast('✓ Imported '+added+' training record'+(added!==1?'s':''),'success');
+}
+function importSpreadsheet(kind){
+  if(_blockIfReadOnly()) return;
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.csv,text/csv';
+  inp.onchange=function(){ const f=inp.files&&inp.files[0]; if(!f) return; const rd=new FileReader();
+    rd.onload=function(){ try{ const rows=_parseCSV(rd.result); const n=Math.max(0,rows.length-1);
+      if(n<1){ showToast('No data rows found — is the header row present?','error'); return; }
+      const label = kind==='training' ? (n+' training record'+(n!==1?'s':'')) : (n+' statutory item'+(n!==1?'s':''));
+      if(!confirm('Import '+label+' from "'+f.name+'"?\n\nMake sure you are dialled in to the right client.')) return;
+      if(kind==='training') importTrainingCSV(rd.result); else importStatutoryCSV(rd.result);
+    }catch(e){ console.error('CSV import failed',e); showToast('Could not read that file — see console','error'); } };
+    rd.readAsText(f); };
+  inp.click();
+}
+function _downloadCSV(filename, text){ const blob=new Blob([text],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url); }
+function downloadStatutoryTemplate(){ _downloadCSV('statutory-inspections-template.csv','Section,Item,Area,Last done,Next due,Result,Notes\nFacilities,PAT testing,Workshop,12/03/2026,12/03/2027,Pass,\nFire,Fire alarm test,Whole site,01/02/2026,01/05/2026,Pass,Weekly bell test\nElectrical,Fixed wire (EICR),Office,15/06/2021,15/06/2026,Pass,\n'); if(typeof showToast==='function') showToast('Template downloaded — fill it in, save as CSV, then Import','info'); }
+function downloadTrainingTemplate(){ _downloadCSV('training-matrix-template.csv','Employee,Course,Completed,Expiry\nJ. Smith,Fire Marshal,01/02/2026,01/02/2029\nJ. Smith,First Aid at Work,10/03/2024,10/03/2027\nA. Jones,Manual Handling,05/01/2026,\n'); if(typeof showToast==='function') showToast('Template downloaded — fill it in, save as CSV, then Import','info'); }
+
+function _trainingMatrixHTML(){
+  const t=_trainingState(); if(!t.length) return '';
+  const ro=_roLocked();
+  const RAGC={red:'#DC2626',amber:'#F59E0B',green:'#16A34A',grey:'#9CA3AF'};
+  const fmt=(s)=>{ try{ return s? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}):''; }catch(e){ return ''; } };
+  const employees=[...new Set(t.map(x=>x.employee))].filter(Boolean).sort();
+  const courses=[...new Set(t.map(x=>x.course))].filter(Boolean).sort();
+  const lookup={}; t.forEach(x=>{ lookup[(x.employee||'')+'||'+(x.course||'')]=x; });
+  const rags=t.map(x=>_trainingRag(x.expiry));
+  const nExp=rags.filter(r=>r==='red').length, nSoon=rags.filter(r=>r==='amber').length;
+  const head=`<tr><th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--surface);z-index:1;">Employee</th>${courses.map(c=>`<th style="padding:6px 6px;font-size:10.5px;text-align:center;white-space:nowrap;">${esc(c)}</th>`).join('')}</tr>`;
+  const body=employees.map(e=>`<tr>
+    <td style="padding:5px 8px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--surface);">${esc(e)}</td>
+    ${courses.map(c=>{ const rec=lookup[e+'||'+c]; if(!rec) return `<td style="text-align:center;color:var(--text-muted);">–</td>`; const rag=_trainingRag(rec.expiry); return `<td style="text-align:center;padding:4px;"><span title="${esc(c)} — ${rag==='red'?'Expired':rag==='amber'?'Expiring soon':rag==='grey'?'No expiry recorded':'In date'}${rec.expiry?(' — expires '+fmt(rec.expiry)):''}${rec.completed?(' — done '+fmt(rec.completed)):''}" style="display:inline-block;min-width:56px;padding:2px 6px;border-radius:5px;font-size:10.5px;font-weight:600;color:#fff;background:${RAGC[rag]};">${rec.expiry?fmt(rec.expiry):'✓'}</span></td>`; }).join('')}
+  </tr>`).join('');
+  return `<div class="card">
+    <div class="card-band"><h3><span class="dot">●</span> Training matrix</h3><span class="badge badge-muted">${employees.length} staff · ${courses.length} courses${nExp?(' · '+nExp+' expired'):''}${nSoon?(' · '+nSoon+' expiring'):''}</span></div>
+    <div class="card-body">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Expiry traffic lights: <span style="color:${RAGC.red};font-weight:700;">expired</span> · <span style="color:${RAGC.amber};font-weight:700;">expiring ≤60 days</span> · <span style="color:${RAGC.green};font-weight:700;">in date</span>. Expired / expiring courses raise an action in the execution plan.</div>
+      <div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div>
+      ${ro?'':`<button class="btn btn-ghost btn-xs no-print" style="margin-top:10px;" onclick="if(confirm('Clear all training records? (This does not remove any actions already raised.)')){S.training=[];saveData();renderMonitoring();}">Clear training data</button>`}
+    </div>
+  </div>`;
+}
+function _spreadsheetImportHTML(){
+  if(_roLocked()) return '';
+  const _u=(typeof Auth!=='undefined'&&Auth.user)?Auth.user():null;
+  if(_u && _u.role!=='consultant') return '';   // clients don't import; consultant (or offline) does
+  return `<div class="card"><div class="card-band"><h3><span class="dot">●</span> Import from spreadsheet (CSV)</h3></div>
+    <div class="card-body">
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Bring in the client's statutory inspections and training matrix from a spreadsheet. Download the template, paste the client's data into its columns, save it as CSV (Excel: File → Save As → CSV), then Import.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;">
+        <div style="flex:1;min-width:230px;border:1.5px solid var(--border);border-radius:9px;padding:12px;">
+          <div style="font-weight:700;margin-bottom:2px;">Statutory inspections</div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">→ into the Regulatory tracker</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm no-print" onclick="downloadStatutoryTemplate()">⭳ Template</button><button class="btn btn-primary btn-sm no-print" onclick="importSpreadsheet('statutory')">⭱ Import CSV</button></div>
+        </div>
+        <div style="flex:1;min-width:230px;border:1.5px solid var(--border);border-radius:9px;padding:12px;">
+          <div style="font-weight:700;margin-bottom:2px;">Training matrix</div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">→ people × courses, RAG by expiry</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm no-print" onclick="downloadTrainingTemplate()">⭳ Template</button><button class="btn btn-primary btn-sm no-print" onclick="importSpreadsheet('training')">⭱ Import CSV</button></div>
+        </div>
+      </div>
+    </div></div>`;
+}
 function renderMonitoring(){
   const cont = document.getElementById('monitoringContainer');
   if(!cont) return;
@@ -14580,6 +14733,8 @@ function renderMonitoring(){
         ${ro?'':`<button class="btn btn-primary btn-sm no-print" onclick="addRegSection()" style="margin-top:2px;">＋ Add section</button>`}
       </div>
     </div>`
+    + _trainingMatrixHTML()
+    + _spreadsheetImportHTML()
     + (ro?'':`<div class="card"><div class="card-body" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;">
         <div style="font-size:13px;color:var(--text-muted);">Spotted something in assurance that needs doing (a failed inspection, an overdue statutory item, a gap)? Raise it into the client's execution plan.</div>
         <button class="btn btn-outline btn-sm no-print" onclick="raiseExecAction('Assurance','Assurance record')">＋ Raise action into the plan</button>
@@ -15895,7 +16050,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions','docControl'];
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions','docControl','training'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

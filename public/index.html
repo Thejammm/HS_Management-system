@@ -7337,6 +7337,29 @@ function migrateLoadedState(){
       }
     });
   }
+
+  // Document control register: ensure it exists and seed it from the legacy
+  // single riskDoc the first time (so the Risk Profile's existing control values
+  // carry over and nothing is lost). Idempotent — only fills blanks.
+  try{
+    const dc = _docControlState();
+    const rd = S.riskDoc || {};
+    if(!dc.defaults.author && rd.author) dc.defaults.author = rd.author;
+    if(!dc.defaults.approverName && rd.approvedName) dc.defaults.approverName = rd.approvedName;
+    if(!dc.defaults.approverRole && rd.approvedRole) dc.defaults.approverRole = rd.approvedRole;
+    REPORT_DOCS.forEach(r => { if(!dc.docs[r.key]) dc.docs[r.key] = { ref:'', version:'', author:'', approverName:'', approverRole:'', issued:'', nextReview:'' }; });
+    // The Risk Profile document inherits the legacy riskDoc values as its explicit row.
+    const rp = dc.docs.riskProfile;
+    if(rp && !rp.__seeded){
+      if(!rp.version && rd.version) rp.version = rd.version;
+      if(!rp.author && rd.author) rp.author = rd.author;
+      if(!rp.approverName && rd.approvedName) rp.approverName = rd.approvedName;
+      if(!rp.approverRole && rd.approvedRole) rp.approverRole = rd.approvedRole;
+      if(!rp.issued && rd.created) rp.issued = rd.created;
+      if(!rp.nextReview && rd.nextReview) rp.nextReview = rd.nextReview;
+      rp.__seeded = true;
+    }
+  }catch(e){ /* non-fatal */ }
 }
 
 function saveAs(){
@@ -10643,8 +10666,67 @@ function renderReports(){
       <h2>Reports</h2>
       <p>Generate client-ready PDFs from this client's risk profile and management system. Each one reads live from the data you have entered.</p>
     </div>
+    ${_docControlRegisterHTML()}
     <div class="rep-grid">${reports.map(card).join('')}</div>
     <p class="rep-foot">Tip: tailor which sections appear in each report per client from the <button class="ck-link" style="display:inline;" onclick="switchTab('cockpit')">cockpit customiser</button>.</p>`;
+}
+
+// Document Control register — the ISO master list of controlled documents. One
+// row per report; defaults apply unless a report overrides them. Drives the
+// per-report control stamp via _docFor().
+function _docControlRegisterHTML(){
+  const dc=_docControlState(); const def=dc.defaults; const dis=_roLocked()?' disabled':'';
+  const di=(label,field,val,type)=>`<div class="field-group"><label class="field-label">${label}</label><input type="${type||'text'}"${dis} value="${esc(val==null?'':val)}" oninput="updateDocDefault('${field}',this.value)"></div>`;
+  const inStyle='width:100%;min-width:78px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;background:transparent;color:inherit;';
+  const rows=REPORT_DOCS.map(r=>{
+    const d=dc.docs[r.key]||{}; const eff=_docFor(r.key);
+    const cell=(field,ph,type)=>`<input type="${type||'text'}"${dis} value="${esc(d[field]||'')}" placeholder="${esc(ph||'')}" oninput="updateDocField('${r.key}','${field}',this.value)"${type==='date'?` onchange="updateDocField('${r.key}','${field}',this.value)"`:''} style="${inStyle}">`;
+    return `<tr>
+      <td style="padding:5px 8px;font-weight:600;white-space:nowrap;">${esc(r.title)}</td>
+      <td style="padding:5px 8px;min-width:150px;">${cell('ref', eff.ref)}</td>
+      <td style="padding:5px 8px;width:60px;">${cell('version','1.0')}</td>
+      <td style="padding:5px 8px;">${cell('author', def.author||'set default')}</td>
+      <td style="padding:5px 8px;">${cell('approverName', def.approverName||'set default')}</td>
+      <td style="padding:5px 8px;">${cell('approverRole', def.approverRole||'set default')}</td>
+      <td style="padding:5px 8px;width:140px;">${cell('issued','auto: on generate','date')}</td>
+      <td style="padding:5px 8px;width:140px;">${cell('nextReview','auto: +'+(parseInt(def.reviewMonths,10)||12)+'mo','date')}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="card" style="margin:0 0 20px;">
+    <div class="card-band"><h3><span class="dot">●</span> Document control <span class="badge badge-muted">ISO master list</span></h3></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;line-height:1.5;">Every report is a controlled document. Set the defaults once; any report can override its own version, reference, approver or dates. Blank cells auto-fill on generation: reference from the client code, issue date = the day you generate, next review = issue + ${parseInt(def.reviewMonths,10)||12} months. This table is your ISO master list of controlled documents.</p>
+      <div style="font-weight:700;font-size:12px;color:var(--text-muted);margin:0 0 8px;text-transform:uppercase;letter-spacing:.03em;">Defaults — apply to every report unless overridden</div>
+      <div class="docctl-grid">
+        ${di('Prepared by (author)','author',def.author)}
+        ${di('Approved by (name)','approverName',def.approverName)}
+        ${di('Approver role','approverRole',def.approverRole)}
+        ${di('Review cycle (months)','reviewMonths',def.reviewMonths,'number')}
+        ${di('Reference prefix (optional)','refPrefix',def.refPrefix)}
+      </div>
+      <div style="overflow-x:auto;margin-top:18px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+        <thead><tr style="text-align:left;color:var(--text-muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;border-bottom:1.5px solid var(--border);">
+          <th style="padding:6px 8px;">Document</th><th style="padding:6px 8px;">Reference</th><th style="padding:6px 8px;">Ver</th><th style="padding:6px 8px;">Prepared by</th><th style="padding:6px 8px;">Approved by</th><th style="padding:6px 8px;">Role</th><th style="padding:6px 8px;">Issued</th><th style="padding:6px 8px;">Next review</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <p style="font-size:11.5px;color:var(--text-muted);margin:12px 0 0;">Greyed placeholders show the auto value used if a cell is left blank. Each generated report stamps its own row (reference, version, prepared/approved by, issue and review dates) on its masthead and footer.</p>
+    </div>
+  </div>`;
+}
+function updateDocDefault(field, value){
+  if(_roLocked()) return;
+  const dc=_docControlState();
+  dc.defaults[field] = (field==='reviewMonths') ? (parseInt(value,10)||12) : value;
+  scheduleAutoSave();
+}
+function updateDocField(key, field, value){
+  if(_roLocked()) return;
+  const dc=_docControlState();
+  if(!dc.docs[key]) dc.docs[key] = { ref:'',version:'',author:'',approverName:'',approverRole:'',issued:'',nextReview:'' };
+  dc.docs[key][field] = value;
+  scheduleAutoSave();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -11265,26 +11347,23 @@ function _docReviewFlagHTML(){
 }
 function _renderRiskDocControl(){
   const el=document.getElementById('riskDocControl'); if(!el) return;
-  const d=S.riskDoc||{}; const dis=_roLocked()?' disabled':'';
-  const f=(label,field,type)=>`<div class="field-group"><label class="field-label">${label}</label><input type="${type||'text'}"${dis} value="${esc(d[field]||'')}" oninput="updateRiskDoc('${field}',this.value)"${type==='date'?` onchange="updateRiskDoc('${field}',this.value)"`:''}></div>`;
+  const dis=_roLocked()?' disabled':''; const rd=S.riskDoc||{}; const eff=_docFor('riskProfile');
+  const fmt=(s)=>{ try{ return s? new Date(String(s)+(String(s).length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'; }catch(e){ return '—'; } };
+  const ro=(label,val)=>`<div class="field-group"><label class="field-label">${label}</label><input disabled value="${esc(val==null||val===''?'—':val)}"></div>`;
   el.innerHTML = `<details class="rp-subcard" open>
     <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('fileText',17)} Document control <span id="riskDocFlag">${_docReviewFlagHTML()}</span></summary>
     <div class="sc-body">
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Document control is now managed centrally in the <button class="ck-link" style="display:inline;padding:0;" onclick="switchTab('reports')">Document Control register</button> (Reports tab) so every report is controlled consistently to ISO. This profile's current controlled-document details:</div>
       <div class="docctl-grid">
-        ${f('Version','version')}
-        ${f('Author','author')}
-        ${f('Date created','created','date')}
-        ${f('Date of last review','lastReview','date')}
-        ${f('Date of next review','nextReview','date')}
+        ${ro('Reference',eff.ref)}
+        ${ro('Version',eff.version)}
+        ${ro('Prepared by',eff.author)}
+        ${ro('Approved by',(eff.approverName||'')+(eff.approverRole?(' ('+eff.approverRole+')'):''))}
+        ${ro('Next review',fmt(eff.nextReview))}
       </div>
-      <div style="font-weight:700;font-size:12px;color:var(--text-muted);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.03em;">Senior-management approval</div>
-      <div class="docctl-grid">
-        ${f('Approved by (name)','approvedName')}
-        ${f('Role','approvedRole')}
-        ${f('Date approved','approvedDate','date')}
-      </div>
-      <div class="field-group" style="margin-top:14px;"><label class="field-label">Consulted with (employee consultation record)</label>
-        <textarea${dis} rows="2" placeholder="Who was consulted in preparing this profile — e.g. staff, safety reps, contractors" oninput="updateRiskDoc('consulted',this.value)">${esc(d.consulted||'')}</textarea></div>
+      <div style="margin-top:12px;"><button class="btn btn-ghost btn-sm no-print" onclick="switchTab('reports')">Manage document control →</button></div>
+      <div class="field-group" style="margin-top:16px;"><label class="field-label">Consulted with (employee consultation record)</label>
+        <textarea${dis} rows="2" placeholder="Who was consulted in preparing this profile — e.g. staff, safety reps, contractors" oninput="updateRiskDoc('consulted',this.value)">${esc(rd.consulted||'')}</textarea></div>
     </div></details>`;
 }
 
@@ -12330,6 +12409,59 @@ function _reportData(){
     highestHarm:_HARM_LADDER[maxSev]||'—', maxSev, acts, actOverdue, actNoOwner, actNoDate,
     energyCov, energyMissing, clDist, matDoms, matScored, overallMat, monPop, completeness, gaps };
 }
+// ══════════════════════════════════════════════════════════════
+//  DOCUMENT CONTROL — every generated report is a controlled document.
+//  A central register (S.docControl) holds one row per report plus org
+//  defaults; each report stamps its OWN row (unique reference, version,
+//  issue date, prepared-by, approved-by, next-review). This register is
+//  also the ISO "master list of controlled documents".
+// ══════════════════════════════════════════════════════════════
+const REPORT_DOCS = [
+  { key:'boardReport',      title:'Board Report',                 code:'BR'  },
+  { key:'riskProfile',      title:'Risk Profile',                 code:'RP'  },
+  { key:'actionPlan',       title:'Action Plan',                  code:'AP'  },
+  { key:'managementSystem', title:'Management System Assessment', code:'MS'  },
+  { key:'raRegister',       title:'Risk Assessment Register',     code:'RAR' },
+  { key:'riskAcceptance',   title:'Risk Acceptance Register',     code:'RAC' },
+  { key:'audit',            title:'Health & Safety Audit',        code:'AUD' },
+  { key:'feedback',         title:'Consultant Review & Feedback', code:'CR'  },
+  { key:'cas',              title:'CAS Submission Pack',           code:'CAS' },
+  { key:'acp',              title:'ACP Evidence Pack',             code:'ACP' }
+];
+function _docControlState(){
+  if(!S.docControl || typeof S.docControl!=='object') S.docControl = {};
+  if(!S.docControl.defaults) S.docControl.defaults = { author:'', approverName:'', approverRole:'', reviewMonths:12, refPrefix:'' };
+  if(!S.docControl.docs) S.docControl.docs = {};
+  return S.docControl;
+}
+function _docClientCode(){
+  const nm = (typeof _cockpitClientName==='function' && _cockpitClientName()) || (S.company&&(S.company.tradingName||S.company.legalName)) || 'AHS';
+  return (String(nm).replace(/[^A-Za-z0-9]/g,'').slice(0,4).toUpperCase()) || 'AHS';
+}
+function _autoDocRef(code, version){
+  const dc=_docControlState();
+  const pfx = (dc.defaults.refPrefix && dc.defaults.refPrefix.trim()) ? dc.defaults.refPrefix.trim() : ('AHS-'+_docClientCode());
+  return pfx+'-'+code+'-v'+String(version||'1.0');
+}
+// Resolve the controlled-document record to stamp on a report: the report's own
+// fields, falling back to org defaults, with auto reference / issue date / next
+// review when left blank. Legacy field names kept for any old readers.
+function _docFor(key){
+  const dc=_docControlState(); const def=dc.defaults||{}; const d=dc.docs[key]||{};
+  const meta=REPORT_DOCS.find(r=>r.key===key)||{code:'DOC'};
+  const version=(d.version&&String(d.version).trim())||'1.0';
+  const author=(d.author||def.author||'').trim();
+  const approverName=(d.approverName||def.approverName||'').trim();
+  const approverRole=(d.approverRole||def.approverRole||'').trim();
+  const today=new Date().toISOString().slice(0,10);
+  const issued=(d.issued&&d.issued.trim())||today;   // issue date defaults to the day it is generated
+  let nextReview=(d.nextReview&&d.nextReview.trim())||'';
+  if(!nextReview){ const m=parseInt(def.reviewMonths,10)||12; const nx=new Date(issued+'T00:00:00'); if(!isNaN(nx)){ nx.setMonth(nx.getMonth()+m); nextReview=nx.toISOString().slice(0,10); } }
+  const ref=(d.ref&&d.ref.trim())||_autoDocRef(meta.code, version);
+  return { ref, version, author, approverName, approverRole, issued, nextReview,
+           approvedName:approverName, approvedRole:approverRole };   // legacy aliases
+}
+
 // WinAnsi-safe ASCII fallback (Helvetica subset lacks arrows/curly quotes/dashes).
 function _pdfAscii(t){ return String(t).replace(/→/g,'>').replace(/×/g,'x').replace(/—/g,'-').replace(/–/g,'-').replace(/·/g,'-').replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/…/g,'...'); }
 // Report masthead: logo mark + practice name + client/date meta + rule + big title. Returns the y to continue from. Page 1 only.
@@ -12344,8 +12476,11 @@ function _pdfMasthead(doc, ML, RM, title, subtitle, client, d){
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(MUT[0],MUT[1],MUT[2]); doc.text('Health, safety & environmental advisers', ML+12.5, 20);
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(40,48,60); doc.text(A(client), RM, 14, {align:'right'});
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(MUT[0],MUT[1],MUT[2]);
-  doc.text(A(new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+'  -  v'+String((d&&d.version)||'1.0')), RM, 18, {align:'right'});
-  if(d&&d.author) doc.text(A('Prepared by '+d.author), RM, 21.8, {align:'right'});
+  const _mFmt=(s)=>{ try{ const dt = s ? new Date(String(s)+(String(s).length===10?'T12:00:00':'')) : new Date(); return isNaN(dt)?'' : dt.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return ''; } };
+  const _mVer=String((d&&d.version)||'1.0');
+  doc.text(A('Issued '+_mFmt(d&&d.issued)+'  -  v'+_mVer+((d&&d.ref)?('  -  '+d.ref):'')), RM, 18, {align:'right'});
+  const _mBy=[]; if(d&&d.author) _mBy.push('Prepared by '+d.author); if(d&&d.approverName) _mBy.push('Approved by '+d.approverName+(d.approverRole?(' ('+d.approverRole+')'):''));
+  if(_mBy.length) doc.text(A(_mBy.join('  -  ')), RM, 21.8, {align:'right'});
   doc.setDrawColor(NAVY[0],NAVY[1],NAVY[2]); doc.setLineWidth(0.6); doc.line(ML,25,RM,25); doc.setLineWidth(0.2);
   doc.setFont('helvetica','bold'); doc.setFontSize(19); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]);
   let y=34.5; doc.splitTextToSize(A(title), RM-ML).forEach(ln=>{ doc.text(ln, ML, y); y+=7.8; });
@@ -12502,15 +12637,36 @@ function _pdfBrandFooter(doc, ML, RM){
     doc.text('Page '+i+' of '+pages,RM,291,{align:'right'});
   }
 }
-// Kept for compatibility: all reports call this; d/reportName no longer used in the
-// footer (the masthead already carries the report title, version and provider).
-function _pdfFooter(K, d, reportName){ _pdfBrandFooter(K.doc, K.ML, K.RM); }
+// Every report calls this. It stamps the ISO document-control strip (reference,
+// version, issue date, next review) on every page, plus the "uncontrolled when
+// printed" note, then the AHS brand line. d is the per-report controlled-document
+// record from _docFor().
+function _pdfFooter(K, d, reportName){
+  if(d && (d.ref || d.version || d.issued || d.nextReview)){
+    const doc=K.doc, ML=K.ML, RM=K.RM, A=_pdfAscii;
+    const _f=(s)=>{ try{ const dt=s?new Date(String(s)+(String(s).length===10?'T12:00:00':'')):null; return (dt&&!isNaN(dt))?dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):''; }catch(e){ return ''; } };
+    const parts=[];
+    if(d.ref) parts.push('Ref '+d.ref);
+    parts.push('v'+String(d.version||'1.0'));
+    if(d.issued) parts.push('Issued '+_f(d.issued));
+    if(d.nextReview) parts.push('Next review '+_f(d.nextReview));
+    const left=parts.join('  -  ');
+    const pages=doc.getNumberOfPages();
+    for(let i=1;i<=pages;i++){
+      doc.setPage(i);
+      doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(120,128,140);
+      doc.text(A(left), ML, 283);
+      doc.text(A('Uncontrolled when printed'), RM, 283, {align:'right'});
+    }
+  }
+  _pdfBrandFooter(K.doc, K.ML, K.RM);
+}
 
 // ── C1. Board Report — narrative-led, for directors ──
 function buildBoardReport(){
   const data=_reportData();
   const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
-  const d=S.riskDoc||{};
+  const d=_docFor('boardReport');
   const RED=[197,32,32], AMBER=[180,110,10], GREY=[90,90,90], NAVY=[30,58,95], GREEN=[22,120,60];
   const K=_mkPdf('Health & Safety — Board Report', client, d, 'What can harm people here, what is being done, and what the board must decide.');
   const { doc, ML, RM, st, A } = K;
@@ -12634,7 +12790,7 @@ function profBoardReport(){ try{ buildBoardReport(); showToast('✓ Board report
 function buildActionPlanReport(){
   const data=_reportData();
   const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
-  const d=S.riskDoc||{};
+  const d=_docFor('actionPlan');
   const RED=[197,32,32];
   const K=_mkPdf('Action Plan', client, d, 'The work to close the gaps - grouped by owner, overdue first.');
   const { doc, ML, RM, st, A } = K;
@@ -12948,7 +13104,7 @@ function buildRiskProfileReportPDF(){
   const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const risks = (S.riskProfile||[]).slice();
   const client = _consultantView?.name || S.branding?.name || 'Client';
-  const d = S.riskDoc || {};
+  const d = _docFor('riskProfile');
   const ML=16, RM=194, TOP=18; let y=18;
   const fd = (s)=> s ? new Date(s+(s.length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
   const text = (t,size,bold,colour)=>{ doc.setFont('helvetica',bold?'bold':'normal'); doc.setFontSize(size); doc.setTextColor(colour?colour[0]:70,colour?colour[1]:70,colour?colour[2]:70); doc.splitTextToSize(String(t),RM-ML).forEach(w=>{ if(y>282){doc.addPage();y=TOP;} doc.text(w,ML,y); y+=size*0.48; }); };
@@ -13575,7 +13731,7 @@ const _REQ_STAGE_RGB = { Plan:[37,99,235], Do:[124,58,237], Check:[245,158,11], 
 function buildManagementSystemReportPDF(){
   const secs = S.requirements || [];
   const client = (_consultantView&&_consultantView.name) || (S.branding&&S.branding.name) || 'Client';
-  const d = S.riskDoc || {};
+  const d = _docFor('managementSystem');
   const stt = _reqStats();
   const K=_mkPdf('Management System Assessment', client, d, 'How the organisation meets its duties under the HSG65 framework - by exception.');
   const { doc, ML, RM, st, A } = K;
@@ -14393,7 +14549,7 @@ function buildCasSubmissionPackPDF(){
   const sections = CAS_FRAMEWORK.sections.filter(s=>!scheme.sections||scheme.sections.includes(s.id));
   const client = (_consultantView && _consultantView.name) || (Auth.user && Auth.user() && Auth.user().tenantName) || (S.branding && S.branding.name) || 'Client';
   const smallCo = _casSmallCo();
-  const d = S.riskDoc || {};
+  const d = _docFor('cas');
   const RED=[197,32,32], AMBER=[180,110,10], GREEN=[22,120,60], NAVY=[30,58,95], GREY=[120,120,120], BLUE=[37,99,235];
 
   let inScope=0,ready=0,partial=0,gap=0,na=0,prop=0;
@@ -14687,7 +14843,7 @@ function buildFeedbackReportPDF(){
   const fb={ feedback:_review().feedback||'', suggestions:_review().suggestions||'' };
   const lastRating=_reviewLastRating();
   const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
-  const d=S.riskDoc||{};
+  const d=_docFor('feedback');
   const NAVY=[30,58,95], GREEN=[22,120,60], AMBER=[180,110,10], RED=[197,32,32], GREY=[110,110,110];
   const K=_mkPdf('Consultant Review & Feedback', client, d, 'Progress, priorities and the consultant’s feedback for this client.');
   const { doc, ML, RM, st, A } = K;
@@ -14762,7 +14918,7 @@ function downloadAuditReport(){ try{ buildAuditReportPDF(); showToast('✓ Audit
 function buildAuditReportPDF(){
   const a=S.audit||{};
   const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
-  const d=S.riskDoc||{};
+  const d=_docFor('audit');
   const RED=[197,32,32], AMBER=[180,110,10], GREEN=[22,120,60], NAVY=[30,58,95], GREY=[110,110,110];
   const K=_mkPdf('Health & Safety Audit', client, d, 'A periodic review of how the health & safety management process is working.');
   const { doc, ML, RM, st, A } = K;
@@ -14808,7 +14964,7 @@ function downloadRiskAcceptanceReport(){ try{ buildRiskAcceptanceRegisterPDF(); 
 // consciously accepted (who, why, when) with a client acknowledgement sign-off.
 function buildRiskAcceptanceRegisterPDF(){
   const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
-  const d=S.riskDoc||{};
+  const d=_docFor('riskAcceptance');
   const NAVY=[30,58,95], GREY=[110,110,110], SLATE=[107,114,128], AMBER=[180,110,10];
   const K=_mkPdf('Risk Acceptance Register', client, d, 'Risks the client has consciously accepted rather than actioned.');
   const { doc, ML, RM, st } = K;
@@ -14830,7 +14986,7 @@ function buildRiskAcceptanceRegisterPDF(){
 }
 function buildRaRegisterReportPDF(){
   const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
-  const d=S.riskDoc||{};
+  const d=_docFor('raRegister');
   const list=(typeof _raRegState==='function')?_raRegState():(S.raRegister||[]);
   const RED=[197,32,32], AMBER=[180,110,10], GREEN=[22,120,60], NAVY=[30,58,95], GREY=[110,110,110];
   const K=_mkPdf('Risk Assessment Register', client, d, 'The register of risk assessments and RAMS held for this client, and where each document is filed.');
@@ -15221,7 +15377,7 @@ function downloadApprovedPartnerPack(){
 }
 function _buildAcpPackPDF(){
   var client=(typeof _consultantView!=='undefined'&&_consultantView&&_consultantView.name)||(typeof S!=='undefined'&&S.branding&&S.branding.name)||'Client';
-  var d=(typeof S!=='undefined'&&S.riskDoc)||{};
+  var d=(typeof _docFor==='function')?_docFor('acp'):((typeof S!=='undefined'&&S.riskDoc)||{});
   var NAVY=[30,58,95], GREEN=[22,120,60], RED=[197,32,32], GREY=[120,120,120], TEAL=[13,110,150], AMBER=[170,120,60];
   var sc=ACP.schemes||{}, pP=_acpProgress('practice'), pC=_acpProgress('client');
   var OUT={ yes:{t:'YES',c:GREEN}, no:{t:'NO',c:RED}, na:{t:'N/A',c:GREY} };
@@ -15312,7 +15468,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions'];
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions','docControl'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

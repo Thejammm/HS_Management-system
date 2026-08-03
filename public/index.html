@@ -750,7 +750,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="tab-btn" data-tab="requirements" onclick="switchTab('requirements')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg> Management system</button>
     <button class="tab-btn" data-tab="monitoring" onclick="switchTab('monitoring')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Assurance records</button>
     <button class="tab-btn" data-consultant data-tab="review" onclick="switchTab('review')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Consultant review</button>
-    <button class="tab-btn" data-tab="actionplan" onclick="switchTab('actionplan')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg> Action plan <span class="tb-badge" id="badgeActionPlan"></span></button>
+    <button class="tab-btn" data-consultant data-tab="actionplan" onclick="switchTab('actionplan')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg> Action plan <span class="tb-badge" id="badgeActionPlan"></span></button>
+    <button class="tab-btn" data-client data-tab="execplan" onclick="switchTab('execplan')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Client execution plan <span class="tb-badge" id="badgeExecPlan"></span></button>
     <button class="tab-btn" data-tab="documents" onclick="switchTab('documents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Documents</button>
     <button class="tab-btn" data-tab="reports" onclick="switchTab('reports')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg> Reports</button>
     <button class="tab-btn" data-tab="cas" onclick="switchTab('cas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg> Accreditation</button>
@@ -1084,6 +1085,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </style>
   <div id="tab-actionplan" class="tab-panel">
     <div id="actionPlanRoot"></div>
+  </div>
+
+  <div id="tab-execplan" class="tab-panel">
+    <div id="execPlanRoot"></div>
   </div>
 
   <div id="tab-requirements" class="tab-panel">
@@ -2815,6 +2820,7 @@ function switchTab(id) {
   if(id==='risk')     { renderRiskProfile(); renderRiskReview(); }
   if(id==='requirements'){ renderRequirements(); }
   if(id==='actionplan'){ renderActionPlanTab(); }
+  if(id==='execplan'){ renderExecPlan(); }
   if(id==='monitoring'){ renderMonitoring(); renderRaRegister(); renderAppLinks(); }
   if(id==='review')   { renderReview(); }
   if(id==='documents'){ renderDocuments(); }
@@ -4391,6 +4397,7 @@ function updateBadge(){
   const open=S.actions.filter(a=>!a.resolved).length;
   const b=document.getElementById('badgeActions');
   if(b){b.textContent=open;b.style.display=open>0?'inline-flex':'none';}
+  try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -9981,6 +9988,9 @@ function applyViewMode(){
     else                         show = true;            // consultant sees all
     // Admin (and any data-consultant tab) is reserved for the consultant role.
     if(b.hasAttribute('data-consultant') && !isConsultant) show = false;
+    // Client-only tabs (e.g. the Client execution plan) show in the client view;
+    // the consultant sees them only when previewing the client view.
+    if(b.hasAttribute('data-client') && mode !== 'management') show = false;
     b.style.display = show ? '' : 'none';
   });
   const active = document.querySelector('.tab-btn.active');
@@ -10646,6 +10656,10 @@ function renderReports(){
       icon:svg('<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>'),
       desc:'The working to-do list: grouped by owner, overdue first, with a tick-box and sign-off. The document that actually gets used.',
       tags:['Working tool','By owner','Sign-off'] },
+    { title:'Client Execution Plan', accent:'#0EA5E9', tint:'#E4F4FC', fn:'downloadExecPlanReport()', meta:(_execOpenCount()+' open action'+(_execOpenCount()!==1?'s':'')),
+      icon:svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
+      desc:'A point-in-time snapshot for the client: every action to do, grouped by month and traffic-lit — from risk profile, management system, assurance and accreditation.',
+      tags:['Client','By month','RAG'] },
     { title:'Management System', accent:'#16A34A', tint:'#E7F6EE', fn:'downloadManagementSystemReport()', meta:mgmtMeta,
       icon:svg('<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>'),
       desc:'How the organisation meets its HSG65 duties, reported by exception — only what needs action, never empty scaffolding.',
@@ -10955,6 +10969,145 @@ function _allRiskActions(){
 }
 function _overdueActionCount(){ return _allRiskActions().filter(x=>x.status==='Overdue').length; }
 function _reviewOverdue(){ const d=S.riskDoc&&S.riskDoc.nextReview; if(!d) return false; const nx=new Date(d+'T23:59:59'); return !isNaN(nx) && nx < new Date(); }
+
+// ══════════════════════════════════════════════════════════════
+//  CLIENT EXECUTION PLAN — one aggregated view of every action the client
+//  needs to do: Risk Profile + Management System + Assurance + Accreditation.
+//  Inspection actions are deliberately EXCLUDED (they self-manage via the
+//  inspection flow). There is exactly one copy of each action (on its origin
+//  object); the Action Plan and Execution Plan are two lenses on this same
+//  aggregator and edits route back to the origin, so they never drift.
+// ══════════════════════════════════════════════════════════════
+const RAG_COLOR = { red:'#DC2626', amber:'#F59E0B', green:'#16A34A', grey:'#9CA3AF' };
+function _actionRag(due, status){
+  if(status==='Complete') return 'green';
+  if(status==='Accepted') return 'grey';
+  if(status==='Overdue')  return 'red';
+  if(!due) return 'amber';                       // open with no target date = needs attention
+  const d=new Date(String(due)+'T00:00:00'); if(isNaN(d)) return 'amber';
+  const now=new Date(); now.setHours(0,0,0,0);
+  if(d<now) return 'red';
+  if(d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth()) return 'amber';  // due this month
+  return 'green';                                // on track (future month)
+}
+function _actionMonthKey(due){ return (due && String(due).length>=7) ? String(due).slice(0,7) : ''; }
+// Normalised list of every non-inspection action, each with a ref to its origin.
+function _execActions(){
+  const out=[];
+  const norm=(src,label,ref,a)=>{ const status=_actionStatus(a); out.push({
+    desc:a.desc||'', owner:a.owner||'', due:a.due||'', priority:a.priority||'',
+    status, raw:a.status||'Not started', rag:_actionRag(a.due,status), source:src, sourceLabel:label||'', ref }); };
+  _allRiskActions().forEach(x=>{ if(x.a.hideFromPlan) return; if(!(x.a.desc||x.a.owner||x.a.due)) return;
+    norm('Risk profile', x.r.activity||x.r.hazard||'Risk', {t:'risk', a:x.r.id, b:x.a.id}, x.a); });
+  (typeof _allMgmtActions==='function'?_allMgmtActions():[]).forEach(x=>{ if(x.it&&x.it.hideFromPlan) return;
+    norm('Management system', x.source||'', {t:'mgmt', a:x.secId, b:x.id},
+      { desc:x.desc, owner:x.owner, due:x.due, priority:x.priority, status:x.it.actionStatus }); });
+  (S.actionPlan||[]).forEach(a=>{ if(a.hideFromPlan) return; if(!(a.desc||a.owner||a.due)) return;
+    const rk=(S.riskProfile||[]).find(r=>r.id===a.riskId);
+    const src=a.source || (rk?'Risk profile':'Added directly');
+    norm(src, a.sourceLabel||(rk?(rk.activity||rk.hazard):''), {t:'free', a:a.id}, a); });
+  return out;
+}
+function _execOpenCount(){ return _execActions().filter(x=>x.status!=='Complete' && x.status!=='Accepted').length; }
+function _execOrigin(ref){
+  if(!ref) return null;
+  if(ref.t==='risk'){ const r=(S.riskProfile||[]).find(x=>x.id===ref.a); return r ? (r.actions||[]).find(x=>x.id===ref.b) : null; }
+  if(ref.t==='mgmt'){ const s=(S.requirements||[]).find(x=>x.id===ref.a); return s ? (s.items||[]).find(x=>x.id===ref.b) : null; }
+  if(ref.t==='free'){ return (S.actionPlan||[]).find(x=>x.id===ref.a); }
+  return null;
+}
+// Update an exec action's status or target date — writes through to the origin.
+function updateExecAction(refStr, field, value){
+  if(_roLocked()) return;
+  let ref; try{ ref=JSON.parse(decodeURIComponent(refStr)); }catch(e){ return; }
+  const o=_execOrigin(ref); if(!o) return;
+  if(ref.t==='mgmt'){
+    if(field==='status'){ o.actionStatus=value; if(value==='Accepted' && !o.acceptDate) o.acceptDate=new Date().toISOString().slice(0,10); }
+    else if(field==='due') o.dueDate=value;
+  } else { o[field]=value; }
+  if(typeof _stamp==='function') _stamp(o,'updated');
+  saveData(); _refreshActionViews();
+}
+// Raise a new action from Assurance / Accreditation (or anywhere) into the plan.
+function raiseExecAction(source, label){
+  if(_blockIfReadOnly()) return;
+  const desc = (typeof prompt==='function') ? prompt('What action needs doing? (You can set the target date in the execution plan.)', '') : '';
+  if(desc===null) return;                 // cancelled
+  if(!String(desc).trim()){ if(typeof showToast==='function') showToast('No description entered — nothing added','info'); return; }
+  if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
+  const it={ id:_reqUid('act'), desc:String(desc).trim(), owner:'', due:'', status:'Not started', priority:'', source:source||'Added directly', sourceLabel:label||'' };
+  if(typeof _stamp==='function') _stamp(it,'created');
+  S.actionPlan.push(it);
+  saveData(); _refreshActionViews();
+  if(typeof showToast==='function') showToast('✓ Action added to the execution plan — set its target date there','success');
+}
+// Sidebar "markers": open-action count on the Action plan + Execution plan tabs.
+function updateActionBadges(){
+  const n=_execOpenCount();
+  ['badgeActionPlan','badgeExecPlan'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.textContent=n; b.style.display=n>0?'inline-flex':'none'; } });
+}
+function _refreshActionViews(){
+  try{ if(typeof renderActionPlanTab==='function' && document.getElementById('tab-actionplan')?.classList.contains('active')) renderActionPlanTab(); }catch(e){}
+  try{ if(typeof renderExecPlan==='function' && document.getElementById('tab-execplan')?.classList.contains('active')) renderExecPlan(); }catch(e){}
+  updateActionBadges();
+}
+// The Client execution plan tab — RAG-coded, this-month focus + full year.
+function renderExecPlan(){
+  const root=document.getElementById('execPlanRoot'); if(!root) return;
+  updateActionBadges();
+  const dis=_roLocked()?' disabled':'';
+  const acts=_execActions();
+  const thisKey=new Date().toISOString().slice(0,7);
+  const monthName=(k)=>{ if(!k) return 'No target date'; const p=k.split('-'); return new Date(+p[0],+p[1]-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); };
+  const open=acts.filter(a=>a.status!=='Complete'&&a.status!=='Accepted');
+  const overdue=acts.filter(a=>a.rag==='red');
+  const dueThis=open.filter(a=>_actionMonthKey(a.due)===thisKey && a.rag!=='red');
+  const complete=acts.filter(a=>a.status==='Complete');
+  const STATUSES=['Not started','In progress','Complete','Accepted'];
+  const ref=(a)=>encodeURIComponent(JSON.stringify(a.ref));
+  const row=(a)=>{ const c=RAG_COLOR[a.rag]||RAG_COLOR.grey;
+    return `<div style="display:flex;gap:12px;align-items:flex-start;border:1.5px solid var(--border);border-left:5px solid ${c};border-radius:9px;padding:12px 14px;margin-bottom:10px;">
+      <span title="${a.rag==='red'?'Overdue':a.rag==='amber'?'Due this month / needs a date':a.rag==='grey'?'Risk accepted':'On track'}" style="width:12px;height:12px;border-radius:50%;background:${c};flex:0 0 auto;margin-top:4px;"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:14px;margin-bottom:5px;line-height:1.35;">${esc(a.desc||'(no description yet — add it in the source section)')}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12px;color:var(--text-muted);">
+          <span class="badge badge-muted">${esc(a.source)}</span>${a.sourceLabel?`<span>${esc(a.sourceLabel)}</span>`:''}${a.owner?`<span>&middot; ${esc(a.owner)}</span>`:''}${a.priority?`<span>&middot; ${esc(a.priority)} priority</span>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
+        <label style="font-size:10.5px;color:var(--text-muted);white-space:nowrap;">Target date<br><input type="date"${dis} value="${a.due||''}" onchange="updateExecAction('${ref(a)}','due',this.value)"></label>
+        <select${dis} onchange="updateExecAction('${ref(a)}','status',this.value)" style="font-size:12.5px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select>
+      </div>
+    </div>`;
+  };
+  const byMonth={};
+  open.forEach(a=>{ const k=_actionMonthKey(a.due); (byMonth[k]=byMonth[k]||[]).push(a); });
+  const monthKeys=Object.keys(byMonth).filter(k=>k).sort();
+  if(byMonth['']) monthKeys.push('');   // undated last
+  const tile=(num,label,color)=>`<div style="flex:1;min-width:110px;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:26px;font-weight:800;color:${color};line-height:1;">${num}</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">${label}</div></div>`;
+  const focus = (overdue.length||dueThis.length)
+    ? `${overdue.map(row).join('')}${dueThis.map(row).join('')}`
+    : `<div class="ck-pending" style="padding:8px 0;">Nothing overdue or due this month.</div>`;
+  root.innerHTML = `
+    <div class="rep-hero"><h2>Client execution plan</h2><p>Everything you need to do &mdash; from your risk profile, management system, assurance and accreditation. Set a target date and mark progress. Traffic lights: <span style="color:${RAG_COLOR.red};font-weight:700;">overdue</span> &middot; <span style="color:${RAG_COLOR.amber};font-weight:700;">this month</span> &middot; <span style="color:${RAG_COLOR.green};font-weight:700;">on track</span>.</p></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">
+      ${tile(open.length,'Open','#30415f')}
+      ${tile(overdue.length,'Overdue', overdue.length?RAG_COLOR.red:'#30415f')}
+      ${tile(dueThis.length,'Due this month', dueThis.length?RAG_COLOR.amber:'#30415f')}
+      ${tile(complete.length,'Complete', complete.length?RAG_COLOR.green:'#30415f')}
+    </div>
+    <div class="card" style="margin-bottom:18px;">
+      <div class="card-band"><h3><span class="dot">&#9679;</span> This month &mdash; ${monthName(thisKey)}</h3></div>
+      <div class="card-body">${focus}</div>
+    </div>
+    <div class="card">
+      <div class="card-band"><h3><span class="dot">&#9679;</span> The full year &mdash; everything on your plan</h3></div>
+      <div class="card-body">
+        ${open.length ? monthKeys.map(k=>`<div style="margin-bottom:14px;"><div style="font-weight:700;font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;border-bottom:1.5px solid var(--border);padding-bottom:4px;">${monthName(k)} <span style="font-weight:600;">(${byMonth[k].length})</span></div>${byMonth[k].map(row).join('')}</div>`).join('') : `<div class="ck-pending" style="padding:8px 0;">No open actions yet. As actions are identified in your risk profile, management system, assurance and accreditation, they appear here to plan.</div>`}
+        ${complete.length?`<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:13px;color:var(--text-muted);">${complete.length} completed action${complete.length!==1?'s':''}</summary><div style="margin-top:10px;">${complete.map(row).join('')}</div></details>`:''}
+      </div>
+    </div>`;
+}
 
 // ── Hazard library (spec #8) — seeded from ahs-required-risks.md.
 // Suggested starting ratings only; must be reviewed and agreed by the company.
@@ -11679,6 +11832,7 @@ function restoreMgmtActionToPlan(secId, itemId){
 function _apGotoMgmt(itemId){ switchTab('requirements'); setTimeout(()=>{ const el=document.getElementById('reqstatus-'+itemId); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); }, 90); }
 function renderActionPlanTab(){
   const root=document.getElementById('actionPlanRoot'); if(!root) return;
+  try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
   const ro=_roLocked(); const dis=ro?' disabled':'';
   const _allRA=_allRiskActions();
   const riskActs=_allRA.filter(x=>!(x.a&&x.a.hideFromPlan));
@@ -12445,6 +12599,7 @@ const REPORT_DOCS = [
   { key:'boardReport',      title:'Board Report',                 code:'BR'  },
   { key:'riskProfile',      title:'Risk Profile',                 code:'RP'  },
   { key:'actionPlan',       title:'Action Plan',                  code:'AP'  },
+  { key:'executionPlan',    title:'Client Execution Plan',        code:'EP'  },
   { key:'managementSystem', title:'Management System Assessment', code:'MS'  },
   { key:'raRegister',       title:'Risk Assessment Register',     code:'RAR' },
   { key:'riskAcceptance',   title:'Risk Acceptance Register',     code:'RAC' },
@@ -12868,6 +13023,47 @@ function buildActionPlanReport(){
 }
 function downloadBoardReport(){ if(!(S.riskProfile||[]).length){ showToast('Add at least one risk first','info'); return; } try{ buildBoardReport(); showToast('✓ Board report created','success'); }catch(e){ console.error('Board report failed',e); showToast('Could not build the report — see console','error'); } }
 function downloadActionPlanReport(){ if(!(S.riskProfile||[]).length){ showToast('Add at least one risk first','info'); return; } try{ buildActionPlanReport(); showToast('✓ Action plan created','success'); }catch(e){ console.error('Action plan failed',e); showToast('Could not build the plan — see console','error'); } }
+function downloadExecPlanReport(){ try{ buildExecPlanReportPDF(); showToast('✓ Execution plan created','success'); }catch(e){ console.error('Exec plan report failed',e); showToast('Could not build the plan — see console','error'); } }
+// Client Execution Plan report — point-in-time snapshot of every non-inspection
+// action, grouped by month, RAG-coded. Same house style + document control.
+function buildExecPlanReportPDF(){
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+  const d=_docFor('executionPlan');
+  const RED=[220,38,38], AMBER=[245,158,11], GREEN=[22,163,74], GREY=[120,120,120], NAVY=[30,58,95];
+  const K=_mkPdf('Client Execution Plan', client, d, 'Everything to do, by when - from the risk profile, management system, assurance and accreditation. A point-in-time snapshot.');
+  const { doc } = K;
+  const fd=(s)=> s ? new Date(String(s)+(String(s).length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'no date';
+  const ragCol=(r)=>r==='red'?RED:r==='amber'?AMBER:r==='grey'?GREY:GREEN;
+  const acts=_execActions();
+  const open=acts.filter(a=>a.status!=='Complete'&&a.status!=='Accepted');
+  const overdue=acts.filter(a=>a.rag==='red');
+  const thisKey=new Date().toISOString().slice(0,7);
+  const dueThis=open.filter(a=>_actionMonthKey(a.due)===thisKey && a.rag!=='red');
+  const done=acts.filter(a=>a.status==='Complete');
+  const monthName=(k)=>{ if(!k) return 'No target date'; const p=k.split('-'); return new Date(+p[0],+p[1]-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); };
+  K.verdictBox(open.length? (open.length+' action'+(open.length!==1?'s':'')+' to do'+(overdue.length?('  -  '+overdue.length+' overdue'):'')+(dueThis.length?('  -  '+dueThis.length+' due this month'):'')) : 'No open actions - the plan is clear.', overdue.length?RED:dueThis.length?AMBER:GREEN);
+  K.section('At a glance', NAVY);
+  K.tiles([{num:open.length,label:'Open',color:NAVY,sub:'To do'},{num:overdue.length,label:'Overdue',color:overdue.length?RED:NAVY,sub:'Past target'},{num:dueThis.length,label:'Due this month',color:dueThis.length?AMBER:NAVY,sub:'Focus'},{num:done.length,label:'Complete',color:done.length?GREEN:NAVY,sub:'Delivered'}]);
+  const byMonth={}; open.forEach(a=>{ const k=_actionMonthKey(a.due); (byMonth[k]=byMonth[k]||[]).push(a); });
+  const keys=Object.keys(byMonth).filter(k=>k).sort(); if(byMonth['']) keys.push('');
+  if(!open.length){ K.section('Plan', NAVY); K.text('No open actions. Actions raised in the risk profile, management system, assurance and accreditation will appear here.', 10, {color:GREY}); }
+  keys.forEach(k=>{
+    K.section(monthName(k)+'  ('+byMonth[k].length+')', NAVY);
+    K.table(
+      [{header:'ACTION',w:84},{header:'SOURCE',w:40},{header:'TARGET',w:22},{header:'STATUS',w:22}],
+      byMonth[k].map(a=>[ a.desc||'(no description)', {text:a.source+(a.sourceLabel?(' - '+a.sourceLabel):''), color:[120,120,120]}, {text:fd(a.due), color:a.rag==='red'?RED:[100,100,100]}, {text:a.status, bold:true, color:ragCol(a.rag)} ]),
+      {headFill:NAVY, headText:[255,255,255]}
+    );
+  });
+  if(done.length){
+    K.section('Completed  ('+done.length+')', GREEN);
+    K.table([{header:'ACTION',w:102},{header:'SOURCE',w:44},{header:'TARGET',w:22}],
+      done.map(a=>[a.desc||'(no description)', {text:a.source, color:[120,120,120]}, {text:fd(a.due), color:[120,120,120]}]),
+      {headFill:GREEN, headText:[255,255,255]});
+  }
+  _pdfFooter(K, d, 'Client Execution Plan');
+  doc.save('execution-plan-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+}
 
 function _profBoardReport_dead(){
   try{
@@ -14232,7 +14428,11 @@ function renderMonitoring(){
         ${regBody}
         ${ro?'':`<button class="btn btn-primary btn-sm no-print" onclick="addRegSection()" style="margin-top:2px;">＋ Add section</button>`}
       </div>
-    </div>`;
+    </div>`
+    + (ro?'':`<div class="card"><div class="card-body" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;">
+        <div style="font-size:13px;color:var(--text-muted);">Spotted something in assurance that needs doing (a failed inspection, an overdue statutory item, a gap)? Raise it into the client's execution plan.</div>
+        <button class="btn btn-outline btn-sm no-print" onclick="raiseExecAction('Assurance','Assurance record')">＋ Raise action into the plan</button>
+      </div></div>`);
 
   // Save row: hide the save action when a consultant is viewing read-only;
   // show when this month was last saved and which months already have figures.
@@ -14779,7 +14979,11 @@ function renderCAS(){
         </table>
       </div>
     </div>`;
-  }).join('');
+  }).join('')
+  + (_roLocked()?'':`<div class="card"><div class="card-body" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;">
+      <div style="font-size:13px;color:var(--text-muted);">Found an accreditation gap to close (evidence to gather, a criterion to meet)? Raise it into the client's execution plan.</div>
+      <button class="btn btn-outline btn-sm no-print" onclick="raiseExecAction('Accreditation','Accreditation gap')">＋ Raise action into the plan</button>
+    </div></div>`);
   if(typeof renderApprovedPartner==='function') renderApprovedPartner();
 }
 

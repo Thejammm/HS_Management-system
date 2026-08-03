@@ -4536,6 +4536,7 @@ function _renderFormReportCard(insp, archived){
           style="background:var(--accent);color:#fff;border:1px solid var(--accent);height:26px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;line-height:1;"
           onmouseover="this.style.background='var(--accent-dark, var(--accent))';this.style.opacity='0.9';"
           onmouseout="this.style.background='var(--accent)';this.style.opacity='1';">📄 PDF</button>
+        ${_isConsultantUser()?`<button class="no-print" onclick="deleteInspection('${insp.id}')" title="Delete this submission (consultant only) — for clearing test or erroneous entries" style="background:transparent;color:var(--danger);border:1px solid var(--danger-brd);height:26px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;line-height:1;">✕ Delete</button>`:''}
       </div>
     </div>
     <div class="card-body">
@@ -10401,7 +10402,7 @@ const COCKPIT_WIDGETS = {
   kpiOpenActions: { id:'kpiOpenActions', label:'Open actions', group:'KPI', render:x=>_ckKpi('Open actions', x.openA, x.overdueA?(x.overdueA+' overdue'):'None overdue', x.overdueA?'var(--danger)':'', 'actions', x.openA?'gotoOpenActions()':'') },
   kpiMgmtGaps:    { id:'kpiMgmtGaps', label:'Management system gaps', group:'KPI', render:x=>_ckKpi('Management system gaps', x.reqG.gaps, x.reqG.assessed+' assessed', x.reqG.gaps?'var(--warning)':'', 'requirements') },
   kpiCompleteness:{ id:'kpiCompleteness', label:'Assessment completeness', group:'KPI', render:x=>_ckKpi('Assessment completeness', x.RD.completeness+'%', x.RD.completeness<100?'still being built':'complete', x.RD.completeness<60?'var(--warning)':'', 'risk') },
-  kpiInspections: { id:'kpiInspections', label:'Inspections', group:'KPI', render:x=>_ckKpi('Inspections', x.insps.length, x.signedOff+' signed off · '+x.awaiting+' awaiting', '', 'inspection') },
+  kpiInspections: { id:'kpiInspections', label:'Inspections', group:'KPI', render:x=>_ckKpi('Inspections', x.insps.length, x.signedOff+' signed off · '+x.awaiting+' awaiting', '', 'monthly') },
   chartInspections:{ id:'chartInspections', label:'Inspections by month', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Inspections by month</h4><svg viewBox="0 0 ${x.BW} ${x.BH}" width="100%" style="max-height:200px;">${x.barSvg}</svg></div>` },
   chartCompliance:{ id:'chartCompliance', label:'Compliance', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Compliance</h4><div class="ckx-donut-wrap">${x.donut}<div class="ckx-legend">${_ckLeg('var(--success)','Pass',x.pass)}${_ckLeg('#6EE7B7','Rectified',x.rect)}${_ckLeg('var(--warning)','Action',x.act)}</div><button class="ck-link" onclick="switchTab('monthly')">View monthly report</button></div></div>` },
   riskVsMaturity: { id:'riskVsMaturity', label:'Risk exposure vs maturity', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;">${_riskVsMaturityHTML({heading:'Risk exposure vs management maturity'})}</div>` },

@@ -10677,22 +10677,6 @@ function renderReports(){
 function _docControlRegisterHTML(){
   const dc=_docControlState(); const def=dc.defaults; const dis=_roLocked()?' disabled':'';
   const di=(label,field,val,type)=>`<div class="field-group"><label class="field-label">${label}</label><input type="${type||'text'}"${dis} value="${esc(val==null?'':val)}" oninput="updateDocDefault('${field}',this.value)"></div>`;
-  const inStyle='width:100%;min-width:78px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;background:transparent;color:inherit;';
-  const rows=REPORT_DOCS.map(r=>{
-    const d=dc.docs[r.key]||{}; const eff=_docFor(r.key);
-    const cell=(field,ph,type)=>`<input type="${type||'text'}"${dis} value="${esc(d[field]||'')}" placeholder="${esc(ph||'')}" oninput="updateDocField('${r.key}','${field}',this.value)"${type==='date'?` onchange="updateDocField('${r.key}','${field}',this.value)"`:''} style="${inStyle}">`;
-    return `<tr style="${d.omit?'opacity:.5;':''}">
-      <td style="padding:5px 8px;font-weight:600;white-space:nowrap;">${esc(r.title)}</td>
-      <td style="padding:5px 8px;min-width:150px;">${cell('ref', eff.ref)}</td>
-      <td style="padding:5px 8px;width:60px;">${cell('version','1.0')}</td>
-      <td style="padding:5px 8px;">${cell('author', def.author||'set default')}</td>
-      <td style="padding:5px 8px;">${cell('approverName', def.approverName||'set default')}</td>
-      <td style="padding:5px 8px;">${cell('approverRole', def.approverRole||'set default')}</td>
-      <td style="padding:5px 8px;width:140px;">${cell('issued','auto: on generate','date')}</td>
-      <td style="padding:5px 8px;width:140px;">${cell('nextReview','auto: +'+(parseInt(def.reviewMonths,10)||12)+'mo','date')}</td>
-      <td style="padding:5px 8px;text-align:center;white-space:nowrap;"><label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:var(--text-muted);" title="Toggle off to generate this report without any document-control stamp"><input type="checkbox"${dis} ${d.omit?'':'checked'} onchange="toggleDocOmit('${r.key}', !this.checked)" style="cursor:pointer;">${d.omit?'Off':'On'}</label></td>
-    </tr>`;
-  }).join('');
   return `<div class="card" style="margin:0 0 20px;">
     <div class="card-band"><h3><span class="dot">●</span> Document control <span class="badge badge-muted">ISO master list</span></h3></div>
     <div class="card-body">
@@ -10710,17 +10694,41 @@ function _docControlRegisterHTML(){
         <thead><tr style="text-align:left;color:var(--text-muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;border-bottom:1.5px solid var(--border);">
           <th style="padding:6px 8px;">Document</th><th style="padding:6px 8px;">Reference</th><th style="padding:6px 8px;">Ver</th><th style="padding:6px 8px;">Prepared by</th><th style="padding:6px 8px;">Approved by</th><th style="padding:6px 8px;">Role</th><th style="padding:6px 8px;">Issued</th><th style="padding:6px 8px;">Next review</th><th style="padding:6px 8px;text-align:center;">Control</th>
         </tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody id="docCtrlRows">${_docControlRowsHTML()}</tbody>
       </table></div>
       <p style="font-size:11.5px;color:var(--text-muted);margin:12px 0 0;">Greyed placeholders show the auto value used if a cell is left blank. Each generated report stamps its own row (reference, version, prepared/approved by, issue and review dates) on its masthead and footer. Turn a row's <strong>Control</strong> toggle off to generate that report with no document-control stamp.</p>
     </div>
   </div>`;
 }
+// Just the register table rows — kept separate so editing the Defaults can
+// live-refresh the table body without re-rendering (and stealing focus from)
+// the defaults inputs above it.
+function _docControlRowsHTML(){
+  const dc=_docControlState(); const def=dc.defaults; const dis=_roLocked()?' disabled':'';
+  const inStyle='width:100%;min-width:78px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;background:transparent;color:inherit;';
+  return REPORT_DOCS.map(r=>{
+    const d=dc.docs[r.key]||{}; const eff=_docFor(r.key);
+    const cell=(field,ph,type)=>`<input type="${type||'text'}"${dis} value="${esc(d[field]||'')}" placeholder="${esc(ph||'')}" oninput="updateDocField('${r.key}','${field}',this.value)"${type==='date'?` onchange="updateDocField('${r.key}','${field}',this.value)"`:''} style="${inStyle}">`;
+    return `<tr style="${d.omit?'opacity:.5;':''}">
+      <td style="padding:5px 8px;font-weight:600;white-space:nowrap;">${esc(r.title)}</td>
+      <td style="padding:5px 8px;min-width:150px;">${cell('ref', eff.ref)}</td>
+      <td style="padding:5px 8px;width:60px;">${cell('version','1.0')}</td>
+      <td style="padding:5px 8px;">${cell('author', def.author||'set default')}</td>
+      <td style="padding:5px 8px;">${cell('approverName', def.approverName||'set default')}</td>
+      <td style="padding:5px 8px;">${cell('approverRole', def.approverRole||'set default')}</td>
+      <td style="padding:5px 8px;width:140px;">${cell('issued','auto: on generate','date')}</td>
+      <td style="padding:5px 8px;width:140px;">${cell('nextReview','auto: +'+(parseInt(def.reviewMonths,10)||12)+'mo','date')}</td>
+      <td style="padding:5px 8px;text-align:center;white-space:nowrap;"><label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:var(--text-muted);" title="Toggle off to generate this report without any document-control stamp"><input type="checkbox"${dis} ${d.omit?'':'checked'} onchange="toggleDocOmit('${r.key}', !this.checked)" style="cursor:pointer;">${d.omit?'Off':'On'}</label></td>
+    </tr>`;
+  }).join('');
+}
+function _docCtrlRefreshRows(){ const tb=document.getElementById('docCtrlRows'); if(tb) tb.innerHTML=_docControlRowsHTML(); }
 function updateDocDefault(field, value){
   if(_roLocked()) return;
   const dc=_docControlState();
   dc.defaults[field] = (field==='reviewMonths') ? (parseInt(value,10)||12) : value;
   scheduleAutoSave();
+  _docCtrlRefreshRows();   // live-update every row so it reflects the new default
 }
 function updateDocField(key, field, value){
   if(_roLocked()) return;

@@ -7297,6 +7297,19 @@ function migrateLoadedState(){
       }
     });
   }
+
+  // Heal form inspections submitted before the noReview flag existed:
+  // sign-and-file forms (induction, tardiness, RTW) are complete on submit and
+  // must never sit in the Awaiting Review / Ready-for-Sign-Off queues. Reads the
+  // flag from FORMS so it always tracks the current sign-and-file set.
+  if(Array.isArray(S.inspections)){
+    S.inspections.forEach(insp => {
+      if(insp && insp.kind === 'form' && FORMS[insp.typeId] && FORMS[insp.typeId].noReview === true && !insp.noReview){
+        insp.noReview = true;
+        insp.awaitingReview = false;
+      }
+    });
+  }
 }
 
 function saveAs(){

@@ -7255,6 +7255,19 @@ function migrateLoadedState(){
   if(!S.monitoring.months || typeof S.monitoring.months !== 'object') S.monitoring.months = {};
   if(!S.monitoring.meta   || typeof S.monitoring.meta   !== 'object') S.monitoring.meta = {};
   if(!Array.isArray(S.monitoring.regulatory)) S.monitoring.regulatory = [];
+  // Regulatory tracker is now organised into named sections, each holding statutory
+  // items. Migrate the legacy flat list into a default section the first time.
+  if(!Array.isArray(S.monitoring.regSections)){
+    S.monitoring.regSections = [];
+    if(S.monitoring.regulatory.length){
+      S.monitoring.regSections.push({
+        id:_reqUid('regsec'), name:'Statutory inspections',
+        items: S.monitoring.regulatory.map(r => ({ id:r.id||_reqUid('reg'), item:r.item||'', dueDate:r.dueDate||'', result:r.result||'', resultDate:r.resultDate||'' }))
+      });
+      S.monitoring.regulatory = [];   // migrated — sections are now the source
+      S.monitoring.regSeeded = true;  // don't auto-seed over a migrated tracker
+    }
+  }
 
   // Stage 2: consultant review (rating history + feedback) moves into per-tenant
   // state so it syncs to the server instead of living only in this device's
@@ -13892,20 +13905,44 @@ function updateMonReview(){
   scheduleAutoSave();
 }
 
-// Regulatory tracker
-function addRegItem(){
+// Regulatory tracker — organised into named sections, each holding statutory items.
+function _regSections(){ if(!Array.isArray(S.monitoring.regSections)) S.monitoring.regSections = []; return S.monitoring.regSections; }
+function _regSection(secId){ return _regSections().find(s => s.id === secId); }
+function addRegSection(){
   if(_blockIfReadOnly()) return;
-  S.monitoring.regulatory.push({ id:_reqUid('reg'), item:'', dueDate:'', result:'', resultDate:'' });
+  _regSections().push({ id:_reqUid('regsec'), name:'', items:[] });
   saveData(); renderMonitoring();
 }
-function deleteRegItem(id){
+function deleteRegSection(secId){
   if(_blockIfReadOnly()) return;
-  S.monitoring.regulatory = S.monitoring.regulatory.filter(r => r.id !== id);
+  const s = _regSection(secId); if(!s) return;
+  const n = (s.items||[]).length;
+  if(!confirm('Delete the "'+(s.name||'Untitled')+'" section'+(n?(' and its '+n+' item'+(n!==1?'s':'')):'')+'?')) return;
+  S.monitoring.regSections = _regSections().filter(x => x.id !== secId);
   saveData(); renderMonitoring();
 }
-function updateRegField(id, field, value){
+function updateRegSectionName(secId, value){
   if(_roLocked()) return;
-  const r = S.monitoring.regulatory.find(x => x.id === id); if(!r) return;
+  const s = _regSection(secId); if(!s) return;
+  s.name = value; scheduleAutoSave();
+}
+function addRegItem(secId){
+  if(_blockIfReadOnly()) return;
+  const s = _regSection(secId); if(!s) return;
+  if(!Array.isArray(s.items)) s.items = [];
+  s.items.push({ id:_reqUid('reg'), item:'', dueDate:'', result:'', resultDate:'' });
+  saveData(); renderMonitoring();
+}
+function deleteRegItem(secId, id){
+  if(_blockIfReadOnly()) return;
+  const s = _regSection(secId); if(!s) return;
+  s.items = (s.items||[]).filter(r => r.id !== id);
+  saveData(); renderMonitoring();
+}
+function updateRegField(secId, id, field, value){
+  if(_roLocked()) return;
+  const s = _regSection(secId); if(!s) return;
+  const r = (s.items||[]).find(x => x.id === id); if(!r) return;
   r[field] = value; scheduleAutoSave();
   if(field==='result'){
     const b = document.getElementById('regresult-'+id);
@@ -14116,9 +14153,11 @@ function renderMonitoring(){
   // Review date field
   const revEl = document.getElementById('monReviewDate');
   if(revEl){ revEl.value = md.monthlyReviewDate || ''; revEl.disabled = ro; }
-  // Seed the regulatory tracker once (owner only)
-  if(!ro && (!Array.isArray(S.monitoring.regulatory) || !S.monitoring.regulatory.length)){
-    S.monitoring.regulatory = REGULATORY_SEED.map(it => ({ id:_reqUid('reg'), item:it, dueDate:'', result:'', resultDate:'' }));
+  // Seed the regulatory tracker once (owner only) — a default section of common items.
+  // The regSeeded flag ensures a deliberately-emptied tracker is not re-seeded.
+  if(!ro && !S.monitoring.regSeeded && (!Array.isArray(S.monitoring.regSections) || !S.monitoring.regSections.length)){
+    S.monitoring.regSections = [{ id:_reqUid('regsec'), name:'Statutory inspections', items: REGULATORY_SEED.map(it => ({ id:_reqUid('reg'), item:it, dueDate:'', result:'', resultDate:'' })) }];
+    S.monitoring.regSeeded = true;
     saveData();
   }
   const dis = ro ? ' disabled' : '';
@@ -14150,34 +14189,47 @@ function renderMonitoring(){
       <div class="card-body">${fam.metrics.map(metricRow).join('')}</div>
     </div>`).join('');
 
-  // Regulatory tracker card
-  const reg = S.monitoring.regulatory || [];
-  const regRows = reg.length ? reg.map(r => `
+  // Regulatory tracker card — named sections, each with its own statutory items
+  const regSecs = _regSections();
+  const itemCard = (secId, r) => `
     <div style="border:1.5px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
         <span class="badge ${r.result==='Pass'?'badge-success':r.result==='Fail'?'badge-danger':'badge-muted'}" id="regresult-${r.id}" style="${r.result?'':'display:none;'}">${r.result||''}</span>
-        ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete" onclick="deleteRegItem('${r.id}')">${_ic('trash',14)}</button>`}
+        ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete item" onclick="deleteRegItem('${secId}','${r.id}')">${_ic('trash',14)}</button>`}
       </div>
       <div class="field-grid cols-1" style="margin-bottom:8px;">
-        <div class="field-group"><label class="field-label">Statutory item</label><input type="text"${dis} value="${esc(r.item)}" oninput="updateRegField('${r.id}','item',this.value)"></div>
+        <div class="field-group"><label class="field-label">Statutory item</label><input type="text"${dis} value="${esc(r.item)}" oninput="updateRegField('${secId}','${r.id}','item',this.value)"></div>
       </div>
       <div class="field-grid" style="margin-bottom:8px;">
-        <div class="field-group"><label class="field-label">Due date</label><input type="date"${dis} value="${r.dueDate||''}" oninput="updateRegField('${r.id}','dueDate',this.value)"></div>
-        <div class="field-group"><label class="field-label">Date carried out</label><input type="date"${dis} value="${r.resultDate||''}" oninput="updateRegField('${r.id}','resultDate',this.value)"></div>
+        <div class="field-group"><label class="field-label">Due date</label><input type="date"${dis} value="${r.dueDate||''}" oninput="updateRegField('${secId}','${r.id}','dueDate',this.value)"></div>
+        <div class="field-group"><label class="field-label">Date carried out</label><input type="date"${dis} value="${r.resultDate||''}" oninput="updateRegField('${secId}','${r.id}','resultDate',this.value)"></div>
       </div>
       <div class="field-grid">
         <div class="field-group"><label class="field-label">Result</label>
-          <select${dis} onchange="updateRegField('${r.id}','result',this.value)"><option value="">— Select —</option>${['Pass','Fail'].map(o=>`<option${o===r.result?' selected':''}>${o}</option>`).join('')}</select>
+          <select${dis} onchange="updateRegField('${secId}','${r.id}','result',this.value)"><option value="">— Select —</option>${['Pass','Fail'].map(o=>`<option${o===r.result?' selected':''}>${o}</option>`).join('')}</select>
         </div>
       </div>
-    </div>`).join('') : `<div class="ck-pending" style="padding:6px 0;">No statutory items yet.</div>`;
+    </div>`;
+  const sectionBlock = (s) => {
+    const items = s.items || [];
+    const itemsHtml = items.length ? items.map(r => itemCard(s.id, r)).join('') : `<div class="ck-pending" style="padding:4px 0;">No statutory items in this section yet.</div>`;
+    return `<div style="border:1.5px solid var(--border);border-radius:10px;padding:14px 14px 12px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;">
+        <input type="text"${dis} value="${esc(s.name)}" placeholder="Section name — e.g. Lifting equipment, Electrical, Gas, Fire" oninput="updateRegSectionName('${s.id}',this.value)" style="flex:1;font-weight:700;font-size:14px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">
+        ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete section" onclick="deleteRegSection('${s.id}')">${_ic('trash',14)}</button>`}
+      </div>
+      ${itemsHtml}
+      ${ro?'':`<button class="btn btn-outline btn-sm no-print" onclick="addRegItem('${s.id}')">＋ Add statutory item</button>`}
+    </div>`;
+  };
+  const regBody = regSecs.length ? regSecs.map(sectionBlock).join('') : `<div class="ck-pending" style="padding:6px 0;">No sections yet.</div>`;
 
   cont.innerHTML = familyCards + `
     <div class="card">
       <div class="card-band"><h3><span class="dot">●</span> Regulatory tracker (annual statutory items)</h3></div>
       <div class="card-body">
-        ${regRows}
-        ${ro?'':`<button class="btn btn-outline btn-sm no-print" onclick="addRegItem()">＋ Add statutory item</button>`}
+        ${regBody}
+        ${ro?'':`<button class="btn btn-primary btn-sm no-print" onclick="addRegSection()" style="margin-top:2px;">＋ Add section</button>`}
       </div>
     </div>`;
 

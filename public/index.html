@@ -10681,7 +10681,7 @@ function _docControlRegisterHTML(){
   const rows=REPORT_DOCS.map(r=>{
     const d=dc.docs[r.key]||{}; const eff=_docFor(r.key);
     const cell=(field,ph,type)=>`<input type="${type||'text'}"${dis} value="${esc(d[field]||'')}" placeholder="${esc(ph||'')}" oninput="updateDocField('${r.key}','${field}',this.value)"${type==='date'?` onchange="updateDocField('${r.key}','${field}',this.value)"`:''} style="${inStyle}">`;
-    return `<tr>
+    return `<tr style="${d.omit?'opacity:.5;':''}">
       <td style="padding:5px 8px;font-weight:600;white-space:nowrap;">${esc(r.title)}</td>
       <td style="padding:5px 8px;min-width:150px;">${cell('ref', eff.ref)}</td>
       <td style="padding:5px 8px;width:60px;">${cell('version','1.0')}</td>
@@ -10690,6 +10690,7 @@ function _docControlRegisterHTML(){
       <td style="padding:5px 8px;">${cell('approverRole', def.approverRole||'set default')}</td>
       <td style="padding:5px 8px;width:140px;">${cell('issued','auto: on generate','date')}</td>
       <td style="padding:5px 8px;width:140px;">${cell('nextReview','auto: +'+(parseInt(def.reviewMonths,10)||12)+'mo','date')}</td>
+      <td style="padding:5px 8px;text-align:center;white-space:nowrap;"><label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:var(--text-muted);" title="Toggle off to generate this report without any document-control stamp"><input type="checkbox"${dis} ${d.omit?'':'checked'} onchange="toggleDocOmit('${r.key}', !this.checked)" style="cursor:pointer;">${d.omit?'Off':'On'}</label></td>
     </tr>`;
   }).join('');
   return `<div class="card" style="margin:0 0 20px;">
@@ -10707,11 +10708,11 @@ function _docControlRegisterHTML(){
       <div style="overflow-x:auto;margin-top:18px;">
       <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
         <thead><tr style="text-align:left;color:var(--text-muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;border-bottom:1.5px solid var(--border);">
-          <th style="padding:6px 8px;">Document</th><th style="padding:6px 8px;">Reference</th><th style="padding:6px 8px;">Ver</th><th style="padding:6px 8px;">Prepared by</th><th style="padding:6px 8px;">Approved by</th><th style="padding:6px 8px;">Role</th><th style="padding:6px 8px;">Issued</th><th style="padding:6px 8px;">Next review</th>
+          <th style="padding:6px 8px;">Document</th><th style="padding:6px 8px;">Reference</th><th style="padding:6px 8px;">Ver</th><th style="padding:6px 8px;">Prepared by</th><th style="padding:6px 8px;">Approved by</th><th style="padding:6px 8px;">Role</th><th style="padding:6px 8px;">Issued</th><th style="padding:6px 8px;">Next review</th><th style="padding:6px 8px;text-align:center;">Control</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
-      <p style="font-size:11.5px;color:var(--text-muted);margin:12px 0 0;">Greyed placeholders show the auto value used if a cell is left blank. Each generated report stamps its own row (reference, version, prepared/approved by, issue and review dates) on its masthead and footer.</p>
+      <p style="font-size:11.5px;color:var(--text-muted);margin:12px 0 0;">Greyed placeholders show the auto value used if a cell is left blank. Each generated report stamps its own row (reference, version, prepared/approved by, issue and review dates) on its masthead and footer. Turn a row's <strong>Control</strong> toggle off to generate that report with no document-control stamp.</p>
     </div>
   </div>`;
 }
@@ -10727,6 +10728,15 @@ function updateDocField(key, field, value){
   if(!dc.docs[key]) dc.docs[key] = { ref:'',version:'',author:'',approverName:'',approverRole:'',issued:'',nextReview:'' };
   dc.docs[key][field] = value;
   scheduleAutoSave();
+}
+// Per-report toggle: omit=true generates that report with no document-control stamp.
+function toggleDocOmit(key, omit){
+  if(_roLocked()) return;
+  const dc=_docControlState();
+  if(!dc.docs[key]) dc.docs[key] = { ref:'',version:'',author:'',approverName:'',approverRole:'',issued:'',nextReview:'' };
+  dc.docs[key].omit = !!omit;
+  saveData();
+  if(typeof renderReports==='function') renderReports();   // refresh so the row dims / label flips
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -11347,23 +11357,16 @@ function _docReviewFlagHTML(){
 }
 function _renderRiskDocControl(){
   const el=document.getElementById('riskDocControl'); if(!el) return;
-  const dis=_roLocked()?' disabled':''; const rd=S.riskDoc||{}; const eff=_docFor('riskProfile');
-  const fmt=(s)=>{ try{ return s? new Date(String(s)+(String(s).length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'; }catch(e){ return '—'; } };
-  const ro=(label,val)=>`<div class="field-group"><label class="field-label">${label}</label><input disabled value="${esc(val==null||val===''?'—':val)}"></div>`;
+  const dis=_roLocked()?' disabled':''; const rd=S.riskDoc||{};
+  // Document control has moved to the central Document Control register (Reports tab).
+  // Only the employee-consultation record — a risk-assessment requirement, not doc
+  // control — remains here.
   el.innerHTML = `<details class="rp-subcard" open>
-    <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('fileText',17)} Document control <span id="riskDocFlag">${_docReviewFlagHTML()}</span></summary>
+    <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('clipboard',17)} Employee consultation</summary>
     <div class="sc-body">
-      <div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Document control is now managed centrally in the <button class="ck-link" style="display:inline;padding:0;" onclick="switchTab('reports')">Document Control register</button> (Reports tab) so every report is controlled consistently to ISO. This profile's current controlled-document details:</div>
-      <div class="docctl-grid">
-        ${ro('Reference',eff.ref)}
-        ${ro('Version',eff.version)}
-        ${ro('Prepared by',eff.author)}
-        ${ro('Approved by',(eff.approverName||'')+(eff.approverRole?(' ('+eff.approverRole+')'):''))}
-        ${ro('Next review',fmt(eff.nextReview))}
-      </div>
-      <div style="margin-top:12px;"><button class="btn btn-ghost btn-sm no-print" onclick="switchTab('reports')">Manage document control →</button></div>
-      <div class="field-group" style="margin-top:16px;"><label class="field-label">Consulted with (employee consultation record)</label>
+      <div class="field-group"><label class="field-label">Consulted with (employee consultation record)</label>
         <textarea${dis} rows="2" placeholder="Who was consulted in preparing this profile — e.g. staff, safety reps, contractors" oninput="updateRiskDoc('consulted',this.value)">${esc(rd.consulted||'')}</textarea></div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:10px;">Document control for every report is managed in the <button class="ck-link" style="display:inline;padding:0;" onclick="switchTab('reports')">Document Control register</button> (Reports tab).</div>
     </div></details>`;
 }
 
@@ -12459,7 +12462,8 @@ function _docFor(key){
   if(!nextReview){ const m=parseInt(def.reviewMonths,10)||12; const nx=new Date(issued+'T00:00:00'); if(!isNaN(nx)){ nx.setMonth(nx.getMonth()+m); nextReview=nx.toISOString().slice(0,10); } }
   const ref=(d.ref&&d.ref.trim())||_autoDocRef(meta.code, version);
   return { ref, version, author, approverName, approverRole, issued, nextReview,
-           approvedName:approverName, approvedRole:approverRole };   // legacy aliases
+           approvedName:approverName, approvedRole:approverRole,   // legacy aliases
+           _omit: !!d.omit };   // when true, this report is generated without a document-control stamp
 }
 
 // WinAnsi-safe ASCII fallback (Helvetica subset lacks arrows/curly quotes/dashes).
@@ -12477,10 +12481,15 @@ function _pdfMasthead(doc, ML, RM, title, subtitle, client, d){
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(40,48,60); doc.text(A(client), RM, 14, {align:'right'});
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(MUT[0],MUT[1],MUT[2]);
   const _mFmt=(s)=>{ try{ const dt = s ? new Date(String(s)+(String(s).length===10?'T12:00:00':'')) : new Date(); return isNaN(dt)?'' : dt.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return ''; } };
-  const _mVer=String((d&&d.version)||'1.0');
-  doc.text(A('Issued '+_mFmt(d&&d.issued)+'  -  v'+_mVer+((d&&d.ref)?('  -  '+d.ref):'')), RM, 18, {align:'right'});
-  const _mBy=[]; if(d&&d.author) _mBy.push('Prepared by '+d.author); if(d&&d.approverName) _mBy.push('Approved by '+d.approverName+(d.approverRole?(' ('+d.approverRole+')'):''));
-  if(_mBy.length) doc.text(A(_mBy.join('  -  ')), RM, 21.8, {align:'right'});
+  if(d&&d._omit){
+    // Document control omitted for this report — show only the date.
+    doc.text(A(_mFmt(null)), RM, 18, {align:'right'});
+  } else {
+    const _mVer=String((d&&d.version)||'1.0');
+    doc.text(A('Issued '+_mFmt(d&&d.issued)+'  -  v'+_mVer+((d&&d.ref)?('  -  '+d.ref):'')), RM, 18, {align:'right'});
+    const _mBy=[]; if(d&&d.author) _mBy.push('Prepared by '+d.author); if(d&&d.approverName) _mBy.push('Approved by '+d.approverName+(d.approverRole?(' ('+d.approverRole+')'):''));
+    if(_mBy.length) doc.text(A(_mBy.join('  -  ')), RM, 21.8, {align:'right'});
+  }
   doc.setDrawColor(NAVY[0],NAVY[1],NAVY[2]); doc.setLineWidth(0.6); doc.line(ML,25,RM,25); doc.setLineWidth(0.2);
   doc.setFont('helvetica','bold'); doc.setFontSize(19); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]);
   let y=34.5; doc.splitTextToSize(A(title), RM-ML).forEach(ln=>{ doc.text(ln, ML, y); y+=7.8; });
@@ -12642,7 +12651,7 @@ function _pdfBrandFooter(doc, ML, RM){
 // printed" note, then the AHS brand line. d is the per-report controlled-document
 // record from _docFor().
 function _pdfFooter(K, d, reportName){
-  if(d && (d.ref || d.version || d.issued || d.nextReview)){
+  if(d && !d._omit && (d.ref || d.version || d.issued || d.nextReview)){
     const doc=K.doc, ML=K.ML, RM=K.RM, A=_pdfAscii;
     const _f=(s)=>{ try{ const dt=s?new Date(String(s)+(String(s).length===10?'T12:00:00':'')):null; return (dt&&!isNaN(dt))?dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):''; }catch(e){ return ''; } };
     const parts=[];

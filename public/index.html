@@ -13827,6 +13827,19 @@ function toggleReqReviewed(sectionId, itemId){
   else { it.reviewedDate=''; it.reviewedBy=''; }
   _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
 }
+// Raise an action from a management-system requirement into the plan. Writes the
+// action text on the item (which _allMgmtActions feeds into the execution/action plan).
+function raiseReqAction(sectionId, itemId){
+  if(_blockIfReadOnly()) return;
+  const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
+  const it = (s.items||[]).find(i => i.id === itemId); if(!it) return;
+  const desc = (typeof prompt==='function') ? prompt('What action is needed to close this gap? (It appears in the execution / action plan.)', it.action||'') : (it.action||'');
+  if(desc===null) return;
+  it.action = String(desc).trim();
+  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+  try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
+  if(it.action && typeof showToast==='function') showToast('✓ Action added to the plan — set a target date','success');
+}
 
 function _renderReqDashboard(){
   const el = document.getElementById('reqDashboard'); if(!el) return;
@@ -13935,8 +13948,13 @@ function renderRequirements(){
           ${fg('Adequate', sel(sec.id,it.id,'adequate',it.adequate,REQ_ADEQUATE))}
           ${fg('Action due', dt(sec.id,it.id,'dueDate',it.dueDate))}
         </div>
-        <div class="field-grid cols-1" style="margin-bottom:10px;">
-          ${fg('Action where short', ta(sec.id,it.id,'action',it.action,'What needs doing if it falls short'))}
+        <div class="field-grid cols-1" style="margin-bottom:6px;">
+          ${fg('Action to close the gap <span style="font-weight:400;color:var(--text-muted);">(appears in the execution / action plan)</span>', ta(sec.id,it.id,'action',it.action,'What needs doing to make this compliant'))}
+        </div>
+        <div style="margin-bottom:12px;font-size:12px;">
+          ${(it.action && it.action.trim())
+            ? `<span style="color:var(--success);font-weight:600;">✓ In the execution / action plan${it.dueDate?(' &middot; target '+fmtDate(it.dueDate)):' &middot; set a target date (Action due, above)'}</span>`
+            : (ro?'<span style="color:var(--text-muted);">No action raised.</span>':`<button class="btn btn-outline btn-xs no-print" onclick="raiseReqAction('${sec.id}','${it.id}')">＋ Raise an action to close this</button> <span style="color:var(--text-muted);">&mdash; or type it in the box above</span>`)}
         </div>
         <div class="field-grid" style="margin-bottom:10px;">
           ${fg('Next review'+(revFlag(it)), revDate(sec.id,it.id,it.reviewDate))}

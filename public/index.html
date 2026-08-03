@@ -11479,9 +11479,25 @@ function addRiskAction(id){
   _stamp(_na,'created'); r.actions.push(_na);
   _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
 }
+// Action archive — a consultant-only record of deleted actions (so nothing is
+// lost) that can be pulled into a report. Deleting archives a snapshot first.
+function _actionArchiveState(){ if(!Array.isArray(S.actionArchive)) S.actionArchive=[]; return S.actionArchive; }
+function _archiveAction(a, source, sourceLabel){
+  if(!a) return;
+  _actionArchiveState().push({
+    id:_reqUid('arch'),
+    desc:a.desc||'', owner:a.owner||'', due:a.due||'', priority:a.priority||'',
+    status:a.status||'', completedDate:a.completedDate||'', completedBy:a.completedBy||'',
+    source:source||a.source||'', sourceLabel:sourceLabel||a.sourceLabel||'',
+    raisedAt:(a.createdAt?a.createdAt.slice(0,10):(a.raisedAt||'')),
+    archivedAt:new Date().toISOString().slice(0,10),
+    archivedBy:(typeof _actor==='function'?(_actor().name||''):'')
+  });
+}
 function deleteRiskAction(rid, aid){
   if(_blockIfReadOnly()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
+  const a=(r.actions||[]).find(x=>x.id===aid); if(a) _archiveAction(a, 'Risk profile', r.activity||r.hazard||'');
   r.actions=(r.actions||[]).filter(a=>a.id!==aid); _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
 }
 function updateRiskAction(rid, aid, field, value){
@@ -11730,7 +11746,8 @@ function updateActionPlanItem(id, field, value){
 }
 function deleteActionPlanItem(id){
   if(_blockIfReadOnly()) return;
-  if(!confirm('Delete this action?')) return;
+  if(!confirm('Delete this action?\n\nIt will be kept in the Archive (visible only to you).')) return;
+  const it=_apList().find(x=>x.id===id); if(it) _archiveAction(it, it.source||'Added directly', it.sourceLabel||'');
   S.actionPlan=_apList().filter(x=>x.id!==id); saveData(); renderActionPlanTab();
 }
 // Status on a risk-sourced row writes back to that risk's action.
@@ -11968,7 +11985,49 @@ function renderActionPlanTab(){
     ${gapCard}
     ${freeCard}
     ${regCard}
-    ${_completedHistoryHTML()}`;
+    ${_completedHistoryHTML()}
+    ${_archiveHTML()}`;
+}
+// Archive of deleted actions — consultant-only record, with a report button.
+function _archiveHTML(){
+  const arch=_actionArchiveState();
+  if(!arch.length) return '';
+  const fmt=(s)=>{ try{ return s? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : ''; }catch(e){ return ''; } };
+  const rows=arch.slice().sort((a,b)=>String(b.archivedAt||'').localeCompare(String(a.archivedAt||''))).map(a=>`<div style="display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border);border-left:4px solid var(--text-muted);border-radius:8px;padding:10px 12px;margin-bottom:8px;opacity:.85;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13.5px;">${esc(a.desc||'(no description)')}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:5px 10px;">${a.source?`<span class="badge badge-muted">${esc(a.source)}</span>`:''}${a.sourceLabel?`<span>${esc(a.sourceLabel)}</span>`:''}${a.owner?`<span>&middot; ${esc(a.owner)}</span>`:''}${a.status?`<span>&middot; ${esc(a.status)}</span>`:''}${a.completedDate?`<span>&middot; completed ${fmt(a.completedDate)}</span>`:''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;font-size:11px;color:var(--text-muted);">deleted ${fmt(a.archivedAt)}${a.archivedBy?`<br>by ${esc(a.archivedBy)}`:''}</div>
+    </div>`).join('');
+  return `<div class="card">
+    <div class="card-band"><h3><span class="dot">●</span> Archive <span class="badge badge-muted">consultant only</span></h3><span class="badge badge-muted">${arch.length}</span></div>
+    <div class="card-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;"><span style="font-size:12px;color:var(--text-muted);flex:1;min-width:180px;">Deleted actions are kept here (only you can see this). Pull them into a report anytime.</span><button class="btn btn-ghost btn-sm no-print" onclick="downloadArchiveReport()">⭳ Archive report PDF</button>${_roLocked()?'':`<button class="btn btn-ghost btn-xs no-print" onclick="if(confirm('Permanently clear the archive? This cannot be undone.')){S.actionArchive=[];saveData();renderActionPlanTab();}">Clear archive</button>`}</div>
+      ${rows}
+    </div>
+  </div>`;
+}
+function downloadArchiveReport(){ try{ buildArchiveReportPDF(); showToast('✓ Archive report created','success'); }catch(e){ console.error('Archive report failed',e); showToast('Could not build the report — see console','error'); } }
+function buildArchiveReportPDF(){
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+  const d=_docFor('actionArchive');
+  const NAVY=[30,58,95], GREY=[120,120,120];
+  const K=_mkPdf('Action Archive', client, d, 'Deleted actions retained for the record - consultant reference.');
+  const { doc } = K;
+  const fd=(s)=> s ? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '-';
+  const arch=_actionArchiveState().slice().sort((a,b)=>String(b.archivedAt||'').localeCompare(String(a.archivedAt||'')));
+  K.verdictBox(arch.length? (arch.length+' deleted action'+(arch.length!==1?'s':'')+' on record.') : 'The archive is empty.', GREY);
+  if(arch.length){
+    K.section('Archived actions', NAVY);
+    K.table(
+      [{header:'ACTION',w:60},{header:'SOURCE',w:34},{header:'OWNER',w:22},{header:'STATUS',w:20},{header:'COMPLETED',w:20},{header:'DELETED',w:22}],
+      arch.map(a=>[ a.desc||'(no description)', {text:a.source+(a.sourceLabel?(' - '+a.sourceLabel):''), color:[120,120,120]}, {text:a.owner||'-', color:[110,110,110]}, {text:a.status||'-', color:[110,110,110]}, {text:fd(a.completedDate), color:[110,110,110]}, {text:fd(a.archivedAt), color:[110,110,110]} ]),
+      {headFill:NAVY, headText:[255,255,255]}
+    );
+  }
+  _pdfFooter(K, d, 'Action Archive');
+  doc.save('action-archive-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
 }
 
 // ── Completed-actions history (Action Plan tab) — the full record, by period ──
@@ -12670,6 +12729,7 @@ const REPORT_DOCS = [
   { key:'actionPlan',       title:'Action Plan',                  code:'AP'  },
   { key:'executionPlan',    title:'Client Execution Plan',        code:'EP'  },
   { key:'completedActions', title:'Completed Actions',            code:'CA'  },
+  { key:'actionArchive',    title:'Action Archive',               code:'AA'  },
   { key:'managementSystem', title:'Management System Assessment', code:'MS'  },
   { key:'raRegister',       title:'Risk Assessment Register',     code:'RAR' },
   { key:'riskAcceptance',   title:'Risk Acceptance Register',     code:'RAC' },
@@ -16050,7 +16110,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions','docControl','training'];
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions','docControl','training','actionArchive'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

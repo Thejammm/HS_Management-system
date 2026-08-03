@@ -4466,7 +4466,31 @@ function clearReportFilters() {
 // This function is retained as a guarded no-op so any stale caller can't delete
 // a record; the red ✕ buttons that used to call it have been removed.
 function deleteInspection(inspId){
-  showToast('Submitted inspections are permanent records and cannot be deleted.','info');
+  // For clients, submitted inspections stay permanent records (audit integrity).
+  // The consultant may delete an entry to clear test or erroneous submissions.
+  if(!_isConsultantUser()){
+    showToast('Submitted inspections are permanent records and cannot be deleted.','info');
+    return;
+  }
+  if(_blockIfReadOnly()) return;
+  const insp = S.inspections.find(i => i.id === inspId);
+  if(!insp){ showToast('Inspection not found','error'); return; }
+  if(typeof _isInspArchived === 'function' && _isInspArchived(insp)){
+    showToast('This month is archived (read-only) — records can no longer be deleted.','info');
+    return;
+  }
+  const label = insp.title || insp.typeName || 'this inspection';
+  const linked = (S.actions||[]).filter(a => a.inspId === inspId).length;
+  const extra = linked ? `\n\nThis will also remove ${linked} action${linked!==1?'s':''} raised from it.` : '';
+  if(!confirm(`Delete "${label}" permanently?${extra}\n\nThis cannot be undone. (Consultant-only — for clearing test or erroneous entries.)`)) return;
+  S.inspections = S.inspections.filter(i => i.id !== inspId);
+  S.actions     = (S.actions||[]).filter(a => a.inspId !== inspId);
+  saveData();
+  showToast('✓ Inspection deleted');
+  try{ renderMonthlyReport(); }catch(e){}
+  try{ renderManagerDashboard(); }catch(e){}
+  try{ if(typeof renderCockpit === 'function') renderCockpit(); }catch(e){}
+  try{ if(typeof updateBadge === 'function') updateBadge(); }catch(e){}
 }
 
 // Generate a PDF for a single inspection (from the per-card "📄 PDF" button
@@ -4775,6 +4799,8 @@ function renderMonthlyReport(){
             style="background:var(--accent);color:#fff;border:1px solid var(--accent);height:26px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;line-height:1;"
             onmouseover="this.style.background='var(--accent-dark, var(--accent))';this.style.opacity='0.9';"
             onmouseout="this.style.background='var(--accent)';this.style.opacity='1';">📄 PDF</button>
+          ${_isConsultantUser()?`<button class="no-print" onclick="deleteInspection('${insp.id}')" title="Delete this inspection (consultant only) — for clearing test or erroneous entries"
+            style="background:transparent;color:var(--danger);border:1px solid var(--danger-brd);height:26px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;line-height:1;">✕ Delete</button>`:''}
         </div>
       </div>
       <div class="card-body">

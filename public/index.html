@@ -14007,7 +14007,9 @@ function updateRaRegLoc(id, val){
 }
 function copyRaLocation(id){
   const e=_raRegState().find(x=>x.id===id); if(!e) return;
-  const loc=(e.location||'').trim();
+  // Strip any wrapping quotes (Windows "Copy as path" adds them) so the copied
+  // path pastes straight into File Explorer / the search bar and resolves.
+  const loc=(e.location||'').trim().replace(/^["']+|["']+$/g,'').trim();
   navigator.clipboard.writeText(loc).then(
     ()=>showToast('Location copied — paste into File Explorer','success'),
     ()=>showToast('Could not copy','error')

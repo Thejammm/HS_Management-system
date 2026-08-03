@@ -2431,6 +2431,7 @@ const FORMS = {
     id: 'tardiness',
     name: 'Tardiness Form',
     icon: '⏰',
+    noReview: true,   // signed-and-filed form: completes on submit, no manager review/sign-off needed
     sections: [
       {
         id: 'main',
@@ -2455,6 +2456,7 @@ const FORMS = {
     id: 'refuelling_induction',
     name: 'Refuelling Site Safety Induction',
     icon: '⛽',
+    noReview: true,   // signed-and-filed form: completes on submit, no manager review/sign-off needed
     sections: [
       {
         id: 'site',
@@ -2506,6 +2508,7 @@ const FORMS = {
     id: 'return_to_work',
     name: 'Return to Work Form',
     icon: '🚶',
+    noReview: true,   // signed-and-filed form: completes on submit, no manager review/sign-off needed
     sections: [
       {
         id: 'title',
@@ -3872,6 +3875,10 @@ function submitInspection() {
       signedOffBy:null,       // name of manager who signed off
       signedOffAt:null        // ISO timestamp of sign-off
     };
+    // Sign-and-file forms (induction, tardiness, RTW) are complete once the
+    // person signs — no manager review/sign-off step. Flag the record so it
+    // never enters the Awaiting Review or Ready-for-Sign-Off queues.
+    if(form.noReview === true){ insp.noReview = true; insp.awaitingReview = false; }
     S.inspections.push(insp);
 
     // Reset draft preserving type + identity carry-over
@@ -4728,7 +4735,9 @@ function renderMonthlyReport(){
     const bandStatus = iOverdue>0 ? 'danger' : iOpen>0 ? 'warning' : wAct>0 ? 'success' : '';
     // Status badges — show inspection-level status (signed-off / awaiting review)
     // in addition to the action-level summary.
-    const signedOffBadge = insp.status === 'signed_off'
+    const signedOffBadge = insp.noReview
+      ? `<span class="badge badge-success">✓ Complete</span>`
+      : insp.status === 'signed_off'
       ? `<span class="badge badge-success">✓ Signed Off</span>`
       : insp.awaitingReview
         ? `<span class="badge badge-warning">⏳ Awaiting Review</span>`
@@ -4886,7 +4895,17 @@ function renderMonthlyReport(){
     const isSignedOff = insp.status === 'signed_off';
     const allActionsResolved = wActions.length === 0 || wActions.every(a => a.resolved);
 
-    if(isSignedOff){
+    if(insp.noReview){
+      // Sign-and-file forms (induction, tardiness, RTW): complete once signed —
+      // no manager review or sign-off step. Just offer the PDF for print/file.
+      html += `<div class="no-print" style="margin-top:14px;padding:14px 16px;background:var(--success-bg);border:1.5px solid var(--success-brd);border-radius:9px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:24px;line-height:1;">✓</div>
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:13px;font-weight:700;color:var(--success);">Complete — signed and filed</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">This form is complete once signed. No manager review or sign-off is required — generate the PDF to print and file.</div>
+        </div>
+      </div>`;
+    } else if(isSignedOff){
       // Archived months are read-only — keep the signed-off summary but drop Re-open.
       const reopenBtn = archived ? '' :
         `<button class="btn btn-ghost btn-xs" onclick="reopenInspection('${insp.id}')" title="Re-open this inspection if something needs changing">${_ic('reset',13)} Re-open</button>`;
@@ -6975,7 +6994,7 @@ function renderManagerDashboard(){
   const openActions      = acts.filter(a => !a.resolved).length;
   const overdueActions   = acts.filter(a => !a.resolved && a.dueDate && new Date(a.dueDate) < today).length;
   const readyToSignOff   = insps.filter(i => {
-    if(i.status === 'signed_off') return false;
+    if(i.status === 'signed_off' || i.noReview) return false;   // sign-and-file forms need no sign-off
     const ia = acts.filter(a => a.inspId === i.id);
     return ia.length === 0 || ia.every(a => a.resolved);
   }).length;

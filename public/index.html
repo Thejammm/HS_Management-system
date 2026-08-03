@@ -11001,12 +11001,13 @@ function _execActions(){
   const norm=(src,label,ref,a)=>{ const status=_actionStatus(a); out.push({
     desc:a.desc||'', owner:a.owner||'', due:a.due||'', priority:a.priority||'',
     status, raw:a.status||'Not started', rag:_actionRag(a.due,status), source:src, sourceLabel:label||'', ref,
-    completedDate:a.completedDate||'', completedBy:a.completedBy||'' }); };
+    completedDate:a.completedDate||'', completedBy:a.completedBy||'',
+    raisedAt:(a.createdAt?a.createdAt.slice(0,10):''), raisedBy:a.createdBy||'' }); };
   _allRiskActions().forEach(x=>{ if(x.a.hideFromPlan) return; if(!(x.a.desc||x.a.owner||x.a.due)) return;
     norm('Risk profile', x.r.activity||x.r.hazard||'Risk', {t:'risk', a:x.r.id, b:x.a.id}, x.a); });
   (typeof _allMgmtActions==='function'?_allMgmtActions():[]).forEach(x=>{ if(x.it&&x.it.hideFromPlan) return;
     norm('Management system', x.source||'', {t:'mgmt', a:x.secId, b:x.id},
-      { desc:x.desc, owner:x.owner, due:x.due, priority:x.priority, status:x.it.actionStatus, completedDate:x.it.completedDate, completedBy:x.it.completedBy }); });
+      { desc:x.desc, owner:x.owner, due:x.due, priority:x.priority, status:x.it.actionStatus, completedDate:x.it.completedDate, completedBy:x.it.completedBy, createdAt:x.it.createdAt, createdBy:x.it.createdBy }); });
   (S.actionPlan||[]).forEach(a=>{ if(a.hideFromPlan) return; if(!(a.desc||a.owner||a.due)) return;
     const rk=(S.riskProfile||[]).find(r=>r.id===a.riskId);
     const src=a.source || (rk?'Risk profile':'Added directly');
@@ -11473,7 +11474,8 @@ function addRiskAction(id){
   if(_blockIfReadOnly()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
   if(!Array.isArray(r.actions)) r.actions=[];
-  r.actions.push({ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:'', owner:'', due:'', status:'Not started', priority:_suggestPriority(r) });
+  const _na={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:'', owner:'', due:'', status:'Not started', priority:_suggestPriority(r) };
+  _stamp(_na,'created'); r.actions.push(_na);
   _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
 }
 function deleteRiskAction(rid, aid){
@@ -11997,9 +11999,14 @@ function _completedHistoryHTML(){
       <span style="color:var(--success);font-size:16px;line-height:1.2;flex:0 0 auto;">✓</span>
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;font-size:13.5px;">${esc(a.desc||'(no description)')}</div>
-        <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:6px 10px;"><span class="badge badge-muted">${esc(a.source)}</span>${a.sourceLabel?`<span>${esc(a.sourceLabel)}</span>`:''}${a.owner?`<span>&middot; ${esc(a.owner)}</span>`:''}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:5px 10px;">
+          <span class="badge badge-muted">${esc(a.source)}</span>${a.sourceLabel?`<span>${esc(a.sourceLabel)}</span>`:''}${a.owner?`<span>&middot; Owner: ${esc(a.owner)}</span>`:''}${a.priority?`<span>&middot; ${esc(a.priority)}</span>`:''}${a.due?`<span>&middot; Target ${fmt(a.due)}</span>`:''}${a.raisedAt?`<span>&middot; Raised ${fmt(a.raisedAt)}</span>`:''}
+        </div>
       </div>
-      <div style="text-align:right;flex-shrink:0;font-size:12px;"><div style="font-weight:700;color:var(--success);white-space:nowrap;">${fmt(a.completedDate)}</div>${a.completedBy?`<div style="color:var(--text-muted);font-size:11px;">${esc(a.completedBy)}</div>`:''}</div>
+      <div style="text-align:right;flex-shrink:0;font-size:12px;">
+        <div style="font-weight:700;color:var(--success);white-space:nowrap;">Completed ${fmt(a.completedDate)}</div>
+        ${a.completedBy?`<div style="color:var(--text-muted);font-size:11px;">by ${esc(a.completedBy)}</div>`:''}
+      </div>
     </div>`).join('') : `<div class="ck-pending" style="padding:6px 0;">No actions completed in this period.</div>`;
   return `<div class="card">
     <div class="card-band"><h3><span class="dot">●</span> Completed &mdash; history</h3><span class="badge badge-muted">${done.length}${period!=='all'?(' of '+allDone):''}</span></div>
@@ -13147,8 +13154,8 @@ function buildCompletedActionsReportPDF(){
   keys.forEach(k=>{
     K.section(monthName(k)+'  ('+byMonth[k].length+')', NAVY);
     K.table(
-      [{header:'ACTION',w:82},{header:'SOURCE',w:40},{header:'COMPLETED',w:24},{header:'BY',w:24}],
-      byMonth[k].map(a=>[ a.desc||'(no description)', {text:a.source+(a.sourceLabel?(' - '+a.sourceLabel):''), color:[120,120,120]}, {text:fd(a.completedDate), color:[22,120,60]}, {text:a.completedBy||'-', color:[110,110,110]} ]),
+      [{header:'ACTION',w:62},{header:'SOURCE',w:30},{header:'OWNER',w:22},{header:'TARGET',w:20},{header:'DONE',w:20},{header:'BY',w:24}],
+      byMonth[k].map(a=>[ a.desc||'(no description)', {text:a.source+(a.sourceLabel?(' - '+a.sourceLabel):''), color:[120,120,120]}, {text:a.owner||'-', color:[110,110,110]}, {text:fd(a.due), color:[110,110,110]}, {text:fd(a.completedDate), color:[22,120,60]}, {text:a.completedBy||'-', color:[110,110,110]} ]),
       {headFill:NAVY, headText:[255,255,255]}
     );
   });

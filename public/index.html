@@ -13814,6 +13814,19 @@ function updateReqField(sectionId, itemId, field, value){
     if(b){ b.textContent = st?st.label:''; b.className = 'badge ' + (st?st.cls:'badge-muted'); b.style.display = st?'inline-flex':'none'; }
   }
 }
+// Compliance tick: a deliberate "reviewed & compliant" sign-off on a requirement
+// line (records who + when). Distinct from the auto-derived Met badge.
+function _reqReviewed(it){ return !!(it && it.reviewed); }
+function _reqReviewedCount(){ let n=0,t=0; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ t++; if(it.reviewed) n++; })); return {reviewed:n,total:t}; }
+function toggleReqReviewed(sectionId, itemId){
+  if(_blockIfReadOnly()) return;
+  const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
+  const it = (s.items||[]).find(i => i.id === itemId); if(!it) return;
+  it.reviewed = !it.reviewed;
+  if(it.reviewed){ it.reviewedDate = new Date().toISOString().slice(0,10); it.reviewedBy = (typeof _actor==='function' ? (_actor().name||'') : ''); }
+  else { it.reviewedDate=''; it.reviewedBy=''; }
+  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+}
 
 function _renderReqDashboard(){
   const el = document.getElementById('reqDashboard'); if(!el) return;
@@ -13866,7 +13879,8 @@ function renderRequirements(){
   const secs = S.requirements || [];
   const g = _reqGaps();
   const gapBadge = document.getElementById('reqGapBadge');
-  if(gapBadge) gapBadge.textContent = g.assessed ? (g.gaps + ' gap' + (g.gaps!==1?'s':'') + ' / ' + g.assessed + ' assessed') : '';
+  const rev = _reqReviewedCount();
+  if(gapBadge) gapBadge.textContent = g.assessed ? (g.gaps + ' gap' + (g.gaps!==1?'s':'') + ' / ' + g.assessed + ' assessed' + (rev.reviewed ? (' · ' + rev.reviewed + ' compliant') : '')) : '';
   const addSecBtn = document.getElementById('addReqSectionBtn');
   if(addSecBtn) addSecBtn.style.display = ro ? 'none' : 'inline-flex';
   const repBtn = document.getElementById('reqReportBtn');
@@ -13885,6 +13899,15 @@ function renderRequirements(){
   const dt  = (sid,iid,f,v) => `<input type="date"${dis} value="${esc(v)}" oninput="updateReqField('${sid}','${iid}','${f}',this.value)">`;
   const ta  = (sid,iid,f,v,ph) => `<textarea${dis} rows="2" placeholder="${ph||''}" oninput="updateReqField('${sid}','${iid}','${f}',this.value)">${esc(v)}</textarea>`;
   const fg  = (label,inner) => `<div class="field-group"><label class="field-label">${label}</label>${inner}</div>`;
+  // Review-due flag for a requirement line.
+  const revFlag = (it) => { if(!it.reviewDate) return ''; const d=new Date(it.reviewDate+'T23:59:59'); if(isNaN(d)) return ''; const now=new Date(); const soon=new Date(); soon.setDate(soon.getDate()+30);
+    if(d<now) return '<span style="color:var(--danger);font-size:11px;font-weight:700;margin-left:8px;white-space:nowrap;">Review overdue</span>';
+    if(d<=soon) return '<span style="color:var(--warning);font-size:11px;font-weight:700;margin-left:8px;white-space:nowrap;">Review due soon</span>'; return ''; };
+  const revDate = (sid,iid,v) => `<input type="date"${dis} value="${esc(v||'')}" onchange="updateReqField('${sid}','${iid}','reviewDate',this.value);_keepScroll(renderRequirements)">`;
+  // Link a requirement line to a Risk Profile risk.
+  const riskSel = (sid,iid,v) => `<select${dis} onchange="updateReqField('${sid}','${iid}','riskId',this.value)"><option value="">Link a risk (optional)</option>${(S.riskProfile||[]).map(r=>`<option value="${r.id}"${v===r.id?' selected':''}>${esc((r.activity||r.hazard||'Risk').slice(0,60))}</option>`).join('')}</select>`;
+  // Link a requirement line to a document (evidence) from the Documents tab.
+  const docSel = (sid,iid,v) => `<select${dis} onchange="updateReqField('${sid}','${iid}','docId',this.value)"><option value="">Link evidence / a document (optional)</option>${(S.documents||[]).map(d=>`<option value="${d.id}"${v===d.id?' selected':''}>${esc((d.name||d.title||'Document').slice(0,60))}</option>`).join('')}</select>`;
 
   const sectionCard = (sec) => {
     const items = sec.items || [];
@@ -13893,7 +13916,12 @@ function renderRequirements(){
       return `
       <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:10px;">
-          <span class="badge ${stt?stt.cls:'badge-muted'}" id="reqstatus-${it.id}" style="${stt?'':'display:none;'}">${stt?stt.label:''}</span>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span class="badge ${stt?stt.cls:'badge-muted'}" id="reqstatus-${it.id}" style="${stt?'':'display:none;'}">${stt?stt.label:''}</span>
+            ${it.reviewed
+              ? `<span class="badge badge-success">✓ Compliant${it.reviewedDate?(' &middot; reviewed '+fmtDate(it.reviewedDate)):''}${it.reviewedBy?(' by '+esc(it.reviewedBy)):''}</span>${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Undo the compliance sign-off" onclick="toggleReqReviewed('${sec.id}','${it.id}')">Undo</button>`}`
+              : (ro?'':`<button class="btn btn-outline btn-xs no-print" title="Record that you have reviewed this requirement and it is compliant" onclick="toggleReqReviewed('${sec.id}','${it.id}')">✓ Mark reviewed &amp; compliant</button>`)}
+          </div>
           ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete this line" onclick="deleteReqLine('${sec.id}','${it.id}')">${_ic('trash',14)}</button>`}
         </div>
         <div class="field-grid cols-1" style="margin-bottom:10px;">
@@ -13907,8 +13935,15 @@ function renderRequirements(){
           ${fg('Adequate', sel(sec.id,it.id,'adequate',it.adequate,REQ_ADEQUATE))}
           ${fg('Action due', dt(sec.id,it.id,'dueDate',it.dueDate))}
         </div>
-        <div class="field-grid cols-1">
+        <div class="field-grid cols-1" style="margin-bottom:10px;">
           ${fg('Action where short', ta(sec.id,it.id,'action',it.action,'What needs doing if it falls short'))}
+        </div>
+        <div class="field-grid" style="margin-bottom:10px;">
+          ${fg('Next review'+(revFlag(it)), revDate(sec.id,it.id,it.reviewDate))}
+          ${fg('Linked risk', riskSel(sec.id,it.id,it.riskId))}
+        </div>
+        <div class="field-grid cols-1">
+          ${fg('Evidence / document', docSel(sec.id,it.id,it.docId))}
         </div>
         ${_attrFooter(it)}
       </div>`;

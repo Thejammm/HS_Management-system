@@ -10660,6 +10660,10 @@ function renderReports(){
       icon:svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
       desc:'A point-in-time snapshot for the client: every action to do, grouped by month and traffic-lit — from risk profile, management system, assurance and accreditation.',
       tags:['Client','By month','RAG'] },
+    { title:'Completed Actions', accent:'#16A34A', tint:'#E7F6EE', fn:'downloadCompletedActionsReport()', meta:(_execActions().filter(a=>a.status==='Complete').length+' completed'),
+      icon:svg('<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>'),
+      desc:'The delivered-work history — actions completed, grouped by month, for the period you pick on the Action Plan tab (month / quarter / year / all).',
+      tags:['History','By period','Record'] },
     { title:'Management System', accent:'#16A34A', tint:'#E7F6EE', fn:'downloadManagementSystemReport()', meta:mgmtMeta,
       icon:svg('<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>'),
       desc:'How the organisation meets its HSG65 duties, reported by exception — only what needs action, never empty scaffolding.',
@@ -10996,12 +11000,13 @@ function _execActions(){
   const out=[];
   const norm=(src,label,ref,a)=>{ const status=_actionStatus(a); out.push({
     desc:a.desc||'', owner:a.owner||'', due:a.due||'', priority:a.priority||'',
-    status, raw:a.status||'Not started', rag:_actionRag(a.due,status), source:src, sourceLabel:label||'', ref }); };
+    status, raw:a.status||'Not started', rag:_actionRag(a.due,status), source:src, sourceLabel:label||'', ref,
+    completedDate:a.completedDate||'', completedBy:a.completedBy||'' }); };
   _allRiskActions().forEach(x=>{ if(x.a.hideFromPlan) return; if(!(x.a.desc||x.a.owner||x.a.due)) return;
     norm('Risk profile', x.r.activity||x.r.hazard||'Risk', {t:'risk', a:x.r.id, b:x.a.id}, x.a); });
   (typeof _allMgmtActions==='function'?_allMgmtActions():[]).forEach(x=>{ if(x.it&&x.it.hideFromPlan) return;
     norm('Management system', x.source||'', {t:'mgmt', a:x.secId, b:x.id},
-      { desc:x.desc, owner:x.owner, due:x.due, priority:x.priority, status:x.it.actionStatus }); });
+      { desc:x.desc, owner:x.owner, due:x.due, priority:x.priority, status:x.it.actionStatus, completedDate:x.it.completedDate, completedBy:x.it.completedBy }); });
   (S.actionPlan||[]).forEach(a=>{ if(a.hideFromPlan) return; if(!(a.desc||a.owner||a.due)) return;
     const rk=(S.riskProfile||[]).find(r=>r.id===a.riskId);
     const src=a.source || (rk?'Risk profile':'Added directly');
@@ -11016,6 +11021,18 @@ function _execOrigin(ref){
   if(ref.t==='free'){ return (S.actionPlan||[]).find(x=>x.id===ref.a); }
   return null;
 }
+// Stamp/clear the completion record on any action object when its status changes.
+// Gives every action a completedDate + completedBy the moment it is marked Complete,
+// regardless of type or which tab completed it — the basis for the history/reports.
+function _stampActionCompletion(o, status){
+  if(!o) return;
+  if(status==='Complete'){
+    if(!o.completedDate) o.completedDate=new Date().toISOString().slice(0,10);
+    if(!o.completedBy)   o.completedBy=(typeof _actor==='function' ? (_actor().name||'') : '');
+  } else {
+    o.completedDate=''; o.completedBy='';
+  }
+}
 // Update an exec action's status or target date — writes through to the origin.
 function updateExecAction(refStr, field, value){
   if(_roLocked()) return;
@@ -11025,6 +11042,7 @@ function updateExecAction(refStr, field, value){
     if(field==='status'){ o.actionStatus=value; if(value==='Accepted' && !o.acceptDate) o.acceptDate=new Date().toISOString().slice(0,10); }
     else if(field==='due') o.dueDate=value;
   } else { o[field]=value; }
+  if(field==='status') _stampActionCompletion(o, value);
   if(typeof _stamp==='function') _stamp(o,'updated');
   saveData(); _refreshActionViews();
 }
@@ -11467,7 +11485,7 @@ function updateRiskAction(rid, aid, field, value){
   if(_roLocked()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
   const a=(r.actions||[]).find(x=>x.id===aid); if(!a) return;
-  a[field]=value; _stamp(r,'updated'); scheduleAutoSave();
+  a[field]=value; if(field==='status') _stampActionCompletion(a, value); _stamp(r,'updated'); scheduleAutoSave();
   if(field==='status'||field==='due'||field==='priority'){ _keepScroll(renderRiskProfile); }
 }
 function _riskActionsHTML(r, dis){
@@ -11701,9 +11719,8 @@ function updateActionPlanItem(id, field, value){
   it[field]=value;
   if(field==='status'){
     const today=new Date().toISOString().slice(0,10);
-    if(value==='Complete'){ if(!it.completedDate) it.completedDate=today; it.acceptDate=''; }
-    else if(value==='Accepted'){ if(!it.acceptDate) it.acceptDate=today; it.completedDate=''; }
-    else { it.completedDate=''; it.acceptDate=''; }
+    if(value==='Accepted'){ if(!it.acceptDate) it.acceptDate=today; } else { it.acceptDate=''; }
+    _stampActionCompletion(it, value);
   }
   _stamp(it,'updated'); scheduleAutoSave();
   if(field==='due'||field==='priority'||field==='status'){ _keepScroll(renderActionPlanTab); }
@@ -11814,6 +11831,7 @@ function setMgmtActionStatus(secId, itemId, value){
   const it=(sec.items||[]).find(x=>x.id===itemId); if(!it) return;
   it.actionStatus=value;
   if(value==='Accepted'){ if(!it.acceptDate) it.acceptDate=new Date().toISOString().slice(0,10); }
+  _stampActionCompletion(it, value);
   _stamp(it,'updated'); saveData(); _keepScroll(renderActionPlanTab);
 }
 function dismissMgmtActionFromPlan(secId, itemId){
@@ -11946,7 +11964,50 @@ function renderActionPlanTab(){
     ${hiddenBlock}
     ${gapCard}
     ${freeCard}
-    ${regCard}`;
+    ${regCard}
+    ${_completedHistoryHTML()}`;
+}
+
+// ── Completed-actions history (Action Plan tab) — the full record, by period ──
+let _apHistoryPeriod = 'all';
+function setApHistoryPeriod(p){ _apHistoryPeriod = p; _keepScroll(renderActionPlanTab); }
+function _actionInPeriod(dateStr, period){
+  if(period==='all') return true;
+  if(!dateStr) return false;
+  const d=new Date(String(dateStr)+'T12:00:00'); if(isNaN(d)) return false;
+  const now=new Date();
+  if(period==='month')   return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+  if(period==='quarter') return d.getFullYear()===now.getFullYear() && Math.floor(d.getMonth()/3)===Math.floor(now.getMonth()/3);
+  if(period==='year')    return d.getFullYear()===now.getFullYear();
+  return true;
+}
+function _completedActions(period){
+  return _execActions()
+    .filter(a=>a.status==='Complete' && _actionInPeriod(a.completedDate, period))
+    .sort((x,y)=>String(y.completedDate||'').localeCompare(String(x.completedDate||'')));
+}
+function _completedHistoryHTML(){
+  const period=_apHistoryPeriod;
+  const done=_completedActions(period);
+  const allDone=_execActions().filter(a=>a.status==='Complete').length;
+  const fmt=(s)=>{ try{ return s? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'; }catch(e){ return '—'; } };
+  const PERIODS=[['month','This month'],['quarter','This quarter'],['year','This year'],['all','All time']];
+  const filterBtns=PERIODS.map(([k,l])=>`<button class="btn btn-xs no-print ${period===k?'btn-primary':'btn-ghost'}" onclick="setApHistoryPeriod('${k}')">${l}</button>`).join('');
+  const rows=done.length ? done.map(a=>`<div style="display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border);border-left:4px solid var(--success);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+      <span style="color:var(--success);font-size:16px;line-height:1.2;flex:0 0 auto;">✓</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13.5px;">${esc(a.desc||'(no description)')}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:6px 10px;"><span class="badge badge-muted">${esc(a.source)}</span>${a.sourceLabel?`<span>${esc(a.sourceLabel)}</span>`:''}${a.owner?`<span>&middot; ${esc(a.owner)}</span>`:''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;font-size:12px;"><div style="font-weight:700;color:var(--success);white-space:nowrap;">${fmt(a.completedDate)}</div>${a.completedBy?`<div style="color:var(--text-muted);font-size:11px;">${esc(a.completedBy)}</div>`:''}</div>
+    </div>`).join('') : `<div class="ck-pending" style="padding:6px 0;">No actions completed in this period.</div>`;
+  return `<div class="card">
+    <div class="card-band"><h3><span class="dot">●</span> Completed &mdash; history</h3><span class="badge badge-muted">${done.length}${period!=='all'?(' of '+allDone):''}</span></div>
+    <div class="card-body">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;"><span style="font-size:12px;font-weight:600;color:var(--text-muted);margin-right:4px;">Period:</span>${filterBtns}<button class="btn btn-ghost btn-xs no-print" style="margin-left:auto;" onclick="downloadCompletedActionsReport()">⭳ Completed actions PDF</button></div>
+      ${rows}
+    </div>
+  </div>`;
 }
 
 // ── Monitoring & assurance (spec #5) ──
@@ -12600,6 +12661,7 @@ const REPORT_DOCS = [
   { key:'riskProfile',      title:'Risk Profile',                 code:'RP'  },
   { key:'actionPlan',       title:'Action Plan',                  code:'AP'  },
   { key:'executionPlan',    title:'Client Execution Plan',        code:'EP'  },
+  { key:'completedActions', title:'Completed Actions',            code:'CA'  },
   { key:'managementSystem', title:'Management System Assessment', code:'MS'  },
   { key:'raRegister',       title:'Risk Assessment Register',     code:'RAR' },
   { key:'riskAcceptance',   title:'Risk Acceptance Register',     code:'RAC' },
@@ -13063,6 +13125,35 @@ function buildExecPlanReportPDF(){
   }
   _pdfFooter(K, d, 'Client Execution Plan');
   doc.save('execution-plan-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+}
+function downloadCompletedActionsReport(){ try{ buildCompletedActionsReportPDF(); showToast('✓ Completed actions report created','success'); }catch(e){ console.error('Completed actions report failed',e); showToast('Could not build the report — see console','error'); } }
+// Completed Actions report — the delivered-work history for the period selected on
+// the Action Plan tab, grouped by month. Same house style + document control.
+function buildCompletedActionsReportPDF(){
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+  const d=_docFor('completedActions');
+  const NAVY=[30,58,95], GREEN=[22,163,74], GREY=[120,120,120];
+  const period=_apHistoryPeriod;
+  const periodLabel={month:'this month',quarter:'this quarter',year:'this year',all:'all time'}[period]||'all time';
+  const K=_mkPdf('Completed Actions', client, d, 'The record of actions completed ('+periodLabel+') - from the risk profile, management system, assurance and accreditation.');
+  const { doc } = K;
+  const fd=(s)=> s ? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '-';
+  const done=_completedActions(period);
+  K.verdictBox(done.length? (done.length+' action'+(done.length!==1?'s':'')+' completed '+periodLabel+'.') : ('No actions completed '+periodLabel+'.'), done.length?GREEN:GREY);
+  if(!done.length){ _pdfFooter(K, d, 'Completed Actions'); doc.save('completed-actions-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf'); return; }
+  const byMonth={}; done.forEach(a=>{ const k=(a.completedDate||'').slice(0,7)||'—'; (byMonth[k]=byMonth[k]||[]).push(a); });
+  const keys=Object.keys(byMonth).sort((a,b)=>b.localeCompare(a));   // newest month first
+  const monthName=(k)=>{ if(!k||k==='—') return 'Undated'; const p=k.split('-'); return new Date(+p[0],+p[1]-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); };
+  keys.forEach(k=>{
+    K.section(monthName(k)+'  ('+byMonth[k].length+')', NAVY);
+    K.table(
+      [{header:'ACTION',w:82},{header:'SOURCE',w:40},{header:'COMPLETED',w:24},{header:'BY',w:24}],
+      byMonth[k].map(a=>[ a.desc||'(no description)', {text:a.source+(a.sourceLabel?(' - '+a.sourceLabel):''), color:[120,120,120]}, {text:fd(a.completedDate), color:[22,120,60]}, {text:a.completedBy||'-', color:[110,110,110]} ]),
+      {headFill:NAVY, headText:[255,255,255]}
+    );
+  });
+  _pdfFooter(K, d, 'Completed Actions');
+  doc.save('completed-actions-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
 }
 
 function _profBoardReport_dead(){

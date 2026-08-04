@@ -14652,6 +14652,23 @@ function copyRaLocation(id){
 function _appLinksState(){ if(!Array.isArray(S.appLinks)) S.appLinks=[]; return S.appLinks; }
 function _canEditLinks(){ const u=(typeof Auth!=='undefined'&&Auth.user)?Auth.user():null; return !u || u.role==='consultant'; }
 const _QL_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+// Simon's own client-facing H&S apps — one-click add (URLs only, no logins). Excludes wageex (private) and this app.
+const MY_APPS=[
+  { label:'Risk Assessments (RAMS)', url:'https://oprams.archerhs.co.uk' },
+  { label:'Site Safety Inspection',  url:'https://siteinspection.archerhs.co.uk' },
+  { label:'Workplace Inspection',    url:'https://inspections.archerhs.co.uk' },
+  { label:'Design Risk (CDM)',       url:'https://drm.archerhs.co.uk' },
+  { label:'InSight (CDM / Building Regs)', url:'https://insight.archerhs.co.uk' }
+];
+function _qlNormUrl(u){ return String(u||'').replace(/^https?:\/\//i,'').replace(/\/+$/,'').toLowerCase(); }
+function addPresetLink(idx){
+  if(!_canEditLinks()) return;
+  const a=MY_APPS[idx]; if(!a) return;
+  const list=_appLinksState();
+  if(list.some(l=>_qlNormUrl(l.url)===_qlNormUrl(a.url))){ showToast('That app is already linked','info'); return; }
+  list.push({ id:'ql_'+Math.random().toString(36).slice(2,9), label:a.label, url:a.url, qr:'' });
+  saveData(); renderAppLinks(); showToast('✓ Added '+a.label,'success');
+}
 
 function renderAppLinks(){
   const cont=document.getElementById('appLinksContainer'); if(!cont) return;
@@ -14668,10 +14685,17 @@ function renderAppLinks(){
     </div>`;
   }).join('');
   const addTile = canEdit ? `<button class="ql-add no-print" onclick="openAppLinkModal()"><div class="ql-plus">+</div><div style="font-weight:700;">Add link</div><div style="font-size:11.5px;text-align:center;">Link to another app, with an optional QR</div></button>` : '';
+  const linkedUrls = new Set(list.map(l=>_qlNormUrl(l.url)));
+  const presets = MY_APPS.map((a,i)=>({a,i})).filter(x=>!linkedUrls.has(_qlNormUrl(x.a.url)));
+  const presetStrip = (canEdit && presets.length) ? `<div class="no-print" style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding:10px 12px;border:1px dashed var(--border);border-radius:9px;">
+      <span style="font-size:12px;font-weight:600;color:var(--text-muted);margin-right:2px;">Quick add my apps:</span>
+      ${presets.map(x=>`<button class="btn btn-ghost btn-xs no-print" onclick="addPresetLink(${x.i})">＋ ${esc(x.a.label)}</button>`).join('')}
+    </div>` : '';
   cont.innerHTML = `<div class="card" style="margin:26px 0 16px;">
     <div class="card-band"><h3><span class="dot">●</span> Quick links</h3><span class="badge badge-muted">${list.length||''}</span></div>
     <div class="card-body">
-      <div class="no-print" style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;">Jump straight to the client's other apps — their risk assessment tool, portals, anything in their package. ${canEdit?'Add a link and, if you like, upload a QR code the client can scan on their phone.':'Tap Open to launch, or scan a QR code with your phone.'}</div>
+      <div class="no-print" style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;">Jump straight to the client's other apps — their risk assessment tool, portals, anything in their package. ${canEdit?'Quick-add one of your apps below, or add any link and upload a QR code the client can scan on their phone.':'Tap Open to launch, or scan a QR code with your phone.'}</div>
+      ${presetStrip}
       <div class="ql-grid">${cards}${addTile}</div>
     </div>
   </div>`;

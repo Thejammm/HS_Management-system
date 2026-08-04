@@ -760,6 +760,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="tab-btn" data-tab="actions" onclick="switchTab('actions')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Actions <span class="tb-badge" id="badgeActions"></span></button>
     <button class="tab-btn" data-tab="monthly" onclick="switchTab('monthly')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg> Monthly report</button>
     </div>
+    <div class="nav-op-group" style="border:1px solid var(--border);border-radius:8px;padding:3px;margin:8px 0;">
+      <div style="font-size:10px;color:var(--text-muted);padding:3px 8px 4px;">Inspection tracking</div>
+    <button class="tab-btn" data-tab="siteinsp" onclick="switchTab('siteinsp')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg> Inspection tracker <span class="tb-badge" id="badgeSiteInsp"></span></button>
+    </div>
     <button class="tab-btn" data-consultant data-tab="audit" onclick="switchTab('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg> Consultants audit</button>
     <button class="tab-btn" data-tab="setup" onclick="switchTab('setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg> Checklist builder</button>
     <button class="tab-btn" data-tab="admin" id="navAdmin" data-consultant="1" onclick="switchTab('admin')" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg> Admin</button>
@@ -1128,6 +1132,22 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <!-- ══════════════════════════════════════
        TAB — DOCUMENT REGISTER
   ══════════════════════════════════════ -->
+  <div id="tab-siteinsp" class="tab-panel">
+    <div class="card no-print" style="margin-bottom:18px;">
+      <div class="card-band"><h3><span class="dot">●</span> Inspection tracker</h3>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm no-print" onclick="downloadSiteInspReport()">⭳ Tracker report PDF</button>
+          <button class="btn btn-primary btn-sm no-print" id="siteInspAddBtn" onclick="addSiteInsp()">＋ Add inspection</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="font-size:13px;color:var(--text-muted);">Track site inspections carried out outside this app &mdash; your own visits or an external party. Log what was planned, whether it happened, and the outcome. The result is recorded in Assurance records manually; you may only know it was done, so note where the record is filed.</div>
+        <div id="siteInspSummary" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"></div>
+      </div>
+    </div>
+    <div id="siteInspContainer"></div>
+  </div>
+
   <div id="tab-documents" class="tab-panel">
     <div class="card no-print" style="margin-bottom:18px;">
       <div class="card-band"><h3><span class="dot">●</span> Document register</h3>
@@ -2821,6 +2841,7 @@ function switchTab(id) {
   if(id==='actionplan'){ renderActionPlanTab(); }
   if(id==='execplan'){ renderExecPlan(); }
   if(id==='monitoring'){ renderMonitoring(); renderRaRegister(); renderAppLinks(); }
+  if(id==='siteinsp') { renderSiteInsp(); }
   if(id==='review')   { renderReview(); }
   if(id==='documents'){ renderDocuments(); }
   if(id==='cas')      { renderCAS(); }
@@ -11098,6 +11119,7 @@ function raiseExecAction(source, label){
 function updateActionBadges(){
   const n=_execOpenCount();
   ['badgeReview','badgeExecPlan','badgeActionPlan'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.textContent=n; b.style.display=n>0?'inline-flex':'none'; } });
+  try{ if(typeof _updateSiteInspBadge==='function') _updateSiteInspBadge(); }catch(e){}
 }
 function _refreshActionViews(){
   const active=(id)=>document.getElementById(id)&&document.getElementById(id).classList.contains('active');
@@ -12128,6 +12150,105 @@ function _renderAssurance(){
     </div></div>`;
 }
 
+// ── Inspection tracker — planned vs actual site inspections done outside this app ──
+// A lightweight register: the outcome is recorded in Assurance manually (the inspection
+// may be external and the result may not be known — only that it happened).
+const SITEINSP_OUTCOMES = ['Not yet known','Satisfactory','Actions raised','Unsatisfactory','Not done'];
+function _siteInspState(){ if(!Array.isArray(S.siteInspections)) S.siteInspections=[]; return S.siteInspections; }
+function _siteInspStatus(r){
+  const today=new Date().toISOString().slice(0,10);
+  if(r.outcome==='Not done') return {label:'Not done', rag:'red'};
+  if(r.actual) return {label:'Completed', rag:'green'};
+  if(r.planned){
+    if(r.planned < today) return {label:'Overdue', rag:'red'};
+    if(r.planned.slice(0,7)===today.slice(0,7)) return {label:'Due this month', rag:'amber'};
+    return {label:'Planned', rag:'grey'};
+  }
+  return {label:'Unscheduled', rag:'grey'};
+}
+function addSiteInsp(){
+  if(_blockIfReadOnly()) return;
+  const it={ id:_reqUid('si'), site:'', planned:'', actual:'', by:'', outcome:'Not yet known', ref:'', notes:'' };
+  if(typeof _stamp==='function') _stamp(it,'created');
+  _siteInspState().push(it); saveData(); _keepScroll(renderSiteInsp);
+}
+function updateSiteInsp(id, field, value, live){
+  if(_roLocked()) return;
+  const r=_siteInspState().find(x=>x.id===id); if(!r) return;
+  r[field]=value; if(typeof _stamp==='function') _stamp(r,'updated');
+  if(live){ saveData(); _keepScroll(renderSiteInsp); } else { scheduleAutoSave(); }
+}
+function deleteSiteInsp(id){
+  if(_blockIfReadOnly()) return;
+  const r=_siteInspState().find(x=>x.id===id);
+  if(!confirm('Delete this inspection record?'+(r&&r.site?('\n\n"'+r.site+'"'):'')+'\n\nThis cannot be undone.')) return;
+  S.siteInspections=_siteInspState().filter(x=>x.id!==id); saveData(); _keepScroll(renderSiteInsp);
+}
+function _updateSiteInspBadge(){
+  const b=document.getElementById('badgeSiteInsp'); if(!b) return;
+  const n=_siteInspState().filter(r=>_siteInspStatus(r).rag==='red').length;
+  b.textContent=n; b.style.display=n>0?'inline-flex':'none';
+}
+function renderSiteInsp(){
+  const sum=document.getElementById('siteInspSummary'); const cont=document.getElementById('siteInspContainer');
+  if(!cont) return;
+  const dis=_roLocked()?' disabled':'';
+  const rows=_siteInspState();
+  const fmt=(s)=>{ try{ return s? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}) : ''; }catch(e){ return ''; } };
+  const total=rows.length;
+  const completed=rows.filter(r=>r.actual).length;
+  const overdue=rows.filter(r=>_siteInspStatus(r).rag==='red').length;
+  const pct=total?Math.round(completed/total*100):0;
+  if(sum){
+    const tile=(num,label,color)=>`<div style="flex:1;min-width:110px;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:${color};line-height:1;">${num}</div><div style="font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:.03em;">${label}</div></div>`;
+    sum.innerHTML = tile(total,'Planned','#30415f')+tile(completed,'Completed',completed?RAG_COLOR.green:'#30415f')+tile(overdue,'Overdue / missed',overdue?RAG_COLOR.red:'#30415f')+tile(pct+'%','Completion',pct>=80?RAG_COLOR.green:pct>=50?RAG_COLOR.amber:RAG_COLOR.red);
+  }
+  const pill=(st)=>`<span style="display:inline-block;padding:2px 8px;border-radius:11px;font-size:11px;font-weight:700;color:#fff;background:${RAG_COLOR[st.rag]};white-space:nowrap;">${st.label}</span>`;
+  const body=rows.slice().sort((a,b)=>String(a.planned||'9999').localeCompare(String(b.planned||'9999'))).map(r=>{
+    const st=_siteInspStatus(r);
+    return `<tr>
+      <td><input type="text"${dis} value="${esc(r.site||'')}" placeholder="Site / location" oninput="updateSiteInsp('${r.id}','site',this.value)" style="min-width:150px;"></td>
+      <td><input type="date"${dis} value="${r.planned||''}" onchange="updateSiteInsp('${r.id}','planned',this.value,1)"></td>
+      <td><input type="date"${dis} value="${r.actual||''}" onchange="updateSiteInsp('${r.id}','actual',this.value,1)"></td>
+      <td><input type="text"${dis} value="${esc(r.by||'')}" placeholder="Internal / external party" oninput="updateSiteInsp('${r.id}','by',this.value)" style="min-width:130px;"></td>
+      <td style="text-align:center;">${pill(st)}</td>
+      <td><select${dis} onchange="updateSiteInsp('${r.id}','outcome',this.value,1)">${SITEINSP_OUTCOMES.map(o=>`<option${o===r.outcome?' selected':''}>${o}</option>`).join('')}</select></td>
+      <td><input type="text"${dis} value="${esc(r.ref||'')}" placeholder="Filed in Assurance / ref" oninput="updateSiteInsp('${r.id}','ref',this.value)" style="min-width:150px;"></td>
+      <td><input type="text"${dis} value="${esc(r.notes||'')}" placeholder="Notes" oninput="updateSiteInsp('${r.id}','notes',this.value)" style="min-width:150px;"></td>
+      ${dis?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs" title="Delete" onclick="deleteSiteInsp('${r.id}')">${_ic('trash',13)}</button></td>`}
+    </tr>`;
+  }).join('');
+  cont.innerHTML = `<div class="card"><div class="card-band"><h3><span class="dot">●</span> Planned vs actual</h3><span class="badge badge-muted">${total}</span></div>
+    <div class="card-body">
+      <div style="overflow-x:auto;"><table class="assur-table"><thead><tr><th>Site / location</th><th>Planned</th><th>Actual</th><th>Carried out by</th><th>Status</th><th>Outcome</th><th>Assurance record</th><th>Notes</th>${dis?'':'<th></th>'}</tr></thead>
+      <tbody>${body||`<tr><td colspan="${dis?8:9}" style="color:var(--text-muted);">No inspections logged yet.${dis?'':' Use &ldquo;Add inspection&rdquo; to record one.'}</td></tr>`}</tbody></table></div>
+    </div></div>`;
+  _updateSiteInspBadge();
+}
+function downloadSiteInspReport(){ try{ buildSiteInspReportPDF(); showToast('✓ Inspection tracker report created','success'); }catch(e){ console.error('Site inspection report failed',e); showToast('Could not build the report — see console','error'); } }
+function buildSiteInspReportPDF(){
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+  const d=_docFor('siteInspections');
+  const NAVY=[30,58,95], GREY=[120,120,120];
+  const K=_mkPdf('Inspection Tracker', client, d, 'Planned vs actual site inspections and their outcome.');
+  const { doc } = K;
+  const fd=(s)=> s ? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '-';
+  const rows=_siteInspState().slice().sort((a,b)=>String(a.planned||'9999').localeCompare(String(b.planned||'9999')));
+  const total=rows.length, completed=rows.filter(r=>r.actual).length, overdue=rows.filter(r=>_siteInspStatus(r).rag==='red').length;
+  const pct=total?Math.round(completed/total*100):0;
+  K.verdictBox(total? (completed+' of '+total+' inspections completed ('+pct+'%); '+overdue+' overdue or missed.') : 'No inspections logged.', overdue?[178,58,58]:GREY);
+  if(rows.length){
+    K.section('Inspection register', NAVY);
+    K.table(
+      [{header:'SITE / LOCATION',w:40},{header:'PLANNED',w:20},{header:'ACTUAL',w:20},{header:'BY',w:28},{header:'STATUS',w:22},{header:'OUTCOME',w:28},{header:'ASSURANCE REF',w:22}],
+      rows.map(r=>{ const st=_siteInspStatus(r); return [ r.site||'-', {text:fd(r.planned),color:[110,110,110]}, {text:fd(r.actual),color:[110,110,110]}, {text:r.by||'-',color:[110,110,110]}, {text:st.label,color:st.rag==='red'?[178,58,58]:st.rag==='amber'?[176,120,20]:st.rag==='green'?[22,120,60]:[110,110,110]}, {text:r.outcome||'-',color:[110,110,110]}, {text:r.ref||'-',color:[110,110,110]} ]; }),
+      {headFill:NAVY, headText:[255,255,255]}
+    );
+  }
+  _pdfFooter(K, d, 'Inspection Tracker');
+  doc.save('inspection-tracker-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+}
+
 // One-click JSON backup of this client's risk data (spec constraint).
 function backupRiskData(){
   const client=(_consultantView&&_consultantView.name) || (S.branding&&S.branding.name) || 'client';
@@ -12740,6 +12861,7 @@ const REPORT_DOCS = [
   { key:'raRegister',       title:'Risk Assessment Register',     code:'RAR' },
   { key:'riskAcceptance',   title:'Risk Acceptance Register',     code:'RAC' },
   { key:'audit',            title:'Health & Safety Audit',        code:'AUD' },
+  { key:'siteInspections',  title:'Inspection Tracker',           code:'SIT' },
   { key:'feedback',         title:'Consultant Review & Feedback', code:'CR'  },
   { key:'cas',              title:'CAS Submission Pack',           code:'CAS' },
   { key:'acp',              title:'ACP Evidence Pack',             code:'ACP' }
@@ -16252,7 +16374,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions','docControl','training','actionArchive'];
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

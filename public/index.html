@@ -11046,6 +11046,41 @@ function updateExecAction(refStr, field, value){
   if(typeof _stamp==='function') _stamp(o,'updated');
   saveData(); _refreshActionViews();
 }
+// Delete an action from the Consultant Review table: archive a snapshot first (nothing is
+// lost — it can be restored), then remove it from its origin. Handles all three sources.
+function deleteExecAction(refStr){
+  if(_blockIfReadOnly()) return;
+  let ref; try{ ref=JSON.parse(decodeURIComponent(refStr)); }catch(e){ return; }
+  const na=_execActions().find(a=>JSON.stringify(a.ref)===JSON.stringify(ref)); if(!na) return;
+  if(!confirm('Delete this action?\n\n"'+(na.desc||'(no description)')+'"\n\nIt moves to the consultant-only Archive (nothing is lost — you can restore it). This removes it from the live plan.')) return;
+  _archiveAction({ desc:na.desc, owner:na.owner, due:na.due, priority:na.priority, status:na.raw, completedDate:na.completedDate, completedBy:na.completedBy, createdAt:na.raisedAt }, na.source, na.sourceLabel);
+  if(ref.t==='risk'){ const r=(S.riskProfile||[]).find(x=>x.id===ref.a); if(r){ r.actions=(r.actions||[]).filter(x=>x.id!==ref.b); if(typeof _stamp==='function')_stamp(r,'updated'); } }
+  else if(ref.t==='mgmt'){ const s=(S.requirements||[]).find(x=>x.id===ref.a); const it=s&&(s.items||[]).find(x=>x.id===ref.b); if(it){ it.action=''; it.actionOwner=''; it.dueDate=''; it.actionStatus=''; if(typeof _stamp==='function')_stamp(it,'updated'); } }
+  else if(ref.t==='free'){ S.actionPlan=(S.actionPlan||[]).filter(x=>x.id!==ref.a); }
+  saveData(); _refreshActionViews(); if(typeof renderReview==='function') _keepScroll(renderReview);
+  if(typeof showToast==='function') showToast('Action moved to the archive','info');
+}
+// Restore an archived action back into the live plan (as a standalone plan item), keeping its source label.
+function restoreArchivedAction(archId){
+  if(_blockIfReadOnly()) return;
+  const arch=_actionArchiveState(); const e=arch.find(x=>x.id===archId); if(!e) return;
+  if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
+  const it={ id:_reqUid('act'), desc:e.desc||'', owner:e.owner||'', due:e.due||'', status:e.status||'Not started', priority:e.priority||'', source:e.source||'Added directly', sourceLabel:e.sourceLabel||'', completedDate:e.completedDate||'', completedBy:e.completedBy||'' };
+  if(typeof _stamp==='function') _stamp(it,'created');
+  S.actionPlan.push(it);
+  S.actionArchive=arch.filter(x=>x.id!==archId);
+  saveData(); _refreshActionViews(); if(typeof renderReview==='function') _keepScroll(renderReview);
+  if(typeof showToast==='function') showToast('✓ Action restored to the plan','success');
+}
+// Permanently delete a single archived action (cannot be undone).
+function deleteArchivedItem(archId){
+  if(_blockIfReadOnly()) return;
+  const arch=_actionArchiveState(); const e=arch.find(x=>x.id===archId); if(!e) return;
+  if(!confirm('Permanently delete this archived action?\n\n"'+(e.desc||'(no description)')+'"\n\nThis cannot be undone.')) return;
+  S.actionArchive=arch.filter(x=>x.id!==archId);
+  saveData(); if(typeof renderReview==='function') _keepScroll(renderReview);
+  if(typeof showToast==='function') showToast('Archived action deleted','info');
+}
 // Raise a new action from Assurance / Accreditation (or anywhere) into the plan.
 function raiseExecAction(source, label){
   if(_blockIfReadOnly()) return;
@@ -11997,20 +12032,24 @@ function renderActionPlanTab(){
 // Archive of deleted actions — consultant-only record, with a report button.
 function _archiveHTML(){
   const arch=_actionArchiveState();
-  if(!arch.length) return '';
+  const ro=_roLocked();
   const fmt=(s)=>{ try{ return s? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : ''; }catch(e){ return ''; } };
-  const rows=arch.slice().sort((a,b)=>String(b.archivedAt||'').localeCompare(String(a.archivedAt||''))).map(a=>`<div style="display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border);border-left:4px solid var(--text-muted);border-radius:8px;padding:10px 12px;margin-bottom:8px;opacity:.85;">
+  const rows=arch.slice().sort((a,b)=>String(b.archivedAt||'').localeCompare(String(a.archivedAt||''))).map(a=>`<div style="display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border);border-left:4px solid var(--text-muted);border-radius:8px;padding:10px 12px;margin-bottom:8px;opacity:.9;">
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;font-size:13.5px;">${esc(a.desc||'(no description)')}</div>
         <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:5px 10px;">${a.source?`<span class="badge badge-muted">${esc(a.source)}</span>`:''}${a.sourceLabel?`<span>${esc(a.sourceLabel)}</span>`:''}${a.owner?`<span>&middot; ${esc(a.owner)}</span>`:''}${a.status?`<span>&middot; ${esc(a.status)}</span>`:''}${a.completedDate?`<span>&middot; completed ${fmt(a.completedDate)}</span>`:''}</div>
       </div>
       <div style="text-align:right;flex-shrink:0;font-size:11px;color:var(--text-muted);">deleted ${fmt(a.archivedAt)}${a.archivedBy?`<br>by ${esc(a.archivedBy)}`:''}</div>
+      ${ro?'':`<div style="display:flex;gap:6px;flex-shrink:0;align-self:center;">
+        <button type="button" class="no-print" onclick="restoreArchivedAction('${a.id}')" title="Restore to the plan" style="background:transparent;border:1px solid var(--border);color:var(--text);padding:4px 9px;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap;">↩ Restore</button>
+        <button type="button" class="no-print" onclick="deleteArchivedItem('${a.id}')" title="Delete permanently" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:26px;height:26px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">✕</button>
+      </div>`}
     </div>`).join('');
   return `<div class="card">
     <div class="card-band"><h3><span class="dot">●</span> Archive <span class="badge badge-muted">consultant only</span></h3><span class="badge badge-muted">${arch.length}</span></div>
     <div class="card-body">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;"><span style="font-size:12px;color:var(--text-muted);flex:1;min-width:180px;">Deleted actions are kept here (only you can see this). Pull them into a report anytime.</span><button class="btn btn-ghost btn-sm no-print" onclick="downloadArchiveReport()">⭳ Archive report PDF</button>${_roLocked()?'':`<button class="btn btn-ghost btn-xs no-print" onclick="if(confirm('Permanently clear the archive? This cannot be undone.')){S.actionArchive=[];saveData();renderActionPlanTab();}">Clear archive</button>`}</div>
-      ${rows}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;"><span style="font-size:12px;color:var(--text-muted);flex:1;min-width:180px;">Actions you delete from the plan are kept here (only you can see this). Restore one to the plan, delete it for good, or pull the lot into a report.</span><button class="btn btn-ghost btn-sm no-print" onclick="downloadArchiveReport()"${arch.length?'':' disabled'}>⭳ Archive report PDF</button>${ro||!arch.length?'':`<button class="btn btn-ghost btn-xs no-print" onclick="if(confirm('Permanently clear the whole archive? This cannot be undone.')){S.actionArchive=[];saveData();renderReview();}">Clear archive</button>`}</div>
+      ${arch.length?rows:`<div class="ck-pending" style="padding:6px 0;">Nothing archived yet. When you delete an action from the review table above, it lands here so nothing is ever lost.</div>`}
     </div>
   </div>`;
 }
@@ -15460,6 +15499,7 @@ function _revActBodyHTML(){
         <input${dis} value="${esc(a.owner||'')}" placeholder="Owner" onchange="updateExecAction('${rk}','owner',this.value)" style="flex:1;min-width:80px;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;">
         <input type="date"${dis} value="${a.due||''}" onchange="updateExecAction('${rk}','due',this.value)" style="flex:0 0 auto;font-size:12px;">
         <select${dis} onchange="updateExecAction('${rk}','status',this.value)" style="flex:0 0 auto;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select>
+        ${_roLocked()?'':`<button type="button" class="no-print" onclick="deleteExecAction('${rk}')" title="Delete — moves to the archive" style="flex:0 0 auto;background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:26px;height:26px;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;">✕</button>`}
       </div>
       ${exp?`<div style="padding:2px 12px 10px 40px;font-size:12px;color:var(--text-muted);border-top:1px dashed var(--border);display:flex;flex-wrap:wrap;gap:6px 16px;">
         ${a.sourceLabel?`<span><strong>From:</strong> ${esc(a.sourceLabel)}</span>`:''}${a.priority?`<span><strong>Priority:</strong> ${esc(a.priority)}</span>`:''}${a.raisedAt?`<span><strong>Raised:</strong> ${fmt(a.raisedAt)}</span>`:''}${a.due?`<span><strong>Target:</strong> ${fmt(a.due)}</span>`:''}${resolved?`<span style="color:${a.status==='Accepted'?RAGC.grey:RAGC.green};"><strong>${a.status==='Accepted'?'Accepted':'Completed'}:</strong> ${fmt(a.resolvedDate)}${a.resolvedBy?(' by '+esc(a.resolvedBy)):''}</span>`:''}

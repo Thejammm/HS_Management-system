@@ -14467,7 +14467,7 @@ function addRegItem(secId){
   if(_blockIfReadOnly()) return;
   const s = _regSection(secId); if(!s) return;
   if(!Array.isArray(s.items)) s.items = [];
-  s.items.push({ id:_reqUid('reg'), item:'', dueDate:'', result:'', resultDate:'' });
+  s.items.push({ id:_reqUid('reg'), item:'', area:'', frequency:'', resultDate:'', dueDate:'', result:'', certRef:'', notes:'' });
   saveData(); renderMonitoring();
 }
 function deleteRegItem(secId, id){
@@ -14485,6 +14485,54 @@ function updateRegField(secId, id, field, value){
     const b = document.getElementById('regresult-'+id);
     if(b){ b.textContent = value || ''; b.className = 'badge ' + (value==='Pass'?'badge-success':value==='Fail'?'badge-danger':'badge-muted'); b.style.display = value?'inline-flex':'none'; }
   }
+}
+// Regulatory item RAG (by due date), frequency-driven next-due, section counts and plan links.
+const REG_FREQ=['','Weekly','Monthly','Quarterly','6-monthly','Annual','2-yearly','3-yearly','5-yearly'];
+function _regRag(dueDate){
+  if(!dueDate) return 'grey';
+  const d=new Date(String(dueDate)+'T00:00:00'); if(isNaN(d)) return 'grey';
+  const now=new Date(); now.setHours(0,0,0,0);
+  if(d<now) return 'red';
+  const soon=new Date(now); soon.setDate(soon.getDate()+60);
+  if(d<=soon) return 'amber';
+  return 'green';
+}
+function _regNextDue(lastDone, freq){
+  if(!lastDone||!freq) return '';
+  const d=new Date(String(lastDone)+'T12:00:00'); if(isNaN(d)) return '';
+  const map={ 'Weekly':['d',7],'Monthly':['m',1],'Quarterly':['m',3],'6-monthly':['m',6],'Annual':['y',1],'2-yearly':['y',2],'3-yearly':['y',3],'5-yearly':['y',5] };
+  const a=map[freq]; if(!a) return '';
+  if(a[0]==='d') d.setDate(d.getDate()+a[1]); else if(a[0]==='m') d.setMonth(d.getMonth()+a[1]); else d.setFullYear(d.getFullYear()+a[1]);
+  return d.toISOString().slice(0,10);
+}
+function _regCounts(){ let overdue=0,soon=0,total=0; _regSections().forEach(s=>(s.items||[]).forEach(r=>{ if(!(r.item&&String(r.item).trim())) return; total++; const g=_regRag(r.dueDate); if(g==='red') overdue++; else if(g==='amber') soon++; })); return {overdue,soon,total}; }
+function _regSecCounts(s){ let overdue=0,soon=0; (s.items||[]).forEach(r=>{ const g=_regRag(r.dueDate); if(g==='red') overdue++; else if(g==='amber') soon++; }); return {overdue,soon}; }
+function _regItemInPlan(id){ return (S.actionPlan||[]).some(a=>a.regKey==='reg|'+id); }
+function _regDateChange(secId,id,field,value){
+  if(_roLocked()) return;
+  const s=_regSection(secId); if(!s) return; const r=(s.items||[]).find(x=>x.id===id); if(!r) return;
+  r[field]=value;
+  if((field==='resultDate'||field==='frequency') && !r.dueDate && r.resultDate && r.frequency){ r.dueDate=_regNextDue(r.resultDate,r.frequency); }
+  saveData(); renderMonitoring();
+}
+function regRecalcDue(secId,id){
+  if(_blockIfReadOnly()) return;
+  const s=_regSection(secId); if(!s) return; const r=(s.items||[]).find(x=>x.id===id); if(!r) return;
+  const nd=_regNextDue(r.resultDate,r.frequency);
+  if(!nd){ showToast('Set both a “date carried out” and a frequency first','info'); return; }
+  r.dueDate=nd; saveData(); renderMonitoring();
+}
+function raiseRegItemAction(secId,id){
+  if(_blockIfReadOnly()) return;
+  const s=_regSection(secId); if(!s) return; const r=(s.items||[]).find(x=>x.id===id); if(!r) return;
+  if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
+  const key='reg|'+id; const desc='Statutory inspection due: '+(r.item||'item')+(s.name?(' ('+s.name+')'):'');
+  let it=S.actionPlan.find(a=>a.regKey===key);
+  if(it){ it.due=r.dueDate||it.due; it.desc=desc; }
+  else { it={ id:_reqUid('act'), regKey:key, desc:desc, owner:'', due:r.dueDate||'', status:'Not started', priority:(_regRag(r.dueDate)==='red'?'High':'Medium'), source:'Assurance', sourceLabel:(s.name||'Regulatory tracker') };
+    if(typeof _stamp==='function') _stamp(it,'created'); S.actionPlan.push(it); }
+  saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
+  showToast('✓ Added to the execution plan','success');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -14738,14 +14786,19 @@ function importStatutoryCSV(text){
     const item=_csvGet(r,map,['item','statutory item','inspection','description']); if(!item) continue;
     const secName=_csvGet(r,map,['section','category','type'])||'Statutory inspections';
     const area=_csvGet(r,map,['area','location','area/location','site']);
+    const frequency=_normFreq(_csvGet(r,map,['frequency','freq','interval','how often','cycle']));
     const lastDone=_csvDate(_csvGet(r,map,['last done','date carried out','completed','last','done']));
-    const nextDue=_csvDate(_csvGet(r,map,['next due','due','due date','next']));
+    let nextDue=_csvDate(_csvGet(r,map,['next due','due','due date','next'])); if(!nextDue && frequency && lastDone) nextDue=_regNextDue(lastDone,frequency);
     const result=(function(v){ v=v.toLowerCase(); return v.startsWith('p')?'Pass':v.startsWith('f')?'Fail':''; })(_csvGet(r,map,['result','outcome','pass/fail','status']));
+    const certRef=_csvGet(r,map,['certificate','cert','cert ref','certificate number','cert no','report number','report no']);
     const notes=_csvGet(r,map,['notes','comment','comments']);
     let sec=secs.find(s=>(s.name||'').toLowerCase()===secName.toLowerCase());
     if(!sec){ sec={ id:_reqUid('regsec'), name:secName, items:[] }; secs.push(sec); }
     if(!Array.isArray(sec.items)) sec.items=[];
-    sec.items.push({ id:_reqUid('reg'), item:item, area:area, dueDate:nextDue, resultDate:lastDone, result:result, notes:notes }); added++;
+    let it=sec.items.find(x=>(x.item||'').toLowerCase()===item.toLowerCase());
+    if(it){ it.area=area||it.area; it.frequency=frequency||it.frequency; it.dueDate=nextDue||it.dueDate; it.resultDate=lastDone||it.resultDate; it.result=result||it.result; it.certRef=certRef||it.certRef; it.notes=notes||it.notes; }
+    else { sec.items.push({ id:_reqUid('reg'), item:item, area:area, frequency:frequency, dueDate:nextDue, resultDate:lastDone, result:result, certRef:certRef, notes:notes }); }
+    added++;
   }
   S.monitoring.regSeeded=true; saveData(); renderMonitoring();
   showToast('✓ Imported '+added+' statutory item'+(added!==1?'s':'')+' into the regulatory tracker','success');
@@ -14781,7 +14834,7 @@ function importSpreadsheet(kind){
   inp.click();
 }
 function _downloadCSV(filename, text){ const blob=new Blob([text],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url); }
-function downloadStatutoryTemplate(){ _downloadCSV('statutory-inspections-template.csv','Section,Item,Area,Last done,Next due,Result,Notes\nFacilities,PAT testing,Workshop,12/03/2026,12/03/2027,Pass,\nFire,Fire alarm test,Whole site,01/02/2026,01/05/2026,Pass,Weekly bell test\nElectrical,Fixed wire (EICR),Office,15/06/2021,15/06/2026,Pass,\n'); if(typeof showToast==='function') showToast('Template downloaded — fill it in, save as CSV, then Import','info'); }
+function downloadStatutoryTemplate(){ _downloadCSV('statutory-inspections-template.csv','Section,Item,Area,Frequency,Last done,Next due,Result,Cert ref,Notes\nFacilities,PAT testing,Workshop,Annual,12/03/2026,12/03/2027,Pass,PAT-2026-01,\nLifting,Ramp 3 (LOLER),Workshop,6-monthly,01/03/2026,01/09/2026,Pass,LOLER-4471,\nFire,Fire alarm test,Whole site,Weekly,01/02/2026,,Pass,,Weekly bell test\nElectrical,Fixed wire (EICR),Office,5-yearly,15/06/2021,15/06/2026,Pass,EICR-8890,\n'); if(typeof showToast==='function') showToast('Template downloaded — fill it in, save as CSV, then Import','info'); }
 function downloadTrainingTemplate(){ _downloadCSV('training-matrix-template.csv','Employee,Course,Completed,Expiry\nJ. Smith,Fire Marshal,01/02/2026,01/02/2029\nJ. Smith,First Aid at Work,10/03/2024,10/03/2027\nA. Jones,Manual Handling,05/01/2026,\n'); if(typeof showToast==='function') showToast('Template downloaded — fill it in, save as CSV, then Import','info'); }
 
 // ══════════════════════════════════════════════════════════════
@@ -14804,6 +14857,17 @@ function _parseTable(text){
   return _parseCSV(text);
 }
 function _normResult(v){ v=String(v||'').toLowerCase().trim(); return v.startsWith('p')?'Pass':v.startsWith('f')?'Fail':(v?v.charAt(0).toUpperCase()+v.slice(1):''); }
+function _normFreq(v){ v=String(v||'').toLowerCase().trim(); if(!v) return '';
+  const exact=REG_FREQ.find(f=>f && f.toLowerCase()===v); if(exact) return exact;
+  if(/week/.test(v)) return 'Weekly';
+  if(/quarter|3[\s-]*month/.test(v)) return 'Quarterly';
+  if(/6[\s-]*month|six[\s-]*month|half[\s-]?year|semi[\s-]?ann|semi[\s-]?year/.test(v)) return '6-monthly';
+  if(/2[\s-]*year|two[\s-]*year|biennial/.test(v)) return '2-yearly';
+  if(/3[\s-]*year|three[\s-]*year|triennial/.test(v)) return '3-yearly';
+  if(/5[\s-]*year|five[\s-]*year|quinquennial/.test(v)) return '5-yearly';
+  if(/12[\s-]*month|annual|yearly|(^|[^0-9-])year/.test(v)) return 'Annual';
+  if(/month/.test(v)) return 'Monthly';
+  return ''; }
 function openImportWizard(kind){ if(_blockIfReadOnly()) return; _impWiz={ kind:kind, step:'paste', raw:'', headers:[], rows:[], nameIdx:0, exclude:{}, map:{} }; _renderImportWizard(); }
 function closeImportWizard(){ _impWiz=null; const m=document.getElementById('importWizModal'); if(m) m.remove(); }
 function _impDoParse(){
@@ -14830,10 +14894,12 @@ function _impGuessMapping(){
     const g=(al,f)=>{ let idx=-1; if(prof&&prof[f]) idx=low.indexOf(String(prof[f]).toLowerCase()); if(idx<0) idx=find(al); _impWiz.map[f]=idx; };
     g(['section','category','type','group'],'section');
     g(['item','statutory item','inspection','description','service','asset','equipment','check'],'item');
-    g(['area','location','area/location','site','building','room'],'area');
+    g(['area','location','area/location','site','building','room','asset','equipment','plant'],'area');
+    g(['frequency','freq','interval','how often','cycle','periodicity'],'frequency');
     g(['last done','date carried out','completed','last','done','last inspection','last test','issued','inspected'],'lastDone');
     g(['next due','due','due date','next','next inspection','expiry','renewal','valid until','review'],'nextDue');
     g(['result','outcome','pass/fail','status','condition'],'result');
+    g(['certificate','cert','cert ref','certificate number','cert no','report number','report no','certificate reference'],'certRef');
     g(['notes','comment','comments','remarks'],'notes');
   }
 }
@@ -14860,7 +14926,9 @@ function _impStatutoryRecords(){
   const secs=_regSections(); const recs=[]; let skipped=0,nw=0,up=0;
   _impWiz.rows.forEach(r=>{ const item=get(r,'item'); if(!item){ skipped++; return; }
     const section=get(r,'section')||'Statutory inspections';
-    recs.push({ section, item, area:get(r,'area'), lastDone:_xlDate(get(r,'lastDone')), nextDue:_xlDate(get(r,'nextDue')), result:_normResult(get(r,'result')), notes:get(r,'notes') });
+    const lastDone=_xlDate(get(r,'lastDone')); const freq=_normFreq(get(r,'frequency'));
+    const nextDue=_xlDate(get(r,'nextDue')) || (freq&&lastDone?_regNextDue(lastDone,freq):'');
+    recs.push({ section, item, area:get(r,'area'), frequency:freq, lastDone, nextDue, result:_normResult(get(r,'result')), certRef:get(r,'certRef'), notes:get(r,'notes') });
     const sec=secs.find(s=>(s.name||'').toLowerCase()===section.toLowerCase());
     if(sec && (sec.items||[]).some(it=>(it.item||'').toLowerCase()===item.toLowerCase())) up++; else nw++; });
   return { recs, nw, up, skipped };
@@ -14879,9 +14947,9 @@ function _impApply(){
       if(!sec){ sec={ id:_reqUid('regsec'), name:rec.section, items:[] }; secs.push(sec); }
       if(!Array.isArray(sec.items)) sec.items=[];
       let it=sec.items.find(x=>(x.item||'').toLowerCase()===rec.item.toLowerCase());
-      if(it){ it.area=rec.area||it.area; it.dueDate=rec.nextDue||it.dueDate; it.resultDate=rec.lastDone||it.resultDate; it.result=rec.result||it.result; it.notes=rec.notes||it.notes; }
-      else { sec.items.push({ id:_reqUid('reg'), item:rec.item, area:rec.area, dueDate:rec.nextDue, resultDate:rec.lastDone, result:rec.result, notes:rec.notes }); } });
-    const m=_impWiz.map; const p={}; ['section','item','area','lastDone','nextDue','result','notes'].forEach(f=>{ if(m[f]!=null&&m[f]>-1) p[f]=_impWiz.headers[m[f]]; }); _importProfiles().statutory=p;
+      if(it){ it.area=rec.area||it.area; it.frequency=rec.frequency||it.frequency; it.dueDate=rec.nextDue||it.dueDate; it.resultDate=rec.lastDone||it.resultDate; it.result=rec.result||it.result; it.certRef=rec.certRef||it.certRef; it.notes=rec.notes||it.notes; }
+      else { sec.items.push({ id:_reqUid('reg'), item:rec.item, area:rec.area, frequency:rec.frequency, dueDate:rec.nextDue, resultDate:rec.lastDone, result:rec.result, certRef:rec.certRef, notes:rec.notes }); } });
+    const m=_impWiz.map; const p={}; ['section','item','area','frequency','lastDone','nextDue','result','certRef','notes'].forEach(f=>{ if(m[f]!=null&&m[f]>-1) p[f]=_impWiz.headers[m[f]]; }); _importProfiles().statutory=p;
     S.monitoring.regSeeded=true; saveData(); renderMonitoring();
     showToast('✓ Imported '+recs.length+' statutory item'+(recs.length!==1?'s':''),'success');
   }
@@ -14920,7 +14988,7 @@ function _impMapTrainingHTML(){
 }
 function _impMapStatutoryHTML(){
   const H=_impWiz.headers;
-  const fields=[['section','Section / category',false],['item','Item / inspection',true],['area','Area / asset',false],['lastDone','Last done',false],['nextDue','Next due',false],['result','Result',false],['notes','Notes',false]];
+  const fields=[['section','Section / category',false],['item','Item / inspection',true],['area','Area / asset',false],['frequency','Frequency',false],['lastDone','Last done',false],['nextDue','Next due',false],['result','Result',false],['certRef','Certificate ref',false],['notes','Notes',false]];
   const sel=(f)=>{ const cur=_impWiz.map[f]; return `<select onchange="_impSetMap('${f}',this.value)" style="min-width:200px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;"><option value="-1">— none —</option>${H.map((h,i)=>`<option value="${i}"${i===cur?' selected':''}>${esc(h||('Column '+(i+1)))}</option>`).join('')}</select>`; };
   const rows=fields.map(([f,l,req])=>`<div style="display:flex;align-items:center;gap:12px;margin-bottom:9px;"><div style="width:150px;font-size:12.5px;font-weight:600;">${l}${req?' <span style="color:var(--danger);">*</span>':''}</div>${sel(f)}</div>`).join('');
   return `<div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Match your spreadsheet's columns to the tracker fields. Only <strong>Item / inspection</strong> is required. Dates in any common format (or Excel serial numbers) are handled. Re-importing updates existing items.</div>
@@ -15044,31 +15112,47 @@ function renderMonitoring(){
 
   // Regulatory tracker card — named sections, each with its own statutory items
   const regSecs = _regSections();
-  const itemCard = (secId, r) => `
-    <div style="border:1.5px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">
+  const _RRAGC={red:'#DC2626',amber:'#F59E0B',green:'#16A34A',grey:'#9CA3AF'};
+  const _rfmt=(s)=>{ try{ return s? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}):''; }catch(e){ return ''; } };
+  const itemCard = (secId, r) => {
+    const g=_regRag(r.dueDate); const gl={red:'Overdue',amber:'Due soon',green:'In date',grey:'No due date'}[g];
+    const inPlan=_regItemInPlan(r.id); const canRecalc=r.resultDate&&r.frequency;
+    return `<div style="border:1.5px solid var(--border);border-left:5px solid ${_RRAGC[g]};border-radius:8px;padding:12px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
-        <span class="badge ${r.result==='Pass'?'badge-success':r.result==='Fail'?'badge-danger':'badge-muted'}" id="regresult-${r.id}" style="${r.result?'':'display:none;'}">${r.result||''}</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:700;color:#fff;background:${_RRAGC[g]};">${gl}${r.dueDate?(' · '+_rfmt(r.dueDate)):''}</span>
+          <span class="badge ${r.result==='Pass'?'badge-success':r.result==='Fail'?'badge-danger':'badge-muted'}" id="regresult-${r.id}" style="${r.result?'':'display:none;'}">${r.result||''}</span>
+        </div>
         ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete item" onclick="deleteRegItem('${secId}','${r.id}')">${_ic('trash',14)}</button>`}
       </div>
       <div class="field-grid cols-1" style="margin-bottom:8px;">
         <div class="field-group"><label class="field-label">Statutory item</label><input type="text"${dis} value="${esc(r.item)}" oninput="updateRegField('${secId}','${r.id}','item',this.value)"></div>
       </div>
       <div class="field-grid" style="margin-bottom:8px;">
-        <div class="field-group"><label class="field-label">Due date</label><input type="date"${dis} value="${r.dueDate||''}" oninput="updateRegField('${secId}','${r.id}','dueDate',this.value)"></div>
-        <div class="field-group"><label class="field-label">Date carried out</label><input type="date"${dis} value="${r.resultDate||''}" oninput="updateRegField('${secId}','${r.id}','resultDate',this.value)"></div>
+        <div class="field-group"><label class="field-label">Area / asset</label><input type="text"${dis} value="${esc(r.area||'')}" placeholder="e.g. Workshop – Ramp 3" oninput="updateRegField('${secId}','${r.id}','area',this.value)"></div>
+        <div class="field-group"><label class="field-label">Frequency</label><select${dis} onchange="_regDateChange('${secId}','${r.id}','frequency',this.value)">${REG_FREQ.map(f=>`<option value="${f}"${f===(r.frequency||'')?' selected':''}>${f||'— Select —'}</option>`).join('')}</select></div>
       </div>
-      <div class="field-grid">
-        <div class="field-group"><label class="field-label">Result</label>
-          <select${dis} onchange="updateRegField('${secId}','${r.id}','result',this.value)"><option value="">— Select —</option>${['Pass','Fail'].map(o=>`<option${o===r.result?' selected':''}>${o}</option>`).join('')}</select>
-        </div>
+      <div class="field-grid" style="margin-bottom:8px;">
+        <div class="field-group"><label class="field-label">Date carried out</label><input type="date"${dis} value="${r.resultDate||''}" onchange="_regDateChange('${secId}','${r.id}','resultDate',this.value)"></div>
+        <div class="field-group"><label class="field-label">Next due${canRecalc&&!ro?` <button class="btn btn-ghost btn-xs no-print" style="padding:0 5px;font-size:10px;" title="Set from date carried out + frequency" onclick="regRecalcDue('${secId}','${r.id}')">↻ from freq</button>`:''}</label><input type="date"${dis} value="${r.dueDate||''}" onchange="_regDateChange('${secId}','${r.id}','dueDate',this.value)"></div>
       </div>
+      <div class="field-grid" style="margin-bottom:8px;">
+        <div class="field-group"><label class="field-label">Result</label><select${dis} onchange="updateRegField('${secId}','${r.id}','result',this.value)"><option value="">— Select —</option>${['Pass','Fail'].map(o=>`<option${o===r.result?' selected':''}>${o}</option>`).join('')}</select></div>
+        <div class="field-group"><label class="field-label">Certificate reference</label><input type="text"${dis} value="${esc(r.certRef||'')}" placeholder="Cert / report no." oninput="updateRegField('${secId}','${r.id}','certRef',this.value)"></div>
+      </div>
+      <div class="field-grid cols-1">
+        <div class="field-group"><label class="field-label">Notes</label><input type="text"${dis} value="${esc(r.notes||'')}" oninput="updateRegField('${secId}','${r.id}','notes',this.value)"></div>
+      </div>
+      ${(!ro && (g==='red'||g==='amber')) ? `<div style="margin-top:8px;">${inPlan?`<span style="font-size:11.5px;font-weight:700;color:var(--success);">✓ In the execution plan</span>`:`<button class="btn btn-outline btn-xs no-print" onclick="raiseRegItemAction('${secId}','${r.id}')">＋ Raise into the plan</button>`}</div>`:''}
     </div>`;
+  };
   const sectionBlock = (s) => {
     const items = s.items || [];
     const itemsHtml = items.length ? items.map(r => itemCard(s.id, r)).join('') : `<div class="ck-pending" style="padding:4px 0;">No statutory items in this section yet.</div>`;
     return `<div style="border:1.5px solid var(--border);border-radius:10px;padding:14px 14px 12px;margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;">
         <input type="text"${dis} value="${esc(s.name)}" placeholder="Section name — e.g. Lifting equipment, Electrical, Gas, Fire" oninput="updateRegSectionName('${s.id}',this.value)" style="flex:1;font-weight:700;font-size:14px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">
+        ${(function(){ const c=_regSecCounts(s); const bits=[]; if(c.overdue) bits.push(`<span style="color:#DC2626;font-weight:700;">${c.overdue} overdue</span>`); if(c.soon) bits.push(`<span style="color:#B45309;font-weight:700;">${c.soon} due</span>`); return bits.length?`<span style="font-size:11.5px;white-space:nowrap;">${bits.join(' · ')}</span>`:''; })()}
         ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete section" onclick="deleteRegSection('${s.id}')">${_ic('trash',14)}</button>`}
       </div>
       ${itemsHtml}
@@ -15079,8 +15163,12 @@ function renderMonitoring(){
 
   cont.innerHTML = familyCards + `
     <div class="card">
-      <div class="card-band"><h3><span class="dot">●</span> Regulatory tracker (annual statutory items)</h3></div>
+      <div class="card-band"><h3><span class="dot">●</span> Regulatory tracker (statutory &amp; FM inspections)</h3>${(function(){ const c=_regCounts(); return c.total?`<span class="badge badge-muted">${c.total} items${c.overdue?(' · '+c.overdue+' overdue'):''}</span>`:''; })()}</div>
       <div class="card-body">
+        ${(function(){ const c=_regCounts(); if(!c.total) return ''; return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <span class="badge badge-muted">${c.total} items</span>
+          <span class="badge" style="background:${c.overdue?'#FEE2E2':'var(--muted-bg)'};color:${c.overdue?'#B91C1C':'var(--text-muted)'};font-weight:700;">${c.overdue} overdue</span>
+          <span class="badge" style="background:${c.soon?'#FEF3C7':'var(--muted-bg)'};color:${c.soon?'#B45309':'var(--text-muted)'};font-weight:700;">${c.soon} due within 60 days</span></div>`; })()}
         ${regBody}
         ${ro?'':`<button class="btn btn-primary btn-sm no-print" onclick="addRegSection()" style="margin-top:2px;">＋ Add section</button>`}
       </div>

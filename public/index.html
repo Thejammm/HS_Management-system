@@ -14778,6 +14778,18 @@ function _syncTrainingAction(rec){
   }
 }
 function _syncAllTrainingActions(){ _trainingState().forEach(_syncTrainingAction); }
+// On-demand: how many expired/expiring courses are NOT yet in the plan, and a button to raise them.
+function _trainingDueCount(){ const plan=S.actionPlan||[]; let n=0;
+  _trainingState().forEach(r=>{ const rag=_trainingRag(r.expiry); if(rag==='red'||rag==='amber'){ const key='train|'+(r.employee||'')+'|'+(r.course||''); if(!plan.some(a=>a.trainingKey===key)) n++; } });
+  return n; }
+function raiseTrainingRenewals(){
+  if(_blockIfReadOnly()) return;
+  const before=(S.actionPlan||[]).filter(a=>a.trainingKey).length;
+  _syncAllTrainingActions();
+  const added=(S.actionPlan||[]).filter(a=>a.trainingKey).length - before;
+  saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
+  showToast('✓ Raised '+added+' training renewal action'+(added!==1?'s':'')+' into the plan','success');
+}
 
 function importStatutoryCSV(text){
   const rows=_parseCSV(text); if(rows.length<2){ showToast('No data rows found in that file','error'); return; }
@@ -14817,8 +14829,8 @@ function importTrainingCSV(text){
     else { t.push({ id:_reqUid('trn'), employee:employee, course:course, completed:completed, expiry:expiry }); }
     added++;
   }
-  _syncAllTrainingActions(); saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
-  showToast('✓ Imported '+added+' training record'+(added!==1?'s':''),'success');
+  saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
+  showToast('✓ Imported '+added+' training record'+(added!==1?'s':'')+' — use “Raise renewal actions” to add renewals to the plan','success');
 }
 function importSpreadsheet(kind){
   if(_blockIfReadOnly()) return;
@@ -14939,8 +14951,8 @@ function _impApply(){
     recs.forEach(rec=>{ let ex=t.find(x=>(x.employee||'').toLowerCase()===rec.employee.toLowerCase() && (x.course||'').toLowerCase()===rec.course.toLowerCase());
       if(ex){ ex.expiry=rec.expiry||ex.expiry; } else { t.push({ id:_reqUid('trn'), employee:rec.employee, course:rec.course, completed:'', expiry:rec.expiry }); } });
     _importProfiles().training={ nameHeader:_impWiz.headers[_impWiz.nameIdx]||'', excludeHeaders:Object.keys(_impWiz.exclude).filter(i=>_impWiz.exclude[i]).map(i=>_impWiz.headers[i]).filter(Boolean) };
-    _syncAllTrainingActions(); saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
-    showToast('✓ Imported '+recs.length+' training record'+(recs.length!==1?'s':''),'success');
+    saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
+    showToast('✓ Imported '+recs.length+' training record'+(recs.length!==1?'s':'')+' — use “Raise renewal actions” to add renewals to the plan','success');
   } else {
     const {recs}=_impStatutoryRecords(); const secs=_regSections();
     recs.forEach(rec=>{ let sec=secs.find(s=>(s.name||'').toLowerCase()===rec.section.toLowerCase());
@@ -15036,7 +15048,8 @@ function _trainingMatrixHTML(){
     <div class="card-body">
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Expiry traffic lights: <span style="color:${RAGC.red};font-weight:700;">expired</span> · <span style="color:${RAGC.amber};font-weight:700;">expiring ≤60 days</span> · <span style="color:${RAGC.green};font-weight:700;">in date</span>. Expired / expiring courses raise an action in the execution plan.</div>
       <div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div>
-      ${ro?'':`<button class="btn btn-ghost btn-xs no-print" style="margin-top:10px;" onclick="if(confirm('Clear all training records? (This does not remove any actions already raised.)')){S.training=[];saveData();renderMonitoring();}">Clear training data</button>`}
+      ${ro?'':`<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${(function(){ const n=_trainingDueCount(); return `<button class="btn btn-outline btn-sm no-print" onclick="raiseTrainingRenewals()"${n?'':' disabled'}>＋ Raise renewal actions${n?(' ('+n+')'):''}</button><span style="font-size:11.5px;color:var(--text-muted);">Adds expired/expiring courses to the execution plan — on demand, deduped.</span>`; })()}</div>
+      <button class="btn btn-ghost btn-xs no-print" style="margin-top:10px;" onclick="if(confirm('Clear all training records? (This does not remove any actions already raised.)')){S.training=[];saveData();renderMonitoring();}">Clear training data</button>`}
     </div>
   </div>`;
 }

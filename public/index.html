@@ -749,8 +749,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="tab-btn" data-tab="risk" onclick="switchTab('risk')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg> Risk profile</button>
     <button class="tab-btn" data-tab="requirements" onclick="switchTab('requirements')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg> Management system</button>
     <button class="tab-btn" data-tab="monitoring" onclick="switchTab('monitoring')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Assurance records</button>
-    <button class="tab-btn" data-consultant data-tab="review" onclick="switchTab('review')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Consultant review</button>
-    <button class="tab-btn" data-consultant data-tab="actionplan" onclick="switchTab('actionplan')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg> Action plan <span class="tb-badge" id="badgeActionPlan"></span></button>
+    <button class="tab-btn" data-consultant data-tab="review" onclick="switchTab('review')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Consultant review <span class="tb-badge" id="badgeReview"></span></button>
     <button class="tab-btn" data-tab="execplan" onclick="switchTab('execplan')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Client execution plan <span class="tb-badge" id="badgeExecPlan"></span></button>
     <button class="tab-btn" data-tab="documents" onclick="switchTab('documents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Documents</button>
     <button class="tab-btn" data-tab="reports" onclick="switchTab('reports')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg> Reports</button>
@@ -10653,10 +10652,6 @@ function renderReports(){
       icon:svg('<path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>'),
       desc:'The full technical register in the energy-source model: the L×S matrix with company score, controls by level and energy coverage.',
       tags:['Technical','Matrix + score','Full register'] },
-    { title:'Action Plan', accent:'#E08600', tint:'#FDF1DE', fn:'downloadActionPlanReport()', meta:riskMeta,
-      icon:svg('<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>'),
-      desc:'The working to-do list: grouped by owner, overdue first, with a tick-box and sign-off. The document that actually gets used.',
-      tags:['Working tool','By owner','Sign-off'] },
     { title:'Client Execution Plan', accent:'#0EA5E9', tint:'#E4F4FC', fn:'downloadExecPlanReport()', meta:(_execOpenCount()+' open action'+(_execOpenCount()!==1?'s':'')),
       icon:svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
       desc:'A point-in-time snapshot for the client: every action to do, grouped by month and traffic-lit — from risk profile, management system, assurance and accreditation.',
@@ -10673,10 +10668,10 @@ function renderReports(){
       icon:svg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'),
       desc:'The periodic audit of the H&S process: overall assessment, process observations, a section-by-section review and recommendations.',
       tags:['Periodic','Process','Sign-off'] },
-    { title:'Consultant Feedback', accent:'#7C3AED', tint:'#F0E9FD', fn:'downloadFeedbackReport()', meta:feedbackMeta,
+    { title:'Consultant Review & Action Plan', accent:'#7C3AED', tint:'#F0E9FD', fn:'downloadReviewReport()', meta:feedbackMeta,
       icon:svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
-      desc:'The progress-and-feedback summary to send the client: compliance, priorities, gaps and the consultant’s written feedback and suggestions.',
-      tags:['Progress','Feedback','To send'] },
+      desc:'The combined consultant record (HSG65: Plan-Do-Check-Act): where the client is, the full action plan, the delivered/accepted history, plus rating, feedback and suggestions.',
+      tags:['HSG65','Action plan','Feedback'] },
     { title:'Risk Assessment Register', accent:'#0EA5E9', tint:'#E0F2FE', fn:'downloadRaRegisterReport()', meta:raRegMeta,
       icon:svg('<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M9 11h2"/>'),
       desc:'The client’s register of risk assessments and RAMS: reference, dates, review status and where each PDF is filed. Print or send it as one document.',
@@ -11044,6 +11039,8 @@ function updateExecAction(refStr, field, value){
   if(ref.t==='mgmt'){
     if(field==='status'){ o.actionStatus=value; if(value==='Accepted' && !o.acceptDate) o.acceptDate=new Date().toISOString().slice(0,10); }
     else if(field==='due') o.dueDate=value;
+    else if(field==='owner') o.actionOwner=value;
+    else o[field]=value;
   } else { o[field]=value; }
   if(field==='status') _stampActionCompletion(o, value);
   if(typeof _stamp==='function') _stamp(o,'updated');
@@ -11065,7 +11062,7 @@ function raiseExecAction(source, label){
 // Sidebar "markers": open-action count on the Action plan + Execution plan tabs.
 function updateActionBadges(){
   const n=_execOpenCount();
-  ['badgeActionPlan','badgeExecPlan'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.textContent=n; b.style.display=n>0?'inline-flex':'none'; } });
+  ['badgeReview','badgeExecPlan','badgeActionPlan'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.textContent=n; b.style.display=n>0?'inline-flex':'none'; } });
 }
 function _refreshActionViews(){
   const active=(id)=>document.getElementById(id)&&document.getElementById(id).classList.contains('active');
@@ -15415,6 +15412,92 @@ function reviewScorecard(){
   return { total:insps.length, signedOff, awaiting, compliance, openA, overdueA, resolved, avgResolveDays, signOffRate, trend, highRisk, totalRisks:risks.length, reqGaps:reqG.gaps, reqAssessed:reqG.assessed };
 }
 
+// ── Consultant review: interactive action dashboard (the merged Action Plan) ──
+let _revActFilter = { quick:'all', group:'source', search:'' };
+const _revActOpen = {};
+function setRevActFilter(k,v){ _revActFilter[k]=v; _keepScroll(renderReview); }
+function setRevActSearch(v){ _revActFilter.search=v; const t=document.getElementById('revActBody'); if(t) t.innerHTML=_revActBodyHTML(); }
+function toggleRevActRow(rk){ _revActOpen[rk]=!_revActOpen[rk]; const t=document.getElementById('revActBody'); if(t) t.innerHTML=_revActBodyHTML(); }
+function _revActGroupKey(a){ const f=_revActFilter;
+  if(f.group==='owner') return a.owner||'Unassigned';
+  if(f.group==='status') return a.status||'Not started';
+  if(f.group==='month') return _actionMonthKey(a.due) ? new Date(_actionMonthKey(a.due)+'-01T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}) : 'No target date';
+  return a.source||'Other';
+}
+function _revActFiltered(){
+  const acts=_execActions(); const f=_revActFilter; const thisKey=new Date().toISOString().slice(0,7);
+  let list=acts.slice();
+  if(f.quick==='open') list=list.filter(a=>a.status!=='Complete'&&a.status!=='Accepted');
+  else if(f.quick==='overdue') list=list.filter(a=>a.rag==='red');
+  else if(f.quick==='thismonth') list=list.filter(a=>a.status!=='Complete'&&a.status!=='Accepted'&&_actionMonthKey(a.due)===thisKey&&a.rag!=='red');
+  else if(f.quick==='resolved') list=list.filter(a=>a.status==='Complete'||a.status==='Accepted');
+  if(f.search){ const q=f.search.toLowerCase(); list=list.filter(a=>((a.desc||'')+' '+(a.source||'')+' '+(a.sourceLabel||'')+' '+(a.owner||'')).toLowerCase().includes(q)); }
+  return list;
+}
+function _revActBodyHTML(){
+  const dis=_roLocked()?' disabled':'';
+  const fmt=(s)=>{ try{ return s? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}):''; }catch(e){ return ''; } };
+  const STATUSES=['Not started','In progress','Complete','Accepted'];
+  const ref=(a)=>encodeURIComponent(JSON.stringify(a.ref));
+  const RAGC={red:'#DC2626',amber:'#F59E0B',green:'#16A34A',grey:'#9CA3AF'};
+  const list=_revActFiltered();
+  if(!list.length) return `<div class="ck-pending" style="padding:10px 0;">No actions match this view.</div>`;
+  const groups={}; list.forEach(a=>{ const k=_revActGroupKey(a); (groups[k]=groups[k]||[]).push(a); });
+  const gkeys=Object.keys(groups).sort((a,b)=> a==='Unassigned'?-1 : b==='Unassigned'?1 : a.localeCompare(b));
+  const row=(a)=>{ const rk=ref(a); const exp=_revActOpen[rk]; const c=RAGC[a.rag]||RAGC.grey; const resolved=a.status==='Complete'||a.status==='Accepted';
+    return `<div style="border:1px solid var(--border);border-left:4px solid ${c};border-radius:8px;margin-bottom:6px;overflow:hidden;">
+      <div style="display:flex;gap:8px;align-items:center;padding:8px 10px;flex-wrap:wrap;">
+        <span title="${a.rag}" style="width:10px;height:10px;border-radius:50%;background:${c};flex:0 0 auto;"></span>
+        <button type="button" onclick="toggleRevActRow('${rk}')" title="Drill in" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;flex:0 0 auto;">${exp?'▾':'▸'}</button>
+        <div style="flex:3;min-width:150px;font-weight:600;font-size:13px;">${esc(a.desc||'(no description)')}</div>
+        <span class="badge badge-muted" style="flex:0 0 auto;">${esc(a.source)}</span>
+        <input${dis} value="${esc(a.owner||'')}" placeholder="Owner" onchange="updateExecAction('${rk}','owner',this.value)" style="flex:1;min-width:80px;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;">
+        <input type="date"${dis} value="${a.due||''}" onchange="updateExecAction('${rk}','due',this.value)" style="flex:0 0 auto;font-size:12px;">
+        <select${dis} onchange="updateExecAction('${rk}','status',this.value)" style="flex:0 0 auto;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select>
+      </div>
+      ${exp?`<div style="padding:2px 12px 10px 40px;font-size:12px;color:var(--text-muted);border-top:1px dashed var(--border);display:flex;flex-wrap:wrap;gap:6px 16px;">
+        ${a.sourceLabel?`<span><strong>From:</strong> ${esc(a.sourceLabel)}</span>`:''}${a.priority?`<span><strong>Priority:</strong> ${esc(a.priority)}</span>`:''}${a.raisedAt?`<span><strong>Raised:</strong> ${fmt(a.raisedAt)}</span>`:''}${a.due?`<span><strong>Target:</strong> ${fmt(a.due)}</span>`:''}${resolved?`<span style="color:${a.status==='Accepted'?RAGC.grey:RAGC.green};"><strong>${a.status==='Accepted'?'Accepted':'Completed'}:</strong> ${fmt(a.resolvedDate)}${a.resolvedBy?(' by '+esc(a.resolvedBy)):''}</span>`:''}
+      </div>`:''}
+    </div>`;
+  };
+  return gkeys.map(k=>{ const gl=groups[k]; const done=gl.filter(a=>a.status==='Complete'||a.status==='Accepted').length; const pct=Math.round(done/gl.length*100);
+    return `<div style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <div style="font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;">${esc(k)} <span style="color:var(--text-muted);font-weight:400;">· ${gl.length}</span></div>
+        <div style="flex:1;height:6px;background:var(--muted-bg);border-radius:3px;overflow:hidden;max-width:200px;"><div style="height:100%;width:${pct}%;background:var(--success);"></div></div>
+        <div style="font-size:11px;color:var(--text-muted);">${pct}% done</div>
+      </div>
+      ${gl.map(row).join('')}
+    </div>`;
+  }).join('');
+}
+function _reviewActionsHTML(){
+  const acts=_execActions();
+  const open=acts.filter(a=>a.status!=='Complete'&&a.status!=='Accepted');
+  const overdue=acts.filter(a=>a.rag==='red');
+  const thisKey=new Date().toISOString().slice(0,7);
+  const dueThis=open.filter(a=>_actionMonthKey(a.due)===thisKey&&a.rag!=='red');
+  const resolved=acts.filter(a=>a.status==='Complete'||a.status==='Accepted');
+  const total=acts.length; const pctClosed=total?Math.round(resolved.length/total*100):0;
+  const f=_revActFilter;
+  const kpi=(key,label,num,color)=>`<button type="button" onclick="setRevActFilter('quick','${key}')" style="flex:1;min-width:100px;border:1.5px solid ${f.quick===key?'var(--accent)':'var(--border)'};background:${f.quick===key?'var(--accent-light)':'transparent'};border-radius:10px;padding:10px 12px;text-align:center;cursor:pointer;">
+    <div style="font-size:22px;font-weight:800;color:${color};line-height:1;">${num}</div><div style="font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:.03em;">${label}</div></button>`;
+  const GROUPS=[['source','Source'],['owner','Owner'],['status','Status'],['month','Target month']];
+  return `<div class="card"><div class="card-band"><h3><span class="dot">●</span> Action review <span style="font-weight:400;font-size:12px;color:var(--text-muted);margin-left:8px;">where the client is, where they need to be, what's done</span></h3><button class="btn btn-ghost btn-sm no-print" onclick="downloadReviewReport()">⭳ Review report PDF</button></div>
+    <div class="card-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        ${kpi('all','All',total,'#30415f')}${kpi('open','Open',open.length,'#30415f')}${kpi('overdue','Overdue',overdue.length,overdue.length?RAG_COLOR.red:'#30415f')}${kpi('thismonth','Due this month',dueThis.length,dueThis.length?RAG_COLOR.amber:'#30415f')}${kpi('resolved','Resolved',resolved.length,resolved.length?RAG_COLOR.green:'#30415f')}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:12px;color:var(--text-muted);flex:1;">Overall progress — ${resolved.length} of ${total} actions closed</span><span style="font-size:12px;font-weight:700;color:var(--success);">${pctClosed}%</span></div>
+      <div style="height:9px;background:var(--muted-bg);border-radius:5px;overflow:hidden;margin-bottom:16px;"><div style="height:100%;width:${pctClosed}%;background:var(--success);"></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+        <span style="font-size:12px;font-weight:600;color:var(--text-muted);">Group by:</span>
+        ${GROUPS.map(([k,l])=>`<button class="btn btn-xs no-print ${f.group===k?'btn-primary':'btn-ghost'}" onclick="setRevActFilter('group','${k}')">${l}</button>`).join('')}
+        <input type="text" value="${esc(f.search||'')}" placeholder="Search actions…" oninput="setRevActSearch(this.value)" style="margin-left:auto;min-width:150px;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">
+      </div>
+      <div id="revActBody">${_revActBodyHTML()}</div>
+    </div></div>`;
+}
 function renderReview(){
   const cont=document.getElementById('reviewContainer'); if(!cont) return;
   const sc=reviewScorecard();
@@ -15437,6 +15520,9 @@ function renderReview(){
         <div style="font-size:12px;color:var(--text-muted);margin-top:10px;">Inspections per month:  ${sc.trend.map(t=>t.label+' '+t.count).join('  ·  ')}</div>
       </div>
     </div>
+    ${_reviewActionsHTML()}
+    ${_completedHistoryHTML()}
+    ${_archiveHTML()}
     <div class="card"><div class="card-band"><h3><span class="dot">●</span> Quality rating</h3></div>
       <div class="card-body">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -15556,6 +15642,52 @@ function buildFeedbackReportPDF(){
   _pdfFooter(K, d, 'Consultant Review & Feedback');
   doc.save('feedback-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+new Date().toISOString().split('T')[0]+'.pdf');
   showToast('📄 Feedback report downloaded','success');
+}
+function downloadReviewReport(){ try{ buildReviewReportPDF(); showToast('✓ Review report created','success'); }catch(e){ console.error('Review report failed',e); showToast('Could not build the report — see console','error'); } }
+// Combined Consultant Review & Action Plan report (HSG65: Plan-Do-Check-Act).
+// Add-not-remove: the review's rating/feedback/position PLUS the full action plan
+// and the delivered/accepted history in one consultant-facing document.
+function buildReviewReportPDF(){
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+  const d=_docFor('feedback');
+  const NAVY=[30,58,95], RED=[197,32,32], AMBER=[180,110,10], GREEN=[22,120,60], GREY=[110,110,110];
+  const K=_mkPdf('Consultant Review & Action Plan', client, d, 'Where the client is, where they need to be, and what has been done - managed for health & safety (HSG65: Plan, Do, Check, Act).');
+  const { doc } = K;
+  const fd=(s)=> s ? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '-';
+  const sc=(typeof reviewScorecard==='function')?reviewScorecard():{};
+  const rev=_review();
+  const acts=_execActions();
+  const open=acts.filter(a=>a.status!=='Complete'&&a.status!=='Accepted');
+  const overdue=acts.filter(a=>a.rag==='red');
+  const resolved=acts.filter(a=>a.status==='Complete'||a.status==='Accepted');
+  const total=acts.length; const pctClosed=total?Math.round(resolved.length/total*100):0;
+  K.verdictBox(total? (pctClosed+'% of actions closed - '+open.length+' open'+(overdue.length?(', '+overdue.length+' overdue'):'')+'.') : 'No actions raised yet.', overdue.length?RED:open.length?AMBER:GREEN);
+  K.section('Where the client is', NAVY);
+  K.tiles([{num:total,label:'Actions total',color:NAVY,sub:'raised'},{num:open.length,label:'Open',color:open.length?AMBER:NAVY,sub:'to do'},{num:overdue.length,label:'Overdue',color:overdue.length?RED:NAVY,sub:'past target'},{num:resolved.length,label:'Resolved',color:resolved.length?GREEN:NAVY,sub:'done/accepted'},{num:pctClosed+'%',label:'Closed',color:GREEN,sub:'progress'}]);
+  const _lr=(typeof _reviewLastRating==='function')?_reviewLastRating():null;
+  K.section('Quality & management position (Check)', NAVY);
+  K.kv('Quality rating', _lr?(_lr.score+' / 5'+(_lr.note?(' - '+_lr.note):'')):'not rated');
+  if(sc.compliance!=null) K.kv('Inspection compliance', sc.compliance+'%');
+  if(sc.reqAssessed!=null) K.kv('Management system', (sc.reqGaps||0)+' gaps of '+(sc.reqAssessed||0)+' assessed');
+  if(sc.highRisk!=null) K.kv('High/critical risks', sc.highRisk+' of '+(sc.totalRisks||0));
+  if(rev.feedback) K.kv('Feedback', rev.feedback);
+  if(rev.suggestions) K.kv('Suggestions', rev.suggestions);
+  K.section('The plan - what needs doing (Do / Act)', NAVY);
+  const planItems=open.slice().sort((a,b)=>{ if((a.rag==='red')!==(b.rag==='red')) return a.rag==='red'?-1:1; return String(a.due||'9999').localeCompare(String(b.due||'9999')); });
+  if(planItems.length){
+    K.table([{header:'',w:6},{header:'ACTION',w:74},{header:'SOURCE',w:34},{header:'OWNER',w:22},{header:'TARGET',w:20},{header:'STATUS',w:22}],
+      planItems.map(a=>{ const ragc=a.rag==='red'?RED:a.rag==='amber'?AMBER:GREEN; return [ {pill:' ',pillColor:ragc}, a.desc||'(no description)', {text:a.source,color:[120,120,120]}, {text:a.owner||'-',color:[110,110,110]}, {text:fd(a.due),color:a.rag==='red'?RED:[100,100,100]}, {text:a.status,bold:true,color:ragc} ]; }),
+      {headFill:NAVY,headText:[255,255,255]});
+  } else K.text('No open actions - the plan is clear.',10,{color:GREY});
+  const doneAll=_completedActions('all');
+  K.section('What has been done (delivered & accepted)', NAVY);
+  if(doneAll.length){
+    K.table([{header:'ACTION',w:70},{header:'SOURCE',w:34},{header:'OUTCOME',w:24},{header:'DATE',w:24},{header:'BY',w:26}],
+      doneAll.map(a=>{ const acc=a.status==='Accepted'; return [ a.desc||'(no description)', {text:a.source,color:[120,120,120]}, {text:acc?'Accepted':'Completed',bold:true,color:acc?GREY:GREEN}, {text:fd(a.resolvedDate),color:[100,100,100]}, {text:a.resolvedBy||'-',color:[110,110,110]} ]; }),
+      {headFill:GREEN,headText:[255,255,255]});
+  } else K.text('Nothing resolved yet.',10,{color:GREY});
+  _pdfFooter(K, d, 'Consultant Review & Action Plan');
+  doc.save('consultant-review-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
 }
 
 // ── H&S Audit report — captures the periodic audit sections, same design language ──

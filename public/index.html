@@ -11655,7 +11655,7 @@ function insertLibraryRisk(key){
 }
 function _renderHazardLibrary(){
   const el=document.getElementById('riskLibrary'); if(!el) return;
-  if(el.getAttribute('data-open')!=='1' || _consultantView){ el.innerHTML=''; return; }
+  if(el.getAttribute('data-open')!=='1' || _roLocked()){ el.innerHTML=''; return; }   // show whenever editable (matches the "From hazard library" button); was wrongly hidden for any dialled-in consultant
   const present=_presentLibKeys();
   const card=(t)=>{
     const inn=present.has(t.key);

@@ -12676,6 +12676,7 @@ function renderCompany(){
     </div>`).join('') || '<div style="font-size:12.5px;color:var(--text-muted);">No sites added yet. Add each site or location the client operates from.</div>';
 
   cont.innerHTML = `
+    <div class="no-print" style="display:flex;justify-content:flex-end;margin-bottom:14px;"><button class="btn btn-ghost btn-sm" onclick="downloadCompanyProfile()">⭳ Company Profile PDF</button></div>
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Company identity</h3></div><div class="card-body"><div class="co-grid">
       ${f('legalName','Registered / legal name','As registered at Companies House')}
       ${f('tradingName','Trading name','If different from the legal name')}
@@ -12714,9 +12715,98 @@ function renderCompany(){
       ${f('elciRenewal','Renewal date','','date')}
     </div></div></div>
 
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Organisation chart</h3></div><div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Upload the company's organisation chart (PNG or JPG). It is stored with the client and included in the Company Profile report.</div>
+      ${c.orgChart?`<div style="text-align:center;">
+        <img src="${c.orgChart}" alt="Organisation chart" style="max-width:100%;max-height:360px;border:1px solid var(--border);border-radius:8px;padding:8px;background:#fff;">
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">${esc(c.orgChartName||'org-chart')}${dis?'':` &middot; <button class="ck-link" style="display:inline;padding:0;" onclick="removeOrgChart()">Remove</button>`}</div>
+      </div>`:(dis?'<div style="font-size:12.5px;color:var(--text-muted);">No organisation chart uploaded.</div>':`<div class="logo-upload-area" style="max-width:440px;">
+        <input type="file" accept="image/*" onchange="uploadOrgChart(this)">
+        <div style="font-size:13px;font-weight:600;color:var(--text-muted);pointer-events:none;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>Click or drag to upload the org chart</div>
+      </div>`)}
+    </div></div>
+
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Notes</h3></div><div class="card-body"><div class="co-grid">
       ${ta('notes','Any other useful background','')}
     </div></div></div>`;
+}
+function uploadOrgChart(input){
+  if(_roLocked()) return;
+  const file=input.files&&input.files[0]; if(!file) return;
+  if(!/^image\//.test(file.type)){ showToast('Please choose an image file (PNG or JPG)','error'); return; }
+  const rd=new FileReader();
+  rd.onload=function(){
+    const img=new Image();
+    img.onload=function(){
+      let w=img.naturalWidth||4, h=img.naturalHeight||3; const MAX=1600;
+      if(w>MAX){ h=Math.round(h*MAX/w); w=MAX; }
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      const ctx=cv.getContext('2d'); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
+      const dataUrl=cv.toDataURL('image/png');
+      const c=_companyState();
+      c.orgChart=dataUrl; c.orgChartFmt='PNG'; c.orgChartW=w; c.orgChartH=h; c.orgChartName=file.name;
+      saveData(); renderCompany();
+      showToast('✓ Org chart uploaded ('+Math.round(dataUrl.length*0.75/1024)+'KB)','success');
+    };
+    img.onerror=function(){ showToast('Could not read that image','error'); };
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(file);
+}
+function removeOrgChart(){
+  if(_roLocked()) return;
+  const c=_companyState(); delete c.orgChart; delete c.orgChartFmt; delete c.orgChartW; delete c.orgChartH; delete c.orgChartName;
+  saveData(); renderCompany();
+}
+function downloadCompanyProfile(){ try{ buildCompanyProfileReportPDF(); showToast('✓ Company profile report created','success'); }catch(e){ console.error('Company profile report failed',e); showToast('Could not build the report — see console','error'); } }
+function buildCompanyProfileReportPDF(){
+  const c=_companyState();
+  const client=(_consultantView&&_consultantView.name)||(c.tradingName||c.legalName)||(S.branding&&S.branding.name)||'Client';
+  const d=_docFor('companyProfile');
+  const NAVY=[30,58,95], GREY=[120,120,120];
+  const K=_mkPdf('Company Profile', client, d, 'The company at a glance - identity, scale, key people, sites and cover.');
+  const { doc, ML, CW, st } = K;
+  const fd=(s)=> s ? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '-';
+  K.section('Company identity', NAVY);
+  K.kv('Registered name', c.legalName||'-');
+  if(c.tradingName) K.kv('Trading name', c.tradingName);
+  if(c.regNo) K.kv('Company reg. no.', c.regNo);
+  if(c.sector) K.kv('Sector', c.sector);
+  if(c.description) K.kv('Nature of business', c.description);
+  K.section('Contact', NAVY);
+  K.kv('Phone', c.phone||'-'); K.kv('Email', c.email||'-'); if(c.website) K.kv('Website', c.website); if(c.address) K.kv('Address', c.address);
+  K.section('Scale of the business', NAVY);
+  K.kv('Employees', c.employees||'-');
+  K.kv('Sites / locations', c.siteCount||((c.siteList&&c.siteList.length)||'-'));
+  if(c.shifts) K.kv('Working hours', c.shifts);
+  const people=(c.personnel||[]).filter(p=>p.role||p.name||p.contact);
+  if(people.length){
+    K.section('Key personnel', NAVY);
+    K.table([{header:'ROLE',w:58},{header:'NAME',w:60},{header:'CONTACT',w:60}],
+      people.map(p=>[p.role||'-', {text:p.name||'-'}, {text:p.contact||'-', color:[110,110,110]}]),
+      {headFill:NAVY, headText:[255,255,255]});
+  }
+  const sites=(c.siteList||[]).filter(s=>s.name||s.address);
+  if(sites.length){
+    K.section('Sites & locations', NAVY);
+    K.table([{header:'SITE',w:56},{header:'ADDRESS',w:122}],
+      sites.map(s=>[s.name||'-', {text:s.address||'-', color:[110,110,110]}]),
+      {headFill:NAVY, headText:[255,255,255]});
+  }
+  if(c.elciInsurer||c.elciPolicy||c.elciRenewal){
+    K.section("Employers' liability insurance", NAVY);
+    K.kv('Insurer', c.elciInsurer||'-'); K.kv('Policy no.', c.elciPolicy||'-'); if(c.elciRenewal) K.kv('Renewal', fd(c.elciRenewal));
+  }
+  if(c.notes){ K.section('Notes', NAVY); K.text(c.notes, 9.5, {color:[70,70,70]}); }
+  if(c.orgChart){
+    K.section('Organisation chart', NAVY);
+    const iwn=c.orgChartW||4, ihn=c.orgChartH||3; let iw=CW, ih=iw*ihn/iwn; const maxH=210; if(ih>maxH){ ih=maxH; iw=ih*iwn/ihn; }
+    K.ensure(ih+2);
+    try{ doc.addImage(c.orgChart, c.orgChartFmt||'PNG', ML+(CW-iw)/2, st.y, iw, ih); st.y+=ih+4; }
+    catch(e){ K.text('(org chart image could not be embedded)', 9, {color:GREY}); }
+  }
+  _pdfFooter(K, d, 'Company Profile');
+  doc.save('company-profile-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
 }
 
 function updateCompanyField(key, val){
@@ -15325,6 +15415,7 @@ function _reportData(){
 //  also the ISO "master list of controlled documents".
 // ══════════════════════════════════════════════════════════════
 const REPORT_DOCS = [
+  { key:'companyProfile',   title:'Company Profile',              code:'CP'  },
   { key:'boardReport',      title:'Board Report',                 code:'BR'  },
   { key:'riskProfile',      title:'Risk Profile',                 code:'RP'  },
   { key:'actionPlan',       title:'Action Plan',                  code:'AP'  },

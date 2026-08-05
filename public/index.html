@@ -9433,6 +9433,57 @@ document.addEventListener('DOMContentLoaded', () => {
   if(_pu){ setTimeout(()=>{ const e=document.getElementById('loginEmail'); if(e && !e.value){ e.value=_pu; const p=document.getElementById('loginPassword'); if(p) p.focus(); } }, 400); }
 });
 
+// ── Field memory: remember the last entry per field, offer it as a ghost hint,
+//    press Tab to accept. Text-type inputs only (never passwords/dates/numbers).
+//    Per-device (localStorage). Uses event delegation so it covers re-rendered inputs.
+(function(){
+  var MEM='ahs_field_memory_v1';
+  var TEXT={text:1,email:1,search:1,tel:1,url:1,'':1};
+  function load(){ try{ return JSON.parse(localStorage.getItem(MEM)||'{}'); }catch(e){ return {}; } }
+  function store(m){ try{ localStorage.setItem(MEM, JSON.stringify(m)); }catch(e){} }
+  function ok(el){
+    if(!el || el.tagName!=='INPUT') return false;
+    var t=(el.getAttribute('type')||'text').toLowerCase();
+    if(!TEXT[t]) return false;
+    if(el.hasAttribute('data-noremember')) return false;
+    if(/pass|pwd/i.test((el.id||'')+' '+(el.name||'')+' '+(el.getAttribute('autocomplete')||''))) return false; // never passwords
+    return true;
+  }
+  function keyOf(el){ return (el.getAttribute('data-remember')||el.getAttribute('placeholder')||el.name||el.id||'').trim().toLowerCase(); }
+  function clearGhost(el){ if(el.hasAttribute('data-fm-ghost')){ if(el.hasAttribute('data-fm-ph')) el.setAttribute('placeholder', el.getAttribute('data-fm-ph')); else el.removeAttribute('placeholder'); el.removeAttribute('data-fm-ghost'); el.removeAttribute('data-fm-ph'); } }
+  document.addEventListener('focusin', function(e){
+    var el=e.target; if(!ok(el) || el.value) return;
+    var k=keyOf(el); if(!k) return;
+    var v=load()[k]; if(!v) return;
+    el.setAttribute('data-fm-ph', el.getAttribute('placeholder')||'');
+    el.setAttribute('placeholder', v);
+    el.setAttribute('data-fm-ghost', v);
+  });
+  document.addEventListener('focusout', function(e){
+    var el=e.target; if(!el||el.tagName!=='INPUT') return;
+    clearGhost(el);
+    if(ok(el) && el.value && el.value.trim()){ var k=keyOf(el); if(k){ var m=load(); if(m[k]!==el.value){ m[k]=el.value; store(m); } } }
+  });
+  document.addEventListener('input', function(e){ var el=e.target; if(el&&el.tagName==='INPUT'&&el.hasAttribute('data-fm-ghost')) clearGhost(el); });
+  document.addEventListener('keydown', function(e){
+    var el=e.target; if(!el||el.tagName!=='INPUT') return;
+    if(e.key==='Escape' && el.hasAttribute('data-fm-ghost')){ clearGhost(el); return; }
+    if(e.key!=='Tab' || e.shiftKey) return;
+    if(el.hasAttribute('data-fm-ghost') && !el.value){
+      var v=el.getAttribute('data-fm-ghost');
+      e.preventDefault();
+      clearGhost(el);
+      el.value=v;
+      el.dispatchEvent(new Event('input',{bubbles:true}));
+      el.dispatchEvent(new Event('change',{bubbles:true}));
+      try{ el.setSelectionRange(v.length, v.length); }catch(_){}
+    }
+  }, true);
+  var st=document.createElement('style');
+  st.textContent='input[data-fm-ghost]::placeholder{color:var(--accent,#2563EB);opacity:.9;font-style:italic;}';
+  document.head.appendChild(st);
+})();
+
 // Migrate loaded state from older save formats. Idempotent — safe to call on already-current state.
 function migrateLoadedState(){
   // v3 → v4: introduce S.inspectionTypes registry

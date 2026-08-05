@@ -6567,12 +6567,12 @@ async function submitAddTenant(){
            <strong>${escName}</strong> is set up. Send these to your client.
          </div>
          <div style="font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:13px;background:#fff;padding:12px 14px;border-radius:6px;border:1px solid var(--success-brd);line-height:1.7;">
-           <div><strong>URL:</strong> https://hsms.archerhs.co.uk</div>
+           <div><strong>URL:</strong> ${location.origin}</div>
            <div><strong>Email:</strong> ${escEmail}</div>
            <div><strong>Password:</strong> ${escPwd}</div>
          </div>
        </div>
-       <button class="btn btn-outline btn-sm" onclick="(async()=>{try{await navigator.clipboard.writeText('URL: https://hsms.archerhs.co.uk\\nEmail: ${jsEmail}\\nPassword: ${jsPwd}');showToast('Login details copied','success');}catch(e){showToast('Clipboard copy failed','error');}})()">${_ic('list',13)} Copy login details</button>
+       <button class="btn btn-outline btn-sm" onclick="(async()=>{try{await navigator.clipboard.writeText('URL: '+location.origin+'\\nEmail: ${jsEmail}\\nPassword: ${jsPwd}');showToast('Login details copied','success');}catch(e){showToast('Clipboard copy failed','error');}})()">${_ic('list',13)} Copy login details</button>
        <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">
          The password is shown here only once — make sure to copy it before you close this. The client should change their password on first sign-in (click their email in the top-right corner once signed in).
        </div>
@@ -6675,7 +6675,7 @@ async function submitAddUser(){
          <div style="padding:14px 16px;background:var(--success-bg);border:1.5px solid var(--success-brd);border-radius:8px;">
            <div style="font-size:13px;color:var(--success);margin-bottom:10px;">User account created. <strong>Send these credentials to them now</strong> — the password won't be shown again.</div>
            <div style="font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:13px;background:#fff;padding:10px 12px;border-radius:6px;border:1px solid var(--success-brd);">
-             <div style="margin-bottom:4px;"><strong>URL:</strong> https://hsms.archerhs.co.uk</div>
+             <div style="margin-bottom:4px;"><strong>URL:</strong> ${location.origin}</div>
              <div style="margin-bottom:4px;"><strong>Email:</strong> ${email}</div>
              <div><strong>Password:</strong> ${password}</div>
            </div>

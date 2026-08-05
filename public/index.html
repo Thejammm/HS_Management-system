@@ -17891,7 +17891,7 @@ function renderDocuments(){
             <td style="padding:10px 12px;">${doc.reviewDate?fmtDate(doc.reviewDate):'—'}</td>
             <td style="padding:10px 12px;"><span class="badge ${st.cls}">${st.label}</span></td>
             <td style="padding:10px 12px;text-align:right;white-space:nowrap;">
-              ${url?`<a class="btn btn-outline btn-xs" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open</a>`:''}
+              ${url?`<a class="btn btn-outline btn-xs" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open</a>`:(doc.link?`<button class="btn btn-outline btn-xs no-print" onclick="copyDocLink('${esc(doc.id)}')" title="Copy the file path to paste into File Explorer">Copy path</button>`:'')}
               ${ro?'':`<button class="btn btn-outline btn-xs" onclick="openDocModal('${esc(doc.id)}')">Edit</button>
               <button class="btn btn-outline btn-xs" style="border-color:var(--danger);color:var(--danger);" onclick="deleteDocument('${esc(doc.id)}')">Delete</button>`}
             </td>
@@ -17918,7 +17918,7 @@ function openDocModal(id){
          <div class="field-group"><label class="field-label">Owner</label><input type="text" id="docOwner" placeholder="Who maintains it" value="${esc(v('owner'))}"></div>
          <div class="field-group"><label class="field-label">Review date</label><input type="date" id="docReview" value="${esc(v('reviewDate'))}"></div>
        </div>
-       <div class="field-group"><label class="field-label">Link (OneDrive / SharePoint URL)</label><input type="url" id="docLink" placeholder="https://…" value="${esc(v('link'))}"><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Links only — the file itself is not stored here. Must start with http:// or https://.</div></div>
+       <div class="field-group"><label class="field-label">Link or file location</label><input type="text" id="docLink" placeholder="https://…   or   C:\\Folder\\file.pdf" value="${esc(v('link'))}"><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">A web link (OneDrive / SharePoint) opens in the browser; a local or network path (C:\\… or \\\\server\\…) gets a Copy button to paste into File Explorer. The file itself is not stored here.</div></div>
      </div>`,
     `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="saveDocument(${doc?`'${esc(doc.id)}'`:'null'})">${doc?'Save changes':'Add document'}</button>`
@@ -17930,8 +17930,8 @@ function saveDocument(id){
   const g = f => (document.getElementById(f)?.value||'').trim();
   const name = g('docName');
   if(!name){ showToast('Please enter a document name','error'); return; }
-  const link = g('docLink');
-  if(link && !/^https?:\/\//i.test(link)){ showToast('Link must start with http:// or https://','error'); return; }
+  const link = g('docLink').replace(/^["']+|["']+$/g,'').trim();   // strip wrapping quotes (Windows "Copy as path")
+  if(link && /^\s*(javascript|data|vbscript):/i.test(link)){ showToast('That link type is not allowed','error'); return; }
   if(!Array.isArray(S.documents)) S.documents = [];
   const fields = { name, category:g('docCategory'), version:g('docVersion'), owner:g('docOwner'), reviewDate:g('docReview'), link };
   let doc = id ? S.documents.find(d=>d.id===id) : null;
@@ -17951,6 +17951,17 @@ function deleteDocument(id){
   saveData();
   renderDocuments();
   showToast('Document deleted','info');
+}
+// Copy a local/network file path to the clipboard (browsers can't open file paths).
+// Strips wrapping quotes that Windows "Copy as path" adds, so it pastes straight
+// into File Explorer / the search bar and resolves.
+function copyDocLink(id){
+  const d=(S.documents||[]).find(x=>x.id===id); if(!d||!d.link) return;
+  const loc=String(d.link).trim().replace(/^["']+|["']+$/g,'').trim();
+  navigator.clipboard.writeText(loc).then(
+    ()=>showToast('Path copied — paste into File Explorer','success'),
+    ()=>showToast('Could not copy','error')
+  );
 }
 
 // ══════════════════════════════════════════════════════════════

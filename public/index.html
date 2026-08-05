@@ -3280,7 +3280,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </summary>
       <div class="coll-body">
         <div id="riskRegisterIntro" style="font-size:13px;color:var(--text-muted);line-height:1.5;">
-          Build the profile top to bottom: <strong>1</strong> set the document control, <strong>2</strong> add and complete the risks, <strong>3</strong> record monitoring &amp; assurance, <strong>4</strong> score the management maturity. The summary stays at the top; each panel below opens and closes on click.
+          Build the profile top to bottom: <strong>1</strong> record consultation &amp; communication, <strong>2</strong> add and complete the risks, <strong>3</strong> record monitoring &amp; assurance, <strong>4</strong> score the management maturity. The summary stays at the top; each panel below opens and closes on click.
         </div>
       </div>
     </details>
@@ -3290,9 +3290,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="riskDashboard"></div>
 
     <div id="riskRegisterView">
-      <!-- 1 · Document control -->
+      <!-- 1 · Consultation & communication -->
       <details class="coll wf-sec" id="wfDocControl">
-        <summary><h3><span class="wf-step">1</span> Document control &amp; scoring key</h3><span class="coll-meta">version, review dates, approval</span></summary>
+        <summary><h3><span class="wf-step">1</span> Consultation &amp; communication</h3><span class="coll-meta">employee consultation &middot; risk scoring key</span></summary>
         <div class="coll-body">
           <div id="riskDocControl"></div>
           <div id="riskScoreKey"></div>
@@ -13778,7 +13778,6 @@ function _renderRiskDashboard(){
   const crit = cnt('Critical'), high = cnt('High');
   const emergingList = risks.filter(r => r.trend==='Increasing');
   const overdueActions = _overdueActionCount();
-  const reviewFlag = _reviewOverdue();
   // Count by category (spec #9)
   const byCat = {};
   risks.forEach(r => { const c=r.category||'Uncategorised'; byCat[c]=(byCat[c]||0)+1; });
@@ -13799,7 +13798,6 @@ function _renderRiskDashboard(){
       ${card(high,'High risks', high?_RISK_PRIO_COLOR.High:'')}
       ${card(emergingList.length,'Emerging risks (increasing)', emergingList.length?_RISK_PRIO_COLOR.High:'')}
       ${card(overdueActions,'Overdue actions', overdueActions?_RISK_PRIO_COLOR.Critical:'')}
-      ${card(reviewFlag?'Overdue':'OK','Profile review', reviewFlag?_RISK_PRIO_COLOR.Critical:_RISK_PRIO_COLOR.Low)}
     </div>
     <div class="rp-grid2">
       <details class="coll" open style="margin:0;"><summary><h3><span class="dot">●</span> Risk matrix</h3></summary><div class="coll-body">${_riskMatrixHTML(scored)}</div></details>
@@ -13977,15 +13975,17 @@ function _docReviewFlagHTML(){
 function _renderRiskDocControl(){
   const el=document.getElementById('riskDocControl'); if(!el) return;
   const dis=_roLocked()?' disabled':''; const rd=S.riskDoc||{};
-  // Document control has moved to the central Document Control register (Reports tab).
-  // Only the employee-consultation record — a risk-assessment requirement, not doc
-  // control — remains here.
+  // Consultation & communication — the legal duty to consult and inform employees
+  // on health and safety. (Report version/approval lives in the Document Control
+  // register on the Reports tab, not here.)
   el.innerHTML = `<details class="rp-subcard" open>
-    <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('clipboard',17)} Employee consultation</summary>
+    <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('clipboard',17)} Consultation &amp; communication</summary>
     <div class="sc-body">
       <div class="field-group"><label class="field-label">Consulted with (employee consultation record)</label>
         <textarea${dis} rows="2" placeholder="Who was consulted in preparing this profile — e.g. staff, safety reps, contractors" oninput="updateRiskDoc('consulted',this.value)">${esc(rd.consulted||'')}</textarea></div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:10px;">Document control for every report is managed in the <button class="ck-link" style="display:inline;padding:0;" onclick="switchTab('reports')">Document Control register</button> (Reports tab).</div>
+      <div class="field-group"><label class="field-label">How this is communicated to staff</label>
+        <textarea${dis} rows="2" placeholder="How the risk profile and its controls are shared — e.g. team briefings, toolbox talks, induction, noticeboard" oninput="updateRiskDoc('communicated',this.value)">${esc(rd.communicated||'')}</textarea></div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:10px;">Meets the duty to consult and inform employees on health and safety (Health and Safety (Consultation with Employees) Regulations 1996; MHSWR 1999 reg. 10).</div>
     </div></details>`;
 }
 

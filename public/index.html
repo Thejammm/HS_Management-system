@@ -13446,9 +13446,93 @@ function updateExecAction(refStr, field, value){
     else if(field==='owner') o.actionOwner=value;
     else o[field]=value;
   } else { o[field]=value; }
-  if(field==='status') _stampActionCompletion(o, value);
+  if(field==='status'){ _stampActionCompletion(o, value); _logAdd(o, (value==='Complete'?'completed':value==='Accepted'?'accepted':'status'), (value==='Complete'?'Marked complete':value==='Accepted'?'Risk accepted':'Status set to '+value)); }
   if(typeof _stamp==='function') _stamp(o,'updated');
   saveData(); _refreshActionViews();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ACTION ACTIVITY LOG — comments, delegation, completion notes.
+//  A per-action audit trail stored on the origin object (o.log). Both consultant
+//  and client can add entries; each is stamped with who + when and is not editable.
+// ══════════════════════════════════════════════════════════════
+var _LOG_ICON={ raised:'●', comment:'💬', delegated:'➜', status:'◔', completed:'✓', accepted:'≈', reopened:'↺' };
+function _actorRole(){ try{ var u=(typeof Auth!=='undefined'&&Auth.user)?Auth.user():null; return u?(u.role||''):'offline'; }catch(e){ return ''; } }
+function _roleLabel(r){ return r==='consultant'?'consultant':(r==='client_user'?'client':(r||'')); }
+function _logArr(o){ if(!o) return []; if(!Array.isArray(o.log)) o.log=[]; return o.log; }
+function _logAdd(o, type, text){ if(!o) return; _logArr(o).push({ id:'lg_'+Math.random().toString(36).slice(2,9), at:new Date().toISOString(), by:_actor().name, role:_actorRole(), type:type, text:(text||'') }); }
+function _actionOriginByRef(refStr){ var ref; try{ ref=JSON.parse(decodeURIComponent(refStr)); }catch(e){ return null; } return _execOrigin(ref) ? {ref:ref, o:_execOrigin(ref)} : null; }
+// Full chronological timeline: synthesized 'raised' + stored log (+ synth close if none logged).
+function _actionTimeline(a){
+  var o=_execOrigin(a.ref)||{}; var items=[];
+  if(a.raisedAt) items.push({ at:a.raisedAt, by:a.raisedBy||'', role:'', type:'raised', text:'Raised'+(a.source?(' from '+a.source):'') });
+  (o.log||[]).forEach(function(l){ items.push(l); });
+  var hasClose=(o.log||[]).some(function(l){ return l.type==='completed'||l.type==='accepted'; });
+  if(!hasClose){
+    if(a.status==='Complete' && a.completedDate) items.push({ at:a.completedDate, by:a.completedBy||'', role:'', type:'completed', text:'Marked complete' });
+    else if(a.status==='Accepted' && a.acceptDate) items.push({ at:a.acceptDate, by:a.acceptedBy||'', role:'', type:'accepted', text:'Risk accepted' });
+  }
+  items.sort(function(x,y){ return String(x.at).localeCompare(String(y.at)); });
+  return items;
+}
+function _logCount(a){ var o=_execOrigin(a.ref); return (o&&Array.isArray(o.log))?o.log.length:0; }
+function _fmtLogWhen(s){ try{ var d=new Date(s); if(isNaN(d)) return String(s).slice(0,10); var dd=d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}); return (String(s).indexOf('T')>-1)?(dd+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})):dd; }catch(e){ return String(s); } }
+function _actionTimelineHTML(a){
+  var items=_actionTimeline(a);
+  if(!items.length) return '<div style="font-size:12px;color:var(--text-muted);padding:4px 0;">No activity yet.</div>';
+  return items.map(function(l){
+    var ic=_LOG_ICON[l.type]||'•';
+    var col=l.type==='completed'?'var(--success)':(l.type==='delegated'?'var(--accent)':(l.type==='accepted'?'var(--text-muted)':'var(--text)'));
+    return '<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px dashed var(--border);">'
+      +'<span style="flex:0 0 auto;color:'+col+';">'+ic+'</span>'
+      +'<div style="flex:1;min-width:0;font-size:12.5px;"><div>'+esc(l.text||'')+'</div>'
+      +'<div style="font-size:11px;color:var(--text-muted);margin-top:1px;">'+esc(l.by||'—')+(l.role?(' ('+esc(_roleLabel(l.role))+')'):'')+' &middot; '+_fmtLogWhen(l.at)+'</div></div></div>';
+  }).join('');
+}
+// Controls under the timeline: comment box + delegate + mark-complete. Shown when editable.
+function _actionLogControlsHTML(a){
+  if(_roLocked()) return '';
+  var rk=encodeURIComponent(JSON.stringify(a.ref));
+  var resolved=(a.status==='Complete'||a.status==='Accepted');
+  return '<div class="fm-comment-box" style="margin-top:10px;">'
+    +'<textarea rows="2" placeholder="Add a comment — what is to be done, progress, or why this is being managed…" style="width:100%;box-sizing:border-box;font-size:12.5px;padding:8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;"></textarea>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">'
+    +'<button class="btn btn-primary btn-xs no-print" onclick="addActionComment(\''+rk+'\',this)">Add comment</button>'
+    +'<button class="btn btn-ghost btn-xs no-print" onclick="delegateAction(\''+rk+'\')">➜ Delegate to…</button>'
+    +(resolved?'':'<button class="btn btn-ghost btn-xs no-print" onclick="completeActionWithNote(\''+rk+'\')">✓ Mark complete…</button>')
+    +'</div></div>';
+}
+function _actionLogPanelHTML(a){
+  return '<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);margin-bottom:4px;">Activity trail</div>'
+    +_actionTimelineHTML(a)+_actionLogControlsHTML(a)+'</div>';
+}
+function addActionComment(refStr, btn){
+  if(_roLocked()) return;
+  var box=btn&&btn.closest?btn.closest('.fm-comment-box'):null; var ta=box?box.querySelector('textarea'):null;
+  var text=ta?String(ta.value).trim():''; if(!text){ if(typeof showToast==='function') showToast('Type a comment first','info'); return; }
+  var found=_actionOriginByRef(refStr); if(!found) return;
+  _logAdd(found.o,'comment',text); if(typeof _stamp==='function') _stamp(found.o,'updated');
+  saveData(); _refreshActionViews();
+}
+function delegateAction(refStr){
+  if(_blockIfReadOnly&&_blockIfReadOnly()) return;
+  var found=_actionOriginByRef(refStr); if(!found) return;
+  var to=(typeof prompt==='function')?prompt('Delegate this action to (name):',''):''; if(to===null) return;
+  to=String(to).trim(); if(!to) return;
+  if(found.ref.t==='mgmt') found.o.actionOwner=to; else found.o.owner=to;
+  _logAdd(found.o,'delegated','Delegated to '+to); if(typeof _stamp==='function') _stamp(found.o,'updated');
+  saveData(); _refreshActionViews(); if(typeof showToast==='function') showToast('✓ Delegated to '+to,'success');
+}
+function completeActionWithNote(refStr){
+  if(_blockIfReadOnly&&_blockIfReadOnly()) return;
+  var found=_actionOriginByRef(refStr); if(!found) return;
+  var how=(typeof prompt==='function')?prompt('Mark complete — how was this done? (optional)',''):''; if(how===null) return;
+  if(found.ref.t==='mgmt') found.o.actionStatus='Complete'; else found.o.status='Complete';
+  _stampActionCompletion(found.o,'Complete');
+  _logAdd(found.o,'completed', String(how).trim()?('Completed: '+String(how).trim()):'Marked complete');
+  if(typeof _stamp==='function') _stamp(found.o,'updated');
+  saveData(); _refreshActionViews(); if(typeof showToast==='function') showToast('✓ Marked complete','success');
 }
 // Delete an action from the Consultant Review table: archive a snapshot first (nothing is
 // lost — it can be restored), then remove it from its origin. Handles all three sources.
@@ -13509,9 +13593,12 @@ function _refreshActionViews(){
   try{ if(active('tab-actionplan') && typeof renderActionPlanTab==='function') _keepScroll(renderActionPlanTab); }catch(e){}
   try{ if(active('tab-execplan') && typeof renderExecPlan==='function') renderExecPlan(); }catch(e){}
   try{ if(active('tab-risk') && typeof renderRiskProfile==='function') _keepScroll(renderRiskProfile); }catch(e){}
+  try{ if(active('tab-review') && typeof _revActBodyHTML==='function'){ const t=document.getElementById('revActBody'); if(t) t.innerHTML=_revActBodyHTML(); } }catch(e){}
   updateActionBadges();
 }
 // The Client execution plan tab — RAG-coded, this-month focus + full year.
+var _execRowOpen={};
+function toggleExecRow(rk){ _execRowOpen[rk]=!_execRowOpen[rk]; renderExecPlan(); }
 function renderExecPlan(){
   const root=document.getElementById('execPlanRoot'); if(!root) return;
   updateActionBadges();
@@ -13525,19 +13612,23 @@ function renderExecPlan(){
   const complete=acts.filter(a=>a.status==='Complete');
   const STATUSES=['Not started','In progress','Complete','Accepted'];
   const ref=(a)=>encodeURIComponent(JSON.stringify(a.ref));
-  const row=(a)=>{ const c=RAG_COLOR[a.rag]||RAG_COLOR.grey;
-    return `<div style="display:flex;gap:12px;align-items:flex-start;border:1.5px solid var(--border);border-left:5px solid ${c};border-radius:9px;padding:12px 14px;margin-bottom:10px;">
+  const row=(a)=>{ const c=RAG_COLOR[a.rag]||RAG_COLOR.grey; const rk=ref(a); const open=_execRowOpen[rk]; const lc=_logCount(a);
+    return `<div style="border:1.5px solid var(--border);border-left:5px solid ${c};border-radius:9px;padding:12px 14px;margin-bottom:10px;">
+      <div style="display:flex;gap:12px;align-items:flex-start;">
       <span title="${a.rag==='red'?'Overdue':a.rag==='amber'?'Due this month / needs a date':a.rag==='grey'?'Risk accepted':'On track'}" style="width:12px;height:12px;border-radius:50%;background:${c};flex:0 0 auto;margin-top:4px;"></span>
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;font-size:14px;margin-bottom:5px;line-height:1.35;">${esc(a.desc||'(no description yet — add it in the source section)')}</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12px;color:var(--text-muted);">
           <span class="badge badge-muted">${esc(a.source)}</span>${a.sourceLabel?`<span>${esc(a.sourceLabel)}</span>`:''}${a.owner?`<span>&middot; ${esc(a.owner)}</span>`:''}${a.priority?`<span>&middot; ${esc(a.priority)} priority</span>`:''}
+          <button type="button" class="no-print" onclick="toggleExecRow('${rk}')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:12px;font-weight:600;padding:0;">${open?'▾ Hide activity':'▸ Activity'+(lc?(' 💬 '+lc):'')}</button>
         </div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
-        <label style="font-size:10.5px;color:var(--text-muted);white-space:nowrap;">Target date<br><input type="date"${dis} value="${a.due||''}" onchange="updateExecAction('${ref(a)}','due',this.value)"></label>
-        <select${dis} onchange="updateExecAction('${ref(a)}','status',this.value)" style="font-size:12.5px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select>
+        <label style="font-size:10.5px;color:var(--text-muted);white-space:nowrap;">Target date<br><input type="date"${dis} value="${a.due||''}" onchange="updateExecAction('${rk}','due',this.value)"></label>
+        <select${dis} onchange="updateExecAction('${rk}','status',this.value)" style="font-size:12.5px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select>
       </div>
+      </div>
+      ${open?`<div style="margin-left:24px;">${_actionLogPanelHTML(a)}</div>`:''}
     </div>`;
   };
   const byMonth={};
@@ -15701,6 +15792,19 @@ function buildExecPlanReportPDF(){
     K.table([{header:'ACTION',w:102},{header:'SOURCE',w:44},{header:'TARGET',w:22}],
       done.map(a=>[a.desc||'(no description)', {text:a.source, color:[120,120,120]}, {text:fd(a.due), color:[120,120,120]}]),
       {headFill:GREEN, headText:[255,255,255]});
+  }
+  const withLog=acts.filter(a=>{ const o=_execOrigin(a.ref); return o&&Array.isArray(o.log)&&o.log.length; });
+  if(withLog.length){
+    K.section('Activity trail', NAVY);
+    K.text('Comments, delegation and completion notes recorded against each action - the audit record.', 9, {color:GREY, gap:2});
+    withLog.forEach(a=>{
+      K.ensure(18);
+      K.text(a.desc||'(no description)', 9.5, {bold:true, color:NAVY, gap:1});
+      _actionTimeline(a).filter(l=>l.type!=='raised').forEach(l=>{
+        const label=(l.type==='delegated'?'Delegated':l.type==='completed'?'Completed':l.type==='accepted'?'Accepted':l.type==='status'?'Status':'Comment');
+        K.text('- ['+label+'] '+(l.text||'')+'  ('+(l.by||'')+', '+_fmtLogWhen(l.at)+')', 8.5, {color:[90,90,90]});
+      });
+    });
   }
   _pdfFooter(K, d, 'Client Execution Plan');
   doc.save('execution-plan-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
@@ -18256,8 +18360,9 @@ function _revActBodyHTML(){
         <select${dis} onchange="updateExecAction('${rk}','status',this.value)" style="flex:0 0 auto;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select>
         ${_roLocked()?'':`<button type="button" class="no-print" onclick="deleteExecAction('${rk}')" title="Delete — moves to the archive" style="flex:0 0 auto;background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:26px;height:26px;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;">✕</button>`}
       </div>
-      ${exp?`<div style="padding:2px 12px 10px 40px;font-size:12px;color:var(--text-muted);border-top:1px dashed var(--border);display:flex;flex-wrap:wrap;gap:6px 16px;">
-        ${a.sourceLabel?`<span><strong>From:</strong> ${esc(a.sourceLabel)}</span>`:''}${a.priority?`<span><strong>Priority:</strong> ${esc(a.priority)}</span>`:''}${a.raisedAt?`<span><strong>Raised:</strong> ${fmt(a.raisedAt)}</span>`:''}${a.due?`<span><strong>Target:</strong> ${fmt(a.due)}</span>`:''}${resolved?`<span style="color:${a.status==='Accepted'?RAGC.grey:RAGC.green};"><strong>${a.status==='Accepted'?'Accepted':'Completed'}:</strong> ${fmt(a.resolvedDate)}${a.resolvedBy?(' by '+esc(a.resolvedBy)):''}</span>`:''}
+      ${exp?`<div style="padding:2px 12px 10px 40px;border-top:1px dashed var(--border);">
+        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:6px 16px;">${a.sourceLabel?`<span><strong>From:</strong> ${esc(a.sourceLabel)}</span>`:''}${a.priority?`<span><strong>Priority:</strong> ${esc(a.priority)}</span>`:''}${a.raisedAt?`<span><strong>Raised:</strong> ${fmt(a.raisedAt)}</span>`:''}${a.due?`<span><strong>Target:</strong> ${fmt(a.due)}</span>`:''}${resolved?`<span style="color:${a.status==='Accepted'?RAGC.grey:RAGC.green};"><strong>${a.status==='Accepted'?'Accepted':'Completed'}:</strong> ${fmt(a.resolvedDate)}${a.resolvedBy?(' by '+esc(a.resolvedBy)):''}</span>`:''}</div>
+        ${_actionLogPanelHTML(a)}
       </div>`:''}
     </div>`;
   };
@@ -18487,6 +18592,19 @@ function buildReviewReportPDF(){
       doneAll.map(a=>{ const acc=a.status==='Accepted'; return [ a.desc||'(no description)', {text:a.source,color:[120,120,120]}, {text:acc?'Accepted':'Completed',bold:true,color:acc?GREY:GREEN}, {text:fd(a.resolvedDate),color:[100,100,100]}, {text:a.resolvedBy||'-',color:[110,110,110]} ]; }),
       {headFill:GREEN,headText:[255,255,255]});
   } else K.text('Nothing resolved yet.',10,{color:GREY});
+  const withLog=acts.filter(a=>{ const o=_execOrigin(a.ref); return o&&Array.isArray(o.log)&&o.log.length; });
+  if(withLog.length){
+    K.section('Activity trail (audit record)', NAVY);
+    K.text('Comments, delegation and completion notes recorded against each action.', 9, {color:GREY, gap:2});
+    withLog.forEach(a=>{
+      K.ensure(18);
+      K.text(a.desc||'(no description)', 9.5, {bold:true, color:NAVY, gap:1});
+      _actionTimeline(a).filter(l=>l.type!=='raised').forEach(l=>{
+        const label=(l.type==='delegated'?'Delegated':l.type==='completed'?'Completed':l.type==='accepted'?'Accepted':l.type==='status'?'Status':'Comment');
+        K.text('- ['+label+'] '+(l.text||'')+'  ('+(l.by||'')+', '+_fmtLogWhen(l.at)+')', 8.5, {color:[90,90,90]});
+      });
+    });
+  }
   _pdfFooter(K, d, 'Consultant Review & Action Plan');
   doc.save('consultant-review-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
 }

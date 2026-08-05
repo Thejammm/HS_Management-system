@@ -9468,15 +9468,18 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', function(e){
     var el=e.target; if(!el||el.tagName!=='INPUT') return;
     if(e.key==='Escape' && el.hasAttribute('data-fm-ghost')){ clearGhost(el); return; }
-    if(e.key!=='Tab' || e.shiftKey) return;
-    if(el.hasAttribute('data-fm-ghost') && !el.value){
-      var v=el.getAttribute('data-fm-ghost');
-      e.preventDefault();
-      clearGhost(el);
-      el.value=v;
-      el.dispatchEvent(new Event('input',{bubbles:true}));
-      el.dispatchEvent(new Event('change',{bubbles:true}));
-      try{ el.setSelectionRange(v.length, v.length); }catch(_){}
+    // Space on an EMPTY text box fills the shown hint (your last entry, or the example placeholder).
+    // Tab is left alone so it navigates between fields as normal.
+    if((e.key===' '||e.key==='Spacebar'||e.code==='Space') && ok(el) && !el.value){
+      var v=el.getAttribute('data-fm-ghost') || el.getAttribute('placeholder') || '';
+      if(v){
+        e.preventDefault();
+        clearGhost(el);
+        el.value=v;
+        el.dispatchEvent(new Event('input',{bubbles:true}));
+        el.dispatchEvent(new Event('change',{bubbles:true}));
+        try{ el.setSelectionRange(v.length, v.length); }catch(_){}
+      }
     }
   }, true);
   var st=document.createElement('style');

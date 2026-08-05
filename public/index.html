@@ -3052,6 +3052,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="tab-btn" data-consultant data-tab="review" onclick="switchTab('review')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Consultant review <span class="tb-badge" id="badgeReview"></span></button>
     <button class="tab-btn" data-tab="execplan" onclick="switchTab('execplan')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Client execution plan <span class="tb-badge" id="badgeExecPlan"></span></button>
     <button class="tab-btn" data-tab="documents" onclick="switchTab('documents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Documents</button>
+    <button class="tab-btn" data-tab="signoff" onclick="switchTab('signoff')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg> Policy sign-off</button>
     <button class="tab-btn" data-tab="links" onclick="switchTab('links')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Quick links</button>
     <button class="tab-btn" data-tab="reports" onclick="switchTab('reports')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg> Reports</button>
     <button class="tab-btn" data-tab="cas" onclick="switchTab('cas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg> Accreditation</button>
@@ -3447,6 +3448,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
     </div>
     <div id="siteInspContainer"></div>
+  </div>
+
+  <div id="tab-signoff" class="tab-panel">
+    <div class="rep-hero"><h2>Policy &amp; procedure sign-off</h2><p>Evidence that policies have been communicated to and understood by employees. Build the policy list (from Documents, the risk profile, or typed in), add your staff, print the acknowledgement sheets, then record who has signed for a live compliance picture.</p></div>
+    <div id="signoffContainer"></div>
   </div>
 
   <div id="tab-documents" class="tab-panel">
@@ -5150,6 +5156,7 @@ function switchTab(id) {
   if(id==='siteinsp') { renderSiteInsp(); }
   if(id==='review')   { renderReview(); }
   if(id==='documents'){ renderDocuments(); }
+  if(id==='signoff')  { renderPolicySignoff(); }
   if(id==='cas')      { renderCAS(); }
   if(id==='inspection'){ renderInspectionTypeGrid(); renderActiveInspectionBody(); }
   if(id==='actions')  { renderActions(); renderActionStats(); }
@@ -15416,6 +15423,7 @@ function _reportData(){
 // ══════════════════════════════════════════════════════════════
 const REPORT_DOCS = [
   { key:'companyProfile',   title:'Company Profile',              code:'CP'  },
+  { key:'policySignoff',    title:'Policy Acknowledgement',       code:'PSO' },
   { key:'boardReport',      title:'Board Report',                 code:'BR'  },
   { key:'riskProfile',      title:'Risk Profile',                 code:'RP'  },
   { key:'actionPlan',       title:'Action Plan',                  code:'AP'  },
@@ -17965,6 +17973,120 @@ function copyDocLink(id){
 }
 
 // ══════════════════════════════════════════════════════════════
+//  POLICY & PROCEDURE SIGN-OFF — read & understood acknowledgement register.
+//  Policies (typed / from Documents) × employees, tagged to risk-profile risks;
+//  live compliance tracking + a printable per-employee acknowledgement sheet.
+// ══════════════════════════════════════════════════════════════
+function _psoState(){
+  if(!S.policySignoff || typeof S.policySignoff!=='object') S.policySignoff={};
+  const p=S.policySignoff;
+  if(!Array.isArray(p.policies)) p.policies=[];
+  if(!Array.isArray(p.staff)) p.staff=[];
+  if(!p.signed || typeof p.signed!=='object') p.signed={};
+  return p;
+}
+function _psoUid(pfx){ return pfx+'_'+Math.random().toString(36).slice(2,9); }
+function _psoRiskName(id){ const r=(S.riskProfile||[]).find(x=>x.id===id); return r?(r.activity||r.hazard||'Risk'):''; }
+function addSignoffPolicy(){ if(_roLocked()) return; _psoState().policies.push({id:_psoUid('pol'), title:'', version:'', riskIds:[]}); saveData(); renderPolicySignoff(); }
+function removeSignoffPolicy(id){ if(_roLocked()) return; const p=_psoState(); p.policies=p.policies.filter(x=>x.id!==id); Object.keys(p.signed).forEach(k=>{ if(k.split('|')[1]===id) delete p.signed[k]; }); saveData(); renderPolicySignoff(); }
+function updateSignoffPolicy(id, field, val){ if(_roLocked()) return; const pol=_psoState().policies.find(x=>x.id===id); if(pol){ pol[field]=val; scheduleAutoSave(); } }
+function toggleSignoffPolicyRisk(id, riskId, on){ if(_roLocked()) return; const pol=_psoState().policies.find(x=>x.id===id); if(!pol) return; pol.riskIds=pol.riskIds||[]; if(on){ if(!pol.riskIds.includes(riskId)) pol.riskIds.push(riskId); } else { pol.riskIds=pol.riskIds.filter(r=>r!==riskId); } saveData(); renderPolicySignoff(); }
+function addPoliciesFromDocuments(){ if(_roLocked()) return; const p=_psoState(); const seen=new Set(p.policies.map(x=>(x.title||'').toLowerCase())); let n=0; (S.documents||[]).forEach(d=>{ const t=(d.name||d.title||'').trim(); if(t && !seen.has(t.toLowerCase())){ p.policies.push({id:_psoUid('pol'), title:t, version:d.version||'', riskIds:[], docId:d.id}); seen.add(t.toLowerCase()); n++; } }); saveData(); renderPolicySignoff(); showToast(n?('✓ Added '+n+' from Documents'):'All documents already listed','info'); }
+function addSignoffStaff(){ if(_roLocked()) return; _psoState().staff.push({id:_psoUid('emp'), name:'', role:''}); saveData(); renderPolicySignoff(); }
+function removeSignoffStaff(id){ if(_roLocked()) return; const p=_psoState(); p.staff=p.staff.filter(x=>x.id!==id); Object.keys(p.signed).forEach(k=>{ if(k.split('|')[0]===id) delete p.signed[k]; }); saveData(); renderPolicySignoff(); }
+function updateSignoffStaff(id, field, val){ if(_roLocked()) return; const s=_psoState().staff.find(x=>x.id===id); if(s){ s[field]=val; scheduleAutoSave(); } }
+function addStaffFromTraining(){ if(_roLocked()) return; const p=_psoState(); const seen=new Set(p.staff.map(x=>(x.name||'').toLowerCase())); const names=[...new Set((S.training||[]).map(t=>t.employee).filter(Boolean))]; let n=0; names.forEach(nm=>{ if(!seen.has(nm.toLowerCase())){ p.staff.push({id:_psoUid('emp'), name:nm, role:''}); seen.add(nm.toLowerCase()); n++; } }); saveData(); renderPolicySignoff(); showToast(n?('✓ Added '+n+' staff from training matrix'):'All training staff already listed','info'); }
+function toggleSignoff(staffId, policyId, checked){ if(_roLocked()) return; const p=_psoState(); const k=staffId+'|'+policyId; if(checked){ p.signed[k]=p.signed[k]||new Date().toISOString().slice(0,10); } else { delete p.signed[k]; } saveData(); renderPolicySignoff(); }
+function _psoCompliance(){ const p=_psoState(); const total=p.staff.length*p.policies.length; if(!total) return {pct:0,signed:0,total:0}; let s=0; p.staff.forEach(st=>p.policies.forEach(pol=>{ if(p.signed[st.id+'|'+pol.id]) s++; })); return {pct:Math.round(s/total*100), signed:s, total:total}; }
+function renderPolicySignoff(){
+  const cont=document.getElementById('signoffContainer'); if(!cont) return;
+  const p=_psoState(); const ro=_roLocked(); const dis=ro?' disabled':'';
+  const risks=(S.riskProfile||[]);
+  const inp='font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;';
+  const polRows=p.policies.map(pol=>{
+    const tagged=(pol.riskIds||[]).map(_psoRiskName).filter(Boolean);
+    const riskChecks=risks.length?risks.map(r=>`<label style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer;"><input type="checkbox" ${(pol.riskIds||[]).includes(r.id)?'checked':''}${dis} onchange="toggleSignoffPolicyRisk('${pol.id}','${r.id}',this.checked)"> ${esc(r.activity||r.hazard||'Risk')}</label>`).join(' '):'<span style="font-size:11.5px;color:var(--text-muted);">No risks in the profile yet.</span>';
+    return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input value="${esc(pol.title||'')}" placeholder="Policy / procedure title"${dis} oninput="updateSignoffPolicy('${pol.id}','title',this.value)" style="flex:2;min-width:180px;${inp}">
+        <input value="${esc(pol.version||'')}" placeholder="Version"${dis} oninput="updateSignoffPolicy('${pol.id}','version',this.value)" style="flex:0 0 90px;${inp}">
+        ${ro?'':`<button class="btn btn-ghost btn-xs" onclick="removeSignoffPolicy('${pol.id}')" title="Remove">${_ic('trash',13)}</button>`}
+      </div>
+      <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12px;color:var(--accent);">Linked risks${tagged.length?(' ('+tagged.length+')'):''}</summary>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;">${riskChecks}</div>
+      </details>
+    </div>`;
+  }).join('')||'<div class="ck-pending" style="padding:6px 0;">No policies yet. Add the policies employees must acknowledge — type them in, or pull from Documents.</div>';
+  const staffRows=p.staff.map(s=>`<div style="display:flex;gap:8px;margin-bottom:6px;">
+      <input value="${esc(s.name||'')}" placeholder="Employee name"${dis} oninput="updateSignoffStaff('${s.id}','name',this.value)" style="flex:2;min-width:140px;${inp}">
+      <input value="${esc(s.role||'')}" placeholder="Job role"${dis} oninput="updateSignoffStaff('${s.id}','role',this.value)" style="flex:1;min-width:100px;${inp}">
+      ${ro?'':`<button class="btn btn-ghost btn-xs" onclick="removeSignoffStaff('${s.id}')" title="Remove">${_ic('trash',13)}</button>`}
+    </div>`).join('')||'<div class="ck-pending" style="padding:6px 0;">No employees added yet.</div>';
+  const comp=_psoCompliance();
+  let matrix='';
+  if(p.staff.length && p.policies.length){
+    const head=`<tr><th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--surface);">Employee</th>${p.policies.map(pol=>`<th style="padding:6px 6px;font-size:10.5px;text-align:center;white-space:nowrap;">${esc((pol.title||'Policy').slice(0,20))}</th>`).join('')}<th style="padding:6px 8px;text-align:center;">%</th></tr>`;
+    const body=p.staff.map(s=>{ let sc=0; const cells=p.policies.map(pol=>{ const dt=p.signed[s.id+'|'+pol.id]; if(dt) sc++; return `<td style="text-align:center;padding:3px;"><input type="checkbox" ${dt?'checked':''}${dis} onchange="toggleSignoff('${s.id}','${pol.id}',this.checked)" title="${dt?('Signed '+dt):'Not signed'}"></td>`; }).join(''); const pct=p.policies.length?Math.round(sc/p.policies.length*100):0; return `<tr><td style="padding:5px 8px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--surface);">${esc(s.name||'(unnamed)')}</td>${cells}<td style="text-align:center;font-weight:700;color:${pct===100?'var(--success)':pct?'var(--warning)':'var(--text-muted)'};">${pct}%</td></tr>`; }).join('');
+    matrix=`<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div>`;
+  } else matrix='<div class="ck-pending" style="padding:6px 0;">Add at least one policy and one employee to track sign-off.</div>';
+  const cpc=comp.pct===100?'var(--success)':comp.pct?'var(--warning)':'var(--text-muted)';
+  cont.innerHTML=`
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Policies to sign off</h3><span class="badge badge-muted">${p.policies.length}</span></div>
+      <div class="card-body">
+        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">The policies and procedures employees must read and understand. Tag each to the risks it controls — this is the golden thread to the risk profile.</div>
+        ${polRows}
+        ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-primary btn-sm no-print" onclick="addSignoffPolicy()">＋ Add policy</button><button class="btn btn-ghost btn-sm no-print" onclick="addPoliciesFromDocuments()">＋ Pull from Documents</button></div>`}
+      </div></div>
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Employees</h3><span class="badge badge-muted">${p.staff.length}</span></div>
+      <div class="card-body">
+        ${staffRows}
+        ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-primary btn-sm no-print" onclick="addSignoffStaff()">＋ Add employee</button><button class="btn btn-ghost btn-sm no-print" onclick="addStaffFromTraining()">＋ From training matrix</button></div>`}
+      </div></div>
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Sign-off tracking</h3><span class="badge badge-muted">${comp.pct}% signed</span></div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:12px;color:var(--text-muted);flex:1;">${comp.signed} of ${comp.total} acknowledgements recorded</span><span style="font-size:13px;font-weight:700;color:${cpc};">${comp.pct}%</span></div>
+        <div style="height:8px;background:var(--muted-bg);border-radius:4px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${comp.pct}%;background:var(--success);"></div></div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Tick a box when the signed sheet comes back (dated today). The printed sheet stays the wet-ink evidence.</div>
+        ${matrix}
+      </div></div>
+    <div class="card"><div class="card-band"><h3><span class="dot">●</span> Print acknowledgement sheets</h3></div>
+      <div class="card-body" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;">
+        <div style="font-size:12.5px;color:var(--text-muted);flex:1;min-width:200px;">One page per employee, listing every policy with the risks it controls and a signature block. Print, get them signed, then record above.</div>
+        <button class="btn btn-primary btn-sm no-print" onclick="downloadSignoffSheets()"${p.staff.length&&p.policies.length?'':' disabled'}>⭳ Acknowledgement sheets PDF</button>
+      </div></div>`;
+}
+function downloadSignoffSheets(){ try{ buildSignoffPDF(); showToast('✓ Sign-off sheets created','success'); }catch(e){ console.error('Sign-off PDF failed',e); showToast('Could not build the sheets — see console','error'); } }
+function buildSignoffPDF(){
+  const p=_psoState();
+  const client=(_consultantView&&_consultantView.name)||(S.company&&(S.company.tradingName||S.company.legalName))||(S.branding&&S.branding.name)||'Client';
+  const d=_docFor('policySignoff');
+  const NAVY=[30,58,95];
+  const profVer=(S.riskDoc&&S.riskDoc.version)||'1.0';
+  const K=_mkPdf('Policy & Procedure Acknowledgement', client, d, 'Read & understood register - one sheet per employee.');
+  const { doc, ML, st } = K;
+  const staff=p.staff.filter(s=>s.name||s.role); const list=staff.length?staff:[{name:'',role:''}];
+  const sigLine=(label,x,w)=>{ doc.setDrawColor(180,185,192); doc.line(x,st.y+12,x+w,st.y+12); doc.setFontSize(8.5); doc.setTextColor(120,120,120); doc.text(label,x,st.y+16.5); };
+  list.forEach((s,idx)=>{
+    if(idx>0){ doc.addPage(); st.y=K.TOP; }
+    K.text('I confirm that I have read, understood and agree to comply with the policies and procedures listed below, and that I understand the health and safety risks they control.', 9.5, {gap:3});
+    K.kv('Employee', s.name||'________________________________');
+    K.kv('Job role', s.role||'________________________________');
+    K.kv('Risk profile', 'v'+profVer);
+    st.y+=2;
+    K.table(
+      [{header:'#',w:8},{header:'POLICY / PROCEDURE',w:74},{header:'VER',w:16},{header:'CONTROLS (RISK PROFILE)',w:80}],
+      p.policies.map((pol,i)=>{ const ctrl=(pol.riskIds||[]).map(_psoRiskName).filter(Boolean).join(', '); return [String(i+1), pol.title||'(untitled policy)', {text:pol.version||'-',color:[110,110,110]}, {text:ctrl||'-',color:[110,110,110]}]; }),
+      {headFill:NAVY, headText:[255,255,255]}
+    );
+    st.y+=8; K.ensure(24); sigLine('Employee signature',ML,72); sigLine('Date',ML+96,54);
+    st.y+=22; K.ensure(22); sigLine('Manager signature',ML,72); sigLine('Date',ML+96,54);
+    st.y+=22;
+  });
+  _pdfFooter(K, d, 'Policy Acknowledgement');
+  doc.save('policy-signoff-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+}
+
+// ══════════════════════════════════════════════════════════════
 //  CAS / ACCREDITATION (Stage 3)
 //  Renders the verified CAS V5 framework (data, not code) as a readiness
 //  reference, filtered by scheme. RAG per criterion + evidence mapping land in
@@ -19266,7 +19388,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles'];
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

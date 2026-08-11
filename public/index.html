@@ -16610,40 +16610,40 @@ function _seedRequirements(){
 const LEGAL_ESSENTIALS = [
   { key:'policy', title:'Health & Safety Policy', citation:'HSWA 1974 s.2(3)', threshold:'written5',
     why:'A written statement of how the business manages health and safety — the intent, who is responsible, and the arrangements for the main risks.',
-    criteria:['Signed and dated by the most senior person','States the company\'s health & safety intentions (the policy statement)','Sets out who is responsible for what','Describes the arrangements for the main risks','Reviewed in the last 12 months or after significant change'] },
+    criteria:['Part 1 — Statement of intent: signed and dated by the most senior person, reviewed at least annually','Part 1 — commits to protecting employees and others, meeting legal duties and providing resources','Part 2 — Responsibilities: names who is responsible for health & safety, top to bottom (including the competent person)','Part 2 — sets out employees\' own responsibilities','Part 3 — Arrangements: the practical systems for the significant risks (risk assessment, training, first aid, fire, accidents, consultation, PPE)','Brought to the attention of, and understood by, all employees'] },
   { key:'riskassessments', title:'Risk assessments', citation:'MHSWR 1999 reg 3', threshold:'record5',
     why:'Suitable and sufficient assessments of the significant risks, with the controls needed. Significant findings must be recorded if 5+ employees.',
-    criteria:['Cover all significant activities and hazards','Identify who might be harmed and how','Controls follow the hierarchy (eliminate → reduce → PPE)','Current and up to date','Shared with the people who do the work'] },
+    criteria:['Identify the hazards across all significant activities','Decide who might be harmed and how (including young persons, new/expectant mothers, lone workers, contractors and the public)','Evaluate the risks and decide controls using the hierarchy: eliminate → substitute → engineering controls → safe systems / administrative → PPE (last resort)','Record the significant findings (a legal requirement at 5+ employees)','Review regularly and after any incident or significant change','Controls are actually in place and the assessment is shared with those who do the work'] },
   { key:'competent', title:'Competent person(s)', citation:'MHSWR 1999 reg 7', threshold:'all',
     why:'One or more competent people appointed to help the business meet its health & safety duties.',
-    criteria:['At least one competent person named','Competence evidenced (training / experience)','Given time and resources for the role'] },
+    criteria:['One or more competent persons formally appointed to assist with H&S duties','Competence based on training, knowledge and experience appropriate to the risks','Given enough time, information and resources to fulfil the role','In-house appointment preferred; external help used where in-house competence is insufficient'] },
   { key:'elci', title:'Employers\' Liability Insurance', citation:'Employers\' Liability (Compulsory Insurance) Act 1969', threshold:'all',
     why:'Compulsory insurance covering employees injured or made ill by their work — minimum £5 million.',
-    criteria:['Current policy of at least £5 million','Certificate available to employees','Insurer is authorised'] },
+    criteria:['Current policy with an authorised insurer, at least £5 million cover','Covers all employees with no gaps in cover','Certificate displayed or readily available to employees (electronic is acceptable)','Excluded only where a genuine exemption applies (e.g. some family businesses)'] },
   { key:'lawposter', title:'HSE ‘Health & Safety Law’ poster / leaflet', citation:'Health and Safety Information for Employees Regulations 1989', threshold:'all',
     why:'Employees must be told the basics of health & safety law — display the poster or issue the equivalent leaflet.',
-    criteria:['Current poster displayed where staff can read it, or leaflet issued','Any contact details on it completed'] },
+    criteria:['Current approved HSE law poster displayed where staff can read it, OR the equivalent leaflet/card issued','Where used, the poster\'s blanks (business and enforcing authority details) are completed','Home and remote workers also have access to the information'] },
   { key:'firstaid', title:'First-aid provision', citation:'Health and Safety (First-Aid) Regulations 1981', threshold:'all',
     why:'Adequate first-aid equipment, facilities and people, based on a needs assessment.',
-    criteria:['First-aid needs assessment completed','Adequate, in-date first-aid kit(s)','Appointed person or trained first-aider(s) in place','Arrangements told to staff'] },
+    criteria:['A written first-aid needs assessment (nature of work, hazards, numbers, work patterns, sites, incident history)','Adequate, in-date first-aid kit(s) suitable for the assessed risks','An appointed person always available; trained first-aider(s) (EFAW/FAW) where the assessment requires','Cover for shifts, lone and remote workers','First-aiders, kit locations and arrangements made known to staff'] },
   { key:'riddor', title:'Accident recording & RIDDOR reporting', citation:'RIDDOR 2013', threshold:'all',
     why:'Record injuries and ill health, and report specified incidents to the HSE.',
-    criteria:['Accident book in use (data-protection compliant)','Someone responsible for reporting identified','RIDDOR reporting process understood'] },
+    criteria:['Accident book / record in use and data-protection compliant','A responsible person identified to assess and report incidents','RIDDOR-reportable events understood: deaths, specified injuries, over-7-day incapacitation, occupational diseases, dangerous occurrences','Reports made within the time limits and records kept for at least 3 years','Incidents investigated and lessons acted on'] },
   { key:'consultation', title:'Consultation with employees', citation:'HSCER 1996 / SRSC 1977', threshold:'all',
     why:'Employees must be consulted on matters affecting their health & safety.',
-    criteria:['A way to consult staff (directly or via reps)','Evidence that consultation happens','It is genuinely two-way'] },
+    criteria:['Employees consulted in good time on risks, changes, procedures and training','A route in place — directly (HSCER 1996) and/or via elected or trade-union safety reps (SRSC 1977)','Consultation is genuinely two-way and there is evidence it happens','Any safety reps given the time and facilities to carry out their role'] },
   { key:'training', title:'Information, instruction & training', citation:'HSWA s.2(2)(c); MHSWR 1999 reg 13', threshold:'all',
     why:'People must be given the information and training to work safely, and their capabilities considered.',
     criteria:['Induction for new starters','Job-specific training for the risks faced','Refresher training where needed','Training records kept'] },
   { key:'fire', title:'Fire risk assessment & fire safety', citation:'Regulatory Reform (Fire Safety) Order 2005', threshold:'record5',
     why:'Assess and manage fire risk — escape routes, detection, extinguishers, drills. Findings recorded if 5+ employees.',
-    criteria:['Current fire risk assessment','Escape routes clear and signed','Detection and extinguishers maintained','Drills and staff fire training','Emergency plan in place'] },
+    criteria:['Current fire risk assessment by a competent person (findings recorded at 5+ employees)','Fire hazards and the people at risk identified','Means of escape adequate, clear and signed, with emergency lighting where needed','Alarm/detection and firefighting equipment provided and maintained','Emergency plan, fire drills and staff fire training; reviewed regularly'] },
   { key:'welfare', title:'Welfare & workplace conditions', citation:'Workplace (HSW) Regulations 1992', threshold:'all',
     why:'Basic welfare and safe conditions — toilets, drinking water, rest facilities, lighting, temperature, clean and maintained.',
-    criteria:['Adequate welfare facilities (toilets, water, rest)','Workplace clean, lit and maintained','Safe traffic routes and floors'] },
+    criteria:['Suitable, clean toilets and washing facilities','Drinking water, and somewhere to rest and eat','Reasonable temperature (at least 16°C, or 13°C for strenuous work), lighting and ventilation','Workplace, floors and traffic routes clean, maintained and safe','Enough room, with safe doors, windows and glazing'] },
   { key:'ppe', title:'Personal protective equipment (PPE)', citation:'PPE at Work Regulations 1992 (amended 2022)', threshold:'all',
     why:'Where risks cannot be controlled another way, provide suitable PPE free of charge (including to workers, from 2022).',
-    criteria:['PPE need assessed and suitable PPE provided free','PPE maintained and replaced','Staff trained in its use'] }
+    criteria:['PPE used only where the risk can\'t be adequately controlled by other means (last resort)','Suitable PPE assessed and provided free — to employees and, since April 2022, to \'limb (b)\' workers','PPE compatible where several items are worn together','Maintained, cleaned, stored properly and replaced when needed','Staff trained in correct use, and use is monitored'] }
 ];
 function _legalMeta(key){ return LEGAL_ESSENTIALS.find(x=>x.key===key)||null; }
 function _empCount(){ const n=parseInt((S.company&&S.company.employees)||'',10); return isNaN(n)?null:n; }
@@ -16725,6 +16725,7 @@ function _legalCardHTML(sec, it, emp, ro){
       <label style="font-size:11.5px;color:var(--text-muted);">Located / in place? <select${dis} onchange="updateReqField('${sec.id}','${it.id}','present',this.value)" style="${ss}">${['','Yes','No'].map(o=>`<option${o===(it.present||'')?' selected':''}>${o||'—'}</option>`).join('')}</select></label>
       <select${dis} onchange="updateReqField('${sec.id}','${it.id}','docId',this.value)" style="${ss}min-width:150px;">${docOpts}</select>
     </div>
+    ${ro?(it.reviewNote?`<div style="margin-top:8px;font-size:12.5px;"><span style="color:var(--text-muted);font-weight:600;">Review notes:</span> ${esc(it.reviewNote)}</div>`:''):`<div style="margin-top:8px;"><textarea rows="2" placeholder="Review notes / comments — what you found on reviewing this…" oninput="updateReqField('${sec.id}','${it.id}','reviewNote',this.value)" style="width:100%;box-sizing:border-box;font-size:12.5px;padding:8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${esc(it.reviewNote||'')}</textarea></div>`}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;">
       ${ro?'':(approved?`<span style="font-size:11.5px;color:var(--success);font-weight:700;">✓ Reviewed &amp; approved${it.reviewedBy?(' · '+esc(it.reviewedBy)):''}</span> <button class="btn btn-ghost btn-xs no-print" onclick="toggleReqReviewed('${sec.id}','${it.id}')">Undo</button>`:`<button class="btn btn-primary btn-xs no-print" onclick="approveReqItem('${sec.id}','${it.id}')">✓ Approve as compliant</button>`)}
     </div>

@@ -13464,7 +13464,7 @@ function _suggestPriority(r){ return _riskScore(r).priority || ''; }
 function _allRiskActions(){
   const out=[];
   (S.riskProfile||[]).forEach(r=>{
-    (r.actions||[]).forEach(a=>{ out.push({ a, r, status:_actionStatus(a) }); });
+    (r.actions||[]).forEach(a=>{ if(a.deleted) return; out.push({ a, r, status:_actionStatus(a) }); });
   });
   return out;
 }
@@ -13506,7 +13506,7 @@ function _execActions(){
     norm('Risk profile', x.r.activity||x.r.hazard||'Risk', {t:'risk', a:x.r.id, b:x.a.id}, x.a); });
   (typeof _allMgmtActions==='function'?_allMgmtActions():[]).forEach(x=>{ if(x.act&&x.act.hideFromPlan) return;
     norm('Management system', x.source||'', {t:'mgmt', a:x.secId, b:x.itemId, c:x.actId}, x.act); });
-  (S.actionPlan||[]).forEach(a=>{ if(a.hideFromPlan) return; if(!(a.desc||a.owner||a.due)) return;
+  (S.actionPlan||[]).forEach(a=>{ if(a.deleted) return; if(a.hideFromPlan) return; if(!(a.desc||a.owner||a.due)) return;
     const rk=(S.riskProfile||[]).find(r=>r.id===a.riskId);
     const src=a.source || (rk?'Risk profile':'Added directly');
     norm(src, a.sourceLabel||(rk?(rk.activity||rk.hazard):''), {t:'free', a:a.id}, a); });
@@ -13627,17 +13627,80 @@ function completeActionWithNote(refStr){
 }
 // Delete an action from the Consultant Review table: archive a snapshot first (nothing is
 // lost — it can be restored), then remove it from its origin. Handles all three sources.
+// ── Deleting an action does NOT destroy it. It is tombstoned in place:
+// hidden from the client's views, but kept (flagged "deleted by ...") in the
+// consultant's view, where the consultant alone can restore it (with a note)
+// or remove it from the app for good. ────────────────────────────────────────
+function _roleLabel(r){ return r==='consultant'?'consultant':(r==='client_user'?'client':(r||'user')); }
+function _markActionDeleted(o){
+  if(!o) return;
+  o.deleted=true;
+  o.deletedBy=(typeof _actor==='function'?(_actor().name||''):'');
+  o.deletedById=(typeof _actor==='function'?(_actor().id||''):'');
+  o.deletedRole=(typeof _actorRole==='function'?_actorRole():'');
+  o.deletedAt=new Date().toISOString().slice(0,10);
+}
 function deleteExecAction(refStr){
   if(_blockIfReadOnly()) return;
   let ref; try{ ref=JSON.parse(decodeURIComponent(refStr)); }catch(e){ return; }
-  const na=_execActions().find(a=>JSON.stringify(a.ref)===JSON.stringify(ref)); if(!na) return;
-  if(!confirm('Delete this action?\n\n"'+(na.desc||'(no description)')+'"\n\nIt moves to the consultant-only Archive (nothing is lost — you can restore it). This removes it from the live plan.')) return;
-  _archiveAction({ desc:na.desc, owner:na.owner, due:na.due, priority:na.priority, status:na.raw, completedDate:na.completedDate, completedBy:na.completedBy, createdAt:na.raisedAt }, na.source, na.sourceLabel);
+  const o=_execOrigin(ref); if(!o) return;
+  if(!confirm('Delete this action?\n\n"'+(o.desc||'(no description)')+'"\n\nIt is removed from the plan. Your consultant can still see it (flagged as deleted) and restore it or remove it for good.')) return;
+  _markActionDeleted(o);
+  saveData(); _refreshActionViews(); if(typeof renderReview==='function') _keepScroll(renderReview);
+  if(typeof showToast==='function') showToast('Action deleted','info');
+}
+// Every action that has been deleted (tombstoned), across all three sources,
+// each with a ref back to its origin so the consultant can act on it.
+function _deletedActions(){
+  const out=[];
+  (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>{ if(a.deleted) out.push({ ref:{t:'risk',a:r.id,b:a.id}, a, source:(r.activity||r.hazard||'Risk profile') }); }));
+  (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if(typeof _reqMigrateActions==='function') _reqMigrateActions(it); (it.actions||[]).forEach(a=>{ if(a.deleted) out.push({ ref:{t:'mgmt',a:s.id,b:it.id,c:a.id}, a, source:(s.heading||'Management system') }); }); }));
+  (S.actionPlan||[]).forEach(a=>{ if(a.deleted) out.push({ ref:{t:'free',a:a.id}, a, source:(a.source||'Added directly') }); });
+  return out;
+}
+function restoreDeletedAction(refStr){
+  if(typeof _isConsultantUser==='function' && !_isConsultantUser()){ if(typeof showToast==='function') showToast('Only the consultant can restore deleted actions.','info'); return; }
+  let ref; try{ ref=JSON.parse(decodeURIComponent(refStr)); }catch(e){ return; }
+  const o=_execOrigin(ref); if(!o) return;
+  const c=(typeof prompt==='function')?prompt('Restore this action.\n\nAdd a note (optional), e.g. why you are restoring it:',''):'';
+  if(c===null) return;                                   // cancelled
+  delete o.deleted; delete o.deletedBy; delete o.deletedById; delete o.deletedRole; delete o.deletedAt;
+  o.restoredBy=(typeof _actor==='function'?(_actor().name||''):'');
+  o.restoredAt=new Date().toISOString().slice(0,10);
+  o.restoreComment=String(c||'').trim();
+  if(typeof _stamp==='function') _stamp(o,'updated');
+  saveData(); _refreshActionViews(); if(typeof renderReview==='function') _keepScroll(renderReview);
+  if(typeof showToast==='function') showToast('✓ Action restored','success');
+}
+function purgeDeletedAction(refStr){
+  if(typeof _isConsultantUser==='function' && !_isConsultantUser()){ if(typeof showToast==='function') showToast('Only the consultant can remove actions permanently.','info'); return; }
+  let ref; try{ ref=JSON.parse(decodeURIComponent(refStr)); }catch(e){ return; }
+  const o=_execOrigin(ref); if(!o) return;
+  if(!confirm('Remove this action from the whole app permanently?\n\n"'+(o.desc||'(no description)')+'"\n\nThis cannot be undone.')) return;
   if(ref.t==='risk'){ const r=(S.riskProfile||[]).find(x=>x.id===ref.a); if(r){ r.actions=(r.actions||[]).filter(x=>x.id!==ref.b); if(typeof _stamp==='function')_stamp(r,'updated'); } }
   else if(ref.t==='mgmt'){ const s=(S.requirements||[]).find(x=>x.id===ref.a); const it=s&&(s.items||[]).find(x=>x.id===ref.b); if(it){ it.actions=(it.actions||[]).filter(x=>x.id!==ref.c); if(typeof _stamp==='function')_stamp(it,'updated'); } }
   else if(ref.t==='free'){ S.actionPlan=(S.actionPlan||[]).filter(x=>x.id!==ref.a); }
   saveData(); _refreshActionViews(); if(typeof renderReview==='function') _keepScroll(renderReview);
-  if(typeof showToast==='function') showToast('Action moved to the archive','info');
+  if(typeof showToast==='function') showToast('Action permanently removed','info');
+}
+// Consultant-only block listing deleted actions (flagged with who deleted them).
+function _deletedActionsHTML(){
+  if(typeof _isConsultantUser==='function' && !_isConsultantUser()) return '';
+  const list=_deletedActions(); if(!list.length) return '';
+  const rows=list.map(x=>{ const a=x.a; const rf=encodeURIComponent(JSON.stringify(x.ref));
+    const who=esc(a.deletedBy||'someone'); const role=a.deletedRole?(' ('+esc(_roleLabel(a.deletedRole))+')'):''; const when=a.deletedAt?(' on '+fmtDate(a.deletedAt)):'';
+    return `<div style="display:flex;gap:12px;align-items:flex-start;border:1px solid var(--danger-brd);border-left:4px solid var(--danger);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--danger-bg);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13.5px;">${esc(a.desc||'(no description)')}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">${esc(x.source)} &middot; <strong style="color:var(--danger);">deleted by ${who}${role}${when}</strong>${a.restoreComment?(' &middot; note: '+esc(a.restoreComment)):''}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="btn btn-outline btn-xs no-print" onclick="restoreDeletedAction('${rf}')">Restore</button>
+        <button class="btn btn-ghost btn-xs no-print" onclick="purgeDeletedAction('${rf}')">Delete from app</button>
+      </div>
+    </div>`; }).join('');
+  return `<div class="card" style="margin-top:18px;border-left:3px solid var(--danger);"><div class="card-band"><h3><span class="dot" style="color:var(--danger);">●</span> Deleted actions (consultant only)</h3><span class="badge badge-muted">${list.length}</span></div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Actions a client (or you) deleted. They are hidden from the client's views. Restore one (you will be asked for a note) to bring it back, or remove it from the app for good.</div>${rows}</div></div>`;
 }
 // Restore an archived action back into the live plan (as a standalone plan item), keeping its source label.
 function restoreArchivedAction(archId){
@@ -13748,7 +13811,8 @@ function renderExecPlan(){
         ${open.length ? monthKeys.map(k=>`<div style="margin-bottom:14px;"><div style="font-weight:700;font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;border-bottom:1.5px solid var(--border);padding-bottom:4px;">${monthName(k)} <span style="font-weight:600;">(${byMonth[k].length})</span></div>${byMonth[k].map(row).join('')}</div>`).join('') : `<div class="ck-pending" style="padding:8px 0;">No open actions yet. As actions are identified in your risk profile, management system, assurance and accreditation, they appear here to plan.</div>`}
         ${complete.length?`<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:13px;color:var(--text-muted);">${complete.length} completed action${complete.length!==1?'s':''}</summary><div style="margin-top:10px;">${complete.map(row).join('')}</div></details>`:''}
       </div>
-    </div>`;
+    </div>
+    ${_deletedActionsHTML()}`;
 }
 
 // ── Hazard library (spec #8) — seeded from ahs-required-risks.md.
@@ -14084,8 +14148,9 @@ function _archiveAction(a, source, sourceLabel){
 function deleteRiskAction(rid, aid){
   if(_blockIfReadOnly()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
-  const a=(r.actions||[]).find(x=>x.id===aid); if(a) _archiveAction(a, 'Risk profile', r.activity||r.hazard||'');
-  r.actions=(r.actions||[]).filter(a=>a.id!==aid); _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
+  const a=(r.actions||[]).find(x=>x.id===aid); if(!a) return;
+  _markActionDeleted(a); _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
+  if(typeof _refreshActionViews==='function') _refreshActionViews();
 }
 function updateRiskAction(rid, aid, field, value){
   if(_roLocked()) return;
@@ -14095,7 +14160,7 @@ function updateRiskAction(rid, aid, field, value){
   if(field==='status'||field==='due'||field==='priority'){ _refreshActionViews(); }
 }
 function _riskActionsHTML(r, dis){
-  const acts=r.actions||[];
+  const acts=(r.actions||[]).filter(a=>!a.deleted);
   const stOpts=(cur)=>RISK_ACTION_STATUS.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
   const prOpts=(cur)=>['Critical','High','Medium','Low'].map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
   const body = acts.map(a=>{
@@ -14335,9 +14400,10 @@ function updateActionPlanItem(id, field, value){
 }
 function deleteActionPlanItem(id){
   if(_blockIfReadOnly()) return;
-  if(!confirm('Delete this action?\n\nIt will be kept in the Archive (visible only to you).')) return;
-  const it=_apList().find(x=>x.id===id); if(it) _archiveAction(it, it.source||'Added directly', it.sourceLabel||'');
-  S.actionPlan=_apList().filter(x=>x.id!==id); saveData(); renderActionPlanTab();
+  const it=_apList().find(x=>x.id===id); if(!it) return;
+  if(!confirm('Delete this action?\n\nIt is removed from the plan. Your consultant can still see it (flagged as deleted) and restore it or remove it for good.')) return;
+  _markActionDeleted(it); saveData(); renderActionPlanTab();
+  if(typeof _refreshActionViews==='function') _refreshActionViews();
 }
 // Status on a risk-sourced row writes back to that risk's action.
 function setRiskActionStatus(riskId, actId, value){
@@ -14359,7 +14425,7 @@ function _apGaps(){
   (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{
     _reqMigrateActions(it);
     const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
-    if(st && st.label!=='Met' && !it.actions.some(a=>a.desc&&String(a.desc).trim())){
+    if(st && st.label!=='Met' && !it.actions.some(a=>a.desc&&String(a.desc).trim()&&!a.deleted)){
       const what=(it.requirement&&it.requirement.trim())||(sec.heading||'Requirement');
       gaps.push({ srcKey:'req:'+it.id, desc:what, due:it.dueDate||'', priority: st.label==='Not in place'?'High':'Medium',
         context:(sec.heading||'Management system')+' ('+st.label+')', note:'From the management system: '+(sec.heading||'')+(it.requirement?(': '+it.requirement):'') });
@@ -14448,7 +14514,7 @@ function _allMgmtActions(){
     _reqMigrateActions(it);
     const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
     const prBase = st && st.label==='Not in place' ? 'High' : (st && st.label==='Gap' ? 'Medium' : '');
-    (it.actions||[]).forEach(act=>{ if(!act.desc || !String(act.desc).trim()) return;
+    (it.actions||[]).forEach(act=>{ if(act.deleted) return; if(!act.desc || !String(act.desc).trim()) return;
       out.push({ secId:sec.id, itemId:it.id, actId:act.id, act, desc:act.desc, owner:act.owner||'', due:act.due||'', priority:act.priority||prBase, status:_actionStatus({status:act.status, due:act.due}), source:(sec.heading||'Management system') });
     });
   }));
@@ -14487,7 +14553,7 @@ function renderActionPlanTab(){
   const _allMA=_allMgmtActions();
   const mgmtActs=_allMA.filter(x=>!(x.act&&x.act.hideFromPlan));
   const hiddenMgmt=_allMA.filter(x=>x.act&&x.act.hideFromPlan);
-  const free=_apList();
+  const free=_apList().filter(a=>!a.deleted);
   // Unified stats across risk-derived, management-system and free-form actions.
   const allStatuses=riskActs.map(x=>x.status).concat(mgmtActs.map(x=>x.status)).concat(free.map(a=>_actionStatus(a)));
   const total=allStatuses.length, overdue=allStatuses.filter(s=>s==='Overdue').length, done=allStatuses.filter(s=>s==='Complete').length, accepted=allStatuses.filter(s=>s==='Accepted').length, open=total-done-accepted;
@@ -14595,7 +14661,7 @@ function renderActionPlanTab(){
     ${freeCard}
     ${regCard}
     ${_completedHistoryHTML()}
-    ${_archiveHTML()}`;
+    ${_deletedActionsHTML()}`;
 }
 // Archive of deleted actions — consultant-only record, with a report button.
 function _archiveHTML(){
@@ -16891,7 +16957,7 @@ function raiseReqActionFor(sectionId, itemId, text){
 }
 // Shared renderer: an item's list of actions (status + remove) + Add action.
 function _mgmtActionsListHTML(sec, it, ro){
-  const acts=(it.actions||[]).filter(a=>a.desc&&String(a.desc).trim());
+  const acts=(it.actions||[]).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted);
   const ss='font-size:12px;padding:4px 7px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;';
   const rows=acts.map(act=>{ const ref=encodeURIComponent(JSON.stringify({t:'mgmt',a:sec.id,b:it.id,c:act.id})); const stt=_actionStatus({status:act.status,due:act.due}); const rag=(typeof _actionRag==='function')?_actionRag(act.due,stt):'grey'; const rc=(typeof RAG_COLOR!=='undefined'&&RAG_COLOR[rag])||'#9CA3AF';
     return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0;">
@@ -17115,7 +17181,7 @@ function buildManagementSystemReportPDF(){
   REQ_STAGES.concat(['__other']).forEach(stage=>{
     const grp = stage==='__other' ? secs.filter(s=>!REQ_STAGES.includes(s.stage)) : secs.filter(s=>s.stage===stage);
     grp.forEach(sec=>{ (sec.items||[]).forEach(it=>{ _reqMigrateActions(it); const s2=_reqItemStatus(it); if(s2 && (s2.label==='Gap'||s2.label==='Not in place')){
-      const acts=(it.actions||[]).filter(a=>a.desc&&String(a.desc).trim());
+      const acts=(it.actions||[]).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted);
       const dues=acts.map(a=>a.due).filter(Boolean).sort(); const due=it.dueDate||dues[0]||'';
       const overdue = due && new Date(due) < new Date();
       actRows.push([
@@ -18837,7 +18903,7 @@ function renderReview(){
     </div>
     ${_reviewActionsHTML()}
     ${_completedHistoryHTML()}
-    ${_archiveHTML()}
+    ${_deletedActionsHTML()}
     <div class="card"><div class="card-band"><h3><span class="dot">●</span> Quality rating</h3></div>
       <div class="card-body">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -18926,7 +18992,7 @@ function buildFeedbackReportPDF(){
   } else K.text('No critical or high risks recorded.', 9.5, {color:GREY});
   // Management system gaps (table)
   K.section('Management system gaps', AMBER);
-  const gapRows=[]; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ _reqMigrateActions(it); if((it.present||it.adequate)&&!(it.present==='Yes'&&it.adequate==='Yes')) gapRows.push([{text:(it.requirement||'requirement'), bold:true},{text:s.heading||'-', color:GREY},{text:((it.actions||[]).filter(a=>a.desc&&String(a.desc).trim()).map(a=>a.desc).join('; '))||'-', color:GREY}]); }));
+  const gapRows=[]; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ _reqMigrateActions(it); if((it.present||it.adequate)&&!(it.present==='Yes'&&it.adequate==='Yes')) gapRows.push([{text:(it.requirement||'requirement'), bold:true},{text:s.heading||'-', color:GREY},{text:((it.actions||[]).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted).map(a=>a.desc).join('; '))||'-', color:GREY}]); }));
   if(gapRows.length){ K.table([{header:'REQUIREMENT',w:78},{header:'DUTY AREA',w:52},{header:'ACTION',w:48}], gapRows, {headFill:AMBER, headText:[255,255,255]}); }
   else K.text('No management system gaps recorded.', 9.5, {color:GREY});
   // Monitoring picture (tiles)

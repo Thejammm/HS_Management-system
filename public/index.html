@@ -13504,9 +13504,8 @@ function _execActions(){
     raisedAt:(a.createdAt?a.createdAt.slice(0,10):''), raisedBy:a.createdBy||'' }); };
   _allRiskActions().forEach(x=>{ if(x.a.hideFromPlan) return; if(!(x.a.desc||x.a.owner||x.a.due)) return;
     norm('Risk profile', x.r.activity||x.r.hazard||'Risk', {t:'risk', a:x.r.id, b:x.a.id}, x.a); });
-  (typeof _allMgmtActions==='function'?_allMgmtActions():[]).forEach(x=>{ if(x.it&&x.it.hideFromPlan) return;
-    norm('Management system', x.source||'', {t:'mgmt', a:x.secId, b:x.id},
-      { desc:x.desc, owner:x.owner, due:x.due, priority:x.priority, status:x.it.actionStatus, completedDate:x.it.completedDate, completedBy:x.it.completedBy, acceptDate:x.it.acceptDate, acceptedBy:x.it.acceptedBy, createdAt:x.it.createdAt, createdBy:x.it.createdBy }); });
+  (typeof _allMgmtActions==='function'?_allMgmtActions():[]).forEach(x=>{ if(x.act&&x.act.hideFromPlan) return;
+    norm('Management system', x.source||'', {t:'mgmt', a:x.secId, b:x.itemId, c:x.actId}, x.act); });
   (S.actionPlan||[]).forEach(a=>{ if(a.hideFromPlan) return; if(!(a.desc||a.owner||a.due)) return;
     const rk=(S.riskProfile||[]).find(r=>r.id===a.riskId);
     const src=a.source || (rk?'Risk profile':'Added directly');
@@ -13517,7 +13516,7 @@ function _execOpenCount(){ return _execActions().filter(x=>x.status!=='Complete'
 function _execOrigin(ref){
   if(!ref) return null;
   if(ref.t==='risk'){ const r=(S.riskProfile||[]).find(x=>x.id===ref.a); return r ? (r.actions||[]).find(x=>x.id===ref.b) : null; }
-  if(ref.t==='mgmt'){ const s=(S.requirements||[]).find(x=>x.id===ref.a); return s ? (s.items||[]).find(x=>x.id===ref.b) : null; }
+  if(ref.t==='mgmt'){ const s=(S.requirements||[]).find(x=>x.id===ref.a); const it=s?(s.items||[]).find(x=>x.id===ref.b):null; return it ? (it.actions||[]).find(x=>x.id===ref.c) : null; }
   if(ref.t==='free'){ return (S.actionPlan||[]).find(x=>x.id===ref.a); }
   return null;
 }
@@ -13537,12 +13536,7 @@ function updateExecAction(refStr, field, value){
   if(_roLocked()) return;
   let ref; try{ ref=JSON.parse(decodeURIComponent(refStr)); }catch(e){ return; }
   const o=_execOrigin(ref); if(!o) return;
-  if(ref.t==='mgmt'){
-    if(field==='status'){ o.actionStatus=value; if(value==='Accepted' && !o.acceptDate) o.acceptDate=new Date().toISOString().slice(0,10); }
-    else if(field==='due') o.dueDate=value;
-    else if(field==='owner') o.actionOwner=value;
-    else o[field]=value;
-  } else { o[field]=value; }
+  o[field]=value;
   if(field==='status'){ _stampActionCompletion(o, value); _logAdd(o, (value==='Complete'?'completed':value==='Accepted'?'accepted':'status'), (value==='Complete'?'Marked complete':value==='Accepted'?'Risk accepted':'Status set to '+value)); }
   if(typeof _stamp==='function') _stamp(o,'updated');
   saveData(); _refreshActionViews();
@@ -13617,7 +13611,7 @@ function delegateAction(refStr){
   var found=_actionOriginByRef(refStr); if(!found) return;
   var to=(typeof prompt==='function')?prompt('Delegate this action to (name):',''):''; if(to===null) return;
   to=String(to).trim(); if(!to) return;
-  if(found.ref.t==='mgmt') found.o.actionOwner=to; else found.o.owner=to;
+  found.o.owner=to;
   _logAdd(found.o,'delegated','Delegated to '+to); if(typeof _stamp==='function') _stamp(found.o,'updated');
   saveData(); _refreshActionViews(); if(typeof showToast==='function') showToast('✓ Delegated to '+to,'success');
 }
@@ -13625,7 +13619,7 @@ function completeActionWithNote(refStr){
   if(_blockIfReadOnly&&_blockIfReadOnly()) return;
   var found=_actionOriginByRef(refStr); if(!found) return;
   var how=(typeof prompt==='function')?prompt('Mark complete — how was this done? (optional)',''):''; if(how===null) return;
-  if(found.ref.t==='mgmt') found.o.actionStatus='Complete'; else found.o.status='Complete';
+  found.o.status='Complete';
   _stampActionCompletion(found.o,'Complete');
   _logAdd(found.o,'completed', String(how).trim()?('Completed: '+String(how).trim()):'Marked complete');
   if(typeof _stamp==='function') _stamp(found.o,'updated');
@@ -13640,7 +13634,7 @@ function deleteExecAction(refStr){
   if(!confirm('Delete this action?\n\n"'+(na.desc||'(no description)')+'"\n\nIt moves to the consultant-only Archive (nothing is lost — you can restore it). This removes it from the live plan.')) return;
   _archiveAction({ desc:na.desc, owner:na.owner, due:na.due, priority:na.priority, status:na.raw, completedDate:na.completedDate, completedBy:na.completedBy, createdAt:na.raisedAt }, na.source, na.sourceLabel);
   if(ref.t==='risk'){ const r=(S.riskProfile||[]).find(x=>x.id===ref.a); if(r){ r.actions=(r.actions||[]).filter(x=>x.id!==ref.b); if(typeof _stamp==='function')_stamp(r,'updated'); } }
-  else if(ref.t==='mgmt'){ const s=(S.requirements||[]).find(x=>x.id===ref.a); const it=s&&(s.items||[]).find(x=>x.id===ref.b); if(it){ it.action=''; it.actionOwner=''; it.dueDate=''; it.actionStatus=''; if(typeof _stamp==='function')_stamp(it,'updated'); } }
+  else if(ref.t==='mgmt'){ const s=(S.requirements||[]).find(x=>x.id===ref.a); const it=s&&(s.items||[]).find(x=>x.id===ref.b); if(it){ it.actions=(it.actions||[]).filter(x=>x.id!==ref.c); if(typeof _stamp==='function')_stamp(it,'updated'); } }
   else if(ref.t==='free'){ S.actionPlan=(S.actionPlan||[]).filter(x=>x.id!==ref.a); }
   saveData(); _refreshActionViews(); if(typeof renderReview==='function') _keepScroll(renderReview);
   if(typeof showToast==='function') showToast('Action moved to the archive','info');
@@ -14363,8 +14357,9 @@ function _apGaps(){
   const gaps=[];
   // Management-system gaps: any assessed requirement line that is not fully Met.
   (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{
+    _reqMigrateActions(it);
     const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
-    if(st && st.label!=='Met' && !(it.action && String(it.action).trim())){
+    if(st && st.label!=='Met' && !it.actions.some(a=>a.desc&&String(a.desc).trim())){
       const what=(it.requirement&&it.requirement.trim())||(sec.heading||'Requirement');
       gaps.push({ srcKey:'req:'+it.id, desc:what, due:it.dueDate||'', priority: st.label==='Not in place'?'High':'Medium',
         context:(sec.heading||'Management system')+' ('+st.label+')', note:'From the management system: '+(sec.heading||'')+(it.requirement?(': '+it.requirement):'') });
@@ -14396,14 +14391,14 @@ function _acceptedActions(){
   const out=[];
   (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>{ if(a.status==='Accepted' && !a.hideFromPlan) out.push({ kind:'risk', id:a.id, riskId:r.id, ref:a, desc:a.desc, source:(r.activity||r.hazard||'From a risk') }); }));
   (_apList()||[]).forEach(a=>{ if(a.status==='Accepted') out.push({ kind:'free', id:a.id, riskId:'', ref:a, desc:a.desc, source:'Added directly' }); });
-  (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{ if(it.actionStatus==='Accepted' && it.action && String(it.action).trim() && !it.hideFromPlan) out.push({ kind:'mgmt', id:it.id, riskId:sec.id, ref:it, desc:it.action, source:(sec.heading||'Management system') }); }));
+  (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{ _reqMigrateActions(it); (it.actions||[]).forEach(a=>{ if(a.status==='Accepted' && !a.hideFromPlan) out.push({ kind:'mgmt', id:a.id, riskId:sec.id, ref:a, desc:a.desc, source:(sec.heading||'Management system') }); }); }));
   return out;
 }
 function updateAcceptField(kind, id, riskId, field, value){
   if(_roLocked()) return;
   let obj=null;
   if(kind==='risk'){ const r=(S.riskProfile||[]).find(x=>x.id===riskId); obj=r&&(r.actions||[]).find(x=>x.id===id); }
-  else if(kind==='mgmt'){ const sec=(S.requirements||[]).find(x=>x.id===riskId); obj=sec&&(sec.items||[]).find(x=>x.id===id); }
+  else if(kind==='mgmt'){ const sec=(S.requirements||[]).find(x=>x.id===riskId); if(sec){ for(const it of (sec.items||[])){ const a=(it.actions||[]).find(x=>x.id===id); if(a){ obj=a; break; } } } }
   else { obj=_apList().find(x=>x.id===id); }
   if(!obj) return; obj[field]=value; _stamp(obj,'updated'); scheduleAutoSave();
 }
@@ -14429,14 +14424,33 @@ function restoreRiskActionToPlan(riskId, actId){
 // action plan exactly like risk actions. Status/owner/dismiss live on the line
 // (S.requirements) so they travel with the client data. Priority is derived from
 // the line's gap status.
+// Ensure a requirement item's actions live in it.actions[] (migrate the legacy single action).
+function _reqMigrateActions(it){
+  if(Array.isArray(it.actions)) return it.actions;
+  it.actions=[];
+  if(it.action && String(it.action).trim()){
+    const act={ id:_reqUid('act'), desc:String(it.action).trim(), owner:it.actionOwner||'', due:it.dueDate||'', status:it.actionStatus||'Not started', priority:'',
+      completedDate:it.completedDate||'', completedBy:it.completedBy||'', acceptDate:it.acceptDate||'', acceptedBy:it.acceptedBy||'',
+      createdAt:it.createdAt||'', createdBy:it.createdBy||'', log:Array.isArray(it.log)?it.log:[] };
+    it.actions.push(act); it.action='';
+  }
+  return it.actions;
+}
+function _reqAddAction(it, desc){
+  if(!Array.isArray(it.actions)) _reqMigrateActions(it);
+  const act={ id:_reqUid('act'), desc:String(desc||'').trim(), owner:'', due:'', status:'Not started', priority:'', log:[] };
+  if(typeof _stamp==='function') _stamp(act,'created');
+  it.actions.push(act); return act;
+}
 function _allMgmtActions(){
   const out=[];
   (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{
-    if(it.action && String(it.action).trim()){
-      const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
-      const pr = st && st.label==='Not in place' ? 'High' : (st && st.label==='Gap' ? 'Medium' : '');
-      out.push({ secId:sec.id, id:it.id, it, desc:it.action, owner:it.actionOwner||'', due:it.dueDate||'', priority:pr, status:_actionStatus({status:it.actionStatus, due:it.dueDate}), source:(sec.heading||'Management system') });
-    }
+    _reqMigrateActions(it);
+    const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
+    const prBase = st && st.label==='Not in place' ? 'High' : (st && st.label==='Gap' ? 'Medium' : '');
+    (it.actions||[]).forEach(act=>{ if(!act.desc || !String(act.desc).trim()) return;
+      out.push({ secId:sec.id, itemId:it.id, actId:act.id, act, desc:act.desc, owner:act.owner||'', due:act.due||'', priority:act.priority||prBase, status:_actionStatus({status:act.status, due:act.due}), source:(sec.heading||'Management system') });
+    });
   }));
   return out;
 }
@@ -14471,8 +14485,8 @@ function renderActionPlanTab(){
   const riskActs=_allRA.filter(x=>!(x.a&&x.a.hideFromPlan));
   const hiddenActs=_allRA.filter(x=>x.a&&x.a.hideFromPlan);
   const _allMA=_allMgmtActions();
-  const mgmtActs=_allMA.filter(x=>!(x.it&&x.it.hideFromPlan));
-  const hiddenMgmt=_allMA.filter(x=>x.it&&x.it.hideFromPlan);
+  const mgmtActs=_allMA.filter(x=>!(x.act&&x.act.hideFromPlan));
+  const hiddenMgmt=_allMA.filter(x=>x.act&&x.act.hideFromPlan);
   const free=_apList();
   // Unified stats across risk-derived, management-system and free-form actions.
   const allStatuses=riskActs.map(x=>x.status).concat(mgmtActs.map(x=>x.status)).concat(free.map(a=>_actionStatus(a)));
@@ -14502,12 +14516,12 @@ function renderActionPlanTab(){
   const mgmtRows=mgmtSorted.map(x=>{ const ov=x.status==='Overdue';
     return `<tr>
       <td>${esc(x.desc||'(no description)')}</td>
-      <td><button class="btn btn-ghost btn-xs no-print" onclick="_apGotoMgmt('${x.id}')" title="Open in the management system">${esc((x.source||'Duty').slice(0,40))} ↗</button></td>
+      <td><button class="btn btn-ghost btn-xs no-print" onclick="_apGotoMgmt('${x.itemId}')" title="Open in the management system">${esc((x.source||'Duty').slice(0,40))} ↗</button></td>
       <td>${esc(x.owner||'—')}</td>
       <td style="${ov?'color:#DC2626;font-weight:600;':''}">${x.due?fmtDate(x.due):'—'}</td>
       <td><span style="color:${prColor(x.priority)};font-weight:700;">${esc(x.priority||'—')}</span></td>
-      <td><select${dis} onchange="setMgmtActionStatus('${x.secId}','${x.id}',this.value)">${_AP_STATUSES.map(s=>`<option${s===(x.it.actionStatus||'Not started')?' selected':''}>${s}</option>`).join('')}</select>${ov?' <span class="badge" style="border-color:#DC2626;color:#DC2626;">Overdue</span>':''}</td>
-      ${ro?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs no-print" title="Remove from this plan (added by mistake). It stays on the management system." onclick="dismissMgmtActionFromPlan('${x.secId}','${x.id}')">✕</button></td>`}
+      <td><select${dis} onchange="updateExecAction('${encodeURIComponent(JSON.stringify({t:'mgmt',a:x.secId,b:x.itemId,c:x.actId}))}','status',this.value)">${_AP_STATUSES.map(s=>`<option${s===(x.act.status||'Not started')?' selected':''}>${s}</option>`).join('')}</select>${ov?' <span class="badge" style="border-color:#DC2626;color:#DC2626;">Overdue</span>':''}</td>
+      ${ro?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs no-print" title="Remove from this plan (added by mistake). It stays on the management system." onclick="deleteExecAction('${encodeURIComponent(JSON.stringify({t:'mgmt',a:x.secId,b:x.itemId,c:x.actId}))}')">✕</button></td>`}
     </tr>`;
   }).join('');
   const mgmtCard = mgmtActs.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Actions from the management system</h3><span class="badge badge-muted">${mgmtActs.length}</span></div>
@@ -15819,7 +15833,7 @@ function buildActionPlanReport(){
     const rk=(S.riskProfile||[]).find(r=>r.id===a.riskId);
     return { a:{ desc:a.desc, owner:a.owner, due:a.due, priority:a.priority, status:a.status }, r:{ activity: rk?(rk.activity||rk.hazard):'Added directly' }, status:_actionStatus(a) };
   });
-  const mgmtItems=(typeof _allMgmtActions==='function'?_allMgmtActions():[]).filter(x=>!(x.it&&x.it.hideFromPlan)).map(x=>({ a:{desc:x.desc,owner:x.owner,due:x.due,priority:x.priority,status:x.it.actionStatus}, r:{activity:x.source}, status:x.status }));
+  const mgmtItems=(typeof _allMgmtActions==='function'?_allMgmtActions():[]).filter(x=>!(x.act&&x.act.hideFromPlan)).map(x=>({ a:{desc:x.desc,owner:x.owner,due:x.due,priority:x.priority,status:x.act.status}, r:{activity:x.source}, status:x.status }));
   const items=data.acts.filter(x=>(x.a.desc||x.a.owner||x.a.due) && !(x.a&&x.a.hideFromPlan)).concat(freeItems).concat(mgmtItems);
   if(!items.length){ K.section('Action plan', RED); K.text('No actions have been recorded yet. Add actions to the significant risks or in the Action plan tab to build the plan.', 10); _pdfFooter(K, d, 'Action Plan'); doc.save('action-plan-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf'); return; }
   const apDone=items.filter(x=>x.status==='Complete').length;
@@ -16686,7 +16700,12 @@ function _legalCardHTML(sec, it, emp, ro){
   const border=approved?'var(--success)':(stt&&stt.label==='Not in place')?'var(--danger)':(stt&&stt.label!=='Met'?'var(--warning)':'var(--border)');
   const title=meta?meta.title:(it.requirement||'Item'); const cit=meta?meta.citation:(it.citation||''); const why=meta?meta.why:'';
   const docOpts='<option value="">Link the document (optional)</option>'+((S.documents||[]).map(d=>`<option value="${d.id}"${it.docId===d.id?' selected':''}>${esc((d.name||d.title||'Document').slice(0,55))}</option>`).join(''));
-  const critHtml=crit.map((c,i)=>`<label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;padding:3px 0;"><input type="checkbox" ${ticks[i]?'checked':''}${dis} onchange="toggleReqCriterion('${sec.id}','${it.id}',${i})" style="margin-top:2px;flex:0 0 auto;"> <span>${esc(c)}</span></label>`).join('');
+  const _argEsc=(s)=>String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const critHtml=crit.map((c,i)=>{ const t=!!ticks[i]; return `<div style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;padding:3px 0;">
+      <input type="checkbox" ${t?'checked':''}${dis} onchange="toggleReqCriterion('${sec.id}','${it.id}',${i})" style="margin-top:2px;flex:0 0 auto;">
+      <span style="flex:1;">${esc(c)}</span>
+      ${(!t&&!ro)?`<button class="btn btn-ghost btn-xs no-print" style="flex:0 0 auto;font-size:10px;padding:1px 6px;" title="Raise this gap as a tracked action" onclick="raiseReqActionFor('${sec.id}','${it.id}','${_argEsc(title+' — '+c)}')">Raise ↗</button>`:''}
+    </div>`; }).join('');
   const ss='font-size:12px;padding:4px 7px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;';
   return `<div style="border:1px solid var(--border);border-left:4px solid ${border};border-radius:9px;padding:14px 16px;margin-bottom:10px;">
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
@@ -16707,9 +16726,9 @@ function _legalCardHTML(sec, it, emp, ro){
       <select${dis} onchange="updateReqField('${sec.id}','${it.id}','docId',this.value)" style="${ss}min-width:150px;">${docOpts}</select>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;">
-      ${ro?'':(approved?`<span style="font-size:11.5px;color:var(--success);font-weight:700;">✓ Reviewed &amp; approved${it.reviewedBy?(' · '+esc(it.reviewedBy)):''}</span> <button class="btn btn-ghost btn-xs no-print" onclick="toggleReqReviewed('${sec.id}','${it.id}')">Undo</button>`:`<button class="btn btn-primary btn-xs no-print" onclick="approveReqItem('${sec.id}','${it.id}')">✓ Approve</button>`)}
-      ${ro?'':(hasAction?`<span style="font-size:11.5px;color:var(--success);font-weight:600;">✓ Action in the plan</span>`:`<button class="btn btn-outline btn-xs no-print" onclick="raiseReqAction('${sec.id}','${it.id}')">＋ Raise action</button>`)}
+      ${ro?'':(approved?`<span style="font-size:11.5px;color:var(--success);font-weight:700;">✓ Reviewed &amp; approved${it.reviewedBy?(' · '+esc(it.reviewedBy)):''}</span> <button class="btn btn-ghost btn-xs no-print" onclick="toggleReqReviewed('${sec.id}','${it.id}')">Undo</button>`:`<button class="btn btn-primary btn-xs no-print" onclick="approveReqItem('${sec.id}','${it.id}')">✓ Approve as compliant</button>`)}
     </div>
+    ${_mgmtActionsListHTML(sec, it, ro)}
   </div>`;
 }
 function _legalRegisterHTML(ro){
@@ -16852,12 +16871,35 @@ function raiseReqAction(sectionId, itemId){
   if(_blockIfReadOnly()) return;
   const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
   const it = (s.items||[]).find(i => i.id === itemId); if(!it) return;
-  const desc = (typeof prompt==='function') ? prompt('What action is needed to close this gap? (It appears in the execution / action plan.)', it.action||'') : (it.action||'');
-  if(desc===null) return;
-  it.action = String(desc).trim();
+  const desc = (typeof prompt==='function') ? prompt('What action is needed? (It appears in the execution / action plan.)', '') : '';
+  if(desc===null || !String(desc).trim()) return;
+  _reqAddAction(it, String(desc).trim());
   _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
   try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
-  if(it.action && typeof showToast==='function') showToast('✓ Action added to the plan — set a target date','success');
+  if(typeof showToast==='function') showToast('✓ Action added to the plan — set a target date','success');
+}
+// Raise an action pre-filled from a specific failed criterion / finding.
+function raiseReqActionFor(sectionId, itemId, text){
+  if(_blockIfReadOnly()) return;
+  const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
+  const it = (s.items||[]).find(i => i.id === itemId); if(!it) return;
+  _reqAddAction(it, text);
+  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+  try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
+  if(typeof showToast==='function') showToast('✓ Action raised','success');
+}
+// Shared renderer: an item's list of actions (status + remove) + Add action.
+function _mgmtActionsListHTML(sec, it, ro){
+  const acts=(it.actions||[]).filter(a=>a.desc&&String(a.desc).trim());
+  const ss='font-size:12px;padding:4px 7px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;';
+  const rows=acts.map(act=>{ const ref=encodeURIComponent(JSON.stringify({t:'mgmt',a:sec.id,b:it.id,c:act.id})); const stt=_actionStatus({status:act.status,due:act.due}); const rag=(typeof _actionRag==='function')?_actionRag(act.due,stt):'grey'; const rc=(typeof RAG_COLOR!=='undefined'&&RAG_COLOR[rag])||'#9CA3AF';
+    return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0;">
+      <span style="width:9px;height:9px;border-radius:50%;background:${rc};flex:0 0 auto;"></span>
+      <span style="flex:1;min-width:120px;font-size:12.5px;">${esc(act.desc)}</span>
+      ${ro?`<span class="badge badge-muted" style="font-size:10.5px;">${stt}</span>`:`<select onchange="updateExecAction('${ref}','status',this.value)" style="${ss}">${['Not started','In progress','Complete','Accepted'].map(o=>`<option${o===(act.status||'Not started')?' selected':''}>${o}</option>`).join('')}</select><button class="btn btn-ghost btn-xs no-print" onclick="deleteExecAction('${ref}')" title="Remove">${_ic('trash',12)}</button>`}
+    </div>`; }).join('');
+  return `${acts.length?`<div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);margin-bottom:4px;">Actions from this review</div>${rows}</div>`:''}
+    ${ro?'':`<button class="btn btn-outline btn-xs no-print" style="margin-top:8px;" onclick="raiseReqAction('${sec.id}','${it.id}')">＋ Add action</button>`}`;
 }
 
 function _renderReqDashboard(){
@@ -16967,14 +17009,7 @@ function renderRequirements(){
           ${fg('Adequate', sel(sec.id,it.id,'adequate',it.adequate,REQ_ADEQUATE))}
           ${fg('Action due', dt(sec.id,it.id,'dueDate',it.dueDate))}
         </div>
-        <div class="field-grid cols-1" style="margin-bottom:6px;">
-          ${fg('Action to close the gap <span style="font-weight:400;color:var(--text-muted);">(appears in the execution / action plan)</span>', ta(sec.id,it.id,'action',it.action,'What needs doing to make this compliant'))}
-        </div>
-        <div style="margin-bottom:12px;font-size:12px;">
-          ${(it.action && it.action.trim())
-            ? `<span style="color:var(--success);font-weight:600;">✓ In the execution / action plan${it.dueDate?(' &middot; target '+fmtDate(it.dueDate)):' &middot; set a target date (Action due, above)'}</span>`
-            : (ro?'<span style="color:var(--text-muted);">No action raised.</span>':`<button class="btn btn-outline btn-xs no-print" onclick="raiseReqAction('${sec.id}','${it.id}')">＋ Raise an action to close this</button> <span style="color:var(--text-muted);">&mdash; or type it in the box above</span>`)}
-        </div>
+        <div style="margin-bottom:12px;">${_mgmtActionsListHTML(sec, it, ro)}</div>
         <div class="field-grid" style="margin-bottom:10px;">
           ${fg('Next review'+(revFlag(it)), revDate(sec.id,it.id,it.reviewDate))}
           ${fg('Linked risk', riskSel(sec.id,it.id,it.riskId))}
@@ -17070,13 +17105,15 @@ function buildManagementSystemReportPDF(){
   const actRows=[];
   REQ_STAGES.concat(['__other']).forEach(stage=>{
     const grp = stage==='__other' ? secs.filter(s=>!REQ_STAGES.includes(s.stage)) : secs.filter(s=>s.stage===stage);
-    grp.forEach(sec=>{ (sec.items||[]).forEach(it=>{ const s2=_reqItemStatus(it); if(s2 && (s2.label==='Gap'||s2.label==='Not in place')){
-      const overdue = it.dueDate && new Date(it.dueDate) < new Date();
+    grp.forEach(sec=>{ (sec.items||[]).forEach(it=>{ _reqMigrateActions(it); const s2=_reqItemStatus(it); if(s2 && (s2.label==='Gap'||s2.label==='Not in place')){
+      const acts=(it.actions||[]).filter(a=>a.desc&&String(a.desc).trim());
+      const dues=acts.map(a=>a.due).filter(Boolean).sort(); const due=it.dueDate||dues[0]||'';
+      const overdue = due && new Date(due) < new Date();
       actRows.push([
         {text:(it.requirement||'(requirement)'), bold:true},
         {pill: s2.label==='Not in place'?'Not in place':'Gap', pillColor: s2.label==='Not in place'?RED:AMBER},
-        {text: it.action||'-', color:[90,90,90]},
-        {text: it.dueDate?fmtDate(it.dueDate):'-', color: overdue?RED:[90,90,90], bold: overdue}
+        {text: acts.map(a=>a.desc).join('; ')||'-', color:[90,90,90]},
+        {text: due?fmtDate(due):'-', color: overdue?RED:[90,90,90], bold: overdue}
       ]);
     }}); });
   });
@@ -18880,7 +18917,7 @@ function buildFeedbackReportPDF(){
   } else K.text('No critical or high risks recorded.', 9.5, {color:GREY});
   // Management system gaps (table)
   K.section('Management system gaps', AMBER);
-  const gapRows=[]; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if((it.present||it.adequate)&&!(it.present==='Yes'&&it.adequate==='Yes')) gapRows.push([{text:(it.requirement||'requirement'), bold:true},{text:s.heading||'-', color:GREY},{text:it.action||'-', color:GREY}]); }));
+  const gapRows=[]; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ _reqMigrateActions(it); if((it.present||it.adequate)&&!(it.present==='Yes'&&it.adequate==='Yes')) gapRows.push([{text:(it.requirement||'requirement'), bold:true},{text:s.heading||'-', color:GREY},{text:((it.actions||[]).filter(a=>a.desc&&String(a.desc).trim()).map(a=>a.desc).join('; '))||'-', color:GREY}]); }));
   if(gapRows.length){ K.table([{header:'REQUIREMENT',w:78},{header:'DUTY AREA',w:52},{header:'ACTION',w:48}], gapRows, {headFill:AMBER, headText:[255,255,255]}); }
   else K.text('No management system gaps recorded.', 9.5, {color:GREY});
   // Monitoring picture (tiles)

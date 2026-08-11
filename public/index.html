@@ -14764,7 +14764,8 @@ function renderActionPlanTab(){
     ${gapCard}
     ${freeCard}
     ${regCard}
-    ${_completedHistoryHTML()}`;
+    ${_completedHistoryHTML()}
+    ${_archiveHTML()}`;
 }
 // Archive of deleted actions — consultant-only record, with a report button.
 function _archiveHTML(){
@@ -19018,6 +19019,7 @@ function renderReview(){
     </div>
     ${_reviewActionsHTML()}
     ${_completedHistoryHTML()}
+    ${_archiveHTML()}
     <div class="card"><div class="card-band"><h3><span class="dot">●</span> Quality rating</h3></div>
       <div class="card-body">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">

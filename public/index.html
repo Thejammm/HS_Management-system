@@ -13747,6 +13747,7 @@ function _refreshActionViews(){
   try{ if(active('tab-actionplan') && typeof renderActionPlanTab==='function') _keepScroll(renderActionPlanTab); }catch(e){}
   try{ if(active('tab-execplan') && typeof renderExecPlan==='function') renderExecPlan(); }catch(e){}
   try{ if(active('tab-risk') && typeof renderRiskProfile==='function') _keepScroll(renderRiskProfile); }catch(e){}
+  try{ if(active('tab-requirements') && typeof renderRequirements==='function') _keepScroll(renderRequirements); }catch(e){}
   try{ if(active('tab-review') && typeof _revActBodyHTML==='function'){ const t=document.getElementById('revActBody'); if(t) t.innerHTML=_revActBodyHTML(); } }catch(e){}
   updateActionBadges();
 }
@@ -18833,7 +18834,7 @@ function _revActBodyHTML(){
         <input${dis} value="${esc(a.owner||'')}" placeholder="Owner" onchange="updateExecAction('${rk}','owner',this.value)" style="flex:1;min-width:80px;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;">
         <input type="date"${dis} value="${a.due||''}" onchange="updateExecAction('${rk}','due',this.value)" style="flex:0 0 auto;font-size:12px;">
         <select${dis} onchange="updateExecAction('${rk}','status',this.value)" style="flex:0 0 auto;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select>
-        ${_roLocked()?'':`<button type="button" class="no-print" onclick="deleteExecAction('${rk}')" title="Delete — moves to the archive" style="flex:0 0 auto;background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:26px;height:26px;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;">✕</button>`}
+        ${_roLocked()?'':`<button type="button" class="no-print" onclick="deleteExecAction('${rk}')" title="Delete (your consultant view keeps it, flagged, to restore or remove)" style="flex:0 0 auto;background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:26px;height:26px;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;">✕</button>`}
       </div>
       ${exp?`<div style="padding:2px 12px 10px 40px;border-top:1px dashed var(--border);">
         <div style="font-size:12px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:6px 16px;">${a.sourceLabel?`<span><strong>From:</strong> ${esc(a.sourceLabel)}</span>`:''}${a.priority?`<span><strong>Priority:</strong> ${esc(a.priority)}</span>`:''}${a.raisedAt?`<span><strong>Raised:</strong> ${fmt(a.raisedAt)}</span>`:''}${a.due?`<span><strong>Target:</strong> ${fmt(a.due)}</span>`:''}${resolved?`<span style="color:${a.status==='Accepted'?RAGC.grey:RAGC.green};"><strong>${a.status==='Accepted'?'Accepted':'Completed'}:</strong> ${fmt(a.resolvedDate)}${a.resolvedBy?(' by '+esc(a.resolvedBy)):''}</span>`:''}</div>

@@ -3069,7 +3069,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="tab-btn" data-consultant data-tab="audit" onclick="switchTab('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg> Consultants audit</button>
     <button class="tab-btn" data-tab="setup" onclick="switchTab('setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg> Checklist builder</button>
     <button class="tab-btn" data-tab="admin" id="navAdmin" data-consultant="1" onclick="switchTab('admin')" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg> Admin</button>
-    <button class="tab-btn" data-consultant data-tab="archive" onclick="switchTab('archive')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg> Archive</button>
   </nav>
 </aside>
 <div class="sidebar-backdrop no-print" id="sidebarBackdrop" onclick="toggleSidebar(false)"></div>
@@ -4130,10 +4129,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     #tab-admin .admin-prompt h4{font-size:17px;font-weight:700;margin:0 0 6px;}
     #tab-admin .admin-prompt p{font-size:13px;color:var(--text-muted);margin:0 0 18px;line-height:1.5;}
   </style>
-  <div id="tab-archive" class="tab-panel">
-    <div style="color:var(--text-muted);padding:16px;">Loading archive…</div>
-  </div>
-
   <div id="tab-admin" class="tab-panel">
     <div class="card no-print" style="margin-bottom:18px;">
       <div class="card-band"><h3><span class="dot">●</span> Admin</h3></div>
@@ -5169,7 +5164,6 @@ function switchTab(id) {
   if(id==='audit')    { renderAuditSections(); populateAuditForm(); }
   if(id==='setup')    { showSetupTab(); }
   if(id==='admin')    { renderAdminPane(); }
-  if(id==='archive')  { renderArchive(); }
   try{ window._sectionRail && window._sectionRail.build(); }catch(e){}
 }
 
@@ -6613,8 +6607,7 @@ function deleteAction(id){
   if(_blockIfReadOnly()) return;
   const a = S.actions.find(x => x.id === id);
   if(!a) return;
-  if(!confirm(`Remove this action?\n\n"${a.itemName}"\n\nThis moves it to the consultant-only Archive (recoverable). The inspection it came from is not changed.`)) return;
-  _softDelete('action','Action: '+(a.itemName||a.issue||a.id), a);
+  if(!confirm(`Remove this action?\n\n"${a.itemName}"\n\nThis deletes the action item itself; the inspection it came from is not changed. This cannot be undone.`)) return;
   S.actions = S.actions.filter(x => x.id !== id);
   saveData(); updateBadge();
   renderActions(); renderActionStats();
@@ -6829,9 +6822,7 @@ function deleteInspection(inspId){
   const label = insp.title || insp.typeName || 'this inspection';
   const linked = (S.actions||[]).filter(a => a.inspId === inspId).length;
   const extra = linked ? `\n\nThis will also remove ${linked} action${linked!==1?'s':''} raised from it.` : '';
-  if(!confirm(`Delete "${label}"?${extra}\n\nIt moves to your consultant-only Archive, so you can restore it. (Consultant-only, for clearing test or erroneous entries.)`)) return;
-  const _linked = (S.actions||[]).filter(a => a.inspId === inspId);
-  _softDelete('inspection','Inspection: '+label, insp, { linkedActions: JSON.parse(JSON.stringify(_linked)) });
+  if(!confirm(`Delete "${label}" permanently?${extra}\n\nThis cannot be undone. (Consultant-only — for clearing test or erroneous entries.)`)) return;
   S.inspections = S.inspections.filter(i => i.id !== inspId);
   S.actions     = (S.actions||[]).filter(a => a.inspId !== inspId);
   saveData();
@@ -12839,9 +12830,9 @@ function updateCompanyField(key, val){
 function updateCompanyPerson(i, key, val){ if(_roLocked()) return; const a=_companyState().personnel; if(a[i]){ a[i][key]=val; scheduleAutoSave(); } }
 function updateCompanySite(i, key, val){ if(_roLocked()) return; const a=_companyState().siteList; if(a[i]){ a[i][key]=val; scheduleAutoSave(); } }
 function addCompanyPerson(){ if(_roLocked()) return; _companyState().personnel.push({role:'',name:'',contact:''}); saveData(); renderCompany(); }
-function removeCompanyPerson(i){ if(_roLocked()) return; const _c=_companyState(); const _o=(_c.personnel||[])[i]; if(_o) _softDelete('companyPerson','Person: '+String(_o.name||_o.role||('#'+i)).slice(0,60), _o); _c.personnel.splice(i,1); saveData(); renderCompany(); }
+function removeCompanyPerson(i){ if(_roLocked()) return; _companyState().personnel.splice(i,1); saveData(); renderCompany(); }
 function addCompanySite(){ if(_roLocked()) return; _companyState().siteList.push({name:'',address:''}); saveData(); renderCompany(); }
-function removeCompanySite(i){ if(_roLocked()) return; const _c=_companyState(); const _o=(_c.siteList||[])[i]; if(_o) _softDelete('companySite','Site: '+String(_o.name||_o.address||('#'+i)).slice(0,60), _o); _c.siteList.splice(i,1); saveData(); renderCompany(); }
+function removeCompanySite(i){ if(_roLocked()) return; _companyState().siteList.splice(i,1); saveData(); renderCompany(); }
 
 // ── Cockpit home: at-a-glance picture for the selected client ──
 function _cockpitClientName(){
@@ -13817,9 +13808,7 @@ function addRiskEntry(){
 
 function deleteRiskEntry(id){
   if(_blockIfReadOnly()) return;
-  const _r = (S.riskProfile||[]).find(r => r.id === id); if(!_r) return;
-  if(!confirm('Move this risk entry to the Archive?\n\nYour consultant can restore it or delete it for good.')) return;
-  _softDelete('riskEntry','Risk: '+(_r.activity||_r.hazard||_r.id), _r);
+  if(!confirm('Delete this risk entry?')) return;
   S.riskProfile = (S.riskProfile||[]).filter(r => r.id !== id);
   saveData();
   renderRiskProfile();
@@ -14092,165 +14081,6 @@ function _archiveAction(a, source, sourceLabel){
     archivedBy:(typeof _actor==='function'?(_actor().name||''):'')
   });
 }
-
-// ============================================================
-//  GENERAL SOFT-DELETE / ARCHIVE
-//  Record-level deletes across the client-data modules snapshot the
-//  removed item here FIRST; only the consultant (Archive tab) can then
-//  Restore it or Delete it for good. Rides the normal sync via saveData().
-//  Mirrors the proven S.actionArchive pattern above.
-// ============================================================
-function _archiveState(){ if(!Array.isArray(S.archive)) S.archive=[]; return S.archive; }
-
-// Snapshot a record before the caller removes it from its live array.
-//  kind   = short routing key (see _ARCHIVE_KINDS)
-//  label  = human summary shown in the Archive list
-//  record = the live object (deep-cloned so later edits cannot mutate it)
-//  extra  = optional extra fields to remember, e.g. { parentId } for nested items
-function _softDelete(kind, label, record, extra){
-  var arc = {
-    archId: _reqUid('arc'),
-    kind: kind,
-    label: label || kind,
-    record: JSON.parse(JSON.stringify(record||{})),
-    client: (S.company && S.company.name) || '',
-    archivedAt: new Date().toISOString().slice(0,10),
-    archivedBy: (typeof _actor==='function' ? (_actor().name||'') : '')
-  };
-  if(extra && typeof extra==='object'){ Object.keys(extra).forEach(function(k){ arc[k]=extra[k]; }); }
-  _archiveState().push(arc);
-  return arc;
-}
-
-// kind -> { noun, restore(arc)->bool, render() }.
-// restore() returns false if the item cannot be put back (e.g. its parent
-// section was itself deleted); the UI then tells the consultant why.
-var _ARCHIVE_KINDS = {
-  inspection: { noun:'Inspection',
-    render:function(){ try{renderMonthlyReport();}catch(e){} try{renderManagerDashboard();}catch(e){} try{if(typeof renderCockpit==='function')renderCockpit();}catch(e){} try{if(typeof updateBadge==='function')updateBadge();}catch(e){} },
-    restore:function(arc){ if(!Array.isArray(S.inspections)) S.inspections=[]; S.inspections.push(arc.record);
-      if(Array.isArray(arc.linkedActions)){ if(!Array.isArray(S.actions)) S.actions=[]; arc.linkedActions.forEach(function(a){ S.actions.push(a); }); } return true; } },
-  action: { noun:'Action',
-    render:function(){ try{renderActions();}catch(e){} try{renderActionStats();}catch(e){} try{renderMonthlyReport();}catch(e){} try{if(typeof updateBadge==='function')updateBadge();}catch(e){} },
-    restore:function(arc){ if(!Array.isArray(S.actions)) S.actions=[]; S.actions.push(arc.record); return true; } },
-  riskEntry: { noun:'Risk entry',
-    render:function(){ try{renderRiskProfile();}catch(e){} },
-    restore:function(arc){ if(!Array.isArray(S.riskProfile)) S.riskProfile=[]; S.riskProfile.push(arc.record); return true; } },
-  reqSection: { noun:'Duty heading',
-    render:function(){ try{renderRequirements();}catch(e){} },
-    restore:function(arc){ if(!Array.isArray(S.requirements)) S.requirements=[]; S.requirements.push(arc.record); return true; } },
-  reqLine: { noun:'Requirement line',
-    render:function(){ try{renderRequirements();}catch(e){} },
-    restore:function(arc){ var s=(S.requirements||[]).find(function(x){return x.id===arc.parentId;}); if(!s) return false; if(!Array.isArray(s.items)) s.items=[]; s.items.push(arc.record); return true; } },
-  regSection: { noun:'Register section',
-    render:function(){ try{renderMonitoring();}catch(e){} },
-    restore:function(arc){ if(!S.monitoring) S.monitoring={}; if(!Array.isArray(S.monitoring.regSections)) S.monitoring.regSections=[]; S.monitoring.regSections.push(arc.record); return true; } },
-  regItem: { noun:'Register item',
-    render:function(){ try{renderMonitoring();}catch(e){} },
-    restore:function(arc){ var s=((S.monitoring&&S.monitoring.regSections)||[]).find(function(x){return x.id===arc.parentId;}); if(!s) return false; if(!Array.isArray(s.items)) s.items=[]; s.items.push(arc.record); return true; } },
-  raReg: { noun:'RA register entry',
-    render:function(){ try{renderRaRegister();}catch(e){} },
-    restore:function(arc){ if(!Array.isArray(S.raRegister)) S.raRegister=[]; S.raRegister.push(arc.record); return true; } },
-  document: { noun:'Document',
-    render:function(){ try{renderDocuments();}catch(e){} },
-    restore:function(arc){ if(!Array.isArray(S.documents)) S.documents=[]; S.documents.push(arc.record); return true; } },
-  assurRow: { noun:'Assurance measure',
-    render:function(){ try{_renderAssurance();}catch(e){} },
-    restore:function(arc){ if(!S.riskAssurance) S.riskAssurance={}; var k=arc.parentId; if(!Array.isArray(S.riskAssurance[k])) S.riskAssurance[k]=[]; S.riskAssurance[k].push(arc.record); return true; } },
-  signoffPolicy: { noun:'Policy',
-    render:function(){ try{renderPolicySignoff();}catch(e){} },
-    restore:function(arc){ var p=_psoState(); if(!Array.isArray(p.policies)) p.policies=[]; p.policies.push(arc.record); return true; } },
-  signoffStaff: { noun:'Staff (sign-off)',
-    render:function(){ try{renderPolicySignoff();}catch(e){} },
-    restore:function(arc){ var p=_psoState(); if(!Array.isArray(p.staff)) p.staff=[]; p.staff.push(arc.record); return true; } },
-  companyPerson: { noun:'Company person',
-    render:function(){ try{renderCompany();}catch(e){} },
-    restore:function(arc){ var c=_companyState(); if(!Array.isArray(c.personnel)) c.personnel=[]; c.personnel.push(arc.record); return true; } },
-  companySite: { noun:'Company site',
-    render:function(){ try{renderCompany();}catch(e){} },
-    restore:function(arc){ var c=_companyState(); if(!Array.isArray(c.siteList)) c.siteList=[]; c.siteList.push(arc.record); return true; } },
-  appLink: { noun:'Quick link',
-    render:function(){ try{renderAppLinks();}catch(e){} },
-    restore:function(arc){ if(!Array.isArray(S.appLinks)) S.appLinks=[]; S.appLinks.push(arc.record); return true; } }
-};
-
-function restoreArchived(archId){
-  if(!_isConsultantUser()){ showToast('Only the consultant can restore items.','info'); return; }
-  var arc=_archiveState().find(function(a){return a.archId===archId;}); if(!arc) return;
-  var def=_ARCHIVE_KINDS[arc.kind];
-  if(!def){ showToast('Cannot restore this item type.','error'); return; }
-  var ok=false; try{ ok=def.restore(arc); }catch(e){ ok=false; }
-  if(!ok){ showToast('Could not restore. Its parent section no longer exists, restore that first.','error'); return; }
-  S.archive=_archiveState().filter(function(a){return a.archId!==archId;});
-  saveData();
-  try{ def.render(); }catch(e){}
-  renderArchive();
-  showToast('Restored','success');
-}
-
-function purgeArchived(archId){
-  if(!_isConsultantUser()){ showToast('Only the consultant can delete permanently.','info'); return; }
-  var arc=_archiveState().find(function(a){return a.archId===archId;}); if(!arc) return;
-  if(!confirm('Delete this permanently?\n\n"'+(arc.label||'')+'"\n\nThis cannot be undone.')) return;
-  S.archive=_archiveState().filter(function(a){return a.archId!==archId;});
-  saveData(); renderArchive(); showToast('Permanently deleted','info');
-}
-
-function purgeAllArchived(){
-  if(!_isConsultantUser()) return;
-  var n=_archiveState().length + _actionArchiveState().length;
-  if(!n) return;
-  if(!confirm('Permanently delete all '+n+' archived item'+(n!==1?'s':'')+' for this client?\n\nThis cannot be undone.')) return;
-  S.archive=[]; S.actionArchive=[];
-  saveData(); renderArchive(); showToast('Archive emptied','info');
-}
-
-// Consultant-only Archive tab renderer.
-function renderArchive(){
-  var host=document.getElementById('tab-archive'); if(!host) return;
-  if(!_isConsultantUser()){
-    host.innerHTML='<div style="padding:16px;color:var(--text-muted);">The Archive is available to the consultant only.</div>';
-    return;
-  }
-  var gen=_archiveState().slice().reverse();          // newest first
-  var acts=_actionArchiveState().slice().reverse();
-  var clientName=(S.company&&S.company.name)||'this client';
-  var rowStyle='display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;';
-  var subStyle='color:var(--text-muted);font-size:12px;margin-top:2px;';
-  function metaLine(a, tail){ return '<div style="'+subStyle+'">Archived '+esc(a.archivedAt||'')+(a.archivedBy?(' by '+esc(a.archivedBy)):'')+(tail?(' · '+esc(tail)):'')+'</div>'; }
-  var rows='';
-  gen.forEach(function(a){
-    var noun=(_ARCHIVE_KINDS[a.kind]&&_ARCHIVE_KINDS[a.kind].noun)||a.kind;
-    rows+='<div style="'+rowStyle+'">'
-       + '<div style="min-width:0;"><span class="badge badge-muted">'+esc(noun)+'</span> <span style="font-weight:600;">'+esc(a.label||'')+'</span>'+metaLine(a,'')+'</div>'
-       + '<div style="display:flex;gap:6px;flex-shrink:0;">'
-       + '<button class="btn btn-outline btn-xs" onclick="restoreArchived(\''+a.archId+'\')">Restore</button>'
-       + '<button class="btn btn-ghost btn-xs" onclick="purgeArchived(\''+a.archId+'\')">Delete forever</button></div></div>';
-  });
-  var actRows='';
-  acts.forEach(function(e){
-    actRows+='<div style="'+rowStyle+'">'
-       + '<div style="min-width:0;"><span class="badge badge-muted">Action</span> <span style="font-weight:600;">'+esc(e.desc||'(no description)')+'</span>'+metaLine(e, e.sourceLabel||'')+'</div>'
-       + '<div style="display:flex;gap:6px;flex-shrink:0;">'
-       + '<button class="btn btn-outline btn-xs" onclick="restoreArchivedAction(\''+e.id+'\'); if(typeof renderArchive===\'function\') renderArchive();">Restore</button>'
-       + '<button class="btn btn-ghost btn-xs" onclick="deleteArchivedItem(\''+e.id+'\'); if(typeof renderArchive===\'function\') renderArchive();">Delete forever</button></div></div>';
-  });
-  var total=gen.length+acts.length;
-  var html='<div style="max-width:900px;"><h2 style="margin-top:0;">Archive</h2>'
-    + '<p style="color:var(--text-muted);">Deleted items for <strong>'+esc(clientName)+'</strong> are kept here so nothing is lost by accident. This tab is visible to you (the consultant) only. Restore puts an item back where it was; Delete forever removes it permanently.</p>';
-  if(!total){
-    html+='<p style="color:var(--text-muted);padding:16px 0;">The archive is empty. Nothing has been deleted for this client.</p></div>';
-    host.innerHTML=html; return;
-  }
-  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0;">'
-      + '<div style="color:var(--text-muted);">'+total+' item'+(total!==1?'s':'')+' archived</div>'
-      + '<button class="btn btn-ghost btn-xs" onclick="purgeAllArchived()">Empty archive</button></div>';
-  if(rows) html+='<h3 style="margin:14px 0 8px;">Records</h3>'+rows;
-  if(actRows) html+='<h3 style="margin:14px 0 8px;">Actions</h3>'+actRows;
-  html+='</div>';
-  host.innerHTML=html;
-}
-
 function deleteRiskAction(rid, aid){
   if(_blockIfReadOnly()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
@@ -14877,8 +14707,6 @@ function addAssurRow(kind){
 function deleteAssurRow(kind, id){
   if(_blockIfReadOnly()) return;
   if(!S.riskAssurance||!Array.isArray(S.riskAssurance[kind])) return;
-  const _row=S.riskAssurance[kind].find(r=>r.id===id);
-  if(_row) _softDelete('assurRow','Assurance ('+kind+'): '+String(_row.title||_row.name||_row.metric||_row.desc||_row.id||'').slice(0,60), _row, { parentId: kind });
   S.riskAssurance[kind]=S.riskAssurance[kind].filter(r=>r.id!==id); saveData(); _renderAssurance();
 }
 function updateAssurRow(kind, id, field, value){
@@ -16990,9 +16818,7 @@ function addReqSection(){
 }
 function deleteReqSection(id){
   if(_blockIfReadOnly()) return;
-  const _s = (S.requirements||[]).find(s => s.id === id); if(!_s) return;
-  if(!confirm('Move this duty heading (and its requirement lines) to the Archive?\n\nYour consultant can restore it or delete it for good.')) return;
-  _softDelete('reqSection','Duty heading: '+(_s.heading||_s.id), _s);
+  if(!confirm('Delete this duty heading and its requirement lines?')) return;
   S.requirements = (S.requirements||[]).filter(s => s.id !== id);
   saveData(); renderRequirements();
 }
@@ -17013,8 +16839,6 @@ function addReqLine(sectionId){
 function deleteReqLine(sectionId, itemId){
   if(_blockIfReadOnly()) return;
   const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
-  const _it = (s.items||[]).find(i => i.id === itemId); if(!_it) return;
-  _softDelete('reqLine','Requirement: '+((_it.requirement||'').slice(0,60)||_it.id)+' ('+(s.heading||'heading')+')', _it, { parentId: sectionId });
   s.items = (s.items||[]).filter(i => i.id !== itemId);
   saveData(); renderRequirements();
 }
@@ -17401,8 +17225,7 @@ function deleteRegSection(secId){
   if(_blockIfReadOnly()) return;
   const s = _regSection(secId); if(!s) return;
   const n = (s.items||[]).length;
-  if(!confirm('Move the "'+(s.name||'Untitled')+'" section'+(n?(' and its '+n+' item'+(n!==1?'s':'')):'')+' to the Archive?\n\nYour consultant can restore it or delete it for good.')) return;
-  _softDelete('regSection','Register section: '+(s.name||'Untitled'), s);
+  if(!confirm('Delete the "'+(s.name||'Untitled')+'" section'+(n?(' and its '+n+' item'+(n!==1?'s':'')):'')+'?')) return;
   S.monitoring.regSections = _regSections().filter(x => x.id !== secId);
   saveData(); renderMonitoring();
 }
@@ -17421,8 +17244,6 @@ function addRegItem(secId){
 function deleteRegItem(secId, id){
   if(_blockIfReadOnly()) return;
   const s = _regSection(secId); if(!s) return;
-  const _it = (s.items||[]).find(r => r.id === id); if(!_it) return;
-  _softDelete('regItem','Register item: '+((_it.item||'').slice(0,60)||_it.id)+' ('+(s.name||'section')+')', _it, { parentId: secId });
   s.items = (s.items||[]).filter(r => r.id !== id);
   saveData(); renderMonitoring();
 }
@@ -17559,8 +17380,7 @@ function addRaRegEntry(){
 function deleteRaRegEntry(id){
   if(_roLocked()) return;
   const list=_raRegState(); const i=list.findIndex(e=>e.id===id); if(i<0) return;
-  if(!confirm('Move "'+(list[i].title||'this risk assessment')+'" to the Archive?\n\nThis removes the register entry only, not the PDF itself. Your consultant can restore it or delete it for good.')) return;
-  _softDelete('raReg','RA register: '+(list[i].title||list[i].id), list[i]);
+  if(!confirm('Remove "'+(list[i].title||'this risk assessment')+'" from the register?\n\nThis removes the register entry only, not the PDF itself.')) return;
   list.splice(i,1); saveData(); renderRaRegister();
 }
 function updateRaRegField(id, field, val){
@@ -17696,8 +17516,7 @@ function submitAppLink(id){
 function deleteAppLink(id){
   if(!_canEditLinks()) return;
   const list=_appLinksState(); const i=list.findIndex(x=>x.id===id); if(i<0) return;
-  if(!confirm('Move the link "'+(list[i].label||'this link')+'" to the Archive?\n\nYour consultant can restore it or delete it for good.')) return;
-  _softDelete('appLink','Quick link: '+(list[i].label||list[i].url||list[i].id), list[i]);
+  if(!confirm('Remove the link "'+(list[i].label||'this link')+'"?')) return;
   list.splice(i,1); saveData(); renderAppLinks();
 }
 
@@ -18319,13 +18138,12 @@ function saveDocument(id){
 
 function deleteDocument(id){
   if(_blockIfReadOnly()) return;
-  const doc = (S.documents||[]).find(d=>d.id===id); if(!doc) return;
-  if(!confirm(`Move "${doc.name||'this document'}" to the Archive?\n\nYour consultant can restore it or delete it for good.`)) return;
-  _softDelete('document','Document: '+(doc.name||doc.title||doc.id), doc);
+  const doc = (S.documents||[]).find(d=>d.id===id);
+  if(!confirm(`Delete "${doc?doc.name:'this document'}" from the register?`)) return;
   S.documents = (S.documents||[]).filter(d=>d.id!==id);
   saveData();
   renderDocuments();
-  showToast('Document moved to Archive','info');
+  showToast('Document deleted','info');
 }
 // Copy a local/network file path to the clipboard (browsers can't open file paths).
 // Strips wrapping quotes that Windows "Copy as path" adds, so it pastes straight
@@ -18355,12 +18173,12 @@ function _psoState(){
 function _psoUid(pfx){ return pfx+'_'+Math.random().toString(36).slice(2,9); }
 function _psoRiskName(id){ const r=(S.riskProfile||[]).find(x=>x.id===id); return r?(r.activity||r.hazard||'Risk'):''; }
 function addSignoffPolicy(){ if(_roLocked()) return; _psoState().policies.push({id:_psoUid('pol'), title:'', version:'', riskIds:[]}); saveData(); renderPolicySignoff(); }
-function removeSignoffPolicy(id){ if(_roLocked()) return; const p=_psoState(); const _o=p.policies.find(x=>x.id===id); if(_o) _softDelete('signoffPolicy','Policy: '+String(_o.title||_o.name||_o.id||'').slice(0,60), _o); p.policies=p.policies.filter(x=>x.id!==id); Object.keys(p.signed).forEach(k=>{ if(k.split('|')[1]===id) delete p.signed[k]; }); saveData(); renderPolicySignoff(); }
+function removeSignoffPolicy(id){ if(_roLocked()) return; const p=_psoState(); p.policies=p.policies.filter(x=>x.id!==id); Object.keys(p.signed).forEach(k=>{ if(k.split('|')[1]===id) delete p.signed[k]; }); saveData(); renderPolicySignoff(); }
 function updateSignoffPolicy(id, field, val){ if(_roLocked()) return; const pol=_psoState().policies.find(x=>x.id===id); if(pol){ pol[field]=val; scheduleAutoSave(); } }
 function toggleSignoffPolicyRisk(id, riskId, on){ if(_roLocked()) return; const pol=_psoState().policies.find(x=>x.id===id); if(!pol) return; pol.riskIds=pol.riskIds||[]; if(on){ if(!pol.riskIds.includes(riskId)) pol.riskIds.push(riskId); } else { pol.riskIds=pol.riskIds.filter(r=>r!==riskId); } saveData(); renderPolicySignoff(); }
 function addPoliciesFromDocuments(){ if(_roLocked()) return; const p=_psoState(); const seen=new Set(p.policies.map(x=>(x.title||'').toLowerCase())); let n=0; (S.documents||[]).forEach(d=>{ const t=(d.name||d.title||'').trim(); if(t && !seen.has(t.toLowerCase())){ p.policies.push({id:_psoUid('pol'), title:t, version:d.version||'', riskIds:[], docId:d.id}); seen.add(t.toLowerCase()); n++; } }); saveData(); renderPolicySignoff(); showToast(n?('✓ Added '+n+' from Documents'):'All documents already listed','info'); }
 function addSignoffStaff(){ if(_roLocked()) return; _psoState().staff.push({id:_psoUid('emp'), name:'', role:''}); saveData(); renderPolicySignoff(); }
-function removeSignoffStaff(id){ if(_roLocked()) return; const p=_psoState(); const _o=p.staff.find(x=>x.id===id); if(_o) _softDelete('signoffStaff','Staff: '+String(_o.name||_o.id||'').slice(0,60), _o); p.staff=p.staff.filter(x=>x.id!==id); Object.keys(p.signed).forEach(k=>{ if(k.split('|')[0]===id) delete p.signed[k]; }); saveData(); renderPolicySignoff(); }
+function removeSignoffStaff(id){ if(_roLocked()) return; const p=_psoState(); p.staff=p.staff.filter(x=>x.id!==id); Object.keys(p.signed).forEach(k=>{ if(k.split('|')[0]===id) delete p.signed[k]; }); saveData(); renderPolicySignoff(); }
 function updateSignoffStaff(id, field, val){ if(_roLocked()) return; const s=_psoState().staff.find(x=>x.id===id); if(s){ s[field]=val; scheduleAutoSave(); } }
 function addStaffFromTraining(){ if(_roLocked()) return; const p=_psoState(); const seen=new Set(p.staff.map(x=>(x.name||'').toLowerCase())); const names=[...new Set((S.training||[]).map(t=>t.employee).filter(Boolean))]; let n=0; names.forEach(nm=>{ if(!seen.has(nm.toLowerCase())){ p.staff.push({id:_psoUid('emp'), name:nm, role:''}); seen.add(nm.toLowerCase()); n++; } }); saveData(); renderPolicySignoff(); showToast(n?('✓ Added '+n+' staff from training matrix'):'All training staff already listed','info'); }
 function toggleSignoff(staffId, policyId, checked){ if(_roLocked()) return; const p=_psoState(); const k=staffId+'|'+policyId; if(checked){ p.signed[k]=p.signed[k]||new Date().toISOString().slice(0,10); } else { delete p.signed[k]; } saveData(); renderPolicySignoff(); }
@@ -19755,7 +19573,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff','archive'];
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

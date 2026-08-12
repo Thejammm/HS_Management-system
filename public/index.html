@@ -10055,7 +10055,10 @@ function generateSingleFormPDF(insp){
     doc.text(`${brandName} — Confidential`, ML, footY+1);
     doc.text(`Page ${pageNum}`, PW-MR, footY+1, {align:'right'});
     const contact = [brandWebsite,brandPhone,brandEmail].filter(Boolean).join(' · ');
-    if(contact) doc.text(contact, PW/2, footY+4, {align:'center'});
+    if(contact) doc.text(contact, PW/2, footY+1, {align:'center'});
+    // Discrete, permanent producer reference (survives any client branding)
+    setFont('normal',6,[165,170,178]);
+    doc.text('Produced in AHS Compass · AHS Compliance Consulting Ltd', PW/2, footY+5, {align:'center'});
   };
 
   const checkNewPage = (needed=20) => {
@@ -10649,6 +10652,9 @@ function generatePDF(inspsOverride){
       const contact = [brandWebsite,brandPhone,brandEmail].filter(Boolean).join(' · ');
       if(contact) doc.text(contact, PW/2, footY+1, {align:'center'});
     }
+    // Discrete, permanent producer reference (survives any client branding)
+    setFont('normal',6,[165,170,178]);
+    doc.text('Produced in AHS Compass · AHS Compliance Consulting Ltd', PW/2, footY+5, {align:'center'});
   };
 
   const sectionHeading=(title,icon='')=>{
@@ -15817,8 +15823,12 @@ function _pdfBrandFooter(doc, ML, RM){
     doc.setFontSize(7.5); let x=ML;
     doc.setFont('helvetica','bold');   doc.setTextColor(120,128,140); doc.text('AHS',x,291); x+=doc.getTextWidth('AHS');
     doc.setFont('helvetica','normal'); doc.setTextColor(150,150,150); doc.text(' Compass, ',x,291); x+=doc.getTextWidth(' Compass, ');
-    doc.setFont('helvetica','italic'); doc.text('Guiding you to Safety',x,291);
-    doc.setFont('helvetica','normal'); doc.setTextColor(150,150,150);
+    doc.setFont('helvetica','italic'); doc.text('Guiding you to Safety',x,291); x+=doc.getTextWidth('Guiding you to Safety');
+    // Discrete, permanent producer reference — present on every PDF regardless of
+    // the client's own report branding (client branding drives the header, not this).
+    doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(165,170,178);
+    doc.text('  ·  AHS Compliance Consulting Ltd', x, 291);
+    doc.setFontSize(7.5); doc.setTextColor(150,150,150);
     doc.text('Page '+i+' of '+pages,RM,291,{align:'right'});
   }
 }

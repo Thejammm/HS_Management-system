@@ -17539,6 +17539,69 @@ function raiseRegItemAction(secId,id){
   showToast('✓ Added to the execution plan','success');
 }
 
+// ── Bulk: raise every overdue / due-soon statutory item into the plan (deduped) ──
+function _statDueCount(){
+  const plan=S.actionPlan||[]; let n=0;
+  _regSections().forEach(s=>(s.items||[]).forEach(r=>{ const rag=_regRag(r.dueDate); if((rag==='red'||rag==='amber') && !plan.some(a=>a.regKey==='reg|'+r.id)) n++; }));
+  return n;
+}
+function raiseStatutoryDue(){
+  if(_blockIfReadOnly()) return;
+  if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
+  let n=0;
+  _regSections().forEach(s=>(s.items||[]).forEach(r=>{
+    const rag=_regRag(r.dueDate); if(rag!=='red'&&rag!=='amber') return;
+    const key='reg|'+r.id; if(S.actionPlan.some(a=>a.regKey===key)) return;
+    const it={ id:_reqUid('act'), regKey:key, desc:'Statutory inspection due: '+(r.item||'item')+(s.name?(' ('+s.name+')'):''), owner:'', due:r.dueDate||'', status:'Not started', priority:(rag==='red'?'High':'Medium'), source:'Assurance', sourceLabel:(s.name||'Regulatory tracker') };
+    if(typeof _stamp==='function') _stamp(it,'created'); S.actionPlan.push(it); n++;
+  }));
+  saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
+  showToast('✓ Raised '+n+' statutory action'+(n!==1?'s':'')+' into the plan','success');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  STATUTORY REGISTER ↔ EXCEL ROUND-TRIP (same model as training):
+//  the client's workbook is the source of truth. Import OVERWRITES
+//  the tracker (sheet = section, rows anchored for export); export
+//  writes current values back into a copy of their exact file.
+// ══════════════════════════════════════════════════════════════
+function statutoryUploadXlsx(){
+  if(_blockIfReadOnly()) return;
+  if(!_tOnline()){ alert('Sign in first — the spreadsheet round-trip runs on the server.'); return; }
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx';
+  inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
+    try{
+      const buf=await f.arrayBuffer();
+      const res=await _tApiRaw('/api/statutory/parse', buf);
+      if(!res.ok){ const e=await res.json().catch(()=>({})); alert(e.error==='no_items_found'?'No register rows found — the sheet needs an "Item" (or Equipment/Description) column.':'Could not read that spreadsheet: '+(e.error||('HTTP '+res.status))); return; }
+      const parsed=await res.json();
+      const cur=_regSections().reduce((n,s)=>n+((s.items||[]).length),0);
+      if(!confirm(`Import "${f.name}"?\n\nThis REPLACES the whole regulatory tracker from the spreadsheet:\n  • ${parsed.items.length} items across ${parsed.sheets.length} sheet${parsed.sheets.length!==1?'s':''} (each sheet becomes a section)\n  • the ${cur} item${cur!==1?'s':''} currently here will be replaced\n\nThe spreadsheet becomes the source of truth.`)) return;
+      const sres=await _tApiRaw('/api/statutory/store', buf, {'X-Filename':f.name});
+      if(!sres.ok){ showToast('Imported, but could not save the template for export','warn'); }
+      const bySheet={};
+      parsed.items.forEach(it=>{ (bySheet[it.sheet]=bySheet[it.sheet]||[]).push(it); });
+      S.monitoring.regSections=Object.keys(bySheet).map(name=>({ id:_reqUid('regsec'), name,
+        items:bySheet[name].map(it=>({ id:_reqUid('reg'), sheet:it.sheet, row:it.row, item:it.item, area:it.area, frequency:it.frequency, resultDate:it.resultDate, dueDate:it.dueDate, result:it.result, certRef:it.certRef, notes:it.notes })) }));
+      S.monitoring.regSeeded=true; S.monitoring.statFile=f.name;
+      saveData(); renderMonitoring();
+      showToast('✓ Imported '+parsed.items.length+' statutory items from '+f.name,'success');
+    }catch(e){ console.error('statutory import',e); alert('Import failed: '+e.message); }
+  };
+  inp.click();
+}
+async function statutoryExportXlsx(){
+  if(!_tOnline()){ alert('Sign in first to export the spreadsheet.'); return; }
+  try{
+    const items=_regSections().flatMap(s=>(s.items||[]).map(it=>({ sheet:it.sheet||s.name, row:it.row||null, item:it.item, area:it.area, frequency:it.frequency, resultDate:it.resultDate, dueDate:it.dueDate, result:it.result, certRef:it.certRef, notes:it.notes })));
+    const res=await _tApiRaw('/api/statutory/export', JSON.stringify({ state:{ items } }));
+    if(!res.ok){ const e=await res.json().catch(()=>({})); alert(e.error==='no_template'?'Import the client\'s spreadsheet first, then export.':'Export failed: '+(e.error||('HTTP '+res.status))); return; }
+    const blob=await res.blob(); const cd=res.headers.get('content-disposition')||''; const m=/filename="([^"]+)"/.exec(cd); const name=m?m[1]:'Statutory Register.xlsx';
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+    showToast('✓ Exported '+name,'success');
+  }catch(e){ console.error('statutory export',e); alert('Export failed: '+e.message); }
+}
+
 // ══════════════════════════════════════════════════════════════
 //  RISK ASSESSMENT REGISTER (in Assurance records)
 //  A per-client list of the client's risk assessments / RAMS, each
@@ -18267,8 +18330,8 @@ function _spreadsheetImportHTML(){
       <div style="display:flex;flex-wrap:wrap;gap:12px;">
         <div style="flex:1;min-width:230px;border:1.5px solid var(--border);border-radius:9px;padding:12px;">
           <div style="font-weight:700;margin-bottom:2px;">Statutory inspections</div>
-          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">→ into the Regulatory tracker</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="openImportWizard('statutory')">⎘ Paste from Excel</button><button class="btn btn-ghost btn-sm no-print" onclick="downloadStatutoryTemplate()">⭳ Template</button><button class="btn btn-ghost btn-sm no-print" onclick="importSpreadsheet('statutory')">CSV file</button></div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">→ upload the client's own .xlsx (round-trips in/out; each sheet becomes a section)</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="statutoryUploadXlsx()">⭱ Upload spreadsheet</button><button class="btn btn-ghost btn-sm no-print" onclick="openImportWizard('statutory')">⎘ Paste from Excel</button><button class="btn btn-ghost btn-sm no-print" onclick="downloadStatutoryTemplate()">⭳ Template</button></div>
         </div>
         <div style="flex:1;min-width:230px;border:1.5px solid var(--border);border-radius:9px;padding:12px;">
           <div style="font-weight:700;margin-bottom:2px;">Training matrix</div>
@@ -18387,7 +18450,13 @@ function renderMonitoring(){
           <span class="badge" style="background:${c.overdue?'#FEE2E2':'var(--muted-bg)'};color:${c.overdue?'#B91C1C':'var(--text-muted)'};font-weight:700;">${c.overdue} overdue</span>
           <span class="badge" style="background:${c.soon?'#FEF3C7':'var(--muted-bg)'};color:${c.soon?'#B45309':'var(--text-muted)'};font-weight:700;">${c.soon} due within 60 days</span></div>`; })()}
         ${regBody}
-        ${ro?'':`<button class="btn btn-primary btn-sm no-print" onclick="addRegSection()" style="margin-top:2px;">＋ Add section</button>`}
+        ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:2px;">
+          <button class="btn btn-primary btn-sm no-print" onclick="addRegSection()">＋ Add section</button>
+          <button class="btn btn-outline btn-sm no-print" onclick="statutoryUploadXlsx()"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⭱ Import / update (overwrite)</button>
+          <button class="btn btn-outline btn-sm no-print" onclick="statutoryExportXlsx()"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⭳ Export spreadsheet</button>
+          ${(function(){ const n=_statDueCount(); return `<button class="btn btn-ghost btn-sm no-print" onclick="raiseStatutoryDue()"${n?'':' disabled'}>Raise due actions${n?(' ('+n+')'):''}</button>`; })()}
+          <span style="font-size:11.5px;color:var(--text-muted);">The client's spreadsheet stays the source of truth — import overwrites, export writes their exact file back.</span>
+        </div>`}
       </div>
     </div>`
     + _trainingMatrixHTML()

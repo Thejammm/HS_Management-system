@@ -65,3 +65,12 @@ CREATE TABLE IF NOT EXISTS training_workbook (
   data       TEXT NOT NULL,               -- the .xlsx, base64-encoded
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Statutory register template workbook — same round-trip pattern as training:
+-- the client's own .xlsx kept verbatim so export reproduces their exact file.
+CREATE TABLE IF NOT EXISTS statutory_workbook (
+  tenant_id  TEXT PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
+  filename   TEXT,
+  data       TEXT NOT NULL,               -- the .xlsx, base64-encoded
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

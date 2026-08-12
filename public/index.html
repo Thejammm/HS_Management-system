@@ -8227,6 +8227,36 @@ function flushDraft(){
   // rectifyDetails cached live via cacheRD — no flush needed
 }
 
+// ── Conflict recovery (UAT #3) ────────────────────────────────
+// When a concurrent save wins, the losing edit is kept in memory for this
+// session and offered back as a downloadable JSON draft instead of vanishing.
+function downloadLostDraft(){
+  const d=window._lostDraft; if(!d){ showToast('No discarded version is held for this session.','info'); return; }
+  const payload={ meta:{ kind:'ahs-conflict-draft', tenantId:d.tenantId, discardedAt:d.at, note:'Your version of the data at the moment a concurrent save won. Re-apply the bits you need, or Import it to restore wholesale.' }, S:d.state };
+  const blob=new Blob([JSON.stringify(payload,null,1)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='conflict-draft-'+(d.tenantId||'client')+'-'+d.at.replace(/[:T]/g,'-').slice(0,19)+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function _showConflictRecovery(){
+  const old=document.getElementById('conflictOverlay'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='conflictOverlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:520px;width:100%;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.35);">
+    <div style="font-weight:800;font-size:15px;margin-bottom:8px;">Someone else saved first</div>
+    <div style="font-size:13px;line-height:1.55;color:var(--text-muted);margin-bottom:14px;">
+      Another person saved changes to this company while you were editing, so the screen now shows
+      <b>their</b> version — nothing they did has been lost.<br><br>
+      <b>Your</b> last change was set aside, not thrown away: you can download it as a draft to
+      re-apply, or restore it wholesale via ⭱ Import.
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="downloadLostDraft()">⭳ Download my discarded version</button>
+      <button class="btn btn-primary" onclick="document.getElementById('conflictOverlay').remove()">OK — continue with theirs</button>
+    </div></div>`;
+  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
 function saveData(){
   // Consultant working on a client (dial-in) is READ-WRITE: the edits go to the
   // client's server record (Auth.activeTenantId() is the client's tenant while
@@ -8252,8 +8282,10 @@ function saveData(){
     Auth.saveToServer(S).then(res => {
       if(res && res.conflict){
         // Another editor saved this company between our load and this save.
-        // Adopt their version (server wins) so nothing they did is lost; our
-        // in-progress edit is dropped, so warn clearly and refresh the view.
+        // Adopt their version (server wins) so nothing they did is lost — but
+        // KEEP our discarded version so the loser can recover it instead of
+        // retyping from memory (UAT finding #3).
+        try{ window._lostDraft={ at:new Date().toISOString(), tenantId:Auth.activeTenantId(), state:JSON.parse(JSON.stringify(S)) }; }catch(e){ window._lostDraft=null; }
         if(res.state && typeof res.state === 'object' && Object.keys(res.state).length){
           S = res.state; migrateLoadedState(); _rerenderEverything();
         }
@@ -8261,7 +8293,7 @@ function saveData(){
         if(inClient){ _consultantLastUpd = res.updatedAt || _consultantLastUpd; _setFreshLabel(); }
         const elC=document.getElementById('saveIndicator');
         if(elC){ elC.textContent='↻ Reloaded — someone else had just saved'; elC.style.color='var(--danger)'; }
-        showToast('Someone else saved changes to this company, so your view was refreshed with their version. Please re-apply your last change.','error');
+        _showConflictRecovery();
         return;
       }
       if(res && res.updatedAt){
@@ -8755,6 +8787,14 @@ function openAddTenantModal(){
            <input type="text" id="mTenantId" placeholder="e.g. acme-engineering" pattern="[a-z0-9-]+" autocomplete="off">
            <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Lowercase letters, numbers, dashes only. Cannot be changed later.</div>
          </div>
+         <div class="field-group" style="margin-top:10px;">
+           <label class="field-label">Inspection packs — what kind of site is this? (optional)</label>
+           <div style="display:flex;gap:18px;align-items:center;margin-top:4px;">
+             <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="mPackGarage"> Garage / workshop</label>
+             <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="mPackConstruction"> Construction</label>
+           </div>
+           <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Filters the inspection types this client sees (forms like Near Miss always show). Leave both unticked to show everything — you can change it later in Edit config.</div>
+         </div>
        </div>
 
        <div style="border-top:1px solid var(--border);padding-top:10px;">
@@ -8827,6 +8867,21 @@ async function submitAddTenant(){
     console.error(err);
     showToast('Network error creating tenant','error');
     return;
+  }
+
+  // 1b. Inspection packs chosen at creation (UAT #5) — same config the
+  // Edit-config dialog manages; skipped entirely when neither is ticked.
+  const _packs=[];
+  if(document.getElementById('mPackGarage')?.checked)       _packs.push('garage');
+  if(document.getElementById('mPackConstruction')?.checked) _packs.push('construction');
+  if(_packs.length){
+    try{
+      await fetch(`/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
+        method:'PATCH', credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ config:{ packs:_packs } })
+      });
+    }catch(e){ console.warn('pack config save failed (set it later via Edit config)', e); }
   }
 
   // 2. No login requested: the client is ready and you reach it from your

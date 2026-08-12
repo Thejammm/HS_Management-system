@@ -55,3 +55,13 @@ CREATE TABLE IF NOT EXISTS app_state (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_by  TEXT REFERENCES users(id) ON DELETE SET NULL
 );
+
+-- Training-matrix template workbook: the client's uploaded .xlsx kept verbatim
+-- so export can write the current values back into a byte-faithful copy of
+-- their own file (their exact tabs, formatting and formulas). One per tenant.
+CREATE TABLE IF NOT EXISTS training_workbook (
+  tenant_id  TEXT PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
+  filename   TEXT,
+  data       TEXT NOT NULL,               -- the .xlsx, base64-encoded
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

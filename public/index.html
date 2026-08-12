@@ -13540,6 +13540,8 @@ function updateExecAction(refStr, field, value){
   if(field==='status'){ _stampActionCompletion(o, value); _logAdd(o, (value==='Complete'?'completed':value==='Accepted'?'accepted':'status'), (value==='Complete'?'Marked complete':value==='Accepted'?'Risk accepted':'Status set to '+value)); }
   if(typeof _stamp==='function') _stamp(o,'updated');
   saveData(); _refreshActionViews();
+  // Training renewal closed → capture the new date/status straight into the matrix cell.
+  if(field==='status' && value==='Complete' && o.trainingPersonId && typeof _trainingActionCompleted==='function'){ setTimeout(()=>_trainingActionCompleted(o), 60); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -13624,6 +13626,7 @@ function completeActionWithNote(refStr){
   _logAdd(found.o,'completed', String(how).trim()?('Completed: '+String(how).trim()):'Marked complete');
   if(typeof _stamp==='function') _stamp(found.o,'updated');
   saveData(); _refreshActionViews(); if(typeof showToast==='function') showToast('✓ Marked complete','success');
+  if(found.o.trainingPersonId && typeof _trainingActionCompleted==='function'){ setTimeout(()=>_trainingActionCompleted(found.o), 60); }
 }
 // Delete an action from the Consultant Review table: archive a snapshot first (nothing is
 // lost — it can be restored), then remove it from its origin. Handles all three sources.
@@ -17626,32 +17629,35 @@ function _trainingRag(expiry){
   if(d<=soon) return 'amber';
   return 'green';
 }
-// Raise/refresh an execution-plan action for an expired/expiring training record.
-function _syncTrainingAction(rec){
-  if(!rec) return;
-  const rag=_trainingRag(rec.expiry);
+// Raise/refresh an execution-plan action for an expired/expiring training cell.
+// Works off the people model: one action per (person, course) keyed by person id.
+function _tPersonLabel(p){ return ((p.firstName||'')+' '+(p.lastName||'')).trim(); }
+function _syncTrainingAction(p, course, cell){
+  if(!cell || cell.type!=='date') return;
+  const rag=_trainingRag(cell.v); if(rag!=='red' && rag!=='amber') return;
   if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
-  const key='train|'+(rec.employee||'')+'|'+(rec.course||'');
+  const key='train|'+p.id+'|'+course;
   const existing=S.actionPlan.find(a=>a.trainingKey===key);
-  if(rag==='red' || rag==='amber'){
-    if(existing){ existing.due=rec.expiry||existing.due; }
-    else { const it={ id:_reqUid('act'), trainingKey:key, desc:'Renew '+(rec.course||'training')+' — '+(rec.employee||''), owner:'', due:rec.expiry||'', status:'Not started', priority:(rag==='red'?'High':'Medium'), source:'Training', sourceLabel:(rec.employee||'') };
-      if(typeof _stamp==='function') _stamp(it,'created'); S.actionPlan.push(it); }
-  }
+  if(existing){ existing.due=cell.v||existing.due; }
+  else { const it={ id:_reqUid('act'), trainingKey:key, trainingPersonId:p.id, trainingCourse:course, desc:'Renew '+course+' — '+_tPersonLabel(p), owner:'', due:cell.v||'', status:'Not started', priority:(rag==='red'?'High':'Medium'), source:'Training', sourceLabel:_tPersonLabel(p) };
+    if(typeof _stamp==='function') _stamp(it,'created'); S.actionPlan.push(it); }
 }
-function _syncAllTrainingActions(){ _trainingState().forEach(_syncTrainingAction); }
-// On-demand: how many expired/expiring courses are NOT yet in the plan, and a button to raise them.
+function _forEachTrainingDate(fn){ (_trainingData().people||[]).filter(p=>p.status==='active').forEach(p=>Object.entries(p.cells||{}).forEach(([c,cell])=>fn(p,c,cell))); }
+function _syncAllTrainingActions(){ _forEachTrainingDate(_syncTrainingAction); }
 function _trainingDueCount(){ const plan=S.actionPlan||[]; let n=0;
-  _trainingState().forEach(r=>{ const rag=_trainingRag(r.expiry); if(rag==='red'||rag==='amber'){ const key='train|'+(r.employee||'')+'|'+(r.course||''); if(!plan.some(a=>a.trainingKey===key)) n++; } });
+  _forEachTrainingDate((p,c,cell)=>{ if(cell&&cell.type==='date'){ const r=_trainingRag(cell.v); if(r==='red'||r==='amber'){ if(!plan.some(a=>a.trainingKey==='train|'+p.id+'|'+c)) n++; } } });
   return n; }
 function raiseTrainingRenewals(){
-  if(_blockIfReadOnly()) return;
+  if(typeof _blockIfReadOnly==='function' && _blockIfReadOnly()) return;
   const before=(S.actionPlan||[]).filter(a=>a.trainingKey).length;
   _syncAllTrainingActions();
   const added=(S.actionPlan||[]).filter(a=>a.trainingKey).length - before;
   saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
   showToast('✓ Raised '+added+' training renewal action'+(added!==1?'s':'')+' into the plan','success');
 }
+// When a training renewal action is marked Complete, open the cell editor so the
+// new date/status is written straight back into the matrix (closes the loop).
+function _trainingActionCompleted(o){ if(!o||!o.trainingPersonId) return; const p=(_trainingData().people||[]).find(x=>x.id===o.trainingPersonId); if(!p) return; trainingEditCell(p.id, o.trainingCourse); }
 
 function importStatutoryCSV(text){
   const rows=_parseCSV(text); if(rows.length<2){ showToast('No data rows found in that file','error'); return; }
@@ -17915,6 +17921,179 @@ function _trainingMatrixHTML(){
     </div>
   </div>`;
 }
+// ══════════════════════════════════════════════════════════════
+//  TRAINING MATRIX v2 — people-based, round-trips the client's own .xlsx.
+//  S.trainingData = { people:[{id,sheet,row,group,status,lastName,firstName,
+//    badge,job,cells:{course:{type:'date'|'text'|'empty', v}}}], sheets:[...], filename }
+//  The client's spreadsheet stays the source of truth: import overwrites,
+//  in-app edits write back, export rebuilds their exact workbook (server-side).
+// ══════════════════════════════════════════════════════════════
+function _trainingData(){
+  if(!S.trainingData || typeof S.trainingData!=='object' || !Array.isArray(S.trainingData.people)){
+    const people=[], seen={};
+    (Array.isArray(S.training)?S.training:[]).forEach(r=>{           // migrate legacy flat records
+      const key=(r.employee||'').toLowerCase(); if(!key) return;
+      let p=seen[key]; if(!p){ p={ id:_reqUid('trp'), sheet:null, row:null, group:'staff', status:'active', lastName:'', firstName:r.employee||'', badge:'', job:'', cells:{} }; seen[key]=p; people.push(p); }
+      if(r.course) p.cells[r.course]={ type: r.expiry?'date':'empty', v: r.expiry||'' };
+    });
+    S.trainingData={ people, sheets:[], filename:'' };
+  }
+  (S.trainingData.people||[]).forEach(p=>{ if(!p.id) p.id=_reqUid('trp'); if(!p.cells) p.cells={}; if(!p.group) p.group='staff'; if(!p.status) p.status='active'; });
+  return S.trainingData;
+}
+function _tOnline(){ try{ return !!(Auth.isSignedIn() && Auth.activeTenantId()); }catch(e){ return false; } }
+function _tFmt(iso){ try{ return iso? new Date(String(iso)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}):''; }catch(e){ return ''; } }
+function _tCoursesFor(group){
+  const d=_trainingData();
+  const sheet=(d.sheets||[]).find(s=>s.group===group && s.status==='active');
+  if(sheet && sheet.courses && sheet.courses.length) return sheet.courses.map(c=>c.name);
+  const set=[]; (d.people||[]).filter(p=>p.group===group).forEach(p=>Object.keys(p.cells||{}).forEach(c=>{ if(!set.includes(c)) set.push(c); }));
+  return set;
+}
+const _TRAGC={red:'#DC2626',amber:'#F59E0B',green:'#16A34A',grey:'#9CA3AF',blue:'#2563EB',na:'#D1D5DB',none:'transparent'};
+function _tRagCell(cell){
+  if(!cell || cell.type==='empty' || cell.v===''||cell.v==null) return {rag:'none',label:'–',title:'Not recorded'};
+  if(cell.type==='date'){ const rag=_trainingRag(cell.v); return {rag,label:_tFmt(cell.v),title:(rag==='red'?'Expired ':rag==='amber'?'Expiring soon ':'In date ')+_tFmt(cell.v)}; }
+  const s=String(cell.v).trim(), l=s.toLowerCase();
+  if(l==='no end date'||l==='yes') return {rag:'green',label:s,title:s};
+  if(l==='n/a'||l==='na') return {rag:'na',label:s,title:'Not applicable'};
+  if(l==='not done') return {rag:'red',label:s,title:'Outstanding'};
+  if(l==='trainer') return {rag:'blue',label:s,title:'Delivers this course'};
+  return {rag:'grey',label:s,title:s};
+}
+function _tGroupTable(group,label){
+  const d=_trainingData(), ro=_roLocked();
+  const courses=_tCoursesFor(group);
+  const people=(d.people||[]).filter(p=>p.group===group && p.status==='active').sort((a,b)=>(((a.lastName||'')+a.firstName).toLowerCase()).localeCompare(((b.lastName||'')+b.firstName).toLowerCase()));
+  if(!people.length && !courses.length) return '';
+  const head=`<tr><th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--surface);z-index:1;">Name</th>${courses.map(c=>`<th style="padding:6px 6px;font-size:10.5px;text-align:center;white-space:nowrap;">${esc(c)}</th>`).join('')}${ro?'':'<th></th>'}</tr>`;
+  const body=people.map(p=>`<tr>
+    <td style="padding:5px 8px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--surface);">${esc(p.lastName)}${p.lastName&&p.firstName?', ':''}${esc(p.firstName)}${p.badge?` <span style="font-weight:400;color:var(--text-muted);font-size:11px;">${esc(p.badge)}</span>`:''}</td>
+    ${courses.map(c=>{ const rc=_tRagCell(p.cells[c]); const clk=ro?'':` data-pid="${esc(p.id)}" data-course="${esc(c)}" onclick="trainingEditCellEl(this)" style="cursor:pointer;`;
+      if(rc.rag==='none') return `<td style="text-align:center;color:var(--text-muted);${ro?'':'cursor:pointer;'}"${ro?'':` data-pid="${esc(p.id)}" data-course="${esc(c)}" onclick="trainingEditCellEl(this)"`} title="Add">–</td>`;
+      const fg=(rc.rag==='na')?'#374151':'#fff';
+      return `<td style="text-align:center;padding:4px;${ro?'':'cursor:pointer;'}"${ro?'':` data-pid="${esc(p.id)}" data-course="${esc(c)}" onclick="trainingEditCellEl(this)"`}><span title="${esc(c)} — ${esc(rc.title)}" style="display:inline-block;min-width:52px;padding:2px 6px;border-radius:5px;font-size:10.5px;font-weight:600;color:${fg};background:${_TRAGC[rc.rag]};">${esc(rc.label)}</span></td>`; }).join('')}
+    ${ro?'':`<td style="white-space:nowrap;"><button class="btn btn-ghost btn-xs no-print" title="Move to Left (offboard)" onclick="trainingOffboard('${esc(p.id)}')">→ Left</button></td>`}
+  </tr>`).join('');
+  return `<div style="margin-top:14px;"><div style="font-weight:700;font-size:13px;margin-bottom:6px;">${esc(label)} <span style="font-weight:400;color:var(--text-muted);">(${people.length})</span></div>
+    <div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div></div>`;
+}
+function _trainingMatrixHTML(){
+  const d=_trainingData(), ro=_roLocked();
+  const onl=_tOnline(), impAttr=onl?'':' disabled title="Sign in to sync the spreadsheet"';
+  if(!(d.people||[]).length){
+    return `<div class="card"><div class="card-band"><h3><span class="dot">●</span> Training matrix</h3></div><div class="card-body">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">No training data yet. Upload the client's training spreadsheet — it stays the source of truth; the app reads, manages and exports it.</div>
+      ${ro?'':`<button class="btn btn-primary btn-sm no-print" onclick="trainingUploadXlsx()"${impAttr}>⭱ Upload training spreadsheet (.xlsx)</button>`}
+    </div></div>`;
+  }
+  let nExp=0,nSoon=0; (d.people||[]).filter(p=>p.status==='active').forEach(p=>Object.values(p.cells||{}).forEach(c=>{ if(c&&c.type==='date'){ const r=_trainingRag(c.v); if(r==='red')nExp++; else if(r==='amber')nSoon++; }}));
+  const nActive=(d.people||[]).filter(p=>p.status==='active').length, nLeft=(d.people||[]).filter(p=>p.status==='left').length;
+  const staffTbl=_tGroupTable('staff','Staff'), garageTbl=_tGroupTable('garage','Garage staff');
+  const leftPeople=(d.people||[]).filter(p=>p.status==='left');
+  const leftHTML=leftPeople.length?`<details style="margin-top:14px;"><summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--text-muted);">Left / archived (${leftPeople.length})</summary><div style="font-size:12px;color:var(--text-muted);margin-top:6px;">${leftPeople.map(p=>esc(p.lastName+', '+p.firstName)).join(' · ')}</div></details>`:'';
+  const due=_trainingDueCount();
+  const toolbar=ro?'':`<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <button class="btn btn-outline btn-sm no-print" onclick="trainingUploadXlsx()"${impAttr}>⭱ Import / update (overwrite)</button>
+    <button class="btn btn-outline btn-sm no-print" onclick="trainingExportXlsx()"${impAttr}>⭳ Export spreadsheet</button>
+    <button class="btn btn-ghost btn-sm no-print" onclick="trainingAddPerson()">＋ Add person</button>
+    <button class="btn btn-ghost btn-sm no-print" onclick="raiseTrainingRenewals()"${due?'':' disabled'}>Raise renewal actions${due?(' ('+due+')'):''}</button>
+  </div>`;
+  return `<div class="card">
+    <div class="card-band"><h3><span class="dot">●</span> Training matrix</h3><span class="badge badge-muted">${nActive} staff${nLeft?(' · '+nLeft+' left'):''}${nExp?(' · '+nExp+' expired'):''}${nSoon?(' · '+nSoon+' expiring'):''}</span></div>
+    <div class="card-body">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:2px;">Dates traffic-light by expiry (<span style="color:${_TRAGC.red};font-weight:700;">expired</span> · <span style="color:${_TRAGC.amber};font-weight:700;">≤60 days</span> · <span style="color:${_TRAGC.green};font-weight:700;">in date</span>); other entries show as written. ${ro?'':'Click any cell to update it.'} Expired / expiring raise actions in the plan.</div>
+      ${staffTbl}${garageTbl}${leftHTML}${toolbar}
+    </div></div>`;
+}
+async function _tApiRaw(path, body, extraHeaders){
+  const tid=Auth.activeTenantId(); const sep=path.includes('?')?'&':'?';
+  return fetch(path+sep+'tenantId='+encodeURIComponent(tid), { method:'POST', credentials:'include', headers:{ 'Content-Type':'application/octet-stream', ...(extraHeaders||{}) }, body });
+}
+function trainingUploadXlsx(){
+  if(_roLocked()) return;
+  if(!_tOnline()){ alert('Sign in first — the spreadsheet round-trip runs on the server.'); return; }
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx';
+  inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
+    try{
+      const buf=await f.arrayBuffer();
+      const res=await _tApiRaw('/api/training/parse', buf);
+      if(!res.ok){ const e=await res.json().catch(()=>({})); alert('Could not read that spreadsheet: '+(e.error||('HTTP '+res.status))); return; }
+      const parsed=await res.json();
+      const cur=_trainingData().people||[];
+      const keyf=p=>(p.group||'')+'|'+(p.lastName||'').toLowerCase()+'|'+(p.firstName||'').toLowerCase();
+      const curSet=new Set(cur.map(keyf)), newSet=new Set(parsed.people.map(keyf));
+      const adding=parsed.people.filter(p=>!curSet.has(keyf(p))).length;
+      const removing=cur.filter(p=>!newSet.has(keyf(p))).length;
+      if(!confirm(`Import "${f.name}"?\n\nThis REPLACES the whole training matrix from the spreadsheet:\n  • ${parsed.people.length} people in the sheet\n  • ${adding} added, ${removing} removed vs what is here now\n\nThe spreadsheet becomes the source of truth.`)) return;
+      const sres=await _tApiRaw('/api/training/store', buf, {'X-Filename':f.name});
+      if(!sres.ok){ showToast('Imported, but could not save the template for export','warn'); }
+      S.trainingData={ sheets:parsed.sheets, people:parsed.people, filename:f.name };
+      saveData(); renderMonitoring();
+      showToast('✓ Imported '+parsed.people.length+' people from '+f.name,'success');
+    }catch(e){ console.error('training import',e); alert('Import failed: '+e.message); }
+  };
+  inp.click();
+}
+async function trainingExportXlsx(){
+  if(!_tOnline()){ alert('Sign in first to export the spreadsheet.'); return; }
+  try{
+    const res=await _tApiRaw('/api/training/export', JSON.stringify({ state:{ people:_trainingData().people } }));
+    if(!res.ok){ const e=await res.json().catch(()=>({})); alert(e.error==='no_template'?'Import your spreadsheet first, then export.':'Export failed: '+(e.error||('HTTP '+res.status))); return; }
+    const blob=await res.blob(); const cd=res.headers.get('content-disposition')||''; const m=/filename="([^"]+)"/.exec(cd); const name=m?m[1]:'Training Matrix.xlsx';
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+    showToast('✓ Exported '+name,'success');
+  }catch(e){ console.error('training export',e); alert('Export failed: '+e.message); }
+}
+function trainingEditCellEl(el){ if(el&&el.dataset) trainingEditCell(el.dataset.pid, el.dataset.course); }
+function trainingEditCell(pid, course){
+  if(_roLocked()) return;
+  const p=(_trainingData().people||[]).find(x=>x.id===pid); if(!p) return;
+  const cell=p.cells[course]||{type:'empty',v:''}; const curDate=cell.type==='date'?cell.v:'';
+  const ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99999;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:340px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+    <div style="font-weight:700;margin-bottom:2px;">${esc(p.firstName)} ${esc(p.lastName)}</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">${esc(course)}</div>
+    <label style="font-size:12px;font-weight:600;">Expiry / renewal date</label>
+    <input id="_tED" type="date" value="${curDate}" style="width:100%;padding:8px;border:1px solid var(--border,#ccc);border-radius:8px;margin:4px 0 12px;background:var(--surface,#fff);color:inherit;">
+    <div style="font-size:12px;font-weight:600;margin-bottom:4px;">or set a status</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">${['Yes','N/A','Trainer','Not done','No end date'].map(s=>`<button type="button" data-s="${s}" style="padding:5px 10px;border:1px solid var(--border,#ccc);border-radius:6px;background:#f4f5f7;color:#111;cursor:pointer;font-size:12px;">${s}</button>`).join('')}</div>
+    <div style="display:flex;justify-content:space-between;gap:8px;"><button type="button" id="_tEClear" class="btn btn-ghost btn-sm">Clear</button><div style="display:flex;gap:8px;"><button type="button" id="_tECancel" class="btn btn-ghost btn-sm">Cancel</button><button type="button" id="_tESave" class="btn btn-primary btn-sm">Save</button></div></div>
+  </div>`;
+  document.body.appendChild(ov);
+  const close=()=>ov.remove();
+  const setCell=(val)=>{ p.cells[course]=val; saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews(); close(); };
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  ov.querySelector('#_tECancel').onclick=close;
+  ov.querySelector('#_tEClear').onclick=()=>setCell({type:'empty',v:''});
+  ov.querySelector('#_tESave').onclick=()=>{ const dv=ov.querySelector('#_tED').value; if(dv) setCell({type:'date',v:dv}); else close(); };
+  ov.querySelectorAll('button[data-s]').forEach(b=>b.onclick=()=>setCell({type:'text',v:b.dataset.s}));
+}
+function trainingAddPerson(){
+  if(_roLocked()) return;
+  const ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99999;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:380px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+    <div style="font-weight:700;margin-bottom:12px;">Add person</div>
+    <div style="display:flex;gap:8px;"><div style="flex:1;"><label style="font-size:12px;font-weight:600;">First name</label><input id="_tpF" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"></div><div style="flex:1;"><label style="font-size:12px;font-weight:600;">Surname</label><input id="_tpL" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"></div></div>
+    <div style="display:flex;gap:8px;margin-top:10px;"><div style="flex:1;"><label style="font-size:12px;font-weight:600;">Badge</label><input id="_tpB" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"></div><div style="flex:1;"><label style="font-size:12px;font-weight:600;">Job</label><input id="_tpJ" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"></div></div>
+    <label style="font-size:12px;font-weight:600;display:block;margin-top:10px;">Group</label>
+    <select id="_tpG" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"><option value="staff">Staff</option><option value="garage">Garage staff</option></select>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;"><button type="button" id="_tpCancel" class="btn btn-ghost btn-sm">Cancel</button><button type="button" id="_tpSave" class="btn btn-primary btn-sm">Add</button></div>
+  </div>`;
+  document.body.appendChild(ov); const close=()=>ov.remove();
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  ov.querySelector('#_tpCancel').onclick=close;
+  ov.querySelector('#_tpSave').onclick=()=>{ const f=ov.querySelector('#_tpF').value.trim(), l=ov.querySelector('#_tpL').value.trim();
+    if(!f&&!l){ alert('Enter a name'); return; }
+    _trainingData().people.push({ id:_reqUid('trp'), sheet:null, row:null, group:ov.querySelector('#_tpG').value, status:'active', lastName:l, firstName:f, badge:ov.querySelector('#_tpB').value.trim(), job:ov.querySelector('#_tpJ').value.trim(), cells:{} });
+    saveData(); renderMonitoring(); close(); showToast('✓ Added '+(f+' '+l).trim(),'success');
+  };
+}
+function trainingOffboard(pid){
+  if(_roLocked()) return; const p=(_trainingData().people||[]).find(x=>x.id===pid); if(!p) return;
+  if(!confirm('Move '+(p.firstName+' '+p.lastName).trim()+' to Left (offboard)? They are kept, archived, and move to the Left tab on export.')) return;
+  p.status='left'; saveData(); renderMonitoring();
+}
 function _spreadsheetImportHTML(){
   if(_roLocked()) return '';
   const _u=(typeof Auth!=='undefined'&&Auth.user)?Auth.user():null;
@@ -17930,8 +18109,8 @@ function _spreadsheetImportHTML(){
         </div>
         <div style="flex:1;min-width:230px;border:1.5px solid var(--border);border-radius:9px;padding:12px;">
           <div style="font-weight:700;margin-bottom:2px;">Training matrix</div>
-          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">→ people × courses, RAG by expiry</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="openImportWizard('training')">⎘ Paste from Excel</button><button class="btn btn-ghost btn-sm no-print" onclick="downloadTrainingTemplate()">⭳ Template</button><button class="btn btn-ghost btn-sm no-print" onclick="importSpreadsheet('training')">CSV file</button></div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">→ upload the client's own .xlsx (round-trips in/out)</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="trainingUploadXlsx()">⭱ Upload spreadsheet</button></div>
         </div>
       </div>
     </div></div>`;

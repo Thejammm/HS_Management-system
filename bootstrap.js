@@ -8,7 +8,7 @@
 // ══════════════════════════════════════════════════════════════
 const crypto  = require('crypto');
 const bcrypt  = require('bcryptjs');
-const { pool } = require('./db');
+const { pool, DEMO } = require('./db');
 
 async function bootstrap(){
   const adminEmail    = (process.env.ADMIN_EMAIL    || '').trim().toLowerCase();
@@ -50,4 +50,22 @@ async function bootstrap(){
   console.log('  → After first login, remove ADMIN_PASSWORD from Render env vars');
 }
 
-module.exports = { bootstrap };
+// LOCAL DEV ONLY: seed a tenant + consultant + client login so the app can be
+// exercised end-to-end without a database. Inert in production (DEMO is false).
+async function seedLocal(){
+  if(!DEMO) return;
+  const has = await pool.query(`SELECT id FROM tenants LIMIT 1`);
+  if(has.rows.length) return;
+  await pool.query(`INSERT INTO tenants (id, name) VALUES ('easy-travel','Easy Travel (Leeds) Ltd')`);
+  const mk = async (email, role, tenant, name) => {
+    const hash = await bcrypt.hash('local1234', 10);
+    await pool.query(`INSERT INTO users (id, email, password_hash, tenant_id, role, display_name) VALUES ($1,$2,$3,$4,$5,$6)`,
+      [crypto.randomUUID(), email, hash, tenant, role, name]);
+  };
+  await mk('consultant@local.test', 'consultant', null, 'Local Consultant');
+  await mk('client@local.test', 'client_user', 'easy-travel', 'Easy Travel');
+  await pool.query(`INSERT INTO app_state (tenant_id, state) VALUES ('easy-travel','{}'::jsonb) ON CONFLICT DO NOTHING`);
+  console.log('✓ LOCAL seed: tenant easy-travel + consultant@local.test / client@local.test (pw local1234)');
+}
+
+module.exports = { bootstrap, seedLocal };

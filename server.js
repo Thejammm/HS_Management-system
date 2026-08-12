@@ -11,7 +11,7 @@ const cookieParser = require('cookie-parser');
 const path         = require('path');
 
 const { migrate, isHealthy } = require('./db');
-const { bootstrap }          = require('./bootstrap');
+const { bootstrap, seedLocal } = require('./bootstrap');
 const authRoutes             = require('./routes/auth');
 const stateRoutes            = require('./routes/state');
 const adminRoutes            = require('./routes/admin');
@@ -41,6 +41,7 @@ app.get('/healthz', async (_req, res) => {
 app.use('/api/auth',  authRoutes);
 app.use('/api/state', stateRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/training', require('./routes/training'));
 
 // 404 for any unknown /api/* path (don't fall through to the SPA)
 app.use('/api', (_req, res) => {
@@ -73,6 +74,7 @@ app.get('*', (_req, res) => {
   try {
     await migrate();
     await bootstrap();
+    if(typeof seedLocal === 'function') await seedLocal();
     app.listen(PORT, HOST, () => {
       console.log(`✓ H&S Management System listening on http://${HOST}:${PORT}`);
     });

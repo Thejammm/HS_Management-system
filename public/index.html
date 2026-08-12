@@ -3287,6 +3287,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </details>
 
     <!-- SUMMARIES — always at the top -->
+    <div id="discoveryPanel"></div>
     <div id="riskScorePanel"></div>
     <div id="riskDashboard"></div>
 
@@ -5632,6 +5633,17 @@ function _draftHasProgress() {
   return false;
 }
 
+// One-click seed of the active type's checklist from the built-in library (UAT #4).
+function seedActiveTypeChecklist(){
+  if(_blockIfReadOnly && _blockIfReadOnly()) return;
+  const typeId=S.draft?.typeId; const t=S.inspectionTypes?.[typeId]; if(!t) return;
+  const scn=(typeof LIBRARY!=='undefined')?LIBRARY.find(x=>x.id===typeId):null;
+  if(!scn || !scn.sections || !scn.sections.length){ showToast('No standard checklist exists for this type — build one in the Checklist Builder.','info'); return; }
+  t.sections=JSON.parse(JSON.stringify(scn.sections));
+  S.checklist=JSON.parse(JSON.stringify(scn.sections));
+  saveData(); renderActiveInspectionBody();
+  showToast('✓ Loaded '+scn.sections.length+' standard sections for '+(t.name||typeId),'success');
+}
 function switchInspectionType(typeId) {
   if(!S.inspectionTypes?.[typeId]) return;
   const currentId = S.draft?.typeId;
@@ -5698,7 +5710,13 @@ function renderChecklist() {
   cont.innerHTML = '';
 
   if (!S.checklist.length) {
-    cont.innerHTML = `<div class="card"><div class="card-body"><div class="empty"><div class="empty-icon" style="color:var(--text-muted);">${_ic('checklist',38)}</div><h4>No checklist sections yet</h4><p>Go to the Checklist Builder to add sections from the library or create your own.</p></div></div></div>`;
+    // First-run: offer to load the standard sections for this type in one click
+    // (UAT finding #4 — a new client hit a dead end here). Builder still available for tailoring.
+    const _seedScn=(typeof LIBRARY!=='undefined')?LIBRARY.find(x=>x.id===S.draft?.typeId):null;
+    const _seedBtn=(_seedScn && _seedScn.sections && _seedScn.sections.length && !_roLocked())
+      ? `<button class="btn btn-primary no-print" style="margin-top:10px;" onclick="seedActiveTypeChecklist()">⭱ Load the standard ${_seedScn.sections.length} sections</button><div style="font-size:11.5px;color:var(--text-muted);margin-top:6px;">Loads the built-in checklist for this inspection type — tailor it afterwards in the Checklist Builder.</div>`
+      : '';
+    cont.innerHTML = `<div class="card"><div class="card-body"><div class="empty"><div class="empty-icon" style="color:var(--text-muted);">${_ic('checklist',38)}</div><h4>No checklist sections yet</h4><p>${_seedBtn?'Load the standard sections below, or go':'Go'} to the Checklist Builder to add sections from the library or create your own.</p>${_seedBtn}</div></div></div>`;
     return;
   }
 
@@ -6019,6 +6037,11 @@ function setTableScore(itemId, ri, ci, value){
 }
 
 function setStatus(itemId, status) {
+  // Only the four real statuses are accepted — anything else (e.g. a stray 'fail'
+  // from an import or script) is rejected loudly instead of silently stored where
+  // it would score as nothing and raise no action (UAT finding #8).
+  const _ALLOWED=['pass','rectified','action','na','',null,undefined];
+  if(!_ALLOWED.includes(status)){ if(typeof showToast==='function') showToast('Unknown status "'+status+'" — use Pass, Rectified, Action or N/A.','error'); return; }
   if(!S.draft.results) S.draft.results={};
   S.draft.results[itemId]=status;
   const wrap = document.getElementById('ciw-'+itemId);
@@ -13805,6 +13828,7 @@ function renderExecPlan(){
       ${tile(dueThis.length,'Due this month', dueThis.length?RAG_COLOR.amber:'#30415f')}
       ${tile(complete.length,'Complete', complete.length?RAG_COLOR.green:'#30415f')}
     </div>
+    ${(function(){ const ia=(S.actions||[]).filter(a=>!a.resolved).length; return ia?`<div style="margin:-8px 0 16px;font-size:12.5px;color:var(--text-muted);">⚠ Plus <b>${ia}</b> open inspection action${ia!==1?'s':''} with their own sign-off trail — <a href="#" onclick="switchTab('actions');return false;" style="color:var(--accent);font-weight:600;">see the Actions tab</a>. They are not double-counted here.</div>`:''; })()}
     <div class="card" style="margin-bottom:18px;">
       <div class="card-band"><h3><span class="dot">&#9679;</span> This month &mdash; ${monthName(thisKey)}</h3></div>
       <div class="card-body">${focus}</div>
@@ -15494,8 +15518,13 @@ function _reportData(){
   tot+=matDoms.length; filled+=matScored; if(matScored<matDoms.length) gaps.push((matDoms.length-matScored)+' of '+matDoms.length+' management-maturity domains not scored');
   tot+=1; filled+=monPop?1:0; if(!monPop) gaps.push('Monitoring indicators not populated');
   const completeness = tot? Math.round(filled/tot*100) : 0;
+  // Whole-plan action figures (same aggregate the execution plan shows) so the
+  // board pack can never disagree with the plan — see UAT finding #9.
+  let execTotal=0, execOverdue=0;
+  try{ const ex=(typeof _execActions==='function')?_execActions():[]; execTotal=ex.length; execOverdue=ex.filter(a=>a.rag==='red').length; }catch(e){}
   return { risks, scored, rated, unrated, byBand, byCategory, sif, sifUncontrolled, sifNoOwner,
     highestHarm:_HARM_LADDER[maxSev]||'—', maxSev, acts, actOverdue, actNoOwner, actNoDate,
+    execTotal, execOverdue,
     energyCov, energyMissing, clDist, matDoms, matScored, overallMat, monPop, completeness, gaps };
 }
 // ══════════════════════════════════════════════════════════════
@@ -15800,7 +15829,7 @@ function buildBoardReport(){
     [ {num:data.highestHarm.split(' /')[0], label:'Highest credible harm', color:data.maxSev>=4?RED:GREY, sub:'Worst-case, before controls'},
       {num:String(data.sif.length), label:'Fatal-potential risks', color:data.sifUncontrolled.length?RED:(data.sif.length?AMBER:NAVY), sub:'Inherent worst case'},
       {num:String(data.sifUncontrolled.length), label:'Of those, uncontrolled', color:data.sifUncontrolled.length?RED:NAVY, sub:'No completed control'},
-      {num:data.actOverdue+' / '+data.acts.length, label:'Actions overdue', color:data.actOverdue?AMBER:NAVY, sub:'Past target date'},
+      {num:data.execOverdue+' / '+data.execTotal, label:'Actions overdue', color:data.execOverdue?AMBER:NAVY, sub:'Across the whole plan'},
       {num:data.completeness+'%', label:'Assessment completeness', color:data.completeness<100?AMBER:GREEN, sub:'Profile built to date'},
       {num:(data.overallMat.avg==null?'-':data.overallMat.avg.toFixed(1)+' / 5'), label:'Management maturity', color:data.overallMat.avg==null?GREY:data.overallMat.avg>=3.5?GREEN:AMBER, sub:'HSG65 average'} ],
     { title:'Board summary',
@@ -16548,7 +16577,74 @@ function downloadRiskProfileReport(){
 }
 
 // ── Risk profile review: overall score + risks by hazard type + PDCA + maturity ──
+// ══════════════════════════════════════════════════════════════
+//  DISCOVERY QUESTIONNAIRE (UAT #1) — the sit-with-the-client intake.
+//  Surfaces the 7 exposure profiles as a guided wizard writing
+//  S.profiler.exposure, which the rules engine already consumes.
+// ══════════════════════════════════════════════════════════════
+function _discDomains(){ return (typeof PROF_LIBRARY!=='undefined')?PROF_LIBRARY.domains.filter(d=>d.type==='exposure'):[]; }
+function _discStats(){
+  const ex=_profState().exposure||{}; let total=0, answered=0, yes=0;
+  _discDomains().forEach(d=>d.items.forEach(it=>{ total++; if(ex[it.id]===true){answered++;yes++;} else if(ex[it.id]===false){answered++;} }));
+  let fired=0; try{ fired=_profGenerate().firedRules.length; }catch(e){}
+  return {total, answered, yes, fired};
+}
+function renderDiscoveryPanel(){
+  const el=document.getElementById('discoveryPanel'); if(!el) return;
+  const st=_discStats(); const ro=_roLocked();
+  const started=st.answered>0;
+  el.innerHTML=`<div class="card" style="margin-bottom:16px;">
+    <div class="card-band"><h3><span class="dot">●</span> Discovery questionnaire</h3><span class="badge badge-muted">${st.answered}/${st.total} answered${st.fired?(' · '+st.fired+' rules fired'):''}</span></div>
+    <div class="card-body" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+      <div style="font-size:12.5px;color:var(--text-muted);max-width:640px;">The sit-down intake: ${st.total} yes/no questions across 7 profiles (business, operations, premises, workforce, plant &amp; equipment, dutyholder, change). Answers drive the generated requirements, significant risks and the maturity heat-map below.</div>
+      ${ro?'':`<button class="btn btn-primary no-print" onclick="openDiscoveryWizard()">${started?'✎ Review / update answers':'▶ Run discovery'}</button>`}
+    </div></div>`;
+}
+let _discIdx=0;
+function openDiscoveryWizard(){ if(_roLocked()) return; _discIdx=0; _discDraw(); }
+function _discSet(id, val){
+  const ex=_profState().exposure;
+  if(ex[id]===val){ delete ex[id]; } else { ex[id]=val; }   // click again to unset
+  _stamp(S.profiler,'updated'); saveData(); _discDraw();
+}
+function _discClose(final){
+  const ov=document.getElementById('discOverlay'); if(ov) ov.remove();
+  renderRiskProfile(); renderRiskReview();
+  if(final){ const st=_discStats(); showToast('✓ Discovery saved — '+st.yes+' yes answer'+(st.yes!==1?'s':'')+', '+st.fired+' requirement rule'+(st.fired!==1?'s':'')+' fired. Review the generated picture below.','success'); }
+}
+function _discDraw(){
+  const doms=_discDomains(); if(!doms.length) return;
+  _discIdx=Math.max(0,Math.min(doms.length-1,_discIdx));
+  const d=doms[_discIdx]; const ex=_profState().exposure; const st=_discStats();
+  let ov=document.getElementById('discOverlay');
+  if(!ov){ ov=document.createElement('div'); ov.id='discOverlay';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
+    ov.addEventListener('click',e=>{ if(e.target===ov) _discClose(false); });
+    document.body.appendChild(ov); }
+  const qRow=it=>{
+    const v=ex[it.id];
+    const b=(label,val,on,col)=>`<button type="button" onclick="_discSet('${it.id}',${val})" style="padding:6px 14px;border-radius:7px;border:1.5px solid ${on?col:'var(--border)'};background:${on?col:'transparent'};color:${on?'#fff':'var(--text-muted)'};font-weight:700;font-size:12px;cursor:pointer;">${label}</button>`;
+    return `<div style="display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${esc(it.q)}</div>${it.help?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${esc(it.help)}</div>`:''}</div>
+      <div style="display:flex;gap:6px;flex:0 0 auto;">${b('Yes',true,v===true,'var(--success)')}${b('No',false,v===false,'#64748B')}</div>
+    </div>`;
+  };
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 18px 60px rgba(0,0,0,.35);">
+    <div style="padding:16px 20px;border-bottom:1.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div><div style="font-weight:800;font-size:15px;">Discovery — ${esc(d.name)}</div>
+      <div style="font-size:11.5px;color:var(--text-muted);">Profile ${_discIdx+1} of ${doms.length} · ${st.answered}/${st.total} answered · leave blank if not yet known</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="_discClose(false)">✕ Close</button>
+    </div>
+    <div style="padding:6px 20px;overflow-y:auto;flex:1;">${d.items.map(qRow).join('')}</div>
+    <div style="padding:12px 20px;border-top:1.5px solid var(--border);display:flex;justify-content:space-between;gap:8px;">
+      <button class="btn btn-ghost btn-sm" ${_discIdx===0?'disabled':''} onclick="_discIdx--; _discDraw();">← Back</button>
+      ${_discIdx<doms.length-1
+        ? `<button class="btn btn-primary btn-sm" onclick="_discIdx++; _discDraw();">Next profile →</button>`
+        : `<button class="btn btn-primary btn-sm" onclick="_discClose(true)">✓ Finish discovery</button>`}
+    </div></div>`;
+}
 function renderRiskReview(){
+  renderDiscoveryPanel();
   // Rendered into the ordered workflow panels on the Risk profile tab:
   // score panel (top summary), review summary + energy analysis, and the
   // maturity assessment (its own numbered section).
@@ -16745,8 +16841,20 @@ function toggleReqCriterion(sid, iid, idx){
 function approveReqItem(sid, iid){
   if(_blockIfReadOnly()) return;
   const s=(S.requirements||[]).find(x=>x.id===sid); const it=s&&(s.items||[]).find(i=>i.id===iid); if(!it) return;
+  // "Compliant" must agree with the assessment criteria — approving also marks
+  // the criteria met (with a confirm), so the badge and the evidence never contradict.
+  const def=(typeof LEGAL_ESSENTIALS!=='undefined')?LEGAL_ESSENTIALS.find(d=>d.key===it.legalKey):null;
+  const crits=(def&&def.criteria)||[];
+  if(crits.length){
+    if(!it.crit||typeof it.crit!=='object') it.crit={};
+    const unmet=crits.map((c,i)=>i).filter(i=>!it.crit[i]);
+    if(unmet.length){
+      if(!confirm('Approve as compliant?\n\nThis also marks all '+crits.length+' assessment criteria as met ('+unmet.length+' currently unticked).\n\nIf a criterion is genuinely not met, cancel and raise an action instead.')) return;
+      unmet.forEach(i=>{ it.crit[i]=true; });
+    }
+  }
   it.present='Yes'; it.adequate='Yes'; it.reviewed=true; it.reviewedDate=new Date().toISOString().slice(0,10); it.reviewedBy=(typeof _actor==='function'?(_actor().name||''):'');
-  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements); showToast('✓ Approved as compliant','success');
+  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements); showToast('✓ Approved as compliant — criteria recorded as met','success');
 }
 // Duties implied by the client's risk profile (from each risk's linked citation).
 function _riskDerivedDuties(){
@@ -18422,11 +18530,29 @@ function addSignoffPolicy(){ if(_roLocked()) return; _psoState().policies.push({
 function removeSignoffPolicy(id){ if(_roLocked()) return; const p=_psoState(); p.policies=p.policies.filter(x=>x.id!==id); Object.keys(p.signed).forEach(k=>{ if(k.split('|')[1]===id) delete p.signed[k]; }); saveData(); renderPolicySignoff(); }
 function updateSignoffPolicy(id, field, val){ if(_roLocked()) return; const pol=_psoState().policies.find(x=>x.id===id); if(pol){ pol[field]=val; scheduleAutoSave(); } }
 function toggleSignoffPolicyRisk(id, riskId, on){ if(_roLocked()) return; const pol=_psoState().policies.find(x=>x.id===id); if(!pol) return; pol.riskIds=pol.riskIds||[]; if(on){ if(!pol.riskIds.includes(riskId)) pol.riskIds.push(riskId); } else { pol.riskIds=pol.riskIds.filter(r=>r!==riskId); } saveData(); renderPolicySignoff(); }
-function addPoliciesFromDocuments(){ if(_roLocked()) return; const p=_psoState(); const seen=new Set(p.policies.map(x=>(x.title||'').toLowerCase())); let n=0; (S.documents||[]).forEach(d=>{ const t=(d.name||d.title||'').trim(); if(t && !seen.has(t.toLowerCase())){ p.policies.push({id:_psoUid('pol'), title:t, version:d.version||'', riskIds:[], docId:d.id}); seen.add(t.toLowerCase()); n++; } }); saveData(); renderPolicySignoff(); showToast(n?('✓ Added '+n+' from Documents'):'All documents already listed','info'); }
+function addPoliciesFromDocuments(){ if(_roLocked()) return; const p=_psoState(); const seen=new Set(p.policies.map(x=>(x.title||'').toLowerCase()));
+  // Only documents categorised as a policy belong on an acknowledgement sheet —
+  // certificates and examination reports are not for staff to sign. If nothing
+  // is categorised Policy, fall back to all documents (older registers).
+  const docs=(S.documents||[]);
+  const pol=docs.filter(d=>/polic/i.test(d.category||''));
+  const src=pol.length?pol:docs;
+  const skipped=docs.length-src.length;
+  let n=0; src.forEach(d=>{ const t=(d.name||d.title||'').trim(); if(t && !seen.has(t.toLowerCase())){ p.policies.push({id:_psoUid('pol'), title:t, version:d.version||'', riskIds:[], docId:d.id}); seen.add(t.toLowerCase()); n++; } });
+  saveData(); renderPolicySignoff();
+  showToast(n?('✓ Added '+n+' polic'+(n===1?'y':'ies')+' from Documents'+(skipped>0?(' — '+skipped+' non-policy document'+(skipped!==1?'s':'')+' skipped'):'')):'All policies already listed','info'); }
 function addSignoffStaff(){ if(_roLocked()) return; _psoState().staff.push({id:_psoUid('emp'), name:'', role:''}); saveData(); renderPolicySignoff(); }
 function removeSignoffStaff(id){ if(_roLocked()) return; const p=_psoState(); p.staff=p.staff.filter(x=>x.id!==id); Object.keys(p.signed).forEach(k=>{ if(k.split('|')[0]===id) delete p.signed[k]; }); saveData(); renderPolicySignoff(); }
 function updateSignoffStaff(id, field, val){ if(_roLocked()) return; const s=_psoState().staff.find(x=>x.id===id); if(s){ s[field]=val; scheduleAutoSave(); } }
-function addStaffFromTraining(){ if(_roLocked()) return; const p=_psoState(); const seen=new Set(p.staff.map(x=>(x.name||'').toLowerCase())); const names=[...new Set((S.training||[]).map(t=>t.employee).filter(Boolean))]; let n=0; names.forEach(nm=>{ if(!seen.has(nm.toLowerCase())){ p.staff.push({id:_psoUid('emp'), name:nm, role:''}); seen.add(nm.toLowerCase()); n++; } }); saveData(); renderPolicySignoff(); showToast(n?('✓ Added '+n+' staff from training matrix'):'All training staff already listed','info'); }
+function addStaffFromTraining(){ if(_roLocked()) return; const p=_psoState(); const seen=new Set(p.staff.map(x=>(x.name||'').toLowerCase()));
+  // People live in the Excel round-trip model (trainingData.people); fall back to the legacy flat store.
+  const people=[];
+  if(S.trainingData && Array.isArray(S.trainingData.people)){
+    S.trainingData.people.filter(x=>x.status==='active').forEach(x=>{ const nm=((x.firstName||'')+' '+(x.lastName||'')).trim(); if(nm) people.push({name:nm, role:x.job||''}); });
+  }
+  (S.training||[]).forEach(t=>{ if(t.employee) people.push({name:String(t.employee).trim(), role:''}); });
+  let n=0; people.forEach(pe=>{ const k=pe.name.toLowerCase(); if(k && !seen.has(k)){ p.staff.push({id:_psoUid('emp'), name:pe.name, role:pe.role||''}); seen.add(k); n++; } });
+  saveData(); renderPolicySignoff(); showToast(n?('✓ Added '+n+' staff from training matrix'):'All training staff already listed','info'); }
 function toggleSignoff(staffId, policyId, checked){ if(_roLocked()) return; const p=_psoState(); const k=staffId+'|'+policyId; if(checked){ p.signed[k]=p.signed[k]||new Date().toISOString().slice(0,10); } else { delete p.signed[k]; } saveData(); renderPolicySignoff(); }
 function _psoCompliance(){ const p=_psoState(); const total=p.staff.length*p.policies.length; if(!total) return {pct:0,signed:0,total:0}; let s=0; p.staff.forEach(st=>p.policies.forEach(pol=>{ if(p.signed[st.id+'|'+pol.id]) s++; })); return {pct:Math.round(s/total*100), signed:s, total:total}; }
 function renderPolicySignoff(){

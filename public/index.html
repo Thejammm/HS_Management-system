@@ -13984,6 +13984,10 @@ const HAZARD_LIBRARY = [
   { key:'designrisk', category:'Legal / Regulatory', activity:'Designing buildings, products, services or works', hazard:'Failure to eliminate or reduce risk through design', persons:['Employees','Contractors','Members of the Public'], harm:'Foreseeable risk built into projects - to constructors, end users and the public - and safety-critical design failures.', controls:'Design risk management process; general principles of prevention applied at design; designer risk registers and pre-construction information; Building Safety gateways for higher-risk buildings.', action:'Prioritise a design risk management process and a designer risk register.', duty:'CDM 2015 reg. 9; Building Safety Act 2022', inh:[2,4], l:2, s:4, trend:'Stable' },
   // ── Business & change ──
   { key:'compliance', category:'Legal / Regulatory', activity:'Keeping pace with legal and regulatory H&S duties', hazard:'Legal compliance gaps and enforcement exposure', persons:['Employees'], harm:'Enforcement action, prosecution, financial penalty and reputational damage from unmet duties.', controls:'Legal register kept current; compliance monitoring and auditing; action tracking to closure; competent advice.', action:'Prioritise a live legal register and a compliance-monitoring cycle.', duty:'HSWA 1974', inh:[3,4], l:3, s:4, trend:'Stable' },
+  // ── Added 2026-08 for full discovery coverage (care, biological, high-risk construction) ──
+  { key:'peoplecare', category:'Ergonomic', activity:'Care, support or clinical services — moving, handling and assisting people', hazard:'Injury moving or assisting people, and harm to those receiving care', persons:['Employees','Clients'], harm:'Musculoskeletal injury to staff; injury or harm to the person being assisted, including medication error.', controls:'Person-specific moving and handling assessments; hoists and handling equipment provided and maintained; moving-and-handling training and competence; medication management procedure where relevant.', action:'Prioritise person-specific handling assessments, equipment provision and staff competence.', duty:'Manual Handling Operations Regulations 1992; MHSWR 1999', inh:[3,4], l:3, s:4, trend:'Stable' },
+  { key:'biological', category:'Biological', activity:'Work with exposure to infection, blood or bodily fluids', hazard:'Exposure to biological agents and infection', persons:['Employees'], harm:'Infection and disease from needlestick, splash, contact or airborne exposure.', controls:'Infection-control procedures and exposure assessment; immunisation where appropriate; PPE and safe sharps and waste handling; post-exposure reporting and follow-up.', action:'Prioritise an infection-control assessment, immunisation review and sharps/waste procedures.', duty:'COSHH 2002 (biological agents)', inh:[3,4], l:3, s:4, trend:'Stable' },
+  { key:'hrconstruction', category:'Physical', activity:'High-risk construction operations — excavation, demolition and structural alteration', hazard:'Collapse, falling structures, buried services and unplanned structural failure', persons:['Employees','Contractors','Members of the Public'], harm:'Crushing, burial or service-strike injury — frequently fatal when it goes wrong.', controls:'Temporary works and excavation support designed and checked; services located before digging; demolition and refurbishment surveys with method statements; competent supervision and exclusion zones.', action:'Prioritise temporary-works control, service avoidance and demolition planning.', duty:'CDM 2015; MHSWR 1999', inh:[3,5], l:3, s:5, trend:'Stable' },
   { key:'continuity', category:'Business continuity', activity:'Responding to major incidents and organisational change', hazard:'Business continuity and change outpacing controls', persons:['Employees'], harm:'A major safety event, enforcement or poorly managed change disrupting or halting the organisation.', controls:'Business continuity and incident-management plans; change-management review for new plant, sites, processes or growth; post-incident learning.', action:'Prioritise a continuity/incident plan and a change-review step for significant changes.', duty:'MHSWR 1999 regs. 3 & 4', inh:[2,4], l:2, s:4, trend:'Stable' }
 ];
 
@@ -14426,10 +14430,10 @@ function openHazardLibrary(){
   if(!open){ el.scrollIntoView({behavior:'smooth', block:'nearest'}); }
 }
 // Business area each library card belongs to (how the library is browsed).
-const _LIB_AREA = { competence:'People', ohwellbeing:'People', vulnerable:'People', violence:'People', publicsafety:'People', dseoffice:'People', workatheight:'Operations', ohexposure:'Operations', asbestos:'Operations', manualhandling:'Operations', confined:'Operations', roadrisk:'Operations', contractor:'Operations', loneworking:'Operations', outdoor:'Operations', workequip:'Equipment', lifting:'Equipment', transport:'Equipment', electrical:'Equipment', premises:'Premises', fire:'Premises', legionella:'Premises', dutyholder:'Legal roles', designrisk:'Legal roles', compliance:'Business', continuity:'Change' };
+const _LIB_AREA = { competence:'People', ohwellbeing:'People', vulnerable:'People', violence:'People', publicsafety:'People', dseoffice:'People', workatheight:'Operations', ohexposure:'Operations', asbestos:'Operations', manualhandling:'Operations', confined:'Operations', roadrisk:'Operations', contractor:'Operations', loneworking:'Operations', outdoor:'Operations', peoplecare:'Operations', biological:'Operations', hrconstruction:'Operations', workequip:'Equipment', lifting:'Equipment', transport:'Equipment', electrical:'Equipment', premises:'Premises', fire:'Premises', legionella:'Premises', dutyholder:'Legal roles', designrisk:'Legal roles', compliance:'Business', continuity:'Change' };
 function _libArea(key){ return _LIB_AREA[key] || ''; }
 function _presentLibKeys(){ return new Set((S.riskProfile||[]).map(r=>r&&r.libKey).filter(Boolean)); }
-function insertLibraryRisk(key){
+function insertLibraryRisk(key, quiet){
   if(_blockIfReadOnly()) return;
   const t=HAZARD_LIBRARY.find(x=>x.key===key); if(!t) return;
   const _ht=_hazardType(t.category, t.hazard);
@@ -14443,8 +14447,9 @@ function insertLibraryRisk(key){
     furtherActions:'' };
   _stamp(entry,'created');
   if(!Array.isArray(S.riskProfile)) S.riskProfile=[];
-  S.riskProfile.push(entry); saveData(); renderRiskProfile();
-  showToast('✓ Added "'+t.activity+'" — review and agree the suggested rating','success');
+  S.riskProfile.push(entry);
+  if(!quiet){ saveData(); renderRiskProfile(); showToast('✓ Added "'+t.activity+'" — review and agree the suggested rating','success'); }
+  return entry;
 }
 function _renderHazardLibrary(){
   const el=document.getElementById('riskLibrary'); if(!el) return;
@@ -16353,7 +16358,7 @@ function renderRiskProfile(){
           ${_riskLinksHTML(r,dis)}
         </div>
         <label style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:16px;padding:11px 14px;border:1px solid ${r.reviewed?'#16A34A':'var(--border)'};border-radius:10px;background:${r.reviewed?'#16A34A0d':'transparent'};color:${r.reviewed?'#15803D':'var(--text)'};">
-          <input type="checkbox"${dis} ${r.reviewed?'checked':''} onchange="setReviewed('${r.id}',this.checked)"> ✓ I have reviewed and completed this risk
+          ${(!r.reviewed&&r.suggestedBy==='discovery')?'<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;margin-right:8px;">suggested by discovery</span>':''}<input type="checkbox"${dis} ${r.reviewed?'checked':''} onchange="setReviewed('${r.id}',this.checked)"> ✓ I have reviewed and completed this risk
         </label>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;">
           <button class="btn btn-ghost btn-xs no-print" title="Collapse this risk and move on" onclick="_collapseRiskCard(event,'${r.id}')" style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted);"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg> Collapse</button>
@@ -16707,15 +16712,84 @@ function _discStats(){
   let fired=0; try{ fired=_profGenerate().firedRules.length; }catch(e){}
   return {total, answered, yes, fired};
 }
+// ── Discovery → risk profile mapping (HSG65: discovery captures the exposure
+//    facts; the profile is the strategic judgement built on them). Every yes
+//    answer suggests the macro library theme(s) it evidences; universal themes
+//    apply to any employer. Suggested themes arrive pre-scored with the
+//    library's starting ratings and flagged for the consultant to review and
+//    agree — the questionnaire never decides the client's risk, it proposes.
+const DISC_PROFILE_MAP={
+  universal:['fire','premises','competence','compliance','ohwellbeing','electrical'],
+  byAnswer:{
+    b_survey_pre2000:['asbestos'], b_dutyholder:['dutyholder'], b_design:['designrisk'],
+    b_domestic:['loneworking','publicsafety'], b_public:['publicsafety'], b_manufacture:['workequip'],
+    b_warehouse:['transport'], b_retail:['publicsafety','violence'], b_food:['publicsafety'],
+    b_care:['peoplecare'], b_events:['publicsafety'],
+    o_height:['workatheight'], o_driving:['roadrisk'], o_confined:['confined'], o_livesites:['contractor'],
+    o_manual:['manualhandling'], o_lone:['loneworking'], o_outdoor:['outdoor'], o_hotwork:['ohexposure'],
+    o_chemicals:['ohexposure'], o_dust:['ohexposure'], o_noise:['ohexposure'], o_vibration:['ohexposure'],
+    o_excavation:['hrconstruction'], o_demolition:['hrconstruction','asbestos'], o_flammables:['fire'],
+    o_elecwork:['electrical'], o_water:['outdoor'], o_transport:['transport'], o_violence:['violence'],
+    o_nightshift:['ohwellbeing'], o_cash:['violence'], o_livestock:['outdoor'], o_atv:['transport'],
+    o_grain:['confined','ohexposure'], o_agrichem:['ohexposure'], o_hgv:['roadrisk'], o_loading:['transport'],
+    o_deliveries:['roadrisk'], o_coldstore:['outdoor'], o_movepeople:['peoplecare'], o_infection:['biological'],
+    o_medicines:['peoplecare'], o_medrad:['workequip'], o_pool:['legionella','publicsafety'],
+    p_office:['dseoffice'], p_home:['dseoffice','loneworking'], p_clientsites:['contractor'],
+    p_derelict:['asbestos','loneworking'], p_publicaccess:['publicsafety'], p_water_sys:['legionella'],
+    p_gas:['premises'], p_plant:['workequip'], p_multi:['premises'], p_landlord:['dutyholder'],
+    w_agency:['contractor'], w_young:['vulnerable'], w_newexpectant:['vulnerable'], w_migrant:['vulnerable'],
+    w_vulnerable:['vulnerable'], w_apprentices:['vulnerable'], w_selfemployed:['contractor'],
+    w_safetycrit:['competence'], w_volunteers:['vulnerable'],
+    a_workequip:['workequip'], a_lifting:['lifting'], a_electrical:['electrical'], a_vehicles:['roadrisk'],
+    a_display:['dseoffice'], a_pressure:['workequip'], a_ladders:['workatheight'], a_forklift:['transport'],
+    a_plant:['transport'], a_scaffold:['workatheight'], a_lev:['ohexposure'],
+    d_cdm_pd:['dutyholder','designrisk'], d_bsa_pd:['dutyholder','designrisk'], d_pc:['dutyholder'],
+    d_client:['dutyholder'], d_dutytomanage:['asbestos'], d_responsible:['fire'], d_landlordgas:['premises'],
+    d_waste:['compliance'], d_data:['compliance'], d_food:['compliance'],
+    c_growth:['competence'], c_newsector:['compliance'], c_firstdutyholder:['dutyholder'],
+    c_newpremises:['premises'], c_keyperson:['continuity'], c_newequipment:['workequip'],
+    c_restructure:['ohwellbeing'], c_acquisition:['continuity'], c_regulatory:['compliance'], c_seasonal:['vulnerable']
+  }
+};
+// Which themes the current answers suggest that are not already in the profile.
+// Returns Map(libKey → [what fired it]). Universals only suggest once discovery
+// has actually been started (so an untouched client isn't nagged).
+function _discSuggestedKeys(){
+  const ex=_profState().exposure||{}; const answered=Object.keys(ex).length>0;
+  const present=new Set((S.riskProfile||[]).map(r=>r.libKey).filter(Boolean));
+  const out=new Map();
+  const add=(k,src)=>{ if(present.has(k)) return; if(!HAZARD_LIBRARY.find(x=>x.key===k)) return; out.set(k,(out.get(k)||[]).concat(src)); };
+  if(answered) DISC_PROFILE_MAP.universal.forEach(k=>add(k,'universal'));
+  Object.entries(DISC_PROFILE_MAP.byAnswer).forEach(([q,keys])=>{ if(ex[q]===true) keys.forEach(k=>add(k,q)); });
+  return out;
+}
+// One click: insert every suggested theme, pre-scored from the library and
+// flagged unreviewed. Additive only — existing themes are never touched, and
+// re-running discovery just tops up anything new.
+function buildProfileFromDiscovery(){
+  if(_roLocked()) return;
+  const sug=_discSuggestedKeys();
+  if(!sug.size){ showToast('Nothing to add — the profile already covers every theme the discovery answers point at.','info'); return; }
+  const names=[...sug.keys()].map(k=>{ const t=HAZARD_LIBRARY.find(x=>x.key===k); return t?t.activity:k; });
+  if(!confirm('Build the risk profile from discovery?\n\nThis adds '+sug.size+' suggested theme'+(sug.size!==1?'s':'')+' from the library, pre-scored with suggested ratings and marked for your review:\n\n• '+names.slice(0,14).join('\n• ')+(names.length>14?('\n… and '+(names.length-14)+' more'):'')+'\n\nNothing existing is changed — you review and agree each rating with the client.')) return;
+  let n=0;
+  sug.forEach((firedBy,k)=>{ const e=insertLibraryRisk(k, true); if(e){ e.suggestedBy='discovery'; e.suggestedFrom=firedBy; n++; } });
+  saveData(); renderRiskProfile(); renderRiskReview();
+  showToast('✓ Added '+n+' suggested theme'+(n!==1?'s':'')+' — review and agree each rating','success');
+}
 function renderDiscoveryPanel(){
   const el=document.getElementById('discoveryPanel'); if(!el) return;
   const st=_discStats(); const ro=_roLocked();
   const started=st.answered>0;
+  const sugN=(function(){ try{ return _discSuggestedKeys().size; }catch(e){ return 0; } })();
   el.innerHTML=`<div class="card" style="margin-bottom:16px;">
-    <div class="card-band"><h3><span class="dot">●</span> Discovery questionnaire</h3><span class="badge badge-muted">${st.answered}/${st.total} answered${st.fired?(' · '+st.fired+' rules fired'):''}</span></div>
+    <div class="card-band"><h3><span class="dot">●</span> Discovery questionnaire</h3><span class="badge badge-muted">${st.answered}/${st.total} answered${st.fired?(' · '+st.fired+' rules fired'):''}${sugN?(' · '+sugN+' themes suggested'):''}</span></div>
     <div class="card-body" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-      <div style="font-size:12.5px;color:var(--text-muted);max-width:640px;">The sit-down intake: ${st.total} yes/no questions across 7 profiles (business, operations, premises, workforce, plant &amp; equipment, dutyholder, change). Answers drive the generated requirements, significant risks and the maturity heat-map below.</div>
+      <div style="font-size:12.5px;color:var(--text-muted);max-width:640px;">The sit-down intake: ${st.total} yes/no questions across 7 profiles (business, operations, premises, workforce, plant &amp; equipment, dutyholder, change). Answers drive the generated requirements, significant risks, the maturity heat-map — and suggest the risk-profile themes below.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
       ${ro?'':`<button class="btn btn-primary no-print" onclick="openDiscoveryWizard()">${started?'✎ Review / update answers':'▶ Run discovery'}</button>`}
+      ${(!ro && started)?`<button class="btn btn-outline no-print" onclick="buildProfileFromDiscovery()"${sugN?'':' disabled title="Profile already covers the current answers"'}>⚙ Build profile from discovery${sugN?(' ('+sugN+')'):''}</button>`:''}
+      </div>
     </div></div>`;
 }
 let _discIdx=0;
@@ -16741,7 +16815,11 @@ function _discSet(id, val){
 function _discClose(final){
   const ov=document.getElementById('discOverlay'); if(ov) ov.remove();
   renderRiskProfile(); renderRiskReview();
-  if(final){ const st=_discStats(); showToast('✓ Discovery saved — '+st.yes+' yes answer'+(st.yes!==1?'s':'')+', '+st.fired+' requirement rule'+(st.fired!==1?'s':'')+' fired. Review the generated picture below.','success'); }
+  if(final){
+    const st=_discStats(); showToast('✓ Discovery saved — '+st.yes+' yes answer'+(st.yes!==1?'s':'')+', '+st.fired+' requirement rule'+(st.fired!==1?'s':'')+' fired.','success');
+    // Offer to build the profile straight from the answers (suggest-and-confirm)
+    try{ if(_discSuggestedKeys().size && !_roLocked()) setTimeout(()=>buildProfileFromDiscovery(), 400); }catch(e){}
+  }
 }
 function _discDraw(){
   const doms=_discDomains(); if(!doms.length) return;

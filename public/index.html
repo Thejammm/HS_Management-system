@@ -16667,10 +16667,23 @@ function renderDiscoveryPanel(){
 }
 let _discIdx=0;
 function openDiscoveryWizard(){ if(_roLocked()) return; _discIdx=0; _discDraw(); }
+// The Yes/No pair for one question — single source of markup for draw + update.
+function _discBtns(it, v){
+  const b=(label,val,on,col)=>`<button type="button" onclick="_discSet('${it.id}',${val})" style="padding:6px 14px;border-radius:7px;border:1.5px solid ${on?col:'var(--border)'};background:${on?col:'transparent'};color:${on?'#fff':'var(--text-muted)'};font-weight:700;font-size:12px;cursor:pointer;">${label}</button>`;
+  return b('Yes',true,v===true,'var(--success)')+b('No',false,v===false,'#64748B');
+}
 function _discSet(id, val){
   const ex=_profState().exposure;
   if(ex[id]===val){ delete ex[id]; } else { ex[id]=val; }   // click again to unset
-  _stamp(S.profiler,'updated'); saveData(); _discDraw();
+  _stamp(S.profiler,'updated'); saveData();
+  // Targeted update only — never rebuild the overlay on an answer click, so the
+  // question list keeps its scroll position (the "jumpy modal" fix).
+  const it=_discDomains().flatMap(d=>d.items).find(x=>x.id===id);
+  const wrap=document.getElementById('discbtns_'+id);
+  if(it && wrap){ wrap.innerHTML=_discBtns(it, ex[id]); }
+  const st=_discStats(); const prog=document.getElementById('discProg');
+  if(prog) prog.textContent=st.answered+'/'+st.total+' answered';
+  if(!wrap) _discDraw();   // defensive: overlay not open for some reason
 }
 function _discClose(final){
   const ov=document.getElementById('discOverlay'); if(ov) ov.remove();
@@ -16688,16 +16701,15 @@ function _discDraw(){
     document.body.appendChild(ov); }
   const qRow=it=>{
     const v=ex[it.id];
-    const b=(label,val,on,col)=>`<button type="button" onclick="_discSet('${it.id}',${val})" style="padding:6px 14px;border-radius:7px;border:1.5px solid ${on?col:'var(--border)'};background:${on?col:'transparent'};color:${on?'#fff':'var(--text-muted)'};font-weight:700;font-size:12px;cursor:pointer;">${label}</button>`;
     return `<div style="display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
       <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${esc(it.q)}</div>${it.help?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${esc(it.help)}</div>`:''}</div>
-      <div style="display:flex;gap:6px;flex:0 0 auto;">${b('Yes',true,v===true,'var(--success)')}${b('No',false,v===false,'#64748B')}</div>
+      <div id="discbtns_${it.id}" style="display:flex;gap:6px;flex:0 0 auto;">${_discBtns(it, v)}</div>
     </div>`;
   };
   ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 18px 60px rgba(0,0,0,.35);">
     <div style="padding:16px 20px;border-bottom:1.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
       <div><div style="font-weight:800;font-size:15px;">Discovery — ${esc(d.name)}</div>
-      <div style="font-size:11.5px;color:var(--text-muted);">Profile ${_discIdx+1} of ${doms.length} · ${st.answered}/${st.total} answered · leave blank if not yet known</div></div>
+      <div style="font-size:11.5px;color:var(--text-muted);">Profile ${_discIdx+1} of ${doms.length} · <span id="discProg">${st.answered}/${st.total} answered</span> · leave blank if not yet known</div></div>
       <button class="btn btn-ghost btn-sm" onclick="_discClose(false)">✕ Close</button>
     </div>
     <div style="padding:6px 20px;overflow-y:auto;flex:1;">${d.items.map(qRow).join('')}</div>

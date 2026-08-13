@@ -16358,7 +16358,7 @@ function renderRiskProfile(){
           ${_riskLinksHTML(r,dis)}
         </div>
         <label style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:16px;padding:11px 14px;border:1px solid ${r.reviewed?'#16A34A':'var(--border)'};border-radius:10px;background:${r.reviewed?'#16A34A0d':'transparent'};color:${r.reviewed?'#15803D':'var(--text)'};">
-          ${(!r.reviewed&&r.suggestedBy==='discovery')?'<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;margin-right:8px;">suggested by discovery</span>':''}<input type="checkbox"${dis} ${r.reviewed?'checked':''} onchange="setReviewed('${r.id}',this.checked)"> ✓ I have reviewed and completed this risk
+          ${(typeof _discIsOrphan==='function'&&_discIsOrphan(r))?'<span class="badge" style="background:#FEF3C7;color:#B45309;font-weight:700;margin-right:8px;" title="The discovery answers that suggested this theme have been withdrawn — remove it or keep it as your own judgement">⚠ discovery no longer supports this</span>':((!r.reviewed&&r.suggestedBy==='discovery')?'<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;margin-right:8px;">suggested by discovery</span>':'')}<input type="checkbox"${dis} ${r.reviewed?'checked':''} onchange="setReviewed('${r.id}',this.checked)"> ✓ I have reviewed and completed this risk
         </label>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;">
           <button class="btn btn-ghost btn-xs no-print" title="Collapse this risk and move on" onclick="_collapseRiskCard(event,'${r.id}')" style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted);"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg> Collapse</button>
@@ -16777,11 +16777,41 @@ function buildProfileFromDiscovery(){
   saveData(); renderRiskProfile(); renderRiskReview();
   showToast('✓ Added '+n+' suggested theme'+(n!==1?'s':'')+' — review and agree each rating','success');
 }
+// ── Reverse sync: things change. A discovery-suggested theme whose supporting
+//    answers have all been withdrawn (flipped to no, or unset) is "orphaned".
+//    It is flagged and offered for removal — never silently deleted. Themes the
+//    consultant has reviewed or worked on are always kept for a manual decision.
+function _discIsOrphan(r){
+  if(!r || r.suggestedBy!=='discovery' || !Array.isArray(r.suggestedFrom)) return false;
+  if(r.suggestedFrom.includes('universal')) return false;      // universal themes never orphan
+  const ex=_profState().exposure||{};
+  return r.suggestedFrom.every(q=>ex[q]!==true);
+}
+function _discOrphanedThemes(){ return (S.riskProfile||[]).filter(_discIsOrphan); }
+function _riskHasWork(r){
+  if(r.reviewed) return true;
+  return (r.actions||[]).some(a=>(a.status && a.status!=='Not started') || a.owner || a.due);
+}
+function reviewDiscoveryOrphans(){
+  if(_roLocked()) return;
+  const orph=_discOrphanedThemes();
+  if(!orph.length){ showToast('Profile and discovery answers are in step — nothing to review.','info'); return; }
+  const removable=orph.filter(r=>!_riskHasWork(r));
+  const kept=orph.filter(r=>_riskHasWork(r));
+  let msg='The discovery answers no longer support '+orph.length+' theme'+(orph.length!==1?'s':'')+':\n\n• '+orph.map(r=>r.activity||r.hazard||'Risk').join('\n• ')+'\n\n';
+  if(removable.length) msg+='OK removes the '+removable.length+' that '+(removable.length!==1?'are':'is')+' unreviewed with no work recorded.';
+  if(kept.length) msg+=(removable.length?'\n':'')+kept.length+' ha'+(kept.length!==1?'ve':'s')+' been reviewed or worked on — kept and badged for your manual decision.';
+  if(!confirm(msg)) return;
+  if(removable.length){ const ids=new Set(removable.map(r=>r.id)); S.riskProfile=(S.riskProfile||[]).filter(r=>!ids.has(r.id)); }
+  saveData(); renderRiskProfile(); renderRiskReview();
+  showToast(removable.length?('✓ Removed '+removable.length+' theme'+(removable.length!==1?'s':'')+(kept.length?(' — '+kept.length+' kept, badged'):'')):'Nothing removed — every affected theme has recorded work','success');
+}
 function renderDiscoveryPanel(){
   const el=document.getElementById('discoveryPanel'); if(!el) return;
   const st=_discStats(); const ro=_roLocked();
   const started=st.answered>0;
   const sugN=(function(){ try{ return _discSuggestedKeys().size; }catch(e){ return 0; } })();
+  const orphN=(function(){ try{ return _discOrphanedThemes().length; }catch(e){ return 0; } })();
   el.innerHTML=`<div class="card" style="margin-bottom:16px;">
     <div class="card-band"><h3><span class="dot">●</span> Discovery questionnaire</h3><span class="badge badge-muted">${st.answered}/${st.total} answered${st.fired?(' · '+st.fired+' rules fired'):''}${sugN?(' · '+sugN+' themes suggested'):''}</span></div>
     <div class="card-body" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
@@ -16789,6 +16819,7 @@ function renderDiscoveryPanel(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
       ${ro?'':`<button class="btn btn-primary no-print" onclick="openDiscoveryWizard()">${started?'✎ Review / update answers':'▶ Run discovery'}</button>`}
       ${(!ro && started)?`<button class="btn btn-outline no-print" onclick="buildProfileFromDiscovery()"${sugN?'':' disabled title="Profile already covers the current answers"'}>⚙ Build profile from discovery${sugN?(' ('+sugN+')'):''}</button>`:''}
+      ${(!ro && orphN)?`<button class="btn btn-outline no-print" style="border-color:#D97706;color:#B45309;" onclick="reviewDiscoveryOrphans()" title="Themes whose supporting discovery answers have been withdrawn">⚠ Answers changed (${orphN})</button>`:''}
       </div>
     </div></div>`;
 }
@@ -16817,8 +16848,15 @@ function _discClose(final){
   renderRiskProfile(); renderRiskReview();
   if(final){
     const st=_discStats(); showToast('✓ Discovery saved — '+st.yes+' yes answer'+(st.yes!==1?'s':'')+', '+st.fired+' requirement rule'+(st.fired!==1?'s':'')+' fired.','success');
-    // Offer to build the profile straight from the answers (suggest-and-confirm)
-    try{ if(_discSuggestedKeys().size && !_roLocked()) setTimeout(()=>buildProfileFromDiscovery(), 400); }catch(e){}
+    // Offer to build the profile straight from the answers (suggest-and-confirm),
+    // then flag any themes whose supporting answers were withdrawn this session.
+    try{
+      const hasSug=_discSuggestedKeys().size, hasOrph=_discOrphanedThemes().length;
+      if(!_roLocked()){
+        if(hasSug) setTimeout(()=>buildProfileFromDiscovery(), 400);
+        if(hasOrph) setTimeout(()=>reviewDiscoveryOrphans(), hasSug?900:400);
+      }
+    }catch(e){}
   }
 }
 function _discDraw(){
@@ -17710,6 +17748,67 @@ function raiseStatutoryDue(){
   }));
   saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
   showToast('✓ Raised '+n+' statutory action'+(n!==1?'s':'')+' into the plan','success');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ASSURANCE COVERAGE CHECK — the profile READS the evidence layer,
+//  never writes it. Discovery answers imply statutory regimes and
+//  training; if the tracker/matrix holds no matching real record,
+//  the gap is raised as an execution-plan action. No rows are ever
+//  created here — evidence only comes from real records.
+// ══════════════════════════════════════════════════════════════
+const ASSURANCE_COVERAGE=[
+  {id:'loler',        gate:['a_lifting','a_forklift','a_plant'], kind:'statutory', label:'LOLER thorough examination (lifting equipment)', re:/loler|thorough exam|lifting|crane|hoist|fork\s?lift|mewp/i},
+  {id:'pssr',         gate:['a_pressure'],                       kind:'statutory', label:'Pressure system written scheme examination (PSSR)', re:/pressure|pssr|compressor|air receiver|boiler/i},
+  {id:'lev',          gate:['a_lev'],                            kind:'statutory', label:'LEV thorough examination and test', re:/\blev\b|extraction|exhaust ventilation/i},
+  {id:'gas',          gate:['p_gas','d_landlordgas'],            kind:'statutory', label:'Gas appliance safety check', re:/\bgas\b/i},
+  {id:'pat',          gate:['a_electrical'],                     kind:'statutory', label:'Portable appliance testing', re:/\bpat\b|portable applianc/i},
+  {id:'eicr',         gate:['p_office','p_multi'],               kind:'statutory', label:'Fixed wiring inspection (EICR)', re:/eicr|fixed wir|fixed install/i},
+  {id:'firealarm',    gate:['p_office','d_responsible'],         kind:'statutory', label:'Fire alarm service', re:/fire alarm/i},
+  {id:'extinguisher', gate:['p_office','d_responsible'],         kind:'statutory', label:'Fire extinguisher service', re:/extinguisher/i},
+  {id:'legionella',   gate:['p_water_sys','o_pool'],             kind:'statutory', label:'Legionella risk assessment / monitoring', re:/legionella|water hygiene/i},
+  {id:'firstaid',     gate:null,                                 kind:'training',  label:'First aid training', re:/first aid/i},
+  {id:'flt',          gate:['a_forklift'],                       kind:'training',  label:'FLT operator training', re:/\bflt\b|fork\s?lift/i},
+  {id:'asbestosaw',   gate:['b_survey_pre2000','o_demolition','d_dutytomanage'], kind:'training', label:'Asbestos awareness training', re:/asbestos/i},
+  {id:'wah',          gate:['o_height','a_ladders','a_scaffold'],kind:'training',  label:'Work at height / access training', re:/height|harness|ladder|ipaf|mewp/i},
+  {id:'manual',       gate:['o_manual','o_movepeople'],          kind:'training',  label:'Manual handling training', re:/manual handling|moving and handling/i},
+  {id:'confined',     gate:['o_confined'],                       kind:'training',  label:'Confined space training', re:/confined/i},
+  {id:'firemarshal',  gate:['p_office','d_responsible'],         kind:'training',  label:'Fire marshal / warden training', re:/fire (marshal|warden)/i}
+];
+function _covGaps(){
+  const ex=_profState().exposure||{}; if(!Object.keys(ex).length) return [];   // discovery not started — nothing to check against
+  const regItems=_regSections().flatMap(s=>(s.items||[]).map(i=>i.item||'')).join(' | ');
+  const courses=(function(){ const set=new Set();
+    ((S.trainingData&&S.trainingData.people)||[]).forEach(p=>Object.keys(p.cells||{}).forEach(c=>set.add(c)));
+    (S.training||[]).forEach(t=>{ if(t.course) set.add(t.course); });
+    return [...set].join(' | '); })();
+  const plan=S.actionPlan||[];
+  return ASSURANCE_COVERAGE.filter(c=>{
+    const gated = c.gate===null ? true : c.gate.some(q=>ex[q]===true);
+    if(!gated) return false;
+    return !c.re.test(c.kind==='statutory'?regItems:courses);
+  }).map(c=>({id:c.id,kind:c.kind,label:c.label, raised:plan.some(a=>a.covKey==='cov|'+c.id)}));
+}
+function runCoverageCheck(){
+  if(_blockIfReadOnly()) return;
+  const gaps=_covGaps();
+  if(!gaps.length){ showToast('✓ Coverage check passed — every regime the discovery answers imply has a matching statutory item or training course.','success'); return; }
+  const stat=gaps.filter(g=>g.kind==='statutory'), trn=gaps.filter(g=>g.kind==='training');
+  const newOnes=gaps.filter(g=>!g.raised);
+  let msg='Coverage check — the discovery answers imply evidence Compass cannot see:\n';
+  if(stat.length) msg+='\nStatutory tracker has no match for:\n• '+stat.map(g=>g.label).join('\n• ');
+  if(trn.length) msg+='\n\nTraining matrix has no match for:\n• '+trn.map(g=>g.label).join('\n• ');
+  if(!newOnes.length){ alert(msg+'\n\nAll of these are already raised in the execution plan — chase them there.'); return; }
+  msg+='\n\nRaise '+newOnes.length+' action'+(newOnes.length!==1?'s':'')+' into the execution plan? (No tracker or matrix rows are created — evidence only ever comes from real records.)';
+  if(!confirm(msg)) return;
+  if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
+  let n=0;
+  newOnes.forEach(g=>{ const it={ id:_reqUid('act'), covKey:'cov|'+g.id,
+    desc:(g.kind==='statutory'?'Establish and evidence: ':'Establish training: ')+g.label+' — no matching '+(g.kind==='statutory'?'item in the statutory tracker':'course in the training matrix'),
+    owner:'', due:'', status:'Not started', priority:(g.kind==='statutory'?'High':'Medium'), source:'Assurance', sourceLabel:'Coverage check' };
+    if(typeof _stamp==='function') _stamp(it,'created'); S.actionPlan.push(it); n++; });
+  saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
+  showToast('✓ Raised '+n+' coverage action'+(n!==1?'s':'')+' into the plan','success');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -18608,6 +18707,7 @@ function renderMonitoring(){
           <button class="btn btn-outline btn-sm no-print" onclick="statutoryUploadXlsx()"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⭱ Import / update (overwrite)</button>
           <button class="btn btn-outline btn-sm no-print" onclick="statutoryExportXlsx()"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⭳ Export spreadsheet</button>
           ${(function(){ const n=_statDueCount(); return `<button class="btn btn-ghost btn-sm no-print" onclick="raiseStatutoryDue()"${n?'':' disabled'}>Raise due actions${n?(' ('+n+')'):''}</button>`; })()}
+          ${(function(){ const g=(typeof _covGaps==='function')?_covGaps().length:0; return `<button class="btn btn-ghost btn-sm no-print" onclick="runCoverageCheck()" title="Compare what the discovery answers imply against the statutory tracker and training matrix — gaps become actions, never rows">🛡 Coverage check${g?(' ('+g+')'):''}</button>`; })()}
           <span style="font-size:11.5px;color:var(--text-muted);">The client's spreadsheet stays the source of truth — import overwrites, export writes their exact file back.</span>
         </div>`}
       </div>

@@ -14145,6 +14145,11 @@ function _riskMatrixHTML(scored){
     + `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Vertical axis = <strong>Severity</strong> (5 at top). Horizontal axis = <strong>Likelihood</strong> (1–5). Cell number = risks at that L×S; colour = rating band. ${esc(_bandRangeText())}.</div>`;
 }
 
+// Preserve the open/closed state of <details data-keep> across an innerHTML
+// rebuild — a section the user opened (or closed) stays that way until THEY
+// change it, no matter how many times the panel re-renders. (House rule.)
+function _detailsSnapshot(el){ const m={}; el.querySelectorAll('details[data-keep]').forEach(d=>{ m[d.dataset.keep]=d.open; }); return m; }
+function _detailsApply(el, m){ el.querySelectorAll('details[data-keep]').forEach(d=>{ if(m && Object.prototype.hasOwnProperty.call(m, d.dataset.keep)) d.open=m[d.dataset.keep]; }); }
 function _renderRiskDashboard(){
   const el = document.getElementById('riskDashboard');
   if(!el) return;
@@ -14168,6 +14173,7 @@ function _renderRiskDashboard(){
     : '<li style="color:var(--text-muted);list-style:none;margin-left:-18px;">No emerging (increasing) risks flagged.</li>';
   const sifCount = risks.filter(r=>_riskSif(r)).length;
   const card = (num,label,colour) => `<div class="rp-stat"><div class="rp-stat-num"${colour?` style="color:${colour};"`:''}>${num}</div><div class="rp-stat-label">${label}</div></div>`;
+  const _keep=_detailsSnapshot(el);
   el.innerHTML = `
     <div class="rp-stats">
       ${card(rated.length,'Total significant risks')}
@@ -14178,11 +14184,12 @@ function _renderRiskDashboard(){
       ${card(overdueActions,'Overdue actions', overdueActions?_RISK_PRIO_COLOR.Critical:'')}
     </div>
     <div class="rp-grid2">
-      <details class="coll" open style="margin:0;"><summary><h3><span class="dot">●</span> Risk matrix</h3></summary><div class="coll-body">${_riskMatrixHTML(scored)}</div></details>
-      <details class="coll" open style="margin:0;"><summary><h3><span class="dot">●</span> Risk vs management maturity</h3></summary><div class="coll-body">${_riskVsMaturityHTML({heading:false})}</div></details>
+      <details class="coll" data-keep="rpMatrix" open style="margin:0;"><summary><h3><span class="dot">●</span> Risk matrix</h3></summary><div class="coll-body">${_riskMatrixHTML(scored)}</div></details>
+      <details class="coll" data-keep="rpRvm" open style="margin:0;"><summary><h3><span class="dot">●</span> Risk vs management maturity</h3></summary><div class="coll-body">${_riskVsMaturityHTML({heading:false})}</div></details>
     </div>
-    <details class="coll" open style="margin:0 0 18px;"><summary><h3><span class="dot">●</span> Risks by category</h3></summary><div class="coll-body"><ul class="rp-impacts" style="list-style:none;padding:0;">${catRows.replace(/<li>/g,'<li style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;">')}</ul></div></details>
-    <details class="coll"><summary><h3><span class="dot">●</span> Emerging risks (trend increasing)</h3><span class="coll-meta">${emergingList.length}</span></summary><div class="coll-body"><ul class="rp-impacts">${emergingRows}</ul></div></details>`;
+    <details class="coll" data-keep="rpByCat" open style="margin:0 0 18px;"><summary><h3><span class="dot">●</span> Risks by category</h3></summary><div class="coll-body"><ul class="rp-impacts" style="list-style:none;padding:0;">${catRows.replace(/<li>/g,'<li style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;">')}</ul></div></details>
+    <details class="coll" data-keep="rpEmerging"><summary><h3><span class="dot">●</span> Emerging risks (trend increasing)</h3><span class="coll-meta">${emergingList.length}</span></summary><div class="coll-body"><ul class="rp-impacts">${emergingRows}</ul></div></details>`;
+  _detailsApply(el,_keep);
 }
 
 function _renderRiskFilters(show){
@@ -14357,7 +14364,8 @@ function _renderRiskDocControl(){
   // Consultation & communication — the legal duty to consult and inform employees
   // on health and safety. (Report version/approval lives in the Document Control
   // register on the Reports tab, not here.)
-  el.innerHTML = `<details class="rp-subcard" open>
+  const _dcD=el.querySelector('details'); const _dcOpen=_dcD?_dcD.open:true;   // user's choice survives re-renders
+  el.innerHTML = `<details class="rp-subcard"${_dcOpen?' open':''}>
     <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('clipboard',17)} Consultation &amp; communication</summary>
     <div class="sc-body">
       <div class="field-group"><label class="field-label">Consulted with (employee consultation record)</label>
@@ -14392,7 +14400,9 @@ function _renderScoringKey(){
   const line=(kind,i,t)=>`<div class="sk-line"><span class="sk-n">${i+1}</span><input type="text"${dis} value="${esc(t)}" oninput="updateScoreKey('${kind}',${i},this.value)"></div>`;
   const bandInput=(w,v)=>`<input type="number" min="1" max="25"${dis} value="${v}" onchange="updateScoreBand('${w}',this.value)">`;
   const b=cfg.bands;
-  el.innerHTML = `<details class="rp-subcard">
+  // Keep whatever open/closed state the user chose across re-renders (closed on first paint)
+  const _d=el.querySelector('details'); const _skOpen=_d?_d.open:false;
+  el.innerHTML = `<details class="rp-subcard"${_skOpen?' open':''}>
     <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('settings',17)} Scoring key <span style="font-weight:400;font-size:12px;color:var(--text-muted);">Likelihood × Severity, 1–5 each · ${esc(_bandRangeText())}</span></summary>
     <div class="sc-body">
       <div class="scorekey-grid">

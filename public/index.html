@@ -17368,29 +17368,119 @@ function restoreLegalEssentials(){
   if(n){ saveData(); renderRequirements(); }
   showToast(n?('✓ Restored '+n+' legal item'+(n!==1?'s':'')):'All legal essentials are already present','success');
 }
+// ══════════════════════════════════════════════════════════════
+//  CRITERIA ENGINE — bespoke lists, an Accepted state, and undo.
+//  Each criterion is Met (ticked), Accepted (the business consciously
+//  tolerates it — who/when/why recorded, does NOT count as a gap), or open.
+//  Compliant needs every line met or accepted; otherwise the item title
+//  becomes the action and the open lines are its detail. The list itself is
+//  fully editable per client (add/remove lines), with session undo and a
+//  recall-the-library-original escape hatch. The app moves with the business.
+// ══════════════════════════════════════════════════════════════
+function _critList(it){
+  if(Array.isArray(it.critCustom)) return it.critCustom;
+  const meta=_legalMeta(it.legalKey); return (meta&&meta.criteria)||[];
+}
+function _critState(it, idx){
+  if(it.crit&&it.crit[idx]) return 'met';
+  if(it.critAccepted&&it.critAccepted[idx]) return 'accepted';
+  return '';
+}
+function _critCounts(it){
+  const list=_critList(it); let met=0, acc=0;
+  list.forEach((_,i)=>{ const st=_critState(it,i); if(st==='met') met++; else if(st==='accepted') acc++; });
+  return { total:list.length, met, acc, open:list.length-met-acc };
+}
+var _critUndoStack={};   // session-only, per item
+function _critSnapshot(it){
+  const st=_critUndoStack[it.id]=_critUndoStack[it.id]||[];
+  st.push(JSON.stringify({ custom:(Array.isArray(it.critCustom)?it.critCustom:null), crit:it.crit||{}, acc:it.critAccepted||{} }));
+  if(st.length>20) st.shift();
+}
+function undoCritChange(sid, iid){
+  if(_blockIfReadOnly()) return;
+  const s=(S.requirements||[]).find(x=>x.id===sid); const it=s&&(s.items||[]).find(i=>i.id===iid); if(!it) return;
+  const st=_critUndoStack[it.id];
+  if(!st||!st.length){ showToast('Nothing to undo yet this session','info'); return; }
+  const snap=JSON.parse(st.pop());
+  if(snap.custom===null) delete it.critCustom; else it.critCustom=snap.custom;
+  it.crit=snap.crit||{}; it.critAccepted=snap.acc||{};
+  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+}
+function _critMaterialise(it){ if(!Array.isArray(it.critCustom)) it.critCustom=_critList(it).slice(); }
+function addReqCriterion(sid, iid){
+  if(_blockIfReadOnly()) return;
+  const s=(S.requirements||[]).find(x=>x.id===sid); const it=s&&(s.items||[]).find(i=>i.id===iid); if(!it) return;
+  const text=prompt('New assessment criterion for this item:',''); if(text===null||!String(text).trim()) return;
+  _critSnapshot(it); _critMaterialise(it); it.critCustom.push(String(text).trim());
+  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+}
+function removeReqCriterion(sid, iid, idx){
+  if(_blockIfReadOnly()) return;
+  const s=(S.requirements||[]).find(x=>x.id===sid); const it=s&&(s.items||[]).find(i=>i.id===iid); if(!it) return;
+  _critSnapshot(it); _critMaterialise(it); it.critCustom.splice(idx,1);
+  const remap=(o)=>{ if(!o||typeof o!=='object') return {}; const n={}; Object.keys(o).forEach(k=>{ const i=parseInt(k,10); if(isNaN(i)) return; if(i<idx) n[i]=o[k]; else if(i>idx) n[i-1]=o[k]; }); return n; };
+  it.crit=remap(it.crit); it.critAccepted=remap(it.critAccepted);
+  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+}
+function recallReqCriteria(sid, iid){
+  if(_blockIfReadOnly()) return;
+  const s=(S.requirements||[]).find(x=>x.id===sid); const it=s&&(s.items||[]).find(i=>i.id===iid); if(!it) return;
+  const meta=_legalMeta(it.legalKey);
+  if(!(meta&&meta.criteria&&meta.criteria.length)){ showToast('This item has no library original to recall','info'); return; }
+  if(!confirm('Recall the original library criteria?\n\nYour bespoke lines are replaced and the met / accepted marks reset. Undo (this session) can bring them back.')) return;
+  _critSnapshot(it); delete it.critCustom; it.crit={}; it.critAccepted={};
+  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+}
 function toggleReqCriterion(sid, iid, idx){
   if(_roLocked()) return;
   const s=(S.requirements||[]).find(x=>x.id===sid); const it=s&&(s.items||[]).find(i=>i.id===iid); if(!it) return;
   if(!it.crit||typeof it.crit!=='object') it.crit={};
-  it.crit[idx]=!it.crit[idx]; _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+  it.crit[idx]=!it.crit[idx];
+  if(it.crit[idx] && it.critAccepted && it.critAccepted[idx]) delete it.critAccepted[idx];
+  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+}
+function acceptReqCriterion(sid, iid, idx){
+  if(_blockIfReadOnly()) return;
+  const s=(S.requirements||[]).find(x=>x.id===sid); const it=s&&(s.items||[]).find(i=>i.id===iid); if(!it) return;
+  if(!it.critAccepted||typeof it.critAccepted!=='object') it.critAccepted={};
+  if(it.critAccepted[idx]){ delete it.critAccepted[idx]; }
+  else{
+    const note=prompt('Accept this criterion as consciously tolerated / not applicable to this business?\n\nSay why in a few words (recorded with your name and shown on the register):','');
+    if(note===null) return;
+    it.critAccepted[idx]={ by:(typeof _actor==='function'?(_actor().name||''):''), date:new Date().toISOString().slice(0,10), note:String(note).trim() };
+    if(it.crit) delete it.crit[idx];
+  }
+  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+}
+// The gap IS the action: the item title becomes the action, the open criteria its detail.
+function raiseReqGapAction(sid, iid){
+  if(_blockIfReadOnly()) return;
+  const s=(S.requirements||[]).find(x=>x.id===sid); const it=s&&(s.items||[]).find(i=>i.id===iid); if(!it) return;
+  const meta=_legalMeta(it.legalKey); const title=meta?meta.title:(it.requirement||'Requirement');
+  const open=_critList(it).map((c,i)=>({c,i})).filter(x=>_critState(it,x.i)==='');
+  const desc=title+(open.length?(' — resolve: '+open.map(x=>x.c).join('; ')):'');
+  const dup=(it.actions||[]).some(a=>!a.deleted && a.desc===desc && _actionStatus(a)!=='Complete');
+  if(dup){ showToast('An open action for this gap already exists','info'); return; }
+  _reqAddAction(it, desc);
+  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+  try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
+  showToast('✓ Gap raised as an action — it is on the execution plan','success');
 }
 function approveReqItem(sid, iid){
   if(_blockIfReadOnly()) return;
   const s=(S.requirements||[]).find(x=>x.id===sid); const it=s&&(s.items||[]).find(i=>i.id===iid); if(!it) return;
-  // "Compliant" must agree with the assessment criteria — approving also marks
-  // the criteria met (with a confirm), so the badge and the evidence never contradict.
-  const def=(typeof LEGAL_ESSENTIALS!=='undefined')?LEGAL_ESSENTIALS.find(d=>d.key===it.legalKey):null;
-  const crits=(def&&def.criteria)||[];
-  if(crits.length){
+  // "Compliant" must agree with the assessment criteria — every line met or
+  // accepted. Approving offers to mark the open lines met (with a confirm),
+  // so the badge and the evidence never contradict.
+  const cc=_critCounts(it);
+  if(cc.total && cc.open){
     if(!it.crit||typeof it.crit!=='object') it.crit={};
-    const unmet=crits.map((c,i)=>i).filter(i=>!it.crit[i]);
-    if(unmet.length){
-      if(!confirm('Approve as compliant?\n\nThis also marks all '+crits.length+' assessment criteria as met ('+unmet.length+' currently unticked).\n\nIf a criterion is genuinely not met, cancel and raise an action instead.')) return;
-      unmet.forEach(i=>{ it.crit[i]=true; });
-    }
+    if(!confirm('Approve as compliant?\n\nThis marks the '+cc.open+' outstanding criteria as met'+(cc.acc?(' ('+cc.acc+' accepted stay accepted)'):'')+'.\n\nIf a criterion is genuinely not met, cancel and use "Raise the gap as an action" instead.')) return;
+    _critList(it).forEach((_,i)=>{ if(_critState(it,i)==='') it.crit[i]=true; });
   }
   it.present='Yes'; it.adequate='Yes'; it.reviewed=true; it.reviewedDate=new Date().toISOString().slice(0,10); it.reviewedBy=(typeof _actor==='function'?(_actor().name||''):'');
-  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements); showToast('✓ Approved as compliant — criteria recorded as met','success');
+  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements); showToast('✓ Approved as compliant — criteria recorded','success');
 }
 // Duties implied by the client's risk profile (from each risk's linked citation).
 function _riskDerivedDuties(){
@@ -17402,24 +17492,47 @@ function addRiskDerivedItem(duty){
   if(_blockIfReadOnly()) return;
   let sec=(S.requirements||[]).find(s=>s.legal); if(!sec){ sec=_seedLegalEssentials(); S.requirements.unshift(sec); }
   const it={ id:_reqUid('reqitem'), legalKey:'', requirement:duty+' — arrangements/procedure', citation:duty, present:'', adequate:'', action:'', crit:{}, riskDerived:true };
-  _stamp(it,'created'); sec.items.push(it); saveData(); renderRequirements(); showToast('✓ Added to the register','success');
+  _stamp(it,'created'); sec.items.push(it); saveData(); _keepScroll(renderRequirements); showToast('✓ Added to the register','success');
+}
+// The tick works both ways: clicking "In the register" takes the item back out
+// again (only items this panel added — a manually created twin is left alone).
+function removeRiskDerivedItem(duty){
+  if(_blockIfReadOnly()) return;
+  const sec=(S.requirements||[]).find(s=>s.legal); if(!sec) return;
+  const key=String(duty||'').trim().toLowerCase();
+  const it=(sec.items||[]).find(i=>i.riskDerived && (i.citation||'').trim().toLowerCase()===key);
+  if(!it){ showToast('That register item was added manually — remove it from the register itself','info'); return; }
+  const worked=(it.actions||[]).some(a=>!a.deleted&&a.desc) || it.reviewed || Object.keys(it.crit||{}).length;
+  if(worked && !confirm('This register item already has work recorded on it (criteria, actions or a sign-off).\n\nRemove it anyway?')) return;
+  sec.items=(sec.items||[]).filter(i=>i.id!==it.id);
+  saveData(); _keepScroll(renderRequirements); showToast('Removed from the register','success');
 }
 function _legalCardHTML(sec, it, emp, ro){
   const dis=ro?' disabled':'';
   const meta=_legalMeta(it.legalKey);
   const th=_legalThreshold(meta?meta.threshold:'all', emp);
   const stt=_reqItemStatus(it);
-  const crit=(meta&&meta.criteria)||[]; const ticks=it.crit||{}; const metC=crit.filter((_,i)=>ticks[i]).length;
+  const crit=_critList(it); const cc=_critCounts(it); const bespoke=Array.isArray(it.critCustom);
   const approved=!!it.reviewed; const hasAction=it.action&&it.action.trim();
   const border=approved?'var(--success)':(stt&&stt.label==='Not in place')?'var(--danger)':(stt&&stt.label!=='Met'?'var(--warning)':'var(--border)');
   const title=meta?meta.title:(it.requirement||'Item'); const cit=meta?meta.citation:(it.citation||''); const why=meta?meta.why:'';
   const docOpts='<option value="">Link the document (optional)</option>'+((S.documents||[]).map(d=>`<option value="${d.id}"${it.docId===d.id?' selected':''}>${esc((d.name||d.title||'Document').slice(0,55))}</option>`).join(''));
   const _argEsc=(s)=>String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-  const critHtml=crit.map((c,i)=>{ const t=!!ticks[i]; return `<div style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;padding:3px 0;">
-      <input type="checkbox" ${t?'checked':''}${dis} onchange="toggleReqCriterion('${sec.id}','${it.id}',${i})" style="margin-top:2px;flex:0 0 auto;">
-      <span style="flex:1;">${esc(c)}</span>
-      ${(!t&&!ro)?`<button class="btn btn-ghost btn-xs no-print" style="flex:0 0 auto;font-size:10px;padding:1px 6px;" title="Raise this gap as a tracked action" onclick="raiseReqActionFor('${sec.id}','${it.id}','${_argEsc(title+' — '+c)}')">Raise ↗</button>`:''}
+  const critHtml=crit.map((c,i)=>{ const cst=_critState(it,i); const acc=(it.critAccepted||{})[i];
+    return `<div style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;padding:3px 0;${cst==='accepted'?'opacity:.9;':''}">
+      <input type="checkbox" ${cst==='met'?'checked':''}${dis} title="Met" onchange="toggleReqCriterion('${sec.id}','${it.id}',${i})" style="margin-top:2px;flex:0 0 auto;">
+      <span style="flex:1;${cst==='accepted'?'color:var(--text-muted);':''}">${esc(c)}${(acc&&acc.note)?` <em style="color:#0E7490;">— ${esc(acc.note)}</em>`:''}</span>
+      ${ro?'':(cst==='accepted'
+        ? `<button class="btn btn-ghost btn-xs no-print" style="flex:0 0 auto;font-size:10px;padding:1px 6px;color:#0E7490;font-weight:700;" title="Accepted${acc&&acc.by?(' by '+esc(acc.by)):''}${acc&&acc.date?(' on '+acc.date):''} — the business consciously tolerates this. Click to undo." onclick="acceptReqCriterion('${sec.id}','${it.id}',${i})">≈ Accepted</button>`
+        : (cst===''?`<button class="btn btn-ghost btn-xs no-print" style="flex:0 0 auto;font-size:10px;padding:1px 6px;" title="Not everything applies to every business — accept this line as consciously tolerated / not applicable (records who and why; no longer counts as a gap)" onclick="acceptReqCriterion('${sec.id}','${it.id}',${i})">Accept</button>`:''))}
+      ${ro?'':`<button class="btn btn-ghost btn-xs no-print" style="flex:0 0 auto;font-size:10px;padding:1px 5px;color:var(--text-muted);" title="Remove this criterion (bespoke control — Undo brings it back)" onclick="removeReqCriterion('${sec.id}','${it.id}',${i})">✕</button>`}
     </div>`; }).join('');
+  const critTools=ro?'':`<div class="no-print" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;padding-top:7px;border-top:1px dashed var(--border);">
+      <button class="btn btn-ghost btn-xs" onclick="addReqCriterion('${sec.id}','${it.id}')">＋ Add criterion</button>
+      <button class="btn btn-ghost btn-xs" title="Undo the last criteria change (this session)" onclick="undoCritChange('${sec.id}','${it.id}')">↶ Undo</button>
+      ${bespoke?`<button class="btn btn-ghost btn-xs" title="Replace the bespoke lines with the library original" onclick="recallReqCriteria('${sec.id}','${it.id}')">↺ Recall original</button><span class="badge badge-muted" style="font-size:9.5px;">bespoke</span>`:''}
+      ${(cc.open>0&&!approved)?`<button class="btn btn-outline btn-xs" style="margin-left:auto;color:var(--warning);border-color:var(--warning);" title="The item name becomes the action and the ${cc.open} open criteria its detail — lands on the execution plan" onclick="raiseReqGapAction('${sec.id}','${it.id}')">Raise the gap as an action ↗</button>`:''}
+    </div>`;
   const ss='font-size:12px;padding:4px 7px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;';
   return `<div style="border:1px solid var(--border);border-left:4px solid ${border};border-radius:9px;padding:14px 16px;margin-bottom:10px;">
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
@@ -17434,10 +17547,12 @@ function _legalCardHTML(sec, it, emp, ro){
       ${(ro||(meta&&!it.riskDerived))?(meta&&!it.riskDerived?`<span title="Legal requirement — cannot be removed" style="flex:0 0 auto;color:var(--text-muted);font-size:11px;">🔒</span>`:''):`<button class="btn btn-ghost btn-xs no-print" title="Remove this item" onclick="deleteReqLine('${sec.id}','${it.id}')">${_ic('trash',13)}</button>`}
     </div>
     ${why?`<div style="font-size:12.5px;color:var(--text-muted);margin:8px 0;line-height:1.5;">${esc(why)}${th.note?` <em style="color:#92400E;">${esc(th.note)}</em>`:''}</div>`:(th.note?`<div style="font-size:12px;margin:6px 0;"><em style="color:#92400E;">${esc(th.note)}</em></div>`:'')}
-    ${crit.length?`<details open style="margin:8px 0;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--muted-bg);"><summary style="cursor:pointer;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);">Assessment criteria${cit?` &middot; ${esc(cit)}`:''} <span style="color:${metC===crit.length?'var(--success)':'var(--accent)'};">(${metC}/${crit.length} met)</span></summary><div style="margin-top:8px;">${critHtml}</div></details>`:''}
+    ${(crit.length||!ro)?`<details open data-keep style="margin:8px 0;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--muted-bg);"><summary style="cursor:pointer;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);">Assessment criteria${cit?` &middot; ${esc(cit)}`:''} <span style="color:${cc.open===0?'var(--success)':'var(--accent)'};">(${cc.met} met${cc.acc?` · ${cc.acc} accepted`:''}${cc.open?` · ${cc.open} open`:''})</span></summary><div style="margin-top:8px;">${critHtml||'<div style="font-size:12px;color:var(--text-muted);">No criteria — add your own lines below.</div>'}${critTools}</div></details>`:''}
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;">
       <label style="font-size:11.5px;color:var(--text-muted);">Located / in place? <select${dis} onchange="updateReqField('${sec.id}','${it.id}','present',this.value)" style="${ss}">${['','Yes','No'].map(o=>`<option${o===(it.present||'')?' selected':''}>${o||'—'}</option>`).join('')}</select></label>
       <select${dis} onchange="updateReqField('${sec.id}','${it.id}','docId',this.value)" style="${ss}min-width:150px;">${docOpts}</select>
+      <input type="text"${dis} value="${esc(it.docPath||'')}" placeholder="…or paste a file / folder path" title="A local or network path (C:\\… or \\\\server\\…) or a web link. Pasted quotes are stripped automatically." style="${ss}flex:1;min-width:170px;" oninput="updateReqField('${sec.id}','${it.id}','docPath',this.value)">
+      ${it.docPath?`<button class="btn btn-ghost btn-xs no-print" title="Copy the path to paste into File Explorer" onclick="navigator.clipboard.writeText(_reqDocPath('${sec.id}','${it.id}'));showToast('Path copied','success')">⧉ Copy</button>`:''}
     </div>
     ${ro?(it.reviewNote?`<div style="margin-top:8px;font-size:12.5px;"><span style="color:var(--text-muted);font-weight:600;">Review notes:</span> ${esc(it.reviewNote)}</div>`:''):`<div style="margin-top:8px;"><textarea rows="2" placeholder="Review notes / comments — what you found on reviewing this…" oninput="updateReqField('${sec.id}','${it.id}','reviewNote',this.value)" style="width:100%;box-sizing:border-box;font-size:12.5px;padding:8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${esc(it.reviewNote||'')}</textarea></div>`}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;">
@@ -17466,7 +17581,7 @@ function _riskDerivedHTML(ro){
   const sec=(S.requirements||[]).find(s=>s.legal); const inReg=new Set(); if(sec)(sec.items||[]).forEach(it=>{ if(it.citation) inReg.add(it.citation.trim().toLowerCase()); });
   const rows=duties.map(d=>{ const added=inReg.has(d.duty.toLowerCase()); return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <div style="flex:1;min-width:180px;"><div style="font-weight:600;font-size:13px;">${esc(d.duty)}</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">From: ${esc(d.risks.slice(0,4).join(', '))}${d.risks.length>4?' …':''}</div></div>
-      ${added?`<span style="font-size:11.5px;color:var(--success);font-weight:600;">✓ In the register</span>`:(ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="addRiskDerivedItem('${(d.duty||'').replace(/'/g,"\\'")}')">＋ Add to register</button>`)}
+      ${added?(ro?`<span style="font-size:11.5px;color:var(--success);font-weight:600;">✓ In the register</span>`:`<button class="btn btn-ghost btn-xs no-print" style="color:var(--success);font-weight:600;" title="In the register — click to take it back out" onclick="removeRiskDerivedItem('${(d.duty||'').replace(/'/g,"\\'")}')">✓ In the register ✕</button>`):(ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="addRiskDerivedItem('${(d.duty||'').replace(/'/g,"\\'")}')">＋ Add to register</button>`)}
     </div>`; }).join('');
   return `<div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> From your risk profile</h3><span class="badge badge-muted">${duties.length}</span></div>
     <div class="card-body"><div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">Regulations implied by the risks in this client's profile. Add the ones that need arrangements to the register above to review and track them.</div>${rows}</div></div>`;
@@ -17556,10 +17671,18 @@ function deleteReqLine(sectionId, itemId){
   s.items = (s.items||[]).filter(i => i.id !== itemId);
   saveData(); renderRequirements();
 }
+// Clean a pasted document path: strip the surrounding quotes Windows "Copy as
+// path" adds, and trim. Accepts local paths, UNC paths and web links alike.
+function _cleanDocPath(v){ return String(v||'').trim().replace(/^["']+|["']+$/g,'').trim(); }
+function _reqDocPath(sectionId, itemId){
+  const s=(S.requirements||[]).find(x=>x.id===sectionId); const it=s&&(s.items||[]).find(i=>i.id===itemId);
+  return it?_cleanDocPath(it.docPath||''):'';
+}
 function updateReqField(sectionId, itemId, field, value){
   if(_roLocked()) return;
   const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
   const it = (s.items||[]).find(i => i.id === itemId); if(!it) return;
+  if(field==='docPath') value=_cleanDocPath(value);
   it[field] = value; _stamp(it, 'updated'); scheduleAutoSave();
   if(field==='present' || field==='adequate'){
     const st = _reqItemStatus(it);
@@ -17593,16 +17716,8 @@ function raiseReqAction(sectionId, itemId){
   try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
   if(typeof showToast==='function') showToast('✓ Action added to the plan — set a target date','success');
 }
-// Raise an action pre-filled from a specific failed criterion / finding.
-function raiseReqActionFor(sectionId, itemId, text){
-  if(_blockIfReadOnly()) return;
-  const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
-  const it = (s.items||[]).find(i => i.id === itemId); if(!it) return;
-  _reqAddAction(it, text);
-  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
-  try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
-  if(typeof showToast==='function') showToast('✓ Action raised','success');
-}
+// (Per-criterion "Raise" removed — the gap is raised per ITEM via raiseReqGapAction:
+//  the item title becomes the action and the open criteria its detail.)
 // Shared renderer: an item's list of actions (status + remove) + Add action.
 function _mgmtActionsListHTML(sec, it, ro){
   const acts=(it.actions||[]).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted);
@@ -17737,8 +17852,9 @@ function renderRequirements(){
           ${fg('Next review'+(revFlag(it)), revDate(sec.id,it.id,it.reviewDate))}
           ${fg('Linked risk', riskSel(sec.id,it.id,it.riskId))}
         </div>
-        <div class="field-grid cols-1">
+        <div class="field-grid">
           ${fg('Evidence / document', docSel(sec.id,it.id,it.docId))}
+          ${fg('…or a file / folder path', txt(sec.id,it.id,'docPath',it.docPath,'Paste a path or link — quotes are stripped automatically'))}
         </div>
         ${_attrFooter(it)}
       </div>`;
@@ -20671,6 +20787,34 @@ function _applyImport(obj){
   try{ switchTab('cockpit'); }catch(e){}
   if(typeof showToast==='function') showToast('✓ Imported '+label.length+' section'+(label.length===1?'':'s'),'success');
 }
+
+// ══════════════════════════════════════════════════════════════
+//  APP-WIDE SCROLL PRESERVATION (house rule) — re-rendering a panel must
+//  never move the page. Every full-panel renderer is wrapped once here, so
+//  no matter which handler triggers the rebuild, the reader stays exactly
+//  where they were. Deliberate jumps (scrollIntoView after a delay) still
+//  work — they fire after the restore.
+// ══════════════════════════════════════════════════════════════
+(function(){
+  ['renderRiskProfile','renderRequirements','renderMonitoring','renderRaRegister','renderDocuments',
+   'renderPolicySignoff','renderExecPlan','renderAppLinks','renderCAS','renderReview','renderCompany',
+   'renderCockpit','renderActionPlanTab','renderRiskJourney','renderSiteInsp','renderMyChecklist',
+   'renderTemplates','renderActions','renderMonthlyReport','renderReports','renderRiskReview',
+   'renderInspectionTypeGrid','renderActiveInspectionBody','renderAuditSections','renderAdminPane',
+   'renderScenarioGrid'].forEach(function(fn){
+    var orig=window[fn];
+    if(typeof orig!=='function' || orig.__scrollWrapped) return;
+    var wrapped=function(){
+      var y=window.pageYOffset||document.documentElement.scrollTop||0;
+      var out=orig.apply(this,arguments);
+      window.scrollTo(0,y);
+      requestAnimationFrame(function(){ window.scrollTo(0,y); });
+      return out;
+    };
+    wrapped.__scrollWrapped=true;
+    window[fn]=wrapped;
+  });
+})();
 </script>
 
 </body>

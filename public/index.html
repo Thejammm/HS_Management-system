@@ -13784,6 +13784,10 @@ function deleteExecAction(refStr){
   if(_blockIfReadOnly()) return;
   let ref; try{ ref=JSON.parse(decodeURIComponent(refStr)); }catch(e){ return; }
   const o=_execOrigin(ref); if(!o) return;
+  // Completed work is never "deleted" — it is the record of what the business
+  // has achieved. If a completion was a genuine mistake, reopen it first.
+  const _st=_actionStatus(o);
+  if(_st==='Complete'||_st==='Accepted'){ showToast('Completed work stays on the record — reopen the action first if it genuinely needs removing.','info'); return; }
   if(!confirm('Delete this action?\n\n"'+(o.desc||'(no description)')+'"\n\nIt is removed from the plan. Your consultant can still see it (flagged as deleted) and restore it or remove it for good.')) return;
   _markActionDeleted(o);
   saveData(); _refreshActionViews(); if(typeof renderReview==='function') _keepScroll(renderReview);
@@ -13904,17 +13908,23 @@ function renderExecPlan(){
   const open=acts.filter(a=>a.status!=='Complete'&&a.status!=='Accepted');
   const overdue=acts.filter(a=>a.rag==='red');
   const dueThis=open.filter(a=>_actionMonthKey(a.due)===thisKey && a.rag!=='red');
-  const complete=acts.filter(a=>a.status==='Complete');
+  const delivered=acts.filter(a=>a.status==='Complete'||a.status==='Accepted');
   const STATUSES=['Not started','In progress','Complete','Accepted'];
   const ref=(a)=>encodeURIComponent(JSON.stringify(a.ref));
+  // Evidence linked to a risk-profile action (📎) — shown once the action is closed.
+  const evChip=(a)=>{ if(!(a.ref&&a.ref.t==='risk'&&typeof _actionEvidence==='function')) return '';
+    const r=(S.riskProfile||[]).find(x=>x.id===a.ref.a); const ev=r?_actionEvidence(r,a.ref.b):[];
+    return ev.length?`<span title="Linked evidence:\n${esc(ev.map(l=>'· '+(l.ref||l.url||'')).join('\n'))}" style="color:#16A34A;font-weight:700;">📎 ${ev.length}</span>`:''; };
   const row=(a)=>{ const c=RAG_COLOR[a.rag]||RAG_COLOR.grey; const rk=ref(a); const open=_execRowOpen[rk]; const lc=_logCount(a);
+    const closed=(a.status==='Complete'||a.status==='Accepted');
     return `<div style="border:1.5px solid var(--border);border-left:5px solid ${c};border-radius:9px;padding:12px 14px;margin-bottom:10px;">
       <div style="display:flex;gap:12px;align-items:flex-start;">
-      <span title="${a.rag==='red'?'Overdue':a.rag==='amber'?'Due this month / needs a date':a.rag==='grey'?'Risk accepted':'On track'}" style="width:12px;height:12px;border-radius:50%;background:${c};flex:0 0 auto;margin-top:4px;"></span>
+      <span title="${a.rag==='red'?'Overdue':a.rag==='amber'?'Due this month / needs a date':a.rag==='grey'?'Risk accepted':'On track'}" style="width:12px;height:12px;border-radius:50%;background:${c};flex:0 0 auto;margin-top:4px;">${closed&&a.status==='Complete'?'':''}</span>
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;font-size:14px;margin-bottom:5px;line-height:1.35;">${esc(a.desc||'(no description yet — add it in the source section)')}</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12px;color:var(--text-muted);">
           <span class="badge badge-muted">${esc(a.source)}</span>${a.sourceLabel?`<span>${esc(a.sourceLabel)}</span>`:''}${a.owner?`<span>&middot; ${esc(a.owner)}</span>`:''}${a.priority?`<span>&middot; ${esc(a.priority)} priority</span>`:''}
+          ${closed?`<span style="color:#16A34A;font-weight:600;">&middot; ${a.status==='Accepted'?'risk accepted':'completed'}${a.resolvedDate?(' '+fmtDate(a.resolvedDate)):''}${a.resolvedBy?(' by '+esc(a.resolvedBy)):''}</span>${evChip(a)}`:''}
           <button type="button" class="no-print" onclick="toggleExecRow('${rk}')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:12px;font-weight:600;padding:0;">${open?'▾ Hide activity':'▸ Activity'+(lc?(' 💬 '+lc):'')}</button>
         </div>
       </div>
@@ -13940,7 +13950,7 @@ function renderExecPlan(){
       ${tile(open.length,'Open','#30415f')}
       ${tile(overdue.length,'Overdue', overdue.length?RAG_COLOR.red:'#30415f')}
       ${tile(dueThis.length,'Due this month', dueThis.length?RAG_COLOR.amber:'#30415f')}
-      ${tile(complete.length,'Complete', complete.length?RAG_COLOR.green:'#30415f')}
+      ${tile(delivered.length,'Delivered', delivered.length?RAG_COLOR.green:'#30415f')}
     </div>
     ${(function(){ const ia=(S.actions||[]).filter(a=>!a.resolved).length; return ia?`<div style="margin:-8px 0 16px;font-size:12.5px;color:var(--text-muted);">⚠ Plus <b>${ia}</b> open inspection action${ia!==1?'s':''} with their own sign-off trail — <a href="#" onclick="switchTab('actions');return false;" style="color:var(--accent);font-weight:600;">see the Actions tab</a>. They are not double-counted here.</div>`:''; })()}
     <div class="card" style="margin-bottom:18px;">
@@ -13951,9 +13961,15 @@ function renderExecPlan(){
       <div class="card-band"><h3><span class="dot">&#9679;</span> The full year &mdash; everything on your plan</h3></div>
       <div class="card-body">
         ${open.length ? monthKeys.map(k=>`<div style="margin-bottom:14px;"><div style="font-weight:700;font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;border-bottom:1.5px solid var(--border);padding-bottom:4px;">${monthName(k)} <span style="font-weight:600;">(${byMonth[k].length})</span></div>${byMonth[k].map(row).join('')}</div>`).join('') : `<div class="ck-pending" style="padding:8px 0;">No open actions yet. As actions are identified in your risk profile, management system, assurance and accreditation, they appear here to plan.</div>`}
-        ${complete.length?`<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:13px;color:var(--text-muted);">${complete.length} completed action${complete.length!==1?'s':''}</summary><div style="margin-top:10px;">${complete.map(row).join('')}</div></details>`:''}
       </div>
     </div>
+    ${delivered.length?`<div class="card" style="margin-top:18px;border-left:3px solid ${RAG_COLOR.green};">
+      <div class="card-band"><h3><span class="dot" style="color:${RAG_COLOR.green};">●</span> Delivered — completed &amp; accepted</h3><span class="badge badge-muted">${delivered.length}</span></div>
+      <div class="card-body">
+        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">The work the business has closed off — something to be proud of, and the evidence behind the way each risk is now managed. Nothing here is ever deleted.</div>
+        ${delivered.slice().sort((a,b)=>String(b.resolvedDate||'').localeCompare(String(a.resolvedDate||''))).map(row).join('')}
+      </div>
+    </div>`:''}
     ${_deletedActionsHTML()}`;
 }
 
@@ -14470,6 +14486,8 @@ function deleteRiskAction(rid, aid){
   if(_blockIfReadOnly()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
   const a=(r.actions||[]).find(x=>x.id===aid); if(!a) return;
+  const _st=_actionStatus(a);
+  if(_st==='Complete'||_st==='Accepted'){ showToast('Completed work stays on the record — reopen the action first if it genuinely needs removing.','info'); return; }
   _markActionDeleted(a); _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
   if(typeof _refreshActionViews==='function') _refreshActionViews();
 }
@@ -14832,6 +14850,8 @@ function updateActionPlanItem(id, field, value){
 function deleteActionPlanItem(id){
   if(_blockIfReadOnly()) return;
   const it=_apList().find(x=>x.id===id); if(!it) return;
+  const _st=_actionStatus(it);
+  if(_st==='Complete'||_st==='Accepted'){ showToast('Completed work stays on the record — reopen the action first if it genuinely needs removing.','info'); return; }
   if(!confirm('Delete this action?\n\nIt is removed from the plan. Your consultant can still see it (flagged as deleted) and restore it or remove it for good.')) return;
   _markActionDeleted(it); saveData(); renderActionPlanTab();
   if(typeof _refreshActionViews==='function') _refreshActionViews();

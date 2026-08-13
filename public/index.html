@@ -12716,8 +12716,12 @@ async function refreshConsultantView(auto){
   if(auto && (_isEditing() || _ownSaveInFlight)) return;
   try {
     const payload = await _fetchTenantState(_consultantView.tenantId);
+    // Re-check AFTER the fetch: typing or a save may have started while the
+    // request was in flight — applying the fetched (now stale) copy would
+    // wipe the keystrokes. Only ever move FORWARD in time, never sideways.
+    if(auto && (_isEditing() || _ownSaveInFlight)) return;
     const upd = payload?.updatedAt || null;
-    if(upd !== _consultantLastUpd){
+    if(upd && (!_consultantLastUpd || upd > _consultantLastUpd)){
       _consultantLastUpd = upd;
       Auth.setLastServerUpd(upd);   // keep the save base in step with what we just pulled
       S = (payload && payload.state && Object.keys(payload.state).length) ? payload.state : _emptyConsultantState();
@@ -12764,8 +12768,9 @@ async function _pollOwnState(){
   if(_isEditing() || _ownSaveInFlight) return;                  // don't fight an edit or our own save
   try {
     const r = await fetch(`/api/state?tenantId=${encodeURIComponent(Auth.activeTenantId())}`, { credentials:'include' }).then(r=>r.json());
+    if(_isEditing() || _ownSaveInFlight) return;   // re-check after the fetch — never clobber in-flight typing
     const upd = r?.updatedAt || null;
-    if(upd && upd !== _ownLastUpd){
+    if(upd && (!_ownLastUpd || upd > _ownLastUpd)){
       _ownLastUpd = upd;
       Auth.setLastServerUpd(upd);   // keep the save base in step with what we just pulled
       if(r.state && typeof r.state === 'object' && Object.keys(r.state).length){
@@ -13745,7 +13750,18 @@ function _actionLogControlsHTML(a){
     +'</div></div>';
 }
 function _actionLogPanelHTML(a){
+  // A management-system gap action carries the unticked criteria as its
+  // detail — the "what needs to be done" list, shown before the trail.
+  var o=_execOrigin(a.ref);
+  var detail='';
+  if(o && Array.isArray(o.detail) && o.detail.length){
+    detail='<div style="border:1px solid var(--warning);border-left:4px solid var(--warning);border-radius:8px;padding:9px 12px;margin:8px 0;">'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--warning);margin-bottom:5px;">What needs to be done</div>'
+      +o.detail.map(function(c){ return '<div style="font-size:12.5px;padding:2px 0;">• '+esc(c)+'</div>'; }).join('')
+      +'</div>';
+  }
   return '<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">'
+    +detail
     +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);margin-bottom:4px;">Activity trail</div>'
     +_actionTimelineHTML(a)+_actionLogControlsHTML(a)+'</div>';
 }
@@ -14210,14 +14226,16 @@ function _journeyMilestones(r){
   const m=[];
   m.push({ done:true, label:'Identified', when:(r.createdAt||'').slice(0,10),
     text:(r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':('Added by '+(r.createdBy||'the team')))+(r.hazard?(' — '+r.hazard):'') });
+  const _tgt=_riskTarget(r);
+  const _hist=Array.isArray(r.scoreHistory)?r.scoreHistory:[];
   m.push({ done:!!sc.rating&&impactsRated, label:'Assessed', when:'',
-    text: sc.rating ? ('Inherent '+(inh.rating||'—')+' → residual '+sc.rating+' ('+sc.priority+')'+(r.businessImpact?('. '+r.businessImpact):'')) : 'Not yet rated — score likelihood × severity and the business impacts' });
+    text: sc.rating ? ('Inherent '+(inh.rating||'—')+' → now '+sc.rating+' ('+sc.priority+')'+((_tgt.rating&&plan.k!=='managed')?(' · projected '+_tgt.rating+' after the plan'):'')+(r.businessImpact?('. '+r.businessImpact):'')) : 'Not yet rated — score likelihood × severity and the business impacts' });
   m.push({ done:acts.length>0, label:'Action planned', when:'',
     text: acts.length ? (acts.length+' action'+(acts.length!==1?'s':'')+': '+acts.map(a=>(a.desc||'(action)').slice(0,60)+(a.owner?(' — '+a.owner+(a.due?(', due '+a.due):'')):'')).join('; ')) : 'No owned, dated actions yet' });
   m.push({ done:acts.length>0&&closed.length===acts.length, label:'Delivered', when:'',
     text: closed.length ? (closed.map(a=>(a.desc||'(action)').slice(0,50)+' — '+_actionStatus(a)+((a.completedDate||a.acceptDate)?(' '+(a.completedDate||a.acceptDate)):'')).join('; ')+(evid.length?('. Evidence: '+evid.map(l=>l.ref||l.url).join(', ')):'')) : (acts.length?'Plan in progress — '+closed.length+' of '+acts.length+' closed':'Waiting on the action plan') });
   m.push({ done:managed, label:'Managed', when:'',
-    text: managed ? ('This is now how the company manages this risk'+(r.controls?(': '+String(r.controls).slice(0,140)):'')+(evid.length?(' · '+evid.length+' piece'+(evid.length!==1?'s':'')+' of evidence on file'):'')+(r.trend?(' · trend '+r.trend):'')) : (plan.k==='managed'?'Plan delivered — tick "reviewed and completed" on the risk to sign it off':'The plan is still being delivered') });
+    text: managed ? ('This is now how the company manages this risk'+(_hist.length?(' — the score moved from '+(_hist[0].l*_hist[0].s)+' to '+(sc.rating||'—')+' as the plan delivered'):'')+(r.controls?(': '+String(r.controls).slice(0,140)):'')+(evid.length?(' · '+evid.length+' piece'+(evid.length!==1?'s':'')+' of evidence on file'):'')+(r.trend?(' · trend '+r.trend):'')) : (plan.k==='managed'?'Plan delivered — tick "reviewed and completed" on the risk to sign it off':'The plan is still being delivered') });
   return m;
 }
 function _journeyOpenRisk(id){
@@ -14233,8 +14251,8 @@ function renderRiskJourney(){
   const managedN=enriched.filter(x=>x.m[4].done).length;
   const planN=enriched.filter(x=>!x.m[4].done && x.m[2].done).length;
   const earlyN=enriched.length-managedN-planN;
-  const rows=enriched.filter(x=> _journeyFilter==='managed' ? x.m[4].done : _journeyFilter==='open' ? !x.m[4].done : true)
-    .sort((a,b)=>(_RISK_PRIO_RANK[a.sc.priority]??4)-(_RISK_PRIO_RANK[b.sc.priority]??4));
+  // Same order as the Risk profile tab — the two pages must read as one list.
+  const rows=enriched.filter(x=> _journeyFilter==='managed' ? x.m[4].done : _journeyFilter==='open' ? !x.m[4].done : true);
   const tile=(n,lab,c)=>`<div class="ckx-kpi" style="cursor:default;"><div style="font-size:24px;font-weight:800;color:${c};">${n}</div><div style="font-size:12px;color:var(--text-muted);">${lab}</div></div>`;
   const fbtn=(v,lab)=>`<button class="btn ${_journeyFilter===v?'btn-primary':'btn-outline'} btn-xs" onclick="setJourneyFilter('${v}')">${lab}</button>`;
   const card=(x)=>{
@@ -14407,14 +14425,78 @@ function _riskPlanState(r){
   return { k:'managed', label:accepted?'✓ Managed (risk accepted)':'✓ Managed', colour:'#16A34A', title:'The action plan is delivered — this is now how the company manages this risk.' };
 }
 function _riskFlowHTML(r){
-  const inh=_riskInherent(r), cur=_riskScore(r);
+  const inh=_riskInherent(r), cur=_riskScore(r), tgt=_riskTarget(r);
   const part=(sc,lab)=>{ if(!sc.rating) return `<span style="color:var(--text-muted);font-weight:400;">${lab} –</span>`;
     const c=_RISK_PRIO_COLOR[sc.priority]; return `<span title="${lab}: ${sc.l} × ${sc.s}">${lab} <strong style="color:${c};">${sc.rating}</strong></span>`; };
   const eff=_controlEffectiveness(r);
   const effHtml = eff ? `<span class="eff-badge" style="background:${eff.colour}1a;color:${eff.colour};">Controls: ${eff.band}</span>` : '';
   const plan=_riskPlanState(r);
   const planHtml=`<span class="eff-badge" style="background:${plan.colour}1a;color:${plan.colour};" title="${esc(plan.title)}">${plan.label}</span>`;
-  return part(inh,'Inherent') + `<span class="rf-arrow">→</span>` + part(cur,'Residual') + `<span class="rf-arrow">→</span>` + planHtml + effHtml;
+  // Where the score is heading once the plan lands (hidden once managed — it has landed).
+  const projHtml=(tgt.rating && plan.k!=='managed')
+    ? `<span class="rf-arrow">→</span><span title="Projected once the action plan is delivered: ${tgt.l} × ${tgt.s}" style="color:var(--text-muted);font-weight:400;">projected <strong style="color:${_RISK_PRIO_COLOR[tgt.priority]};">${tgt.rating}</strong></span>`
+    : '';
+  return part(inh,'Inherent') + `<span class="rf-arrow">→</span>` + part(cur,'Now') + `<span class="rf-arrow">→</span>` + planHtml + projHtml + effHtml;
+}
+// Every re-score is kept — the profile shows where the business WAS as well
+// as where it is now. Entries are pushed by the plan-delivered re-score.
+function _scoreHistoryHTML(r){
+  const h=Array.isArray(r.scoreHistory)?r.scoreHistory:[];
+  if(!h.length) return '';
+  const cur=_riskScore(r);
+  const steps=h.map(e=>`<b>${e.l*e.s}</b> (${e.l}×${e.s}${e.note?(', '+esc(e.note)):''}) ${fmtDate(e.at)}`).join(' → ');
+  return `<div style="font-size:11.5px;color:var(--text-muted);margin-top:6px;">Score history: ${steps} → <b style="color:${_RISK_PRIO_COLOR[cur.priority]||'var(--text)'};">${cur.rating||'—'}</b> now</div>`;
+}
+// ── Plan delivered → re-score. The old score goes into the history; the new
+// one (pre-filled with the projection) becomes "now". This is what makes the
+// scores move when the work gets done. ──
+function _maybeRescore(rid){
+  const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r || _roLocked()) return;
+  if(_riskPlanState(r).k!=='managed') return;
+  if(!_riskScore(r).rating) return;
+  if(document.getElementById('rescoreOverlay')) return;
+  setTimeout(()=>_promptRescore(r), 300);
+}
+function _promptRescore(r){
+  if(!r || _roLocked() || document.getElementById('rescoreOverlay')) return;
+  const cur=_riskScore(r), tgt=_riskTarget(r);
+  const preL=tgt.l||cur.l||'', preS=tgt.s||cur.s||'';
+  const selHTML=(id,pre,lab)=>`<label style="font-size:11.5px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">${lab}<select id="${id}" style="padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:transparent;color:inherit;font-size:14px;">${[1,2,3,4,5].map(n=>`<option value="${n}"${String(pre)===String(n)?' selected':''}>${n}</option>`).join('')}</select></label>`;
+  const ov=document.createElement('div'); ov.id='rescoreOverlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:520px;width:100%;box-shadow:0 18px 60px rgba(0,0,0,.35);">
+    <div style="padding:16px 20px;border-bottom:1.5px solid var(--border);">
+      <div style="font-weight:800;font-size:15px;">Plan delivered — re-score the risk</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">Every action on “${esc((r.activity||r.hazard||'this risk').slice(0,70))}” is closed. Score it as it stands <b>now</b>, with the delivered controls in place. The old score stays in the history, so the improvement is on the record.</div>
+    </div>
+    <div style="padding:16px 20px;display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">
+      <div style="font-size:12px;color:var(--text-muted);">Was<br><b style="font-size:20px;color:${_RISK_PRIO_COLOR[cur.priority]};">${cur.rating}</b> (${cur.l}×${cur.s})</div>
+      <div style="font-size:18px;color:var(--text-muted);padding-bottom:4px;">→</div>
+      ${selHTML('rescoreL',preL,'Likelihood now')}
+      ${selHTML('rescoreS',preS,'Severity now')}
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rescoreOverlay').remove()">Keep the current score</button>
+      <button class="btn btn-primary btn-sm" onclick="_saveRescore('${r.id}')">Save the new score</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+function _saveRescore(rid){
+  const ov=document.getElementById('rescoreOverlay');
+  const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r){ if(ov) ov.remove(); return; }
+  const L=parseInt((document.getElementById('rescoreL')||{}).value,10), Sv=parseInt((document.getElementById('rescoreS')||{}).value,10);
+  if(!(L>=1&&L<=5&&Sv>=1&&Sv<=5)){ showToast('Pick both likelihood and severity','error'); return; }
+  const old=_riskScore(r);
+  if(old.rating && (old.l!==L || old.s!==Sv)){
+    if(!Array.isArray(r.scoreHistory)) r.scoreHistory=[];
+    r.scoreHistory.push({ at:new Date().toISOString().slice(0,10), l:old.l, s:old.s, note:'before plan delivery' });
+  }
+  r.likelihood=String(L); r.severity=String(Sv);
+  _stamp(r,'updated'); if(ov) ov.remove();
+  saveData(); _keepScroll(renderRiskProfile);
+  showToast(old.rating===(L*Sv)?'Score confirmed at '+(L*Sv):'✓ Re-scored — was '+old.rating+', now '+(L*Sv)+'. The journey shows the improvement.','success');
 }
 function updateRiskRating(id, field, value){
   if(_roLocked()) return;
@@ -14511,7 +14593,15 @@ function updateRiskAction(rid, aid, field, value){
   const a=(r.actions||[]).find(x=>x.id===aid); if(!a) return;
   a[field]=value; if(field==='status') _stampActionCompletion(a, value); _stamp(r,'updated'); scheduleAutoSave();
   if(field==='status'||field==='due'){ const fl=document.getElementById('rflow-'+rid); if(fl) fl.innerHTML=_riskFlowHTML(r); }
-  if(field==='status'||field==='due'||field==='priority'){ _refreshActionViews(); }
+  // Date / priority edits must NEVER rebuild the panel — the cell being typed
+  // in would be destroyed. Targeted updates only; a full refresh happens on
+  // status change (the row chrome, chips and other views genuinely change).
+  if(field==='status'){ _refreshActionViews(); }
+  else if(field==='due'||field==='priority'){
+    const stEl=document.getElementById('actst-'+rid+'-'+aid);
+    if(stEl){ const st=_actionStatus(a); stEl.className='act-status '+_actionStatusClass(st); stEl.firstChild && (stEl.firstChild.textContent=st); }
+    try{ updateActionBadges(); }catch(e){}
+  }
   // Closing an action → offer to link the evidence that shows it was dealt with.
   if(field==='status' && (value==='Complete'||value==='Accepted')) _promptActionEvidence(a, r);
 }
@@ -14531,7 +14621,7 @@ function _riskActionsHTML(r, dis){
       <td><textarea${dis} rows="2" placeholder="Action description" oninput="updateRiskAction('${r.id}','${a.id}','desc',this.value)">${esc(a.desc||'')}</textarea></td>
       <td><input type="text"${dis} value="${esc(a.owner||'')}" placeholder="Owner / role" oninput="updateRiskAction('${r.id}','${a.id}','owner',this.value)"></td>
       <td><input type="date"${dis} value="${esc(a.due||'')}" onchange="updateRiskAction('${r.id}','${a.id}','due',this.value)"></td>
-      <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','status',this.value)">${stOpts(a.status||'Not started')}</select><div class="act-status ${_actionStatusClass(st)}" style="margin-top:4px;">${st}${evHtml}</div></td>
+      <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','status',this.value)">${stOpts(a.status||'Not started')}</select><div class="act-status ${_actionStatusClass(st)}" id="actst-${r.id}-${a.id}" style="margin-top:4px;"><span>${st}</span>${evHtml}</div></td>
       <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','priority',this.value)"><option value="">—</option>${prOpts(a.priority||'')}</select></td>
       ${dis?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs" title="Delete action" onclick="deleteRiskAction('${r.id}','${a.id}')">${_ic('trash',13)}</button></td>`}
     </tr>`;
@@ -14608,7 +14698,7 @@ function _promptActionEvidence(a, r){
       ${existing.length?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">Already linked to this action: ${existing.map(l=>esc(l.ref||'(unnamed)')).join(' · ')}</div>`:''}
     </div>
     <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;">
-      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('evidOverlay').remove()">Skip for now</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('evidOverlay').remove(); _maybeRescore('${r.id}')">Skip for now</button>
       <button class="btn btn-primary btn-sm" onclick="_saveActionEvidence('${r.id}','${a.id}')">Save evidence</button>
     </div>
   </div>`;
@@ -14631,6 +14721,7 @@ function _saveActionEvidence(rid, aid){
   });
   ov.remove();
   if(added){ _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile); }
+  _maybeRescore(rid);   // plan just delivered? → offer the re-score, projection pre-filled
 }
 
 // ── Document control (spec #4) ──
@@ -14643,21 +14734,60 @@ function _docReviewFlagHTML(){
   if(!_reviewOverdue()) return '';
   return `<span class="gap-flag" style="color:#B91C1C;background:#DC26261a;border-color:#DC262655;">${_ic('shield',12)} Review overdue</span>`;
 }
+// The app itself IS a consultation and communication channel — say so.
+// These build the standard wording from what Compass is actually doing for
+// this client (live cockpit, execution plan, sign-off register, documents,
+// reports), so the client sees the value in black and white. Sell and remain.
+function _suggestConsultedText(){
+  const co=(S.company&&(S.company.tradingName||S.company.legalName))||'the business';
+  return 'Consultation on this risk profile is carried out with '+co+' through AHS Compass: '
+    +'the profile is reviewed and agreed with management, staff see the live cockpit and the client execution plan through their own logins, '
+    +'and comments raised against any action are recorded with the name of who raised them and when. '
+    +'Face-to-face consultation (team briefings, toolbox talks) is recorded on the Sign-off register with signed delivery sheets.';
+}
+function _suggestCommunicatedText(){
+  const acts=(typeof _execOpenCount==='function')?_execOpenCount():0;
+  const pso=(S.policySignoff&&S.policySignoff.policies)?S.policySignoff.policies.length:0;
+  const staff=(S.policySignoff&&S.policySignoff.staff)?S.policySignoff.staff.length:0;
+  const docs=(S.documents||[]).length;
+  const bits=['the shared cockpit and client execution plan'+(acts?(' ('+acts+' open action'+(acts!==1?'s':'')+', each owned and dated)'):'')];
+  if(pso) bits.push('the Sign-off register ('+pso+' polic'+(pso!==1?'ies':'y')+', talks and training acknowledged'+(staff?(' by '+staff+' staff'):'')+' with signed sheets for the HR file)');
+  if(docs) bits.push('the Documents register ('+docs+' controlled document'+(docs!==1?'s':'')+' with review dates)');
+  bits.push('reports issued from the Reports tab (board report, management-system and risk-profile reports)');
+  return 'The risk profile and its controls are communicated to staff through AHS Compass: '+bits.join('; ')+'. '
+    +'Updates reach staff the same day they are made — the cockpit shows a live "updated" stamp.';
+}
+function suggestRiskDocText(field){
+  if(_blockIfReadOnly()) return;
+  const rd=S.riskDoc=S.riskDoc||{};
+  const txt=field==='consulted'?_suggestConsultedText():_suggestCommunicatedText();
+  if((rd[field]||'').trim() && !confirm('Replace the current wording with the suggested text built from what Compass is doing for this client?')) return;
+  rd[field]=txt; scheduleAutoSave(); _renderRiskDocControl();
+}
 function _renderRiskDocControl(){
   const el=document.getElementById('riskDocControl'); if(!el) return;
-  const dis=_roLocked()?' disabled':''; const rd=S.riskDoc||{};
+  const dis=_roLocked()?' disabled':''; const rd=S.riskDoc=S.riskDoc||{};
+  // Self-populate once: empty fields get the standard wording built from the
+  // app's own live facts (editable, and re-suggestable via the ↻ buttons).
+  if(!_roLocked()){
+    let seeded=false;
+    if(!(rd.consulted||'').trim()){ rd.consulted=_suggestConsultedText(); seeded=true; }
+    if(!(rd.communicated||'').trim()){ rd.communicated=_suggestCommunicatedText(); seeded=true; }
+    if(seeded) scheduleAutoSave();
+  }
   // Consultation & communication — the legal duty to consult and inform employees
   // on health and safety. (Report version/approval lives in the Document Control
   // register on the Reports tab, not here.)
   const _dcD=el.querySelector('details'); const _dcOpen=_dcD?_dcD.open:true;   // user's choice survives re-renders
+  const sug=(f)=>dis?'':`<button class="btn btn-ghost btn-xs no-print" style="margin-left:8px;font-size:10.5px;" title="Rewrite from what Compass is currently doing for this client (logins, execution plan, sign-off register, documents, reports)" onclick="suggestRiskDocText('${f}')">↻ Suggest from the app</button>`;
   el.innerHTML = `<details class="rp-subcard"${_dcOpen?' open':''}>
     <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('clipboard',17)} Consultation &amp; communication</summary>
     <div class="sc-body">
-      <div class="field-group"><label class="field-label">Consulted with (employee consultation record)</label>
-        <textarea${dis} rows="2" placeholder="Who was consulted in preparing this profile — e.g. staff, safety reps, contractors" oninput="updateRiskDoc('consulted',this.value)">${esc(rd.consulted||'')}</textarea></div>
-      <div class="field-group"><label class="field-label">How this is communicated to staff</label>
-        <textarea${dis} rows="2" placeholder="How the risk profile and its controls are shared — e.g. team briefings, toolbox talks, induction, noticeboard" oninput="updateRiskDoc('communicated',this.value)">${esc(rd.communicated||'')}</textarea></div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:10px;">Meets the duty to consult and inform employees on health and safety (Health and Safety (Consultation with Employees) Regulations 1996; MHSWR 1999 reg. 10).</div>
+      <div class="field-group"><label class="field-label">Consulted with (employee consultation record)${sug('consulted')}</label>
+        <textarea${dis} rows="3" placeholder="Who was consulted in preparing this profile — e.g. staff, safety reps, contractors" oninput="updateRiskDoc('consulted',this.value)">${esc(rd.consulted||'')}</textarea></div>
+      <div class="field-group"><label class="field-label">How this is communicated to staff${sug('communicated')}</label>
+        <textarea${dis} rows="3" placeholder="How the risk profile and its controls are shared — e.g. team briefings, toolbox talks, induction, noticeboard" oninput="updateRiskDoc('communicated',this.value)">${esc(rd.communicated||'')}</textarea></div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:10px;">Meets the duty to consult and inform employees on health and safety (Health and Safety (Consultation with Employees) Regulations 1996; MHSWR 1999 reg. 10). The wording above is written from what Compass is actually doing for this client — edit it freely.</div>
     </div></details>`;
 }
 
@@ -14982,7 +15112,7 @@ function _allMgmtActions(){
     const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
     const prBase = st && st.label==='Not in place' ? 'High' : (st && st.label==='Gap' ? 'Medium' : '');
     (it.actions||[]).forEach(act=>{ if(act.deleted) return; if(!act.desc || !String(act.desc).trim()) return;
-      out.push({ secId:sec.id, itemId:it.id, actId:act.id, act, desc:act.desc, owner:act.owner||'', due:act.due||'', priority:act.priority||prBase, status:_actionStatus({status:act.status, due:act.due}), source:(sec.heading||'Management system') });
+      out.push({ secId:sec.id, itemId:it.id, actId:act.id, act, desc:act.desc, owner:act.owner||'', due:act.due||'', priority:act.priority||prBase, status:_actionStatus({status:act.status, due:act.due}), source:(sec.legal?'Legal essentials':(sec.heading||'Management system')) });
     });
   }));
   return out;
@@ -16172,7 +16302,7 @@ function _riskVsMaturity(){
   return { riskIndex, riskLabel: riskIndex>=60?'High':riskIndex>=35?'Moderate':riskIndex>0?'Lower':'None', matPct, matAvg:mat.avg, matCritFail:mat.critFail, rag, verdict, sifUncontrolled:RD.sifUncontrolled.length, ragLabel: rag==='#DC2626'?'Priority':rag==='#F59E0B'?'Improving':rag==='#16A34A'?'Controlled':'Incomplete' };
 }
 // Shared on-screen graphic for the risk-vs-maturity comparison (cockpit + risk register dashboard).
-// o.heading: heading text (false to omit the h4). o.link: false to hide the "Open risk review" button.
+// o.heading: heading text (false to omit the h4).
 function _riskVsMaturityHTML(o){
   o=o||{}; const rvm=_riskVsMaturity(); const c=rvm.rag;
   const bar=(lab,val,col,vl)=>`<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px;"><span style="font-size:12px;font-weight:600;color:var(--text-muted);">${lab}</span><span style="font-size:12.5px;font-weight:700;color:${col};white-space:nowrap;">${vl}</span></div><div style="height:10px;background:var(--muted-bg);border-radius:5px;overflow:hidden;"><div style="height:100%;width:${Math.max(3,Math.min(100,val))}%;background:${col};border-radius:5px;transition:width .3s;"></div></div></div>`;
@@ -16180,8 +16310,7 @@ function _riskVsMaturityHTML(o){
   return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;">${head}<span style="font-size:11.5px;font-weight:700;color:#fff;background:${c};padding:3px 12px;border-radius:12px;white-space:nowrap;">${rvm.ragLabel}</span></div>
     ${bar('Risk exposure', rvm.riskIndex, rvm.riskIndex>=60?'#DC2626':rvm.riskIndex>=35?'#F59E0B':'#16A34A', rvm.riskLabel+' ('+rvm.riskIndex+')')}
     ${bar('Management maturity', rvm.matPct==null?0:rvm.matPct, rvm.matPct==null?'#9CA3AF':rvm.matPct>=70?'#16A34A':rvm.matPct>=40?'#F59E0B':'#DC2626', rvm.matAvg==null?'not scored':rvm.matAvg.toFixed(1)+'/5')}
-    <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(rvm.verdict)}</div>
-    ${o.link===false?'':`<button class="ck-link" onclick="switchTab('risk')" style="margin-top:8px;">Open risk review</button>`}`;
+    <div style="font-size:12px;color:var(--text);line-height:1.5;">${esc(rvm.verdict)}</div>`;
 }
 function _pdfCompleteness(K, data, rgb){
   K.section('Data completeness', rgb||[180,110,10]);
@@ -16590,6 +16719,7 @@ function renderRiskProfile(){
   const ratingBox = (r,title,cls,lf,sf) => `<div class="rt-box ${cls}"><div class="rt-title">${title}</div><div class="rt-selects">${rsel(r.id,lf,r[lf],'L')}${rsel(r.id,sf,r[sf],'S')}</div></div>`;
 
   const pdcaHint = `<span class="fl-hint" title="Plan-Do-Check-Act — where this risk sits in the manage-for-H&S cycle. Leave blank to derive it from the controls and actions you record.">(?)</span>`;
+  const projHint = `<span class="fl-hint" title="Where the score is heading once the action plan is delivered — your judgement at planning time. When the last action closes, the app asks you to re-score the risk (pre-filled with this projection) and keeps the old score in the history, so the profile always shows where the business IS and where it is GOING.">(?)</span>`;
   cont.innerHTML = `<div class="no-print" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
       <button class="btn btn-ghost btn-xs" onclick="_expandAllRisks(true)">Expand all</button>
       <button class="btn btn-ghost btn-xs" onclick="_expandAllRisks(false)">Collapse all</button>
@@ -16660,11 +16790,13 @@ function renderRiskProfile(){
           <label class="field-label" style="margin:0;">Risk rating — Likelihood (L) × Severity (S), each 1–5</label>
           <div class="rating-trio">
             ${ratingBox(r,'Inherent (pre-control)','','inherentL','inherentS')}
-            ${ratingBox(r,'Residual (after controls)','rt-current','likelihood','severity')}
+            ${ratingBox(r,'Now (with current controls)','rt-current','likelihood','severity')}
+            ${ratingBox(r,'Projected (after the plan) '+projHint,'','targetL','targetS')}
             <div class="rt-box"><div class="rt-title">Risk trend ${trendHint}</div><div class="rt-selects">${sel(r.id,'trend',r.trend,RISK_TREND)}</div></div>
           </div>
           <div class="risk-flow" id="rflow-${r.id}">${_riskFlowHTML(r)}</div>
           <div class="risk-rating-readout" id="rrate-${r.id}">${_riskRatingText(r)}</div>
+          ${_scoreHistoryHTML(r)}
         </div>
         <div style="margin:14px 0;">
           <label class="field-label">Action plan <span class="fl-hint" title="Prioritised, owned and dated actions. This is where residual risk is dealt with: once the plan is delivered, the risk does not disappear — the completed plan and its evidence become the way the company manages this risk.">(?)</span></label>
@@ -16927,9 +17059,10 @@ function buildRiskProfileReportPDF(){
       field('Business impact', imp || r.businessImpact);
       field('Existing controls', r.controls);
       field('Best control level', _controlLevelLabel(r.controlLevel));
-      const inh=_riskInherent(r), eff=_controlEffectiveness(r), plan=_riskPlanState(r);
+      const inh=_riskInherent(r), eff=_controlEffectiveness(r), plan=_riskPlanState(r), tgtP=_riskTarget(r);
       const fmtR=(s)=> s.rating ? (s.l+'x'+s.s+'='+s.rating+' ('+s.priority+')') : '-';
-      field('Risk rating', 'Inherent '+fmtR(inh)+'  >  Residual '+fmtR(sc)+'  >  '+plan.label.replace('✓ ','')+(eff?('     Controls: '+eff.band):''));
+      field('Risk rating', 'Inherent '+fmtR(inh)+'  >  Now '+fmtR(sc)+((tgtP.rating&&plan.k!=='managed')?('  >  Projected '+fmtR(tgtP)):'')+'  >  '+plan.label.replace('✓ ','')+(eff?('     Controls: '+eff.band):''));
+      if(Array.isArray(r.scoreHistory)&&r.scoreHistory.length) field('Score history', r.scoreHistory.map(e=>(e.l*e.s)+' ('+e.l+'x'+e.s+') '+(e.note||'')+' '+fd(e.at)).join('  >  ')+'  >  now '+(sc.rating||'-'));
       field('Risk trend', r.trend);
       const actLines=(r.actions||[]).filter(a=>a.desc||a.owner||a.due).map((a,i)=>(a.desc||'(action)')+'  ['+_actionStatus(a)+(a.owner?(' · '+a.owner):'')+(a.due?(' · due '+fd(a.due)):'')+(a.priority?(' · '+a.priority):'')+']');
       if(actLines.length) field('Actions', actLines.join('\n'));
@@ -17489,19 +17622,22 @@ function acceptReqCriterion(sid, iid, idx){
   }
   _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
 }
-// The gap IS the action: the item title becomes the action, the open criteria its detail.
+// The gap IS the action: the item title becomes the action; what was NOT
+// ticked becomes the detail, revealed under ▸ Activity on the execution plan
+// (where it can be commented on and worked through to completion).
 function raiseReqGapAction(sid, iid){
   if(_blockIfReadOnly()) return;
   const s=(S.requirements||[]).find(x=>x.id===sid); const it=s&&(s.items||[]).find(i=>i.id===iid); if(!it) return;
   const meta=_legalMeta(it.legalKey); const title=meta?meta.title:(it.requirement||'Requirement');
   const open=_critList(it).map((c,i)=>({c,i})).filter(x=>_critState(it,x.i)==='');
-  const desc=title+(open.length?(' — resolve: '+open.map(x=>x.c).join('; ')):'');
-  const dup=(it.actions||[]).some(a=>!a.deleted && a.desc===desc && _actionStatus(a)!=='Complete');
+  const dup=(it.actions||[]).some(a=>!a.deleted && a.desc===title && _actionStatus(a)!=='Complete' && _actionStatus(a)!=='Accepted');
   if(dup){ showToast('An open action for this gap already exists','info'); return; }
-  _reqAddAction(it, desc);
+  const act=_reqAddAction(it, title);
+  act.detail=open.map(x=>x.c);
+  if(open.length) _logAdd(act,'comment','To resolve:\n'+open.map(x=>'• '+x.c).join('\n'));
   _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
   try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
-  showToast('✓ Gap raised as an action — it is on the execution plan','success');
+  showToast('✓ "'+title+'" raised — open ▸ Activity on the execution plan to see what needs doing','success',);
 }
 function approveReqItem(sid, iid){
   if(_blockIfReadOnly()) return;
@@ -17592,7 +17728,7 @@ function _legalCardHTML(sec, it, emp, ro){
     </div>
     ${ro?(it.reviewNote?`<div style="margin-top:8px;font-size:12.5px;"><span style="color:var(--text-muted);font-weight:600;">Review notes:</span> ${esc(it.reviewNote)}</div>`:''):`<div style="margin-top:8px;"><textarea rows="2" placeholder="Review notes / comments — what you found on reviewing this…" oninput="updateReqField('${sec.id}','${it.id}','reviewNote',this.value)" style="width:100%;box-sizing:border-box;font-size:12.5px;padding:8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${esc(it.reviewNote||'')}</textarea></div>`}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;">
-      ${ro?'':(approved?`<span style="font-size:11.5px;color:var(--success);font-weight:700;">✓ Reviewed &amp; approved${it.reviewedBy?(' · '+esc(it.reviewedBy)):''}</span> <button class="btn btn-ghost btn-xs no-print" onclick="toggleReqReviewed('${sec.id}','${it.id}')">Undo</button>`:`<button class="btn btn-primary btn-xs no-print" onclick="approveReqItem('${sec.id}','${it.id}')">✓ Approve as compliant</button>`)}
+      ${ro?'':(approved?`<span style="font-size:11.5px;color:var(--success);font-weight:700;">✓ Reviewed &amp; approved${it.reviewedBy?(' · '+esc(it.reviewedBy)):''}</span> <button class="btn btn-ghost btn-xs no-print" onclick="toggleReqReviewed('${sec.id}','${it.id}')">Undo</button>`:`<button class="btn btn-primary btn-xs no-print" onclick="approveReqItem('${sec.id}','${it.id}')">✓ Approve as compliant</button>${cc.open>0?`<button class="btn btn-outline btn-xs no-print" style="color:var(--warning);border-color:var(--warning);" title="Not compliant yet? This item becomes the action — the ${cc.open} unticked criteria go with it as the to-do list, revealed under ▸ Activity on the execution plan" onclick="raiseReqGapAction('${sec.id}','${it.id}')">Raise the gap as an action ↗</button>`:''}`)}
     </div>
     ${_mgmtActionsListHTML(sec, it, ro)}
   </div>`;
@@ -19586,8 +19722,77 @@ function addStaffFromTraining(){ if(_roLocked()) return; const p=_psoState(); co
   (S.training||[]).forEach(t=>{ if(t.employee) people.push({name:String(t.employee).trim(), role:''}); });
   let n=0; people.forEach(pe=>{ const k=pe.name.toLowerCase(); if(k && !seen.has(k)){ p.staff.push({id:_psoUid('emp'), name:pe.name, role:pe.role||''}); seen.add(k); n++; } });
   saveData(); renderPolicySignoff(); showToast(n?('✓ Added '+n+' staff from training matrix'):'All training staff already listed','info'); }
-function toggleSignoff(staffId, policyId, checked){ if(_roLocked()) return; const p=_psoState(); const k=staffId+'|'+policyId; if(checked){ p.signed[k]=p.signed[k]||new Date().toISOString().slice(0,10); } else { delete p.signed[k]; } saveData(); renderPolicySignoff(); }
-function _psoCompliance(){ const p=_psoState(); const total=p.staff.length*p.policies.length; if(!total) return {pct:0,signed:0,total:0}; let s=0; p.staff.forEach(st=>p.policies.forEach(pol=>{ if(p.signed[st.id+'|'+pol.id]) s++; })); return {pct:Math.round(s/total*100), signed:s, total:total}; }
+// A signature lasts 12 MONTHS. After that it shows amber and needs re-signing,
+// so the weekly talks / monthly CPD / annual policy review cycle stays honest
+// instead of one tick lasting forever.
+function _psoSignInfo(dt){
+  if(!dt) return { state:'none', label:'Not signed' };
+  const days=Math.floor((Date.now()-new Date(dt+'T00:00:00').getTime())/86400000);
+  if(isNaN(days)) return { state:'none', label:'Not signed' };
+  if(days>365) return { state:'expired', label:'Signed '+fmtDate(dt)+' — EXPIRED (over 12 months), needs re-signing' };
+  if(days>335) return { state:'expiring', label:'Signed '+fmtDate(dt)+' — expires soon (12-month limit)' };
+  return { state:'ok', label:'Signed '+fmtDate(dt) };
+}
+function toggleSignoff(staffId, policyId, checked){ if(_roLocked()) return; const p=_psoState(); const k=staffId+'|'+policyId;
+  // Re-ticking an expired signature re-signs it TODAY (the old date is replaced).
+  if(checked){ const cur=p.signed[k]; p.signed[k]=(cur && _psoSignInfo(cur).state!=='expired') ? cur : new Date().toISOString().slice(0,10); }
+  else { delete p.signed[k]; }
+  saveData(); renderPolicySignoff(); }
+function _psoCompliance(){ const p=_psoState(); const total=p.staff.length*p.policies.length; if(!total) return {pct:0,signed:0,total:0,expired:0}; let s=0, ex=0; p.staff.forEach(st=>p.policies.forEach(pol=>{ const info=_psoSignInfo(p.signed[st.id+'|'+pol.id]); if(info.state==='ok'||info.state==='expiring') s++; else if(info.state==='expired') ex++; })); return {pct:Math.round(s/total*100), signed:s, total:total, expired:ex}; }
+// ── Register round-trip (control of updates): export the whole register as a
+// CSV (opens straight in Excel), amend or re-date it there, import it back.
+// Matching is by employee name + item title, so the file survives re-ordering.
+function exportSignoffRegister(){
+  const p=_psoState();
+  if(!p.staff.length || !p.policies.length){ showToast('Add employees and items first','info'); return; }
+  const q=(v)=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const head=['Employee','Role'].concat(p.policies.map(pol=>(pol.title||'Item')+(pol.type&&pol.type!=='Policy'?(' ['+pol.type+']'):'')));
+  const lines=[head.map(q).join(',')];
+  p.staff.forEach(s=>{ lines.push([s.name||'', s.role||''].concat(p.policies.map(pol=>p.signed[s.id+'|'+pol.id]||'')).map(q).join(',')); });
+  const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='signoff-register-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  showToast('✓ Register exported — dates amend in Excel, then import it back','success');
+}
+function importSignoffRegister(inp){
+  if(_blockIfReadOnly()){ inp.value=''; return; }
+  const f=inp.files&&inp.files[0]; inp.value=''; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const rows=String(r.result).replace(/^﻿/,'').split(/\r?\n/).filter(x=>x.trim()).map(line=>{
+        const out=[]; let cur='', inQ=false;
+        for(let i=0;i<line.length;i++){ const ch=line[i];
+          if(inQ){ if(ch==='"'){ if(line[i+1]==='"'){ cur+='"'; i++; } else inQ=false; } else cur+=ch; }
+          else if(ch==='"') inQ=true;
+          else if(ch===','){ out.push(cur); cur=''; }
+          else cur+=ch; }
+        out.push(cur); return out;
+      });
+      if(rows.length<2){ showToast('Nothing to import in that file','error'); return; }
+      const p=_psoState();
+      const head=rows[0].map(h=>String(h||'').replace(/\s*\[[^\]]*\]\s*$/,'').trim().toLowerCase());
+      const polByCol={}; head.forEach((h,i)=>{ if(i<2||!h) return; const pol=p.policies.find(x=>(x.title||'').trim().toLowerCase()===h); if(pol) polByCol[i]=pol; });
+      if(!Object.keys(polByCol).length){ showToast('No item columns matched the register — export first, amend, then import the same file','error',6000); return; }
+      let set=0, cleared=0, unknownStaff=0;
+      rows.slice(1).forEach(row=>{
+        const nm=String(row[0]||'').trim().toLowerCase(); if(!nm) return;
+        const st=p.staff.find(x=>(x.name||'').trim().toLowerCase()===nm);
+        if(!st){ unknownStaff++; return; }
+        Object.keys(polByCol).forEach(ci=>{
+          const k=st.id+'|'+polByCol[ci].id;
+          const v=String(row[ci]||'').trim();
+          const d=v?(new Date(v)):null;
+          if(v && d && !isNaN(d)){ const iso=d.toISOString().slice(0,10); if(p.signed[k]!==iso){ p.signed[k]=iso; set++; } }
+          else if(!v && p.signed[k]){ delete p.signed[k]; cleared++; }
+        });
+      });
+      saveData(); renderPolicySignoff();
+      showToast('✓ Register imported — '+set+' signature'+(set!==1?'s':'')+' set'+(cleared?(', '+cleared+' cleared'):'')+(unknownStaff?(' · '+unknownStaff+' row'+(unknownStaff!==1?'s':'')+' skipped (employee not listed)'):''),'success',6000);
+    }catch(e){ console.error('Sign-off import failed',e); showToast('Could not read that file','error'); }
+  };
+  r.readAsText(f);
+}
 function renderPolicySignoff(){
   const cont=document.getElementById('signoffContainer'); if(!cont) return;
   const p=_psoState(); const ro=_roLocked(); const dis=ro?' disabled':'';
@@ -19619,7 +19824,9 @@ function renderPolicySignoff(){
   let matrix='';
   if(p.staff.length && p.policies.length){
     const head=`<tr><th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--surface);">Employee</th>${p.policies.map(pol=>`<th style="padding:6px 6px;font-size:10.5px;text-align:center;white-space:nowrap;">${esc((pol.title||'Policy').slice(0,20))}</th>`).join('')}<th style="padding:6px 8px;text-align:center;">%</th></tr>`;
-    const body=p.staff.map(s=>{ let sc=0; const cells=p.policies.map(pol=>{ const dt=p.signed[s.id+'|'+pol.id]; if(dt) sc++; return `<td style="text-align:center;padding:3px;"><input type="checkbox" ${dt?'checked':''}${dis} onchange="toggleSignoff('${s.id}','${pol.id}',this.checked)" title="${dt?('Signed '+dt):'Not signed'}"></td>`; }).join(''); const pct=p.policies.length?Math.round(sc/p.policies.length*100):0; return `<tr><td style="padding:5px 8px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--surface);">${esc(s.name||'(unnamed)')}</td>${cells}<td style="text-align:center;font-weight:700;color:${pct===100?'var(--success)':pct?'var(--warning)':'var(--text-muted)'};">${pct}%</td></tr>`; }).join('');
+    const body=p.staff.map(s=>{ let sc=0; const cells=p.policies.map(pol=>{ const dt=p.signed[s.id+'|'+pol.id]; const info=_psoSignInfo(dt); const inDate=(info.state==='ok'||info.state==='expiring'); if(inDate) sc++;
+      const bg=info.state==='expired'?'background:#F59E0B22;':info.state==='expiring'?'background:#F59E0B11;':'';
+      return `<td style="text-align:center;padding:3px;${bg}" title="${esc(info.label)}"><input type="checkbox" ${inDate?'checked':''}${dis} onchange="toggleSignoff('${s.id}','${pol.id}',this.checked)">${info.state==='expired'?'<div style="font-size:9px;color:#B45309;font-weight:700;line-height:1;">⚠ expired</div>':(info.state==='expiring'?'<div style="font-size:9px;color:#B45309;line-height:1;">renew soon</div>':'')}</td>`; }).join(''); const pct=p.policies.length?Math.round(sc/p.policies.length*100):0; return `<tr><td style="padding:5px 8px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--surface);">${esc(s.name||'(unnamed)')}</td>${cells}<td style="text-align:center;font-weight:700;color:${pct===100?'var(--success)':pct?'var(--warning)':'var(--text-muted)'};">${pct}%</td></tr>`; }).join('');
     matrix=`<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div>`;
   } else matrix='<div class="ck-pending" style="padding:6px 0;">Add at least one policy and one employee to track sign-off.</div>';
   const cpc=comp.pct===100?'var(--success)':comp.pct?'var(--warning)':'var(--text-muted)';
@@ -19639,7 +19846,12 @@ function renderPolicySignoff(){
       <div class="card-body">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:12px;color:var(--text-muted);flex:1;">${comp.signed} of ${comp.total} acknowledgements recorded</span><span style="font-size:13px;font-weight:700;color:${cpc};">${comp.pct}%</span></div>
         <div style="height:8px;background:var(--muted-bg);border-radius:4px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${comp.pct}%;background:var(--success);"></div></div>
-        <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Tick a box when the signed sheet comes back (dated today). The printed sheet stays the wet-ink evidence.</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Tick a box when the signed sheet comes back (dated today). The printed sheet stays the wet-ink evidence. <b>Signatures last 12 months</b> — after that the cell turns amber and needs re-signing, so weekly talks, monthly CPD and the annual policy review all cycle through honestly.${comp.expired?` <span style="color:#B45309;font-weight:700;">${comp.expired} signature${comp.expired!==1?'s':''} expired.</span>`:''}</div>
+        ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" class="no-print">
+          <button class="btn btn-ghost btn-sm" onclick="exportSignoffRegister()" title="The whole register as a CSV — opens straight in Excel to control updates">⭳ Export register (Excel/CSV)</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('psoCsvInput').click()" title="Import an amended register back — matches by employee name + item title">⭱ Import register</button>
+          <input type="file" id="psoCsvInput" accept=".csv,text/csv" style="display:none" onchange="importSignoffRegister(this)">
+        </div>`}
         ${matrix}
       </div></div>
     <div class="card"><div class="card-band"><h3><span class="dot">●</span> Print acknowledgement sheets</h3></div>
@@ -19697,10 +19909,15 @@ function buildSignoffPDF(){
     K.kv('Risk profile', 'v'+profVer);
     st.y+=2;
     K.table(
-      [{header:'#',w:8},{header:'ITEM',w:60},{header:'TYPE',w:24},{header:'VER',w:12},{header:'DELIVERED',w:22},{header:'CONTROLS (RISK PROFILE)',w:52}],
-      p.policies.map((pol,i)=>{ const ctrl=(pol.riskIds||[]).map(_psoRiskName).filter(Boolean).join(', '); return [String(i+1), pol.title||'(untitled item)', {text:pol.type||'Policy',color:[110,110,110]}, {text:pol.version||'-',color:[110,110,110]}, {text:pol.delivered?fmtDate(pol.delivered):'-',color:[110,110,110]}, {text:ctrl||'-',color:[110,110,110]}]; }),
+      [{header:'#',w:8},{header:'ITEM',w:52},{header:'TYPE',w:20},{header:'VER',w:10},{header:'DELIVERED',w:20},{header:'CONTROLS (RISK PROFILE)',w:40},{header:'CURRENT STATUS',w:30}],
+      p.policies.map((pol,i)=>{ const ctrl=(pol.riskIds||[]).map(_psoRiskName).filter(Boolean).join(', ');
+        const info=s.id?_psoSignInfo(p.signed[s.id+'|'+pol.id]):{state:'none'};
+        const stTxt=info.state==='expired'?'EXPIRED - re-sign':(info.state==='ok'||info.state==='expiring')?('Signed '+fmtDate(p.signed[s.id+'|'+pol.id])):'To sign';
+        const stCol=info.state==='expired'?[180,83,9]:(info.state==='ok'||info.state==='expiring')?[22,120,60]:[110,110,110];
+        return [String(i+1), pol.title||'(untitled item)', {text:pol.type||'Policy',color:[110,110,110]}, {text:pol.version||'-',color:[110,110,110]}, {text:pol.delivered?fmtDate(pol.delivered):'-',color:[110,110,110]}, {text:ctrl||'-',color:[110,110,110]}, {text:stTxt,color:stCol,bold:info.state==='expired'}]; }),
       {headFill:NAVY, headText:[255,255,255]}
     );
+    K.text('Signatures are valid for 12 months from the date signed. Anything marked EXPIRED or To sign needs a fresh signature on this sheet.', 8.5, {color:[110,110,110], gap:2});
     st.y+=8; K.ensure(24); sigLine('Employee signature',ML,72); sigLine('Date',ML+96,54);
     st.y+=22; K.ensure(22); sigLine('Manager signature',ML,72); sigLine('Date',ML+96,54);
     st.y+=22;
@@ -21161,6 +21378,19 @@ function _applyImport(obj){
     wrapped.__scrollWrapped=true;
     window[fn]=wrapped;
   });
+})();
+
+// ── App-wide textarea auto-sizing: the box grows with the text, so nothing
+//    scrolls inside a two-row cell while you type. Applies on focus (existing
+//    content) and on every keystroke. Opt out per field: data-noautosize. ──
+(function(){
+  function fit(t){
+    if(!t || t.tagName!=='TEXTAREA' || t.dataset.noautosize!==undefined) return;
+    t.style.height='auto';
+    t.style.height=Math.min(t.scrollHeight+2, 600)+'px';
+  }
+  document.addEventListener('input',  e=>fit(e.target), {passive:true});
+  document.addEventListener('focusin', e=>fit(e.target), {passive:true});
 })();
 </script>
 

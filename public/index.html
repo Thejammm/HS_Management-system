@@ -13075,7 +13075,7 @@ const COCKPIT_WIDGETS = {
   kpiHighCrit:    { id:'kpiHighCrit', label:'High and critical risks', group:'KPI', render:x=>_ckKpi('High and critical risks', x.highRisk.length, x.risks.length+' in the profile', x.highRisk.length?'var(--danger)':'', 'risk', x.highRisk.length?'gotoHighCritRisks()':'') },
   kpiOpenActions: { id:'kpiOpenActions', label:'Open actions', group:'KPI', render:x=>_ckKpi('Open actions', x.openA, x.overdueA?(x.overdueA+' overdue'):'None overdue', x.overdueA?'var(--danger)':'', 'actions', x.openA?'gotoOpenActions()':'') },
   kpiMgmtGaps:    { id:'kpiMgmtGaps', label:'Management system gaps', group:'KPI', render:x=>_ckKpi('Management system gaps', x.reqG.gaps, x.reqG.assessed+' assessed', x.reqG.gaps?'var(--warning)':'', 'requirements') },
-  kpiCompleteness:{ id:'kpiCompleteness', label:'Assessment completeness', group:'KPI', render:x=>_ckKpi('Assessment completeness', x.RD.completeness+'%', x.RD.completeness<100?'still being built':'complete', x.RD.completeness<60?'var(--warning)':'', 'risk') },
+  kpiCompleteness:{ id:'kpiCompleteness', label:'Assessment completeness', group:'KPI', render:x=>_ckKpi('Assessment completeness', x.RD.completeness+'%', x.RD.completeness<100?'click to see what\'s left':'complete', x.RD.completeness<60?'var(--warning)':'', '', 'openCompletenessModal()') },
   kpiInspections: { id:'kpiInspections', label:'Inspections', group:'KPI', render:x=>_ckKpi('Inspections', x.insps.length, x.signedOff+' signed off · '+x.awaiting+' awaiting', '', 'monthly') },
   chartInspections:{ id:'chartInspections', label:'Inspections by month', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Inspections by month</h4><svg viewBox="0 0 ${x.BW} ${x.BH}" width="100%" style="max-height:200px;">${x.barSvg}</svg></div>` },
   chartCompliance:{ id:'chartCompliance', label:'Compliance', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Compliance</h4><div class="ckx-donut-wrap">${x.donut}<div class="ckx-legend">${_ckLeg('var(--success)','Pass',x.pass)}${_ckLeg('#6EE7B7','Rectified',x.rect)}${_ckLeg('var(--warning)','Action',x.act)}</div><button class="ck-link" onclick="switchTab('monthly')">View monthly report</button></div></div>` },
@@ -13125,7 +13125,7 @@ const COCKPIT_WIDGETS = {
         <div class="ck-pending">Client-ready PDFs: board report, risk profile, action plan and management system.</div>
         <button class="ck-link" onclick="switchTab('reports')">Open Reports →</button>`) },
   // Dials & gauges — richer visuals, OFF by default (enable per client in the customiser).
-  gaugeCompleteness:{ id:'gaugeCompleteness', label:'Completeness gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Assessment completeness', `${_gaugeSVG(x.RD.completeness)}<div class="ck-pending" style="text-align:center;margin-top:2px;">of the assessment complete</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Open risk profile</button>`) },
+  gaugeCompleteness:{ id:'gaugeCompleteness', label:'Completeness gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Assessment completeness', `${_gaugeSVG(x.RD.completeness)}<div class="ck-pending" style="text-align:center;margin-top:2px;">of the assessment complete</div><button class="ck-link" onclick="openCompletenessModal()" style="align-self:center;">What's left →</button>`) },
   gaugeCompliance:  { id:'gaugeCompliance', label:'Compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Inspection compliance', `${_gaugeSVG(x.compliance==null?0:x.compliance,{text:x.compliance==null?'--':x.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">pass + rectified</div><button class="ck-link" onclick="switchTab('monthly')" style="align-self:center;">Monthly report</button>`) },
   gaugeMaturity:    { id:'gaugeMaturity', label:'Maturity gauge', group:'Gauge', defaultOff:true, render:x=>{ const a=x.RD.overallMat.avg; return _ckMod('Management maturity', `${_gaugeSVG(a==null?0:a/5*100,{text:a==null?'--':a.toFixed(1)})}<div class="ck-pending" style="text-align:center;margin-top:2px;">out of 5 (HSG65)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk review</button>`); } },
   tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(100 - x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk review</button>`) },
@@ -14149,6 +14149,56 @@ function _riskMatrixHTML(scored){
     + `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Vertical axis = <strong>Severity</strong> (5 at top). Horizontal axis = <strong>Likelihood</strong> (1–5). Cell number = risks at that L×S; colour = rating band. ${esc(_bandRangeText())}.</div>`;
 }
 
+// ══════════════════════════════════════════════════════════════
+//  COMPLETENESS DRILL-DOWN — click the cockpit completeness tile
+//  to see exactly what is missing, each line navigating straight
+//  to the gap. Reuses the same figures the board report prints.
+// ══════════════════════════════════════════════════════════════
+function _completenessGaps(RD){
+  const g=[];
+  const add=(count,label,goLabel,go)=>{ if(count>0) g.push({count,label,goLabel,go}); };
+  const c=S.company||{};
+  const missCo=(['legalName','employees'].filter(k=>!(c[k]&&String(c[k]).trim())).length)+((c.elciInsurer&&String(c.elciInsurer).trim())?0:1);
+  add(missCo,'company setup essentials missing (name, headcount, ELCI)','Company setup',"switchTab('company')");
+  try{ const st=_discStats(); add(st.total-st.answered,'discovery questions unanswered','Run discovery',"switchTab('risk'); setTimeout(openDiscoveryWizard,350)"); }catch(e){}
+  try{ add(_discSuggestedKeys().size,'suggested risk themes not yet added to the profile','Build profile',"switchTab('risk'); setTimeout(buildProfileFromDiscovery,350)"); }catch(e){}
+  try{ add(_discOrphanedThemes().length,'themes no longer supported by the discovery answers','Review',"switchTab('risk'); setTimeout(reviewDiscoveryOrphans,350)"); }catch(e){}
+  const risks=S.riskProfile||[];
+  add(risks.filter(r=>!(parseInt(r.likelihood,10)&&parseInt(r.severity,10))).length,'risks not yet rated (likelihood × severity)','Risk profile',"switchTab('risk')");
+  add(risks.filter(r=>!r.reviewed).length,'risks not yet reviewed and agreed','Risk profile',"switchTab('risk')");
+  add(risks.filter(r=>!r.controlLevel).length,'risks without a best-control-level judgement','Risk profile',"switchTab('risk')");
+  add(risks.filter(r=>!RISK_IMPACT_DIMS.some(d=>parseInt((r.impacts||{})[d.k],10)>0)).length,'risks without business-impact ratings','Risk profile',"switchTab('risk')");
+  try{ const md=_maturityDomains(); const ms=md.filter(d=>_profMaturity(d.id).avg!=null).length;
+    add(md.length-ms,'management-maturity domains not scored','Score maturity',"switchTab('risk'); setTimeout(()=>{ const el=document.getElementById('wfMaturity'); if(el){ el.open=true; el.scrollIntoView({behavior:'smooth'}); } },350)"); }catch(e){}
+  if(RD){ add(RD.actNoOwner,'actions without an owner','Execution plan',"switchTab('execplan')");
+          add(RD.actNoDate,'actions without a target date','Execution plan',"switchTab('execplan')"); }
+  let reqPend=0; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if(!it.reviewed) reqPend++; }));
+  add(reqPend,'management-system duties not yet assessed','Management system',"switchTab('requirements')");
+  try{ add(_covGaps().length,'coverage gaps — statutory or training implied but not evidenced','Coverage check',"switchTab('monitoring'); setTimeout(runCoverageCheck,450)"); }catch(e){}
+  const as=S.riskAssurance||{}; const monPop=['leading','lagging','assurance'].some(k=>Array.isArray(as[k])&&as[k].length);
+  if(!monPop) g.push({count:'—',label:'monitoring indicators not populated',goLabel:'Set indicators',go:"switchTab('risk'); setTimeout(()=>{ const el=document.getElementById('wfAssurance'); if(el){ el.open=true; el.scrollIntoView({behavior:'smooth'}); } },350)"});
+  return g;
+}
+function openCompletenessModal(){
+  const RD=(typeof _reportData==='function')?_reportData():null;
+  const gaps=_completenessGaps(RD);
+  const old=document.getElementById('complOverlay'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='complOverlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
+  const rows=gaps.length? gaps.map(gp=>`<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;"><b>${gp.count}</b> ${esc(gp.label)}</div>
+      <button class="btn btn-outline btn-sm" style="flex:0 0 auto;" onclick="document.getElementById('complOverlay').remove(); ${gp.go}">${esc(gp.goLabel)} →</button>
+    </div>`).join('') : '<div style="padding:16px 0;color:#16A34A;font-weight:700;">Nothing outstanding — the assessment picture is complete.</div>';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:660px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 18px 60px rgba(0,0,0,.35);">
+    <div style="padding:16px 20px;border-bottom:1.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <div><div style="font-weight:800;font-size:15px;">What's left to complete</div>
+      <div style="font-size:11.5px;color:var(--text-muted);">Assessment completeness ${RD?RD.completeness:0}% — each line takes you straight to the gap</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('complOverlay').remove()">✕ Close</button>
+    </div>
+    <div style="padding:8px 20px 14px;overflow-y:auto;">${rows}</div></div>`;
+  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
 // Preserve the open/closed state of <details data-keep> across an innerHTML
 // rebuild — a section the user opened (or closed) stays that way until THEY
 // change it, no matter how many times the panel re-renders. (House rule.)

@@ -14431,6 +14431,42 @@ function openHazardLibrary(){
 }
 // Business area each library card belongs to (how the library is browsed).
 const _LIB_AREA = { competence:'People', ohwellbeing:'People', vulnerable:'People', violence:'People', publicsafety:'People', dseoffice:'People', workatheight:'Operations', ohexposure:'Operations', asbestos:'Operations', manualhandling:'Operations', confined:'Operations', roadrisk:'Operations', contractor:'Operations', loneworking:'Operations', outdoor:'Operations', peoplecare:'Operations', biological:'Operations', hrconstruction:'Operations', workequip:'Equipment', lifting:'Equipment', transport:'Equipment', electrical:'Equipment', premises:'Premises', fire:'Premises', legionella:'Premises', dutyholder:'Legal roles', designrisk:'Legal roles', compliance:'Business', continuity:'Change' };
+// Suggested business-impact priors per theme (1-5 per HSG65 dimension:
+// people / financial / legal / reputational / operational). Starting points for
+// the consultant's review, same contract as the suggested L×S ratings —
+// Best control level is deliberately NOT pre-filled (it records what THIS
+// client actually has in place; only the conversation can know that).
+const _LIB_IMPACTS = {
+  competence:{people:3,financial:3,legal:4,reputational:3,operational:3},
+  ohwellbeing:{people:4,financial:3,legal:3,reputational:3,operational:4},
+  vulnerable:{people:4,financial:3,legal:4,reputational:4,operational:2},
+  violence:{people:4,financial:2,legal:3,reputational:3,operational:2},
+  publicsafety:{people:5,financial:4,legal:5,reputational:5,operational:3},
+  dseoffice:{people:2,financial:2,legal:2,reputational:1,operational:2},
+  workatheight:{people:5,financial:4,legal:5,reputational:4,operational:3},
+  ohexposure:{people:5,financial:4,legal:4,reputational:3,operational:2},
+  asbestos:{people:5,financial:5,legal:5,reputational:4,operational:3},
+  manualhandling:{people:3,financial:3,legal:2,reputational:1,operational:2},
+  confined:{people:5,financial:4,legal:5,reputational:4,operational:3},
+  roadrisk:{people:5,financial:4,legal:4,reputational:3,operational:3},
+  contractor:{people:4,financial:3,legal:4,reputational:4,operational:3},
+  loneworking:{people:4,financial:2,legal:3,reputational:2,operational:2},
+  outdoor:{people:3,financial:2,legal:2,reputational:1,operational:3},
+  peoplecare:{people:4,financial:3,legal:4,reputational:5,operational:3},
+  biological:{people:4,financial:3,legal:4,reputational:3,operational:2},
+  hrconstruction:{people:5,financial:5,legal:5,reputational:4,operational:4},
+  workequip:{people:4,financial:3,legal:4,reputational:2,operational:3},
+  lifting:{people:5,financial:4,legal:5,reputational:3,operational:3},
+  transport:{people:5,financial:4,legal:4,reputational:3,operational:3},
+  electrical:{people:4,financial:3,legal:4,reputational:2,operational:3},
+  premises:{people:3,financial:3,legal:3,reputational:2,operational:3},
+  fire:{people:5,financial:5,legal:5,reputational:4,operational:5},
+  legionella:{people:4,financial:4,legal:4,reputational:4,operational:2},
+  dutyholder:{people:3,financial:4,legal:5,reputational:4,operational:2},
+  designrisk:{people:4,financial:4,legal:5,reputational:4,operational:2},
+  compliance:{people:2,financial:4,legal:5,reputational:3,operational:2},
+  continuity:{people:2,financial:4,legal:2,reputational:3,operational:5}
+};
 function _libArea(key){ return _LIB_AREA[key] || ''; }
 function _presentLibKeys(){ return new Set((S.riskProfile||[]).map(r=>r&&r.libKey).filter(Boolean)); }
 function insertLibraryRisk(key, quiet){
@@ -14439,7 +14475,7 @@ function insertLibraryRisk(key, quiet){
   const _ht=_hazardType(t.category, t.hazard);
   const entry={ id:'risk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), libKey:t.key,
     category:_ht, area:_libArea(t.key), pdca:'', energy:(_HTYPE_ENERGY[_ht]||[]).slice(), sif:'', controlLevel:'', reviewed:false, activity:t.activity, hazard:t.hazard, personsAtRisk:(t.persons||[]).slice(),
-    harm:t.harm, businessImpact:'', impacts:{}, impactNotes:{}, controls:t.controls,
+    harm:t.harm, businessImpact:'', impacts:Object.assign({}, (typeof _LIB_IMPACTS!=='undefined'&&_LIB_IMPACTS[t.key])||{}), impactNotes:{}, controls:t.controls,
     inherentL:t.inh?String(t.inh[0]):'', inherentS:t.inh?String(t.inh[1]):'',
     likelihood:String(t.l), severity:String(t.s), targetL:'', targetS:'', trend:t.trend,
     actions: t.action?[{ id:'act_'+Math.random().toString(36).slice(2,9), desc:t.action, owner:'', due:'', status:'Not started', priority:_bandFor(t.l*t.s) }]:[],

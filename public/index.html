@@ -3047,6 +3047,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="tab-btn active" data-tab="cockpit" onclick="switchTab('cockpit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg> Cockpit</button>
     <button class="tab-btn" data-tab="company" onclick="switchTab('company')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg> Company setup</button>
     <button class="tab-btn" data-tab="risk" onclick="switchTab('risk')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg> Risk profile</button>
+    <button class="tab-btn" data-tab="journey" onclick="switchTab('journey')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg> Risk journey</button>
     <button class="tab-btn" data-tab="requirements" onclick="switchTab('requirements')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg> Management system</button>
     <button class="tab-btn" data-tab="monitoring" onclick="switchTab('monitoring')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Assurance records</button>
     <button class="tab-btn" data-consultant data-tab="review" onclick="switchTab('review')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Consultant review <span class="tb-badge" id="badgeReview"></span></button>
@@ -3395,6 +3396,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
   <div id="tab-execplan" class="tab-panel">
     <div id="execPlanRoot"></div>
+  </div>
+
+  <div id="tab-journey" class="tab-panel">
+    <div id="journeyRoot"></div>
   </div>
 
   <div id="tab-requirements" class="tab-panel">
@@ -5149,6 +5154,7 @@ function switchTab(id) {
   if(id==='company')  { renderCompany(); }
   if(id==='reports')  { renderReports(); }
   if(id==='risk')     { renderRiskProfile(); renderRiskReview(); }
+  if(id==='journey')  { renderRiskJourney(); }
   if(id==='requirements'){ renderRequirements(); }
   if(id==='actionplan'){ renderActionPlanTab(); }
   if(id==='execplan'){ renderExecPlan(); }
@@ -13667,6 +13673,8 @@ function updateExecAction(refStr, field, value){
   if(field==='status'){ _stampActionCompletion(o, value); _logAdd(o, (value==='Complete'?'completed':value==='Accepted'?'accepted':'status'), (value==='Complete'?'Marked complete':value==='Accepted'?'Risk accepted':'Status set to '+value)); }
   if(typeof _stamp==='function') _stamp(o,'updated');
   saveData(); _refreshActionViews();
+  // Risk-profile action closed from the plan → same evidence prompt as the risk card.
+  if(field==='status' && (value==='Complete'||value==='Accepted') && ref.t==='risk'){ const _er=(S.riskProfile||[]).find(x=>x.id===ref.a); if(_er) setTimeout(()=>_promptActionEvidence(o,_er), 150); }
   // Training renewal closed → capture the new date/status straight into the matrix cell.
   if(field==='status' && value==='Complete' && o.trainingPersonId && typeof _trainingActionCompleted==='function'){ setTimeout(()=>_trainingActionCompleted(o), 60); }
 }
@@ -13754,6 +13762,8 @@ function completeActionWithNote(refStr){
   if(typeof _stamp==='function') _stamp(found.o,'updated');
   saveData(); _refreshActionViews(); if(typeof showToast==='function') showToast('✓ Marked complete','success');
   if(found.o.trainingPersonId && typeof _trainingActionCompleted==='function'){ setTimeout(()=>_trainingActionCompleted(found.o), 60); }
+  // Risk-profile action closed from the plan → same evidence prompt as the risk card.
+  if(found.ref && found.ref.t==='risk'){ const _er=(S.riskProfile||[]).find(x=>x.id===found.ref.a); if(_er) setTimeout(()=>_promptActionEvidence(found.o,_er), 150); }
 }
 // Delete an action from the Consultant Review table: archive a snapshot first (nothing is
 // lost — it can be restored), then remove it from its origin. Handles all three sources.
@@ -14037,6 +14047,8 @@ function updateRiskField(id, field, value){
   // Hazard type / area / PDCA change the summary chips + colour band — re-render to refresh them.
   if(field === 'category' || field === 'area' || field === 'pdca'){ _keepScroll(renderRiskProfile); return; }
   if(field === 'trend') _renderRiskDashboard();
+  // Overtyping the impact summary switches auto-write off; clearing it back on.
+  if(field === 'businessImpact'){ r.biAuto = String(value).trim()==='' ? true : false; if(r.biAuto){ r.businessImpact=_impactSummaryText(r); const f=document.getElementById('rbi-'+id); if(f&&document.activeElement!==f) f.value=r.businessImpact; } }
 }
 
 function togglePersonAtRisk(id, p){
@@ -14147,6 +14159,90 @@ function _riskMatrixHTML(scored){
   return `<table class="risk-matrix"><tbody>${rows}`
     + `<tr><th class="rm-corner">S ↕ / L →</th>${[1,2,3,4,5].map(l=>`<th class="rm-axis">${l}</th>`).join('')}</tr></tbody></table>`
     + `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Vertical axis = <strong>Severity</strong> (5 at top). Horizontal axis = <strong>Likelihood</strong> (1–5). Cell number = risks at that L×S; colour = rating band. ${esc(_bandRangeText())}.</div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RISK JOURNEY — the story of each risk from identified to managed
+//  (ISO 31000 treatment record in plain English). Read-only narrative
+//  built entirely from data already on the risk: nothing new to fill in.
+//  A risk never disappears — once its plan is delivered and reviewed,
+//  the journey shows it as "Managed": the way the company now runs it.
+// ══════════════════════════════════════════════════════════════
+var _journeyFilter='all';
+function _journeyMilestones(r){
+  const sc=_riskScore(r), inh=_riskInherent(r);
+  const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due));
+  const closed=acts.filter(a=>{ const st=_actionStatus(a); return st==='Complete'||st==='Accepted'; });
+  const plan=_riskPlanState(r);
+  const evid=(r.linked||[]).filter(l=>l.actionId);
+  const impactsRated=RISK_IMPACT_DIMS.some(d=>parseInt((r.impacts||{})[d.k],10)>0);
+  const managed=(plan.k==='managed'||plan.k==='none') && r.reviewed && !!sc.rating;
+  const m=[];
+  m.push({ done:true, label:'Identified', when:(r.createdAt||'').slice(0,10),
+    text:(r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':('Added by '+(r.createdBy||'the team')))+(r.hazard?(' — '+r.hazard):'') });
+  m.push({ done:!!sc.rating&&impactsRated, label:'Assessed', when:'',
+    text: sc.rating ? ('Inherent '+(inh.rating||'—')+' → residual '+sc.rating+' ('+sc.priority+')'+(r.businessImpact?('. '+r.businessImpact):'')) : 'Not yet rated — score likelihood × severity and the business impacts' });
+  m.push({ done:acts.length>0, label:'Action planned', when:'',
+    text: acts.length ? (acts.length+' action'+(acts.length!==1?'s':'')+': '+acts.map(a=>(a.desc||'(action)').slice(0,60)+(a.owner?(' — '+a.owner+(a.due?(', due '+a.due):'')):'')).join('; ')) : 'No owned, dated actions yet' });
+  m.push({ done:acts.length>0&&closed.length===acts.length, label:'Delivered', when:'',
+    text: closed.length ? (closed.map(a=>(a.desc||'(action)').slice(0,50)+' — '+_actionStatus(a)+((a.completedDate||a.acceptDate)?(' '+(a.completedDate||a.acceptDate)):'')).join('; ')+(evid.length?('. Evidence: '+evid.map(l=>l.ref||l.url).join(', ')):'')) : (acts.length?'Plan in progress — '+closed.length+' of '+acts.length+' closed':'Waiting on the action plan') });
+  m.push({ done:managed, label:'Managed', when:'',
+    text: managed ? ('This is now how the company manages this risk'+(r.controls?(': '+String(r.controls).slice(0,140)):'')+(evid.length?(' · '+evid.length+' piece'+(evid.length!==1?'s':'')+' of evidence on file'):'')+(r.trend?(' · trend '+r.trend):'')) : (plan.k==='managed'?'Plan delivered — tick "reviewed and completed" on the risk to sign it off':'The plan is still being delivered') });
+  return m;
+}
+function _journeyOpenRisk(id){
+  try{ if(typeof _openRiskCards!=='undefined') _openRiskCards.add(id); }catch(e){}
+  switchTab('risk');
+  setTimeout(()=>{ const el=document.querySelector('.risk-card[data-rid="'+id+'"]'); if(el){ el.open=true; el.scrollIntoView({behavior:'smooth',block:'start'}); } },350);
+}
+function setJourneyFilter(v){ _journeyFilter=v; renderRiskJourney(); }
+function renderRiskJourney(){
+  const el=document.getElementById('journeyRoot'); if(!el) return;
+  const all=(S.riskProfile||[]);
+  const enriched=all.map(r=>({ r, m:_journeyMilestones(r), sc:_riskScore(r), plan:_riskPlanState(r) }));
+  const managedN=enriched.filter(x=>x.m[4].done).length;
+  const planN=enriched.filter(x=>!x.m[4].done && x.m[2].done).length;
+  const earlyN=enriched.length-managedN-planN;
+  const rows=enriched.filter(x=> _journeyFilter==='managed' ? x.m[4].done : _journeyFilter==='open' ? !x.m[4].done : true)
+    .sort((a,b)=>(_RISK_PRIO_RANK[a.sc.priority]??4)-(_RISK_PRIO_RANK[b.sc.priority]??4));
+  const tile=(n,lab,c)=>`<div class="ckx-kpi" style="cursor:default;"><div style="font-size:24px;font-weight:800;color:${c};">${n}</div><div style="font-size:12px;color:var(--text-muted);">${lab}</div></div>`;
+  const fbtn=(v,lab)=>`<button class="btn ${_journeyFilter===v?'btn-primary':'btn-outline'} btn-xs" onclick="setJourneyFilter('${v}')">${lab}</button>`;
+  const card=(x)=>{
+    const r=x.r; const doneN=x.m.filter(s=>s.done).length;
+    const htC=HAZARD_TYPE_COLOR[r.category]||'#9CA3AF';
+    const steps=x.m.map((s,i)=>`
+      <div style="display:flex;gap:12px;">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="width:14px;height:14px;border-radius:50%;flex:0 0 auto;margin-top:2px;background:${s.done?'#16A34A':'var(--muted-bg)'};border:2px solid ${s.done?'#16A34A':'var(--border)'};color:#fff;font-size:9px;line-height:10px;text-align:center;">${s.done?'✓':''}</div>
+          ${i<x.m.length-1?`<div style="width:2px;flex:1;min-height:14px;background:${s.done?'#16A34A66':'var(--border)'};"></div>`:''}
+        </div>
+        <div style="padding-bottom:12px;min-width:0;">
+          <div style="font-size:12.5px;font-weight:700;color:${s.done?'var(--text)':'var(--text-muted)'};">${s.label}${s.when?` <span style="font-weight:400;color:var(--text-muted);">· ${s.when}</span>`:''}</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.45;">${esc(s.text)}</div>
+        </div>
+      </div>`).join('');
+    return `<details class="card" style="border-left:4px solid ${htC};margin-bottom:10px;">
+      <summary style="padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;">
+        <span style="font-weight:700;font-size:13.5px;flex:1;min-width:200px;">${esc(r.activity||r.hazard||'New risk')}</span>
+        ${_riskPrioBadge(x.sc.priority,x.sc.rating)}
+        <span class="badge" style="border-color:${x.plan.colour};color:${x.plan.colour};background:${x.plan.colour}1a;">${x.m[4].done?'✓ Managed':x.plan.label}</span>
+        <span style="font-size:11.5px;color:var(--text-muted);">${doneN}/5 steps</span>
+      </summary>
+      <div style="padding:6px 18px 12px;">
+        ${steps}
+        <button class="btn btn-outline btn-xs no-print" onclick="_journeyOpenRisk('${r.id}')">Open in risk profile →</button>
+      </div>
+    </details>`;
+  };
+  el.innerHTML = `<div class="card" style="margin-bottom:14px;">
+      <div class="card-band"><h3><span class="dot">●</span> Risk journey</h3></div>
+      <div class="card-body">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">The story of every risk, from identified to managed. A risk never leaves the profile — once its action plan is delivered, evidenced and signed off, this page shows it as the way the company now manages that risk.</div>
+        <div class="ckx-kpis" style="margin-bottom:12px;">${tile(managedN,'Managed','#16A34A')}${tile(planN,'Plan in progress','#F59E0B')}${tile(earlyN,'Being assessed','#9CA3AF')}</div>
+        <div style="display:flex;gap:8px;" class="no-print">${fbtn('all','All ('+enriched.length+')')}${fbtn('open','In progress ('+(enriched.length-managedN)+')')}${fbtn('managed','Managed ('+managedN+')')}</div>
+      </div>
+    </div>
+    ${rows.length ? rows.map(card).join('') : `<div class="card"><div class="card-body"><div class="empty"><h4>No risks ${_journeyFilter==='managed'?'managed yet':'to show'}</h4><p>${_journeyFilter==='managed'?'Deliver and sign off an action plan and the risk will appear here.':'Build the risk profile first — the journey writes itself from there.'}</p></div></div></div>`}`;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -14269,13 +14365,26 @@ function _renderRiskFilters(show){
 // ════════════════════════════════════════════════════════════════
 
 // Inherent → Current → Target rating flow + control-effectiveness (spec #2).
+// Where the residual risk is being dealt with: the action plan. Once every
+// action is closed the risk does not disappear — the delivered plan IS the way
+// the company now manages it.
+function _riskPlanState(r){
+  const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due));
+  if(!acts.length) return { k:'none', label:'No actions planned', colour:'#9CA3AF', title:'Add owned, dated actions to deal with the residual risk — or record why the current controls are sufficient.' };
+  const open=acts.filter(a=>{ const st=_actionStatus(a); return st!=='Complete'&&st!=='Accepted'; });
+  if(open.length) return { k:'open', label:open.length+' action'+(open.length!==1?'s':'')+' in plan', colour:'#F59E0B', title:'Open actions dealing with the residual risk.' };
+  const accepted=acts.some(a=>_actionStatus(a)==='Accepted');
+  return { k:'managed', label:accepted?'✓ Managed (risk accepted)':'✓ Managed', colour:'#16A34A', title:'The action plan is delivered — this is now how the company manages this risk.' };
+}
 function _riskFlowHTML(r){
-  const inh=_riskInherent(r), cur=_riskScore(r), tgt=_riskTarget(r);
+  const inh=_riskInherent(r), cur=_riskScore(r);
   const part=(sc,lab)=>{ if(!sc.rating) return `<span style="color:var(--text-muted);font-weight:400;">${lab} –</span>`;
     const c=_RISK_PRIO_COLOR[sc.priority]; return `<span title="${lab}: ${sc.l} × ${sc.s}">${lab} <strong style="color:${c};">${sc.rating}</strong></span>`; };
   const eff=_controlEffectiveness(r);
   const effHtml = eff ? `<span class="eff-badge" style="background:${eff.colour}1a;color:${eff.colour};">Controls: ${eff.band}</span>` : '';
-  return part(inh,'Inherent') + `<span class="rf-arrow">→</span>` + part(cur,'Residual') + `<span class="rf-arrow">→</span>` + part(tgt,'Target') + effHtml;
+  const plan=_riskPlanState(r);
+  const planHtml=`<span class="eff-badge" style="background:${plan.colour}1a;color:${plan.colour};" title="${esc(plan.title)}">${plan.label}</span>`;
+  return part(inh,'Inherent') + `<span class="rf-arrow">→</span>` + part(cur,'Residual') + `<span class="rf-arrow">→</span>` + planHtml + effHtml;
 }
 function updateRiskRating(id, field, value){
   if(_roLocked()) return;
@@ -14289,11 +14398,30 @@ function updateRiskRating(id, field, value){
 }
 
 // Structured business-impact dimensions (spec #7).
+// Standard-text impact summary, auto-written from the ratings. The wording is
+// deliberately plain: "<severity> <consequence>" per rated dimension, worst
+// first. The client can overtype it (that switches auto-write off for the risk);
+// clearing the field switches auto-write back on.
+const _IMPACT_ADJ  = { 1:'negligible', 2:'minor', 3:'moderate', 4:'serious', 5:'severe' };
+const _IMPACT_NOUN = { people:'risk of harm to people', financial:'financial impact (claims, premiums, fines)', legal:'legal and regulatory exposure', reputational:'damage to reputation and client confidence', operational:'disruption to operations' };
+function _impactSummaryText(r){
+  const im=r.impacts||{};
+  const rated=RISK_IMPACT_DIMS.map(d=>({k:d.k, v:parseInt(im[d.k],10)||0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+  if(!rated.length) return '';
+  const s=rated.map(x=>_IMPACT_ADJ[x.v]+' '+(_IMPACT_NOUN[x.k]||x.k)).join('; ');
+  return s.charAt(0).toUpperCase()+s.slice(1)+'.';
+}
 function updateRiskImpact(id, dim, value){
   if(_roLocked()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
   if(!r.impacts) r.impacts={}; r.impacts[dim]=value; _stamp(r,'updated'); scheduleAutoSave();
   const chips=document.getElementById('rimp-'+id); if(chips) chips.innerHTML=_impactChipsHTML(r);
+  // Auto-write the summary unless the client has overtyped their own wording.
+  // Pre-existing risks with hand-typed text (biAuto undefined) are left alone.
+  if(r.biAuto===true || (r.biAuto!==false && !String(r.businessImpact||'').trim())){
+    r.biAuto=true; r.businessImpact=_impactSummaryText(r);
+    const f=document.getElementById('rbi-'+id); if(f) f.value=r.businessImpact;
+  }
   _renderRiskDashboard();
 }
 function updateRiskImpactNote(id, dim, value){
@@ -14350,7 +14478,10 @@ function updateRiskAction(rid, aid, field, value){
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
   const a=(r.actions||[]).find(x=>x.id===aid); if(!a) return;
   a[field]=value; if(field==='status') _stampActionCompletion(a, value); _stamp(r,'updated'); scheduleAutoSave();
+  if(field==='status'||field==='due'){ const fl=document.getElementById('rflow-'+rid); if(fl) fl.innerHTML=_riskFlowHTML(r); }
   if(field==='status'||field==='due'||field==='priority'){ _refreshActionViews(); }
+  // Closing an action → offer to link the evidence that shows it was dealt with.
+  if(field==='status' && (value==='Complete'||value==='Accepted')) _promptActionEvidence(a, r);
 }
 function _riskActionsHTML(r, dis){
   const acts=(r.actions||[]).filter(a=>!a.deleted);
@@ -14358,11 +14489,17 @@ function _riskActionsHTML(r, dis){
   const prOpts=(cur)=>['Critical','High','Medium','Low'].map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
   const body = acts.map(a=>{
     const st=_actionStatus(a);
+    const evd=_actionEvidence(r, a.id);
+    const evHtml=(st==='Complete'||st==='Accepted')
+      ? (evd.length
+          ? `<button type="button" class="btn btn-ghost btn-xs no-print" style="color:#16A34A;font-weight:700;padding:1px 6px;" title="Linked evidence:\n${esc(evd.map(l=>'· '+(l.ref||l.url||'')).join('\n'))}" onclick="_promptActionEvidenceById('${r.id}','${a.id}')">📎 ${evd.length}</button>`
+          : (dis?'':`<button type="button" class="btn btn-ghost btn-xs no-print" style="color:#B45309;padding:1px 6px;" title="No evidence linked yet — add the document that shows how this is now managed" onclick="_promptActionEvidenceById('${r.id}','${a.id}')">＋📎</button>`))
+      : '';
     return `<tr>
       <td><textarea${dis} rows="2" placeholder="Action description" oninput="updateRiskAction('${r.id}','${a.id}','desc',this.value)">${esc(a.desc||'')}</textarea></td>
       <td><input type="text"${dis} value="${esc(a.owner||'')}" placeholder="Owner / role" oninput="updateRiskAction('${r.id}','${a.id}','owner',this.value)"></td>
       <td><input type="date"${dis} value="${esc(a.due||'')}" onchange="updateRiskAction('${r.id}','${a.id}','due',this.value)"></td>
-      <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','status',this.value)">${stOpts(a.status||'Not started')}</select><div class="act-status ${_actionStatusClass(st)}" style="margin-top:4px;">${st}</div></td>
+      <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','status',this.value)">${stOpts(a.status||'Not started')}</select><div class="act-status ${_actionStatusClass(st)}" style="margin-top:4px;">${st}${evHtml}</div></td>
       <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','priority',this.value)"><option value="">—</option>${prOpts(a.priority||'')}</select></td>
       ${dis?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs" title="Delete action" onclick="deleteRiskAction('${r.id}','${a.id}')">${_ic('trash',13)}</button></td>`}
     </tr>`;
@@ -14393,13 +14530,73 @@ function updateRiskLink(rid, lid, field, value){
 }
 function _riskLinksHTML(r, dis){
   const ls=r.linked||[];
-  const rows=ls.map(l=>`<div class="linked-row">
+  const rows=ls.map(l=>{
+    const act=l.actionId ? (r.actions||[]).find(a=>a.id===l.actionId) : null;
+    const tag=act?`<div style="font-size:11px;color:#16A34A;font-weight:700;margin:5px 0 2px;">📎 Evidence for action: ${esc((act.desc||'').slice(0,70))||'(action)'} · ${_actionStatus(act)}</div>`:'';
+    return `${tag}<div class="linked-row">
     <textarea${dis} rows="2" placeholder="e.g. Fire Risk Assessment, COSHH assessment, asbestos survey, training record" oninput="updateRiskLink('${r.id}','${l.id}','ref',this.value)">${esc(l.ref||'')}</textarea>
     <input type="text"${dis} value="${esc(l.url||'')}" placeholder="Optional file path / URL" oninput="updateRiskLink('${r.id}','${l.id}','url',this.value)">
     ${dis?'':`<button class="btn btn-ghost btn-xs" title="Remove" onclick="deleteRiskLink('${r.id}','${l.id}')">${_ic('trash',13)}</button>`}
-  </div>`).join('');
+  </div>`;}).join('');
   return `<div class="linked-list">${rows||`<div style="font-size:12px;color:var(--text-muted);">No linked assessments recorded.</div>`}</div>
     ${dis?'':`<button class="btn btn-outline btn-xs no-print" style="margin-top:8px;" onclick="addRiskLink('${r.id}')">＋ Add linked assessment</button>`}`;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ACTION-CLOSED EVIDENCE PROMPT — when an action is marked Complete or
+//  Accepted, offer to link the evidence (simple name + file path) that shows
+//  how the risk is now managed. Evidence lives in the risk's linked list,
+//  tagged with the action id, so the action row and the linked list carry a
+//  matching 📎 marker without any duplication.
+// ══════════════════════════════════════════════════════════════
+function _actionEvidence(r, aid){ return (r&&r.linked||[]).filter(l=>l.actionId===aid); }
+function _promptActionEvidenceById(rid, aid){
+  const r=(S.riskProfile||[]).find(x=>x.id===rid); const a=r&&(r.actions||[]).find(x=>x.id===aid);
+  if(a) _promptActionEvidence(a, r);
+}
+function _promptActionEvidence(a, r){
+  if(!a || !r || _roLocked()) return;
+  if(document.getElementById('evidOverlay')) return;
+  const ov=document.createElement('div'); ov.id='evidOverlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
+  const closed=_actionStatus(a);
+  const existing=_actionEvidence(r, a.id);
+  const rowHtml=(name,path)=>`<div class="evid-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <input type="text" class="evid-name" value="${esc(name||'')}" placeholder="Evidence name — e.g. Working at height RA v2">
+      <input type="text" class="evid-path" value="${esc(path||'')}" placeholder="File path / URL (optional)">
+    </div>`;
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:600px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 18px 60px rgba(0,0,0,.35);">
+    <div style="padding:16px 20px;border-bottom:1.5px solid var(--border);">
+      <div style="font-weight:800;font-size:15px;">${closed==='Accepted'?'Risk accepted':'Action complete'} — link the evidence</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">“${esc((a.desc||'').slice(0,90))||'(action)'}” — add the document(s) that show how this is now managed. A simple name and file path is enough. It files under the risk's linked evidence with a 📎 marker.</div>
+    </div>
+    <div style="padding:14px 20px;overflow-y:auto;">
+      <div id="evidRows">${rowHtml('','')}</div>
+      <button class="btn btn-ghost btn-xs" onclick="document.getElementById('evidRows').insertAdjacentHTML('beforeend', this.dataset.row)" data-row="${esc(rowHtml('',''))}">＋ Add another</button>
+      ${existing.length?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">Already linked to this action: ${existing.map(l=>esc(l.ref||'(unnamed)')).join(' · ')}</div>`:''}
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('evidOverlay').remove()">Skip for now</button>
+      <button class="btn btn-primary btn-sm" onclick="_saveActionEvidence('${r.id}','${a.id}')">Save evidence</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  const first=ov.querySelector('.evid-name'); if(first) setTimeout(()=>first.focus(),50);
+}
+function _saveActionEvidence(rid, aid){
+  const ov=document.getElementById('evidOverlay'); if(!ov) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r){ ov.remove(); return; }
+  if(!Array.isArray(r.linked)) r.linked=[];
+  let added=0;
+  ov.querySelectorAll('.evid-row').forEach(row=>{
+    const name=(row.querySelector('.evid-name').value||'').trim();
+    const path=(row.querySelector('.evid-path').value||'').trim();
+    if(!name && !path) return;
+    r.linked.push({ id:'lnk_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), ref:name||path, url:path, actionId:aid });
+    added++;
+  });
+  ov.remove();
+  if(added){ _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile); }
 }
 
 // ── Document control (spec #4) ──
@@ -14531,6 +14728,7 @@ function insertLibraryRisk(key, quiet){
     actions: t.action?[{ id:'act_'+Math.random().toString(36).slice(2,9), desc:t.action, owner:'', due:'', status:'Not started', priority:_bandFor(t.l*t.s) }]:[],
     linked: t.duty?[{ id:'lnk_'+Math.random().toString(36).slice(2,9), ref:'Key duty: '+t.duty, url:'' }]:[],
     furtherActions:'' };
+  entry.biAuto=true; entry.businessImpact=_impactSummaryText(entry);   // standard wording from the priors, editable
   _stamp(entry,'created');
   if(!Array.isArray(S.riskProfile)) S.riskProfile=[];
   S.riskProfile.push(entry);
@@ -16420,23 +16618,20 @@ function renderRiskProfile(){
           <label class="field-label">Business impact <span class="fl-hint" title="Rate the credible worst-case impact on each dimension, 1 (negligible) to 5 (severe).">(?)</span></label>
           ${_impactRowsHTML(r,dis)}
           <div class="impact-chips" style="margin-top:9px;" id="rimp-${r.id}">${_impactChipsHTML(r)}</div>
-          ${fg('Impact summary (optional)', txt(r.id,'businessImpact',r.businessImpact,'One-line summary, if useful'))}
+          ${fg('Impact summary <span class="fl-hint" title="Written for you from the ratings above in plain standard wording. Type your own to override it; clear the box to go back to the automatic wording.">(?)</span>', `<input type="text"${dis} id="rbi-${r.id}" value="${esc(r.businessImpact)}" placeholder="Rates itself from the impact scores above" oninput="updateRiskField('${r.id}','businessImpact',this.value)">`)}
         </div>
         <div class="risk-rating-row" style="flex-direction:column;align-items:stretch;gap:10px;">
           <label class="field-label" style="margin:0;">Risk rating — Likelihood (L) × Severity (S), each 1–5</label>
           <div class="rating-trio">
             ${ratingBox(r,'Inherent (pre-control)','','inherentL','inherentS')}
             ${ratingBox(r,'Residual (after controls)','rt-current','likelihood','severity')}
-            ${ratingBox(r,'Target (after actions)','','targetL','targetS')}
+            <div class="rt-box"><div class="rt-title">Risk trend ${trendHint}</div><div class="rt-selects">${sel(r.id,'trend',r.trend,RISK_TREND)}</div></div>
           </div>
           <div class="risk-flow" id="rflow-${r.id}">${_riskFlowHTML(r)}</div>
           <div class="risk-rating-readout" id="rrate-${r.id}">${_riskRatingText(r)}</div>
         </div>
-        <div class="field-grid" style="margin:12px 0;">
-          ${fg('Risk trend '+trendHint, sel(r.id,'trend',r.trend,RISK_TREND))}
-        </div>
         <div style="margin:14px 0;">
-          <label class="field-label">Action plan <span class="fl-hint" title="Prioritised, owned and dated actions to move the risk from its current rating to target. Overdue is derived from the target date.">(?)</span></label>
+          <label class="field-label">Action plan <span class="fl-hint" title="Prioritised, owned and dated actions. This is where residual risk is dealt with: once the plan is delivered, the risk does not disappear — the completed plan and its evidence become the way the company manages this risk.">(?)</span></label>
           ${_riskActionsHTML(r,dis)}
         </div>
         <div style="margin:14px 0;">
@@ -16696,9 +16891,9 @@ function buildRiskProfileReportPDF(){
       field('Business impact', imp || r.businessImpact);
       field('Existing controls', r.controls);
       field('Best control level', _controlLevelLabel(r.controlLevel));
-      const inh=_riskInherent(r), tgt=_riskTarget(r), eff=_controlEffectiveness(r);
+      const inh=_riskInherent(r), eff=_controlEffectiveness(r), plan=_riskPlanState(r);
       const fmtR=(s)=> s.rating ? (s.l+'x'+s.s+'='+s.rating+' ('+s.priority+')') : '-';
-      field('Risk rating', 'Inherent '+fmtR(inh)+'  >  Residual '+fmtR(sc)+'  >  Target '+fmtR(tgt)+(eff?('     Controls: '+eff.band):''));
+      field('Risk rating', 'Inherent '+fmtR(inh)+'  >  Residual '+fmtR(sc)+'  >  '+plan.label.replace('✓ ','')+(eff?('     Controls: '+eff.band):''));
       field('Risk trend', r.trend);
       const actLines=(r.actions||[]).filter(a=>a.desc||a.owner||a.due).map((a,i)=>(a.desc||'(action)')+'  ['+_actionStatus(a)+(a.owner?(' · '+a.owner):'')+(a.due?(' · due '+fd(a.due)):'')+(a.priority?(' · '+a.priority):'')+']');
       if(actLines.length) field('Actions', actLines.join('\n'));

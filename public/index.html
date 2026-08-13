@@ -7872,7 +7872,7 @@ function openEditItem(secId,itemId){
   openModal('Edit Item',
     `<div style="display:flex;flex-direction:column;gap:12px;">
        <div class="field-group"><label class="field-label">Item Name</label><input type="text" id="mItemName" value="${item.name}"></div>
-       <div class="field-group"><label class="field-label">Description / Guidance</label><textarea id="mItemDesc" rows="3">${item.desc}</textarea></div>
+       <div class="field-group"><label class="field-label">Description / Guidance</label><textarea id="mItemDesc" rows="3" placeholder="What good looks like for this item — the standard the inspector is checking against">${item.desc}</textarea></div>
      </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveItem()">Save Item</button>`
   );
@@ -12334,6 +12334,49 @@ function resetAppData(){
 //    * A signed-in client (a company manager) with permanent storage
 //    * A signed-in consultant (Simon) with multi-tenant access
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  FIELD MEMORY — remember what gets typed and offer it back, the
+//  way the browser does on the Company setup inputs. Every text
+//  input with a placeholder gets a native suggestion dropdown
+//  (datalist) of the last values entered in fields of the same
+//  kind. Stored on this device only (localStorage), never in the
+//  client's synced record, so one client's text is never written
+//  into another client's data.
+// ══════════════════════════════════════════════════════════════
+const _FM_KEY='ahs:fieldMemory:v1';
+function _fmLoad(){ try{ return JSON.parse(localStorage.getItem(_FM_KEY))||{}; }catch(e){ return {}; } }
+function _fmStore(m){ try{ localStorage.setItem(_FM_KEY, JSON.stringify(m)); }catch(e){} }
+// Fields are grouped by their placeholder text — same hint = same kind of field.
+function _fmKey(el){
+  if(el.dataset && el.dataset.nosuggest!==undefined) return '';
+  const ph=(el.getAttribute('placeholder')||'').trim().toLowerCase();
+  return ph? ph.slice(0,60) : '';
+}
+function _fmRecord(el){
+  const k=_fmKey(el); if(!k) return;
+  const v=(el.value||'').trim();
+  if(v.length<3 || v.length>160) return;              // too short/long to be a useful suggestion
+  const m=_fmLoad(); const a=m[k]||[];
+  const i=a.findIndex(x=>x.toLowerCase()===v.toLowerCase()); if(i>=0) a.splice(i,1);
+  a.unshift(v); m[k]=a.slice(0,8); _fmStore(m);
+}
+function _fmAttach(el){
+  const k=_fmKey(el); if(!k) return;
+  const a=_fmLoad()[k]||[]; if(!a.length) return;
+  let dl=document.getElementById('fmDatalist');
+  if(!dl){ dl=document.createElement('datalist'); dl.id='fmDatalist'; document.body.appendChild(dl); }
+  dl.innerHTML=a.map(v=>`<option value="${esc(v)}"></option>`).join('');
+  el.setAttribute('list','fmDatalist');
+}
+document.addEventListener('focusin', e=>{
+  const el=e.target;
+  if(el && el.tagName==='INPUT' && (el.type==='text'||el.type==='')) _fmAttach(el);
+});
+document.addEventListener('focusout', e=>{
+  const el=e.target; if(!el) return;
+  if((el.tagName==='INPUT' && (el.type==='text'||el.type==='')) || el.tagName==='TEXTAREA') _fmRecord(el);
+});
+
 const Auth = (() => {
   let _currentUser = null;          // {id, email, role, tenantId, tenantName, name} or null
   let _activeTenantId = null;       // for consultants: which tenant they're viewing

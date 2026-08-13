@@ -3581,10 +3581,23 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="card-body">
         <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
-          A register of this client's risk assessments and RAMS, with where each PDF lives. A web link (SharePoint, OneDrive, a URL) opens the document; a file path on the client's system is shown with a Copy button to paste into File Explorer.
+          A register of this client's risk assessments and RAMS, with where each PDF lives. The client's folder stays the master: drag the folder (or its files) below and the register indexes itself from the file names and dates — drag it again any time to refresh. Nothing is uploaded; the app records names, paths and dates only.
+        </div>
+        <div id="raDropZone" class="no-print" ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--muted-bg)';" ondragleave="this.style.borderColor='var(--border)';this.style.background='transparent';" ondrop="raHandleDrop(event)"
+             style="border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;margin-bottom:12px;cursor:pointer;" onclick="document.getElementById('raFilePick').click()">
+          <div style="font-weight:700;font-size:14px;">Drag the client's risk assessment folder (or files) here</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">…or click to choose files · re-dragging refreshes the index · PDF, Word and Excel files are read; other files are skipped</div>
+          <div id="raSyncNote" style="font-size:11.5px;color:var(--text-muted);margin-top:6px;"></div>
+        </div>
+        <input type="file" id="raFilePick" multiple style="display:none;" onchange="raHandleFilePick(this)">
+        <input type="file" id="raFolderPick" webkitdirectory style="display:none;" onchange="raHandleFilePick(this)">
+        <div class="field-group no-print" style="margin-bottom:12px;">
+          <label class="field-label">Folder path on the client's system <span class="fl-hint" title="Browsers cannot read a dropped file's full location, so paste the folder's path once (e.g. S:\H&S\Risk Assessments). Each indexed file's location becomes this path + the file name. Pasted quotes are stripped.">(?)</span></label>
+          <input type="text" id="raFolderPath" placeholder="e.g. S:\H&S\Risk Assessments  (paste once — used to build each file's location)" onchange="updateRaFolderPath(this.value)">
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
           <button class="btn btn-primary no-print" onclick="addRaRegEntry()">＋ Add risk assessment</button>
+          <button class="btn btn-ghost no-print" onclick="document.getElementById('raFolderPick').click()" title="Pick the whole folder instead of dragging">Index a folder…</button>
           <button class="btn btn-ghost no-print" onclick="switchTab('reports')" title="Print the register as a PDF">Print register (Reports tab) →</button>
         </div>
       </div>
@@ -9793,6 +9806,7 @@ function migrateLoadedState(){
   if(!Array.isArray(S.company.siteList))  S.company.siteList  = [];
   // Assurance records: risk assessment register (additive)
   if(!Array.isArray(S.raRegister)) S.raRegister = [];
+  if(!S.raFolder || typeof S.raFolder!=='object') S.raFolder = { path:'', lastSync:'' };
   // Quick links to other apps (additive)
   if(!Array.isArray(S.appLinks)) S.appLinks = [];
   try {
@@ -18309,8 +18323,14 @@ function renderRaRegister(){
     badge.textContent = list.length ? (list.length + (list.length===1?' assessment':' assessments') + (overdue?(' · '+overdue+' review overdue'):'')) : '';
   }
   const ro = _roLocked();
+  // Folder-index panel state (path box + last-sync note live outside this container)
+  const fldEl=document.getElementById('raFolderPath');
+  if(fldEl && document.activeElement!==fldEl) fldEl.value=_raFolderState().path||'';
+  const noteEl=document.getElementById('raSyncNote');
+  if(noteEl){ const fs=_raFolderState(); const idx=list.filter(e=>e.indexed).length; const miss=list.filter(e=>e.missing).length;
+    noteEl.textContent = fs.lastSync ? ('Last indexed '+fs.lastSync+' · '+idx+' file'+(idx!==1?'s':'')+' on the register'+(miss?(' · ⚠ '+miss+' no longer seen'):'')) : ''; }
   if(!list.length){
-    cont.innerHTML = '<div class="rar-grid"><div class="rar-empty">No risk assessments recorded yet. Add one and paste the link or file path to its PDF.</div></div>';
+    cont.innerHTML = '<div class="rar-grid"><div class="rar-empty">No risk assessments recorded yet. Drag the client\'s RA folder into the box above and the register builds itself — or add one by hand.</div></div>';
     return;
   }
   cont.innerHTML = '<div class="rar-grid">' + list.map(e=>{
@@ -18334,6 +18354,7 @@ function renderRaRegister(){
         <div class="rar-fld"><label>Review due</label><input type="date" value="${esc(e.reviewDate||'')}" onchange="updateRaRegDate('${e.id}','reviewDate',this.value)"${ro?' disabled':''}></div>
       </div>
       <span class="rar-status rar-${st.key}">${st.label}</span>
+      ${e.missing?`<span class="rar-status rar-overdue" title="Not seen the last time the folder was indexed — it may have been renamed, moved or deleted. Fix the entry or remove it; indexing never deletes rows for you.">⚠ Not in last folder index</span>`:(e.indexed?`<span class="rar-status rar-ok" style="opacity:.7;" title="Indexed from the client's folder — re-drag the folder any time to refresh">folder-indexed</span>`:'')}
       <div class="rar-loc">
         <label>PDF location</label>
         <div class="rar-loc-row">
@@ -18350,6 +18371,120 @@ function addRaRegEntry(){
   _raRegState().push({ id:'rar_'+Math.random().toString(36).slice(2,9), title:'', ref:'', area:'', date:'', reviewDate:'', location:'', notes:'' });
   saveData();
   renderRaRegister();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RA REGISTER FOLDER INDEX — the client's folder of RA files stays the
+//  master; the register indexes itself from it. Drag the folder (or files)
+//  in: file NAME → title/ref, last-modified → assessed date, typed folder
+//  path + relative name → location. Re-dragging refreshes: existing rows
+//  keep their human-entered fields (review due, area), rows whose file
+//  wasn't seen are flagged (never auto-deleted), manual rows untouched.
+//  Nothing is uploaded — names, paths and dates only.
+// ══════════════════════════════════════════════════════════════
+const _RA_FILE_EXT = /\.(pdf|docx?|xlsx?|xlsm)$/i;
+function _raFolderState(){ if(!S.raFolder||typeof S.raFolder!=='object') S.raFolder={path:'',lastSync:''}; return S.raFolder; }
+function updateRaFolderPath(v){ if(_roLocked()) return; _raFolderState().path=_cleanDocPath(v); scheduleAutoSave(); }
+function _raTitleFromFilename(name){
+  let base=String(name||'').replace(/\.[a-z0-9]+$/i,''), ref='';
+  const vm=base.match(/\bv(?:er(?:sion)?)?\s*\.?\s*(\d+(?:\.\d+)?)\b/i);
+  if(vm){ ref='V'+vm[1]; base=base.replace(vm[0],''); }
+  const rm=base.match(/(?:^|[^a-z0-9])(RA|RAMS)[-_ ]?(\d{1,4})(?![0-9])/i);
+  if(rm){ const r=(rm[1]+' '+rm[2]).toUpperCase(); ref=ref?(r+' '+ref):r; base=base.replace(rm[0],' '); }
+  base=base.replace(/[-_]+/g,' ').replace(/\s{2,}/g,' ').trim();
+  return { title: base? base.charAt(0).toUpperCase()+base.slice(1) : name, ref };
+}
+async function _raCollectDrop(dt){
+  const out=[]; const items=[...(dt.items||[])]; let hadDir=false;
+  const walk=async(entry, prefix)=>{
+    if(!entry) return;
+    if(entry.isFile){
+      const f=await new Promise((res,rej)=>entry.file(res,rej)).catch(()=>null);
+      if(f) out.push({ name:f.name, rel:(prefix?prefix+'\\':'')+f.name, mtime:f.lastModified });
+    } else if(entry.isDirectory){
+      const childPrefix=(prefix?prefix+'\\':'')+entry.name;
+      const rd=entry.createReader();
+      let batch;
+      do{
+        batch=await new Promise((res,rej)=>rd.readEntries(res,rej)).catch(()=>[]);
+        for(const e of batch) await walk(e, childPrefix);
+      }while(batch.length);
+    }
+  };
+  // A dropped top-level folder is treated as THE folder: its own name is not
+  // prefixed, so "folder path + relative name" composes correctly.
+  for(const it of items){
+    const entry=it.webkitGetAsEntry ? it.webkitGetAsEntry() : null;
+    if(entry && entry.isDirectory){
+      hadDir=true;
+      const rd=entry.createReader(); let batch;
+      do{
+        batch=await new Promise((res,rej)=>rd.readEntries(res,rej)).catch(()=>[]);
+        for(const e of batch) await walk(e, '');
+      }while(batch.length);
+    }
+    else if(entry) await walk(entry, '');
+    else{ const f=it.getAsFile&&it.getAsFile(); if(f) out.push({ name:f.name, rel:f.name, mtime:f.lastModified }); }
+  }
+  return { files:out, hadDir };
+}
+function raHandleDrop(ev){
+  ev.preventDefault();
+  const z=document.getElementById('raDropZone'); if(z){ z.style.borderColor='var(--border)'; z.style.background='transparent'; }
+  if(_blockIfReadOnly()) return;
+  _raCollectDrop(ev.dataTransfer).then(res=>_raSyncFiles(res.files, res.hadDir));
+}
+function raHandleFilePick(inp){
+  if(_blockIfReadOnly()){ inp.value=''; return; }
+  let hadDir=false;
+  const files=[...(inp.files||[])].map(f=>{
+    // webkitdirectory gives 'Folder/sub/file.pdf' — drop the top folder name
+    let rel=f.webkitRelativePath||f.name;
+    if(f.webkitRelativePath){ hadDir=true; const parts=rel.split('/'); rel=(parts.length>1?parts.slice(1):parts).join('\\'); }
+    else rel=f.name;
+    return { name:f.name, rel, mtime:f.lastModified };
+  });
+  inp.value='';
+  _raSyncFiles(files, hadDir);
+}
+// authoritative = a whole FOLDER was dropped/picked: its contents are the full
+// truth, so indexed rows whose file was not seen get flagged. Loose files are
+// additive only — they never flag anything as missing.
+function _raSyncFiles(all, authoritative){
+  const files=all.filter(f=>_RA_FILE_EXT.test(f.name) && !/^(~\$|\.)|^(thumbs\.db|desktop\.ini)$/i.test(f.name));
+  const skipped=all.length-files.length;
+  if(!files.length){ showToast('No PDF / Word / Excel files found in that drop'+(skipped?(' ('+skipped+' other files skipped)'):''),'info'); return; }
+  const pathBox=document.getElementById('raFolderPath');
+  if(pathBox && pathBox.value.trim()) _raFolderState().path=_cleanDocPath(pathBox.value);
+  const base=(_raFolderState().path||'').replace(/[\\\/]+$/,'');
+  const compose=(rel)=> base ? base+'\\'+rel : rel;
+  const norm=(s)=>String(s||'').toLowerCase();
+  const list=_raRegState();
+  const byName=new Map();
+  list.forEach(e=>{ const bn=norm((e.location||'').split(/[\\\/]/).pop()); if(bn) byName.set(bn,e); });
+  let added=0, refreshed=0;
+  const seen=new Set();
+  files.forEach(f=>{
+    const key=norm(f.name); seen.add(key);
+    const mdate=f.mtime?new Date(f.mtime).toISOString().slice(0,10):'';
+    const ex=byName.get(key);
+    if(ex){
+      ex.location=compose(f.rel);
+      if(mdate && mdate>(ex.date||'')) ex.date=mdate;   // file was re-saved → newer assessed date
+      ex.indexed=true; delete ex.missing; refreshed++;
+    } else {
+      const t=_raTitleFromFilename(f.name);
+      list.push({ id:'rar_'+Math.random().toString(36).slice(2,9), title:t.title, ref:t.ref, area:'', date:mdate, reviewDate:'', location:compose(f.rel), notes:'', indexed:true });
+      added++;
+    }
+  });
+  let missing=0;
+  if(authoritative){
+    list.forEach(e=>{ if(e.indexed){ const bn=norm((e.location||'').split(/[\\\/]/).pop()); if(bn && !seen.has(bn)){ if(!e.missing) missing++; e.missing=true; } } });
+  }
+  _raFolderState().lastSync=new Date().toISOString().slice(0,10);
+  saveData(); _keepScroll(renderRaRegister);
+  showToast('✓ '+(authoritative?'Folder indexed':'Files added')+' — '+added+' added, '+refreshed+' refreshed'+(missing?(', '+missing+' no longer seen (flagged, not removed)'):'')+(skipped?(' · '+skipped+' non-document files skipped'):''),'success');
 }
 function deleteRaRegEntry(id){
   if(_roLocked()) return;
@@ -20748,7 +20883,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','appLinks','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff'];
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','appLinks','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

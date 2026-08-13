@@ -16861,6 +16861,13 @@ function renderDiscoveryPanel(){
 }
 let _discIdx=0;
 function openDiscoveryWizard(){ if(_roLocked()) return; _discIdx=0; _discDraw(); }
+// Row styling — unanswered questions carry a neat amber outline so the eye
+// finds what's left; it clears the moment an answer lands (targeted update).
+function _discRowCss(answered){
+  return 'display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:10px 12px;margin:3px 0;border-radius:9px;'+
+    (answered ? 'border:1.5px solid transparent;border-bottom:1px solid var(--border);'
+              : 'border:1.5px solid #F0B429;background:rgba(240,180,41,.05);');
+}
 // The Yes/No pair for one question — single source of markup for draw + update.
 function _discBtns(it, v){
   const b=(label,val,on,col)=>`<button type="button" onclick="_discSet('${it.id}',${val})" style="padding:6px 14px;border-radius:7px;border:1.5px solid ${on?col:'var(--border)'};background:${on?col:'transparent'};color:${on?'#fff':'var(--text-muted)'};font-weight:700;font-size:12px;cursor:pointer;">${label}</button>`;
@@ -16875,6 +16882,8 @@ function _discSet(id, val){
   const it=_discDomains().flatMap(d=>d.items).find(x=>x.id===id);
   const wrap=document.getElementById('discbtns_'+id);
   if(it && wrap){ wrap.innerHTML=_discBtns(it, ex[id]); }
+  const row=document.getElementById('discrow_'+id);
+  if(row){ const v2=ex[id]; row.style.cssText=_discRowCss(v2===true||v2===false); }
   const st=_discStats(); const prog=document.getElementById('discProg');
   if(prog) prog.textContent=st.answered+'/'+st.total+' answered';
   if(!wrap) _discDraw();   // defensive: overlay not open for some reason
@@ -16906,7 +16915,7 @@ function _discDraw(){
     document.body.appendChild(ov); }
   const qRow=it=>{
     const v=ex[it.id];
-    return `<div style="display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+    return `<div id="discrow_${it.id}" style="${_discRowCss(v===true||v===false)}">
       <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${esc(it.q)}</div>${it.help?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${esc(it.help)}</div>`:''}</div>
       <div id="discbtns_${it.id}" style="display:flex;gap:6px;flex:0 0 auto;">${_discBtns(it, v)}</div>
     </div>`;

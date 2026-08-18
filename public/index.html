@@ -8324,23 +8324,41 @@ function downloadLostDraft(){
   a.click(); URL.revokeObjectURL(a.href);
 }
 function _showConflictRecovery(){
+  // Discreet corner card, not a blocking overlay — concurrent editing is rare
+  // and the work must carry on. The screen already shows the other person's
+  // version; this just says so and keeps the recovery route to hand.
   const old=document.getElementById('conflictOverlay'); if(old) old.remove();
   const ov=document.createElement('div'); ov.id='conflictOverlay';
-  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;';
-  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:520px;width:100%;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.35);">
-    <div style="font-weight:800;font-size:15px;margin-bottom:8px;">Someone else saved first</div>
-    <div style="font-size:13px;line-height:1.55;color:var(--text-muted);margin-bottom:14px;">
-      Another person saved changes to this company while you were editing, so the screen now shows
-      <b>their</b> version — nothing they did has been lost.<br><br>
-      <b>Your</b> last change was set aside, not thrown away: you can download it as a draft to
-      re-apply, or restore it wholesale via ⭱ Import.
-    </div>
-    <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-outline" onclick="downloadLostDraft()">⭳ Download my discarded version</button>
-      <button class="btn btn-primary" onclick="document.getElementById('conflictOverlay').remove()">OK — continue with theirs</button>
-    </div></div>`;
-  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  ov.style.cssText='position:fixed;right:18px;bottom:18px;z-index:99999;max-width:340px;background:var(--surface,#fff);color:var(--text,#111);border:1px solid var(--border);border-left:4px solid #D97706;border-radius:12px;padding:13px 15px;box-shadow:0 10px 34px rgba(0,0,0,.22);';
+  ov.innerHTML=`
+    <div style="display:flex;align-items:flex-start;gap:10px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:3px;">Someone else saved first</div>
+        <div style="font-size:12px;line-height:1.5;color:var(--text-muted);">Now showing their version. Your last change is set aside — download it to re-apply anything you need.</div>
+        <button class="btn btn-outline btn-xs" style="margin-top:8px;" onclick="downloadLostDraft()">⭳ Download my version</button>
+      </div>
+      <button class="btn btn-ghost btn-xs" style="flex:0 0 auto;" title="Dismiss" onclick="document.getElementById('conflictOverlay').remove()">✕</button>
+    </div>`;
   document.body.appendChild(ov);
+  setTimeout(()=>{ const el=document.getElementById('conflictOverlay'); if(el) el.remove(); }, 120000);
+}
+// ── Quiet peer-activity hint: another session saved this company recently ──
+let _peerSeenAt = 0;
+function _notePeerActivity(){ _peerSeenAt = Date.now(); _renderPeerChip(); }
+function _renderPeerChip(){
+  const anchor = document.getElementById('saveIndicator');
+  if(!anchor || !anchor.parentNode) return;
+  let chip = document.getElementById('peerChip');
+  const active = _peerSeenAt && (Date.now() - _peerSeenAt) < 10*60*1000;
+  if(!active){ if(chip) chip.remove(); return; }
+  if(!chip){
+    chip = document.createElement('span');
+    chip.id = 'peerChip';
+    chip.style.cssText = 'font-size:11.5px;color:#B45309;background:#D977061a;border:1px solid #D9770655;border-radius:10px;padding:2px 9px;margin-left:8px;white-space:nowrap;';
+    chip.title = 'Someone else saved this company in the last few minutes. The screen picks up their changes automatically; if you both edit the same thing, the later save wins and the earlier one is offered back as a draft.';
+    anchor.parentNode.insertBefore(chip, anchor.nextSibling);
+  }
+  chip.textContent = '✎ another user is editing';
 }
 function saveData(){
   // Consultant working on a client (dial-in) is READ-WRITE: the edits go to the
@@ -8378,6 +8396,7 @@ function saveData(){
         if(inClient){ _consultantLastUpd = res.updatedAt || _consultantLastUpd; _setFreshLabel(); }
         const elC=document.getElementById('saveIndicator');
         if(elC){ elC.textContent='↻ Reloaded — someone else had just saved'; elC.style.color='var(--danger)'; }
+        _notePeerActivity();
         _showConflictRecovery();
         return;
       }
@@ -12793,9 +12812,11 @@ async function refreshConsultantView(auto){
       S = (payload && payload.state && Object.keys(payload.state).length) ? payload.state : _emptyConsultantState();
       migrateLoadedState();
       _rerenderEverything();
+      if(auto) _notePeerActivity();   // an unprompted newer copy = someone else is in here
       showToast('↻ Updated','info');
     }
     _setFreshLabel();
+    _renderPeerChip();
   } catch(e){ /* keep showing the last good copy */ }
 }
 
@@ -12841,10 +12862,12 @@ async function _pollOwnState(){
       Auth.setLastServerUpd(upd);   // keep the save base in step with what we just pulled
       if(r.state && typeof r.state === 'object' && Object.keys(r.state).length){
         S = r.state; migrateLoadedState(); _rerenderEverything();
+        _notePeerActivity();
         showToast('↻ Updated with the latest from the server','info');
       }
     }
     _setLiveLabel(upd);
+    _renderPeerChip();
   } catch(e){ /* keep showing the last good copy */ }
 }
 
@@ -14493,20 +14516,25 @@ function _journeyMilestones(r){
   const plan=_riskPlanState(r);
   const evid=(r.linked||[]).filter(l=>l.actionId);
   const impactsRated=RISK_IMPACT_DIMS.some(d=>parseInt((r.impacts||{})[d.k],10)>0);
-  const managed=(plan.k==='managed'||plan.k==='none') && r.reviewed && !!sc.rating;
+  // Managed = the plan actually delivered (and signed off), or the risk was
+  // FORMALLY accepted. Having no actions never counts — see _riskPlanState.
+  const managed=(plan.k==='managed' && r.reviewed && !!sc.rating) || (plan.k==='accepted' && !!sc.rating);
   const m=[];
   m.push({ done:true, label:'Identified', when:(r.createdAt||'').slice(0,10),
     text:(r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':('Added by '+(r.createdBy||'the team')))+(r.hazard?(' — '+r.hazard):'') });
   const _tgt=_riskTarget(r);
   const _hist=Array.isArray(r.scoreHistory)?r.scoreHistory:[];
   m.push({ done:!!sc.rating&&impactsRated, label:'Assessed', when:'',
-    text: sc.rating ? ('Inherent '+(inh.rating||'—')+' → now '+sc.rating+' ('+sc.priority+')'+((_tgt.rating&&plan.k!=='managed')?(' · projected '+_tgt.rating+' after the plan'):'')+(r.businessImpact?('. '+r.businessImpact):'')) : 'Not yet rated — score likelihood × severity and the business impacts' });
+    text: sc.rating ? ('Inherent '+(inh.rating||'—')+' → now '+sc.rating+' ('+sc.priority+')'+((_tgt.rating&&plan.k!=='managed'&&plan.k!=='accepted')?(' · projected '+_tgt.rating+' after the plan'):'')+(r.businessImpact?('. '+r.businessImpact):'')) : 'Not yet rated — score likelihood × severity and the business impacts' });
   m.push({ done:acts.length>0, label:'Action planned', when:'',
     text: acts.length ? (acts.length+' action'+(acts.length!==1?'s':'')+': '+acts.map(a=>(a.desc||'(action)').slice(0,60)+(a.owner?(' — '+a.owner+(a.due?(', due '+a.due):'')):'')).join('; ')) : 'No owned, dated actions yet' });
   m.push({ done:acts.length>0&&closed.length===acts.length, label:'Delivered', when:'',
     text: closed.length ? (closed.map(a=>(a.desc||'(action)').slice(0,50)+' — '+_actionStatus(a)+((a.completedDate||a.acceptDate)?(' '+(a.completedDate||a.acceptDate)):'')).join('; ')+(evid.length?('. Evidence: '+evid.map(l=>l.ref||l.url).join(', ')):'')) : (acts.length?'Plan in progress — '+closed.length+' of '+acts.length+' closed':'Waiting on the action plan') });
   m.push({ done:managed, label:'Managed', when:'',
-    text: managed ? ('This is now how the company manages this risk'+(_hist.length?(' — the score moved from '+(_hist[0].l*_hist[0].s)+' to '+(sc.rating||'—')+' as the plan delivered'):'')+(r.controls?(': '+String(r.controls).slice(0,140)):'')+(evid.length?(' · '+evid.length+' piece'+(evid.length!==1?'s':'')+' of evidence on file'):'')+(r.trend?(' · trend '+r.trend):'')) : (plan.k==='managed'?'Plan delivered — tick "reviewed and completed" on the risk to sign it off':'The plan is still being delivered') });
+    text: managed ? (plan.k==='accepted'
+        ? ('Formally accepted with the current controls — who and why are on the risk acceptance register'+(r.trend?(' · trend '+r.trend):''))
+        : ('This is now how the company manages this risk'+(_hist.length?(' — the score moved from '+(_hist[0].l*_hist[0].s)+' to '+(sc.rating||'—')+' as the plan delivered'):'')+(r.controls?(': '+String(r.controls).slice(0,140)):'')+(evid.length?(' · '+evid.length+' piece'+(evid.length!==1?'s':'')+' of evidence on file'):'')+(r.trend?(' · trend '+r.trend):'')))
+      : (plan.k==='managed'?'Plan delivered — tick "reviewed and completed" on the risk to sign it off':(plan.k==='none'?'No actions planned — plan the work, or formally accept the risk with a reason':'The plan is still being delivered')) });
   return m;
 }
 function _journeyOpenRisk(id){
@@ -14517,12 +14545,13 @@ function _journeyOpenRisk(id){
 function setJourneyFilter(v){ _journeyFilter=v; renderRiskJourney(); }
 function renderRiskJourney(){
   const el=document.getElementById('journeyRoot'); if(!el) return;
-  const all=(S.riskProfile||[]);
+  const all=_riskDisplayOrder();
   const enriched=all.map(r=>({ r, m:_journeyMilestones(r), sc:_riskScore(r), plan:_riskPlanState(r) }));
   const managedN=enriched.filter(x=>x.m[4].done).length;
   const planN=enriched.filter(x=>!x.m[4].done && x.m[2].done).length;
   const earlyN=enriched.length-managedN-planN;
-  // Same order as the Risk profile tab — the two pages must read as one list.
+  // Same order as the Risk profile tab (shared _riskDisplayOrder) — the two
+  // pages must read as one list.
   const rows=enriched.filter(x=> _journeyFilter==='managed' ? x.m[4].done : _journeyFilter==='open' ? !x.m[4].done : true);
   const tile=(n,lab,c)=>`<div class="ckx-kpi" style="cursor:default;"><div style="font-size:24px;font-weight:800;color:${c};">${n}</div><div style="font-size:12px;color:var(--text-muted);">${lab}</div></div>`;
   const fbtn=(v,lab)=>`<button class="btn ${_journeyFilter===v?'btn-primary':'btn-outline'} btn-xs" onclick="setJourneyFilter('${v}')">${lab}</button>`;
@@ -14544,7 +14573,7 @@ function renderRiskJourney(){
       <summary style="padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;">
         <span style="font-weight:700;font-size:13.5px;flex:1;min-width:200px;">${esc(r.activity||r.hazard||'New risk')}</span>
         ${_riskPrioBadge(x.sc.priority,x.sc.rating)}
-        <span class="badge" style="border-color:${x.plan.colour};color:${x.plan.colour};background:${x.plan.colour}1a;">${x.m[4].done?'✓ Managed':x.plan.label}</span>
+        <span class="badge" style="border-color:${x.plan.colour};color:${x.plan.colour};background:${x.plan.colour}1a;">${x.m[4].done?(x.plan.k==='accepted'?'≈ Accepted':'✓ Managed'):x.plan.label}</span>
         <span style="font-size:11.5px;color:var(--text-muted);">${doneN}/5 steps</span>
       </summary>
       <div style="padding:6px 18px 12px;">
@@ -14686,11 +14715,15 @@ function _renderRiskFilters(show){
 // the company now manages it.
 function _riskPlanState(r){
   const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due));
-  if(!acts.length) return { k:'none', label:'No actions planned', colour:'#9CA3AF', title:'Add owned, dated actions to deal with the residual risk — or record why the current controls are sufficient.' };
+  // No actions is NOT a managed state — otherwise deleting the plan would
+  // improve the picture. The two honest routes out are a delivered plan or a
+  // formal, recorded acceptance.
+  if(!acts.length) return { k:'none', label:'Actions outstanding', colour:'#D97706', title:'No actions are planned against this risk. Add owned, dated actions — or, if the current controls are genuinely sufficient, formally accept the risk (recorded with who and why on the acceptance register).' };
   const open=acts.filter(a=>{ const st=_actionStatus(a); return st!=='Complete'&&st!=='Accepted'; });
   if(open.length) return { k:'open', label:open.length+' action'+(open.length!==1?'s':'')+' in plan', colour:'#F59E0B', title:'Open actions dealing with the residual risk.' };
-  const accepted=acts.some(a=>_actionStatus(a)==='Accepted');
-  return { k:'managed', label:accepted?'✓ Managed (risk accepted)':'✓ Managed', colour:'#16A34A', title:'The action plan is delivered — this is now how the company manages this risk.' };
+  const allAccepted=acts.every(a=>_actionStatus(a)==='Accepted');
+  if(allAccepted) return { k:'accepted', label:'≈ Risk accepted', colour:'#6B7280', title:'Formally accepted with the current controls — who accepted it and why are on the risk acceptance register.' };
+  return { k:'managed', label:'✓ Managed', colour:'#16A34A', title:'The action plan is delivered — this is now how the company manages this risk.' };
 }
 function _riskFlowHTML(r){
   const inh=_riskInherent(r), cur=_riskScore(r), tgt=_riskTarget(r);
@@ -14701,7 +14734,7 @@ function _riskFlowHTML(r){
   const plan=_riskPlanState(r);
   const planHtml=`<span class="eff-badge" style="background:${plan.colour}1a;color:${plan.colour};" title="${esc(plan.title)}">${plan.label}</span>`;
   // Where the score is heading once the plan lands (hidden once managed — it has landed).
-  const projHtml=(tgt.rating && plan.k!=='managed')
+  const projHtml=(tgt.rating && plan.k!=='managed' && plan.k!=='accepted')
     ? `<span class="rf-arrow">→</span><span title="Projected once the action plan is delivered: ${tgt.l} × ${tgt.s}" style="color:var(--text-muted);font-weight:400;">projected <strong style="color:${_RISK_PRIO_COLOR[tgt.priority]};">${tgt.rating}</strong></span>`
     : '';
   return part(inh,'Inherent') + `<span class="rf-arrow">→</span>` + part(cur,'Now') + `<span class="rf-arrow">→</span>` + planHtml + projHtml + effHtml;
@@ -14896,7 +14929,46 @@ function _riskActionsHTML(r, dis){
   }).join('');
   return `<table class="act-table"><thead><tr><th>Action</th><th>Owner</th><th>Target date</th><th>Status</th><th>Priority</th>${dis?'':'<th></th>'}</tr></thead>
     <tbody>${body || `<tr><td colspan="${dis?5:6}" style="color:var(--text-muted);">No actions yet.</td></tr>`}</tbody></table>
-    ${dis?'':`<button class="btn btn-outline btn-xs no-print" style="margin-top:8px;" onclick="addRiskAction('${r.id}')">＋ Add action</button>`}`;
+    ${dis?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-outline btn-xs no-print" onclick="addRiskAction('${r.id}')">＋ Add action</button>${_riskPlanState(r).k==='accepted'?'':`<button class="btn btn-ghost btn-xs no-print" title="If the current controls are sufficient and no further action is justified, formally accept this risk — recorded with who and why on the acceptance register" onclick="openAcceptRisk('${r.id}')">≈ Accept this risk</button>`}</div>`}`;
+}
+// ── Formal risk acceptance: the honest route when the current controls are
+//    sufficient. Records who and why as a terminal Accepted action, so it
+//    rides the existing acceptance register, exec plan and PDFs, and cannot
+//    be silently deleted (completed work is undeletable).
+function openAcceptRisk(id){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
+  const old=document.getElementById('acceptRiskOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='acceptRiskOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:520px;width:100%;padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.35);">
+    <div style="font-weight:800;font-size:15px;margin-bottom:6px;">Accept this risk</div>
+    <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Accepting means the business runs <b>${esc(r.activity||r.hazard||'this risk')}</b> with the current controls and no further action. It is recorded on the acceptance register with who and why, and the risk stays on the profile to be reviewed like any other.</div>
+    <div class="field-group"><label class="field-label">Why the current controls are sufficient</label><textarea id="arWhy" rows="3" style="width:100%;"></textarea></div>
+    <div class="field-group" style="margin-top:8px;"><label class="field-label">Accepted by (name and role)</label><input type="text" id="arWho" style="width:100%;"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+      <button class="btn btn-ghost" onclick="document.getElementById('acceptRiskOv').remove()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAcceptRisk('${r.id}')">Accept the risk</button>
+    </div></div>`;
+  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+  const w=document.getElementById('arWhy'); if(w) w.focus();
+}
+function confirmAcceptRisk(id){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
+  const why=String((document.getElementById('arWhy')||{}).value||'').trim();
+  const who=String((document.getElementById('arWho')||{}).value||'').trim();
+  if(!why || !who){ showToast('Both the reason and who is accepting are needed — this is the audit record.','error'); return; }
+  if(!Array.isArray(r.actions)) r.actions=[];
+  const today=new Date().toISOString().slice(0,10);
+  r.actions.push({ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    desc:'Risk accepted with current controls: '+why, owner:who, due:'', priority:'',
+    status:'Accepted', acceptDate:today, acceptedBy:who });
+  _stamp(r,'updated');
+  const ov=document.getElementById('acceptRiskOv'); if(ov) ov.remove();
+  saveData(); renderRiskProfile(); if(typeof renderRiskJourney==='function') renderRiskJourney();
+  showToast('≈ Risk accepted — recorded on the acceptance register.','success');
 }
 
 // Linked assessments / evidence (spec #6).
@@ -15654,12 +15726,74 @@ function _assurTableHTML(kind, dis){
     <tbody>${body||`<tr><td colspan="${cfg.heads.length+(dis?0:1)}" style="color:var(--text-muted);">None recorded.</td></tr>`}</tbody></table></div>
     ${dis?'':`<button class="btn btn-outline btn-xs no-print" style="margin-top:8px;" onclick="addAssurRow('${kind}')">＋ Add row</button>`}`;
 }
+// Suggested monitoring rows, from what the app already knows (HSG65 Check:
+// active + reactive monitoring proportionate to the profile, plus an audit/
+// review schedule). Suggest-and-confirm: seeded by button only, never touches
+// rows already recorded, and targets/figures/owners stay blank — real numbers
+// come from the client, never invented.
+function _suggestAssurance(){
+  const sug={
+    leading:[
+      { metric:'Risk assessments completed and in date (%)', frequency:'Monthly' },
+      { metric:'Risk-profile actions closed by their target date (%)', frequency:'Monthly' },
+      { metric:'Training compliance (%)', frequency:'Quarterly' },
+      { metric:'Inspections done vs planned', frequency:'Monthly' }
+    ],
+    lagging:[
+      { metric:'Near misses reported', frequency:'Monthly' },
+      { metric:'RIDDOR reportable incidents', frequency:'Monthly' },
+      { metric:'Lost-time injuries', frequency:'Monthly' },
+      { metric:'Ill-health cases', frequency:'Monthly' }
+    ],
+    assurance:[
+      { activity:'Management review of the risk profile', frequency:'Annual' }
+    ]
+  };
+  // The arrangements the discovery answers say this business must run — each
+  // fired rule's "requires" lines become checkable assurance activities.
+  try{
+    const seen=new Set();
+    _profGenerate().reqs.forEach(q=>{
+      const t=String(q.text||'').trim(); if(!t) return;
+      const k=t.toLowerCase(); if(seen.has(k)) return; seen.add(k);
+      sug.assurance.push({ activity:'Check: '+t, frequency:'' });
+    });
+  }catch(e){}
+  if(sug.assurance.length>13) sug.assurance.length=13;   // keep the seed proportionate
+  return sug;
+}
+function prefillAssurance(){
+  if(_blockIfReadOnly()) return;
+  if(!S.riskAssurance) S.riskAssurance={leading:[],lagging:[],assurance:[]};
+  const sug=_suggestAssurance(); let added=0;
+  const keyOf=r=>String(r.metric||r.activity||'').trim().toLowerCase();
+  Object.keys(sug).forEach(kind=>{
+    if(!Array.isArray(S.riskAssurance[kind])) S.riskAssurance[kind]=[];
+    const have=new Set(S.riskAssurance[kind].map(keyOf));
+    sug[kind].forEach(sr=>{
+      if(!keyOf(sr) || have.has(keyOf(sr))) return;
+      const row={ id:kind+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5) };
+      ASSUR_KINDS[kind].cols.forEach(c=>row[c]=sr[c]||'');
+      S.riskAssurance[kind].push(row); have.add(keyOf(sr)); added++;
+    });
+  });
+  if(added){ saveData(); _renderAssurance(); showToast('✓ '+added+' suggested row'+(added!==1?'s':'')+' added — set the targets and owners, edit or delete freely.','success'); }
+  else showToast('Nothing new to suggest — the tables already cover the suggestions.','info');
+}
 function _renderAssurance(){
   const el=document.getElementById('riskAssurance'); if(!el) return;
   const dis=_roLocked()?' disabled':'';
-  el.innerHTML=`<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Monitoring &amp; assurance</h3></div>
+  const as=S.riskAssurance||{};
+  const empty=!['leading','lagging','assurance'].some(k=>Array.isArray(as[k])&&as[k].length);
+  const seedBtn = dis ? '' : (empty
+    ? `<button class="btn btn-primary btn-sm no-print" style="flex:0 0 auto;" onclick="prefillAssurance()">⚙ Pre-fill from the profile</button>`
+    : `<button class="btn btn-ghost btn-xs no-print" style="flex:0 0 auto;" title="Adds any missing suggested rows — never changes what is already recorded" onclick="prefillAssurance()">↻ Suggest additions</button>`);
+  el.innerHTML=`<div class="card" style="margin-bottom:18px;">
     <div class="card-body">
-      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:4px;">The framework for monitoring and assurance HSG65 expects — how the organisation will check the risk profile stays under control.</div>
+      <div style="display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;">
+        <div style="font-size:12.5px;color:var(--text-muted);flex:1 1 320px;">The framework for monitoring and assurance HSG65 expects — how the organisation will check the risk profile stays under control. Suggestions come from the standard measures and the arrangements the discovery answers require; targets, figures and owners are yours to set.</div>
+        ${seedBtn}
+      </div>
       ${_assurTableHTML('leading',dis)}
       ${_assurTableHTML('lagging',dis)}
       ${_assurTableHTML('assurance',dis)}
@@ -16920,14 +17054,20 @@ function _profBoardReport_dead(){
   }catch(e){ console.error('Board report failed',e); showToast('Could not build the board report — see console','error'); }
 }
 
+// The ONE display order for risks — highest priority first, then rating, ties
+// in the order they were added. The register AND the risk journey both use
+// this, so the two pages always read as the same list.
+function _riskDisplayOrder(){
+  return (S.riskProfile||[]).slice().sort((a,b)=>{
+    const d = _RISK_PRIO_RANK[_riskScore(a).priority||''] - _RISK_PRIO_RANK[_riskScore(b).priority||''];
+    return d !== 0 ? d : ((_riskScore(b).rating||0) - (_riskScore(a).rating||0));
+  });
+}
 function renderRiskProfile(){
   const cont = document.getElementById('riskContainer');
   if(!cont) return;
   const ro   = _roLocked();
-  const all  = (S.riskProfile||[]).slice().sort((a,b)=>{
-    const d = _RISK_PRIO_RANK[_riskScore(a).priority||''] - _RISK_PRIO_RANK[_riskScore(b).priority||''];
-    return d !== 0 ? d : ((_riskScore(b).rating||0) - (_riskScore(a).rating||0));
-  });
+  const all  = _riskDisplayOrder();
   const badge = document.getElementById('riskCountBadge');
   if(badge) badge.textContent = all.length ? (all.length + ' risk' + (all.length!==1?'s':'')) : '';
   const addBtn = document.getElementById('addRiskBtn');

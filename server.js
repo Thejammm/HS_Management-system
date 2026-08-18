@@ -43,6 +43,7 @@ app.use('/api/state', stateRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/training', require('./routes/training'));
 app.use('/api/statutory', require('./routes/statutory'));
+app.use('/api/linked', require('./routes/linked'));   // server-to-server pull from linked apps
 
 // 404 for any unknown /api/* path (don't fall through to the SPA)
 app.use('/api', (_req, res) => {

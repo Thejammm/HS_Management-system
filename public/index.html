@@ -6672,7 +6672,7 @@ function renderActions() {
         </div>
         ${_roLocked()?'':`<button class="no-print" onclick="deleteAction('${a.id}')" title="Remove this action item" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:28px;height:28px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;align-self:flex-start;">✕</button>`}
       </div>
-      <div style="font-size:13px;margin-bottom:${a.assignedTo?'6px':'0'};"><strong>Issue:</strong> ${esc(a.issue)}</div>
+      <div style="font-size:13px;margin-bottom:${a.assignedTo?'6px':'0'};"><strong>Issue:</strong> ${esc(a.issue)}${a.source==='linked'?' <span class="badge badge-muted" title="Synced from the Inspection app — view only here">from Inspection app</span>':''}</div>
       ${a.assignedTo?`<div style="font-size:13px;color:var(--text-muted);"><strong>Assigned:</strong> ${esc(a.assignedTo)}</div>`:''}
       ${a.note?`<div style="font-size:13px;color:var(--info);margin-top:6px;padding:8px 10px;background:var(--info-bg);border:1px solid var(--info-brd);border-radius:6px;">💬 ${esc(a.note)}</div>`:''}
       ${(a.beforePhotos&&a.beforePhotos.length)||(a.afterPhotos&&a.afterPhotos.length)?`
@@ -6717,6 +6717,7 @@ function deleteAction(id){
   if(_blockIfReadOnly()) return;
   const a = S.actions.find(x => x.id === id);
   if(!a) return;
+  if(a.source === 'linked'){ showToast('Synced from the Inspection app — manage it there.','info'); return; }
   if(!confirm(`Remove this action?\n\n"${a.itemName}"\n\nThis deletes the action item itself; the inspection it came from is not changed. This cannot be undone.`)) return;
   S.actions = S.actions.filter(x => x.id !== id);
   saveData(); updateBadge();
@@ -6727,6 +6728,7 @@ function deleteAction(id){
 function resolveAction(id){
   if(_blockIfReadOnly()) return;
   const a=S.actions.find(x=>x.id===id); if(!a) return;
+  if(a.source === 'linked'){ showToast('Synced from the Inspection app — resolve it in the app it was raised in.','info'); return; }
   const by=document.getElementById('rb-'+id)?.value.trim();
   const dt=document.getElementById('rd-'+id)?.value;
   const notes=document.getElementById('rn-'+id)?.value.trim();
@@ -6776,6 +6778,7 @@ function signOffInspection(inspId){
   if(_blockIfReadOnly()) return;
   const insp = S.inspections.find(i => i.id === inspId);
   if(!insp){ showToast('Inspection not found','error'); return; }
+  if(insp.source === 'linked'){ showToast('Synced from the Inspection app — view only here. Sign it off in the app it was done in.','info'); return; }
   if(_isInspArchived(insp)){
     showToast('This month is archived (read-only) — sign-off is no longer available.','info');
     return;
@@ -6925,6 +6928,7 @@ function deleteInspection(inspId){
   if(_blockIfReadOnly()) return;
   const insp = S.inspections.find(i => i.id === inspId);
   if(!insp){ showToast('Inspection not found','error'); return; }
+  if(insp.source === 'linked'){ showToast('Synced from the Inspection app — it cannot be deleted here. Remove the link to stop syncing it.','info'); return; }
   if(typeof _isInspArchived === 'function' && _isInspArchived(insp)){
     showToast('This month is archived (read-only) — records can no longer be deleted.','info');
     return;
@@ -8562,6 +8566,8 @@ function _rerenderEverything(){
   // After (re)loading state from server, re-apply brand colours to the live
   // CSS variables so the UI reflects whatever branding the tenant has saved.
   applyBrandingToCSS();
+  // Linked-app auto-sync fires on client load (throttled inside; silent).
+  try{ if(typeof _autoSyncLinkedApps==='function') setTimeout(_autoSyncLinkedApps, 800); }catch(e){}
   if(typeof renderCockpit === 'function') renderCockpit();
   setDefaultDates();
   populateInspectionForm();
@@ -9967,6 +9973,7 @@ function migrateLoadedState(){
   if(!S.raFolder || typeof S.raFolder!=='object') S.raFolder = { path:'', lastSync:'' };
   // Quick links to other apps (additive)
   if(!Array.isArray(S.appLinks)) S.appLinks = [];
+  if(!Array.isArray(S.linkedApps)) S.linkedApps = [];   // data links to sibling apps (auto-sync)
   try {
     if(!S.review.ratings.length && !S.review.feedback && !S.review.suggestions){
       const ck = (typeof _reviewClientKey === 'function') ? _reviewClientKey() : null;
@@ -12015,7 +12022,7 @@ function drilldown(type) {
         const rc=Object.values(results).filter(r=>r==='rectified').length;
         const a=Object.values(results).filter(r=>r==='action').length;
         html+=`<div class="drilldown-item" style="background:var(--muted-bg);border:1px solid var(--border);flex-direction:column;gap:4px;">
-          <div style="font-weight:700;font-size:14px;">${insp.title?esc(insp.title):fmtPeriod(insp)}</div>
+          <div style="font-weight:700;font-size:14px;">${insp.title?esc(insp.title):fmtPeriod(insp)}${insp.source==='linked'?' <span class="badge badge-muted" title="Synced from the Inspection app — view only here">from Inspection app</span>':''}</div>
           <div style="font-size:12px;color:var(--text-muted);">📍 ${esc(insp.location)} · 👤 ${esc(insp.manager)} · 📅 ${fmtPeriod(insp)}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
             <span style="font-size:11px;font-weight:700;color:var(--success);">✓ ${p} Pass</span>
@@ -19388,6 +19395,125 @@ function renderAppLinks(){
       ${presetStrip}
       <div class="ql-grid">${cards}${addTile}</div>
     </div>
+  </div>${_linkedAppsCardHTML(canEdit)}`;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LINKED APPS — auto-sync data from a sibling app (Option 2).
+//  The inspection app stays where inspections are DONE; Compass pulls a
+//  linked client's inspections + actions through its own server
+//  (/api/linked/inspections). Synced records are tagged source:'linked'
+//  and are view-only here; merge is by link id — local records are never
+//  touched, previous synced records are replaced, never duplicated.
+// ══════════════════════════════════════════════════════════════
+function _linkedAppsState(){ if(!Array.isArray(S.linkedApps)) S.linkedApps=[]; return S.linkedApps; }
+function addLinkedApp(){
+  if(!_canEditLinks() || _blockIfReadOnly()) return;
+  _linkedAppsState().push({ id:'la_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    kind:'inspections', label:'Inspection app', baseUrl:'https://inspections.archerhs.co.uk',
+    remoteTenantId:'', autoSync:true, lastSyncAt:'', lastStatus:'' });
+  saveData(); renderAppLinks();
+}
+function updateLinkedApp(id,f,v){
+  if(_roLocked()) return;
+  const l=_linkedAppsState().find(x=>x.id===id); if(!l) return;
+  l[f]=(f==='autoSync')?!!v:v; scheduleAutoSave();
+  if(f==='autoSync') renderAppLinks();
+}
+function deleteLinkedApp(id){
+  if(!_canEditLinks() || _blockIfReadOnly()) return;
+  const l=_linkedAppsState().find(x=>x.id===id); if(!l) return;
+  if(!confirm('Remove this link? Its synced inspections and actions will also be removed from Compass (they stay safe in the app they were done in).')) return;
+  S.inspections=(S.inspections||[]).filter(i=>!(i.source==='linked'&&i.sourceApp===id));
+  S.actions=(S.actions||[]).filter(a=>!(a.source==='linked'&&a.sourceApp===id));
+  S.linkedApps=_linkedAppsState().filter(x=>x.id!==id);
+  saveData(); renderAppLinks(); if(typeof renderActions==='function'){ try{ renderActions(); renderActionStats(); }catch(e){} }
+  showToast('Link removed — synced records cleared.','success');
+}
+function _mergeLinkedRecords(link, payload){
+  const tag=x=>Object.assign({}, x, { source:'linked', sourceApp:link.id });
+  S.inspections=(S.inspections||[]).filter(i=>!(i.source==='linked'&&i.sourceApp===link.id))
+    .concat((payload.inspections||[]).map(tag));
+  S.actions=(S.actions||[]).filter(a=>!(a.source==='linked'&&a.sourceApp===link.id))
+    .concat((payload.actions||[]).map(tag));
+  // Carry inspection types the synced records reference but Compass lacks —
+  // added under their own ids (never overwriting local types) so the existing
+  // views render synced inspections with no special-casing.
+  if(payload.inspectionTypes && typeof payload.inspectionTypes==='object'){
+    if(!S.inspectionTypes || typeof S.inspectionTypes!=='object') S.inspectionTypes={};
+    Object.entries(payload.inspectionTypes).forEach(([tid,t])=>{
+      if(!S.inspectionTypes[tid]) S.inspectionTypes[tid]=Object.assign({}, t, { source:'linked', sourceApp:link.id });
+    });
+  }
+}
+async function syncLinkedApp(id, opts){
+  opts=opts||{};
+  const link=_linkedAppsState().find(x=>x.id===id); if(!link) return;
+  if(_roLocked()){ if(!opts.silent) showToast('Read only — switch to edit mode to sync.','info'); return; }
+  if(typeof Auth==='undefined' || !Auth.isSignedIn() || !Auth.activeTenantId()){
+    if(!opts.silent) showToast('Sign in first — linked sync runs through the server.','info'); return;
+  }
+  if(!link.remoteTenantId){ if(!opts.silent) showToast('Set the remote tenant id first (the client\'s tenant id in the Inspection app).','info'); return; }
+  const btn=document.getElementById('lasync-'+id); if(btn){ btn.disabled=true; btn.textContent='Syncing…'; }
+  try{
+    const r=await fetch('/api/linked/inspections?tenantId='+encodeURIComponent(Auth.activeTenantId())+'&linkId='+encodeURIComponent(id), { credentials:'include' });
+    let j={}; try{ j=await r.json(); }catch(e){}
+    if(!r.ok || !j.ok){
+      link.lastStatus='error: '+(j.error||('http '+r.status));
+      saveData(); renderAppLinks();
+      if(!opts.silent) showToast('Sync failed ('+(j.error||r.status)+') — keeping the last-synced data.','error');
+      return;
+    }
+    _mergeLinkedRecords(link, j);
+    link.lastSyncAt=j.fetchedAt||new Date().toISOString(); link.lastStatus='ok';
+    saveData(); renderAppLinks();
+    if(typeof renderActions==='function'){ try{ renderActions(); renderActionStats(); }catch(e){} }
+    if(typeof renderMonthlyReport==='function'){ try{ renderMonthlyReport(); }catch(e){} }
+    if(typeof renderCockpit==='function'){ try{ renderCockpit(); }catch(e){} }
+    if(!opts.silent) showToast('✓ Synced '+(j.inspections||[]).length+' inspection'+((j.inspections||[]).length!==1?'s':'')+' and '+(j.actions||[]).length+' action'+((j.actions||[]).length!==1?'s':'')+' from '+(link.label||'the linked app')+'.','success');
+  }catch(e){
+    link.lastStatus='error: network';
+    if(!opts.silent) showToast('Sync failed — could not reach the server. Keeping the last-synced data.','error');
+  }finally{
+    const b=document.getElementById('lasync-'+id); if(b){ b.disabled=false; b.textContent='Sync now'; }
+  }
+}
+// Auto-sync on client load, throttled per link per session (10 min).
+var _laLastAuto={};
+function _autoSyncLinkedApps(){
+  if(_roLocked()) return;
+  if(typeof Auth==='undefined' || !Auth.isSignedIn() || !Auth.activeTenantId()) return;
+  _linkedAppsState().forEach(l=>{
+    if(!l.autoSync || !l.remoteTenantId) return;
+    const k=Auth.activeTenantId()+'|'+l.id;
+    if(_laLastAuto[k] && Date.now()-_laLastAuto[k] < 10*60*1000) return;
+    _laLastAuto[k]=Date.now();
+    syncLinkedApp(l.id, { silent:true });
+  });
+}
+function _linkedAppsCardHTML(canEdit){
+  const list=_linkedAppsState(); const dis=_roLocked()?' disabled':'';
+  if(!list.length && !canEdit) return '';
+  const rows=list.map(l=>`<div style="border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:10px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px;">
+        <div class="field-group"><label class="field-label">Label</label><input type="text"${dis} value="${esc(l.label||'')}" oninput="updateLinkedApp('${l.id}','label',this.value)"></div>
+        <div class="field-group"><label class="field-label">App address</label><input type="text"${dis} value="${esc(l.baseUrl||'')}" oninput="updateLinkedApp('${l.id}','baseUrl',this.value)"></div>
+        <div class="field-group"><label class="field-label">Client's tenant id in that app</label><input type="text"${dis} value="${esc(l.remoteTenantId||'')}" oninput="updateLinkedApp('${l.id}','remoteTenantId',this.value)"></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px;">
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;"><input type="checkbox"${dis} ${l.autoSync?'checked':''} onchange="updateLinkedApp('${l.id}','autoSync',this.checked)"> Auto-sync when this client loads</label>
+        ${dis?'':`<button class="btn btn-primary btn-sm no-print" id="lasync-${l.id}" onclick="syncLinkedApp('${l.id}')">Sync now</button>`}
+        ${canEdit&&!dis?`<button class="btn btn-ghost btn-sm no-print" onclick="deleteLinkedApp('${l.id}')">Remove link</button>`:''}
+        <span style="font-size:11.5px;color:${String(l.lastStatus||'').startsWith('error')?'var(--danger)':'var(--text-muted)'};">${l.lastSyncAt?('Last synced '+new Date(l.lastSyncAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})):(l.lastStatus?esc(l.lastStatus):'Never synced')}${l.lastSyncAt&&String(l.lastStatus||'').startsWith('error')?(' · '+esc(l.lastStatus)):''}</span>
+      </div>
+    </div>`).join('');
+  return `<div class="card" style="margin:0 0 16px;">
+    <div class="card-band"><h3>Linked apps — data sync</h3><span class="badge badge-muted">${list.length||''}</span></div>
+    <div class="card-body">
+      <div class="no-print" style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Pull this client's inspections and actions from their standalone Inspection app, automatically. Inspections stay DONE over there (the source of truth); Compass is where they are seen and managed. Synced records carry a "from Inspection app" badge and are view-only here.</div>
+      ${rows||'<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">No linked apps yet.</div>'}
+      ${canEdit&&!dis?`<button class="btn btn-outline btn-sm no-print" onclick="addLinkedApp()">＋ Link an app</button>`:''}
+    </div>
   </div>`;
 }
 
@@ -22033,7 +22159,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','appLinks','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff'];
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

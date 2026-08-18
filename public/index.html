@@ -13499,7 +13499,7 @@ function renderReports(){
       icon:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M9 11h6"/>'),
       desc:'The statutory written policy: statement of intent, responsibilities and arrangements, composed from this client\'s own profile. Edit and sign it on the Management system tab.',
       tags:['Statutory','HSWA s.2(3)','Hand-over'] },
-    { title:'Board Report', accent:'#DC2626', tint:'#FCE9E9', fn:'downloadBoardReport()', meta:riskMeta,
+    { title:'Board Report', accent:'#DC2626', tint:'#FCE9E9', fn:'openBoardReportPrint()', meta:riskMeta,
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
       desc:'For directors: the verdict, the numbers that matter, what can kill or seriously injure someone, and the decisions to sign off.',
       tags:['Directors','Narrative','Sign-off'] },
@@ -17049,6 +17049,23 @@ function buildActionPlanReport(){
   st.y+=6; K.ensure(24); doc.setDrawColor(180,185,192); doc.line(ML,st.y+14,ML+80,st.y+14); doc.setFontSize(8.5); doc.setTextColor(120,120,120); doc.text('Signature', ML, st.y+19); doc.line(ML+95,st.y+14,ML+95+60,st.y+14); doc.text('Date', ML+95, st.y+19);
   _pdfFooter(K, d, 'Action Plan');
   doc.save('action-plan-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+}
+// ── Shared report layer (print-based PDFs) ──
+// The board report now renders through /reports/engine.js + templates. The
+// legacy jsPDF generator stays reachable via ?report=legacy until sign-off,
+// and is the automatic fallback wherever the module layer cannot load
+// (including the offline file:// master).
+async function openBoardReportPrint(){
+  try{ if(new URLSearchParams(location.search).get('report')==='legacy'){ downloadBoardReport(); return; } }catch(e){}
+  try{
+    const [tpl, eng] = await Promise.all([ import('/reports/templates/index.js'), import('/reports/engine.js') ]);
+    const tenantName = (_consultantView&&_consultantView.name) || (typeof _cockpitClientName==='function'?_cockpitClientName():'') || '';
+    const report = tpl.buildReport(S, 'board-report', { tenant:{ name:tenantName } });
+    await eng.printReport(report);
+  }catch(e){
+    console.error('Report layer unavailable — using the legacy board report:', e);
+    downloadBoardReport();
+  }
 }
 function downloadBoardReport(){ if(!(S.riskProfile||[]).length){ showToast('Add at least one risk first','info'); return; } try{ buildBoardReport(); showToast('✓ Board report created','success'); }catch(e){ console.error('Board report failed',e); showToast('Could not build the report — see console','error'); } }
 function downloadActionPlanReport(){ if(!(S.riskProfile||[]).length){ showToast('Add at least one risk first','info'); return; } try{ buildActionPlanReport(); showToast('✓ Action plan created','success'); }catch(e){ console.error('Action plan failed',e); showToast('Could not build the plan — see console','error'); } }

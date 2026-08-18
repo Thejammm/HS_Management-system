@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Report preview harness</title>
+<link rel="stylesheet" href="/reports/report.css">
+<style>body{margin:0;background:#8b8d90;}</style>
+</head>
+<body>
+<script type="module">
+// Dev/test harness only — renders a report from a fixture (or live state via
+// ?state=remote) without printing, for eyeballing and headless PDF checks.
+//   /reports/preview.html?fixture=typical&report=board-report&format=signal&print=1
+import { reportHTML } from '/reports/engine.js';
+import { buildReport } from '/reports/templates/index.js';
+const q = new URLSearchParams(location.search);
+const fixture = q.get('fixture') || 'typical';
+const reportId = q.get('report') || 'board-report';
+const format = q.get('format') || undefined;
+const state = await fetch('/reports/fixtures/' + fixture + '.json').then(r => r.json());
+const report = buildReport(state, reportId, { format, period: 'Q3 2026', today: '2026-08-18' });
+document.body.insertAdjacentHTML('beforeend', reportHTML(report));
+document.title = report.meta.title + ' — ' + fixture;
+if (q.get('print')) {
+  await document.fonts.ready;
+  setTimeout(() => window.print(), 80);
+}
+</script>
+</body>
+</html>

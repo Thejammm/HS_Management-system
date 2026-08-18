@@ -1,0 +1,502 @@
+{
+ "company": {
+  "legalName": "Fixture Fabrications Ltd",
+  "tradingName": "Fixture Fabrications",
+  "employees": "24",
+  "personnel": [
+   {
+    "name": "G Fixture",
+    "role": "Managing Director"
+   }
+  ]
+ },
+ "riskConfig": {
+  "bands": {
+   "med": 5,
+   "high": 10,
+   "crit": 16
+  }
+ },
+ "riskProfile": [
+  {
+   "id": "fx_0",
+   "category": "Physical",
+   "activity": "Fixture activity 1",
+   "hazard": "Fixture hazard 1",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 1",
+   "controlLevel": "remove",
+   "sif": "yes",
+   "inherentL": "2",
+   "inherentS": "5",
+   "likelihood": "1",
+   "severity": "5",
+   "duty": "HSWA 1974; MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_0",
+     "desc": "Fixture action 1",
+     "owner": "A Steel",
+     "due": "2026-07-01",
+     "status": "Complete",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_1",
+   "category": "Chemical",
+   "activity": "Fixture activity 2",
+   "hazard": "Fixture hazard 2",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 2",
+   "controlLevel": "prevent",
+   "sif": "yes",
+   "inherentL": "4",
+   "inherentS": "5",
+   "likelihood": "3",
+   "severity": "5",
+   "duty": "MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_1",
+     "desc": "Fixture action 2",
+     "owner": "B Mason",
+     "due": "",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_2",
+   "category": "Fire",
+   "activity": "Fixture activity 3",
+   "hazard": "Fixture hazard 3",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 3",
+   "controlLevel": "protect",
+   "sif": "yes",
+   "inherentL": "5",
+   "inherentS": "5",
+   "likelihood": "5",
+   "severity": "5",
+   "duty": "MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_2",
+     "desc": "Fixture action 3",
+     "owner": "C Wright",
+     "due": "2026-12-01",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_3",
+   "category": "Electrical",
+   "activity": "Fixture activity 4",
+   "hazard": "Fixture hazard 4",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 4",
+   "controlLevel": "ppe",
+   "sif": "yes",
+   "inherentL": "3",
+   "inherentS": "5",
+   "likelihood": "2",
+   "severity": "5",
+   "duty": "HSWA 1974; MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_3",
+     "desc": "Fixture action 4",
+     "owner": "",
+     "due": "2026-12-01",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_4",
+   "category": "Ergonomic",
+   "activity": "Fixture activity 5",
+   "hazard": "Fixture hazard 5",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 5",
+   "controlLevel": "admin",
+   "sif": "yes",
+   "inherentL": "5",
+   "inherentS": "5",
+   "likelihood": "4",
+   "severity": "5",
+   "duty": "MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_4",
+     "desc": "Fixture action 5",
+     "owner": "B Mason",
+     "due": "2026-12-01",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_5",
+   "category": "Psychosocial",
+   "activity": "Fixture activity 6",
+   "hazard": "Fixture hazard 6",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 6",
+   "controlLevel": "remove",
+   "sif": "yes",
+   "inherentL": "2",
+   "inherentS": "5",
+   "likelihood": "1",
+   "severity": "5",
+   "duty": "MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_5",
+     "desc": "Fixture action 6",
+     "owner": "C Wright",
+     "due": "2026-07-01",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_6",
+   "category": "Legal / Regulatory",
+   "activity": "Fixture activity 7",
+   "hazard": "Fixture hazard 7",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 7",
+   "controlLevel": "prevent",
+   "sif": "",
+   "inherentL": "4",
+   "inherentS": "4",
+   "likelihood": "3",
+   "severity": "4",
+   "duty": "HSWA 1974; MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_6",
+     "desc": "Fixture action 7",
+     "owner": "A Steel",
+     "due": "",
+     "status": "Complete",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_7",
+   "category": "Environmental",
+   "activity": "Fixture activity 8",
+   "hazard": "Fixture hazard 8",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 8",
+   "controlLevel": "protect",
+   "sif": "",
+   "inherentL": "5",
+   "inherentS": "4",
+   "likelihood": "5",
+   "severity": "4",
+   "duty": "MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_7",
+     "desc": "Fixture action 8",
+     "owner": "",
+     "due": "2026-12-01",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_8",
+   "category": "Physical",
+   "activity": "Fixture activity 9",
+   "hazard": "Fixture hazard 9",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 9",
+   "controlLevel": "ppe",
+   "sif": "",
+   "inherentL": "3",
+   "inherentS": "4",
+   "likelihood": "2",
+   "severity": "4",
+   "duty": "MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_8",
+     "desc": "Fixture action 9",
+     "owner": "C Wright",
+     "due": "2026-12-01",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_9",
+   "category": "Chemical",
+   "activity": "Fixture activity 10",
+   "hazard": "Fixture hazard 10",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 10",
+   "controlLevel": "admin",
+   "sif": "",
+   "inherentL": "5",
+   "inherentS": "4",
+   "likelihood": "4",
+   "severity": "4",
+   "duty": "HSWA 1974; MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_9",
+     "desc": "Fixture action 10",
+     "owner": "A Steel",
+     "due": "2026-12-01",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_10",
+   "category": "Fire",
+   "activity": "Fixture activity 11",
+   "hazard": "Fixture hazard 11",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 11",
+   "controlLevel": "remove",
+   "sif": "",
+   "inherentL": "2",
+   "inherentS": "1",
+   "likelihood": "1",
+   "severity": "1",
+   "duty": "MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_10",
+     "desc": "Fixture action 11",
+     "owner": "B Mason",
+     "due": "2026-07-01",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_11",
+   "category": "Electrical",
+   "activity": "Fixture activity 12",
+   "hazard": "Fixture hazard 12",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 12",
+   "controlLevel": "prevent",
+   "sif": "",
+   "inherentL": "4",
+   "inherentS": "2",
+   "likelihood": "3",
+   "severity": "2",
+   "duty": "MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_11",
+     "desc": "Fixture action 12",
+     "owner": "",
+     "due": "",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_12",
+   "category": "Ergonomic",
+   "activity": "Fixture activity 13",
+   "hazard": "Fixture hazard 13",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 13",
+   "controlLevel": "protect",
+   "sif": "",
+   "inherentL": "5",
+   "inherentS": "3",
+   "likelihood": "5",
+   "severity": "3",
+   "duty": "HSWA 1974; MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_12",
+     "desc": "Fixture action 13",
+     "owner": "A Steel",
+     "due": "2026-12-01",
+     "status": "Complete",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_13",
+   "category": "Psychosocial",
+   "activity": "Fixture activity 14",
+   "hazard": "Fixture hazard 14",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 14",
+   "controlLevel": "ppe",
+   "sif": "",
+   "inherentL": "3",
+   "inherentS": "4",
+   "likelihood": "2",
+   "severity": "4",
+   "duty": "MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_13",
+     "desc": "Fixture action 14",
+     "owner": "B Mason",
+     "due": "2026-12-01",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_14",
+   "category": "Legal / Regulatory",
+   "activity": "Fixture activity 15",
+   "hazard": "Fixture hazard 15",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 15",
+   "controlLevel": "admin",
+   "sif": "yes",
+   "inherentL": "5",
+   "inherentS": "5",
+   "likelihood": "4",
+   "severity": "5",
+   "duty": "MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_14",
+     "desc": "Fixture action 15",
+     "owner": "C Wright",
+     "due": "2026-12-01",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_15",
+   "category": "Environmental",
+   "activity": "Fixture activity 16",
+   "hazard": "Fixture hazard 16",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 16",
+   "controlLevel": "remove",
+   "sif": "",
+   "inherentL": "2",
+   "inherentS": "1",
+   "likelihood": "1",
+   "severity": "1",
+   "duty": "HSWA 1974; MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_15",
+     "desc": "Fixture action 16",
+     "owner": "",
+     "due": "2026-07-01",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  }
+ ],
+ "profiler": {
+  "maturity": {
+   "l_a": 3,
+   "l_b": 3,
+   "c_a": 1,
+   "c_b": 1,
+   "oh_a": 2,
+   "oh_b": 2,
+   "op_a": 2,
+   "op_b": 2,
+   "a_a": 2.5,
+   "a_b": 2.5,
+   "r_a": 3,
+   "r_b": 3
+  }
+ }
+}

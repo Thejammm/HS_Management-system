@@ -1,0 +1,191 @@
+/* ══════════════════════════════════════════════════════════════
+   Shared report layer — Industry design system.
+   ground #f2f2f3 · ink #1d1f20 · hairlines #d4d4d7/#b7b7ba · accent #5980a6
+   cover #1d2d3d · square corners · hairline frames · registration marks.
+   Tier colours are semantic, never decoration; the tier word always prints
+   beside the colour.
+   ══════════════════════════════════════════════════════════════ */
+
+@font-face { font-family:'Barlow'; font-weight:400; font-style:normal; font-display:swap;
+  src:url('/fonts/barlow-400.woff2') format('woff2'); }
+@font-face { font-family:'Barlow'; font-weight:500; font-style:normal; font-display:swap;
+  src:url('/fonts/barlow-500.woff2') format('woff2'); }
+@font-face { font-family:'Barlow'; font-weight:600; font-style:normal; font-display:swap;
+  src:url('/fonts/barlow-600.woff2') format('woff2'); }
+@font-face { font-family:'Barlow Condensed'; font-weight:600; font-style:normal; font-display:swap;
+  src:url('/fonts/barlow-condensed-600.woff2') format('woff2'); }
+
+.r-root {
+  --r-ground:#f2f2f3; --r-ink:#1d1f20; --r-hair:#d4d4d7; --r-hair2:#b7b7ba;
+  --r-accent:#5980a6; --r-cover:#1d2d3d; --r-muted:#6a6c6e;
+  --r-crit:#8c2f1e; --r-high:#c05621; --r-med:#d9a13b; --r-low:#749dc4;
+  font-family:'Barlow',Arial,sans-serif; color:var(--r-ink); background:#8b8d90;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  line-height:1.45; font-size:11px;
+}
+.r-root *, .r-root *::before, .r-root *::after { box-sizing:border-box; border-radius:0; }
+
+/* ── Page geometry: fixed A4 boxes ── */
+.r-page {
+  width:210mm; height:296mm; background:var(--r-ground);
+  margin:0 auto 8px; padding:14mm 14mm 10mm; overflow:hidden;
+  display:flex; flex-direction:column; position:relative;
+  page-break-after:always; break-after:page;
+}
+.r-page:last-child { page-break-after:auto; break-after:auto; }
+.r-page-cover { background:var(--r-cover); color:var(--r-ground); }
+.r-page-body { flex:1; min-height:0; display:flex; flex-direction:column; gap:10px; }
+
+/* ── Type ── */
+.r-condensed, .r-headline, .r-kpi-val, .r-cover-title { font-family:'Barlow Condensed','Arial Narrow',sans-serif; font-weight:600; }
+.r-lab, .r-kicker, .r-block-title, .r-frame-title, .r-mast-meta, .r-kpi-lab,
+.r-cover-org, .r-statement-title, .r-pagefoot, .r-so-lab, .r-dist-lab, .r-step-lab, .r-mx-ax {
+  font-family:'Barlow',Arial,sans-serif; font-weight:600; text-transform:uppercase; letter-spacing:.16em;
+}
+
+/* ── Masthead ── */
+.r-masthead { display:flex; justify-content:space-between; align-items:baseline;
+  border-bottom:1px solid var(--r-ink); padding-bottom:6px; margin-bottom:2px; }
+.r-mast-org { font-family:'Barlow Condensed'; font-weight:600; font-size:15px; text-transform:uppercase; letter-spacing:.04em; }
+.r-mast-meta { font-size:7.5px; color:var(--r-muted); display:flex; gap:12px; }
+
+/* ── Title block ── */
+.r-kicker { font-size:8px; color:var(--r-accent); margin:6px 0 4px; }
+.r-headline { font-size:30px; line-height:1.02; text-transform:uppercase; letter-spacing:.005em; margin:0 0 6px; }
+.r-standfirst { font-size:11.5px; font-weight:500; line-height:1.5; margin:0; max-width:88%; }
+
+/* ── KPI strip ── */
+.r-kpis { display:grid; grid-template-columns:repeat(var(--kpi-n,6),1fr); border:1px solid var(--r-hair2); }
+.r-kpi { padding:7px 8px 6px; border-right:1px solid var(--r-hair); }
+.r-kpi:last-child { border-right:0; }
+.r-kpi-val { font-size:24px; line-height:1; }
+.r-kpi-lab { font-size:6.8px; letter-spacing:.14em; color:var(--r-muted); margin-top:3px; }
+.r-kpi-note { font-size:7.5px; color:var(--r-muted); margin-top:2px; }
+.r-kpi-bad  .r-kpi-val { color:var(--r-crit); }
+.r-kpi-warn .r-kpi-val { color:var(--r-high); }
+.r-kpi-ok   .r-kpi-val { color:#3f6a48; }
+.r-kpi-muted .r-kpi-val { color:var(--r-muted); }
+
+/* ── Framed panels + registration marks ── */
+.r-frame { position:relative; border:1px solid var(--r-hair2); padding:10px 12px; }
+.r-frame-title { font-size:7.5px; color:var(--r-ink); margin-bottom:6px; }
+.r-reg { position:absolute; width:9px; height:9px; pointer-events:none; }
+.r-reg::before, .r-reg::after { content:''; position:absolute; background:var(--r-ink); }
+.r-reg::before { width:9px; height:1px; top:4px; left:0; }
+.r-reg::after  { width:1px; height:9px; top:0; left:4px; }
+.r-reg-tl { top:-5px; left:-5px; } .r-reg-tr { top:-5px; right:-5px; }
+.r-reg-bl { bottom:-5px; left:-5px; } .r-reg-br { bottom:-5px; right:-5px; }
+
+/* ── Decisions ── */
+.r-decisions { margin:0; padding:0 0 0 16px; font-size:10.5px; }
+.r-decisions li { margin-bottom:5px; break-inside:avoid; }
+.r-dec-text { font-weight:600; }
+.r-dec-why { display:block; color:var(--r-muted); font-size:9.5px; }
+
+/* ── Tables ── */
+.r-table { width:100%; border-collapse:collapse; font-size:10.5px; }
+.r-table thead { display:table-header-group; }
+.r-table th { text-align:left; font-size:7px; text-transform:uppercase; letter-spacing:.14em;
+  color:var(--r-muted); font-weight:600; border-bottom:1px solid var(--r-ink); padding:3px 6px 3px 0; }
+.r-table td { border-bottom:1px solid var(--r-hair); padding:4px 6px 4px 0; vertical-align:middle; }
+.r-table tr { break-inside:avoid; page-break-inside:avoid; }
+.r-al-right { text-align:right; }
+.r-footnote { font-size:9.5px; color:var(--r-muted); margin-top:4px; }
+
+/* ── Tier word + swatch ── */
+.r-tier { display:inline-flex; align-items:center; gap:4px; font-weight:600; font-size:9.5px; text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; }
+.r-tier i { width:8px; height:8px; display:inline-block; }
+.r-tier-none { color:var(--r-muted); }
+
+/* ── Dual bar (inherent ghost behind residual) ── */
+.r-dualbar { position:relative; height:11px; background:#e6e6e8; border:1px solid var(--r-hair); min-width:120px; }
+.r-dual-inh { position:absolute; left:0; top:0; bottom:0; background:repeating-linear-gradient(45deg,#c9ced4 0 3px,#dde1e6 3px 6px); }
+.r-dual-res { position:absolute; left:0; top:0; bottom:0; display:flex; align-items:center; justify-content:flex-end; }
+.r-dual-res b { color:#fff; font-size:7.5px; padding-right:3px; font-weight:600; }
+.r-dual-none { font-size:8px; color:var(--r-muted); padding-left:4px; }
+
+/* ── 5×5 matrix ── */
+.r-matrix { display:inline-block; }
+.r-mx { border-collapse:separate; border-spacing:3px; }
+.r-mx-cell { width:34px; height:30px; border:1px solid var(--r-hair); text-align:center; }
+.r-mx-full { background:var(--r-accent); border-color:var(--r-accent); }
+.r-mx-full b { color:#fff; font-size:12px; }
+.r-mx-ax { font-size:7px; color:var(--r-muted); padding:2px 4px; text-align:center; }
+.r-mx-ylab, .r-mx-xlab { font-size:7px; text-transform:uppercase; letter-spacing:.16em; color:var(--r-muted); font-weight:600; }
+.r-mx-xlab { text-align:right; margin-top:2px; }
+
+/* ── Distribution bars ── */
+.r-dist-row { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.r-dist-lab { font-size:7.5px; width:64px; flex:0 0 auto; color:var(--r-ink); }
+.r-dist-track { flex:1; height:10px; background:#e6e6e8; border:1px solid var(--r-hair); position:relative; }
+.r-dist-track i { position:absolute; left:0; top:0; bottom:0; background:var(--r-accent); }
+.r-dist-n { font-size:10px; font-weight:600; width:20px; text-align:right; }
+
+/* ── Hierarchy strip ── */
+.r-hier-strip { display:flex; height:22px; border:1px solid var(--r-hair2); }
+.r-hier-seg { display:flex; align-items:center; justify-content:center; gap:4px; font-size:8px;
+  border-right:1px solid var(--r-ground); background:var(--r-accent); color:#fff; font-style:normal; overflow:hidden; white-space:nowrap; }
+.r-hier-seg:nth-child(1), .r-hier-seg:nth-child(2) { background:#416180; }
+.r-hier-callout { margin-top:6px; font-size:11px; font-weight:600; border-left:3px solid var(--r-high); padding-left:8px; }
+
+/* ── Inverted panels ── */
+.r-statement, .r-sowhat { background:var(--r-cover); color:var(--r-ground); padding:12px 14px; }
+.r-statement-title { font-size:7.5px; letter-spacing:.2em; color:#94bce3; margin-bottom:6px; }
+.r-statement-body { font-size:11px; line-height:1.55; }
+.r-statement-cite { font-size:8px; color:#94bce3; margin-top:6px; }
+.r-sowhat { font-size:11.5px; font-weight:500; }
+
+/* ── Tags ── */
+.r-tag-row { display:flex; flex-wrap:wrap; gap:4px; }
+.r-tag { border:1px solid var(--r-hair2); font-size:8.5px; padding:2px 7px; }
+
+/* ── Step scale ── */
+.r-step-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.r-step-lab { font-size:7.5px; width:120px; flex:0 0 auto; }
+.r-step-track { display:flex; gap:3px; }
+.r-step { width:26px; height:9px; background:#e6e6e8; border:1px solid var(--r-hair); display:inline-block; }
+.r-step.on { background:var(--r-accent); border-color:var(--r-accent); }
+.r-step.part { background:linear-gradient(to right,var(--r-accent) 50%,#e6e6e8 50%); }
+.r-step-val { font-size:10px; font-weight:600; width:56px; }
+.r-step-flag { color:var(--r-crit); font-size:7.5px; letter-spacing:.12em; font-weight:600; }
+
+/* ── Sign-off ── */
+.r-signoff { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.r-so-cell { }
+.r-so-lab { font-size:6.8px; color:var(--r-muted); margin-bottom:14px; }
+.r-so-line { border-bottom:1px solid var(--r-ink); min-height:14px; font-size:10px; }
+
+/* ── Text + block titles ── */
+.r-block-title { font-size:7.5px; color:var(--r-ink); margin-bottom:5px; }
+.r-text p { margin:0; font-size:10.5px; }
+
+/* ── Cover ── */
+.r-cover { flex:1; display:flex; flex-direction:column; justify-content:flex-end; padding-bottom:8mm; }
+.r-cover-org { font-size:9px; letter-spacing:.2em; color:#94bce3; }
+.r-cover-title { font-size:52px; line-height:1; text-transform:uppercase; margin:10px 0 14px; }
+.r-cover-meta { font-size:9px; color:#b5d9fd; }
+
+/* ── Footer ── */
+.r-pagefoot { margin-top:auto; display:flex; justify-content:space-between;
+  border-top:1px solid var(--r-hair2); padding-top:5px; font-size:6.8px; letter-spacing:.14em; color:var(--r-muted); }
+.r-page-cover .r-pagefoot { border-top-color:#416180; color:#94bce3; }
+
+/* ── Brief format skin: editorial, lighter furniture, serif-feel weightings ── */
+.r-fmt-brief .r-headline { font-size:24px; letter-spacing:.01em; }
+.r-fmt-brief .r-kpis { border:0; border-top:1px solid var(--r-ink); border-bottom:1px solid var(--r-ink); }
+.r-fmt-brief .r-kpi { border-right:0; }
+.r-fmt-brief .r-kpi-val { font-size:20px; }
+.r-fmt-brief .r-page-cover { background:var(--r-ground); color:var(--r-ink); }
+.r-fmt-brief .r-cover-org { color:var(--r-muted); }
+.r-fmt-brief .r-cover-meta { color:var(--r-muted); }
+.r-fmt-brief .r-cover-title { font-size:40px; }
+.r-fmt-brief .r-page-cover .r-pagefoot { border-top-color:var(--r-hair2); color:var(--r-muted); }
+
+/* ── Print ── */
+@media print {
+  @page { size:A4 portrait; margin:0; }
+  body.printing-report { margin:0 !important; padding:0 !important; background:#fff !important; }
+  body.printing-report > *:not(.r-root) { display:none !important; }
+  .r-root { background:#fff; }
+  .r-page { margin:0; box-shadow:none; }
+}

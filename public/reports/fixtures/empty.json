@@ -1,0 +1,83 @@
+{
+ "company": {
+  "legalName": "Fixture Fabrications Ltd",
+  "tradingName": "Fixture Fabrications",
+  "employees": "24",
+  "personnel": [
+   {
+    "name": "G Fixture",
+    "role": "Managing Director"
+   }
+  ]
+ },
+ "riskConfig": {
+  "bands": {
+   "med": 5,
+   "high": 10,
+   "crit": 16
+  }
+ },
+ "riskProfile": [
+  {
+   "id": "fx_0",
+   "category": "Physical",
+   "activity": "Fixture activity 1",
+   "hazard": "Fixture hazard 1",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 1",
+   "controlLevel": "remove",
+   "sif": "",
+   "inherentL": "2",
+   "inherentS": "1",
+   "likelihood": "",
+   "severity": "",
+   "duty": "HSWA 1974; MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_0",
+     "desc": "Fixture action 1",
+     "owner": "A Steel",
+     "due": "2026-07-01",
+     "status": "Complete",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  },
+  {
+   "id": "fx_1",
+   "category": "Chemical",
+   "activity": "Fixture activity 2",
+   "hazard": "Fixture hazard 2",
+   "personsAtRisk": [
+    "Employees"
+   ],
+   "controls": "Documented control set 2",
+   "controlLevel": "prevent",
+   "sif": "",
+   "inherentL": "4",
+   "inherentS": "2",
+   "likelihood": "",
+   "severity": "",
+   "duty": "MHSWR 1999",
+   "trend": "Stable",
+   "actions": [
+    {
+     "id": "fxa_1",
+     "desc": "Fixture action 2",
+     "owner": "B Mason",
+     "due": "",
+     "status": "Not started",
+     "priority": ""
+    }
+   ],
+   "linked": []
+  }
+ ],
+ "profiler": {
+  "maturity": {}
+ }
+}

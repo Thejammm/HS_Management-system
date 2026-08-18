@@ -8360,6 +8360,34 @@ function _renderPeerChip(){
   }
   chip.textContent = '✎ another user is editing';
 }
+// ── New-version watch: kills the stale-tab problem. A long-lived tab keeps
+//    running the JS it booted with; deploys land server-side unseen. Compare
+//    the served file's ETag against the one at boot and offer a reload.
+let _bootEtag = null;
+async function _checkAppVersion(){
+  if(location.protocol !== 'http:' && location.protocol !== 'https:') return;   // offline master
+  try{
+    const r = await fetch(location.pathname, { method:'HEAD', cache:'no-store' });
+    const e = r.headers.get('etag') || r.headers.get('last-modified') || '';
+    if(!e) return;
+    if(_bootEtag === null){ _bootEtag = e; return; }
+    if(e !== _bootEtag) _showUpdateChip();
+  }catch(e){}
+}
+function _showUpdateChip(){
+  if(document.getElementById('updChip')) return;
+  const chip = document.createElement('button');
+  chip.id = 'updChip';
+  chip.style.cssText = 'font-size:11.5px;font-weight:700;color:#fff;background:var(--accent,#2563EB);border:0;border-radius:10px;padding:3px 11px;margin-left:8px;cursor:pointer;white-space:nowrap;';
+  chip.textContent = '↻ Update available — reload';
+  chip.title = 'A newer version of Compass has been published. Reload to pick it up — your work is saved automatically.';
+  chip.onclick = () => location.reload();
+  const anchor = document.getElementById('saveIndicator');
+  if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(chip, anchor.nextSibling);
+  else document.body.appendChild(chip);
+}
+setInterval(_checkAppVersion, 120000);
+_checkAppVersion();
 function saveData(){
   // Consultant working on a client (dial-in) is READ-WRITE: the edits go to the
   // client's server record (Auth.activeTenantId() is the client's tenant while

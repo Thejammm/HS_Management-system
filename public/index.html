@@ -14114,10 +14114,12 @@ function renderExecPlan(){
   const delivered=acts.filter(a=>a.status==='Complete'||a.status==='Accepted');
   const STATUSES=['Not started','In progress','Complete','Accepted'];
   const ref=(a)=>encodeURIComponent(JSON.stringify(a.ref));
-  // Evidence linked to a risk-profile action (📎) — shown once the action is closed.
+  // Evidence linked to a risk-profile action (📎) — shown once the action is
+  // closed. Clicking follows the golden thread: opens that risk's card in the
+  // register, where the linked evidence rows (name + file path) live.
   const evChip=(a)=>{ if(!(a.ref&&a.ref.t==='risk'&&typeof _actionEvidence==='function')) return '';
     const r=(S.riskProfile||[]).find(x=>x.id===a.ref.a); const ev=r?_actionEvidence(r,a.ref.b):[];
-    return ev.length?`<span title="Linked evidence:\n${esc(ev.map(l=>'· '+(l.ref||l.url||'')).join('\n'))}" style="color:#16A34A;font-weight:700;">📎 ${ev.length}</span>`:''; };
+    return ev.length?`<button type="button" class="no-print" title="Linked evidence:\n${esc(ev.map(l=>'· '+(l.ref||l.url||'')).join('\n'))}\n\nClick to open this risk and its evidence" style="background:none;border:none;cursor:pointer;padding:0;color:#16A34A;font-weight:700;font-size:12px;" onclick="_gotoRisk('${a.ref.a}')">📎 ${ev.length}</button>`:''; };
   const row=(a)=>{ const c=RAG_COLOR[a.rag]||RAG_COLOR.grey; const rk=ref(a); const open=_execRowOpen[rk]; const lc=_logCount(a);
     const closed=(a.status==='Complete'||a.status==='Accepted');
     return `<div style="border:1.5px solid var(--border);border-left:5px solid ${c};border-radius:9px;padding:12px 14px;margin-bottom:10px;">

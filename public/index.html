@@ -3414,6 +3414,21 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rpx-next{margin-top:auto;background:var(--muted-bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:12px;}
     .rpx-next .dv{width:1px;align-self:stretch;background:var(--border);flex:0 0 auto;}
     .rpx-next .tx{font-size:12.5px;color:var(--text);line-height:1.5;}
+    .rpx-grid>*{min-width:0;}
+    .rpx-verdict{overflow-wrap:break-word;}
+    /* The panel adapts to ITS OWN width (container query), not the viewport —
+       the docked sidebar means viewport width alone misjudges the space.
+       The media query stays as a fallback for older browsers. */
+    [data-riskpanel]{container-type:inline-size;display:block;}
+    @container (max-width:760px){
+      .rpx-grid{grid-template-columns:1fr;}
+      .rpx-right{border-left:0;padding-left:0;margin-top:18px;}
+    }
+    @container (max-width:520px){
+      .rpx-next{flex-wrap:wrap;}
+      .rpx-next .dv{display:none;}
+    }
+    .rpx-verdict{font-size:clamp(17px,4.2cqi,23px);}
     @media(max-width:900px){
       .rpx-grid{grid-template-columns:1fr;}
       .rpx-right{border-left:0;padding-left:0;margin-top:18px;}
@@ -13156,6 +13171,8 @@ const COCKPIT_WIDGETS = {
   chartInspections:{ id:'chartInspections', label:'Inspections by month', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Inspections by month</h4><svg viewBox="0 0 ${x.BW} ${x.BH}" width="100%" style="max-height:200px;">${x.barSvg}</svg></div>` },
   chartCompliance:{ id:'chartCompliance', label:'Compliance', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Compliance</h4><div class="ckx-donut-wrap">${x.donut}<div class="ckx-legend">${_ckLeg('var(--success)','Pass',x.pass)}${_ckLeg('#6EE7B7','Rectified',x.rect)}${_ckLeg('var(--warning)','Action',x.act)}</div><button class="ck-link" onclick="switchTab('monthly')">View monthly report</button></div></div>` },
   riskVsMaturity: { id:'riskVsMaturity', label:'Risk profile & control maturity', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="full">${_riskPanelHTML({heading:true})}</div></div>` },
+  riskMatrixOnly:   { id:'riskMatrixOnly', label:'Risk matrix (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="matrix">${_riskPanelHTML({heading:true,only:'matrix'})}</div></div>` },
+  riskMaturityOnly: { id:'riskMaturityOnly', label:'Control maturity (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="maturity">${_riskPanelHTML({heading:true,only:'maturity'})}</div></div>` },
   cardRiskPriorities:{ id:'cardRiskPriorities', label:'Risk priorities', group:'Card', render:x=>{
       const nSif=x.RD.sif.length, nUnc=x.RD.sifUncontrolled.length;
       const resHigh=x.RD.sif.filter(r=>{const p=_riskScore(r).priority;return p==='Critical'||p==='High';}).length;
@@ -13261,7 +13278,15 @@ function _ensureCockpitCfg(){
   return S.config.cockpit;
 }
 function toggleCockpitEditor(){ _cockpitEditorOpen = !_cockpitEditorOpen; renderCockpit(); }
-function setCockpitWidget(id, on){ const c=_ensureCockpitCfg(); if(on) delete c.hidden[id]; else c.hidden[id]=true; saveData(); renderCockpit(); }
+function setCockpitWidget(id, on){
+  const c=_ensureCockpitCfg();
+  // A widget added to the app AFTER this tenant's layout was saved is missing
+  // from the saved order — _cockpitNorm re-hides default-off ids it can't find
+  // there, so ticking it would silently do nothing. Adopt it into the order.
+  if(!c.order.includes(id) && COCKPIT_WIDGETS[id]) c.order.push(id);
+  if(on) delete c.hidden[id]; else c.hidden[id]=true;
+  saveData(); renderCockpit();
+}
 function moveCockpitWidget(id, dir){
   const c=_ensureCockpitCfg(); const g=COCKPIT_WIDGETS[id] && COCKPIT_WIDGETS[id].group;
   const i=c.order.indexOf(id); if(i<0||!g) return;
@@ -14310,7 +14335,13 @@ function _riskPanelModel(){
 // Cell selection: one shared state, panel re-renders wherever it is mounted.
 var _rpSel = null;
 function _rpSelectCell(l,s){ const k=l+'|'+s; _rpSel = (_rpSel===k) ? null : k; _rpRefresh(); }
-function _rpRefresh(){ document.querySelectorAll('[data-riskpanel]').forEach(el=>{ el.innerHTML=_riskPanelHTML({ heading: el.getAttribute('data-riskpanel')==='full' }); }); }
+function _rpOptsFor(mode){
+  return mode==='full'     ? { heading:true }
+       : mode==='matrix'   ? { heading:true, only:'matrix' }
+       : mode==='maturity' ? { heading:true, only:'maturity' }
+       : { heading:false };
+}
+function _rpRefresh(){ document.querySelectorAll('[data-riskpanel]').forEach(el=>{ el.innerHTML=_riskPanelHTML(_rpOptsFor(el.getAttribute('data-riskpanel'))); }); }
 function _riskPanelHTML(o){
   o=o||{}; const M=_riskPanelModel();
   if(!M.rated.length) return '<div class="ck-pending">No rated risks yet. Rate likelihood and severity in the register to build the profile.</div>';
@@ -14439,6 +14470,11 @@ function _riskPanelHTML(o){
       <div class="rpx-sub">${esc(period)} · ${M.rated.length} rated risk${M.rated.length!==1?'s':''} · HSG65 maturity scale</div></div>
     <span class="rpx-pill" style="background:${pillC};">${esc(pillT)}</span>
   </div>`;
+  // Split modes so a client's bespoke cockpit can show just the matrix or just
+  // the maturity reading (customiser widgets "Risk matrix (only)" / "Control
+  // maturity (only)").
+  if(o.only==='matrix')   return `<div class="rpx">${head}${left}</div>`;
+  if(o.only==='maturity') return `<div class="rpx">${head}<div class="rpx-right" style="border-left:0;padding-left:0;">${rating}${matbar}${listBlock}${next}</div></div>`;
   return `<div class="rpx">${head}<div class="rpx-grid">${left}<div class="rpx-right">${rating}${matbar}${listBlock}${next}</div></div></div>`;
 }
 

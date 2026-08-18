@@ -3483,6 +3483,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </div>
     </div>
+    <div id="policyDocPanel"></div>
     <div id="reqDashboard"></div>
     <div id="reqFilters" class="no-print"></div>
     <div id="requirementsContainer"></div>
@@ -3639,6 +3640,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
     </div>
     <div id="monitoringContainer"></div>
+    <div id="incidentPanel"></div>
 
     <!-- Risk assessment register -->
     <div class="card no-print" style="margin:26px 0 16px;">
@@ -9924,6 +9926,8 @@ function migrateLoadedState(){
   if(!S.monitoring.meta   || typeof S.monitoring.meta   !== 'object') S.monitoring.meta = {};
   if(!Array.isArray(S.monitoring.regulatory)) S.monitoring.regulatory = [];
   if(!Array.isArray(S.training)) S.training = [];   // training-matrix records (one per person-per-course)
+  if(!S.policyDoc || typeof S.policyDoc !== 'object') S.policyDoc = { statement:'', signedBy:'', signedRole:'', signedDate:'', reviewDate:'' };
+  if(!Array.isArray(S.incidents)) S.incidents = [];   // incident register: records + investigations, deliberately outside the KPI figures
   // Regulatory tracker is now organised into named sections, each holding statutory
   // items. Migrate the legacy flat list into a default section the first time.
   if(!Array.isArray(S.monitoring.regSections)){
@@ -13268,6 +13272,18 @@ const COCKPIT_WIDGETS = {
   kpiMgmtGaps:    { id:'kpiMgmtGaps', label:'Management system gaps', group:'KPI', render:x=>_ckKpi('Management system gaps', x.reqG.gaps, x.reqG.assessed+' assessed', x.reqG.gaps?'var(--warning)':'', 'requirements') },
   kpiCompleteness:{ id:'kpiCompleteness', label:'Assessment completeness', group:'KPI', render:x=>_ckKpi('Assessment completeness', x.RD.completeness+'%', x.RD.completeness<100?'click to see what\'s left':'complete', x.RD.completeness<60?'var(--warning)':'', '', 'openCompletenessModal()') },
   kpiInspections: { id:'kpiInspections', label:'Inspections', group:'KPI', render:x=>_ckKpi('Inspections', x.insps.length, x.signedOff+' signed off · '+x.awaiting+' awaiting', '', 'monthly') },
+  kpiTraining:    { id:'kpiTraining', label:'Training compliance', group:'KPI', render:x=>{
+      // High level ONLY, by design: the matrix detail (who, what, when) stays
+      // on the Monitoring tab — the cockpit answers one question: compliant or not.
+      const d=(typeof _trainingData==='function')?_trainingData():{people:[]};
+      const people=(d.people||[]).filter(p=>p.status==='active');
+      if(!people.length) return _ckKpi('Training', '—', 'no matrix uploaded yet', '', 'monitoring');
+      let nExp=0,nSoon=0;
+      people.forEach(p=>Object.values(p.cells||{}).forEach(c=>{ if(c&&c.type==='date'){ const r=_trainingRag(c.v); if(r==='red')nExp++; else if(r==='amber')nSoon++; }}));
+      return nExp
+        ? _ckKpi('Training', nExp+' expired', nSoon?(nSoon+' more expiring ≤60 days'):'renewals needed', 'var(--danger)', 'monitoring')
+        : _ckKpi('Training', 'Compliant', nSoon?(nSoon+' expiring ≤60 days'):'all in date', nSoon?'var(--warning)':'var(--success)', 'monitoring');
+    } },
   chartInspections:{ id:'chartInspections', label:'Inspections by month', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Inspections by month</h4><svg viewBox="0 0 ${x.BW} ${x.BH}" width="100%" style="max-height:200px;">${x.barSvg}</svg></div>` },
   chartCompliance:{ id:'chartCompliance', label:'Compliance', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Compliance</h4><div class="ckx-donut-wrap">${x.donut}<div class="ckx-legend">${_ckLeg('var(--success)','Pass',x.pass)}${_ckLeg('#6EE7B7','Rectified',x.rect)}${_ckLeg('var(--warning)','Action',x.act)}</div><button class="ck-link" onclick="switchTab('monthly')">View monthly report</button></div></div>` },
   riskVsMaturity: { id:'riskVsMaturity', label:'Risk profile & control maturity', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="full">${_riskPanelHTML({heading:true})}</div></div>` },
@@ -13329,7 +13345,7 @@ const COCKPIT_WIDGETS = {
 
 // Cockpit zones = ordered containers, one per widget group. The default order.
 const COCKPIT_LAYOUT_DEFAULT = [
-  { wrap:'ckx-kpis',  group:'KPI',     ids:['kpiFatal','kpiHighCrit','kpiOpenActions','kpiMgmtGaps','kpiCompleteness','kpiInspections'] },
+  { wrap:'ckx-kpis',  group:'KPI',     ids:['kpiFatal','kpiHighCrit','kpiOpenActions','kpiMgmtGaps','kpiCompleteness','kpiInspections','kpiTraining'] },
   { wrap:'ckx-row2',  group:'Chart',   ids:['chartInspections','chartCompliance'] },
   { wrap:'',          group:'Feature', ids:['riskVsMaturity'] },
   { wrap:'ckx-mods',  group:'Card',    ids:['cardRiskPriorities','cardMgmtSystem','cardMonitoring','cardAccreditation','cardLastReview','cardDocuments','cardReports'] },
@@ -13478,6 +13494,11 @@ function renderReports(){
   const accMeta = _accCount ? (_accCount+' accepted risk'+(_accCount!==1?'s':'')) : 'None accepted yet';
   const svg = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   const reports = [
+    { title:'Health & Safety Policy', accent:'#0E8F7E', tint:'#E4F3F0', fn:'downloadPolicyPDF()',
+      meta:(S.policyDoc&&S.policyDoc.signedDate)?('Signed '+fmtDate(S.policyDoc.signedDate)):'Not yet signed',
+      icon:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M9 11h6"/>'),
+      desc:'The statutory written policy: statement of intent, responsibilities and arrangements, composed from this client\'s own profile. Edit and sign it on the Management system tab.',
+      tags:['Statutory','HSWA s.2(3)','Hand-over'] },
     { title:'Board Report', accent:'#DC2626', tint:'#FCE9E9', fn:'downloadBoardReport()', meta:riskMeta,
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
       desc:'For directors: the verdict, the numbers that matter, what can kill or seriously injure someone, and the decisions to sign off.',
@@ -16618,7 +16639,8 @@ const REPORT_DOCS = [
   { key:'siteInspections',  title:'Inspection Tracker',           code:'SIT' },
   { key:'feedback',         title:'Consultant Review & Feedback', code:'CR'  },
   { key:'cas',              title:'CAS Submission Pack',           code:'CAS' },
-  { key:'acp',              title:'ACP Evidence Pack',             code:'ACP' }
+  { key:'acp',              title:'ACP Evidence Pack',             code:'ACP' },
+  { key:'policy',           title:'Health & Safety Policy',        code:'POL' }
 ];
 function _docControlState(){
   if(!S.docControl || typeof S.docControl!=='object') S.docControl = {};
@@ -18477,9 +18499,98 @@ function _renderReqFilters(show){
   el.innerHTML = `<div class="req-filters"><span class="rf-label">Focus:</span>${pill('','All stages')}${REQ_STAGES.map(s=>pill(s,s)).join('')}</div>`;
 }
 
+// ══════════════════════════════════════════════════════════════
+//  HEALTH & SAFETY POLICY — the statutory written policy (HSWA 1974
+//  s.2(3), written if 5+ employees) generated as a hand-over PDF.
+//  Part 1 statement (editable, standard wording offered), Part 2
+//  responsibilities from Company setup, Part 3 arrangements composed
+//  from what the app already knows. Generating it evidences the
+//  'policy' line of the legal essentials.
+// ══════════════════════════════════════════════════════════════
+function _policyDefaultStatement(){
+  const nm=(S.company&&(S.company.tradingName||S.company.legalName))||'the company';
+  return 'It is the policy of '+nm+' to provide and maintain safe and healthy working conditions, equipment and systems of work for all employees, and to provide the information, training and supervision they need for this purpose. We accept our responsibility for the health and safety of other people who may be affected by our activities. The allocation of duties for safety matters, and the particular arrangements we have made to implement this policy, are set out in this document. The policy will be kept up to date and reviewed at least annually, or sooner if the business changes.';
+}
+function _policyState(){ if(!S.policyDoc||typeof S.policyDoc!=='object') S.policyDoc={statement:'',signedBy:'',signedRole:'',signedDate:'',reviewDate:''}; return S.policyDoc; }
+function updatePolicyField(f,v){ if(_roLocked()) return; _policyState()[f]=v; scheduleAutoSave(); }
+function policyUseStandardWording(){ if(_blockIfReadOnly()) return; _policyState().statement=_policyDefaultStatement(); saveData(); _renderPolicyDoc(); }
+function _renderPolicyDoc(){
+  const el=document.getElementById('policyDocPanel'); if(!el) return;
+  const pd=_policyState(); const ro=_roLocked(); const dis=ro?' disabled':'';
+  const ppl=(S.company&&S.company.personnel)||[];
+  const md=ppl.find(p=>/director|owner|principal|managing/i.test(p.role||''))||ppl[0]||null;
+  const _keep=_detailsSnapshot(el);
+  el.innerHTML=`<details class="coll" data-keep="msPolicy" style="margin-bottom:14px;">
+    <summary><h3>Health &amp; safety policy</h3><span class="badge badge-muted">${pd.signedDate?('signed '+fmtDate(pd.signedDate)):'not yet signed'}</span></summary>
+    <div class="coll-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">The statutory written policy (required in writing with five or more employees). Part 1 below is the signed statement of intent; responsibilities come from Company setup; the arrangements section is composed from this client's own risk profile, monitoring and registers when the PDF is generated — a hand-over document for the client.</div>
+      <div class="field-group"><label class="field-label">Statement of general policy</label>
+        <textarea${dis} rows="4" style="width:100%;" placeholder="Use the standard wording, or write your own." oninput="updatePolicyField('statement',this.value)">${esc(pd.statement||'')}</textarea>
+        ${ro?'':`<button class="btn btn-ghost btn-xs no-print" style="margin-top:4px;" onclick="policyUseStandardWording()">Use standard wording</button>`}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:10px;margin-top:10px;">
+        <div class="field-group"><label class="field-label">Signed by</label><input type="text"${dis} value="${esc(pd.signedBy||(md?md.name:''))}" oninput="updatePolicyField('signedBy',this.value)"></div>
+        <div class="field-group"><label class="field-label">Role</label><input type="text"${dis} value="${esc(pd.signedRole||(md?md.role:''))}" oninput="updatePolicyField('signedRole',this.value)"></div>
+        <div class="field-group"><label class="field-label">Date signed</label><input type="date"${dis} value="${esc(pd.signedDate||'')}" onchange="updatePolicyField('signedDate',this.value)"></div>
+        <div class="field-group"><label class="field-label">Review due</label><input type="date"${dis} value="${esc(pd.reviewDate||'')}" onchange="updatePolicyField('reviewDate',this.value)"></div>
+      </div>
+      <button class="btn btn-primary btn-sm no-print" style="margin-top:12px;" onclick="downloadPolicyPDF()">⭳ Generate policy PDF</button>
+    </div></details>`;
+  _detailsApply(el,_keep);
+}
+function downloadPolicyPDF(){
+  try{ buildPolicyPDF(); showToast('✓ Health & safety policy created','success'); }
+  catch(e){ console.error('Policy PDF failed:',e); showToast('Could not build the PDF — see console','error'); }
+}
+function buildPolicyPDF(){
+  const co=S.company||{}; const pd=_policyState();
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||co.tradingName||co.legalName||'Client';
+  const d=_docFor('policy');
+  const K=_mkPdf('Health & Safety Policy', client, d, 'Statement of intent, responsibilities and arrangements (HSWA 1974 s.2(3)).');
+  const {doc, ML, RM, st}=K; const NAVY=[30,58,95];
+  // Part 1 — statement, signed
+  K.section('Part 1 — Statement of general policy', NAVY);
+  K.text(pd.statement||_policyDefaultStatement(), 10.5);
+  st.y+=2;
+  K.kv('Signed', pd.signedBy||'(to be signed)');
+  if(pd.signedRole) K.kv('Role', pd.signedRole);
+  K.kv('Date', pd.signedDate?fmtDate(pd.signedDate):'-');
+  K.kv('Review due', pd.reviewDate?fmtDate(pd.reviewDate):'12 months from signature');
+  // Part 2 — responsibilities
+  K.section('Part 2 — Responsibilities', NAVY);
+  K.text('Overall and final responsibility for health and safety: '+(pd.signedBy||'the managing director')+(pd.signedRole?(' ('+pd.signedRole+')'):'')+'.', 10);
+  const ppl=(co.personnel||[]).filter(p=>p&&(p.name||p.role));
+  if(ppl.length) K.table([{header:'NAME',w:60},{header:'ROLE / DAY-TO-DAY RESPONSIBILITY',w:118}], ppl.map(p=>[p.name||'', p.role||'']));
+  K.text('All employees must take reasonable care of their own health and safety and that of others affected by their work, co-operate on health and safety matters, use equipment as trained and instructed, and report hazards, near misses and incidents (duties under HSWA 1974 s.7).', 9.5);
+  // Part 3 — arrangements, composed from the live data
+  K.section('Part 3 — Arrangements', NAVY);
+  const rated=(S.riskProfile||[]).filter(r=>_riskScore(r).rating);
+  K.text('Risk assessment: the significant risks are identified, assessed and kept under review in the risk profile ('+(S.riskProfile||[]).length+' risk'+((S.riskProfile||[]).length!==1?'s':'')+' recorded'+(rated.length?(', '+rated.length+' rated'):'')+'), with controls and owned actions tracked to completion (MHSWR 1999 reg 3).', 9.5);
+  const cons=(S.riskDoc&&String(S.riskDoc.consulted||'').trim());
+  K.text('Consultation and communication: '+(cons||'employees are consulted on the risks and the preventive and protective measures, and health and safety matters are communicated through day-to-day supervision and recorded briefings.'), 9.5);
+  K.text('Competent advice: access to competent health and safety advice is arranged through the organisation\'s appointed health and safety adviser (MHSWR 1999 reg 7).', 9.5);
+  const trn=(typeof _trainingData==='function')?_trainingData():{people:[]};
+  const trnN=(trn.people||[]).filter(p=>p.status==='active').length;
+  K.text('Training and competence: induction, task and refresher training are provided and recorded'+(trnN?(' in the training matrix ('+trnN+' active staff)'):'')+'; policies and briefings are signed for on the sign-off register.', 9.5);
+  const as=S.riskAssurance||{};
+  const monN=['leading','lagging','assurance'].reduce((n,k)=>n+((as[k]||[]).length),0);
+  K.text('Monitoring and review: performance is monitored through leading and lagging indicators and a planned assurance schedule'+(monN?(' ('+monN+' measures defined)'):'')+', with monthly figures recorded and the position reviewed with the health and safety adviser.', 9.5);
+  K.text('Accidents, incidents and near misses: all events are reported, recorded on the incident register and investigated for cause; RIDDOR-reportable events are notified to the enforcing authority. Lessons feed the action plan.', 9.5);
+  const fire=(S.riskProfile||[]).find(r=>(r.category==='Fire')||/fire/i.test(r.activity||''));
+  if(fire && String(fire.controls||'').trim()) K.text('Fire and emergencies: '+String(fire.controls).slice(0,300), 9.5);
+  const top=rated.slice().sort((a,b)=>(_riskScore(b).rating||0)-(_riskScore(a).rating||0)).slice(0,8)
+    .filter(r=>String(r.controls||'').trim());
+  if(top.length){
+    K.text('Arrangements for the principal risks:', 10, {bold:true});
+    K.table([{header:'RISK AREA',w:58},{header:'ARRANGEMENTS',w:120}], top.map(r=>[(r.activity||r.hazard||'').slice(0,60), String(r.controls||'').slice(0,160)]));
+  }
+  _pdfBrandFooter(doc, ML, RM);
+  doc.save('hs-policy-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+}
 function renderRequirements(){
   const cont = document.getElementById('requirementsContainer');
   if(!cont) return;
+  _renderPolicyDoc();
   const ro = _roLocked();
   // Legal essentials are statutory — always keep the full catalogue present (self-heal),
   // so the items can never be lost. Only the ACTIONS within an item are deletable.
@@ -19842,9 +19953,100 @@ function _spreadsheetImportHTML(){
       </div>
     </div></div>`;
 }
+// ══════════════════════════════════════════════════════════════
+//  INCIDENT REGISTER & INVESTIGATIONS — HSG65 Check's second half.
+//  Records what happened and why, holds the investigation, and lets the
+//  consultant raise preventive actions into the plan DELIBERATELY.
+//  By design the register does NOT feed the cockpit figures, the
+//  completeness score or the action counts on its own — records here
+//  inform, they do not penalise.
+// ══════════════════════════════════════════════════════════════
+const INCIDENT_TYPES=['Near miss','First aid','Injury','Ill health','Property damage','Environmental','RIDDOR reportable'];
+function _incidents(){ if(!Array.isArray(S.incidents)) S.incidents=[]; return S.incidents; }
+function addIncident(){
+  if(_blockIfReadOnly()) return;
+  const it={ id:'inc_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    date:new Date().toISOString().slice(0,10), type:'Near miss', what:'', where:'', people:'',
+    immediateCause:'', rootCause:'', riddorDate:'', status:'Open', raised:0 };
+  _stamp(it,'created');
+  _incidents().unshift(it); saveData(); _renderIncidents();
+  _openIncidents.add(it.id); _renderIncidents();
+}
+function updateIncident(id,f,v){ if(_roLocked()) return; const it=_incidents().find(x=>x.id===id); if(!it) return; it[f]=v; if(f==='status'||f==='type') _renderIncidents(); scheduleAutoSave(); }
+function deleteIncident(id){
+  if(_blockIfReadOnly()) return;
+  const it=_incidents().find(x=>x.id===id); if(!it) return;
+  if(it.raised){ showToast('This incident has raised actions — it stays on the record. Close it instead.','info'); return; }
+  if(!confirm('Delete this incident record?')) return;
+  S.incidents=_incidents().filter(x=>x.id!==id); saveData(); _renderIncidents();
+}
+function raiseIncidentAction(id){
+  if(_blockIfReadOnly()) return;
+  const it=_incidents().find(x=>x.id===id); if(!it) return;
+  const ap={ id:'ap_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    desc:'Prevent recurrence — '+(it.rootCause||it.immediateCause||it.what||'incident '+fmtDate(it.date)).slice(0,120),
+    owner:'', due:'', priority:(it.type==='RIDDOR reportable'||it.type==='Injury')?'High':'', status:'Not started',
+    riskId:'', docId:'', note:'From incident '+fmtDate(it.date)+' ('+it.type+'): '+(it.what||'').slice(0,140), completedDate:'' };
+  _stamp(ap,'created'); _apList().push(ap);
+  it.raised=(it.raised||0)+1;
+  saveData(); _renderIncidents();
+  showToast('✓ Action raised into the plan — set the owner and target date in the Client execution plan.','success');
+}
+var _openIncidents=new Set();
+function _renderIncidents(){
+  const el=document.getElementById('incidentPanel'); if(!el) return;
+  const ro=_roLocked(); const dis=ro?' disabled':'';
+  const list=_incidents();
+  const openN=list.filter(i=>i.status==='Open').length;
+  const mk=new Date().toISOString().slice(0,7);
+  const thisMonth=list.filter(i=>(i.date||'').slice(0,7)===mk).length;
+  const _keep=_detailsSnapshot(el);
+  const rows=list.map(it=>{
+    const open=_openIncidents.has(it.id);
+    const rid=it.type==='RIDDOR reportable';
+    const chip=(t,bg)=>`<span class="rc-chip" style="background:${bg}1a;color:${bg};">${esc(t)}</span>`;
+    return `<details class="card" ${open?'open ':''}style="border-left:4px solid ${it.status==='Open'?'#D97706':'#16A34A'};margin-bottom:8px;" ontoggle="this.open?_openIncidents.add('${it.id}'):_openIncidents.delete('${it.id}')">
+      <summary style="padding:10px 14px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;cursor:pointer;">
+        <span style="font-weight:700;font-size:13px;">${fmtDate(it.date)}</span>
+        ${chip(it.type, rid?'#DC2626':'#D97706')}
+        <span style="flex:1;min-width:160px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(it.what||'(no description yet)')}</span>
+        ${it.raised?chip(it.raised+' action'+(it.raised!==1?'s':''),'#2563EB'):''}
+        ${chip(it.status, it.status==='Open'?'#D97706':'#16A34A')}
+      </summary>
+      <div style="padding:4px 16px 14px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px;">
+          <div class="field-group"><label class="field-label">Date</label><input type="date"${dis} value="${esc(it.date||'')}" onchange="updateIncident('${it.id}','date',this.value)"></div>
+          <div class="field-group"><label class="field-label">Type</label><select${dis} onchange="updateIncident('${it.id}','type',this.value)">${INCIDENT_TYPES.map(t=>`<option${t===it.type?' selected':''}>${t}</option>`).join('')}</select></div>
+          <div class="field-group"><label class="field-label">Where</label><input type="text"${dis} value="${esc(it.where||'')}" oninput="updateIncident('${it.id}','where',this.value)"></div>
+          <div class="field-group"><label class="field-label">People involved</label><input type="text"${dis} value="${esc(it.people||'')}" oninput="updateIncident('${it.id}','people',this.value)"></div>
+        </div>
+        <div class="field-group" style="margin-top:8px;"><label class="field-label">What happened</label><textarea${dis} rows="2" style="width:100%;" oninput="updateIncident('${it.id}','what',this.value)">${esc(it.what||'')}</textarea></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px;margin-top:8px;">
+          <div class="field-group"><label class="field-label">Immediate cause</label><textarea${dis} rows="2" style="width:100%;" oninput="updateIncident('${it.id}','immediateCause',this.value)">${esc(it.immediateCause||'')}</textarea></div>
+          <div class="field-group"><label class="field-label">Root cause (why it could happen)</label><textarea${dis} rows="2" style="width:100%;" oninput="updateIncident('${it.id}','rootCause',this.value)">${esc(it.rootCause||'')}</textarea></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:8px;">
+          ${rid?`<div class="field-group"><label class="field-label">RIDDOR reported on</label><input type="date"${dis} value="${esc(it.riddorDate||'')}" onchange="updateIncident('${it.id}','riddorDate',this.value)"></div>`:''}
+          <div class="field-group"><label class="field-label">Status</label><select${dis} onchange="updateIncident('${it.id}','status',this.value)"><option${it.status==='Open'?' selected':''}>Open</option><option${it.status==='Closed'?' selected':''}>Closed</option></select></div>
+          ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="raiseIncidentAction('${it.id}')">↗ Raise preventive action</button>`}
+          ${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="deleteIncident('${it.id}')">${_ic('trash',13)}</button>`}
+        </div>
+      </div>
+    </details>`;
+  }).join('');
+  el.innerHTML=`<details class="coll" data-keep="monIncidents" style="margin:26px 0 16px;">
+    <summary><h3>Incident register &amp; investigations</h3><span class="badge badge-muted">${list.length?(list.length+' recorded'+(openN?(' · '+openN+' open'):'')):'none recorded'}</span></summary>
+    <div class="coll-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Record accidents, incidents and near misses and investigate the causes. Records here inform the picture — they do not drag the cockpit figures down; an investigation only creates work when you deliberately raise a preventive action into the plan.${thisMonth?(' <b>'+thisMonth+'</b> recorded this month — cross-check the monthly figures above.'):''}</div>
+      ${ro?'':`<button class="btn btn-primary btn-sm no-print" style="margin-bottom:12px;" onclick="addIncident()">＋ Record an incident</button>`}
+      ${rows||''}
+    </div></details>`;
+  _detailsApply(el,_keep);
+}
 function renderMonitoring(){
   const cont = document.getElementById('monitoringContainer');
   if(!cont) return;
+  _renderIncidents();
   const ro = _roLocked();
   const monthEl = document.getElementById('monMonth');
   if(monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0,7);

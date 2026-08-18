@@ -3276,13 +3276,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 
   <div id="tab-risk" class="tab-panel">
-    <details class="coll no-print" open style="margin-bottom:14px;">
-      <summary><h3><span class="dot">●</span> Risk profile</h3>
+    <details class="coll no-print" style="margin-bottom:14px;">
+      <summary><h3>Risk profile</h3>
         <span class="badge badge-muted" id="riskCountBadge"></span>
       </summary>
       <div class="coll-body">
         <div id="riskRegisterIntro" style="font-size:13px;color:var(--text-muted);line-height:1.5;">
-          Build the profile top to bottom: <strong>1</strong> record consultation &amp; communication, <strong>2</strong> add and complete the risks, <strong>3</strong> record monitoring &amp; assurance, <strong>4</strong> score the management maturity. The summary stays at the top; each panel below opens and closes on click.
+          Build the profile top to bottom: record consultation &amp; communication, add and complete the risks, record monitoring &amp; assurance, then score the management maturity. The summary stays at the top; each panel below opens and closes on click.
         </div>
       </div>
     </details>
@@ -3295,7 +3295,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="riskRegisterView">
       <!-- 1 · Consultation & communication -->
       <details class="coll wf-sec" id="wfDocControl">
-        <summary><h3><span class="wf-step">1</span> Consultation &amp; communication</h3><span class="coll-meta">employee consultation &middot; risk scoring key</span></summary>
+        <summary><h3>Consultation &amp; communication</h3><span class="coll-meta">employee consultation &middot; risk scoring key</span></summary>
         <div class="coll-body">
           <div id="riskDocControl"></div>
           <div id="riskScoreKey"></div>
@@ -3303,8 +3303,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </details>
 
       <!-- 2 · Add & complete the risks -->
-      <details class="coll wf-sec" id="wfRegister" open>
-        <summary><h3><span class="wf-step">2</span> Risks — add &amp; complete the profile</h3><span class="coll-meta" id="wfRegisterMeta"></span></summary>
+      <details class="coll wf-sec" id="wfRegister">
+        <summary><h3>Risks — add &amp; complete the profile</h3><span class="coll-meta" id="wfRegisterMeta"></span></summary>
         <div class="coll-body">
           <div id="riskRegisterTools" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
             <button class="btn btn-primary no-print" id="addRiskBtn" onclick="addRiskEntry()">＋ Add risk</button>
@@ -3320,19 +3320,19 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
       <!-- 3 · Monitoring & assurance -->
       <details class="coll wf-sec" id="wfAssurance">
-        <summary><h3><span class="wf-step">3</span> Monitoring &amp; assurance</h3><span class="coll-meta">leading &amp; lagging indicators</span></summary>
+        <summary><h3>Monitoring &amp; assurance</h3><span class="coll-meta">leading &amp; lagging indicators</span></summary>
         <div class="coll-body"><div id="riskAssurance"></div></div>
       </details>
 
       <!-- 4 · Management maturity assessment -->
       <details class="coll wf-sec" id="wfMaturity">
-        <summary><h3><span class="wf-step">4</span> Management maturity assessment</h3><span class="coll-meta">six domains, 0-5</span></summary>
+        <summary><h3>Management maturity assessment</h3><span class="coll-meta">six domains, 0-5</span></summary>
         <div class="coll-body"><div id="riskMaturity"></div></div>
       </details>
 
       <!-- Risk review — summary & energy analysis (below the workflow) -->
       <details class="coll wf-sec" id="wfReview">
-        <summary><h3><span class="dot">●</span> Risk review — by hazard type &amp; SIF register</h3><span class="coll-meta">summary &amp; energy analysis</span></summary>
+        <summary><h3>Risk review — by hazard type &amp; SIF register</h3><span class="coll-meta">summary &amp; energy analysis</span></summary>
         <div class="coll-body">
           <div id="riskReviewSummary"></div>
           <div id="riskReviewAnalysis"></div>
@@ -14652,9 +14652,9 @@ function _renderRiskDashboard(){
       ${card(emergingList.length,'Emerging risks (increasing)', emergingList.length?_RISK_PRIO_COLOR.High:'')}
       ${card(overdueActions,'Overdue actions', overdueActions?_RISK_PRIO_COLOR.Critical:'')}
     </div>
-    <details class="coll" data-keep="rpCombined" open style="margin:0 0 18px;"><summary><h3><span class="dot">●</span> Risk profile &amp; control maturity</h3></summary><div class="coll-body"><div data-riskpanel="bare">${_riskPanelHTML({heading:false})}</div></div></details>
-    <details class="coll" data-keep="rpByCat" open style="margin:0 0 18px;"><summary><h3><span class="dot">●</span> Risks by category</h3></summary><div class="coll-body"><ul class="rp-impacts" style="list-style:none;padding:0;">${catRows.replace(/<li>/g,'<li style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;">')}</ul></div></details>
-    <details class="coll" data-keep="rpEmerging"><summary><h3><span class="dot">●</span> Emerging risks (trend increasing)</h3><span class="coll-meta">${emergingList.length}</span></summary><div class="coll-body"><ul class="rp-impacts">${emergingRows}</ul></div></details>`;
+    <details class="coll" data-keep="rpCombined" style="margin:0 0 18px;"><summary><h3>Risk profile &amp; control maturity</h3></summary><div class="coll-body"><div data-riskpanel="bare">${_riskPanelHTML({heading:false})}</div></div></details>
+    <details class="coll" data-keep="rpByCat" style="margin:0 0 18px;"><summary><h3>Risks by category</h3></summary><div class="coll-body"><ul class="rp-impacts" style="list-style:none;padding:0;">${catRows.replace(/<li>/g,'<li style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;">')}</ul></div></details>
+    <details class="coll" data-keep="rpEmerging"><summary><h3>Emerging risks (trend increasing)</h3></summary><div class="coll-body"><ul class="rp-impacts">${emergingRows}</ul></div></details>`;
   _detailsApply(el,_keep);
 }
 
@@ -16992,7 +16992,6 @@ function renderRiskProfile(){
     <details class="card risk-card" data-rid="${r.id}"${_openRiskCards.has(r.id)?' open':''} ontoggle="_setRiskOpen('${r.id}',this.open)" style="border-left-color:${htC};">
       <summary>
         <span class="rc-left">
-          <span class="dot" style="color:${htC};flex:0 0 auto;">●</span>
           <span class="rc-title" id="ract-${r.id}" title="${esc(r.activity||r.hazard||'New risk')}">${r.activity ? esc(r.activity) : (r.hazard?esc(r.hazard):'New risk')}</span>
           <span class="rc-meta">
             ${r.category?`<span class="rc-chip" style="background:${htC}1a;color:${htC};">${esc(r.category)}</span>`:''}
@@ -17522,16 +17521,18 @@ function renderDiscoveryPanel(){
   const started=st.answered>0;
   const sugN=(function(){ try{ return _discSuggestedKeys().size; }catch(e){ return 0; } })();
   const orphN=(function(){ try{ return _discOrphanedThemes().length; }catch(e){ return 0; } })();
-  el.innerHTML=`<div class="card" style="margin-bottom:16px;">
-    <div class="card-band"><h3><span class="dot">●</span> Discovery questionnaire</h3><span class="badge badge-muted">${st.answered}/${st.total} answered${st.fired?(' · '+st.fired+' rules fired'):''}${sugN?(' · '+sugN+' themes suggested'):''}</span></div>
-    <div class="card-body" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+  const _keepDisc=_detailsSnapshot(el);
+  el.innerHTML=`<details class="coll" data-keep="rpDiscovery" style="margin-bottom:16px;">
+    <summary><h3>Discovery questionnaire</h3><span class="badge badge-muted">${st.answered}/${st.total} answered${st.fired?(' · '+st.fired+' rules fired'):''}${sugN?(' · '+sugN+' themes suggested'):''}</span></summary>
+    <div class="coll-body" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
       <div style="font-size:12.5px;color:var(--text-muted);max-width:640px;">The sit-down intake: ${st.total} yes/no questions across 7 profiles (business, operations, premises, workforce, plant &amp; equipment, dutyholder, change). Answers drive the generated requirements, significant risks, the maturity heat-map — and suggest the risk-profile themes below.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
       ${ro?'':`<button class="btn btn-primary no-print" onclick="openDiscoveryWizard()">${started?'✎ Review / update answers':'▶ Run discovery'}</button>`}
       ${(!ro && started)?`<button class="btn btn-outline no-print" onclick="buildProfileFromDiscovery()"${sugN?'':' disabled title="Profile already covers the current answers"'}>⚙ Build profile from discovery${sugN?(' ('+sugN+')'):''}</button>`:''}
       ${(!ro && orphN)?`<button class="btn btn-outline no-print" style="border-color:#D97706;color:#B45309;" onclick="reviewDiscoveryOrphans()" title="Themes whose supporting discovery answers have been withdrawn">⚠ Answers changed (${orphN})</button>`:''}
       </div>
-    </div></div>`;
+    </div></details>`;
+  _detailsApply(el,_keepDisc);
 }
 let _discIdx=0;
 function openDiscoveryWizard(){ if(_roLocked()) return; _discIdx=0; _discDraw(); }
@@ -17624,7 +17625,7 @@ function renderRiskReview(){
   // 1) Combined score — the risk profile against the management maturity.
   const os=_overallScore(); const rl=os.rl;
   const chip=(n,lab,col)=>`<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:${n?col:'var(--text-muted)'};line-height:1;">${n}</div><div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;">${lab}</div></div>`;
-  const scorePanel=`<details class="coll" open style="margin-bottom:18px;"><summary><h3><span class="dot">●</span> Overall H&S position</h3></summary><div class="coll-body">
+  const scorePanel=`<details class="coll" data-keep="rpScore" style="margin-bottom:18px;"><summary><h3>Overall H&S position</h3></summary><div class="coll-body">
       <div style="display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;">
         <div style="text-align:center;background:${os.rag}1a;border:2px solid ${os.rag};border-radius:14px;padding:16px 22px;min-width:150px;">
           <div style="font-size:22px;font-weight:800;color:${os.rag};line-height:1.1;">${os.ragLabel}</div>
@@ -17641,8 +17642,8 @@ function renderRiskReview(){
         </div>
       </div>
       <div class="rp-grid2" style="margin-top:16px;">
-        <div class="card"><div class="card-band"><h3 style="font-size:13px;"><span class="dot">●</span> Severity vs maturity</h3></div><div class="card-body" style="padding:14px;">${_reviewHeatHTML()}</div></div>
-        <div class="card"><div class="card-band"><h3 style="font-size:13px;"><span class="dot">●</span> Manage cycle (PDCA)</h3></div><div class="card-body" style="padding:14px 16px;">${(()=>{const pc={Plan:0,Do:0,Check:0,Act:0};risks.forEach(r=>{const p=_riskPdca(r);if(pc[p]!==undefined)pc[p]++;});return `<div class="rr-pdcabar" style="margin:0;">${RISK_PDCA.map(p=>`<div class="rr-pdcaseg" style="background:${RISK_PDCA_COLOR[p]};flex:${Math.max(pc[p],0.4)};">${p}<span class="seg-n">${pc[p]}</span></div>`).join('')}</div><div style="font-size:10.5px;color:var(--text-muted);margin-top:8px;">Number of risks at each stage of the manage-for-H&S cycle (Plan → Do → Check → Act).</div>`;})()}</div></div>
+        <div class="card"><div class="card-band"><h3 style="font-size:13px;">Severity vs maturity</h3></div><div class="card-body" style="padding:14px;">${_reviewHeatHTML()}</div></div>
+        <div class="card"><div class="card-band"><h3 style="font-size:13px;">Manage cycle (PDCA)</h3></div><div class="card-body" style="padding:14px 16px;">${(()=>{const pc={Plan:0,Do:0,Check:0,Act:0};risks.forEach(r=>{const p=_riskPdca(r);if(pc[p]!==undefined)pc[p]++;});return `<div class="rr-pdcabar" style="margin:0;">${RISK_PDCA.map(p=>`<div class="rr-pdcaseg" style="background:${RISK_PDCA_COLOR[p]};flex:${Math.max(pc[p],0.4)};">${p}<span class="seg-n">${pc[p]}</span></div>`).join('')}</div><div style="font-size:10.5px;color:var(--text-muted);margin-top:8px;">Number of risks at each stage of the manage-for-H&S cycle (Plan → Do → Check → Act).</div>`;})()}</div></div>
       </div>
     </div></details>`;
 
@@ -17683,7 +17684,7 @@ function renderRiskReview(){
             <div>${r.controlLevel?`<span class="rr-area" style="color:${_controlLevelColor(r.controlLevel)};border-color:${_controlLevelColor(r.controlLevel)}55;">${esc(_controlLevelLabel(r.controlLevel).split(' ')[0])}</span>`:'<span class="rr-sub">no control level</span>'}</div>
             <div><span class="badge" style="border-color:${pc};color:${pc};background:${pc}1a;">${sc.priority||'Not rated'}${sc.rating?' · '+sc.rating:''}</span></div></div>`; }).join('')
       : '<div style="font-size:12.5px;color:var(--text-muted);">No SIF-potential risks flagged. If the profile includes work at height, driving, confined spaces or asbestos, check the SIF flag on those risks.</div>';
-    const sifCard=`<details class="coll" open style="border-left:5px solid #DC2626;"><summary><h3><span class="dot" style="color:#DC2626;">●</span> SIF register — can kill or seriously injure</h3><span class="coll-meta">${sifRisks.length}</span></summary><div class="coll-body">${sifBody}<div style="font-size:10.5px;color:var(--text-muted);margin-top:8px;">SIF = serious injury or fatality potential, judged on worst-case severity and <strong>independent of likelihood</strong>. This is the short list a director should see — a low-likelihood, fatal-outcome risk must not be averaged away.</div></div></details>`;
+    const sifCard=`<details class="coll" data-keep="rpSif" style="border-left:5px solid #DC2626;"><summary><h3>SIF register — can kill or seriously injure</h3></summary><div class="coll-body">${sifBody}<div style="font-size:10.5px;color:var(--text-muted);margin-top:8px;">SIF = serious injury or fatality potential, judged on worst-case severity and <strong>independent of likelihood</strong>. This is the short list a director should see — a low-likelihood, fatal-outcome risk must not be averaged away.</div></div></details>`;
     analysis = sifCard;
   }
 
@@ -17691,9 +17692,9 @@ function renderRiskReview(){
   const maturity=`<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:8px;line-height:1.5;">Score how well the organisation manages health &amp; safety, 0 (absent) to 5 (embedded and evidenced), against the written anchors. This drives the maturity half of the overall score at the top.</div>
     ${_renderMaturityAssessment(dis)}`;
 
-  if(scoreEl) scoreEl.innerHTML = scorePanel;
+  if(scoreEl){ const _k=_detailsSnapshot(scoreEl); scoreEl.innerHTML = scorePanel; _detailsApply(scoreEl,_k); }
   if(sumEl)   sumEl.innerHTML   = summary;
-  if(anaEl)   anaEl.innerHTML   = analysis;
+  if(anaEl){ const _k=_detailsSnapshot(anaEl); anaEl.innerHTML = analysis; _detailsApply(anaEl,_k); }
   if(matEl)   matEl.innerHTML   = maturity;
 }
 

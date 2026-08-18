@@ -8388,6 +8388,47 @@ function _showUpdateChip(){
 }
 setInterval(_checkAppVersion, 120000);
 _checkAppVersion();
+// ── Full-text peek (app-wide): any text box whose content is clipped shows
+//    the whole text in a small bubble on hover or focus. The box itself never
+//    changes size; the bubble follows the theme, sits above the field (or
+//    below when there is no room) and vanishes on leave, blur or scroll.
+(function(){
+  let tipEl=null, tipFor=null;
+  function _tip(){
+    if(!tipEl){
+      tipEl=document.createElement('div'); tipEl.id='inputPeek';
+      tipEl.style.cssText='position:fixed;z-index:99997;max-width:420px;background:var(--surface,#fff);color:var(--text,#111);border:1px solid var(--border,#d8dde3);border-radius:9px;padding:8px 11px;font-size:12.5px;line-height:1.5;box-shadow:0 8px 26px rgba(0,0,0,.18);pointer-events:none;overflow-wrap:break-word;white-space:pre-wrap;display:none;';
+      document.body.appendChild(tipEl);
+    }
+    return tipEl;
+  }
+  function _clipped(el){
+    if(el.tagName==='INPUT')    return el.scrollWidth  > el.clientWidth+2;
+    if(el.tagName==='TEXTAREA') return el.scrollHeight > el.clientHeight+2 || el.scrollWidth > el.clientWidth+2;
+    return false;
+  }
+  function _peekable(el){
+    if(!el || !el.tagName) return false;
+    if(el.tagName==='TEXTAREA') return true;
+    return el.tagName==='INPUT' && ['text','search','url','email',''].includes(el.type||'text');
+  }
+  function _show(el){
+    const v=String(el.value||'').trim();
+    if(!v || !_clipped(el)){ _hide(); return; }
+    const t=_tip(); t.textContent=v; t.style.display='block'; tipFor=el;
+    const r=el.getBoundingClientRect();
+    t.style.left=Math.max(8, Math.min(r.left, innerWidth-436))+'px';
+    const h=t.offsetHeight;
+    t.style.top=(r.top-h-8>4 ? r.top-h-8 : r.bottom+8)+'px';
+  }
+  function _hide(){ if(tipEl) tipEl.style.display='none'; tipFor=null; }
+  document.addEventListener('mouseover', e=>{ if(_peekable(e.target)) _show(e.target); else if(tipFor) _hide(); });
+  document.addEventListener('mouseout',  e=>{ if(e.target===tipFor) _hide(); });
+  document.addEventListener('focusin',   e=>{ if(_peekable(e.target)) _show(e.target); });
+  document.addEventListener('focusout',  e=>{ if(e.target===tipFor) _hide(); });
+  document.addEventListener('input',     e=>{ if(e.target===tipFor) _show(e.target); });
+  document.addEventListener('scroll', _hide, true);
+})();
 function saveData(){
   // Consultant working on a client (dial-in) is READ-WRITE: the edits go to the
   // client's server record (Auth.activeTenantId() is the client's tenant while

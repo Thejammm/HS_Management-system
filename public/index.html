@@ -13256,7 +13256,15 @@ const COCKPIT_WIDGETS = {
       return _ckKpi('Fatal-potential (inherent)', nSif, sub, col, 'risk', nSif?'gotoSifRisks()':'');
     } },
   kpiHighCrit:    { id:'kpiHighCrit', label:'High and critical risks', group:'KPI', render:x=>_ckKpi('High and critical risks', x.highRisk.length, x.risks.length+' in the profile', x.highRisk.length?'var(--danger)':'', 'risk', x.highRisk.length?'gotoHighCritRisks()':'') },
-  kpiOpenActions: { id:'kpiOpenActions', label:'Open actions', group:'KPI', render:x=>_ckKpi('Open actions', x.openA, x.overdueA?(x.overdueA+' overdue'):'None overdue', x.overdueA?'var(--danger)':'', 'actions', x.openA?'gotoOpenActions()':'') },
+  kpiOpenActions: { id:'kpiOpenActions', label:'Open actions', group:'KPI', render:x=>{
+      // The whole picture: execution-plan actions (risk profile, management
+      // system, free items) PLUS inspection actions — previously this counted
+      // inspections only, so the cockpit said 0 while the plan held dozens.
+      const eo=(typeof _execOpenCount==='function')?_execOpenCount():0;
+      const er=(typeof _execActions==='function')?_execActions().filter(a=>a.rag==='red').length:0;
+      const open=x.openA+eo, over=x.overdueA+er;
+      return _ckKpi('Open actions', open, (over?(over+' overdue'):'None overdue')+(eo&&x.openA?' · plan + inspections':''), over?'var(--danger)':'', eo?'execplan':'actions', open?(eo?"switchTab('execplan')":'gotoOpenActions()'):'');
+    } },
   kpiMgmtGaps:    { id:'kpiMgmtGaps', label:'Management system gaps', group:'KPI', render:x=>_ckKpi('Management system gaps', x.reqG.gaps, x.reqG.assessed+' assessed', x.reqG.gaps?'var(--warning)':'', 'requirements') },
   kpiCompleteness:{ id:'kpiCompleteness', label:'Assessment completeness', group:'KPI', render:x=>_ckKpi('Assessment completeness', x.RD.completeness+'%', x.RD.completeness<100?'click to see what\'s left':'complete', x.RD.completeness<60?'var(--warning)':'', '', 'openCompletenessModal()') },
   kpiInspections: { id:'kpiInspections', label:'Inspections', group:'KPI', render:x=>_ckKpi('Inspections', x.insps.length, x.signedOff+' signed off · '+x.awaiting+' awaiting', '', 'monthly') },
@@ -14794,7 +14802,9 @@ function _riskPlanState(r){
   if(open.length) return { k:'open', label:open.length+' action'+(open.length!==1?'s':'')+' in plan', colour:'#F59E0B', title:'Open actions dealing with the residual risk.' };
   const allAccepted=acts.every(a=>_actionStatus(a)==='Accepted');
   if(allAccepted) return { k:'accepted', label:'≈ Risk accepted', colour:'#6B7280', title:'Formally accepted with the current controls — who accepted it and why are on the risk acceptance register.' };
-  return { k:'managed', label:'✓ Managed', colour:'#16A34A', title:'The action plan is delivered — this is now how the company manages this risk.' };
+  // "Plan delivered" here; the journey's Managed milestone additionally wants
+  // the reviewed-and-completed tick — one word, one meaning.
+  return { k:'managed', label:'✓ Plan delivered', colour:'#16A34A', title:'Every action is closed. Tick "reviewed and completed" on the risk to sign it off as managed.' };
 }
 function _riskFlowHTML(r){
   const inh=_riskInherent(r), cur=_riskScore(r), tgt=_riskTarget(r);
@@ -15010,11 +15020,17 @@ function openAcceptRisk(id){
   if(_blockIfReadOnly()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
   const old=document.getElementById('acceptRiskOv'); if(old) old.remove();
+  const openActs=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due) && _actionStatus(a)!=='Complete' && _actionStatus(a)!=='Accepted');
   const ov=document.createElement('div'); ov.id='acceptRiskOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
   ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:520px;width:100%;padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.35);">
     <div style="font-weight:800;font-size:15px;margin-bottom:6px;">Accept this risk</div>
     <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Accepting means the business runs <b>${esc(r.activity||r.hazard||'this risk')}</b> with the current controls and no further action. It is recorded on the acceptance register with who and why, and the risk stays on the profile to be reviewed like any other.</div>
+    ${openActs.length?`<div style="background:#D977061a;border:1px solid #D9770655;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.5;margin-bottom:12px;">
+      This risk still has <b>${openActs.length} open action${openActs.length!==1?'s':''}</b>. A risk with open actions stays "in plan" even after acceptance.
+      <label style="display:flex;gap:7px;align-items:flex-start;margin-top:7px;cursor:pointer;"><input type="checkbox" id="arClose" checked style="margin-top:2px;">
+      <span>Close ${openActs.length!==1?'them':'it'} as accepted too — the planned work is being tolerated, not delivered</span></label>
+    </div>`:''}
     <div class="field-group"><label class="field-label">Why the current controls are sufficient</label><textarea id="arWhy" rows="3" style="width:100%;"></textarea></div>
     <div class="field-group" style="margin-top:8px;"><label class="field-label">Accepted by (name and role)</label><input type="text" id="arWho" style="width:100%;"></div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
@@ -15033,6 +15049,16 @@ function confirmAcceptRisk(id){
   if(!why || !who){ showToast('Both the reason and who is accepting are needed — this is the audit record.','error'); return; }
   if(!Array.isArray(r.actions)) r.actions=[];
   const today=new Date().toISOString().slice(0,10);
+  // If asked, close the open actions as accepted too — otherwise the risk
+  // stays "in plan" (open work is never silently swallowed by an acceptance).
+  const closeOpen=document.getElementById('arClose');
+  if(closeOpen && closeOpen.checked){
+    (r.actions||[]).forEach(a=>{
+      if(a.deleted || !(a.desc||a.owner||a.due)) return;
+      const st=_actionStatus(a);
+      if(st!=='Complete' && st!=='Accepted'){ a.status='Accepted'; a.acceptDate=today; a.acceptedBy=who; }
+    });
+  }
   r.actions.push({ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     desc:'Risk accepted with current controls: '+why, owner:who, due:'', priority:'',
     status:'Accepted', acceptDate:today, acceptedBy:who });
@@ -17742,8 +17768,32 @@ function renderDiscoveryPanel(){
       ${(!ro && started)?`<button class="btn btn-outline no-print" onclick="buildProfileFromDiscovery()"${sugN?'':' disabled title="Profile already covers the current answers"'}>⚙ Build profile from discovery${sugN?(' ('+sugN+')'):''}</button>`:''}
       ${(!ro && orphN)?`<button class="btn btn-outline no-print" style="border-color:#D97706;color:#B45309;" onclick="reviewDiscoveryOrphans()" title="Themes whose supporting discovery answers have been withdrawn">⚠ Answers changed (${orphN})</button>`:''}
       </div>
-    </div></details>`;
+    </div></details>${_discRequirementsHTML()}`;
   _detailsApply(el,_keepDisc);
+}
+// The arrangements the discovery answers say this business must run — the
+// generated requirement lines, grouped under the answer that fired them, with
+// the library's legal anchor. Read-only reference: these same lines seed the
+// Monitoring & assurance suggestions as "Check:" activities.
+function _discRequirementsHTML(){
+  let gen; try{ gen=_profGenerate(); }catch(e){ return ''; }
+  if(!gen || !gen.reqs.length) return '';
+  const qText={}; try{ _discDomains().forEach(d=>d.items.forEach(it=>{ qText[it.id]=it.q; })); }catch(e){}
+  const groups=gen.firedRules.map(rule=>{
+    const reqs=gen.reqs.filter(q=>q.rule===rule.id);
+    if(!reqs.length) return '';
+    return `<div style="margin-bottom:12px;">
+      <div style="font-size:12.5px;font-weight:700;">${esc(qText[rule.when]||rule.id)}</div>
+      ${rule.legal?`<div style="font-size:11px;color:var(--text-muted);margin:1px 0 3px;">${esc(rule.legal)}</div>`:''}
+      <ul style="margin:2px 0 0 18px;padding:0;">${reqs.map(q=>`<li style="font-size:12.5px;line-height:1.55;">${esc(q.text)}</li>`).join('')}</ul>
+    </div>`;
+  }).join('');
+  return `<details class="coll" data-keep="rpDiscReqs" style="margin-bottom:16px;">
+    <summary><h3>What the answers require</h3><span class="badge badge-muted">${gen.reqs.length} arrangement${gen.reqs.length!==1?'s':''}</span></summary>
+    <div class="coll-body">
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">The arrangements this business must run, from its own discovery answers — each group under the answer that triggered it, with the legal anchor. Use it in the client conversation, and note the same lines feed the Monitoring &amp; assurance suggestions as "Check:" activities.</div>
+      ${groups}
+    </div></details>`;
 }
 let _discIdx=0;
 function openDiscoveryWizard(){ if(_roLocked()) return; _discIdx=0; _discDraw(); }

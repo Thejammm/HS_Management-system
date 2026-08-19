@@ -2379,9 +2379,27 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .header-sub{font-size:12px;color:var(--text-muted);}
 .header-right{display:flex;align-items:center;gap:8px;}
 .save-indicator{font-size:11px;color:var(--text-muted);white-space:nowrap;}
+/* Tablets (iPad portrait/landscape): the toolbar wraps instead of clipping,
+   utility buttons drop to icon-only (full label stays as the tooltip), and
+   the selects stop hogging the row. The sticky offsets below follow the real
+   header height via --hdr-h so nothing slides underneath a wrapped header. */
+@media(max-width:1180px){
+  .header-inner{flex-wrap:wrap;height:auto;min-height:56px;padding:6px 14px;row-gap:4px;}
+  .header-right{flex-wrap:wrap;justify-content:flex-end;row-gap:4px;flex:1 1 auto;min-width:0;}
+  .header-right .btn-sm{padding:6px 9px;font-size:11.5px;min-height:34px;}
+  .hdr-lab{display:none;}
+  #consultantClientSelect{max-width:150px;}
+  #viewModeSelect{max-width:132px;}
+  #consultantClientSelect,#viewModeSelect{font-size:12px;}
+  .save-indicator{display:none;}
+}
+@media(max-width:560px){
+  .header-sub{display:none !important;}
+  #userIndicator{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+}
 
 /* Tab bar */
-.tab-bar{position:sticky;top:60px;z-index:199;background:var(--surface);border-bottom:1px solid var(--border);}
+.tab-bar{position:sticky;top:var(--hdr-h,60px);z-index:199;background:var(--surface);border-bottom:1px solid var(--border);}
 .tab-bar-inner{max-width:none;margin:0;width:100%;padding:0 24px;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;}
 .tab-bar-inner::-webkit-scrollbar{display:none;}
 .tab-btn{background:none;border:none;border-bottom:2px solid transparent;padding:14px 14px 12px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--text-muted);cursor:pointer;white-space:nowrap;margin-bottom:-1px;transition:color .15s,border-color .15s;display:flex;align-items:center;gap:7px;}
@@ -2392,7 +2410,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 /* App shell + left sidebar */
 .app-shell{display:flex;align-items:flex-start;width:100%;}
 .app-content{flex:1;min-width:0;}
-.sidebar{position:sticky;top:60px;align-self:flex-start;height:calc(100vh - 60px);width:var(--sidebar-w,236px);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:16px 12px;z-index:150;}
+.sidebar{position:sticky;top:var(--hdr-h,60px);align-self:flex-start;height:calc(100vh - var(--hdr-h,60px));width:var(--sidebar-w,236px);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:16px 12px;z-index:150;}
 /* ── Phase groups: the nav reads top-to-bottom in the order the work is done.
    Each phase is framed with its own accent (--ph) so set-up, delivery,
    monitoring and review are visually distinct at a glance. ── */
@@ -2973,9 +2991,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="header-right">
       <span class="save-indicator" id="saveIndicator"></span>
       <button class="btn btn-ghost btn-sm no-print" id="themeToggle" onclick="toggleTheme()" title="Toggle light / dark mode" aria-label="Toggle light or dark mode" style="color:var(--text-muted);border-color:var(--border);padding:6px 9px;line-height:0;"><span id="themeToggleIcon"></span></button>
-      <button class="btn btn-ghost btn-sm no-print" id="backupBtn" onclick="exportEverything()" title="Download a full JSON backup of your local data" style="color:var(--text-muted);border-color:var(--border);">⭳ Backup</button>
-      <button class="btn btn-ghost btn-sm no-print" id="exportClientBtn" onclick="exportClient()" title="Download THIS client's data as an import-compatible JSON baseline — a timestamped snapshot you can re-import at any time" style="color:var(--text-muted);border-color:var(--border);">⭳ Export client</button>
-      <button class="btn btn-ghost btn-sm no-print" id="importBtn" onclick="importData()" title="Import a client data JSON into the client you are working on (or restore a full backup)" style="color:var(--text-muted);border-color:var(--border);">⭱ Import</button>
+      <button class="btn btn-ghost btn-sm no-print" id="backupBtn" onclick="exportEverything()" title="Download a full JSON backup of your local data" style="color:var(--text-muted);border-color:var(--border);">⭳<span class="hdr-lab">&nbsp;Backup</span></button>
+      <button class="btn btn-ghost btn-sm no-print" id="exportClientBtn" onclick="exportClient()" title="Download THIS client's data as an import-compatible JSON baseline — a timestamped snapshot you can re-import at any time" style="color:var(--text-muted);border-color:var(--border);">⭳<span class="hdr-lab">&nbsp;Export client</span></button>
+      <button class="btn btn-ghost btn-sm no-print" id="importBtn" onclick="importData()" title="Import a client data JSON into the client you are working on (or restore a full backup)" style="color:var(--text-muted);border-color:var(--border);">⭱<span class="hdr-lab">&nbsp;Import</span></button>
       <!-- User indicator: shows current signed-in user when authenticated -->
       <span id="userIndicator" class="no-print" style="display:none;font-size:11px;color:var(--text-muted);padding:4px 10px;background:var(--accent-light);border:1px solid var(--accent);border-radius:14px;font-weight:600;"></span>
       <!-- Consultant client picker (consultants only) -->
@@ -2993,10 +3011,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </select>
       </span>
       <!-- Sign-in / Sign-out button -->
-      <button class="btn btn-ghost btn-sm no-print" id="signInBtn" onclick="openLoginModal()" title="Sign in to sync to the server" style="color:var(--text-muted);border-color:var(--border);display:none;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg> Sign in</button>
-      <button class="btn btn-ghost btn-sm no-print" id="signOutBtn" onclick="handleSignOut()" title="Sign out and switch back to local-only mode" style="color:var(--text-muted);border-color:var(--border);display:none;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg> Sign out</button>
+      <button class="btn btn-ghost btn-sm no-print" id="signInBtn" onclick="openLoginModal()" title="Sign in to sync to the server" style="color:var(--text-muted);border-color:var(--border);display:none;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg><span class="hdr-lab">&nbsp;Sign in</span></button>
+      <button class="btn btn-ghost btn-sm no-print" id="signOutBtn" onclick="handleSignOut()" title="Sign out and switch back to local-only mode" style="color:var(--text-muted);border-color:var(--border);display:none;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg><span class="hdr-lab">&nbsp;Sign out</span></button>
       <!-- Save Folder button removed: PDFs now go straight to the browser's Downloads folder. -->
-      <button class="btn btn-ghost btn-sm no-print" id="resetBtn" onclick="resetAppData()" title="Clear all data and start fresh" style="color:var(--text-muted);border-color:var(--border);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Reset</button>
+      <button class="btn btn-ghost btn-sm no-print" id="resetBtn" onclick="resetAppData()" title="Clear all data and start fresh" style="color:var(--text-muted);border-color:var(--border);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span class="hdr-lab">&nbsp;Reset</span></button>
       <!-- Save As button removed: server-stored data makes this redundant AND it could let users download the whole app. -->
       <!-- <button class="btn btn-outline btn-sm no-print" onclick="saveAs()">💾 Save As</button> -->
       <!-- Ctrl+S keyboard shortcut for saveAs() is disabled below too -->
@@ -4395,6 +4413,20 @@ function _ensureVisibleType(){
 // checked and nothing can sync live. Offline working uses a NAME, not a
 // password — a password prompt on a local file would be security theatre.
 function _isOfflineCopy(){ return location.protocol !== 'http:' && location.protocol !== 'https:'; }
+// Sticky offsets (tab bar, sidebar) follow the REAL header height — on
+// tablets the toolbar wraps to two rows and a hardcoded 60px would let
+// content slide underneath it.
+function _syncHeaderHeight(){
+  try{
+    const h=document.querySelector('.app-header'); if(!h) return;
+    document.documentElement.style.setProperty('--hdr-h', h.offsetHeight+'px');
+  }catch(e){}
+}
+try{
+  window.addEventListener('resize', _syncHeaderHeight);
+  window.addEventListener('load', _syncHeaderHeight);
+  if(typeof ResizeObserver!=='undefined') document.addEventListener('DOMContentLoaded', ()=>{ const h=document.querySelector('.app-header'); if(h) new ResizeObserver(_syncHeaderHeight).observe(h); });
+}catch(e){}
 function _offlineActorName(){ try{ return String(localStorage.getItem('hsms_offline_actor')||'').trim(); }catch(e){ return ''; } }
 function _setOfflineActor(name){ try{ if(String(name||'').trim()) localStorage.setItem('hsms_offline_actor', String(name).trim()); }catch(e){} }
 function _actor(){
@@ -9000,7 +9032,7 @@ function _updateAuthIndicator(){
         ind.onclick = null;
       }
     }
-    if(inBtn && _isOfflineCopy()){ inBtn.textContent='Work offline'; inBtn.title='This copy has no server behind it — set your name for the record stamps and see how to sync your work online.'; }
+    if(inBtn && _isOfflineCopy()){ inBtn.innerHTML='⛭<span class="hdr-lab">&nbsp;Work offline</span>'; inBtn.title='Work offline — this copy has no server behind it. Set your name for the record stamps, pull a client down or push your work back.'; }
     const cPick = document.getElementById('consultantPicker');
     if(cPick) cPick.classList.remove('on');
     if(_consultantView) exitConsultantView(true);
@@ -13136,6 +13168,10 @@ function onConsultantPick(tenantId){
 
 // ── Client hub: the consultant's landing screen of client tiles ──
 function _isConsultantUser(){ return (Auth.user && Auth.user()?.role) === 'consultant'; }
+// Consultant OR the signed-out practitioner (browser-local sandbox / offline
+// copy) — the deleted-actions trail belongs to both; a signed-in client never
+// sees it.
+function _isConsultantish(){ const u=(typeof Auth!=='undefined'&&Auth.user)?Auth.user():null; return !u || u.role==='consultant'; }
 
 function showClientHub(){
   const h = document.getElementById('clientHub');
@@ -14446,10 +14482,21 @@ function deleteExecAction(refStr){
   if(_blockIfReadOnly()) return;
   let ref; try{ ref=JSON.parse(decodeURIComponent(refStr)); }catch(e){ return; }
   const o=_execOrigin(ref); if(!o) return;
-  // Completed work is never "deleted" — it is the record of what the business
-  // has achieved. If a completion was a genuine mistake, reopen it first.
+  // Completed work is never "deleted" by a client — it is the record of what
+  // the business achieved. The CONSULTANT can remove it (demo/test data,
+  // genuine mistakes) through the same two-step trail as everything else:
+  // step 1 tombstones it into the consultant-only Deleted actions area,
+  // step 2 there ("Delete from app") removes it permanently, no trail left.
   const _st=_actionStatus(o);
-  if(_st==='Complete'||_st==='Accepted'){ showToast('Completed work stays on the record — reopen the action first if it genuinely needs removing.','info'); return; }
+  if(_st==='Complete'||_st==='Accepted'){
+    const consultant = _isConsultantish();
+    if(!consultant){ showToast('Completed work stays on the record — ask your consultant if something genuinely needs removing.','info'); return; }
+    if(!confirm('This action is COMPLETED — it is part of the delivered record.\n\n"'+(o.desc||'(no description)')+'"\n\nStep 1 of 2: remove it from the plan and the delivered list. It moves to your consultant-only "Deleted actions" area; step 2 there ("Delete from app") removes it permanently with no trail. Continue?')) return;
+    _markActionDeleted(o);
+    saveData(); _refreshActionViews(); if(typeof renderReview==='function') _keepScroll(renderReview);
+    if(typeof showToast==='function') showToast('Step 1 done — it is now under Deleted actions (Consultant review tab). "Delete from app" there removes it for good.','info',8000);
+    return;
+  }
   if(!confirm('Delete this action?\n\n"'+(o.desc||'(no description)')+'"\n\nIt is removed from the plan. Your consultant can still see it (flagged as deleted) and restore it or remove it for good.')) return;
   _markActionDeleted(o);
   saveData(); _refreshActionViews(); if(typeof renderReview==='function') _keepScroll(renderReview);
@@ -14465,7 +14512,7 @@ function _deletedActions(){
   return out;
 }
 function restoreDeletedAction(refStr){
-  if(typeof _isConsultantUser==='function' && !_isConsultantUser()){ if(typeof showToast==='function') showToast('Only the consultant can restore deleted actions.','info'); return; }
+  if(typeof _isConsultantish==='function' && !_isConsultantish()){ if(typeof showToast==='function') showToast('Only the consultant can restore deleted actions.','info'); return; }
   let ref; try{ ref=JSON.parse(decodeURIComponent(refStr)); }catch(e){ return; }
   const o=_execOrigin(ref); if(!o) return;
   const c=(typeof prompt==='function')?prompt('Restore this action.\n\nAdd a note (optional), e.g. why you are restoring it:',''):'';
@@ -14479,7 +14526,7 @@ function restoreDeletedAction(refStr){
   if(typeof showToast==='function') showToast('✓ Action restored','success');
 }
 function purgeDeletedAction(refStr){
-  if(typeof _isConsultantUser==='function' && !_isConsultantUser()){ if(typeof showToast==='function') showToast('Only the consultant can remove actions permanently.','info'); return; }
+  if(typeof _isConsultantish==='function' && !_isConsultantish()){ if(typeof showToast==='function') showToast('Only the consultant can remove actions permanently.','info'); return; }
   let ref; try{ ref=JSON.parse(decodeURIComponent(refStr)); }catch(e){ return; }
   const o=_execOrigin(ref); if(!o) return;
   if(!confirm('Remove this action from the whole app permanently?\n\n"'+(o.desc||'(no description)')+'"\n\nThis cannot be undone.')) return;
@@ -14491,7 +14538,7 @@ function purgeDeletedAction(refStr){
 }
 // Consultant-only block listing deleted actions (flagged with who deleted them).
 function _deletedActionsHTML(){
-  if(typeof _isConsultantUser==='function' && !_isConsultantUser()) return '';
+  if(typeof _isConsultantish==='function' && !_isConsultantish()) return '';
   const list=_deletedActions(); if(!list.length) return '';
   const rows=list.map(x=>{ const a=x.a; const rf=encodeURIComponent(JSON.stringify(x.ref));
     const who=esc(a.deletedBy||'someone'); const role=a.deletedRole?(' ('+esc(_roleLabel(a.deletedRole))+')'):''; const when=a.deletedAt?(' on '+fmtDate(a.deletedAt)):'';
@@ -14595,6 +14642,7 @@ function renderExecPlan(){
       <div style="display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
         <label style="font-size:10.5px;color:var(--text-muted);white-space:nowrap;">Target date<br><input type="date"${dis} value="${a.due||''}" onchange="updateExecAction('${rk}','due',this.value)"></label>
         <select${dis} onchange="updateExecAction('${rk}','status',this.value)" style="font-size:12.5px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select>
+        ${(closed && !dis && _isConsultantish())?`<button type="button" class="no-print" onclick="deleteExecAction('${rk}')" title="Remove this completed action — step 1 of 2: it moves to your consultant-only Deleted actions area; 'Delete from app' there removes it permanently" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:26px;height:26px;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;flex:0 0 auto;">✕</button>`:''}
       </div>
       </div>
       ${open?`<div style="margin-left:24px;">${_actionLogPanelHTML(a)}</div>`:''}
@@ -17113,7 +17161,8 @@ function _renderMaturityAssessment(dis){
       ? `<span style="font-size:12.5px;color:${_matColor(Math.round(mat.avg))};font-weight:700;">${mat.avg.toFixed(1)}/5${mat.critFail?' · veto':''}</span>`
       : (mat.na>0 ? '<span style="font-size:11px;color:var(--text-muted);">not applicable</span>' : '<span style="font-size:11px;color:var(--text-muted);">not scored</span>');
     const naNote = mat.na>0 ? `<span style="font-size:11px;color:var(--text-muted);margin-left:6px;">${mat.na} N/A</span>` : '';
-    const head=`<div class="prof-domain-head"><span class="pdh-badge" style="background:${d.badge};">${idx+1}</span><h4>${idx+1}. ${esc(d.name)}</h4>${statusChip}${naNote}</div>`;
+    const raiseBtn = dis ? '' : `<button class="btn btn-outline btn-xs no-print" style="margin-left:auto;" title="Raise an improvement action for this domain onto the client execution plan${mat.avg!=null?(' (currently '+mat.avg.toFixed(1)+' of 5)'):''}" onclick="openMaturityAction('${d.id}')">↗ Raise action</button>`;
+    const head=`<div class="prof-domain-head"><span class="pdh-badge" style="background:${d.badge};">${idx+1}</span><h4>${idx+1}. ${esc(d.name)}</h4>${statusChip}${naNote}${raiseBtn}</div>`;
     const items=d.items.map(it=>{
       const mv=m[it.id];
       const isNa=String(mv)==='na';
@@ -17126,6 +17175,59 @@ function _renderMaturityAssessment(dis){
     }).join('');
     return head+items;
   }).join('');
+}
+
+// ── Raise a maturity-improvement action (modal, same overlay pattern as the
+//    rest of the app). Pre-filled from the domain's weakest scored items so
+//    the action says WHAT to improve, not just "improve leadership". ──
+function openMaturityAction(domId){
+  if(_blockIfReadOnly()) return;
+  const d=_maturityDomains().find(x=>x.id===domId); if(!d) return;
+  const m=(S.profiler&&S.profiler.maturity)||{};
+  const weak=(d.items||[]).map(it=>({q:it.q, v:m[it.id]}))
+    .filter(x=>x.v!==''&&x.v!=null&&String(x.v)!=='na'&&Number(x.v)<=2)
+    .sort((a,b)=>Number(a.v)-Number(b.v)).slice(0,3);
+  const mat=_profMaturity(d.id);
+  const desc='Improve '+d.name+' maturity'+(mat.avg!=null?(' from '+mat.avg.toFixed(1)+' of 5'):'')
+    +(weak.length?(' - starting with: '+weak.map(x=>x.q).join('; ')):'');
+  const old=document.getElementById('matActionOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='matActionOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:540px;width:100%;padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.35);">
+    <div style="font-weight:800;font-size:15px;margin-bottom:4px;">Raise a maturity action — ${esc(d.name)}</div>
+    <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Lands on the client execution plan like every other action${mat.avg!=null?(' · this domain currently scores <b>'+mat.avg.toFixed(1)+' of 5</b>'):''}${weak.length?(' · weakest items are pre-filled below - edit freely'):''}.</div>
+    <div class="field-group"><label class="field-label">What needs doing</label>
+      <textarea id="maDesc" rows="3" style="width:100%;">${esc(desc)}</textarea></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px;margin-top:10px;">
+      <div class="field-group"><label class="field-label">Owner</label><input type="text" id="maOwner" placeholder="Who will do it"></div>
+      <div class="field-group"><label class="field-label">Target date</label><input type="date" id="maDue"></div>
+      <div class="field-group"><label class="field-label">Priority</label>
+        <select id="maPriority"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+      <button class="btn btn-ghost" onclick="document.getElementById('matActionOv').remove()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmMaturityAction('${esc(d.id)}')">＋ Add to the plan</button>
+    </div></div>`;
+  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+  setTimeout(()=>{ const el=document.getElementById('maDesc'); if(el) el.focus(); },50);
+}
+function confirmMaturityAction(domId){
+  const d=_maturityDomains().find(x=>x.id===domId); if(!d) return;
+  const desc=String((document.getElementById('maDesc')||{}).value||'').trim();
+  if(!desc){ showToast('Say what needs doing first','info'); return; }
+  if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
+  const it={ id:_reqUid('act'), desc:desc,
+    owner:String((document.getElementById('maOwner')||{}).value||'').trim(),
+    due:String((document.getElementById('maDue')||{}).value||''),
+    status:'Not started',
+    priority:String((document.getElementById('maPriority')||{}).value||'Medium'),
+    source:'Maturity', sourceLabel:d.name };
+  if(typeof _stamp==='function') _stamp(it,'created');
+  S.actionPlan.push(it);
+  saveData(); _refreshActionViews();
+  const ov=document.getElementById('matActionOv'); if(ov) ov.remove();
+  showToast('✓ Added to the execution plan — set or adjust the target date there','success');
 }
 
 // ══════════════════════════════════════════════════════════════

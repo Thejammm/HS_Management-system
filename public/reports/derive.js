@@ -1,11 +1,11 @@
-// Report data derivation — the single place report numbers come from.
+// Report data derivation - the single place report numbers come from.
 // Pure functions over the tenant state blob; nothing here touches the DOM,
 // nothing is stored back. Unit-tested in test/reports.test.js.
 //
 // HOUSE RULE (Simon): a report may NEVER count differently from the screens.
 // Every definition the app also computes lives in app-contract.js (generated
 // from the app itself) and scripts/check-app-report-consistency.mjs diffs the
-// two implementations on a seeded edge-case state — run it before deploying
+// two implementations on a seeded edge-case state - run it before deploying
 // anything that touches either side.
 import { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf } from './app-contract.js';
 export { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf };
@@ -13,7 +13,7 @@ export { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, hold
 // ── Tier banding ──
 // The app's bands are tenant-tunable (state.riskConfig.bands). The report must
 // agree with the app screens, so bands come from state with the app's own
-// defaults as fallback (med 5 / high 10 / crit 16 — NOT a second hardcoded
+// defaults as fallback (med 5 / high 10 / crit 16 - NOT a second hardcoded
 // axis; see the front-end's RISK_BANDS_DEF).
 export const DEFAULT_BANDS = { med: 5, high: 10, crit: 16 };
 
@@ -70,7 +70,7 @@ export function isAre(n) { return n === 1 ? 'is' : 'are'; }
 export function hasHave(n) { return n === 1 ? 'has' : 'have'; }
 
 // ── Register selection and rollups ──
-const HARM_LADDER = ['—', 'Insignificant', 'Minor injury', 'Moderate injury', 'Major injury', 'Fatality / permanent disability'];
+const HARM_LADDER = ['-', 'Insignificant', 'Minor injury', 'Moderate injury', 'Major injury', 'Fatality / permanent disability'];
 
 // Control status comes from the contract (the app's own logic); the report
 // only maps the 'None' state to its display wording.
@@ -106,7 +106,7 @@ export function deriveBoardExtras(state, opts = {}) {
   const daysOn = (d) => { const t = new Date(today + 'T12:00:00'); t.setDate(t.getDate() + d); return t.toISOString().slice(0, 10); };
   const p90 = daysAgo(90), soon = daysOn(60);
 
-  // Reactive monitoring — incidents in the period + investigation state.
+  // Reactive monitoring - incidents in the period + investigation state.
   const inc = Array.isArray(s.incidents) ? s.incidents : [];
   const incRecent = inc.filter(i => (i.date || '') >= p90)
     .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
@@ -114,9 +114,11 @@ export function deriveBoardExtras(state, opts = {}) {
   const incRiddor = inc.filter(i => i.type === 'RIDDOR reportable').length;
   const incNoCause = incRecent.filter(i => !String(i.immediateCause || '').trim() && !String(i.rootCause || '').trim()).length;
 
-  // Active monitoring — planned oversight and figure-keeping.
+  // Active monitoring - planned oversight and figure-keeping.
+  // Same reading as the app's visit status: an outcome of 'Not done' is never
+  // a completion, whatever else is recorded.
   const site = Array.isArray(s.siteInspections) ? s.siteInspections : [];
-  const siteDone = site.filter(r => r.actual).length;
+  const siteDone = site.filter(r => r.actual && r.outcome !== 'Not done').length;
   const siteOverdue = site.filter(r => !r.actual && r.planned && r.planned < today && r.outcome !== 'Not done').length;
   const inspections = Array.isArray(s.inspections) ? s.inspections : [];
   const months = (s.monitoring && s.monitoring.months) || {};
@@ -129,33 +131,55 @@ export function deriveBoardExtras(state, opts = {}) {
   const trnSoon = trn.filter(x => trag(x.expiry) === 'amber');
   const staffN = [...new Set(trn.map(x => x.employee).filter(Boolean))].length;
 
-  // Issues raised by workers — the two-way briefing record.
+  // Issues raised by workers - the two-way briefing record.
   const br = (s.consultation && Array.isArray(s.consultation.briefings)) ? s.consultation.briefings : [];
   const brRecent = br.filter(b => (b.date || '') >= p90)
     .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
   const brFb = brRecent.filter(b => String(b.feedback || '').trim());
 
-  // Checks required by law — the statutory tracker.
+  // Checks required by law - the statutory tracker.
+  // Blank rows are never counted - exactly as the app's statutory counter
+  // (_regCounts) requires a named item.
   const regSecs = (s.monitoring && Array.isArray(s.monitoring.regSections)) ? s.monitoring.regSections : [];
-  const statItems = regSecs.flatMap(sec => Array.isArray(sec.items) ? sec.items : []);
+  const statItems = regSecs.flatMap(sec => Array.isArray(sec.items) ? sec.items : []).filter(it => it && it.item && String(it.item).trim());
   const statOverdue = statItems.filter(it => it && it.dueDate && it.dueDate < today).length;
   const statDueSoon = statItems.filter(it => it && it.dueDate && it.dueDate >= today && it.dueDate <= soon).length;
 
-  // Successes — HSG65: "reviewing also gives you the opportunity to celebrate
+  // Successes - HSG65: "reviewing also gives you the opportunity to celebrate
   // and promote your health and safety successes."
+  // Mirrors the app's execution-plan aggregator (_execActions) exactly: the
+  // SAME three sources (risk actions, management-system item actions, the
+  // free plan) with the SAME exclusions (deleted, hideFromPlan = removed to
+  // the consultant's holding area, blank stubs). Complete AND Accepted count
+  // as closed off - Accepted rows are labelled, never passed off as done.
   const wins = [];
+  const winPush = (a, src) => {
+    const done = a.status === 'Complete' ? (a.completedDate || '') : (a.acceptDate || '');
+    if (done === '' || done >= p90) wins.push({ desc: String(a.desc || '(action)'), when: done, owner: String(a.owner || ''), accepted: a.status === 'Accepted', source: src });
+  };
   (Array.isArray(s.riskProfile) ? s.riskProfile : []).forEach(r => ((r.actions) || []).forEach(a => {
-    if (!a || a.deleted) return;
-    const done = a.status === 'Complete' ? (a.completedDate || '') : (a.status === 'Accepted' ? (a.acceptDate || '') : null);
-    if (done !== null && (done === '' || done >= p90)) wins.push({ desc: String(a.desc || '(action)'), when: done, owner: String(a.owner || '') });
+    if (!a || a.deleted || a.hideFromPlan) return;
+    if (!(a.desc || a.owner || a.due)) return;
+    if (a.status === 'Complete' || a.status === 'Accepted') winPush(a, String(r.activity || r.hazard || 'Risk profile'));
+  }));
+  (Array.isArray(s.requirements) ? s.requirements : []).forEach(sec => (Array.isArray(sec.items) ? sec.items : []).forEach(it => {
+    // Legacy single-action shape, read exactly as the app migrates it.
+    const acts = Array.isArray(it.actions) ? it.actions
+      : ((it.action && String(it.action).trim()) ? [{ desc: String(it.action).trim(), owner: it.actionOwner || '', status: it.actionStatus || 'Not started', completedDate: it.completedDate || '', acceptDate: it.acceptDate || '' }] : []);
+    acts.forEach(a => {
+      if (!a || a.deleted || a.hideFromPlan) return;
+      if (!(a.desc && String(a.desc).trim())) return;
+      if (a.status === 'Complete' || a.status === 'Accepted') winPush(a, String(sec.heading || 'Management system'));
+    });
   }));
   (Array.isArray(s.actionPlan) ? s.actionPlan : []).forEach(a => {
-    if (a && a.status === 'Complete' && ((a.completedDate || '') === '' || (a.completedDate || '') >= p90))
-      wins.push({ desc: String(a.desc || '(action)'), when: a.completedDate || '', owner: String(a.owner || '') });
+    if (!a || a.deleted || a.hideFromPlan) return;
+    if (!(a.desc || a.owner || a.due)) return;
+    if (a.status === 'Complete' || a.status === 'Accepted') winPush(a, String(a.sourceLabel || a.source || 'Action plan'));
   });
   wins.sort((a, b) => String(b.when).localeCompare(String(a.when)));
 
-  // Closing the loop — movement since the audit baseline (if snapshots exist).
+  // Closing the loop - movement since the audit baseline (if snapshots exist).
   const snaps = Array.isArray(s.auditSnapshots) ? s.auditSnapshots : [];
   const baseline = snaps.length ? snaps[0] : null;
 
@@ -187,7 +211,7 @@ export function deriveBoard(state, opts = {}) {
   const byTier = { Critical: 0, High: 0, Medium: 0, Low: 0 };
   rated.forEach(x => { const t = tierFor(x.res.score, bands); if (t) byTier[t]++; });
 
-  // Fatal potential: the app's _riskSif via the contract — explicit boolean
+  // Fatal potential: the app's _riskSif via the contract - explicit boolean
   // override wins, else credible worst case (inherent, residual OR target
   // severity) of 4-5. The old "severity 5 only" version disagreed with the
   // cockpit by exactly the class of risk Simon caught (a severity-4 SIF).
@@ -204,7 +228,7 @@ export function deriveBoard(state, opts = {}) {
   const planAccepted = planStates.filter(p => p === 'accepted').length;
 
   // Actions across ALL sources, exactly as the execution plan aggregates them
-  // (risk-profile actions + management-system item actions + plan-added) —
+  // (risk-profile actions + management-system item actions + plan-added) -
   // the board pack may never disagree with the plan (UAT finding #9).
   const acts = [];
   const pushAct = a => { if (a && !a.deleted && (a.desc || a.owner || a.due)) acts.push(a); };
@@ -217,12 +241,12 @@ export function deriveBoard(state, opts = {}) {
   const noOwner = openActs.filter(a => !(a.owner && String(a.owner).trim()));
   const noDate = openActs.filter(a => !a.due);
 
-  // Risk control status: the app's hold model via the contract — each risk
+  // Risk control status: the app's hold model via the contract - each risk
   // graded by recorded facts, the company measure a count, HSG65
   // proportionality a rule. Replaces the abstract 0-5 maturity number.
   const holdS = holdSummaryOf(s, (r) => { const res = residualOf(r); return res ? tierFor(res.score, bands) : null; }, { today: opts.today });
 
-  // Exposure score for the bars: mean residual score of rated risks (0–25).
+  // Exposure score for the bars: mean residual score of rated risks (0-25).
   const meanScore = rated.length ? rated.reduce((a, x) => a + x.res.score, 0) / rated.length : null;
   const profileTier = meanScore != null ? tierFor(Math.max(1, Math.round(meanScore)), bands) : null;
 
@@ -283,7 +307,7 @@ export function deriveBoard(state, opts = {}) {
     highPlus, planDone, planAccepted, openActions: openActs.length, overdue: overdue.length,
     noOwner: noOwner.length, noDate: noDate.length,
     holdS, meanScore, profileTier, hierarchy, hierTotal, protectDown,
-    registerRows, maxSev, highestHarm: HARM_LADDER[maxSev] || '—',
+    registerRows, maxSev, highestHarm: HARM_LADDER[maxSev] || '-',
     duties, headline, standfirst,
     // Assessment completeness, the app's own formula: rated risks +
     // monitoring populated, over risks + 1 (the 0-5 domain scoring is gone).

@@ -1,4 +1,4 @@
-// Risk assessment report — the full register through the shared engine.
+// Risk assessment report - the full register through the shared engine.
 // Proves the engine is template-agnostic: no engine changes were needed.
 import { deriveBoard, countPhrase, TIER_COLOURS } from '../derive.js';
 import { tierWord, dualBar } from '../blocks.js';
@@ -29,7 +29,7 @@ export function buildRiskAssessment(state, opts = {}) {
   const cols = [
     { header: 'Activity', w: '22%' },
     { header: 'Hazard', w: '18%' },
-    { header: 'Score — was → now (of 25)', w: '22%' },
+    { header: 'Score - was → now (of 25)', w: '22%' },
     { header: 'Band', w: '10%' },
     { header: 'Controls', w: '28%' },
   ];

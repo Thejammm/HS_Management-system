@@ -1,4 +1,4 @@
-// Report engine — renders a Report object to fixed A4 pages and drives the
+// Report engine - renders a Report object to fixed A4 pages and drives the
 // browser print flow. Templates never touch the DOM; this is the only file
 // that does.
 //

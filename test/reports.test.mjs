@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
 
-import { tierFor, bandsFrom, noneOrCount, countPhrase, isAre, hasHave, deriveBoard, residualOf } from '../public/reports/derive.js';
+import { tierFor, bandsFrom, noneOrCount, countPhrase, isAre, hasHave, deriveBoard, deriveBoardExtras, residualOf } from '../public/reports/derive.js';
 import { reportHTML, paginateRows } from '../public/reports/engine.js';
 import { REPORTS, buildReport, getReportFormat, setReportFormat } from '../public/reports/templates/index.js';
 
@@ -78,22 +78,42 @@ test('empty profile renders a valid report that says so', () => {
   assert.doesNotMatch(html, /NaN|undefined/);
 });
 
-test('typical profile: seven pages, headline states the finding', () => {
+test('typical profile: eight pages (attention page prints), headline states the finding', () => {
   const r = buildReport(fixture('typical'), 'board-report', OPTS);
-  assert.equal(r.pages.length, 7);
+  assert.equal(r.pages.length, 8);   // 7 + the needs-attention page (3 breaches)
   const html = reportHTML(r);
   assert.match(html, /can still kill or maim/i);
-  assert.match(html, /Page 7 of 7/);
+  assert.match(html, /Page 8 of 8/);
   assert.doesNotMatch(html, /No have no/);
 });
 
-test('HSG65 review sections print by default', () => {
+test('attention list lives on its own page, never the front page', () => {
+  const state = fixture('typical');
+  const html = reportHTML(buildReport(state, 'board-report', OPTS));
+  assert.match(html, /the named list has its own page/);       // front-page verdict: counts only
+  assert.match(html, /risks need attention first\./);           // the attention page headline
+  assert.match(html, /The named list follows this page/);       // decision: no names inline
+  // Oversized: 13 breaches spill across two attention pages.
+  const big = reportHTML(buildReport(fixture('oversized'), 'board-report', OPTS));
+  assert.match(big, /Needs attention first - part 1 of 2/);
+  assert.match(big, /Needs attention first - part 2 of 2/);
+});
+
+test('no long dashes anywhere in the rendered report', () => {
+  for (const fx of ['empty', 'typical', 'oversized']) {
+    const html = reportHTML(buildReport(fixture(fx), 'board-report', OPTS));
+    assert.doesNotMatch(html, /—|–/, fx + ' contains an em/en dash');
+  }
+});
+
+test('review sections print by default, with no framework name-drop', () => {
   const html = reportHTML(buildReport(fixture('typical'), 'board-report', OPTS));
-  assert.match(html, /HSG65 review pack/);
+  assert.match(html, /Leadership review/);
   assert.match(html, /Active monitoring/);
   assert.match(html, /Issues raised by workers/);
   assert.match(html, /Checks required by law/);
-  assert.match(html, /celebrate and promote/i);
+  assert.match(html, /Successes this period|Closed off|actions delivered/);
+  assert.doesNotMatch(html, /HSG65/);   // guidance shapes the report; the name never prints
 });
 
 test('hidden sections drop their pages; locked sections always print', () => {
@@ -104,11 +124,44 @@ test('hidden sections drop their pages; locked sections always print', () => {
     position: true, maturity: true,   // locked — must be ignored
   } } };
   const r = buildReport(state, 'board-report', OPTS);
-  assert.equal(r.pages.length, 2);   // position + maturity/sign-off survive
+  assert.equal(r.pages.length, 3);   // position + attention (locked with position) + status/sign-off survive
   const html = reportHTML(r);
-  assert.doesNotMatch(html, /HSG65 review pack/);
+  assert.doesNotMatch(html, /Leadership review ·/);
   assert.match(html, /Decisions required/i);
   assert.match(html, /Sign-off/i);
+});
+
+// ── Wins must mirror the app's execution-plan aggregator: all three action
+//    sources, removed/deleted never counted, accepted labelled, legacy
+//    single-action management items still read. ──
+test('wins picks up every action source and honours removals', () => {
+
+  const state = {
+    riskProfile: [
+      { id: 'r1', activity: 'Guarding', category: 'Physical', likelihood: '2', severity: '4', controls: 'guards', actions: [
+        { id: 'a1', desc: 'Fit interlock', owner: 'AB', due: '2026-08-01', status: 'Complete', completedDate: '2026-08-10' },
+        { id: 'a2', desc: 'Removed for demo', owner: 'AB', due: '2026-08-01', status: 'Complete', completedDate: '2026-08-10', hideFromPlan: true },
+        { id: 'a3', desc: 'Deleted one', owner: 'AB', due: '2026-08-01', status: 'Complete', completedDate: '2026-08-10', deleted: true },
+      ] },
+    ],
+    requirements: [
+      { id: 's1', heading: 'Training', items: [
+        { id: 'i1', actions: [{ id: 'm1', desc: 'Induction pack written', owner: 'SA', status: 'Complete', completedDate: '2026-08-12' }] },
+        { id: 'i2', action: 'Legacy single action', actionOwner: 'SA', actionStatus: 'Complete', completedDate: '2026-08-11' },   // pre-actions[] shape
+      ] },
+    ],
+    actionPlan: [
+      { id: 'p1', desc: 'Poster displayed', owner: 'Office', status: 'Complete', completedDate: '2026-08-09' },
+      { id: 'p2', desc: 'Old accepted item', owner: 'SA', due: '2026-01-01', status: 'Accepted', acceptDate: '2026-08-08' },
+      { id: 'p3', desc: 'Deleted plan item', status: 'Complete', completedDate: '2026-08-09', deleted: true },
+    ],
+  };
+  const X = deriveBoardExtras(state, { today: '2026-08-18' });
+  const descs = X.wins.map(w => w.desc);
+  assert.deepEqual(descs.sort(), ['Fit interlock', 'Induction pack written', 'Legacy single action', 'Old accepted item', 'Poster displayed'].sort());
+  assert.equal(X.wins.filter(w => w.accepted).length, 1);
+  assert.ok(X.wins.every(w => w.source), 'every win carries its source');
+  assert.ok(!descs.includes('Removed for demo') && !descs.includes('Deleted one') && !descs.includes('Deleted plan item'));
 });
 
 test('oversized profile spills the register and renumbers footers', () => {

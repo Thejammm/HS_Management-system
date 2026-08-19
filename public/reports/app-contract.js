@@ -1,9 +1,9 @@
 // ══════════════════════════════════════════════════════════════
-// APP CONTRACT — the definitions the app itself uses, mirrored for the
+// APP CONTRACT - the definitions the app itself uses, mirrored for the
 // report layer so a report can never count differently from a screen.
 // GENERATED from the app's own PROF_LIBRARY
 // (scripts/check-app-report-consistency.mjs asserts they still match the
-// live app on every run — edit the app, run the check, regenerate here).
+// live app on every run - edit the app, run the check, regenerate here).
 // ══════════════════════════════════════════════════════════════
 
 // The six HSG65 areas the consultant judges in words (Weak / Adequate /
@@ -140,7 +140,7 @@ export const MATURITY_DOMAINS = [
   }
 ];
 
-// ── Fatal potential (SIF) — verbatim port of the app's _riskSif ──
+// ── Fatal potential (SIF) - verbatim port of the app's _riskSif ──
 // Explicit boolean override wins; otherwise the credible worst case across
 // inherent, residual and target severity: 4-5 = could kill or seriously
 // injure. NOT "severity 5 only".
@@ -150,7 +150,7 @@ export function sifOf(r) {
   return s >= 4;
 }
 
-// ── Control status — verbatim port of the app's _riskControlStatus ──
+// ── Control status - verbatim port of the app's _riskControlStatus ──
 export function controlStatusOf(r) {
   const hasControls = !!(r && r.controls && String(r.controls).trim());
   const strong = r && (r.controlLevel === 'remove' || r.controlLevel === 'prevent');
@@ -159,7 +159,7 @@ export function controlStatusOf(r) {
   return 'Partial';
 }
 
-// ── Category normalisation — verbatim port of the app's _hazardType (applied
+// ── Category normalisation - verbatim port of the app's _hazardType (applied
 //    by the app's migrateLoadedState; the report normalises the same way so a
 //    legacy/imported category can never split the counts) ──
 export const HAZARD_TYPES = ['Physical','Chemical','Biological','Electrical','Ergonomic','Psychosocial','Fire','Environmental','Legal / Regulatory','Business continuity'];
@@ -179,11 +179,11 @@ export function hazardTypeOf(category, hazardText) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// RISK CONTROL STATUS — verbatim port of the app's hold model (the
+// RISK CONTROL STATUS - verbatim port of the app's hold model (the
 // replacement for the 0-5 maturity number). Grades each risk by recorded
 // facts; the company measure is a count and the HSG65 proportionality is
 // a rule. Must stay identical to the app's _riskHold/_holdBreach/
-// _holdSummary — the consistency check diffs them.
+// _holdSummary - the consistency check diffs them.
 // ══════════════════════════════════════════════════════════════
 export const HOLD_STATES = {
   held:     { k: 'held',     label: 'Held',         colour: '#16A34A', desc: 'Controls recorded, and the plan delivered and signed off - or the risk formally accepted.' },
@@ -199,7 +199,7 @@ function actionStatusOf(a) {
   if (a.status === 'Accepted') return 'Accepted';
   return a.status || 'Not started';
 }
-// Port of the app's _riskPlanState (kind only — the copy lives in the app).
+// Port of the app's _riskPlanState (kind only - the copy lives in the app).
 export function planStateOf(r) {
   const acts = ((r && r.actions) || []).filter(a => a && !a.deleted && (a.desc || a.owner || a.due));
   if (!acts.length) return 'none';

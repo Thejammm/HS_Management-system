@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════
-   Shared report layer — Industry design system.
+   Shared report layer - Industry design system.
    ground #f2f2f3 · ink #1d1f20 · hairlines #d4d4d7/#b7b7ba · accent #5980a6
    cover #1d2d3d · square corners · hairline frames · registration marks.
    Tier colours are semantic, never decoration; the tier word always prints
@@ -170,7 +170,7 @@
 /* ── Dark cover page: flip the furniture to light. The component colours
       above are tuned for paper; on the navy cover every ink/muted usage
       disappears (labels, decisions rationale, bar labels, registration
-      marks — reported unreadable Aug 2026). One scope fixes them all. ── */
+      marks - reported unreadable Aug 2026). One scope fixes them all. ── */
 .r-page-cover .r-frame { border-color:#416180; }
 .r-page-cover .r-frame-title, .r-page-cover .r-block-title,
 .r-page-cover .r-dist-lab, .r-page-cover .r-mx-ax,

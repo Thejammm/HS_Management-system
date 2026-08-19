@@ -18,7 +18,7 @@ const require = createRequire(import.meta.url);
 const here = path.dirname(url.fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
 const puppeteer = require(path.join(repo, 'node_modules', 'puppeteer-core'));
-const { deriveBoard } = await import(url.pathToFileURL(path.join(repo, 'public', 'reports', 'derive.js')));
+const { deriveBoard, deriveBoardExtras } = await import(url.pathToFileURL(path.join(repo, 'public', 'reports', 'derive.js')));
 const contract = await import(url.pathToFileURL(path.join(repo, 'public', 'reports', 'app-contract.js')));
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -85,6 +85,13 @@ const app = await page.evaluate((STATE) => {
     // per-risk plan state, counted the same way the report counts it.
     planDone: (S.riskProfile || []).filter(r => _riskPlanState(r).k === 'managed').length,
     planAccepted: (S.riskProfile || []).filter(r => _riskPlanState(r).k === 'accepted').length,
+    // Wins (board "Successes" page): the app's aggregator is the truth -
+    // every action closed in the report period (or undated) from all three
+    // sources, removed/deleted excluded.
+    winsAll: (function () {
+      const t = new Date(); t.setDate(t.getDate() - 90); const p90 = t.toISOString().slice(0, 10);
+      return _execActions().filter(a => (a.status === 'Complete' || a.status === 'Accepted') && ((a.resolvedDate || '') === '' || a.resolvedDate >= p90)).length;
+    })(),
     // The hold model as the SCREEN computes it — per-risk states + summary.
     hold: { total: H.total, held: H.held, working: H.working, slipping: H.slipping, notheld: H.notheld,
             breaches: H.breaches.map(b => ({ id: b.id, band: b.band, k: b.hold.k, breach: b.breach })),
@@ -115,6 +122,9 @@ eq('open actions (all sources)', app.open, D.openActions);
 eq('overdue actions (all sources)', app.overdue, D.overdue);
 eq('risks fully actioned (plan complete)', app.planDone, D.planDone);
 eq('risks formally accepted', app.planAccepted, D.planAccepted);
+// Wins: with every closure inside the report period, the board's successes
+// list must carry exactly what the app's execution plan calls delivered.
+eq('wins = app delivered (all sources)', app.winsAll, deriveBoardExtras(STATE, { today: TODAY }).wins.length);
 // Hold model: counts, per-risk states, breaches, and the exact pill/verdict
 // wording — the report must speak the app's words, not a paraphrase.
 eq('hold: state counts', { t: app.hold.total, h: app.hold.held, w: app.hold.working, s: app.hold.slipping, n: app.hold.notheld },

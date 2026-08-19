@@ -1,6 +1,6 @@
 // Reusable report blocks. Every template composes pages from these; each is a
 // pure function returning an HTML string (renderable in Node for snapshot
-// tests — no DOM access here). Styling lives in report.css.
+// tests - no DOM access here). Styling lives in report.css.
 import { TIER_COLOURS } from './derive.js';
 
 export const esc = (s) => String(s == null ? '' : s)
@@ -79,20 +79,20 @@ export function dualBar({ inherent, residual, tier }) {
   const colour = tier ? (TIER_COLOURS[tier] || '#749dc4') : '#b7b7ba';
   const w = s => Math.max(3, Math.min(100, ((s && s.score) || 0) / 25 * 100));
   return `<span class="r-wasnow">
-    <span class="r-wn-row"><i class="r-wn-lab">was</i><i class="r-wn-track">${inherent ? `<i class="r-wn-fill r-wn-ghost" style="width:${w(inherent)}%"></i>` : ''}</i><b class="r-wn-val">${inherent ? inherent.score : '—'}</b></span>
-    <span class="r-wn-row"><i class="r-wn-lab">now</i><i class="r-wn-track">${residual ? `<i class="r-wn-fill" style="width:${w(residual)}%;background:${colour}"></i>` : ''}</i><b class="r-wn-val">${residual ? residual.score : '—'}</b></span>
+    <span class="r-wn-row"><i class="r-wn-lab">was</i><i class="r-wn-track">${inherent ? `<i class="r-wn-fill r-wn-ghost" style="width:${w(inherent)}%"></i>` : ''}</i><b class="r-wn-val">${inherent ? inherent.score : '-'}</b></span>
+    <span class="r-wn-row"><i class="r-wn-lab">now</i><i class="r-wn-track">${residual ? `<i class="r-wn-fill" style="width:${w(residual)}%;background:${colour}"></i>` : ''}</i><b class="r-wn-val">${residual ? residual.score : '-'}</b></span>
   </span>`;
 }
 
 // The board register's score cell, matching the app's own strip
 // (now → plan → projected): the score as it stands, the score the plan is
 // working towards, and how much of the plan is delivered. Forward-looking on
-// Simon's instruction — the board wants "how are we doing", not history.
+// Simon's instruction - the board wants "how are we doing", not history.
 export function planBar({ residual, target, tier, targetTier, actsTotal, actsClosed }) {
   const w = s => Math.max(3, Math.min(100, ((s && s.score) || 0) / 25 * 100));
   const nowColour = tier ? (TIER_COLOURS[tier] || '#749dc4') : '#b7b7ba';
   const tgtColour = targetTier ? (TIER_COLOURS[targetTier] || '#749dc4') : '#749dc4';
-  const nowRow = `<span class="r-wn-row"><i class="r-wn-lab">now</i><i class="r-wn-track">${residual ? `<i class="r-wn-fill" style="width:${w(residual)}%;background:${nowColour}"></i>` : ''}</i><b class="r-wn-val">${residual ? residual.score : '—'}</b></span>`;
+  const nowRow = `<span class="r-wn-row"><i class="r-wn-lab">now</i><i class="r-wn-track">${residual ? `<i class="r-wn-fill" style="width:${w(residual)}%;background:${nowColour}"></i>` : ''}</i><b class="r-wn-val">${residual ? residual.score : '-'}</b></span>`;
   const planRow = target
     ? `<span class="r-wn-row"><i class="r-wn-lab">plan</i><i class="r-wn-track"><i class="r-wn-fill r-wn-plan" style="width:${w(target)}%;background:${tgtColour}"></i></i><b class="r-wn-val">${target.score}</b></span>`
     : `<span class="r-wn-row"><i class="r-wn-lab">plan</i><i class="r-wn-none">no target score set</i></span>`;
@@ -122,7 +122,7 @@ export function matrix5x5({ counts, caption }) {
     ${caption ? `<div class="r-footnote">${esc(caption)}</div>` : ''}</div>`;
 }
 
-// rows: [{label, value, max, text, colour?, marker?:{at,label}}] — bars where
+// rows: [{label, value, max, text, colour?, marker?:{at,label}}] - bars where
 // EACH row keeps its own real scale and shows its own exact figure. Built to
 // replace the "×5 so they share an axis" trick, which printed a bar reading 4
 // beside a sentence reading 0.7 (Simon: any small number that doesn't match
@@ -144,7 +144,7 @@ export function gapBars({ title, rows, footnote }) {
     (footnote ? `<div class="r-footnote">${esc(footnote)}</div>` : '') + `</div>`;
 }
 
-// items: [{label, n, colour?}] — horizontal distribution bars with counts.
+// items: [{label, n, colour?}] - horizontal distribution bars with counts.
 export function distributionBars({ items, title }) {
   const max = Math.max(1, ...items.map(i => i.n));
   return `<div class="r-dist">${title ? `<div class="r-block-title">${esc(title)}</div>` : ''}` +
@@ -155,14 +155,14 @@ export function distributionBars({ items, title }) {
     </div>`).join('') + `</div>`;
 }
 
-// Hierarchy of control strip — the Protect-and-below share made unmissable.
+// Hierarchy of control strip - the Protect-and-below share made unmissable.
 export function hierarchyStrip({ items, total, protectDown, title }) {
   const seg = items.filter(i => i.n > 0).map(i =>
     `<i class="r-hier-seg" style="flex:${i.n}" title="${esc(i.label)}"><b>${esc(i.label)}</b> ${i.n}</i>`).join('');
   const pct = total ? Math.round(protectDown / total * 100) : 0;
   return `<div class="r-hier">${title ? `<div class="r-block-title">${esc(title)}</div>` : ''}
     ${total ? `<div class="r-hier-strip">${seg}</div>` : `<div class="r-footnote">No control levels recorded yet.</div>`}
-    ${total ? `<div class="r-hier-callout">${pct}% of controlled risks rely on Protect, PPE or Admin measures — the weakest rungs of the hierarchy.</div>` : ''}
+    ${total ? `<div class="r-hier-callout">${pct}% of controlled risks rely on Protect, PPE or Admin measures - the weakest rungs of the hierarchy.</div>` : ''}
   </div>`;
 }
 
@@ -220,7 +220,7 @@ export function textBlock({ title, body, cls }) {
   return `<div class="r-text ${cls || ''}">${title ? `<div class="r-block-title">${esc(title)}</div>` : ''}<p>${esc(body)}</p></div>`;
 }
 
-// Cover page body (dark field) — Signal format page furniture.
+// Cover page body (dark field) - Signal format page furniture.
 export function coverBlock({ org, title, period, refCode, issued }) {
   return `<div class="r-cover">
     <div class="r-cover-org">${esc(org)}</div>

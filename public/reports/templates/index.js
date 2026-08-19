@@ -1,9 +1,9 @@
-// Report registry — the contract the format picker reads. One entry per
+// Report registry - the contract the format picker reads. One entry per
 // report type; each format is a skin over the same content (the DoD rule:
 // switching format changes the skin, not the content).
 //
 // The consultant's per-tenant choice persists in the state blob under
-// state.reportPrefs[reportId].format via the existing /api/state save path —
+// state.reportPrefs[reportId].format via the existing /api/state save path -
 // use getReportFormat/setReportFormat, no new storage.
 import { buildBoardReport, BOARD_SECTIONS } from './board-report.js';
 import { buildRiskAssessment } from './risk-assessment.js';
@@ -24,8 +24,8 @@ export const REPORTS = {
     id: 'board-report',
     title: 'Health & Safety Board Report',
     formats: [
-      { id: 'signal', title: 'Signal — data-forward, 4 pages', default: true },
-      { id: 'brief',  title: 'Brief — editorial board paper, 4 pages' },
+      { id: 'signal', title: 'Signal - data-forward, 4 pages', default: true },
+      { id: 'brief',  title: 'Brief - editorial board paper, 4 pages' },
     ],
     build: (state, opts) => buildBoardReport(state, opts),
   },
@@ -33,12 +33,12 @@ export const REPORTS = {
     id: 'risk-assessment',
     title: 'Risk Assessment',
     formats: [
-      { id: 'signal', title: 'Signal — data-forward', default: true },
-      { id: 'brief',  title: 'Brief — editorial' },
+      { id: 'signal', title: 'Signal - data-forward', default: true },
+      { id: 'brief',  title: 'Brief - editorial' },
     ],
     build: (state, opts) => buildRiskAssessment(state, opts),
   },
-  // audit and action-plan port next — add entries here; the engine needs no changes.
+  // audit and action-plan port next - add entries here; the engine needs no changes.
 };
 
 export function defaultFormat(reportId) {

@@ -29,8 +29,8 @@ export function buildRiskAssessment(state, opts = {}) {
   const cols = [
     { header: 'Activity', w: '22%' },
     { header: 'Hazard', w: '18%' },
-    { header: 'Inherent → residual', w: '22%' },
-    { header: 'Tier', w: '10%' },
+    { header: 'Score — was → now (of 25)', w: '22%' },
+    { header: 'Band', w: '10%' },
     { header: 'Controls', w: '28%' },
   ];
   const rowFor = r => ([
@@ -53,7 +53,7 @@ export function buildRiskAssessment(state, opts = {}) {
           { value: String(D.fatal), label: 'Fatal potential', tone: D.fatal ? 'bad' : 'ok' },
           { value: D.completeness + '%', label: 'Completeness' },
         ] },
-        { type: 'matrix5x5', counts: D.matrix, caption: 'Residual position (likelihood × severity).' },
+        { type: 'matrix5x5', counts: D.matrix, caption: 'Where each risk sits now, with controls in place (likelihood × severity).' },
       ],
     },
     ...slices.map((slice, i) => ({

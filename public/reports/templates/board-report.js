@@ -84,7 +84,7 @@ export function buildBoardReport(state, opts = {}) {
     { value: D.maxSev ? String(D.maxSev) + '/5' : '—', label: 'Highest credible harm', note: D.highestHarm, tone: D.maxSev >= 5 ? 'bad' : D.maxSev >= 4 ? 'warn' : undefined },
     { value: String(D.fatal), label: 'Fatal-potential risks', tone: D.fatal ? 'bad' : 'ok' },
     { value: String(D.fatalUncontrolled), label: 'Uncontrolled fatal-potential', tone: D.fatalUncontrolled ? 'bad' : 'ok' },
-    { value: String(D.highPlus), label: 'High or above (residual)', tone: D.highPlus ? 'warn' : 'ok' },
+    { value: String(D.highPlus), label: 'High or above (after controls)', tone: D.highPlus ? 'warn' : 'ok' },
     { value: String(D.overdue), label: 'Actions overdue', tone: D.overdue ? 'warn' : 'ok' },
     { value: D.completeness + '%', label: 'Profile completeness', tone: D.completeness < 60 ? 'warn' : undefined },
   ];
@@ -96,17 +96,17 @@ export function buildBoardReport(state, opts = {}) {
   if (!decisions.length) decisions.push({ text: D.empty ? 'Commission completion of the risk profile before the next board cycle.' : 'Note the position and maintain the current programme.', rationale: D.empty ? 'No decision can be soundly made from an incomplete profile.' : 'No exception requires a board decision this period.' });
 
   const expBars = {
-    type: 'distributionBars', title: 'Exposure vs management maturity',
+    type: 'distributionBars', title: 'Risk vs management — on the same scale',
     items: [
-      { label: 'Exposure', n: D.meanScore != null ? Math.round(D.meanScore) : 0, colour: D.profileTier ? TIER_COLOURS[D.profileTier] : undefined },
-      { label: 'Maturity ×5', n: D.maturityAvg != null ? Math.round(D.maturityAvg * 5) : 0 },
+      { label: 'Risk score (avg of 25)', n: D.meanScore != null ? Math.round(D.meanScore) : 0, colour: D.profileTier ? TIER_COLOURS[D.profileTier] : undefined },
+      { label: 'Management (score × 5)', n: D.maturityAvg != null ? Math.round(D.maturityAvg * 5) : 0 },
     ],
   };
   const verdictLine = D.empty
     ? 'No verdict — the profile is not yet rated.'
     : (D.meanScore != null && D.maturityAvg != null)
-      ? ('Mean residual score ' + D.meanScore.toFixed(1) + ' of 25 against maturity ' + D.maturityAvg.toFixed(1) + ' of 5' + (D.maturityAvg < 3 && D.highPlus ? ' — the profile currently outweighs the system managing it.' : ' — broadly matched.'))
-      : 'Maturity not yet scored — the exposure side of this comparison stands alone.';
+      ? ('Risk: ' + D.meanScore.toFixed(1) + ' of 25. Management: ' + D.maturityAvg.toFixed(1) + ' of 5' + (D.maturityAvg < 3 && D.highPlus ? ' — the risk currently outweighs the management carrying it.' : ' — broadly matched.'))
+      : 'Management maturity not yet scored — the risk side of this comparison stands alone.';
 
   const page1 = {
     label: 'Position', cover: format === 'signal', blocks: [
@@ -230,8 +230,8 @@ export function buildBoardReport(state, opts = {}) {
   // ── Page 2+: Register (spills beyond ~16 rows) ──
   const regCols = [
     { header: 'Activity / risk', w: '34%' },
-    { header: 'Inherent → residual', w: '30%' },
-    { header: 'Tier', w: '12%' },
+    { header: 'Score — was → now (of 25)', w: '30%' },
+    { header: 'Band', w: '12%' },
     { header: 'Controls', w: '12%' },
     { header: 'Owner', w: '12%' },
   ];
@@ -264,8 +264,8 @@ export function buildBoardReport(state, opts = {}) {
     label: 'Interpretation', blocks: [
       mast,
       { type: 'titleBlock', kicker: 'Interpretation', headline: 'Where the risk sits and how it is held' },
-      { type: 'matrix5x5', counts: D.matrix, caption: 'Residual position of every rated risk (likelihood × severity).' },
-      { type: 'distributionBars', title: 'Risks by tier (residual)', items: ['Critical', 'High', 'Medium', 'Low'].map(t => ({ label: t, n: D.byTier[t], colour: TIER_COLOURS[t] })) },
+      { type: 'matrix5x5', counts: D.matrix, caption: 'Where every rated risk sits now, with controls in place (likelihood × severity).' },
+      { type: 'distributionBars', title: 'Risks by band (after controls)', items: ['Critical', 'High', 'Medium', 'Low'].map(t => ({ label: t, n: D.byTier[t], colour: TIER_COLOURS[t] })) },
       { type: 'hierarchyStrip', title: 'Hierarchy of control', items: D.hierarchy, total: D.hierTotal, protectDown: D.protectDown },
       { type: 'textBlock', title: 'Exceptions', body: zeros.join(' ') },
       { type: 'textBlock', title: 'Consultant commentary', body: (opts.meta && opts.meta.commentary) || 'Reserved for the consultant’s reading of this period.', cls: 'r-commentary' },

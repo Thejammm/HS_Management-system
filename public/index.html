@@ -3404,6 +3404,19 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rpx-caption{font-size:11.5px;color:var(--text-muted);line-height:1.55;margin-top:8px;}
     .rpx-verdict{font-size:23px;line-height:1.3;font-weight:600;color:var(--text);margin:2px 0 8px;}
     .rpx-explain{font-size:12.5px;color:var(--text-muted);line-height:1.6;}
+    .rpx-how{margin-top:8px;}
+    .rpx-how-lab{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:5px;}
+    .rpx-how-row{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;}
+    .rpx-how-step{flex:1 1 150px;min-width:150px;border:1px dashed var(--border);border-radius:8px;padding:7px 9px;cursor:help;}
+    .rpx-how-step .t{display:block;font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;}
+    .rpx-how-step .e{display:block;font-size:10.5px;color:var(--text-muted);margin:2px 0 3px;line-height:1.35;}
+    .rpx-how-step .v{display:block;font-size:14px;font-weight:800;color:var(--text);}
+    .rpx-how-step .v i{font-style:normal;font-weight:600;font-size:11px;color:var(--text-muted);}
+    .rpx-how-op{align-self:center;font-size:11px;font-weight:800;color:var(--text-muted);flex:0 0 auto;}
+    .rpx-req{border-collapse:collapse;margin:3px 0 4px;}
+    .rpx-req td{border:1px solid var(--border);font-size:9px;padding:2px 6px;text-align:center;color:var(--text-muted);line-height:1.25;}
+    .rpx-req td b{font-size:10.5px;color:var(--text);}
+    .rpx-req td.on{border-color:var(--accent);background:var(--accent-light,#eef6fb);color:var(--text);font-weight:700;}
     .rpx-segbar{display:flex;gap:4px;height:10px;margin:4px 0 3px;}
     .rpx-segbar>span{flex:1;border-radius:3px;background:var(--muted-bg);}
     .rpx-marks{position:relative;height:16px;font-size:10.5px;font-weight:700;}
@@ -14738,7 +14751,40 @@ function _rpVerdictBits(M){
   // App-palette equivalents of the pill states, for consumers that colour by
   // the standard app hexes (the position box and the risk-profile PDF).
   const rag = { 'adequately controlled':'#16A34A', 'broadly controlled':'#F59E0B', 'under-controlled':'#DC2626', 'incomplete':'#9CA3AF' }[M.verdict];
-  return { pillC, pillT, pillTip, verdictLine, explain, rag };
+  // Visual "how it is worked out" — three boxes reading like an equation,
+  // with the HSG65 required-level table and the full detail on hover.
+  // (The prose version above confused Simon; this replaces it on screen.)
+  let explainHTML;
+  if(M.verdict==='incomplete' || M.meanScore==null || M.maturity==null){
+    explainHTML = `<div class="rpx-explain">${esc(explain)}</div>`;
+  } else {
+    let domScores='';
+    try{ domScores=_maturityDomains().map(d=>{ const a=_profMaturity(d.id).avg; return d.name+' '+(a==null?'not scored':a.toFixed(1)); }).join(' · '); }catch(e){}
+    const reqCells=['Low','Medium','High','Critical'].map(b=>`<td class="${M.profileBand===b?'on':''}" title="A ${b.toLowerCase()} risk profile needs management maturity of at least ${RISK_REQUIRED_MATURITY[b]}.0 of 5 — HSG65 expects management strength in proportion to the risk.">${b}<br><b>${RISK_REQUIRED_MATURITY[b]}.0</b></td>`).join('');
+    explainHTML = `<div class="rpx-how">
+      <div class="rpx-how-lab rpx-mono">How it is worked out — hover any box for the detail</div>
+      <div class="rpx-how-row">
+        <div class="rpx-how-step" title="Each risk scores likelihood (1-5) × severity (1-5); the top score is 25. ${M.meanScore.toFixed(1)} is the average across your ${M.rated.length} rated risk${M.rated.length!==1?'s':''}, which puts the profile in the ${esc(M.profileBand)} band.">
+          <span class="t">1 · Risk score</span>
+          <span class="e">likelihood × severity, averaged</span>
+          <span class="v">${M.meanScore.toFixed(1)} / 25 <i>= ${esc(M.profileBand)} band</i></span>
+        </div>
+        <span class="rpx-how-op">vs</span>
+        <div class="rpx-how-step" title="Each risk carries the score of the management domain that controls it, from the Management maturity assessment (0-5). ${M.maturity.toFixed(1)} is the average across the same risks — risks sitting in weakly-managed areas pull it down. Domain scores: ${esc(domScores)}">
+          <span class="t">2 · Management score</span>
+          <span class="e">how well each risk's controls are managed</span>
+          <span class="v">${M.maturity.toFixed(1)} / 5</span>
+        </div>
+        <span class="rpx-how-op">→</span>
+        <div class="rpx-how-step" title="HSG65 — the HSE's management standard — expects management strength to match the size of the risk. The table shows the level each band needs; your band is highlighted. Gap = needed minus your management score.">
+          <span class="t">3 · What HSG65 needs</span>
+          <table class="rpx-req"><tr>${reqCells}</tr></table>
+          <span class="v">${M.shortfall>0?('gap = '+M.required+'.0 − '+M.maturity.toFixed(1)+' = <b>'+M.shortfall.toFixed(1)+'</b>'):'needed level met ✓'}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+  return { pillC, pillT, pillTip, verdictLine, explain, explainHTML, rag };
 }
 // Cell selection: one shared state, panel re-renders wherever it is mounted.
 var _rpSel = null;
@@ -14788,11 +14834,11 @@ function _riskPanelHTML(o){
     <div class="rpx-caption"><b>Where is the risk?</b> Each square is one mix of likelihood (1-5, across) and severity (1-5, up). The number is how many risks sit in that square; the colour is how serious that square is (${esc(_bandRangeText())}).<br><b>Where is the maturity?</b> The small white bar along a square's base shows how well those risks are managed, out of 5 - the fuller the bar, the better managed.</div>
   </div>`;
   // ── Right: rating derived from both ──
-  const { verdictLine, explain } = _rpVerdictBits(M);
+  const { verdictLine, explainHTML } = _rpVerdictBits(M);
   const rating = `<div>
     <div class="rpx-microlab rpx-mono">Your position</div>
     <div class="rpx-verdict">${esc(verdictLine)}</div>
-    <div class="rpx-explain">${esc(explain)}</div>
+    ${explainHTML}
   </div>`;
   const m = M.maturity==null?0:M.maturity;
   const segs = [1,2,3,4,5].map(n=>{
@@ -18334,7 +18380,7 @@ function renderRiskReview(){
             ${os.required!=null?chip(os.required+'.0','Needed for this profile','var(--text-muted)'):''}
           </div>
           <div style="font-size:13px;color:var(--text);line-height:1.5;">${esc(os.verdict)}</div>
-          <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-top:5px;">${esc(os.explain||'')}</div>
+          ${(_rpVerdictBits(os.M||_riskPanelModel()).explainHTML)||''}
         </div>
       </div>
     </div></details>`;

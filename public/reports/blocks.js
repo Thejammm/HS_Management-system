@@ -70,16 +70,17 @@ export function dataTable({ cols, rows, footnote }) {
     (footnote ? `<div class="r-footnote">${esc(footnote)}</div>` : '');
 }
 
-// Inherent (ghost, behind) → residual (solid) on one 0–25 track.
+// Was → now, two thin bars in line: what the score was before controls
+// (hatched) above what it is with controls in place (solid, band colour),
+// numbers alongside. Replaced the single overlaid ghost bar, which read
+// as one confusing bar rather than a change.
 export function dualBar({ inherent, residual, tier }) {
-  const iw = inherent ? Math.min(100, inherent.score / 25 * 100) : 0;
-  const rw = residual ? Math.min(100, residual.score / 25 * 100) : 0;
   const colour = tier ? (TIER_COLOURS[tier] || '#749dc4') : '#b7b7ba';
-  const label = residual ? residual.score : '—';
-  return `<div class="r-dualbar">
-    ${inherent ? `<i class="r-dual-inh" style="width:${iw}%"></i>` : ''}
-    ${residual ? `<i class="r-dual-res" style="width:${rw}%;background:${colour}"><b>${label}</b></i>` : `<b class="r-dual-none">not rated</b>`}
-  </div>`;
+  const w = s => Math.max(3, Math.min(100, ((s && s.score) || 0) / 25 * 100));
+  return `<span class="r-wasnow">
+    <span class="r-wn-row"><i class="r-wn-lab">was</i><i class="r-wn-track">${inherent ? `<i class="r-wn-fill r-wn-ghost" style="width:${w(inherent)}%"></i>` : ''}</i><b class="r-wn-val">${inherent ? inherent.score : '—'}</b></span>
+    <span class="r-wn-row"><i class="r-wn-lab">now</i><i class="r-wn-track">${residual ? `<i class="r-wn-fill" style="width:${w(residual)}%;background:${colour}"></i>` : ''}</i><b class="r-wn-val">${residual ? residual.score : '—'}</b></span>
+  </span>`;
 }
 
 // counts: { "l|s": n } keyed by likelihood|severity, residual only.

@@ -91,12 +91,15 @@
 .r-tier i { width:8px; height:8px; display:inline-block; }
 .r-tier-none { color:var(--r-muted); }
 
-/* ── Dual bar (inherent ghost behind residual) ── */
-.r-dualbar { position:relative; height:11px; background:#e6e6e8; border:1px solid var(--r-hair); min-width:120px; }
-.r-dual-inh { position:absolute; left:0; top:0; bottom:0; background:repeating-linear-gradient(45deg,#c9ced4 0 3px,#dde1e6 3px 6px); }
-.r-dual-res { position:absolute; left:0; top:0; bottom:0; display:flex; align-items:center; justify-content:flex-end; }
-.r-dual-res b { color:#fff; font-size:7.5px; padding-right:3px; font-weight:600; }
-.r-dual-none { font-size:8px; color:var(--r-muted); padding-left:4px; }
+/* ── Was → now bars (before controls / with controls, in line) ── */
+.r-wasnow { display:block; min-width:130px; }
+.r-wn-row { display:flex; align-items:center; gap:5px; }
+.r-wn-row + .r-wn-row { margin-top:2px; }
+.r-wn-lab { font-size:6.5px; font-weight:600; text-transform:uppercase; letter-spacing:.12em; color:var(--r-muted); width:20px; flex:0 0 auto; font-style:normal; }
+.r-wn-track { flex:1; height:7px; background:#e6e6e8; border:1px solid var(--r-hair); position:relative; display:block; }
+.r-wn-fill { position:absolute; left:0; top:0; bottom:0; display:block; }
+.r-wn-ghost { background:repeating-linear-gradient(45deg,#c9ced4 0 3px,#dde1e6 3px 6px); }
+.r-wn-val { font-size:8.5px; font-weight:700; width:24px; text-align:right; font-style:normal; }
 
 /* ── 5×5 matrix ── */
 .r-matrix { display:inline-block; }

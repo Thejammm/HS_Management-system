@@ -164,6 +164,31 @@
   border-top:1px solid var(--r-hair2); padding-top:5px; font-size:6.8px; letter-spacing:.14em; color:var(--r-muted); }
 .r-page-cover .r-pagefoot { border-top-color:#416180; color:#94bce3; }
 
+/* ── Dark cover page: flip the furniture to light. The component colours
+      above are tuned for paper; on the navy cover every ink/muted usage
+      disappears (labels, decisions rationale, bar labels, registration
+      marks — reported unreadable Aug 2026). One scope fixes them all. ── */
+.r-page-cover .r-frame { border-color:#416180; }
+.r-page-cover .r-frame-title, .r-page-cover .r-block-title,
+.r-page-cover .r-dist-lab, .r-page-cover .r-mx-ax,
+.r-page-cover .r-mx-ylab, .r-page-cover .r-mx-xlab,
+.r-page-cover .r-kpi-lab, .r-page-cover .r-kpi-note,
+.r-page-cover .r-so-lab, .r-page-cover .r-step-lab,
+.r-page-cover .r-table th { color:#a7c4e0; }
+.r-page-cover .r-dec-why, .r-page-cover .r-footnote { color:#8fb2d4; }
+.r-page-cover .r-reg::before, .r-page-cover .r-reg::after { background:#8fb2d4; }
+.r-page-cover .r-kpis, .r-page-cover .r-kpi { border-color:#416180; }
+.r-page-cover .r-table th { border-bottom-color:#a7c4e0; }
+.r-page-cover .r-table td { border-bottom-color:rgba(65,97,128,.6); }
+.r-page-cover .r-dist-track, .r-page-cover .r-dualbar, .r-page-cover .r-step { background:#14222f; border-color:#416180; }
+.r-page-cover .r-kpi-bad  .r-kpi-val { color:#e2725b; }
+.r-page-cover .r-kpi-warn .r-kpi-val { color:#e0a35e; }
+.r-page-cover .r-kpi-ok   .r-kpi-val { color:#7fbf8e; }
+.r-page-cover .r-kpi-muted .r-kpi-val { color:#a7c4e0; }
+.r-page-cover .r-tier-none { color:#a7c4e0; }
+.r-page-cover .r-statement, .r-page-cover .r-sowhat { border:1px solid #416180; }
+.r-page-cover .r-so-line { border-bottom-color:#a7c4e0; }
+
 /* ── Brief format skin: editorial, lighter furniture, serif-feel weightings ── */
 .r-fmt-brief .r-headline { font-size:22px; letter-spacing:.01em; }
 .r-fmt-brief .r-kpis { border:0; border-top:1px solid var(--r-ink); border-bottom:1px solid var(--r-ink); }

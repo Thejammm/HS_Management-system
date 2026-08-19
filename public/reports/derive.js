@@ -82,6 +82,83 @@ const HIERARCHY = [
   { key: 'admin',   label: 'Admin'     },
 ];
 
+// ── HSG65 review pack ──
+// HSG65 (Reviewing performance, p55) lists what a leadership review draws on:
+// active monitoring, reactive monitoring, accident/incident/near-miss data,
+// training records, inspection reports, investigation reports, risk
+// assessments, issues raised by workers, and checks required by law. This
+// derives each from the live state so the board report can carry them.
+export function deriveBoardExtras(state, opts = {}) {
+  const s = state || {};
+  const today = (opts.today || new Date().toISOString().slice(0, 10));
+  const daysAgo = (d) => { const t = new Date(today + 'T12:00:00'); t.setDate(t.getDate() - d); return t.toISOString().slice(0, 10); };
+  const daysOn = (d) => { const t = new Date(today + 'T12:00:00'); t.setDate(t.getDate() + d); return t.toISOString().slice(0, 10); };
+  const p90 = daysAgo(90), soon = daysOn(60);
+
+  // Reactive monitoring — incidents in the period + investigation state.
+  const inc = Array.isArray(s.incidents) ? s.incidents : [];
+  const incRecent = inc.filter(i => (i.date || '') >= p90)
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const incOpen = inc.filter(i => i.status === 'Open').length;
+  const incRiddor = inc.filter(i => i.type === 'RIDDOR reportable').length;
+  const incNoCause = incRecent.filter(i => !String(i.immediateCause || '').trim() && !String(i.rootCause || '').trim()).length;
+
+  // Active monitoring — planned oversight and figure-keeping.
+  const site = Array.isArray(s.siteInspections) ? s.siteInspections : [];
+  const siteDone = site.filter(r => r.actual).length;
+  const siteOverdue = site.filter(r => !r.actual && r.planned && r.planned < today && r.outcome !== 'Not done').length;
+  const inspections = Array.isArray(s.inspections) ? s.inspections : [];
+  const months = (s.monitoring && s.monitoring.months) || {};
+  const monthsSaved = Object.keys(months).filter(k => months[k] && months[k].enteredAt).sort();
+
+  // Training record.
+  const trn = Array.isArray(s.training) ? s.training : [];
+  const trag = (expiry) => { if (!expiry) return 'grey'; if (expiry < today) return 'red'; return expiry <= soon ? 'amber' : 'green'; };
+  const trnExpired = trn.filter(x => trag(x.expiry) === 'red');
+  const trnSoon = trn.filter(x => trag(x.expiry) === 'amber');
+  const staffN = [...new Set(trn.map(x => x.employee).filter(Boolean))].length;
+
+  // Issues raised by workers — the two-way briefing record.
+  const br = (s.consultation && Array.isArray(s.consultation.briefings)) ? s.consultation.briefings : [];
+  const brRecent = br.filter(b => (b.date || '') >= p90)
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const brFb = brRecent.filter(b => String(b.feedback || '').trim());
+
+  // Checks required by law — the statutory tracker.
+  const regSecs = (s.monitoring && Array.isArray(s.monitoring.regSections)) ? s.monitoring.regSections : [];
+  const statItems = regSecs.flatMap(sec => Array.isArray(sec.items) ? sec.items : []);
+  const statOverdue = statItems.filter(it => it && it.dueDate && it.dueDate < today).length;
+  const statDueSoon = statItems.filter(it => it && it.dueDate && it.dueDate >= today && it.dueDate <= soon).length;
+
+  // Successes — HSG65: "reviewing also gives you the opportunity to celebrate
+  // and promote your health and safety successes."
+  const wins = [];
+  (Array.isArray(s.riskProfile) ? s.riskProfile : []).forEach(r => ((r.actions) || []).forEach(a => {
+    if (!a || a.deleted) return;
+    const done = a.status === 'Complete' ? (a.completedDate || '') : (a.status === 'Accepted' ? (a.acceptDate || '') : null);
+    if (done !== null && (done === '' || done >= p90)) wins.push({ desc: String(a.desc || '(action)'), when: done, owner: String(a.owner || '') });
+  }));
+  (Array.isArray(s.actionPlan) ? s.actionPlan : []).forEach(a => {
+    if (a && a.status === 'Complete' && ((a.completedDate || '') === '' || (a.completedDate || '') >= p90))
+      wins.push({ desc: String(a.desc || '(action)'), when: a.completedDate || '', owner: String(a.owner || '') });
+  });
+  wins.sort((a, b) => String(b.when).localeCompare(String(a.when)));
+
+  // Closing the loop — movement since the audit baseline (if snapshots exist).
+  const snaps = Array.isArray(s.auditSnapshots) ? s.auditSnapshots : [];
+  const baseline = snaps.length ? snaps[0] : null;
+
+  return {
+    incTotal: inc.length, incRecent, incOpen, incRiddor, incNoCause,
+    siteTotal: site.length, siteDone, siteOverdue, inspTotal: inspections.length,
+    monthsSaved,
+    trnTotal: trn.length, trnExpired, trnSoon, staffN,
+    brTotal: br.length, brRecent, brFb,
+    statTotal: statItems.length, statOverdue, statDueSoon,
+    wins, baseline, periodFrom: p90,
+  };
+}
+
 export function deriveBoard(state, opts = {}) {
   const s = state || {};
   const bands = bandsFrom(s);

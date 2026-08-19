@@ -5,8 +5,19 @@
 // The consultant's per-tenant choice persists in the state blob under
 // state.reportPrefs[reportId].format via the existing /api/state save path —
 // use getReportFormat/setReportFormat, no new storage.
-import { buildBoardReport } from './board-report.js';
+import { buildBoardReport, BOARD_SECTIONS } from './board-report.js';
 import { buildRiskAssessment } from './risk-assessment.js';
+export { BOARD_SECTIONS };
+
+// Per-tenant section choice for the board report, same storage pattern as the
+// format preference. Mutates the state blob; caller saves via the normal path.
+export function setBoardSectionHidden(state, sectionId, hidden) {
+  if (!state.reportPrefs || typeof state.reportPrefs !== 'object') state.reportPrefs = {};
+  const p = state.reportPrefs['board-report'] = Object.assign({}, state.reportPrefs['board-report']);
+  const h = p.hidden = Object.assign({}, p.hidden);
+  if (hidden) h[sectionId] = true; else delete h[sectionId];
+  return state;
+}
 
 export const REPORTS = {
   'board-report': {

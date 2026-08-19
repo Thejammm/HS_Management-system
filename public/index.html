@@ -13713,8 +13713,9 @@ function renderReports(){
       tags:['Statutory','HSWA s.2(3)','Hand-over'] },
     { title:'Board Report', accent:'#DC2626', tint:'#FCE9E9', fn:'openBoardReportPrint()', meta:riskMeta,
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
-      desc:'For directors: the verdict, the numbers that matter, what can kill or seriously injure someone, and the decisions to sign off.',
-      tags:['Directors','Narrative','Sign-off'] },
+      desc:'For the leadership meeting, defaulted to what HSG65 says a review draws on: the position and decisions, incidents and investigations, active monitoring, training, worker-raised issues, statutory checks, successes and movement since the baseline.',
+      tags:['Directors','HSG65 review','Sign-off'],
+      extra:`<button class="btn btn-ghost btn-xs no-print" style="margin-top:6px;" title="Choose which sections this client's board report includes — defaults follow HSG65's review list; saved per client" onclick="openBoardSections()">⚙ Choose sections</button>` },
     { title:'Risk Profile', accent:'#2563EB', tint:'#E7EFFD', fn:'downloadRiskProfileReport()', meta:riskMeta,
       icon:svg('<path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>'),
       desc:'The full technical register in the energy-source model: the L×S matrix with company score, controls by level and energy coverage.',
@@ -13770,6 +13771,7 @@ function renderReports(){
       <p>${esc(r.desc)}</p>
       <div class="rep-meta">${esc(r.meta)}</div>
       <button class="btn rep-btn" onclick="${r.fn}">${dl} Download PDF</button>
+      ${r.extra||''}
     </div>`;
   cont.innerHTML = `
     <div class="rep-hero">
@@ -17373,6 +17375,39 @@ function buildActionPlanReport(){
 // legacy jsPDF generator stays reachable via ?report=legacy until sign-off,
 // and is the automatic fallback wherever the module layer cannot load
 // (including the offline file:// master).
+// ── Board report section picker: per-client, defaults follow HSG65's list of
+//    what a leadership review draws on (the section list ships with the
+//    report template — one source of truth, imported here). ──
+async function openBoardSections(){
+  if(_blockIfReadOnly()) return;
+  let secs=[];
+  try{ const t=await import('/reports/templates/index.js'); secs=t.BOARD_SECTIONS||[]; }
+  catch(e){ console.error('Section list unavailable', e); showToast('Could not load the section list — are you online?','error'); return; }
+  const p=(S.reportPrefs&&S.reportPrefs['board-report'])||{}; const hidden=p.hidden||{};
+  const old=document.getElementById('boardSecOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='boardSecOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:560px;width:100%;max-height:86vh;overflow:auto;padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.35);">
+    <div style="font-weight:800;font-size:15px;margin-bottom:4px;">Board report — choose the sections</div>
+    <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">The defaults follow HSG65's list of what a leadership review draws on. Untick anything this client's meeting doesn't need — the choice is saved per client and applies to the downloaded PDF.</div>
+    ${secs.map(s=>`<label style="display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed var(--border);cursor:${s.locked?'default':'pointer'};">
+      <input type="checkbox" ${hidden[s.id]?'':'checked'} ${s.locked?'disabled':''} onchange="setBoardSection('${s.id}',!this.checked)" style="margin-top:2px;width:auto;min-height:auto;">
+      <span style="font-size:13px;line-height:1.4;"><b>${esc(s.label)}</b>${s.locked?' <span style="font-size:10.5px;color:var(--text-muted);">(always included)</span>':''}${s.hsg?`<br><span style="font-size:11px;color:var(--text-muted);">HSG65: ${esc(s.hsg)}</span>`:''}</span>
+    </label>`).join('')}
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+      <button class="btn btn-primary" onclick="document.getElementById('boardSecOv').remove()">Done</button>
+    </div></div>`;
+  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+function setBoardSection(id, hide){
+  if(_roLocked()) return;
+  if(!S.reportPrefs||typeof S.reportPrefs!=='object') S.reportPrefs={};
+  const p=S.reportPrefs['board-report']=Object.assign({},S.reportPrefs['board-report']);
+  const h=p.hidden=Object.assign({},p.hidden);
+  if(hide) h[id]=true; else delete h[id];
+  saveData();
+}
 async function openBoardReportPrint(){
   try{ if(new URLSearchParams(location.search).get('report')==='legacy'){ downloadBoardReport(); return; } }catch(e){}
   // First choice: the server renders the SAME template + CSS through headless

@@ -1,8 +1,36 @@
 // Board report template — Signal (data-forward) and Brief (editorial) formats.
 // Both build the SAME content; format changes the skin class only.
-import { deriveBoard, noneOrCount, countPhrase, hasHave, TIER_COLOURS } from '../derive.js';
+import { deriveBoard, deriveBoardExtras, noneOrCount, countPhrase, hasHave, TIER_COLOURS } from '../derive.js';
 import { esc, tierWord, dualBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
+
+// The report's sections, defaulted to what HSG65 says a leadership review
+// draws on (Reviewing performance, p55): active + reactive monitoring,
+// accident/incident/near-miss data, training records, inspection and
+// investigation reports, risk assessments, issues raised by workers, and
+// checks required by law — plus HSG65's own instruction to celebrate
+// successes and close the loop. Per-client choice lives in
+// state.reportPrefs['board-report'].hidden (locked sections always print).
+export const BOARD_SECTIONS = [
+  { id: 'position',       label: 'Position & decisions (headline, KPIs, decisions required)', locked: true },
+  { id: 'reactive',       label: 'Accidents, incidents & near misses', hsg: 'Reactive monitoring · incident data · investigation reports' },
+  { id: 'active',         label: 'Active monitoring — inspections, audits & figures', hsg: 'Active monitoring · inspection reports' },
+  { id: 'training',       label: 'Training record', hsg: 'Training record' },
+  { id: 'workers',        label: 'Issues raised by workers', hsg: 'Worker consultation & involvement' },
+  { id: 'statutory',      label: 'Checks required by law', hsg: 'Statutory checks (e.g. lifting equipment)' },
+  { id: 'wins',           label: 'Successes this period', hsg: 'HSG65: celebrate and promote successes' },
+  { id: 'sinceLast',      label: 'Movement since the baseline', hsg: 'Closing the loop' },
+  { id: 'register',       label: 'Fatal & major-harm register', hsg: 'Risk assessments' },
+  { id: 'interpretation', label: 'Interpretation (matrix, tiers, hierarchy of control)' },
+  { id: 'maturity',       label: 'Exposure & maturity, directors’ duty, sign-off', locked: true },
+];
+export function boardHidden(state) {
+  const p = state && state.reportPrefs && state.reportPrefs['board-report'];
+  const h = (p && p.hidden && typeof p.hidden === 'object') ? p.hidden : {};
+  const out = {};
+  BOARD_SECTIONS.forEach(s => { out[s.id] = !s.locked && !!h[s.id]; });
+  return out;
+}
 
 const MATURITY_DOMAIN_LABELS = {
   leadership: 'Leadership & Governance', contractor: 'Contractor & Supply Chain',
@@ -91,6 +119,114 @@ export function buildBoardReport(state, opts = {}) {
     ],
   };
 
+  // ── HSG65 review pages — what the leadership meeting reviews, from the
+  //    live system. Sections toggle per client; empty pages drop out. ──
+  const X = deriveBoardExtras(state, opts);
+  const hide = boardHidden(state);
+  const fmtD = (d) => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  const hsgFoot = { type: 'textBlock', body: 'HSG65 (Reviewing performance) lists what a leadership review draws on: active and reactive monitoring, accident/incident/near-miss data, training records, inspection and investigation reports, risk assessments, issues raised by workers, and checks required by law. Each section above reports one of them from the live system. Period covered: the 90 days to ' + today + '.', cls: 'r-stamp' };
+
+  const monBlocks = [];
+  if (!hide.reactive) {
+    monBlocks.push({ type: 'kpiStrip', tiles: [
+      { value: String(X.incRecent.length), label: 'Events in 90 days', tone: X.incRecent.length ? 'warn' : 'ok' },
+      { value: String(X.incOpen), label: 'Investigations open', tone: X.incOpen ? 'warn' : 'ok' },
+      { value: String(X.incRiddor), label: 'RIDDOR reportable', tone: X.incRiddor ? 'bad' : 'ok' },
+      { value: String(X.incNoCause), label: 'No cause recorded', note: 'of this period’s events', tone: X.incNoCause ? 'warn' : 'ok' },
+    ] });
+    monBlocks.push(X.incRecent.length
+      ? { type: 'dataTable',
+          cols: [ { header: 'Date', w: '12%' }, { header: 'Type', w: '15%' }, { header: 'What happened', w: '49%' }, { header: 'Status', w: '24%' } ],
+          rows: X.incRecent.slice(0, 6).map(i => [ fmtD(i.date), i.type || '—', String(i.what || '(not recorded)').slice(0, 110), (i.status === 'Open' ? 'Open — under investigation' : (i.status || 'Closed')) ]),
+          footnote: X.incRecent.length > 6 ? ('Showing the latest 6 of ' + X.incRecent.length + ' events this period; the full record is the incident register.') : 'Full detail and investigations live on the incident register.' }
+      : { type: 'textBlock', title: 'Reactive monitoring', body: 'No accidents, incidents or near misses were recorded in the period. Confirm that reflects reality rather than under-reporting — a healthy system still records near misses.' });
+  }
+  if (!hide.active) {
+    monBlocks.push({ type: 'textBlock', title: 'Active monitoring — checking before things go wrong', body:
+      noneOrCount(X.siteDone, 'process-assurance visit (site inspections, architectural reviews, CDM audits) has been completed', 'process-assurance visits (site inspections, architectural reviews, CDM audits) have been completed') + '. '
+      + noneOrCount(X.siteOverdue, 'planned visit is overdue', 'planned visits are overdue') + '. '
+      + (X.inspTotal ? countPhrase(X.inspTotal, 'workplace inspection is', 'workplace inspections are') + ' on file from the linked inspection app. ' : '')
+      + (X.monthsSaved.length ? 'Monthly performance figures are saved for ' + countPhrase(X.monthsSaved.length, 'month', 'months') + ' (latest ' + X.monthsSaved[X.monthsSaved.length - 1] + ').' : 'No monthly performance figures have been saved yet.') });
+  }
+  const monitoringPage = (monBlocks.length && !(hide.reactive && hide.active)) ? {
+    label: 'This period', section: 'monitoring', blocks: [
+      mast,
+      { type: 'titleBlock', kicker: 'HSG65 review pack · reactive & active monitoring',
+        headline: X.incRecent.length ? (countPhrase(X.incRecent.length, 'event', 'events') + ' in 90 days; ' + noneOrCount(X.incOpen, 'investigation open', 'investigations open', 'no') + '.') : 'A quiet period — no recorded events in 90 days.',
+        standfirst: 'What went wrong (reactive) and what checking happened before anything went wrong (active). Both halves matter: a quiet incident record is only good news if the active checks are happening.' },
+      ...monBlocks, hsgFoot,
+    ],
+  } : null;
+
+  const peopleBlocks = [];
+  if (!hide.training) {
+    peopleBlocks.push({ type: 'kpiStrip', tiles: [
+      { value: String(X.staffN), label: 'Staff on the matrix', tone: X.staffN ? undefined : 'muted' },
+      { value: String(X.trnTotal), label: 'Training records' },
+      { value: String(X.trnExpired.length), label: 'Expired', tone: X.trnExpired.length ? 'bad' : 'ok' },
+      { value: String(X.trnSoon.length), label: 'Expiring ≤60 days', tone: X.trnSoon.length ? 'warn' : 'ok' },
+    ] });
+    if (X.trnExpired.length) peopleBlocks.push({ type: 'dataTable',
+      cols: [ { header: 'Employee', w: '30%' }, { header: 'Course', w: '46%' }, { header: 'Expired', w: '24%' } ],
+      rows: X.trnExpired.slice(0, 6).map(x => [ x.employee || '—', x.course || '—', fmtD(x.expiry) ]),
+      footnote: 'Renewals are raised onto the execution plan from the training matrix.' });
+    else if (X.trnTotal) peopleBlocks.push({ type: 'textBlock', title: 'Training record', body: 'Every recorded course is in date. Renewal dates are tracked and expiring courses raise actions automatically.' });
+    else peopleBlocks.push({ type: 'textBlock', title: 'Training record', body: 'No training matrix has been loaded yet — the competence picture cannot be evidenced until it is.' });
+  }
+  if (!hide.workers) {
+    peopleBlocks.push({ type: 'textBlock', title: 'Issues raised by workers', body:
+      (X.brRecent.length
+        ? countPhrase(X.brRecent.length, 'briefing was', 'briefings were') + ' recorded in the period, ' + noneOrCount(X.brFb.length, 'with something raised back by the workforce', 'with something raised back by the workforce', 'none') + '. '
+          + (X.brFb.length ? ('Latest: ' + X.brFb.slice(0, 2).map(b => '“' + String(b.feedback).slice(0, 90) + '”').join(' · ')) : 'Two-way evidence is thin — briefings are being held but nothing coming back is being captured.')
+        : 'No briefings were recorded this period. HSG65 expects communication to run both ways — daily starts and toolbox talks belong on the record with what the workforce raised.') });
+  }
+  if (!hide.statutory) {
+    peopleBlocks.push({ type: 'textBlock', title: 'Checks required by law', body:
+      (X.statTotal
+        ? countPhrase(X.statTotal, 'statutory check is', 'statutory checks are') + ' tracked (thorough examinations, servicing and similar). ' + noneOrCount(X.statOverdue, 'is overdue', 'are overdue', 'None') + '; ' + noneOrCount(X.statDueSoon, 'falls due within 60 days', 'fall due within 60 days', 'none') + '.'
+        : 'No statutory checks are tracked yet. If the business has lifting equipment, pressure systems, LEV or similar, their thorough-examination dates belong on the statutory tracker.') });
+  }
+  const peoplePage = (peopleBlocks.length) ? {
+    label: 'People & compliance', section: 'people', blocks: [
+      mast,
+      { type: 'titleBlock', kicker: 'HSG65 review pack · training, workers & statutory checks',
+        headline: X.trnExpired.length ? (countPhrase(X.trnExpired.length, 'training course has', 'training courses have') + ' expired.') : 'Competence, consultation and the legal checks.',
+        standfirst: 'The people side of the review: whether the workforce is trained and in date, whether the conversation runs both ways, and whether the checks the law requires are happening on time.' },
+      ...peopleBlocks,
+    ],
+  } : null;
+
+  const progBlocks = [];
+  if (!hide.wins) {
+    progBlocks.push(X.wins.length
+      ? { type: 'dataTable',
+          cols: [ { header: 'Delivered', w: '58%' }, { header: 'Owner', w: '22%' }, { header: 'When', w: '20%' } ],
+          rows: X.wins.slice(0, 8).map(w => [ String(w.desc).slice(0, 95), w.owner || '—', fmtD(w.when) ]),
+          footnote: 'HSG65: “Reviewing also gives you the opportunity to celebrate and promote your health and safety successes.” Delivered work stays on the plan as evidence.' }
+      : { type: 'textBlock', title: 'Successes this period', body: 'Nothing was delivered in the period. If work is being done but not being closed off on the plan, the record undersells the business.' });
+  }
+  if (!hide.sinceLast && X.baseline && X.baseline.metrics) {
+    const b = X.baseline.metrics; const mv = (a, c) => (a == null || c == null) ? '—' : (c > a ? ('up ' + (c - a)) : c < a ? ('down ' + (a - c)) : 'no change');
+    progBlocks.push({ type: 'dataTable',
+      cols: [ { header: 'Measure', w: '40%' }, { header: 'Baseline ' + fmtD(X.baseline.date), w: '20%' }, { header: 'Now', w: '20%' }, { header: 'Movement', w: '20%' } ],
+      rows: [
+        [ 'Management maturity (of 5)', b.maturity == null ? '—' : Number(b.maturity).toFixed(1), D.maturityAvg == null ? '—' : D.maturityAvg.toFixed(1), (b.maturity != null && D.maturityAvg != null) ? (D.maturityAvg > b.maturity ? 'up ' + (D.maturityAvg - b.maturity).toFixed(1) : D.maturityAvg < b.maturity ? 'down ' + (b.maturity - D.maturityAvg).toFixed(1) : 'no change') : '—' ],
+        [ 'High + critical risks', String(b.highCrit ?? '—'), String(D.highPlus), mv(b.highCrit, D.highPlus) ],
+        [ 'Open actions', String(b.openActions ?? '—'), String(D.openActions), mv(b.openActions, D.openActions) ],
+        [ 'Overdue actions', String(b.overdueActions ?? '—'), String(D.overdue), mv(b.overdueActions, D.overdue) ],
+      ],
+      footnote: 'Baseline = the first audit snapshot (“where they started”). The consultant records a snapshot at each audit visit.' });
+  }
+  const progressPage = progBlocks.length ? {
+    label: 'Progress', section: 'progress', blocks: [
+      mast,
+      { type: 'titleBlock', kicker: 'HSG65 review pack · closing the loop',
+        headline: X.wins.length ? (countPhrase(X.wins.length, 'action delivered', 'actions delivered') + ' — the plan is being worked.') : 'Progress against the plan.',
+        standfirst: 'What the business delivered this period, and how far it has moved since the baseline. The outcomes of this review become what is planned next — that is the loop HSG65 wants closed.' },
+      ...progBlocks,
+    ],
+  } : null;
+
   // ── Page 2+: Register (spills beyond ~16 rows) ──
   const regCols = [
     { header: 'Activity / risk', w: '34%' },
@@ -154,8 +290,16 @@ export function buildBoardReport(state, opts = {}) {
     ],
   };
 
+  const pages = [page1];
+  if (monitoringPage) pages.push(monitoringPage);
+  if (peoplePage) pages.push(peoplePage);
+  if (progressPage) pages.push(progressPage);
+  if (!hide.register) pages.push(...registerPages);
+  if (!hide.interpretation) pages.push(page3);
+  pages.push(page4);
+
   return {
     meta: { title: 'Health & Safety Board Report', org, ref, format, period },
-    pages: [page1, ...registerPages, page3, page4],
+    pages,
   };
 }

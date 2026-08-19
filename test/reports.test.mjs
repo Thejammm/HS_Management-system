@@ -67,27 +67,53 @@ test('paginateRows: first page short, continuations larger, empty safe', () => {
   assert.equal(slices[2].length, 9);
 });
 
+// Default structure: position + 3 HSG65 review pages (monitoring, people,
+// progress) + register + interpretation + maturity/sign-off = 7 pages.
 test('empty profile renders a valid report that says so', () => {
   const r = buildReport(fixture('empty'), 'board-report', OPTS);
-  assert.equal(r.pages.length, 4);
+  assert.equal(r.pages.length, 7);
   const html = reportHTML(r);
   assert.match(html, /not yet complete enough/i);
   assert.doesNotMatch(html, /No have no/);
   assert.doesNotMatch(html, /NaN|undefined/);
 });
 
-test('typical profile: fixed four pages, headline states the finding', () => {
+test('typical profile: seven pages, headline states the finding', () => {
   const r = buildReport(fixture('typical'), 'board-report', OPTS);
-  assert.equal(r.pages.length, 4);
+  assert.equal(r.pages.length, 7);
   const html = reportHTML(r);
   assert.match(html, /can still kill or maim/i);
-  assert.match(html, /Page 4 of 4/);
+  assert.match(html, /Page 7 of 7/);
   assert.doesNotMatch(html, /No have no/);
+});
+
+test('HSG65 review sections print by default', () => {
+  const html = reportHTML(buildReport(fixture('typical'), 'board-report', OPTS));
+  assert.match(html, /HSG65 review pack/);
+  assert.match(html, /Active monitoring/);
+  assert.match(html, /Issues raised by workers/);
+  assert.match(html, /Checks required by law/);
+  assert.match(html, /celebrate and promote/i);
+});
+
+test('hidden sections drop their pages; locked sections always print', () => {
+  const state = fixture('typical');
+  state.reportPrefs = { 'board-report': { hidden: {
+    reactive: true, active: true, training: true, workers: true, statutory: true,
+    wins: true, sinceLast: true, register: true, interpretation: true,
+    position: true, maturity: true,   // locked — must be ignored
+  } } };
+  const r = buildReport(state, 'board-report', OPTS);
+  assert.equal(r.pages.length, 2);   // position + maturity/sign-off survive
+  const html = reportHTML(r);
+  assert.doesNotMatch(html, /HSG65 review pack/);
+  assert.match(html, /Decisions required/i);
+  assert.match(html, /Sign-off/i);
 });
 
 test('oversized profile spills the register and renumbers footers', () => {
   const r = buildReport(fixture('oversized'), 'board-report', OPTS);
-  assert.ok(r.pages.length > 4, 'register must spill beyond 4 pages');
+  assert.ok(r.pages.length > 7, 'register must spill beyond the default seven pages');
   const html = reportHTML(r);
   assert.match(html, new RegExp('Page ' + r.pages.length + ' of ' + r.pages.length));
   assert.match(html, /part 1 of \d/i);

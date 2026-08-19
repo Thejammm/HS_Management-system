@@ -21,8 +21,8 @@ export const BOARD_SECTIONS = [
   { id: 'wins',           label: 'Successes this period', hsg: 'HSG65: celebrate and promote successes' },
   { id: 'sinceLast',      label: 'Movement since the baseline', hsg: 'Closing the loop' },
   { id: 'register',       label: 'Fatal & major-harm register', hsg: 'Risk assessments' },
-  { id: 'interpretation', label: 'Interpretation (matrix, tiers, hierarchy of control)' },
-  { id: 'maturity',       label: 'Exposure & maturity, directors’ duty, sign-off', locked: true },
+  { id: 'interpretation', label: 'The picture explained (matrix, risk bands, control ladder)' },
+  { id: 'maturity',       label: 'Risk vs management, directors’ duty, sign-off', locked: true },
 ];
 export function boardHidden(state) {
   const p = state && state.reportPrefs && state.reportPrefs['board-report'];
@@ -54,13 +54,16 @@ export function buildBoardReport(state, opts = {}) {
   const mast = { type: 'masthead', org, refCode: ref, issued: today, review: (opts.meta && opts.meta.review) || '' };
 
   // ── Page 1: Position ──
+  // Every label must say what the number is in plain words — no term a
+  // reader has to ask about (Simon: "if it's the amount of risks that sit in
+  // High then just say it").
   const kpis = [
-    { value: D.maxSev ? String(D.maxSev) + '/5' : '—', label: 'Highest credible harm', note: D.highestHarm, tone: D.maxSev >= 5 ? 'bad' : D.maxSev >= 4 ? 'warn' : undefined },
-    { value: String(D.fatal), label: 'Fatal-potential risks', tone: D.fatal ? 'bad' : 'ok' },
-    { value: String(D.fatalUncontrolled), label: 'Uncontrolled fatal-potential', tone: D.fatalUncontrolled ? 'bad' : 'ok' },
-    { value: String(D.highPlus), label: 'High or above (after controls)', tone: D.highPlus ? 'warn' : 'ok' },
+    { value: D.maxSev ? String(D.maxSev) + '/5' : '—', label: 'Worst possible harm', note: D.highestHarm, tone: D.maxSev >= 5 ? 'bad' : D.maxSev >= 4 ? 'warn' : undefined },
+    { value: String(D.fatal), label: 'Could kill or seriously injure', tone: D.fatal ? 'bad' : 'ok' },
+    { value: String(D.fatalUncontrolled), label: 'Of those, no controls recorded', tone: D.fatalUncontrolled ? 'bad' : 'ok' },
+    { value: String(D.highPlus), label: 'Risks sitting High or Critical', note: 'with controls in place', tone: D.highPlus ? 'warn' : 'ok' },
     { value: String(D.overdue), label: 'Actions overdue', tone: D.overdue ? 'warn' : 'ok' },
-    { value: D.completeness + '%', label: 'Profile completeness', tone: D.completeness < 60 ? 'warn' : undefined },
+    { value: D.completeness + '%', label: 'Assessment complete', tone: D.completeness < 60 ? 'warn' : undefined },
   ];
 
   const decisions = [];
@@ -125,7 +128,7 @@ export function buildBoardReport(state, opts = {}) {
   const monitoringPage = (monBlocks.length && !(hide.reactive && hide.active)) ? {
     label: 'This period', section: 'monitoring', blocks: [
       mast,
-      { type: 'titleBlock', kicker: 'HSG65 review pack · reactive & active monitoring',
+      { type: 'titleBlock', kicker: 'HSG65 review pack · what went wrong, and the checking that finds trouble early',
         headline: X.incRecent.length ? (countPhrase(X.incRecent.length, 'event', 'events') + ' in 90 days; ' + noneOrCount(X.incOpen, 'investigation open', 'investigations open', 'no') + '.') : 'A quiet period — no recorded events in 90 days.',
         standfirst: 'What went wrong (reactive) and what checking happened before anything went wrong (active). Both halves matter: a quiet incident record is only good news if the active checks are happening.' },
       ...monBlocks, hsgFoot,
@@ -228,20 +231,22 @@ export function buildBoardReport(state, opts = {}) {
     ],
   }));
 
-  // ── Page 3: Interpretation ──
+  // ── Page 3: the picture explained — plain sentences, no double negatives
+  //    ("No open actions have no named owner" is banned; say the good state
+  //    positively and the gap as a count). ──
   const zeros = [];
-  zeros.push(noneOrCount(D.noOwner, 'open action has no named owner', 'open actions have no named owner') + '.');
-  zeros.push(noneOrCount(D.noDate, 'open action has no target date', 'open actions have no target date') + '.');
-  zeros.push(noneOrCount(D.unrated, 'recorded risk is not yet rated', 'recorded risks are not yet rated') + '.');
+  zeros.push(D.noOwner ? countPhrase(D.noOwner, 'open action has', 'open actions have') + ' nobody named to do ' + (D.noOwner === 1 ? 'it' : 'them') + '.' : 'Every open action has someone named to do it.');
+  zeros.push(D.noDate ? countPhrase(D.noDate, 'open action has', 'open actions have') + ' no target date.' : 'Every open action has a target date.');
+  zeros.push(D.unrated ? countPhrase(D.unrated, 'recorded risk is', 'recorded risks are') + ' not yet scored.' : 'Every recorded risk is scored.');
 
   const page3 = {
-    label: 'Interpretation', blocks: [
+    label: 'The picture explained', blocks: [
       mast,
-      { type: 'titleBlock', kicker: 'Interpretation', headline: 'Where the risk sits and how it is held' },
-      { type: 'matrix5x5', counts: D.matrix, caption: 'Where every rated risk sits now, with controls in place (likelihood × severity).' },
-      { type: 'distributionBars', title: 'Risks by band (after controls)', items: ['Critical', 'High', 'Medium', 'Low'].map(t => ({ label: t, n: D.byTier[t], colour: TIER_COLOURS[t] })) },
-      { type: 'hierarchyStrip', title: 'Hierarchy of control', items: D.hierarchy, total: D.hierTotal, protectDown: D.protectDown },
-      { type: 'textBlock', title: 'Exceptions', body: zeros.join(' ') },
+      { type: 'titleBlock', kicker: 'The picture explained', headline: 'Where the risk sits and how it is held' },
+      { type: 'matrix5x5', counts: D.matrix, caption: 'Where every rated risk sits now, with controls in place (likelihood across, severity up; the number is how many risks sit in that square).' },
+      { type: 'distributionBars', title: 'How many risks sit in each band (with controls in place)', items: ['Critical', 'High', 'Medium', 'Low'].map(t => ({ label: t, n: D.byTier[t], colour: TIER_COLOURS[t] })) },
+      { type: 'hierarchyStrip', title: 'How the risks are controlled — strongest measures first', items: D.hierarchy, total: D.hierTotal, protectDown: D.protectDown },
+      { type: 'textBlock', title: 'Loose ends', body: zeros.join(' ') },
       { type: 'textBlock', title: 'Consultant commentary', body: (opts.meta && opts.meta.commentary) || 'Reserved for the consultant’s reading of this period.', cls: 'r-commentary' },
     ],
   };
@@ -249,10 +254,10 @@ export function buildBoardReport(state, opts = {}) {
   // ── Page 4: Exposure & maturity, duty, sign-off ──
   const matRows = maturityRows(state);
   const page4 = {
-    label: 'Exposure & maturity', blocks: [
+    label: 'Risk vs management', blocks: [
       mast,
       { type: 'statementPanel', title: 'Directors’ duty', cite: 'Health and Safety at Work etc. Act 1974, s.37', body: 'Where an offence by the company is proved to have been committed with the consent, connivance or neglect of a director, manager or similar officer, that individual — as well as the company — is liable to prosecution. This report exists so the board can show it directed and reviewed the management of these risks.' },
-      { type: 'tagList', title: 'Duties engaged by the profile', tags: D.duties },
+      { type: 'tagList', title: 'The laws this risk profile brings into play', tags: D.duties },
       matRows.length
         ? { type: 'stepScale', title: 'Management maturity (HSG65 scale, 0–5)', rows: matRows, flagAt: 1.5 }
         : { type: 'textBlock', title: 'Management maturity', body: 'Not yet scored. Score the six maturity domains in the risk review to complete this picture.' },

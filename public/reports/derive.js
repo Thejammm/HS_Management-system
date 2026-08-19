@@ -253,13 +253,13 @@ export function deriveBoard(state, opts = {}) {
   } else if (fatal.length) {
     headline = countPhrase(fatal.length, 'risk', 'risks') + ' can still kill or maim someone with our controls in place.';
     standfirst = 'Of ' + countPhrase(rated.length, 'rated risk', 'rated risks') + ', ' +
-      noneOrCount(highPlus, 'sits', 'sit', 'none') + ' at High or above after controls, and ' +
+      noneOrCount(highPlus, 'still sits', 'still sit', 'none') + ' High or Critical with controls in place, and ' +
       noneOrCount(fatalUncontrolled.length, 'fatal-potential risk has', 'fatal-potential risks have', 'no') +
       ' no recorded controls. ' + (maturityAvg != null
         ? 'Management maturity averages ' + maturityAvg.toFixed(1) + ' of 5.'
         : 'Management maturity has not yet been scored.');
   } else {
-    headline = noneOrCount(highPlus, 'risk remains', 'risks remain', 'No') + ' at High or above with controls in place.';
+    headline = noneOrCount(highPlus, 'risk still sits', 'risks still sit', 'No') + ' High or Critical with controls in place.';
     standfirst = countPhrase(rated.length, 'risk is', 'risks are') + ' rated. ' +
       (maturityAvg != null ? 'Management maturity averages ' + maturityAvg.toFixed(1) + ' of 5.'
         : 'Management maturity has not yet been scored.');

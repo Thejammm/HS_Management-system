@@ -14707,6 +14707,39 @@ function _riskPanelModel(){
     .sort((a,b)=>b.shortfall-a.shortfall || b.rating-a.rating);
   return { rated, unrated, excluded, cells, byBand, meanScore, profileBand, required, maturity, shortfall, verdict, hotspots };
 }
+// ── ONE verdict everywhere. The combined panel (cockpit), the "Overall H&S
+//    position" section on the Risk profile tab, and the risk-profile PDF all
+//    read this — same numbers, same words, so they can never disagree.
+//    (Simon's rule: one inconsistency and the user loses confidence.)
+function _rpVerdictBits(M){
+  const pillC = { 'adequately controlled':'#0f6f5c', 'broadly controlled':'#c2740a', 'under-controlled':'#DC2626', 'incomplete':'#8b949a' }[M.verdict];
+  const pillT = { 'adequately controlled':'matches the risk', 'broadly controlled':'nearly matches the risk', 'under-controlled':'falls short of the risk', 'incomplete':'not yet measured' }[M.verdict];
+  const pillTip = {
+    'adequately controlled':'HSG65 expects management strength to match the size of the risk. The scored maturity meets what this risk profile needs - keep it there as the risks change.',
+    'broadly controlled':'Close: the management is within half a point of what this risk profile needs. The squares listed below show where to finish the job.',
+    'under-controlled':'HSG65 expects management strength to match the size of the risk. Right now the management is weaker than this profile needs - the size of the gap and the squares to fix first are shown below.',
+    'incomplete':'Score every risk (likelihood × severity) and the six maturity domains to get the verdict.'
+  }[M.verdict];
+  const bandWord = { Low:'Low', Medium:'Moderate', High:'High', Critical:'Critical' }[M.profileBand] || '';
+  let verdictLine, explain;
+  if(M.verdict==='incomplete'){
+    verdictLine = M.maturity==null ? 'Risks scored - management strength not measured yet.' : 'Score each risk to complete the picture.';
+    explain = 'Your '+M.rated.length+' risk'+(M.rated.length!==1?'s':'')+' average '+(M.meanScore==null?'-':M.meanScore.toFixed(1))+' of 25 (each risk scores likelihood × severity, top score 25).'
+      + ' Now score the six domains in the Management maturity assessment (Risk profile tab) to measure whether the management is strong enough for these risks.';
+  } else {
+    verdictLine = 'Risk: '+bandWord.toLowerCase()+' ('+M.meanScore.toFixed(1)+' of 25). Management: '+M.maturity.toFixed(1)+' of 5 - '
+      + (M.shortfall>0 ? ('this much risk needs '+M.required+'.0, so you are '+M.shortfall.toFixed(1)+' short.') : ('meets the '+M.required+'.0 this much risk needs.'));
+    explain = 'The risk number is the average of your risk scores (each is likelihood × severity, top score 25). '
+      + 'The management number is your average maturity score across the six domains, out of 5. '
+      + 'HSG65 - the HSE\'s management standard - expects management strength to match the size of the risk: a '
+      + M.profileBand.toLowerCase()+' profile needs at least '+M.required+'.0 ('+(RISK_MATURITY_NAMES[M.required]||M.required)+').'
+      + (M.shortfall>0 ? ' Closing the '+M.shortfall.toFixed(1)+'-point gap means improving the squares listed below.' : '');
+  }
+  // App-palette equivalents of the pill states, for consumers that colour by
+  // the standard app hexes (the position box and the risk-profile PDF).
+  const rag = { 'adequately controlled':'#16A34A', 'broadly controlled':'#F59E0B', 'under-controlled':'#DC2626', 'incomplete':'#9CA3AF' }[M.verdict];
+  return { pillC, pillT, pillTip, verdictLine, explain, rag };
+}
 // Cell selection: one shared state, panel re-renders wherever it is mounted.
 var _rpSel = null;
 function _rpSelectCell(l,s){ const k=l+'|'+s; _rpSel = (_rpSel===k) ? null : k; _rpRefresh(); }
@@ -14722,18 +14755,7 @@ function _riskPanelHTML(o){
   if(!M.rated.length) return '<div class="ck-pending">No rated risks yet. Rate likelihood and severity in the register to build the profile.</div>';
   if(_rpSel && !M.cells[_rpSel]) _rpSel=null;                 // stale selection guard
   const sel = _rpSel ? M.cells[_rpSel] : null;
-  // Pill wording, HSG65-framed: the panel answers one question — does the
-  // management match the size of the risk? ("Under-controlled" read as
-  // "under control" at a glance while the red said problem, so say it
-  // straight: matches / nearly matches / falls short.)
-  const pillC = { 'adequately controlled':'#0f6f5c', 'broadly controlled':'#c2740a', 'under-controlled':'#DC2626', 'incomplete':'#8b949a' }[M.verdict];
-  const pillT = { 'adequately controlled':'matches the risk', 'broadly controlled':'nearly matches the risk', 'under-controlled':'falls short of the risk', 'incomplete':'not yet measured' }[M.verdict];
-  const pillTip = {
-    'adequately controlled':'HSG65 expects management strength to match the size of the risk. The scored maturity meets what this risk profile needs - keep it there as the risks change.',
-    'broadly controlled':'Close: the management is within half a point of what this risk profile needs. The squares listed below show where to finish the job.',
-    'under-controlled':'HSG65 expects management strength to match the size of the risk. Right now the management is weaker than this profile needs - the size of the gap and the squares to fix first are shown below.',
-    'incomplete':'Score every risk (likelihood × severity) and the six maturity domains to get the verdict.'
-  }[M.verdict];
+  const { pillC, pillT, pillTip } = _rpVerdictBits(M);
   const period = 'Position at '+fmtDate(new Date().toISOString().slice(0,10));
   // ── Left: the matrix with maturity bars ──
   let grid='';
@@ -14766,21 +14788,7 @@ function _riskPanelHTML(o){
     <div class="rpx-caption"><b>Where is the risk?</b> Each square is one mix of likelihood (1-5, across) and severity (1-5, up). The number is how many risks sit in that square; the colour is how serious that square is (${esc(_bandRangeText())}).<br><b>Where is the maturity?</b> The small white bar along a square's base shows how well those risks are managed, out of 5 - the fuller the bar, the better managed.</div>
   </div>`;
   // ── Right: rating derived from both ──
-  const bandWord = { Low:'Low', Medium:'Moderate', High:'High', Critical:'Critical' }[M.profileBand] || '';
-  let verdictLine, explain;
-  if(M.verdict==='incomplete'){
-    verdictLine = M.maturity==null ? 'Risks scored - management strength not measured yet.' : 'Score each risk to complete the picture.';
-    explain = 'Your '+M.rated.length+' risk'+(M.rated.length!==1?'s':'')+' average '+(M.meanScore==null?'-':M.meanScore.toFixed(1))+' of 25 (each risk scores likelihood × severity, top score 25).'
-      + ' Now score the six domains in the Management maturity assessment (Risk profile tab) to measure whether the management is strong enough for these risks.';
-  } else {
-    verdictLine = 'Risk: '+bandWord.toLowerCase()+' ('+M.meanScore.toFixed(1)+' of 25). Management: '+M.maturity.toFixed(1)+' of 5 - '
-      + (M.shortfall>0 ? ('this much risk needs '+M.required+'.0, so you are '+M.shortfall.toFixed(1)+' short.') : ('meets the '+M.required+'.0 this much risk needs.'));
-    explain = 'The risk number is the average of your risk scores (each is likelihood × severity, top score 25). '
-      + 'The management number is your average maturity score across the six domains, out of 5. '
-      + 'HSG65 - the HSE\'s management standard - expects management strength to match the size of the risk: a '
-      + M.profileBand.toLowerCase()+' profile needs at least '+M.required+'.0 ('+(RISK_MATURITY_NAMES[M.required]||M.required)+').'
-      + (M.shortfall>0 ? ' Closing the '+M.shortfall.toFixed(1)+'-point gap means improving the squares listed below.' : '');
-  }
+  const { verdictLine, explain } = _rpVerdictBits(M);
   const rating = `<div>
     <div class="rpx-microlab rpx-mono">Your position</div>
     <div class="rpx-verdict">${esc(verdictLine)}</div>
@@ -16822,9 +16830,14 @@ function setMaturity(id, val){ if(_roLocked()) return; const cur=_profState().ma
 const MATURITY_ORDER = ['leadership','contractor','ohealth','opcontrol','assurance','resilience'];
 function _maturityDomains(){ return MATURITY_ORDER.map(id=>PROF_LIBRARY.domains.find(d=>d.id===id)).filter(Boolean); }
 function _overallMaturity(){
-  const doms=_maturityDomains(); let sum=0,n=0,critFail=false;
-  doms.forEach(d=>{ const mt=_profMaturity(d.id); if(mt.avg!=null){ sum+=mt.avg; n++; } if(mt.critFail) critFail=true; });
-  return n ? { avg:sum/n, critFail, scored:n, total:doms.length } : { avg:null, critFail, scored:0, total:doms.length };
+  // avg comes from the SAME model as the cockpit panel (risk-weighted via
+  // _riskPanelModel) so the maturity gauge, legacy board PDF and every other
+  // consumer show the one number the panel shows. The old plain domain
+  // average quietly disagreed with it. critFail/scored keep their meaning.
+  const doms=_maturityDomains(); let critFail=false, scored=0;
+  doms.forEach(d=>{ const mt=_profMaturity(d.id); if(mt.avg!=null) scored++; if(mt.critFail) critFail=true; });
+  const M=_riskPanelModel();
+  return { avg:M.maturity, critFail, scored, total:doms.length };
 }
 function _riskProfileLevel(){
   const scored=(S.riskProfile||[]).map(r=>_riskScore(r)).filter(s=>s.priority);
@@ -16832,16 +16845,17 @@ function _riskProfileLevel(){
   return { total:scored.length, crit:by('Critical'), high:by('High'), med:by('Medium'), low:by('Low'), worstSev:Math.max(0,...scored.map(s=>s.s)) };
 }
 function _overallScore(){
-  const rl=_riskProfileLevel(); const mat=_overallMaturity();
-  const m = mat.critFail ? 0 : (mat.avg==null?0:mat.avg);
-  const hasHigh=(rl.crit+rl.high)>0; let rag,verdict;
-  if(mat.avg==null){ rag='#9CA3AF'; verdict='Score the management maturity below to complete the overall position.'; }
-  else if(mat.critFail){ rag='#DC2626'; verdict='A critical maturity gap caps the position RED — a fundamental control is missing.'; }
-  else if(hasHigh && m<3){ rag='#DC2626'; verdict='High-severity risks with weak management maturity — the top priority for improvement.'; }
-  else if((hasHigh && m<4) || (rl.med>0 && m<3)){ rag='#F59E0B'; verdict='Significant risks only partly matched by management maturity — keep improving.'; }
-  else { rag='#16A34A'; verdict='Risks are matched by reasonable management maturity.'; }
-  const ragLabel = rag==='#DC2626'?'Priority':rag==='#F59E0B'?'Improving':rag==='#16A34A'?'Controlled':'Incomplete';
-  return { rl, mat, m, rag, ragLabel, verdict };
+  // Derived from the SAME model as the cockpit's combined panel — the old
+  // domain-average variant produced different maturity numbers and different
+  // words on the Risk profile tab, which read as the app disagreeing with
+  // itself. One model, one verdict, everywhere.
+  const rl=_riskProfileLevel();
+  const M=_riskPanelModel();
+  const bits=_rpVerdictBits(M);
+  const m=M.maturity==null?0:M.maturity;
+  return { rl, mat:{ avg:M.maturity, scored:M.rated.length, critFail:false }, m,
+           rag:bits.rag, ragLabel:bits.pillT, verdict:bits.verdictLine, explain:bits.explain,
+           required:M.required, shortfall:M.shortfall, M };
 }
 // Heat map now driven by the ACTUAL added risks (severity) against management maturity.
 function _reviewHeatHTML(){
@@ -18299,27 +18313,29 @@ function renderRiskReview(){
   const dis=_roLocked()?' disabled':'';
 
   // 1) Combined score — the risk profile against the management maturity.
+  // Same model and same words as the cockpit's combined panel — this section
+  // is the compact read of it, nothing more. (The severity-vs-maturity heat
+  // duplicated the cockpit matrix, and the PDCA strip told the reader nothing
+  // actionable — both removed on Simon's consistency rule.)
   const os=_overallScore(); const rl=os.rl;
   const chip=(n,lab,col)=>`<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:${n?col:'var(--text-muted)'};line-height:1;">${n}</div><div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;">${lab}</div></div>`;
-  const scorePanel=`<details class="coll" data-keep="rpScore" style="margin-bottom:18px;"><summary><h3>Overall H&S position</h3></summary><div class="coll-body">
+  const scorePanel=`<details class="coll" data-keep="rpScore" style="margin-bottom:18px;"><summary><h3>Overall H&S position</h3><span class="coll-meta">same reading as the cockpit</span></summary><div class="coll-body">
       <div style="display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;">
         <div style="text-align:center;background:${os.rag}1a;border:2px solid ${os.rag};border-radius:14px;padding:16px 22px;min-width:150px;">
-          <div style="font-size:22px;font-weight:800;color:${os.rag};line-height:1.1;">${os.ragLabel}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:5px;">risk profile × maturity</div>
+          <div style="font-size:19px;font-weight:800;color:${os.rag};line-height:1.15;text-transform:capitalize;">${esc(os.ragLabel)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:5px;">management vs risk (HSG65)</div>
         </div>
         <div>
           <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:10px;">
             ${chip(rl.total,'Significant risks','var(--text)')}
             ${chip(rl.crit,'Critical',_RISK_PRIO_COLOR.Critical)}
             ${chip(rl.high,'High',_RISK_PRIO_COLOR.High)}
-            ${chip(os.mat.avg==null?'—':os.mat.avg.toFixed(1)+'/5','Mgmt maturity', os.mat.avg==null?'':_matColor(Math.round(os.mat.avg)))}
+            ${chip(os.mat.avg==null?'—':os.mat.avg.toFixed(1)+'/5','Management maturity', os.mat.avg==null?'':_matColor(Math.round(os.mat.avg)))}
+            ${os.required!=null?chip(os.required+'.0','Needed for this profile','var(--text-muted)'):''}
           </div>
           <div style="font-size:13px;color:var(--text);line-height:1.5;">${esc(os.verdict)}</div>
+          <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-top:5px;">${esc(os.explain||'')}</div>
         </div>
-      </div>
-      <div class="rp-grid2" style="margin-top:16px;">
-        <div class="card"><div class="card-band"><h3 style="font-size:13px;">Severity vs maturity</h3></div><div class="card-body" style="padding:14px;">${_reviewHeatHTML()}</div></div>
-        <div class="card"><div class="card-band"><h3 style="font-size:13px;">Manage cycle (PDCA)</h3></div><div class="card-body" style="padding:14px 16px;">${(()=>{const pc={Plan:0,Do:0,Check:0,Act:0};risks.forEach(r=>{const p=_riskPdca(r);if(pc[p]!==undefined)pc[p]++;});return `<div class="rr-pdcabar" style="margin:0;">${RISK_PDCA.map(p=>`<div class="rr-pdcaseg" style="background:${RISK_PDCA_COLOR[p]};flex:${Math.max(pc[p],0.4)};">${p}<span class="seg-n">${pc[p]}</span></div>`).join('')}</div><div style="font-size:10.5px;color:var(--text-muted);margin-top:8px;">Number of risks at each stage of the manage-for-H&S cycle (Plan → Do → Check → Act).</div>`;})()}</div></div>
       </div>
     </div></details>`;
 

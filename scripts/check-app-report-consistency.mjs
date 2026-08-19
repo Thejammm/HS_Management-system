@@ -5,7 +5,8 @@
 // Boots the real index.html headless, seeds an edge-case state, reads the
 // numbers the SCREENS compute, computes the same numbers via the report
 // layer's derive.js on the identical state, and diffs them. Also asserts the
-// generated app-contract.js still matches the app's live library tables.
+// generated app-contract.js still matches the app's live library tables and
+// that the HOLD MODEL (risk control status) grades every risk identically.
 // Any mismatch exits non-zero. (House rule: a report may never count
 // differently from a screen — found live by Simon: board said 4
 // fatal-potential, cockpit said 3.)
@@ -20,28 +21,38 @@ const puppeteer = require(path.join(repo, 'node_modules', 'puppeteer-core'));
 const { deriveBoard } = await import(url.pathToFileURL(path.join(repo, 'public', 'reports', 'derive.js')));
 const contract = await import(url.pathToFileURL(path.join(repo, 'public', 'reports', 'app-contract.js')));
 
-const TODAY = '2026-08-19';
+const TODAY = new Date().toISOString().slice(0, 10);
 // Edge cases on purpose: severity-4 SIF (the live bug), explicit sif:false
 // override on a severity-5, unrated risk with inherent 5, target-severity-4
-// only, unmapped category (excluded from maturity), crit-veto domain,
-// overdue actions in all three sources.
+// only, unmapped category, and every hold state the model can produce —
+// held (delivered+signed off), held on acceptance alone at a high band
+// (rule breach), working (open on time), slipping (overdue / unowned /
+// undated), not held (no controls / unrated / no plan).
 const STATE = {
   riskProfile: [
-    { id: 'r1', activity: 'Sev-4 machine risk', category: 'Physical', likelihood: '3', severity: '4', inherentL: '4', inherentS: '4', controls: 'guards', controlLevel: 'prevent',
-      actions: [{ id: 'a1', desc: 'Guard check', owner: 'Ops', due: '2026-08-01', status: 'In progress' }] },
-    { id: 'r2', activity: 'Sev-5 but formally not SIF', category: 'Fire', likelihood: '2', severity: '5', inherentL: '3', inherentS: '5', sif: false, controls: 'suppression', controlLevel: 'protect', actions: [] },
+    { id: 'r1', activity: 'Sev-4 machine risk, action overdue', category: 'Physical', likelihood: '3', severity: '4', inherentL: '4', inherentS: '4', controls: 'guards', controlLevel: 'prevent',
+      actions: [{ id: 'a1', desc: 'Guard check', owner: 'Ops', due: '2020-08-01', status: 'In progress' }] },
+    { id: 'r2', activity: 'Sev-5 but formally not SIF, no plan', category: 'Fire', likelihood: '2', severity: '5', inherentL: '3', inherentS: '5', sif: false, controls: 'suppression', controlLevel: 'protect', actions: [] },
     { id: 'r3', activity: 'Unrated, inherent fatal', category: 'Chemical', inherentL: '3', inherentS: '5', actions: [] },
-    { id: 'r4', activity: 'Target-severity-4 only', category: 'Electrical', likelihood: '2', severity: '3', targetS: '4', controls: '', actions: [] },
-    { id: 'r5', activity: 'Low risk, no controls recorded', category: 'Ergonomic', likelihood: '1', severity: '5', actions: [{ id: 'a2', desc: 'Done thing', status: 'Complete', completedDate: '2026-08-10' }] },
+    { id: 'r4', activity: 'Target-severity-4 only, no controls', category: 'Electrical', likelihood: '2', severity: '3', targetS: '4', controls: '', actions: [] },
+    { id: 'r5', activity: 'Rated, no controls, plan done', category: 'Ergonomic', likelihood: '1', severity: '5', actions: [{ id: 'a2', desc: 'Done thing', status: 'Complete', completedDate: '2026-08-10' }] },
     { id: 'r6', activity: 'Unmapped category risk', category: 'Made-up category', likelihood: '3', severity: '3', actions: [] },
+    { id: 'r7', activity: 'Held: delivered and signed off', category: 'Physical', likelihood: '4', severity: '5', controls: 'guardrails, permits', controlLevel: 'prevent', reviewed: true,
+      actions: [{ id: 'a3', desc: 'Install guardrails', owner: 'AB', due: '2026-01-01', status: 'Complete' }] },
+    { id: 'r8', activity: 'Critical run on acceptance alone', category: 'Physical', likelihood: '4', severity: '5', controls: 'rescue plan', controlLevel: 'protect',
+      actions: [{ id: 'a4', desc: 'Run on current controls', owner: 'SA', due: '2026-01-01', status: 'Accepted' }] },
+    { id: 'r9', activity: 'Working: open action on time', category: 'Ergonomic', likelihood: '2', severity: '2', controls: 'training', controlLevel: 'protect',
+      actions: [{ id: 'a5', desc: 'Refresher', owner: 'AB', due: '2099-01-01', status: 'In progress' }] },
+    { id: 'r10', activity: 'Slipping: open action without owner or date', category: 'Fire', likelihood: '2', severity: '3', controls: 'alarms', controlLevel: 'protect',
+      actions: [{ id: 'a6', desc: 'Service alarms', status: 'Not started' }] },
   ],
-  requirements: [{ id: 's1', heading: 'Duty', items: [{ id: 'i1', criteria: [], actions: [{ id: 'ma1', desc: 'Mgmt overdue action', owner: '', due: '2026-07-01', status: 'Not started' }] }] }],
+  requirements: [{ id: 's1', heading: 'Duty', items: [{ id: 'i1', criteria: [], actions: [{ id: 'ma1', desc: 'Mgmt overdue action', owner: '', due: '2020-07-01', status: 'Not started' }] }] }],
   actionPlan: [
-    { id: 'ap1', desc: 'Free overdue, no owner', due: '2026-06-30', status: 'Not started' },
+    { id: 'ap1', desc: 'Free overdue, no owner', due: '2020-06-30', status: 'Not started' },
     { id: 'ap2', desc: 'Free undated', status: 'In progress' },
-    { id: 'ap3', desc: 'Deleted — must not count', due: '2026-01-01', status: 'Not started', deleted: true },
+    { id: 'ap3', desc: 'Deleted — must not count', due: '2020-01-01', status: 'Not started', deleted: true },
   ],
-  profiler: { maturity: {}, exposure: {} },
+  profiler: { maturity: {}, exposure: {}, judgement: { leadership: { level: 'adequate', note: 'Visible but informal' }, opcontrol: { level: 'weak', note: 'Permits not enforced' } } },
   riskAssurance: { leading: [{ id: 'l1', measure: 'x' }], lagging: [], assurance: [] },
 };
 
@@ -54,41 +65,35 @@ const pageErrors = [];
 page.on('pageerror', e => pageErrors.push(String(e).slice(0, 120)));
 await page.goto(url.pathToFileURL(path.join(repo, 'public', 'index.html')).href, { waitUntil: 'load', timeout: 30000 });
 
-const app = await page.evaluate((STATE, TODAY) => {
-  // Seed maturity through the app's own library: leadership 3s with one crit
-  // item at 1 (veto), opcontrol 2s, ohealth 3s and one N/A, others unscored.
-  const doms = _maturityDomains();
-  const seed = { leadership: 3, opcontrol: 2, ohealth: 3 };
-  doms.forEach(d => { if (seed[d.id] != null) d.items.forEach(it => { STATE.profiler.maturity[it.id] = seed[d.id]; }); });
-  const lead = doms.find(d => d.id === 'leadership');
-  const crit = lead.items.find(it => it.crit); if (crit) STATE.profiler.maturity[crit.id] = 1;   // veto
-  const oh = doms.find(d => d.id === 'ohealth'); STATE.profiler.maturity[oh.items[0].id] = 'na';
+const app = await page.evaluate((STATE) => {
   S = STATE; migrateLoadedState();
   const RD = _reportData();
   const M = _riskPanelModel();
   const ex = _execActions();
+  const H = _holdSummary();
   return {
-    maturitySeed: STATE.profiler.maturity,
     sif: RD.sif.length,
     sifUncontrolled: RD.sifUncontrolled.length,
     completeness: RD.completeness,
+    matJudged: RD.matJudged,
     byBand: _riskProfileLevel(),
-    panelMaturity: M.maturity == null ? null : +M.maturity.toFixed(6),
     meanScore: M.meanScore == null ? null : +M.meanScore.toFixed(6),
     cells: Object.fromEntries(Object.entries(M.cells).map(([k, c]) => [k, c.items.length])),
     open: ex.filter(a => a.status !== 'Complete' && a.status !== 'Accepted').length,
     overdue: ex.filter(a => a.rag === 'red').length,
-    panelRequired: M.required == null ? null : M.required,
-    panelShortfall: M.shortfall == null ? null : +(+M.shortfall).toFixed(1),
-    liveRequired: RISK_REQUIRED_MATURITY,
-    liveMap: RISK_MATURITY_DOMAIN,
+    // The hold model as the SCREEN computes it — per-risk states + summary.
+    hold: { total: H.total, held: H.held, working: H.working, slipping: H.slipping, notheld: H.notheld,
+            breaches: H.breaches.map(b => ({ id: b.id, band: b.band, k: b.hold.k, breach: b.breach })),
+            pillT: H.pillT, pillC: H.pillC, verdict: H.verdict,
+            rows: H.rows.map(r => ({ id: r.id, k: r.hold.k, reasons: r.hold.reasons })) },
+    panelPill: (function () { const bits = _rpVerdictBits(M); return { pill: bits.pillT, pillColor: bits.pillC }; })(),
+    liveHoldStates: HOLD_STATES, liveHoldOrder: HOLD_ORDER,
     liveDomains: PROF_LIBRARY.domains.filter(d => d.type === 'maturity').map(d => ({ id: d.id, name: d.name, items: d.items.map(it => ({ id: it.id, crit: !!it.crit })) })),
   };
-}, STATE, TODAY);
+}, STATE);
 await browser.close();
 
-// Same state (with the maturity the page seeded) through the report layer.
-STATE.profiler.maturity = app.maturitySeed;
+// The identical state through the report layer.
 const D = deriveBoard(STATE, { today: TODAY });
 
 const diffs = [];
@@ -100,15 +105,24 @@ eq('high band', app.byBand.high, D.byTier.High);
 eq('critical band', app.byBand.crit, D.byTier.Critical);
 eq('medium band', app.byBand.med, D.byTier.Medium);
 eq('low band', app.byBand.low, D.byTier.Low);
-eq('management maturity (risk-weighted)', app.panelMaturity, D.maturityAvg == null ? null : +D.maturityAvg.toFixed(6));
 eq('mean risk score', app.meanScore, D.meanScore == null ? null : +D.meanScore.toFixed(6));
 eq('matrix cells', app.cells, D.matrix);
 eq('open actions (all sources)', app.open, D.openActions);
 eq('overdue actions (all sources)', app.overdue, D.overdue);
-eq('required maturity for the profile', app.panelRequired, D.requiredMaturity == null ? null : D.requiredMaturity);
-eq('maturity shortfall', app.panelShortfall, D.maturityShortfall == null ? null : +D.maturityShortfall.toFixed(1));
-eq('contract: required-maturity map', app.liveRequired, contract.REQUIRED_MATURITY);
-eq('contract: category→domain map', app.liveMap, contract.RISK_MATURITY_DOMAIN);
+// Hold model: counts, per-risk states, breaches, and the exact pill/verdict
+// wording — the report must speak the app's words, not a paraphrase.
+eq('hold: state counts', { t: app.hold.total, h: app.hold.held, w: app.hold.working, s: app.hold.slipping, n: app.hold.notheld },
+  { t: D.holdS.total, h: D.holdS.held, w: D.holdS.working, s: D.holdS.slipping, n: D.holdS.notheld });
+eq('hold: per-risk states', app.hold.rows, D.holdS.rows.map(r => ({ id: r.id, k: r.hold.k, reasons: r.hold.reasons })));
+eq('hold: breaches', app.hold.breaches, D.holdS.breaches.map(b => ({ id: b.id, band: b.band, k: b.hold.k, breach: b.breach })));
+eq('hold: pill text', app.hold.pillT, D.holdS.pillT);
+eq('hold: pill colour', app.hold.pillC, D.holdS.pillC);
+eq('hold: verdict sentence', app.hold.verdict, D.holdS.verdict);
+eq('panel pill = hold pill', app.panelPill.pill, D.holdS.pillT);
+eq('judged areas count', app.matJudged, Object.values(STATE.profiler.judgement).filter(j => j && j.level).length);
+// Contract tables still mirror the live app.
+eq('contract: hold states', app.liveHoldStates, contract.HOLD_STATES);
+eq('contract: hold order', app.liveHoldOrder, contract.HOLD_ORDER);
 eq('contract: maturity domains/items', app.liveDomains, contract.MATURITY_DOMAINS);
 
 if (pageErrors.length) diffs.push('page errors: ' + pageErrors.join(' | '));
@@ -117,4 +131,4 @@ if (diffs.length) {
   diffs.forEach(d => console.error('  · ' + d));
   process.exit(1);
 }
-console.log('✓ app and report agree on every checked figure (fatal, uncontrolled, bands, matrix, maturity, mean score, completeness, open/overdue) and the contract matches the live app.');
+console.log('✓ app and report agree on every checked figure (fatal, uncontrolled, bands, matrix, mean score, completeness, open/overdue, hold states, breaches, pill and verdict wording) and the contract matches the live app.');

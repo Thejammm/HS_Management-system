@@ -59,14 +59,15 @@ export function decisionsPanel({ title, items }) {
 }
 
 // cols: [{header, w?, align?}], rows: [[cell html-safe strings or {html}]]
-export function dataTable({ cols, rows, footnote }) {
+export function dataTable({ title, cols, rows, footnote }) {
   const head = '<tr>' + cols.map(c => `<th${c.align ? ` class="r-al-${c.align}"` : ''}${c.w ? ` style="width:${c.w}"` : ''}>${esc(c.header)}</th>`).join('') + '</tr>';
   const body = rows.map(r => '<tr>' + r.map((cell, i) => {
     const c = cols[i] || {};
     const html = (cell && typeof cell === 'object' && 'html' in cell) ? cell.html : esc(cell);
     return `<td${c.align ? ` class="r-al-${c.align}"` : ''}>${html}</td>`;
   }).join('') + '</tr>').join('');
-  return `<table class="r-table"><thead>${head}</thead><tbody>${body}</tbody></table>` +
+  return (title ? `<div class="r-block-title">${esc(title)}</div>` : '') +
+    `<table class="r-table"><thead>${head}</thead><tbody>${body}</tbody></table>` +
     (footnote ? `<div class="r-footnote">${esc(footnote)}</div>` : '');
 }
 

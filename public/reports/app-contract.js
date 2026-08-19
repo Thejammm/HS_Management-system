@@ -1,27 +1,14 @@
 // ══════════════════════════════════════════════════════════════
 // APP CONTRACT — the definitions the app itself uses, mirrored for the
 // report layer so a report can never count differently from a screen.
-// GENERATED from the app's own PROF_LIBRARY / RISK_MATURITY_DOMAIN
+// GENERATED from the app's own PROF_LIBRARY
 // (scripts/check-app-report-consistency.mjs asserts they still match the
 // live app on every run — edit the app, run the check, regenerate here).
 // ══════════════════════════════════════════════════════════════
 
-// Hazard category → the management-maturity domain that controls it.
-export const RISK_MATURITY_DOMAIN = {
-  "Physical": "opcontrol",
-  "Chemical": "ohealth",
-  "Biological": "ohealth",
-  "Electrical": "opcontrol",
-  "Ergonomic": "ohealth",
-  "Psychosocial": "ohealth",
-  "Fire": "opcontrol",
-  "Environmental": "opcontrol",
-  "Legal / Regulatory": "leadership",
-  "Business continuity": "resilience"
-};
-
-// Maturity domains with their item ids ('crit' items scoring <=1 veto the
-// domain: its average reads as 0, exactly as the app's _profMaturity does).
+// The six HSG65 areas the consultant judges in words (Weak / Adequate /
+// Strong, stored in state.profiler.judgement). Item detail retained to match
+// the app's PROF_LIBRARY verbatim.
 export const MATURITY_DOMAINS = [
   {
     "id": "leadership",
@@ -172,28 +159,6 @@ export function controlStatusOf(r) {
   return 'Partial';
 }
 
-// ── Per-domain maturity — verbatim port of the app's _profMaturity ──
-export function domainMaturity(state, domId) {
-  const dom = MATURITY_DOMAINS.find(d => d.id === domId);
-  if (!dom) return { avg: null, critFail: false, scored: 0 };
-  const m = (state && state.profiler && state.profiler.maturity) || {};
-  const scored = dom.items.filter(it => m[it.id] !== undefined && m[it.id] !== '' && m[it.id] !== 'na');
-  if (!scored.length) return { avg: null, critFail: false, scored: 0 };
-  const vals = scored.map(it => +m[it.id]);
-  const critFail = dom.items.some(it => it.crit && m[it.id] !== undefined && m[it.id] !== '' && m[it.id] !== 'na' && +m[it.id] <= 1);
-  return { avg: vals.reduce((a, b) => a + b, 0) / vals.length, critFail, scored: scored.length };
-}
-
-// ── Per-risk maturity — verbatim port of the app's _riskMaturityOf ──
-export function riskMaturityOf(state, r) {
-  const cat = hazardTypeOf(r && r.category, r && r.hazard);
-  const dom = RISK_MATURITY_DOMAIN[cat];
-  if (!dom) return null;
-  const mt = domainMaturity(state, dom);
-  if (mt.avg == null) return null;
-  return mt.critFail ? 0 : mt.avg;
-}
-
 // ── Category normalisation — verbatim port of the app's _hazardType (applied
 //    by the app's migrateLoadedState; the report normalises the same way so a
 //    legacy/imported category can never split the counts) ──
@@ -213,7 +178,98 @@ export function hazardTypeOf(category, hazardText) {
   return 'Physical';
 }
 
-// ── Required maturity per risk band — verbatim from the app's
-//    RISK_REQUIRED_MATURITY (HSG65: management strength in proportion
-//    to the risk). The consistency check asserts this still matches. ──
-export const REQUIRED_MATURITY = { Low: 2, Medium: 3, High: 4, Critical: 5 };
+// ══════════════════════════════════════════════════════════════
+// RISK CONTROL STATUS — verbatim port of the app's hold model (the
+// replacement for the 0-5 maturity number). Grades each risk by recorded
+// facts; the company measure is a count and the HSG65 proportionality is
+// a rule. Must stay identical to the app's _riskHold/_holdBreach/
+// _holdSummary — the consistency check diffs them.
+// ══════════════════════════════════════════════════════════════
+export const HOLD_STATES = {
+  held:     { k: 'held',     label: 'Held',         colour: '#16A34A', desc: 'Controls recorded, and the plan delivered and signed off - or the risk formally accepted.' },
+  working:  { k: 'working',  label: 'Being worked', colour: '#F59E0B', desc: 'Controls recorded and every gap has an owned, dated action - all on time.' },
+  slipping: { k: 'slipping', label: 'Slipping',     colour: '#EA580C', desc: 'The plan is overdue, or actions are missing an owner or a date.' },
+  notheld:  { k: 'notheld',  label: 'Not held',     colour: '#DC2626', desc: 'No controls recorded, no plan and no formal acceptance, or the risk is not yet scored.' },
+};
+export const HOLD_ORDER = ['held', 'working', 'slipping', 'notheld'];
+
+function actionStatusOf(a) {
+  if (!a) return 'Not started';
+  if (a.status === 'Complete') return 'Complete';
+  if (a.status === 'Accepted') return 'Accepted';
+  return a.status || 'Not started';
+}
+// Port of the app's _riskPlanState (kind only — the copy lives in the app).
+export function planStateOf(r) {
+  const acts = ((r && r.actions) || []).filter(a => a && !a.deleted && (a.desc || a.owner || a.due));
+  if (!acts.length) return 'none';
+  const open = acts.filter(a => { const st = actionStatusOf(a); return st !== 'Complete' && st !== 'Accepted'; });
+  if (open.length) return 'open';
+  if (acts.every(a => actionStatusOf(a) === 'Accepted')) return 'accepted';
+  return 'managed';
+}
+const intScore = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 1 && n <= 5 ? n : null; };
+export function holdOf(r, opts = {}) {
+  const today = opts.today || new Date().toISOString().slice(0, 10);
+  const l = intScore(r && r.likelihood), sv = intScore(r && r.severity);
+  const rated = !!(l && sv);
+  const plan = planStateOf(r);
+  const controls = controlStatusOf(r) !== 'None';
+  const reasons = [];
+  if (!rated) reasons.push('not yet scored');
+  if (!controls) reasons.push('no controls recorded');
+  if (plan === 'none' && rated && controls) reasons.push('no plan and not accepted');
+  if (!rated || !controls || plan === 'none')
+    return Object.assign({}, HOLD_STATES.notheld, { reasons: reasons.length ? reasons : ['no plan and not accepted'] });
+  if (plan === 'accepted') return Object.assign({}, HOLD_STATES.held, { reasons: ['formally accepted with the current controls'], accepted: true });
+  if (plan === 'managed' && r.reviewed) return Object.assign({}, HOLD_STATES.held, { reasons: ['plan delivered and signed off'] });
+  const acts = ((r.actions) || []).filter(a => a && !a.deleted && (a.desc || a.owner || a.due));
+  const open = acts.filter(a => { const st = actionStatusOf(a); return st !== 'Complete' && st !== 'Accepted'; });
+  const overdue = open.filter(a => a.due && a.due < today).length;
+  const unowned = open.filter(a => !(a.owner && String(a.owner).trim())).length;
+  const undated = open.filter(a => !a.due).length;
+  if (overdue || unowned || undated) {
+    if (overdue) reasons.push(overdue + ' action' + (overdue !== 1 ? 's' : '') + ' overdue');
+    if (unowned) reasons.push(unowned + ' action' + (unowned !== 1 ? 's' : '') + ' without an owner');
+    if (undated) reasons.push(undated + ' action' + (undated !== 1 ? 's' : '') + ' without a date');
+    return Object.assign({}, HOLD_STATES.slipping, { reasons });
+  }
+  if (plan === 'managed' && !r.reviewed) return Object.assign({}, HOLD_STATES.working, { reasons: ['delivered - awaiting sign-off'] });
+  return Object.assign({}, HOLD_STATES.working, { reasons: [open.length + ' action' + (open.length !== 1 ? 's' : '') + ' on time'] });
+}
+export function holdBreachOf(band, hold) {
+  if (band === 'Critical' || band === 'High') {
+    if (hold.k === 'slipping' || hold.k === 'notheld') return band + ' risk is ' + hold.label.toLowerCase();
+    if (hold.k === 'held' && hold.accepted) return band + ' risk is run on acceptance alone';
+  } else if (band === 'Medium') {
+    if (hold.k === 'notheld') return 'Medium risk is not held';
+  }
+  return null;
+}
+// bandOfRisk needs the tier function; the caller passes it in to avoid a
+// circular import (derive.js owns tierFor/bands).
+export function holdSummaryOf(state, tierOfRisk, opts = {}) {
+  const risks = (state && Array.isArray(state.riskProfile)) ? state.riskProfile : [];
+  const rows = risks.map(r => {
+    const band = tierOfRisk(r);
+    const hold = holdOf(r, opts);
+    return { id: r.id, name: String(r.activity || r.hazard || 'Unnamed risk'), band, hold, breach: holdBreachOf(band, hold) };
+  });
+  const count = k => rows.filter(x => x.hold.k === k).length;
+  const held = count('held'), working = count('working'), slipping = count('slipping'), notheld = count('notheld');
+  const breaches = rows.filter(x => x.breach);
+  const total = rows.length;
+  let pillT, pillC, verdict;
+  if (!total) { pillT = 'no risks recorded'; pillC = '#8b949a'; verdict = 'Add the risks to the profile to see the position.'; }
+  else if (breaches.length) {
+    pillT = breaches.length + ' rule breach' + (breaches.length !== 1 ? 'es' : ''); pillC = '#DC2626';
+    const names = breaches.slice(0, 2).map(b => b.name + ' (' + (b.hold.reasons[0] || b.breach) + ')');
+    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' properly held. ' + breaches.length + ' breach' + (breaches.length !== 1 ? 'es' : '') + ' of the rule: ' + names.join('; ') + (breaches.length > 2 ? ('; and ' + (breaches.length - 2) + ' more.') : '.');
+  }
+  else if (held === total) { pillT = 'all risks held'; pillC = '#0f6f5c'; verdict = 'All ' + total + ' risk' + (total !== 1 ? 's are' : ' is') + ' properly held - controls recorded, plans delivered and signed off, or formally accepted.'; }
+  else {
+    pillT = 'working to plan'; pillC = '#c2740a';
+    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' properly held; ' + (working + slipping) + ' being worked' + (slipping ? (' (' + slipping + ' slipping)') : '') + (notheld ? ('; ' + notheld + ' not held') : '') + '. No breaches of the rule - every higher-band risk is held or being worked on time.';
+  }
+  return { rows, total, held, working, slipping, notheld, breaches, pillT, pillC, verdict };
+}

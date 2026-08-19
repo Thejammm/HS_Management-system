@@ -1,6 +1,6 @@
 // Board report template — Signal (data-forward) and Brief (editorial) formats.
 // Both build the SAME content; format changes the skin class only.
-import { deriveBoard, deriveBoardExtras, noneOrCount, countPhrase, hasHave, TIER_COLOURS } from '../derive.js';
+import { deriveBoard, deriveBoardExtras, noneOrCount, countPhrase, hasHave, TIER_COLOURS, HOLD_STATES, HOLD_ORDER } from '../derive.js';
 import { esc, tierWord, planBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
 
@@ -22,7 +22,7 @@ export const BOARD_SECTIONS = [
   { id: 'sinceLast',      label: 'Movement since the baseline', hsg: 'Closing the loop' },
   { id: 'register',       label: 'Fatal & major-harm register', hsg: 'Risk assessments' },
   { id: 'interpretation', label: 'The picture explained (matrix, risk bands, control ladder)' },
-  { id: 'maturity',       label: 'Risk vs management, directors’ duty, sign-off', locked: true },
+  { id: 'maturity',       label: 'Risk control status, consultant judgement, directors’ duty, sign-off', locked: true },
 ];
 export function boardHidden(state) {
   const p = state && state.reportPrefs && state.reportPrefs['board-report'];
@@ -32,14 +32,15 @@ export function boardHidden(state) {
   return out;
 }
 
-import { MATURITY_DOMAINS, domainMaturity } from '../app-contract.js';
-function maturityRows(state) {
-  // The app's own domains and item ids, via the contract — one row per scored
-  // domain, averaged exactly as the app's _profMaturity does.
+import { MATURITY_DOMAINS } from '../app-contract.js';
+// The consultant's judgement of the six HSG65 areas — words, never numbers.
+function judgementRows(state) {
+  const j = (state && state.profiler && state.profiler.judgement) || {};
+  const words = { weak: 'Weak', adequate: 'Adequate', strong: 'Strong' };
   return MATURITY_DOMAINS
-    .map(d => ({ label: d.name, m: domainMaturity(state, d.id) }))
-    .filter(x => x.m.avg != null)
-    .map(x => ({ label: x.label, value: x.m.avg }));
+    .map(d => ({ label: d.name, j: j[d.id] || {} }))
+    .filter(x => x.j.level)
+    .map(x => ({ label: x.label, level: words[x.j.level] || x.j.level, note: String(x.j.note || '') }));
 }
 
 export function buildBoardReport(state, opts = {}) {
@@ -62,43 +63,23 @@ export function buildBoardReport(state, opts = {}) {
     { value: String(D.fatal), label: 'Could kill or seriously injure', tone: D.fatal ? 'bad' : 'ok' },
     { value: String(D.fatalUncontrolled), label: 'Of those, no controls recorded', tone: D.fatalUncontrolled ? 'bad' : 'ok' },
     { value: String(D.highPlus), label: 'Risks sitting High or Critical', note: 'with controls in place', tone: D.highPlus ? 'warn' : 'ok' },
+    { value: D.holdS.held + '/' + D.holdS.total, label: 'Risks properly held', note: D.holdS.breaches.length ? (D.holdS.breaches.length + ' rule breach' + (D.holdS.breaches.length !== 1 ? 'es' : '')) : 'no rule breaches', tone: D.holdS.breaches.length ? 'bad' : (D.holdS.total && D.holdS.held === D.holdS.total ? 'ok' : undefined) },
     { value: String(D.overdue), label: 'Actions overdue', tone: D.overdue ? 'warn' : 'ok' },
-    { value: D.completeness + '%', label: 'Assessment complete', tone: D.completeness < 60 ? 'warn' : undefined },
   ];
 
   const decisions = [];
   if (D.fatalUncontrolled) decisions.push({ text: 'Direct that the ' + countPhrase(D.fatalUncontrolled, 'risk that could kill or seriously injure and has', 'risks that could kill or seriously injure and have') + ' no recorded controls get controls recorded this quarter.', rationale: 'A could-kill risk with no recorded controls is the first thing an inspector or prosecutor will ask about.' });
   if (D.overdue) decisions.push({ text: 'Reset owners and dates on the ' + countPhrase(D.overdue, 'overdue action', 'overdue actions') + '.', rationale: 'Overdue actions with no intervention become evidence of a plan the organisation does not follow.' });
-  // Target the level THIS profile needs (HSG65), never a hardcoded number —
-  // saying "toward 3.0" to a High profile that needs 4.0 was itself an
-  // inconsistency (caught by the report audit).
-  if (D.maturityShortfall != null && D.maturityShortfall > 0) decisions.push({ text: 'Fund the management improvements needed to lift the management score from ' + D.maturityAvg.toFixed(1) + ' to the ' + D.requiredMaturity + '.0 this risk profile needs.', rationale: 'The risk currently outweighs the management carrying it (gap ' + D.maturityShortfall.toFixed(1) + ').' });
+  if (D.holdS.breaches.length) { const b = D.holdS.breaches[0]; decisions.push({ text: 'Direct that the ' + countPhrase(D.holdS.breaches.length, 'breach', 'breaches') + ' of the rule ' + (D.holdS.breaches.length === 1 ? 'is' : 'are') + ' closed this month, starting with "' + b.name + '" (' + (b.hold.reasons[0] || b.breach) + ').', rationale: 'The rule: Critical and High risks must be held or being worked on time, never run on acceptance alone; Medium risks must not be unheld.' }); }
   if (!decisions.length) decisions.push({ text: D.empty ? 'Commission completion of the risk profile before the next board cycle.' : 'Note the position and maintain the current programme.', rationale: D.empty ? 'No decision can be soundly made from an incomplete profile.' : 'No exception requires a board decision this period.' });
 
-  // Two bars, each on its OWN true scale, each showing its own exact figure —
-  // never a transformed number (the old "×5 so they share an axis" printed a
-  // bar reading 4 beside a sentence reading 0.7). The line on the management
-  // bar marks the level this risk profile needs (HSG65).
+  // Where the risks stand — real counts in the four factual states, plus the
+  // rule verdict in the app's exact words. No scales, no transforms.
   const expBars = {
-    type: 'gapBars', title: 'Risk vs management — each on its own scale',
-    rows: [
-      { label: 'Risk score (0–25)', value: D.meanScore, max: 25,
-        text: D.meanScore != null ? (D.meanScore.toFixed(1) + ' of 25' + (D.profileTier ? (' · ' + D.profileTier) : '')) : 'not yet scored',
-        colour: D.profileTier ? TIER_COLOURS[D.profileTier] : undefined },
-      { label: 'Management (0–5)', value: D.maturityAvg, max: 5,
-        text: D.maturityAvg != null ? (D.maturityAvg.toFixed(1) + ' of 5' + (D.requiredMaturity != null ? (' · needs ' + D.requiredMaturity + '.0') : '')) : 'not yet scored',
-        marker: D.requiredMaturity != null ? { at: D.requiredMaturity, label: 'needed ' + D.requiredMaturity + '.0' } : undefined },
-    ],
-    footnote: 'Bars are drawn to scale on their own axes; figures are shown to one decimal place.',
+    type: 'distributionBars', title: 'Where the ' + D.holdS.total + ' risk' + (D.holdS.total !== 1 ? 's' : '') + ' stand',
+    items: HOLD_ORDER.map(k => ({ label: HOLD_STATES[k].label, n: D.holdS[k], colour: HOLD_STATES[k].colour })),
   };
-  const verdictLine = D.empty
-    ? 'No verdict — the profile is not yet rated.'
-    : (D.meanScore != null && D.maturityAvg != null)
-      ? ('Risk: ' + (D.profileTier ? D.profileTier.toLowerCase() + ' ' : '') + '(' + D.meanScore.toFixed(1) + ' of 25). Management: ' + D.maturityAvg.toFixed(1) + ' of 5 — '
-        + (D.maturityShortfall != null && D.maturityShortfall > 0
-          ? ('this much risk needs ' + D.requiredMaturity + '.0, so the management is ' + D.maturityShortfall.toFixed(1) + ' short.')
-          : (D.requiredMaturity != null ? ('meets the ' + D.requiredMaturity + '.0 this much risk needs.') : 'broadly matched.')))
-      : 'Management maturity not yet scored — the risk side of this comparison stands alone.';
+  const verdictLine = D.holdS.verdict;
 
   const page1 = {
     label: 'Position', cover: format === 'signal', blocks: [
@@ -202,7 +183,8 @@ export function buildBoardReport(state, opts = {}) {
     progBlocks.push({ type: 'dataTable',
       cols: [ { header: 'Measure', w: '40%' }, { header: 'Baseline ' + fmtD(X.baseline.date), w: '20%' }, { header: 'Now', w: '20%' }, { header: 'Movement', w: '20%' } ],
       rows: [
-        [ 'Management maturity (of 5)', b.maturity == null ? '—' : Number(b.maturity).toFixed(1), D.maturityAvg == null ? '—' : D.maturityAvg.toFixed(1), (b.maturity != null && D.maturityAvg != null) ? (D.maturityAvg > b.maturity ? 'up ' + (D.maturityAvg - b.maturity).toFixed(1) : D.maturityAvg < b.maturity ? 'down ' + (b.maturity - D.maturityAvg).toFixed(1) : 'no change') : '—' ],
+        [ 'Risks properly held', String(b.held ?? '—'), String(D.holdS.held), (b.held != null) ? ((D.holdS.held > b.held) ? ('up ' + (D.holdS.held - b.held)) : (D.holdS.held < b.held) ? ('down ' + (b.held - D.holdS.held)) : 'no change') : '—' ],
+        [ 'Rule breaches', String(b.ruleBreaches ?? '—'), String(D.holdS.breaches.length), (b.ruleBreaches != null) ? ((D.holdS.breaches.length < b.ruleBreaches) ? ('down ' + (b.ruleBreaches - D.holdS.breaches.length)) : (D.holdS.breaches.length > b.ruleBreaches) ? ('up ' + (D.holdS.breaches.length - b.ruleBreaches)) : 'no change') : '—' ],
         [ 'High + critical risks', String(b.highCrit ?? '—'), String(D.highPlus), mv(b.highCrit, D.highPlus) ],
         [ 'Open actions', String(b.openActions ?? '—'), String(D.openActions), mv(b.openActions, D.openActions) ],
         [ 'Overdue actions', String(b.overdueActions ?? '—'), String(D.overdue), mv(b.overdueActions, D.overdue) ],
@@ -266,16 +248,31 @@ export function buildBoardReport(state, opts = {}) {
     ],
   };
 
-  // ── Page 4: Exposure & maturity, duty, sign-off ──
-  const matRows = maturityRows(state);
+  // ── Page 4: Risk control status, consultant judgement, duty, sign-off ──
+  // Facts, not scores: each risk sits in one of four states graded on what is
+  // recorded; the rule (HSG65 proportionality) is printed in full; the six
+  // HSG65 areas carry the consultant's judgement in words.
+  const judRows = judgementRows(state);
+  const holdRows = HOLD_ORDER.map(k => [HOLD_STATES[k].label, String(D.holdS[k]), HOLD_STATES[k].desc]);
   const page4 = {
-    label: 'Risk vs management', blocks: [
+    label: 'Risk control status', blocks: [
       mast,
       { type: 'statementPanel', title: 'Directors’ duty', cite: 'Health and Safety at Work etc. Act 1974, s.37', body: 'Where an offence by the company is proved to have been committed with the consent, connivance or neglect of a director, manager or similar officer, that individual — as well as the company — is liable to prosecution. This report exists so the board can show it directed and reviewed the management of these risks.' },
       { type: 'tagList', title: 'The laws this risk profile brings into play', tags: D.duties },
-      matRows.length
-        ? { type: 'stepScale', title: 'Management maturity (HSG65 scale, 0–5)', rows: matRows, flagAt: 1.5 }
-        : { type: 'textBlock', title: 'Management maturity', body: 'Not yet scored. Score the six maturity domains in the risk review to complete this picture.' },
+      { type: 'dataTable', title: 'Risk control status — what each state means',
+        cols: [ { header: 'State', w: '18%' }, { header: 'Risks', w: '10%' }, { header: 'What it means', w: '72%' } ],
+        rows: holdRows,
+        footnote: 'Graded on recorded facts, not opinion. The rule: Critical and High risks must be held or being worked on time, and never run on acceptance alone; Medium risks must not be left not held.' },
+      D.holdS.breaches.length
+        ? { type: 'dataTable', title: 'Breaches of the rule — for board direction',
+            cols: [ { header: 'Risk', w: '34%' }, { header: 'Band', w: '12%' }, { header: 'State', w: '16%' }, { header: 'Why it breaches', w: '38%' } ],
+            rows: D.holdS.breaches.map(b => [ b.name, b.band || '—', b.hold.label, (b.hold.reasons && b.hold.reasons.join('; ')) || b.breach ]) }
+        : { type: 'textBlock', title: 'Breaches of the rule', body: 'None. Every Critical and High risk is held or being worked on time, and no Medium risk is left not held.' },
+      judRows.length
+        ? { type: 'dataTable', title: 'Consultant judgement — the six HSG65 areas, in words',
+            cols: [ { header: 'Area', w: '28%' }, { header: 'Judgement', w: '16%' }, { header: 'Consultant’s note', w: '56%' } ],
+            rows: judRows.map(x => [ x.label, x.level, x.note || '—' ]) }
+        : { type: 'textBlock', title: 'Consultant judgement — the six HSG65 areas', body: 'Not yet judged. The consultant records a judgement in words (Weak, Adequate or Strong) against each of the six HSG65 areas in the risk review.' },
       { type: 'signoffGrid', cells: [
         { label: 'Prepared by' }, { label: 'Position' }, { label: 'Signature' }, { label: 'Date' },
         { label: 'Received for the board' }, { label: 'Position' }, { label: 'Signature' }, { label: 'Date' },

@@ -158,6 +158,48 @@ test('registry exposes the picker contract', () => {
   }
 });
 
+// ── Hold model (risk control status) — the replacement for the 0-5 maturity
+//    number: facts per risk, counts for the company, HSG65 rule for breaches.
+test('hold model grades every state and catches both breach kinds', () => {
+  const state = { riskProfile: [
+    // held: plan delivered (all Complete) + signed off
+    { id: 'h1', activity: 'Held risk', category: 'Physical', likelihood: '4', severity: '5', controls: 'guards', reviewed: true, actions: [{ desc: 'Fit guards', owner: 'AB', due: '2026-01-01', status: 'Complete' }] },
+    // breach: critical band run on acceptance alone
+    { id: 'h2', activity: 'Accepted critical', category: 'Physical', likelihood: '4', severity: '5', controls: 'rescue plan', actions: [{ desc: 'Run as is', owner: 'SA', due: '2026-01-01', status: 'Accepted' }] },
+    // working: open action, owned, dated, on time
+    { id: 'h3', activity: 'Being worked', category: 'Ergonomic', likelihood: '2', severity: '2', controls: 'training', actions: [{ desc: 'Refresher', owner: 'AB', due: '2099-01-01' }] },
+    // slipping + breach: high band with an overdue action
+    { id: 'h4', activity: 'Slipping high', category: 'Electrical', likelihood: '4', severity: '4', controls: 'permits', actions: [{ desc: 'Isolate', owner: 'CD', due: '2020-01-01' }] },
+    // not held: no controls recorded
+    { id: 'h5', activity: 'Not held', category: 'Fire', likelihood: '2', severity: '2', controls: '', actions: [] },
+  ] };
+  const D = deriveBoard(state, { today: '2026-08-18' });
+  assert.equal(D.holdS.total, 5);
+  assert.equal(D.holdS.held, 2);        // h1 delivered+signed off, h2 accepted
+  assert.equal(D.holdS.working, 1);     // h3
+  assert.equal(D.holdS.slipping, 1);    // h4
+  assert.equal(D.holdS.notheld, 1);     // h5
+  const kinds = D.holdS.breaches.map(b => b.breach).join(' | ');
+  assert.match(kinds, /run on acceptance alone/);   // h2: high band held by acceptance only
+  assert.match(kinds, /is slipping/i);              // h4: high band slipping
+  assert.equal(D.holdS.breaches.length, 2);         // h5 is Low — no Medium/High rule engaged
+  assert.match(D.holdS.verdict, /2 of 5 risks properly held/);
+});
+
+test('board report speaks hold language and never the 0-5 scale', () => {
+  const state = fixture('typical');
+  state.profiler = state.profiler || {};
+  state.profiler.judgement = { leadership: { level: 'strong', note: 'Board reviews quarterly' } };
+  const html = reportHTML(buildReport(state, 'board-report', OPTS));
+  assert.match(html, /Risks properly held/);
+  assert.match(html, /What it means/);                       // state definitions table
+  assert.match(html, /Consultant judgement/);
+  assert.match(html, /Board reviews quarterly/);             // the judgement note prints
+  assert.doesNotMatch(html, /maturity/i);                    // the old scale is gone
+  assert.doesNotMatch(html, /HSG65 scale/);
+  assert.doesNotMatch(html, /shortfall/i);
+});
+
 test('snapshots per fixture are stable', () => {
   fs.mkdirSync(snapDir, { recursive: true });
   for (const fx of ['empty', 'typical', 'oversized']) {

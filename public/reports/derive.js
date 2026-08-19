@@ -7,8 +7,8 @@
 // from the app itself) and scripts/check-app-report-consistency.mjs diffs the
 // two implementations on a seeded edge-case state — run it before deploying
 // anything that touches either side.
-import { sifOf, controlStatusOf, riskMaturityOf, MATURITY_DOMAINS, domainMaturity, REQUIRED_MATURITY } from './app-contract.js';
-export { sifOf, controlStatusOf, riskMaturityOf, MATURITY_DOMAINS, domainMaturity, REQUIRED_MATURITY };
+import { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf } from './app-contract.js';
+export { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf };
 
 // ── Tier banding ──
 // The app's bands are tenant-tunable (state.riskConfig.bands). The report must
@@ -210,20 +210,14 @@ export function deriveBoard(state, opts = {}) {
   const noOwner = openActs.filter(a => !(a.owner && String(a.owner).trim()));
   const noDate = openActs.filter(a => !a.due);
 
-  // Maturity: the SAME number the app's combined panel shows — each rated
-  // risk carries the maturity of the domain that controls it (via the
-  // contract's category→domain map, crit veto included), averaged across the
-  // rated risks. The old plain mean of all item values was a different number.
-  const matPerRisk = rated.map(x => riskMaturityOf(s, x.r)).filter(v => v != null);
-  const maturityAvg = matPerRisk.length ? matPerRisk.reduce((a, b) => a + b, 0) / matPerRisk.length : null;
+  // Risk control status: the app's hold model via the contract — each risk
+  // graded by recorded facts, the company measure a count, HSG65
+  // proportionality a rule. Replaces the abstract 0-5 maturity number.
+  const holdS = holdSummaryOf(s, (r) => { const res = residualOf(r); return res ? tierFor(res.score, bands) : null; }, { today: opts.today });
 
   // Exposure score for the bars: mean residual score of rated risks (0–25).
   const meanScore = rated.length ? rated.reduce((a, x) => a + x.res.score, 0) / rated.length : null;
   const profileTier = meanScore != null ? tierFor(Math.max(1, Math.round(meanScore)), bands) : null;
-  // Required maturity for this profile + the gap, exactly as the app panel
-  // computes them (one decimal, needed minus have).
-  const requiredMaturity = profileTier ? REQUIRED_MATURITY[profileTier] : null;
-  const maturityShortfall = (requiredMaturity != null && maturityAvg != null) ? +(requiredMaturity - maturityAvg).toFixed(1) : null;
 
   // Hierarchy of control shares (of risks with a recorded level).
   const hierarchy = HIERARCHY.map(h => ({ ...h, n: risks.filter(r => r.controlLevel === h.key).length }));
@@ -269,14 +263,11 @@ export function deriveBoard(state, opts = {}) {
     standfirst = 'Of ' + countPhrase(rated.length, 'rated risk', 'rated risks') + ', ' +
       noneOrCount(highPlus, 'still sits', 'still sit', 'none') + ' High or Critical with controls in place, and ' +
       noneOrCount(fatalUncontrolled.length, 'fatal-potential risk has', 'fatal-potential risks have', 'no') +
-      ' no recorded controls. ' + (maturityAvg != null
-        ? 'Management maturity averages ' + maturityAvg.toFixed(1) + ' of 5.'
-        : 'Management maturity has not yet been scored.');
+      ' no recorded controls. ' + holdS.held + ' of ' + holdS.total + ' risk' + (holdS.total !== 1 ? 's are' : ' is') + ' properly held' + (holdS.breaches.length ? (' - ' + holdS.breaches.length + ' rule breach' + (holdS.breaches.length !== 1 ? 'es' : '') + '.') : '.');
   } else {
     headline = noneOrCount(highPlus, 'risk still sits', 'risks still sit', 'No') + ' High or Critical with controls in place.';
     standfirst = countPhrase(rated.length, 'risk is', 'risks are') + ' rated. ' +
-      (maturityAvg != null ? 'Management maturity averages ' + maturityAvg.toFixed(1) + ' of 5.'
-        : 'Management maturity has not yet been scored.');
+      holdS.held + ' of ' + holdS.total + ' risk' + (holdS.total !== 1 ? 's are' : ' is') + ' properly held' + (holdS.breaches.length ? (' - ' + holdS.breaches.length + ' rule breach' + (holdS.breaches.length !== 1 ? 'es' : '') + '.') : '.');
   }
 
   return {
@@ -284,17 +275,16 @@ export function deriveBoard(state, opts = {}) {
     fatal: fatal.length, fatalUncontrolled: fatalUncontrolled.length,
     highPlus, openActions: openActs.length, overdue: overdue.length,
     noOwner: noOwner.length, noDate: noDate.length,
-    maturityAvg, meanScore, profileTier, requiredMaturity, maturityShortfall, hierarchy, hierTotal, protectDown,
+    holdS, meanScore, profileTier, hierarchy, hierTotal, protectDown,
     registerRows, maxSev, highestHarm: HARM_LADDER[maxSev] || '—',
     duties, headline, standfirst,
-    // Assessment completeness, the app's own formula: rated risks + scored
-    // maturity domains + monitoring populated, over risks + domains + 1.
+    // Assessment completeness, the app's own formula: rated risks +
+    // monitoring populated, over risks + 1 (the 0-5 domain scoring is gone).
     completeness: (function () {
-      const scoredDoms = MATURITY_DOMAINS.filter(d => domainMaturity(s, d.id).avg != null).length;
       const as = s.riskAssurance || {};
       const monPop = ['leading', 'lagging', 'assurance'].some(k => Array.isArray(as[k]) && as[k].length) ? 1 : 0;
-      const tot = risks.length + MATURITY_DOMAINS.length + 1;
-      const filled = rated.length + scoredDoms + monPop;
+      const tot = risks.length + 1;
+      const filled = rated.length + monPop;
       return tot ? Math.round(filled / tot * 100) : 0;
     })(),
     company: co, empty: !rated.length,

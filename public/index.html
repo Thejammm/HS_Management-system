@@ -3361,7 +3361,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
       <!-- 2 · Management maturity assessment -->
       <details class="coll wf-sec" id="wfMaturity">
-        <summary><h3>Management maturity assessment</h3><span class="coll-meta">six domains, 0-5</span></summary>
+        <summary><h3>Consultant judgement — the six HSG65 areas</h3><span class="coll-meta">Weak · Adequate · Strong, in words</span></summary>
         <div class="coll-body"><div id="riskMaturity"></div></div>
       </details>
     </div>
@@ -3394,7 +3394,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rr-typetile .rt-n{font-size:26px;font-weight:700;line-height:1;}
     .rr-typetile .rt-l{font-size:12px;font-weight:600;color:var(--text-muted);margin-top:5px;}
   </style>
-  <!-- Combined risk panel: matrix + control maturity in one frame.
+  <!-- Combined risk panel: matrix + risk control status in one frame.
        Text and chrome ride the app theme vars so dark mode stays readable;
        band colours and in-cell bars are semantic and fixed. -->
   <style>
@@ -3435,6 +3435,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rpx-req td{border:1px solid var(--border);font-size:9px;padding:2px 6px;text-align:center;color:var(--text-muted);line-height:1.25;}
     .rpx-req td b{font-size:10.5px;color:var(--text);}
     .rpx-req td.on{border-color:var(--accent);background:var(--accent-light,#eef6fb);color:var(--text);font-weight:700;}
+    .rpx-flag{position:absolute;top:1px;right:4px;color:#fff;font-weight:900;font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,.45);}
+    .jl-btn{font-family:inherit;font-size:12px;font-weight:700;padding:5px 12px;border-radius:7px;border:1.5px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;}
+    .jl-btn.on{color:#fff;border-color:transparent;}
     .rpx-segbar{display:flex;gap:4px;height:10px;margin:4px 0 3px;}
     .rpx-segbar>span{flex:1;border-radius:3px;background:var(--muted-bg);}
     .rpx-marks{position:relative;height:16px;font-size:10.5px;font-weight:700;}
@@ -7552,7 +7555,7 @@ function _auditMetricsNow(){
     risks:risks.length, rated:M.rated.length,
     highCrit:(M.byBand.High||0)+(M.byBand.Critical||0),
     sif:risks.filter(r=>_riskSif(r)).length,
-    maturity:M.maturity==null?null:+M.maturity.toFixed(2), required:M.required, shortfall:M.shortfall,
+    held:M.H.held, working:M.H.working, slipping:M.H.slipping, notHeld:M.H.notheld, ruleBreaches:M.H.breaches.length,
     openActions:open.length, overdueActions:overdue.length, delivered:delivered.length,
     trainingRecords:trn.length, trainingExpired:trnExp,
     briefings:br.length, incidents:(S.incidents||[]).length,
@@ -7585,14 +7588,15 @@ function renderAuditProgress(){
   const snaps=_auditSnaps();
   const now=_auditMetricsNow();
   const tgt=S.auditTarget||{};
-  const tgtMat=parseFloat(tgt.maturity)||now.required||4;
   const base=snaps[0]||null, latest=snaps.length>1?snaps[snaps.length-1]:null;
   const fmt=(v,dec)=>v==null?'—':(dec?Number(v).toFixed(1):String(v));
   const delta=(a,b,goodDown)=>{ if(a==null||b==null) return ''; const d=+(b-a).toFixed(2); if(!d) return '<span style="color:var(--text-muted);font-size:11px;">no change</span>';
     const good=goodDown?d<0:d>0; return `<span style="color:${good?'#16A34A':'#DC2626'};font-weight:700;font-size:11px;">${d>0?'▲':'▼'} ${Math.abs(d)}</span>`; };
   const rows=[
-    ['Management maturity (of 5)', m=>fmt(m.maturity,1), false],
-    ['Maturity shortfall (points)', m=>fmt(m.shortfall,1), true],
+    ['Risks properly held', m=>fmt(m.held), false],
+    ['Rule breaches', m=>fmt(m.ruleBreaches), true],
+    ['Slipping', m=>fmt(m.slipping), true],
+    ['Not held', m=>fmt(m.notHeld), true],
     ['Risks profiled', m=>fmt(m.risks), false],
     ['High + critical risks', m=>fmt(m.highCrit), true],
     ['Open actions', m=>fmt(m.openActions), true],
@@ -7603,7 +7607,7 @@ function renderAuditProgress(){
     ['Briefings recorded', m=>fmt(m.briefings), false],
     ['Accreditation ready %', m=>m.casReady==null?'—':m.casReady+'%', false],
   ];
-  const rawOf=(m,label)=>{ const map={'Management maturity (of 5)':m.maturity,'Maturity shortfall (points)':m.shortfall,'Risks profiled':m.risks,'High + critical risks':m.highCrit,'Open actions':m.openActions,'Overdue actions':m.overdueActions,'Actions delivered':m.delivered,'Training expired':m.trainingExpired,'Management system gaps':m.mgmtGaps,'Briefings recorded':m.briefings,'Accreditation ready %':m.casReady}; return map[label]; };
+  const rawOf=(m,label)=>{ const map={'Risks properly held':m.held,'Rule breaches':m.ruleBreaches,'Slipping':m.slipping,'Not held':m.notHeld,'Risks profiled':m.risks,'High + critical risks':m.highCrit,'Open actions':m.openActions,'Overdue actions':m.overdueActions,'Actions delivered':m.delivered,'Training expired':m.trainingExpired,'Management system gaps':m.mgmtGaps,'Briefings recorded':m.briefings,'Accreditation ready %':m.casReady}; return map[label]; };
   const table = base ? `<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12.5px;min-width:100%;">
       <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;border-bottom:1.5px solid var(--border);">
         <th style="padding:6px 8px;">Measure</th><th style="padding:6px 8px;">Baseline<br><span style="font-weight:400;">${fmtDate(base.date)}</span></th>
@@ -7621,21 +7625,20 @@ function renderAuditProgress(){
     : `<div class="ck-pending" style="padding:6px 0 10px;">No baseline yet. Click "Record snapshot" on the first audit visit — that snapshot becomes "where they started", and every later one shows the journey.</div>`;
   // Time-to-target: honest linear estimate from the recorded maturity trend.
   let eta='';
-  if(base && now.maturity!=null && base.metrics.maturity!=null){
-    const gain=now.maturity-base.metrics.maturity;
+  if(base && now.held!=null && base.metrics.held!=null){
+    const gain=now.held-base.metrics.held;
     const days=Math.max(1,(new Date().getTime()-new Date(base.date+'T12:00:00').getTime())/86400000);
-    const left=tgtMat-now.maturity;
-    if(left<=0) eta=`<span style="color:#16A34A;font-weight:700;">Target level reached — hold it there.</span>`;
-    else if(gain>0.05){ const est=Math.round(left/(gain/days)); const d=new Date(); d.setDate(d.getDate()+est);
-      eta=`At the current rate (+${gain.toFixed(1)} maturity in ${Math.round(days)} days), the agreed level of ${tgtMat.toFixed(1)} lands around <b>${d.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</b>.`; }
-    else eta='Maturity has not moved since the baseline yet — the time-to-target estimate needs some recorded progress.';
+    const left=(now.risks||0)-now.held;
+    if(left<=0 && !now.ruleBreaches) eta=`<span style="color:#16A34A;font-weight:700;">Target reached — every risk properly held. Keep it there.</span>`;
+    else if(gain>0){ const est=Math.round(left/(gain/days)); const d=new Date(); d.setDate(d.getDate()+est);
+      eta=`At the current rate (${gain} more risk${gain!==1?'s':''} held in ${Math.round(days)} days), every risk is held around <b>${d.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</b>.`; }
+    else eta='The held count has not moved since the baseline yet — the estimate needs some recorded progress.';
   }
   const hist=snaps.length?`<div style="margin-top:12px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:6px;">Snapshot history</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">${snaps.map((s,i)=>`<span class="badge badge-muted" style="display:inline-flex;gap:6px;align-items:center;">${i===0?'★ baseline · ':''}${fmtDate(s.date)}${s.metrics.maturity!=null?(' · mat '+Number(s.metrics.maturity).toFixed(1)):''}${dis?'':` <button style="background:none;border:none;cursor:pointer;color:var(--danger);padding:0;font-size:11px;" title="Delete snapshot" onclick="deleteAuditSnapshot('${s.id}')">✕</button>`}</span>`).join('')}</div></div>`:'';
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">${snaps.map((s,i)=>`<span class="badge badge-muted" style="display:inline-flex;gap:6px;align-items:center;">${i===0?'★ baseline · ':''}${fmtDate(s.date)}${s.metrics.held!=null?(' · '+s.metrics.held+' held'):(s.metrics.maturity!=null?(' · mat '+Number(s.metrics.maturity).toFixed(1)):'')}${dis?'':` <button style="background:none;border:none;cursor:pointer;color:var(--danger);padding:0;font-size:11px;" title="Delete snapshot" onclick="deleteAuditSnapshot('${s.id}')">✕</button>`}</span>`).join('')}</div></div>`:'';
   el.innerHTML=`
     <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
-      <label style="font-size:12px;color:var(--text-muted);">Agreed target maturity
-        <input type="number" min="1" max="5" step="0.5"${dis} value="${esc(String(tgt.maturity||now.required||4))}" onchange="setAuditTarget('maturity',this.value)" style="width:70px;margin-left:6px;"></label>
+      <span style="font-size:12px;color:var(--text-muted);">Agreed target: <b>every risk properly held, no rule breaches</b></span>
       <label style="font-size:12px;color:var(--text-muted);">Agreed by
         <input type="date"${dis} value="${esc(tgt.targetDate||'')}" onchange="setAuditTarget('targetDate',this.value)" style="margin-left:6px;" title="The date you and the client agreed to reach the target by"></label>
       ${eta?`<div style="flex:1;min-width:240px;font-size:12.5px;">${eta}</div>`:''}
@@ -7645,7 +7648,7 @@ function renderAuditProgress(){
 }
 const AUDIT_AREAS=[
   { id:'ar_risk', name:'Risk profile', live:m=>m.risks+' risks ('+m.highCrit+' high/critical, '+m.sif+' fatal-potential)' },
-  { id:'ar_maturity', name:'Management maturity', live:m=>m.maturity==null?'not yet scored':(Number(m.maturity).toFixed(1)+' of 5 against '+(m.required!=null?m.required+'.0':'the required level')+(m.shortfall>0?(' — '+m.shortfall.toFixed(1)+' short'):'')) },
+  { id:'ar_maturity', name:'Risk control status', live:m=>(m.held!=null?(m.held+' of '+m.risks+' held · '+(m.ruleBreaches?m.ruleBreaches+' rule breach'+(m.ruleBreaches!==1?'es':''):'no breaches')):'not yet assessed') },
   { id:'ar_plan', name:'Execution plan', live:m=>m.openActions+' open ('+m.overdueActions+' overdue) · '+m.delivered+' delivered' },
   { id:'ar_training', name:'Training & competence', live:m=>m.trainingRecords?(m.trainingRecords+' records · '+m.trainingExpired+' expired'):'no matrix yet' },
   { id:'ar_consult', name:'Consultation & communication', live:m=>m.briefings?(m.briefings+' briefings recorded'):'no briefings recorded yet' },
@@ -13702,9 +13705,9 @@ const COCKPIT_WIDGETS = {
     } },
   chartInspections:{ id:'chartInspections', label:'Inspections by month', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Inspections by month</h4><svg viewBox="0 0 ${x.BW} ${x.BH}" width="100%" style="max-height:200px;">${x.barSvg}</svg></div>` },
   chartCompliance:{ id:'chartCompliance', label:'Compliance', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Compliance</h4><div class="ckx-donut-wrap">${x.donut}<div class="ckx-legend">${_ckLeg('var(--success)','Pass',x.pass)}${_ckLeg('#6EE7B7','Rectified',x.rect)}${_ckLeg('var(--warning)','Action',x.act)}</div><button class="ck-link" onclick="switchTab('monthly')">View monthly report</button></div></div>` },
-  riskVsMaturity: { id:'riskVsMaturity', label:'Risk profile & control maturity', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="full">${_riskPanelHTML({heading:true})}</div></div>` },
+  riskVsMaturity: { id:'riskVsMaturity', label:'Risk profile & control status', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="full">${_riskPanelHTML({heading:true})}</div></div>` },
   riskMatrixOnly:   { id:'riskMatrixOnly', label:'Risk matrix (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="matrix">${_riskPanelHTML({heading:true,only:'matrix'})}</div></div>` },
-  riskMaturityOnly: { id:'riskMaturityOnly', label:'Control maturity (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="maturity">${_riskPanelHTML({heading:true,only:'maturity'})}</div></div>` },
+  riskMaturityOnly: { id:'riskMaturityOnly', label:'Risk control status (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="maturity">${_riskPanelHTML({heading:true,only:'maturity'})}</div></div>` },
   cardRiskPriorities:{ id:'cardRiskPriorities', label:'Risk priorities', group:'Card', render:x=>{
       const nSif=x.RD.sif.length, nUnc=x.RD.sifUncontrolled.length;
       const resHigh=x.RD.sif.filter(r=>{const p=_riskScore(r).priority;return p==='Critical'||p==='High';}).length;
@@ -13752,7 +13755,7 @@ const COCKPIT_WIDGETS = {
   // Dials & gauges — richer visuals, OFF by default (enable per client in the customiser).
   gaugeCompleteness:{ id:'gaugeCompleteness', label:'Completeness gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Assessment completeness', `${_gaugeSVG(x.RD.completeness)}<div class="ck-pending" style="text-align:center;margin-top:2px;">of the assessment complete</div><button class="ck-link" onclick="openCompletenessModal()" style="align-self:center;">What's left →</button>`) },
   gaugeCompliance:  { id:'gaugeCompliance', label:'Compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Inspection compliance', `${_gaugeSVG(x.compliance==null?0:x.compliance,{text:x.compliance==null?'--':x.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">pass + rectified</div><button class="ck-link" onclick="switchTab('monthly')" style="align-self:center;">Monthly report</button>`) },
-  gaugeMaturity:    { id:'gaugeMaturity', label:'Maturity gauge', group:'Gauge', defaultOff:true, render:x=>{ const a=x.RD.overallMat.avg; return _ckMod('Management maturity', `${_gaugeSVG(a==null?0:a/5*100,{text:a==null?'--':a.toFixed(1)})}<div class="ck-pending" style="text-align:center;margin-top:2px;">out of 5 (HSG65)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
+  gaugeMaturity:    { id:'gaugeMaturity', label:'Risks properly held (gauge)', group:'Gauge', defaultOff:true, render:x=>{ const H=_holdSummary(); const pct=H.total?Math.round(H.held/H.total*100):0; return _ckMod('Risks properly held', `${_gaugeSVG(pct,{text:H.total?(H.held+'/'+H.total):'--'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${H.breaches.length?(H.breaches.length+' rule breach'+(H.breaches.length!==1?'es':'')):'no rule breaches'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
   tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(100 - x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`) },
   gaugeAccreditation:{ id:'gaugeAccreditation', label:'Accreditation gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Accreditation readiness', `${_gaugeSVG(x.cas.pctReady==null?0:x.cas.pctReady,{text:x.cas.pctReady==null?'--':x.cas.pctReady+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">criteria ready</div><button class="ck-link" onclick="switchTab('cas')" style="align-self:center;">Open accreditation</button>`) },
   gaugeMgmtCompliance:{ id:'gaugeMgmtCompliance', label:'Mgmt-system compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Management-system compliance', `${_gaugeSVG(x.reqStats.compliance==null?0:x.reqStats.compliance,{text:x.reqStats.compliance==null?'--':x.reqStats.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">requirements met</div><button class="ck-link" onclick="switchTab('requirements')" style="align-self:center;">Open management system</button>`) },
@@ -13864,11 +13867,11 @@ function resetCockpitLayout(){ if(S.config) delete S.config.cockpit; saveData();
 const REPORT_SECTIONS = [
   { id:'board.riskVsMaturity', report:'Board report',      label:'Risk exposure vs maturity' },
   { id:'board.distribution',   report:'Board report',      label:'Where the risks sit (bands)' },
-  { id:'board.maturity',       report:'Board report',      label:'Management maturity table' },
+  { id:'board.maturity',       report:'Board report',      label:'Consultant judgement (six HSG65 areas)' },
   { id:'board.legal',          report:'Board report',      label:'Legal exposure' },
   { id:'risk.riskVsMaturity',  report:'Risk profile',      label:'Risk exposure vs maturity' },
   { id:'risk.matrix',          report:'Risk profile',      label:'Risk distribution matrix' },
-  { id:'risk.maturity',        report:'Risk profile',      label:'Management maturity assessment' },
+  { id:'risk.maturity',        report:'Risk profile',      label:'Consultant judgement (six HSG65 areas)' },
   { id:'risk.controls',        report:'Risk profile',      label:'Controls by level' },
   { id:'risk.energy',          report:'Risk profile',      label:'Energy coverage' },
   { id:'action.summary',       report:'Action plan',       label:'At-a-glance summary tiles' },
@@ -14893,7 +14896,7 @@ function _gotoRisk(id){
 
 // ── Dashboard: summary cards + 5x5 risk matrix + top business impacts ──
 // ══════════════════════════════════════════════════════════════
-//  COMBINED RISK PANEL — matrix + control maturity in one frame.
+//  COMBINED RISK PANEL — matrix + risk control status in one frame.
 //  Replaces the separate "Risk matrix" and "Risk vs management
 //  maturity" cards and the 0-100 exposure bar (2026-08-18).
 //  Colour = how much risk; white bar in each cell = how well the
@@ -14908,118 +14911,139 @@ const RISK_MATURITY_DOMAIN = {
   'Ergonomic':'ohealth', 'Psychosocial':'ohealth', 'Fire':'opcontrol', 'Environmental':'opcontrol',
   'Legal / Regulatory':'leadership', 'Business continuity':'resilience'
 };
-// Proportionate control (HSG65 asks that control effort match the risk profile;
-// it publishes no numbers, so this ladder is ours): the maturity a band needs
-// before it counts as controlled. Tune after the HSG65 review.
-const RISK_REQUIRED_MATURITY = { Low:2, Medium:3, High:4, Critical:5 };
-// Short names for the app's 0-5 maturity scale (HSE culture ladder, as scored
-// in the maturity assessment) used in the level captions.
-const RISK_MATURITY_NAMES = { 1:'Emerging', 2:'Managing', 3:'Involving', 4:'Cooperating', 5:'Continually improving' };
-// A risk's control maturity = its category's controlling domain, scored 0-5.
-// Critical veto behaves as everywhere else in the app (forces 0).
-function _riskMaturityOf(r){
-  const dom = RISK_MATURITY_DOMAIN[r && r.category];
-  if(!dom) return null;
-  const mt = _profMaturity(dom);
-  if(mt.avg==null) return null;
-  return mt.critFail ? 0 : mt.avg;
-}
 // Single source of truth for the panel: cells, means, requirement, verdict.
 function _riskPanelModel(){
-  const scored=(S.riskProfile||[]).map(r=>({ r, sc:_riskScore(r) }));
+  // Risk picture (matrix, bands, mean) + the hold summary. The old 0-5
+  // maturity machinery is gone — the management side is now the factual
+  // "risk control status" (see _riskHold/_holdSummary above).
+  const scored=(S.riskProfile||[]).map(r=>({ r, sc:_riskScore(r), hold:_riskHold(r) }));
   const rated=scored.filter(x=>x.sc.rating);
   const unrated=scored.length-rated.length;
-  let matSum=0, matN=0, excluded=0;
-  rated.forEach(x=>{ const m=_riskMaturityOf(x.r); if(m==null){ excluded++; x.mat=null; } else { x.mat=m; matSum+=m; matN++; } });
   const cells={};
   rated.forEach(x=>{
     const k=x.sc.l+'|'+x.sc.s;
     if(!cells[k]) cells[k]={ l:x.sc.l, s:x.sc.s, rating:x.sc.l*x.sc.s, band:_bandFor(x.sc.l*x.sc.s), items:[] };
     cells[k].items.push(x);
   });
-  Object.values(cells).forEach(c=>{
-    const ms=c.items.map(x=>x.mat).filter(m=>m!=null);
-    c.maturity = ms.length ? ms.reduce((a,b)=>a+b,0)/ms.length : null;
-    c.required = RISK_REQUIRED_MATURITY[c.band];
-    c.shortfall = c.maturity==null ? null : +(c.required-c.maturity).toFixed(1);
-  });
   const byBand={Low:0,Medium:0,High:0,Critical:0}; rated.forEach(x=>byBand[x.sc.priority]++);
   const meanScore = rated.length ? rated.reduce((a,x)=>a+x.sc.rating,0)/rated.length : null;
   const profileBand = meanScore==null ? null : _bandFor(meanScore);
-  const required = profileBand ? RISK_REQUIRED_MATURITY[profileBand] : null;
-  const maturity = matN ? matSum/matN : null;
-  const shortfall = (required!=null && maturity!=null) ? +(required-maturity).toFixed(1) : null;
-  const verdict = shortfall==null ? 'incomplete'
-    : shortfall<=0 ? 'adequately controlled' : shortfall<=0.5 ? 'broadly controlled' : 'under-controlled';
-  const hotspots = Object.values(cells).filter(c=>c.shortfall!=null && c.shortfall>0)
-    .sort((a,b)=>b.shortfall-a.shortfall || b.rating-a.rating);
-  return { rated, unrated, excluded, cells, byBand, meanScore, profileBand, required, maturity, shortfall, verdict, hotspots };
+  const H=_holdSummary();
+  return { rated, unrated, cells, byBand, meanScore, profileBand, H };
 }
+// ══════════════════════════════════════════════════════════════
+//  RISK CONTROL STATUS — the replacement for the 0-5 maturity number
+//  (Simon, 2026-08-19: "the numbers are total bollocks - find a different
+//  way"). Every risk is graded by FACTS the app already records into one
+//  of four plain states; the company measure is a COUNT ("9 of 12 risks
+//  properly held"), and HSG65 proportionality is a RULE (the bigger the
+//  risk, the stricter the state it must be in) - never a ratio, never a
+//  decimal, never an opinion score.
+// ══════════════════════════════════════════════════════════════
+const HOLD_STATES = {
+  held:     { k:'held',     label:'Held',         colour:'#16A34A', desc:'Controls recorded, and the plan delivered and signed off - or the risk formally accepted.' },
+  working:  { k:'working',  label:'Being worked', colour:'#F59E0B', desc:'Controls recorded and every gap has an owned, dated action - all on time.' },
+  slipping: { k:'slipping', label:'Slipping',     colour:'#EA580C', desc:'The plan is overdue, or actions are missing an owner or a date.' },
+  notheld:  { k:'notheld',  label:'Not held',     colour:'#DC2626', desc:'No controls recorded, no plan and no formal acceptance, or the risk is not yet scored.' },
+};
+const HOLD_ORDER = ['held','working','slipping','notheld'];
+function _riskHold(r){
+  const sc=_riskScore(r);
+  const plan=_riskPlanState(r);
+  const controls=_riskControlStatus(r)!=='None';
+  const reasons=[];
+  if(!sc.rating) reasons.push('not yet scored');
+  if(!controls) reasons.push('no controls recorded');
+  if(plan.k==='none' && sc.rating && controls) reasons.push('no plan and not accepted');
+  if(!sc.rating || !controls || plan.k==='none')
+    return Object.assign({}, HOLD_STATES.notheld, { reasons: reasons.length?reasons:['no plan and not accepted'] });
+  if(plan.k==='accepted') return Object.assign({}, HOLD_STATES.held, { reasons:['formally accepted with the current controls'], accepted:true });
+  if(plan.k==='managed' && r.reviewed) return Object.assign({}, HOLD_STATES.held, { reasons:['plan delivered and signed off'] });
+  const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due));
+  const open=acts.filter(a=>{ const st=_actionStatus(a); return st!=='Complete'&&st!=='Accepted'; });
+  const today=new Date().toISOString().slice(0,10);
+  const overdue=open.filter(a=>a.due && a.due<today).length;
+  const unowned=open.filter(a=>!(a.owner&&String(a.owner).trim())).length;
+  const undated=open.filter(a=>!a.due).length;
+  if(overdue||unowned||undated){
+    if(overdue) reasons.push(overdue+' action'+(overdue!==1?'s':'')+' overdue');
+    if(unowned) reasons.push(unowned+' action'+(unowned!==1?'s':'')+' without an owner');
+    if(undated) reasons.push(undated+' action'+(undated!==1?'s':'')+' without a date');
+    return Object.assign({}, HOLD_STATES.slipping, { reasons });
+  }
+  if(plan.k==='managed' && !r.reviewed) return Object.assign({}, HOLD_STATES.working, { reasons:['delivered - awaiting sign-off'] });
+  return Object.assign({}, HOLD_STATES.working, { reasons:[open.length+' action'+(open.length!==1?'s':'')+' on time'] });
+}
+// The rule, in words: Critical and High must be Held or Being worked (and
+// never held on acceptance alone); Medium must not be Not held; Low is
+// never a breach. Returns the breach description, or null when compliant.
+function _holdBreach(band, hold){
+  if(band==='Critical'||band==='High'){
+    if(hold.k==='slipping'||hold.k==='notheld') return band+' risk is '+hold.label.toLowerCase();
+    if(hold.k==='held'&&hold.accepted) return band+' risk is run on acceptance alone';
+  } else if(band==='Medium'){
+    if(hold.k==='notheld') return 'Medium risk is not held';
+  }
+  return null;
+}
+function _holdSummary(){
+  const risks=(S.riskProfile||[]);
+  const rows=risks.map(r=>{ const sc=_riskScore(r); const hold=_riskHold(r);
+    return { r, id:r.id, name:String(r.activity||r.hazard||'Unnamed risk'), band:sc.priority||null, rating:sc.rating||null, hold, breach:_holdBreach(sc.priority, hold) }; });
+  const count=k=>rows.filter(x=>x.hold.k===k).length;
+  const held=count('held'), working=count('working'), slipping=count('slipping'), notheld=count('notheld');
+  const breaches=rows.filter(x=>x.breach);
+  const total=rows.length;
+  let pillT, pillC, verdict;
+  if(!total){ pillT='no risks recorded'; pillC='#8b949a'; verdict='Add the risks to the profile to see the position.'; }
+  else if(breaches.length){
+    pillT=breaches.length+' rule breach'+(breaches.length!==1?'es':''); pillC='#DC2626';
+    const names=breaches.slice(0,2).map(b=>b.name+' ('+(b.hold.reasons[0]||b.breach)+')');
+    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' properly held. '+breaches.length+' breach'+(breaches.length!==1?'es':'')+' of the rule: '+names.join('; ')+(breaches.length>2?('; and '+(breaches.length-2)+' more.'):'.');
+  }
+  else if(held===total){ pillT='all risks held'; pillC='#0f6f5c'; verdict='All '+total+' risk'+(total!==1?'s are':' is')+' properly held - controls recorded, plans delivered and signed off, or formally accepted.'; }
+  else {
+    pillT='working to plan'; pillC='#c2740a';
+    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' properly held; '+(working+slipping)+' being worked'+(slipping?(' ('+slipping+' slipping)'):'')+(notheld?('; '+notheld+' not held'):'')+'. No breaches of the rule - every higher-band risk is held or being worked on time.';
+  }
+  return { rows, total, held, working, slipping, notheld, breaches, pillT, pillC, verdict };
+}
+
 // ── ONE verdict everywhere. The combined panel (cockpit), the "Overall H&S
 //    position" section on the Risk profile tab, and the risk-profile PDF all
 //    read this — same numbers, same words, so they can never disagree.
 //    (Simon's rule: one inconsistency and the user loses confidence.)
 function _rpVerdictBits(M){
-  const pillC = { 'adequately controlled':'#0f6f5c', 'broadly controlled':'#c2740a', 'under-controlled':'#DC2626', 'incomplete':'#8b949a' }[M.verdict];
-  const pillT = { 'adequately controlled':'matches the risk', 'broadly controlled':'nearly matches the risk', 'under-controlled':'falls short of the risk', 'incomplete':'not yet measured' }[M.verdict];
-  const pillTip = {
-    'adequately controlled':'HSG65 expects management strength to match the size of the risk. The scored maturity meets what this risk profile needs - keep it there as the risks change.',
-    'broadly controlled':'Close: the management is within half a point of what this risk profile needs. The squares listed below show where to finish the job.',
-    'under-controlled':'HSG65 expects management strength to match the size of the risk. Right now the management is weaker than this profile needs - the size of the gap and the squares to fix first are shown below.',
-    'incomplete':'Score every risk (likelihood × severity) and the six maturity domains to get the verdict.'
-  }[M.verdict];
-  const bandWord = { Low:'Low', Medium:'Moderate', High:'High', Critical:'Critical' }[M.profileBand] || '';
-  let verdictLine, explain;
-  if(M.verdict==='incomplete'){
-    verdictLine = M.maturity==null ? 'Risks scored - management strength not measured yet.' : 'Score each risk to complete the picture.';
-    explain = 'Your '+M.rated.length+' risk'+(M.rated.length!==1?'s':'')+' average '+(M.meanScore==null?'-':M.meanScore.toFixed(1))+' of 25 (each risk scores likelihood × severity, top score 25).'
-      + ' Now score the six domains in the Management maturity assessment (Risk profile tab) to measure whether the management is strong enough for these risks.';
-  } else {
-    verdictLine = 'Risk: '+bandWord.toLowerCase()+' ('+M.meanScore.toFixed(1)+' of 25). Management: '+M.maturity.toFixed(1)+' of 5 - '
-      + (M.shortfall>0 ? ('this much risk needs '+M.required+'.0, so you are '+M.shortfall.toFixed(1)+' short.') : ('meets the '+M.required+'.0 this much risk needs.'));
-    explain = 'The risk number is the average of your risk scores (each is likelihood × severity, top score 25). '
-      + 'The management number is your average maturity score across the six domains, out of 5. '
-      + 'HSG65 - the HSE\'s management standard - expects management strength to match the size of the risk: a '
-      + M.profileBand.toLowerCase()+' profile needs at least '+M.required+'.0 ('+(RISK_MATURITY_NAMES[M.required]||M.required)+').'
-      + (M.shortfall>0 ? ' Closing the '+M.shortfall.toFixed(1)+'-point gap means improving the squares listed below.' : '');
-  }
-  // App-palette equivalents of the pill states, for consumers that colour by
-  // the standard app hexes (the position box and the risk-profile PDF).
-  const rag = { 'adequately controlled':'#16A34A', 'broadly controlled':'#F59E0B', 'under-controlled':'#DC2626', 'incomplete':'#9CA3AF' }[M.verdict];
-  // Visual "how it is worked out" — three boxes reading like an equation,
-  // with the HSG65 required-level table and the full detail on hover.
-  // (The prose version above confused Simon; this replaces it on screen.)
-  let explainHTML;
-  if(M.verdict==='incomplete' || M.meanScore==null || M.maturity==null){
-    explainHTML = `<div class="rpx-explain">${esc(explain)}</div>`;
-  } else {
-    let domScores='';
-    try{ domScores=_maturityDomains().map(d=>{ const a=_profMaturity(d.id).avg; return d.name+' '+(a==null?'not scored':a.toFixed(1)); }).join(' · '); }catch(e){}
-    const reqCells=['Low','Medium','High','Critical'].map(b=>`<td class="${M.profileBand===b?'on':''}" title="A ${b.toLowerCase()} risk profile needs management maturity of at least ${RISK_REQUIRED_MATURITY[b]}.0 of 5 — HSG65 expects management strength in proportion to the risk.">${b}<br><b>${RISK_REQUIRED_MATURITY[b]}.0</b></td>`).join('');
-    explainHTML = `<div class="rpx-how">
-      <div class="rpx-how-lab rpx-mono">How it is worked out — hover any box for the detail</div>
+  const H = M.H || _holdSummary();
+  const pillC = H.pillC;
+  const pillT = H.pillT;
+  const pillTip = 'The rule (HSG65 - management in proportion to the risk): every Critical and High risk must be Held or Being worked, and never run on acceptance alone; a Medium risk must not be Not held. A breach names the risk and the reason.';
+  const verdictLine = H.verdict;
+  const explain = 'Each risk is graded by facts the app records: Held = controls recorded and the plan delivered and signed off (or formally accepted); Being worked = owned, dated actions, all on time; Slipping = overdue or missing owner/date; Not held = no controls, or no plan and no acceptance.';
+  // Visual "how a risk earns Held" — three fact boxes, no numbers to decode.
+  const explainHTML = `<div class="rpx-how">
+      <div class="rpx-how-lab rpx-mono">How a risk earns "Held" — hover any box</div>
       <div class="rpx-how-row">
-        <div class="rpx-how-step" title="Each risk scores likelihood (1-5) × severity (1-5); the top score is 25. ${M.meanScore.toFixed(1)} is the average across your ${M.rated.length} rated risk${M.rated.length!==1?'s':''}, which puts the profile in the ${esc(M.profileBand)} band.">
-          <span class="t">1 · Risk score</span>
-          <span class="e">likelihood × severity, averaged</span>
-          <span class="v">${M.meanScore.toFixed(1)} / 25 <i>= ${esc(M.profileBand)} band</i></span>
-        </div>
-        <span class="rpx-how-op">vs</span>
-        <div class="rpx-how-step" title="Each risk carries the score of the management domain that controls it, from the Management maturity assessment (0-5). ${M.maturity.toFixed(1)} is the average across the same risks — risks sitting in weakly-managed areas pull it down. Domain scores: ${esc(domScores)}">
-          <span class="t">2 · Management score</span>
-          <span class="e">how well each risk's controls are managed</span>
-          <span class="v">${M.maturity.toFixed(1)} / 5</span>
+        <div class="rpx-how-step" title="The risk is scored (likelihood × severity) and its controls are written down with a control level. A risk with no recorded controls, or no score, is Not held - whatever else is true.">
+          <span class="t">1 · Controls recorded</span>
+          <span class="e">scored, controls written down</span>
+          <span class="v">the floor</span>
         </div>
         <span class="rpx-how-op">→</span>
-        <div class="rpx-how-step" title="HSG65 — the HSE's management standard — expects management strength to match the size of the risk. The table shows the level each band needs; your band is highlighted. Gap = needed minus your management score.">
-          <span class="t">3 · What HSG65 needs</span>
-          <table class="rpx-req"><tr>${reqCells}</tr></table>
-          <span class="v">${M.shortfall>0?('gap = '+M.required+'.0 − '+M.maturity.toFixed(1)+' = <b>'+M.shortfall.toFixed(1)+'</b>'):'needed level met ✓'}</span>
+        <div class="rpx-how-step" title="Every remaining gap has an action with a named owner and a target date, and none of them is overdue. Overdue or unowned actions make the risk Slipping.">
+          <span class="t">2 · Owned, dated plan</span>
+          <span class="e">every action owned + dated, on time</span>
+          <span class="v">Being worked</span>
+        </div>
+        <span class="rpx-how-op">→</span>
+        <div class="rpx-how-step" title="The plan is delivered and the risk signed off as reviewed - or formally accepted with who and why on the acceptance register (acceptance is only acceptable for Low and Medium risks; a High or Critical risk run on acceptance alone is a rule breach).">
+          <span class="t">3 · Delivered &amp; signed off</span>
+          <span class="e">or formally accepted (Low/Medium only)</span>
+          <span class="v">Held ✓</span>
         </div>
       </div>
     </div>`;
-  }
-  return { pillC, pillT, pillTip, verdictLine, explain, explainHTML, rag };
+  return { pillC, pillT, pillTip, verdictLine, explain, explainHTML, rag: H.breaches.length ? '#DC2626' : (H.total && H.held===H.total ? '#16A34A' : (H.total ? '#F59E0B' : '#9CA3AF')) };
 }
 // Cell selection: one shared state, panel re-renders wherever it is mounted.
 var _rpSel = null;
@@ -15036,9 +15060,10 @@ function _riskPanelHTML(o){
   if(!M.rated.length) return '<div class="ck-pending">No rated risks yet. Rate likelihood and severity in the register to build the profile.</div>';
   if(_rpSel && !M.cells[_rpSel]) _rpSel=null;                 // stale selection guard
   const sel = _rpSel ? M.cells[_rpSel] : null;
-  const { pillC, pillT, pillTip } = _rpVerdictBits(M);
+  const { pillC, pillT, pillTip, verdictLine, explainHTML } = _rpVerdictBits(M);
+  const H = M.H;
   const period = 'Position at '+fmtDate(new Date().toISOString().slice(0,10));
-  // ── Left: the matrix with maturity bars ──
+  // ── Left: the risk matrix (facts only — a white ! marks a rule breach) ──
   let grid='';
   for(let s=5;s>=1;s--){
     grid += `<div class="rpx-ylab rpx-mono">${s}</div>`;
@@ -15046,19 +15071,17 @@ function _riskPanelHTML(o){
       const c=M.cells[l+'|'+s], band=_bandFor(l*s), col=_RISK_PRIO_COLOR[band];
       if(!c){ grid += `<div class="rpx-cell" style="background:${col}1f;"></div>`; continue; }
       const on = sel && sel.l===l && sel.s===s;
-      const mTxt = c.maturity==null ? 'no maturity scored' : ('mean maturity '+c.maturity.toFixed(1)+' of '+c.required+' needed');
-      const barW = c.maturity==null ? 0 : Math.round(c.maturity/5*100);
+      const cellBreach = c.items.some(x=>_holdBreach(x.sc.priority, x.hold));
       grid += `<button type="button" class="rpx-cell${on?' on':''}" style="background:${col};" onclick="_rpSelectCell(${l},${s})"
-        aria-label="Likelihood ${l}, severity ${s}: ${c.items.length} risk${c.items.length!==1?'s':''}, ${mTxt}" aria-pressed="${on?'true':'false'}">
+        aria-label="Likelihood ${l}, severity ${s}: ${c.items.length} risk${c.items.length!==1?'s':''}${cellBreach?', contains a rule breach':''}" aria-pressed="${on?'true':'false'}">
         <span class="rpx-n rpx-mono">${c.items.length}</span>
-        ${c.maturity==null ? '' : `<span class="rpx-mbar" role="progressbar" aria-valuenow="${c.maturity.toFixed(1)}" aria-valuemin="0" aria-valuemax="5"><span style="width:${barW}%;"></span></span>`}
+        ${cellBreach?'<span class="rpx-flag" title="This square holds a rule breach">!</span>':''}
       </button>`;
     }
   }
   const xlabs = `<div></div>` + [1,2,3,4,5].map(l=>`<div class="rpx-xlab rpx-mono">${l}</div>`).join('');
   const legend = `<div class="rpx-legend">`
     + ['Low','Medium','High','Critical'].map(b=>`<span><span class="sw" style="background:${_RISK_PRIO_COLOR[b]};"></span>${b} ${M.byBand[b]}</span>`).join('')
-    + (M.excluded ? `<span>· ${M.excluded} risk${M.excluded!==1?'s':''} excluded from maturity (domain not scored)</span>` : '')
     + (M.unrated ? `<span>· ${M.unrated} not yet rated</span>` : '')
     + `</div>`;
   const left = `<div>
@@ -15066,92 +15089,77 @@ function _riskPanelHTML(o){
     <div class="rpx-matrix">${grid}${xlabs}</div>
     <div class="rpx-microlab rpx-mono" style="text-align:right;margin:4px 0 0;">Likelihood</div>
     ${legend}
-    <div class="rpx-caption"><b>Where is the risk?</b> Each square is one mix of likelihood (1-5, across) and severity (1-5, up). The number is how many risks sit in that square; the colour is how serious that square is (${esc(_bandRangeText())}).<br><b>Where is the maturity?</b> The small white bar along a square's base shows how well those risks are managed, out of 5 - the fuller the bar, the better managed.</div>
+    <div class="rpx-caption"><b>Where is the risk?</b> Each square is one mix of likelihood (1-5, across) and severity (1-5, up). The number is how many risks sit in that square; the colour is how serious that square is (${esc(_bandRangeText())}). A white <b>!</b> marks a square holding a rule breach.</div>
   </div>`;
-  // ── Right: rating derived from both ──
-  const { verdictLine, explainHTML } = _rpVerdictBits(M);
+  // ── Right: the position, graded on facts ──
   const rating = `<div>
     <div class="rpx-microlab rpx-mono">Your position</div>
     <div class="rpx-verdict">${esc(verdictLine)}</div>
-    ${explainHTML}
   </div>`;
-  const m = M.maturity==null?0:M.maturity;
-  const segs = [1,2,3,4,5].map(n=>{
-    const f = Math.max(0, Math.min(1, m-(n-1)));
-    const st = f>=1 ? 'background:#f0a92a;' : f>0 ? `background:linear-gradient(to right,#f0a92a ${Math.round(f*100)}%,var(--muted-bg) ${Math.round(f*100)}%);` : '';
-    return `<span style="${st}"></span>`;
-  }).join('');
-  const nowPct = Math.round(m/5*100), reqPct = M.required==null?0:Math.round(M.required/5*100);
-  const matbar = `<div>
-    <div class="rpx-microlab rpx-mono">Management strength - where you are vs where you need to be</div>
-    <div class="rpx-segbar" role="progressbar" aria-valuenow="${m.toFixed(1)}" aria-valuemin="0" aria-valuemax="5">${segs}</div>
-    <div class="rpx-marks rpx-mono">
-      ${M.maturity==null?'':`<span style="left:${Math.min(94,Math.max(6,nowPct))}%;color:#c2740a;">now ${m.toFixed(1)}</span>`}
-      ${M.required==null?'':`<span style="left:${Math.min(94,Math.max(6,reqPct))}%;top:0;color:#8b949a;">${M.maturity==null?'':'&nbsp;'}required ${M.required}.0</span>`}
-    </div>
-    <div class="rpx-levels rpx-mono">${[1,2,3,4,5].map(n=>n+' '+RISK_MATURITY_NAMES[n]).join(' · ')}</div>
+  const stateBars = `<div>
+    <div class="rpx-microlab rpx-mono">Where the ${H.total} risk${H.total!==1?'s':''} stand</div>
+    ${HOLD_ORDER.map(k=>{ const st=HOLD_STATES[k]; const n=H[k];
+      return `<button type="button" class="rpx-hotrow" onclick="switchTab('risk');_rpStatJump('all')" title="${esc(st.label)}: ${esc(st.desc)} Click to open the risks.">
+        <span class="ref rpx-mono" style="color:${st.colour};">●</span>
+        <span class="lbl">${esc(st.label)}</span>
+        <span class="rpx-minibar"><span style="width:${H.total?Math.round(n/H.total*100):0}%;background:${st.colour};"></span></span>
+        <span class="rpx-short rpx-mono">${n}</span>
+      </button>`; }).join('')}
   </div>`;
   let listBlock;
   if(sel){
     const rows = sel.items.map(x=>`<div class="rpx-selrow">
         <span class="t">${esc(x.r.activity||x.r.hazard||'Unnamed risk')}</span>
         <span class="o">${esc(_riskOwner(x.r)||'no owner')}</span>
-        <span class="rpx-mono" style="flex:0 0 auto;font-size:11.5px;font-weight:700;color:${x.mat==null?'#8b949a':'#14181b'};">${x.mat==null?'no score':'mat '+x.mat.toFixed(1)}</span>
+        <span class="rpx-mono" style="flex:0 0 auto;font-size:11.5px;font-weight:700;color:${x.hold.colour};" title="${esc(x.hold.reasons.join('; '))}">${esc(x.hold.label)}</span>
       </div>`).join('');
     listBlock = `<div aria-live="polite">
-      <div class="rpx-microlab rpx-mono">L${sel.l} × S${sel.s} · ${sel.items.length} risk${sel.items.length!==1?'s':''} · ${sel.maturity==null?'maturity not scored':'maturity '+sel.maturity.toFixed(1)+' of '+sel.required+'.0 needed'}
-        <button type="button" class="ck-link" style="display:inline;margin-left:8px;" onclick="_rpSelectCell(${sel.l},${sel.s})">← all hotspots</button></div>
+      <div class="rpx-microlab rpx-mono">L${sel.l} × S${sel.s} · ${sel.items.length} risk${sel.items.length!==1?'s':''}
+        <button type="button" class="ck-link" style="display:inline;margin-left:8px;" onclick="_rpSelectCell(${sel.l},${sel.s})">← back</button></div>
       ${rows}
     </div>`;
   } else {
-    const hot = M.hotspots.slice(0,4).map(c=>{
-      const first = c.items[0].r;
-      const lbl = c.items.length+' risk'+(c.items.length!==1?'s':'')+': '+(first.activity||first.hazard||'Unnamed risk')+(c.items.length>1?' +'+(c.items.length-1):'');
-      return `<button type="button" class="rpx-hotrow" onclick="_rpSelectCell(${c.l},${c.s})">
-        <span class="ref rpx-mono">L${c.l} × S${c.s}</span>
-        <span class="lbl">${esc(lbl)}</span>
-        <span class="rpx-minibar"><span style="width:${Math.round((c.maturity||0)/5*100)}%;"></span></span>
-        <span class="rpx-short rpx-mono">${c.maturity==null?'—':c.maturity.toFixed(1)}</span>
-        <span class="rpx-short rpx-mono">-${c.shortfall.toFixed(1)}</span>
-      </button>`;
-    }).join('');
+    const br = H.breaches.slice(0,4).map(b=>`<button type="button" class="rpx-hotrow" onclick="_gotoRisk('${b.id}')" title="${esc(b.breach)} — ${esc(b.hold.reasons.join('; '))}. Click to open this risk.">
+        <span class="ref rpx-mono" style="color:#DC2626;">${esc(b.band||'—')}</span>
+        <span class="lbl">${esc(b.name)}</span>
+        <span class="rpx-short rpx-mono" style="color:${b.hold.colour};">${esc(b.hold.label)}</span>
+      </button>`).join('');
     listBlock = `<div aria-live="polite">
-      <div class="rpx-microlab rpx-mono">Squares to fix first</div>
-      ${hot || `<div class="rpx-explain">${M.maturity==null ? 'Score the six domains in the Management maturity assessment to see which squares fall short.' : 'No square falls short of the maturity its risk level needs.'}</div>`}
+      <div class="rpx-microlab rpx-mono">Breaches of the rule${H.breaches.length?(' · '+H.breaches.length):''}</div>
+      ${br || `<div class="rpx-explain">None. Every Critical and High risk is held or being worked on time, and no Medium risk is unheld.</div>`}
+      ${H.breaches.length>4?`<div class="rpx-explain">…and ${H.breaches.length-4} more — they are flagged in the register.</div>`:''}
     </div>`;
   }
   let nextTx;
   if(sel){
-    const doms = [...new Set(sel.items.map(x=>RISK_MATURITY_DOMAIN[x.r.category]).filter(Boolean))]
-      .map(id=>{ const d=PROF_LIBRARY.domains.find(d=>d.id===id); return d?d.name:id; });
-    nextTx = sel.maturity==null
-      ? 'Score the '+(doms.length?doms.join(' and '):'controlling')+' maturity domain'+(doms.length!==1?'s':'')+' to see whether these risks are adequately managed.'
-      : (sel.shortfall>0
-        ? 'These '+sel.items.length+' risk'+(sel.items.length!==1?'s':'')+' need maturity '+sel.required+'.0; '+(doms.length?doms.join(' and '):'the controlling domains')+' currently average'+(doms.length!==1?'':'s')+' '+sel.maturity.toFixed(1)+'. Raise those scores to close the '+sel.shortfall.toFixed(1)+' point gap.'
-        : 'This cell meets the maturity its band requires. Keep the controls under review.');
-  } else if(M.verdict==='incomplete'){
-    nextTx = 'Rate likelihood and severity on every risk, and score the six domains in the Management maturity assessment, to complete the rating.';
-  } else if(M.hotspots.length){
-    const h=M.hotspots[0];
-    nextTx = 'Start at L'+h.l+' × S'+h.s+': '+h.items.length+' '+h.band.toLowerCase()+'-band risk'+(h.items.length!==1?'s':'')+' managed at '+(h.maturity==null?'0':h.maturity.toFixed(1))+' against the '+h.required+'.0 required.';
+    const worst = sel.items.slice().sort((a,b)=>HOLD_ORDER.indexOf(b.hold.k)-HOLD_ORDER.indexOf(a.hold.k))[0];
+    nextTx = worst.hold.k==='held'
+      ? 'Every risk in this square is held. Keep the controls under review.'
+      : 'Start with "'+(worst.r.activity||worst.r.hazard||'this risk')+'" — '+worst.hold.label.toLowerCase()+': '+worst.hold.reasons.join('; ')+'.';
+  } else if(H.breaches.length){
+    const b=H.breaches[0];
+    nextTx = 'Start with "'+b.name+'" — '+b.breach+' ('+b.hold.reasons.join('; ')+').';
+  } else if(H.total && H.held===H.total){
+    nextTx = 'All risks held. Keep it that way as the work changes.';
   } else {
-    nextTx = 'Maturity meets what the profile requires. Hold it there as the risk picture changes.';
+    nextTx = 'No breaches of the rule. Keep the '+(H.working+H.slipping)+' open plan'+((H.working+H.slipping)!==1?'s':'')+' on time, and sign off delivered work to move risks to Held.';
   }
   const next = `<div class="rpx-next">
     <span class="rpx-microlab rpx-mono" style="margin:0;flex:0 0 auto;">Next action</span><span class="dv"></span>
     <span class="tx">${esc(nextTx)}</span>
   </div>`;
   const head = `<div class="rpx-head">
-    <div>${o.heading?'<h4>Risk profile &amp; control maturity</h4>':''}
-      <div class="rpx-sub">${esc(period)} · ${M.rated.length} rated risk${M.rated.length!==1?'s':''} · HSG65 maturity scale</div></div>
+    <div>${o.heading?'<h4>Risk profile &amp; control status</h4>':''}
+      <div class="rpx-sub">${esc(period)} · ${M.rated.length} rated risk${M.rated.length!==1?'s':''} · graded on recorded facts</div></div>
     <span class="rpx-pill" style="background:${pillC};" title="${esc(pillTip)}">${esc(pillT)}</span>
   </div>`;
   // Split modes so a client's bespoke cockpit can show just the matrix or just
-  // the maturity reading (customiser widgets "Risk matrix (only)" / "Control
-  // maturity (only)").
+  // the control-status reading (customiser widgets "Risk matrix (only)" /
+  // "Risk control status (only)" — the mode key stays 'maturity' for
+  // compatibility with saved cockpit configs).
   if(o.only==='matrix')   return `<div class="rpx">${head}${left}</div>`;
-  if(o.only==='maturity') return `<div class="rpx">${head}<div class="rpx-right" style="border-left:0;padding-left:0;">${rating}${matbar}${listBlock}${next}</div></div>`;
-  return `<div class="rpx">${head}<div class="rpx-grid">${left}<div class="rpx-right">${rating}${matbar}${listBlock}${next}</div></div></div>`;
+  if(o.only==='maturity') return `<div class="rpx">${head}<div class="rpx-right" style="border-left:0;padding-left:0;">${rating}${stateBars}${listBlock}${explainHTML}${next}</div></div>`;
+  return `<div class="rpx">${head}<div class="rpx-grid">${left}<div class="rpx-right">${rating}${stateBars}${listBlock}${explainHTML}${next}</div></div></div>`;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -15265,8 +15273,8 @@ function _completenessGaps(RD){
   add(risks.filter(r=>!r.reviewed).length,'risks not yet reviewed and agreed','Risk profile',"switchTab('risk')");
   add(risks.filter(r=>!r.controlLevel).length,'risks without a best-control-level judgement','Risk profile',"switchTab('risk')");
   add(risks.filter(r=>!RISK_IMPACT_DIMS.some(d=>parseInt((r.impacts||{})[d.k],10)>0)).length,'risks without business-impact ratings','Risk profile',"switchTab('risk')");
-  try{ const md=_maturityDomains(); const ms=md.filter(d=>_profMaturity(d.id).avg!=null).length;
-    add(md.length-ms,'management-maturity domains not scored','Score maturity',"switchTab('risk'); setTimeout(()=>{ const el=document.getElementById('wfMaturity'); if(el){ el.open=true; el.scrollIntoView({behavior:'smooth'}); } },350)"); }catch(e){}
+  try{ const md=_maturityDomains(); const mj=md.filter(d=>!((_judgeState()[d.id]||{}).level)).length;
+    add(mj,'HSG65 areas without a consultant judgement','Judge areas',"switchTab('risk'); setTimeout(()=>{ const el=document.getElementById('wfMaturity'); if(el){ el.open=true; el.scrollIntoView({behavior:'smooth'}); } },350)"); }catch(e){}
   if(RD){ add(RD.actNoOwner,'actions without an owner','Execution plan',"switchTab('execplan')");
           add(RD.actNoDate,'actions without a target date','Execution plan',"switchTab('execplan')"); }
   let reqPend=0; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if(!it.reviewed) reqPend++; }));
@@ -15611,6 +15619,7 @@ function openAcceptRisk(id){
   ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:520px;width:100%;padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.35);">
     <div style="font-weight:800;font-size:15px;margin-bottom:6px;">Accept this risk</div>
     <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Accepting means the business runs <b>${esc(r.activity||r.hazard||'this risk')}</b> with the current controls and no further action. It is recorded on the acceptance register with who and why, and the risk stays on the profile to be reviewed like any other.</div>
+    ${(function(){ const b=_riskScore(r).priority; return (b==='High'||b==='Critical')?`<div style="background:#DC26261a;border:1px solid #DC262655;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.5;margin-bottom:12px;"><b>This is a ${b} risk.</b> The rule is that High and Critical risks are never run on acceptance alone — accepting it will show as a <b>rule breach</b> on the cockpit and the board report until it has a delivered plan.</div>`:''; })()}
     ${openActs.length?`<div style="background:#D977061a;border:1px solid #D9770655;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.5;margin-bottom:12px;">
       This risk still has <b>${openActs.length} open action${openActs.length!==1?'s':''}</b>. A risk with open actions stays "in plan" even after acceptance.
       <label style="display:flex;gap:7px;align-items:flex-start;margin-top:7px;cursor:pointer;"><input type="checkbox" id="arClose" checked style="margin-top:2px;">
@@ -16085,12 +16094,10 @@ function _apGaps(){
         context:(sec.heading||'Management system')+' ('+st.label+')', note:'From the management system: '+(sec.heading||'')+(it.requirement?(': '+it.requirement):'') });
     }
   }));
-  // Maturity gaps: a critical veto, or a domain scored weak (under 2.5/5).
+  // Judgement gaps: any HSG65 area the consultant has judged Weak.
   if(typeof _maturityDomains==='function'){
     _maturityDomains().forEach(d=>{
-      const mt=_profMaturity(d.id);
-      if(mt.critFail){ gaps.push({ srcKey:'mat:'+d.id, desc:'Close the critical gap in '+d.name, due:'', priority:'High', context:'Maturity: '+d.name+' (critical)', note:'Critical maturity gap in '+d.name }); }
-      else if(mt.avg!=null && mt.avg<2.5){ gaps.push({ srcKey:'mat:'+d.id, desc:'Improve management maturity: '+d.name, due:'', priority:'Medium', context:'Maturity: '+d.name+' ('+mt.avg.toFixed(1)+'/5)', note:'Weak maturity in '+d.name }); }
+      if(((_judgeState()[d.id]||{}).level)==='weak'){ gaps.push({ srcKey:'mat:'+d.id, desc:'Strengthen '+d.name+((_judgeState()[d.id]||{}).note?(' - '+(_judgeState()[d.id]||{}).note):''), due:'', priority:'Medium', context:'Judged Weak: '+d.name, note:'Consultant judgement: Weak' }); }
     });
   }
   _apGapCache={}; gaps.forEach(g=>_apGapCache[g.srcKey]=g);
@@ -16255,7 +16262,7 @@ function renderActionPlanTab(){
   // Open gaps from the management system + maturity, offered as one-click actions.
   const gaps=_apGaps();
   const gapCard = gaps.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Suggested from gaps</h3><span class="badge badge-muted">${gaps.length}</span></div>
-    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Gaps found in the management system and the maturity assessment. Add any to the plan to track and close it.</div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Gaps found in the management system and the risk control status. Add any to the plan to track and close it.</div>
     ${gaps.map(g=>`<div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border);padding:8px 0;">
       <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${esc(g.desc)}</div><div style="font-size:11px;color:var(--text-muted);">${esc(g.context)}${g.due?(' · due '+fmtDate(g.due)):''}</div></div>
       ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="addGapToPlan('${g.srcKey}')">＋ Add</button>`}</div>`).join('')}
@@ -17115,10 +17122,10 @@ function _overallMaturity(){
   // _riskPanelModel) so the maturity gauge, legacy board PDF and every other
   // consumer show the one number the panel shows. The old plain domain
   // average quietly disagreed with it. critFail/scored keep their meaning.
-  const doms=_maturityDomains(); let critFail=false, scored=0;
-  doms.forEach(d=>{ const mt=_profMaturity(d.id); if(mt.avg!=null) scored++; if(mt.critFail) critFail=true; });
-  const M=_riskPanelModel();
-  return { avg:M.maturity, critFail, scored, total:doms.length };
+  // Deprecated: the 0-5 maturity number is gone (replaced by the factual
+  // risk control status). Null-safe stub for any stale caller.
+  const doms=_maturityDomains();
+  return { avg:null, critFail:false, scored:0, total:doms.length };
 }
 function _riskProfileLevel(){
   const scored=(S.riskProfile||[]).map(r=>_riskScore(r)).filter(s=>s.priority);
@@ -17126,17 +17133,13 @@ function _riskProfileLevel(){
   return { total:scored.length, crit:by('Critical'), high:by('High'), med:by('Medium'), low:by('Low'), worstSev:Math.max(0,...scored.map(s=>s.s)) };
 }
 function _overallScore(){
-  // Derived from the SAME model as the cockpit's combined panel — the old
-  // domain-average variant produced different maturity numbers and different
-  // words on the Risk profile tab, which read as the app disagreeing with
-  // itself. One model, one verdict, everywhere.
+  // Derived from the SAME model as the cockpit's combined panel — one model,
+  // one verdict, everywhere. Now hold-based: the position is the count of
+  // properly held risks and any breaches of the proportionality rule.
   const rl=_riskProfileLevel();
   const M=_riskPanelModel();
   const bits=_rpVerdictBits(M);
-  const m=M.maturity==null?0:M.maturity;
-  return { rl, mat:{ avg:M.maturity, scored:M.rated.length, critFail:false }, m,
-           rag:bits.rag, ragLabel:bits.pillT, verdict:bits.verdictLine, explain:bits.explain,
-           required:M.required, shortfall:M.shortfall, M };
+  return { rl, H:M.H, rag:bits.rag, ragLabel:bits.pillT, verdict:bits.verdictLine, explain:bits.explain, M };
 }
 // Heat map now driven by the ACTUAL added risks (severity) against management maturity.
 function _reviewHeatHTML(){
@@ -17150,30 +17153,47 @@ function _reviewHeatHTML(){
     rows+=`<tr><th class="h-axis">${sev}</th>${tds}</tr>`; }
   const head=`<tr><th class="h-axis" style="font-size:8.5px;">Sev↕/Mat→</th>${[0,1,2,3,4,5].map(m=>`<th class="h-axis">${m}</th>`).join('')}</tr>`;
   return `<table class="heat"><tbody>${rows}${head}</tbody></table>
-    <div style="font-size:10.5px;color:var(--text-muted);margin-top:7px;line-height:1.5;">Vertical = <strong>risk severity</strong> (from your recorded risks). Horizontal = <strong>management maturity</strong>. Top-left (severe risk, weak management) is the priority to fix.</div>`;
+    <div style="font-size:10.5px;color:var(--text-muted);margin-top:7px;line-height:1.5;">Vertical = <strong>risk severity</strong> (from your recorded risks). Horizontal = <strong>management strength</strong>. Top-left (severe risk, weak management) is the priority to fix.</div>`;
+}
+// ── Consultant judgement — the six HSG65 areas in WORDS (Weak / Adequate /
+//    Strong + a one-line reason). Replaces the 0-5 maturity scoring: your
+//    professional reading feeds the audit narrative and the review, and is
+//    never turned into a number or compared arithmetically with anything.
+const JUDGE_RGB={ weak:[220,38,38], adequate:[245,158,11], strong:[22,163,74] };
+const JUDGEMENT_LEVELS=[
+  { k:'weak',     label:'Weak',     colour:'#DC2626' },
+  { k:'adequate', label:'Adequate', colour:'#F59E0B' },
+  { k:'strong',   label:'Strong',   colour:'#16A34A' },
+];
+function _judgeState(){ if(!S.profiler||typeof S.profiler!=='object') S.profiler={maturity:{},exposure:{}}; if(!S.profiler.judgement||typeof S.profiler.judgement!=='object') S.profiler.judgement={}; return S.profiler.judgement; }
+function setJudgement(domId, level){
+  if(_roLocked()) return;
+  const j=_judgeState(); const cur=j[domId]||{};
+  j[domId]=Object.assign({}, cur, { level: cur.level===level?'':level, at:new Date().toISOString().slice(0,10), by:(typeof _actor==='function'?_actor().name:'') });
+  if(typeof _stamp==='function') _stamp(S.profiler,'updated');
+  saveData(); _keepScroll(renderRiskReview);
+}
+function setJudgementNote(domId, note){
+  if(_roLocked()) return;
+  const j=_judgeState(); j[domId]=Object.assign({}, j[domId], { note:String(note||'') });
+  scheduleAutoSave();
 }
 function _renderMaturityAssessment(dis){
-  const doms=_maturityDomains(); const m=(S.profiler&&S.profiler.maturity)||{};
-  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Scored 0 (absent) to 5 (continually improving), aligned to the HSE Safety Culture Maturity Model (emerging, managing, involving, cooperating, continually improving) within the HSG65 framework. Select a score to see what it means, or mark N/A if a domain does not apply.</div>`;
+  const doms=_maturityDomains(); const j=_judgeState();
+  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Your professional judgement of the six HSG65 areas — <b>words, not scores</b>. Mark each Weak, Adequate or Strong with a one-line reason. This feeds your audit narrative and review; it is never turned into a number. The measured position lives above: risk control status, graded on recorded facts.</div>`;
   return note + doms.map((d,idx)=>{
-    const mat=_profMaturity(d.id);
-    const statusChip = mat.avg!=null
-      ? `<span style="font-size:12.5px;color:${_matColor(Math.round(mat.avg))};font-weight:700;">${mat.avg.toFixed(1)}/5${mat.critFail?' · veto':''}</span>`
-      : (mat.na>0 ? '<span style="font-size:11px;color:var(--text-muted);">not applicable</span>' : '<span style="font-size:11px;color:var(--text-muted);">not scored</span>');
-    const naNote = mat.na>0 ? `<span style="font-size:11px;color:var(--text-muted);margin-left:6px;">${mat.na} N/A</span>` : '';
-    const raiseBtn = dis ? '' : `<button class="btn btn-outline btn-xs no-print" style="margin-left:auto;" title="Raise an improvement action for this domain onto the client execution plan${mat.avg!=null?(' (currently '+mat.avg.toFixed(1)+' of 5)'):''}" onclick="openMaturityAction('${d.id}')">↗ Raise action</button>`;
-    const head=`<div class="prof-domain-head"><span class="pdh-badge" style="background:${d.badge};">${idx+1}</span><h4>${idx+1}. ${esc(d.name)}</h4>${statusChip}${naNote}${raiseBtn}</div>`;
-    const items=d.items.map(it=>{
-      const mv=m[it.id];
-      const isNa=String(mv)==='na';
-      const scale=[0,1,2,3,4,5].map(n=>`<button class="mat-dot${String(mv)===String(n)?' on':''}"${dis} style="${String(mv)===String(n)?`background:${_matColor(n)};`:''}" onclick="setMaturity('${it.id}',${n})">${n}</button>`).join('')
-        + `<button class="mat-dot${isNa?' on':''}"${dis} style="width:auto;padding:0 9px;border-radius:11px;font-size:11px;${isNa?'background:#6B7280;color:#fff;border-color:#6B7280;':''}" onclick="setMaturity('${it.id}','na')" title="Not applicable to this business: excluded from the maturity score">N/A</button>`;
-      const anchor=isNa
-        ? 'Not applicable to this business: excluded from the maturity score.'
-        : ((mv!==undefined&&mv!=='')?_profAnchor(it.anchors,+mv):'Score 0 (absent) to 5 (embedded and evidenced), or mark N/A if it does not apply. Select a score to see the descriptor.');
-      return `<div class="mat-item${it.crit?' crit':''}"><div class="mat-q">${esc(it.q)}${it.crit?'<span class="crit-tag">Critical</span>':''}</div><div class="mat-scale">${scale}</div><div class="mat-anchor">${esc(anchor)}</div></div>`;
-    }).join('');
-    return head+items;
+    const cur=j[d.id]||{};
+    const lv=JUDGEMENT_LEVELS.find(x=>x.k===cur.level);
+    const chip=lv?`<span style="font-size:12.5px;color:${lv.colour};font-weight:700;">${lv.label}</span>`:'<span style="font-size:11px;color:var(--text-muted);">not judged</span>';
+    const raiseBtn = dis ? '' : `<button class="btn btn-outline btn-xs no-print" style="margin-left:auto;" title="Raise an improvement action for this area onto the client execution plan" onclick="openMaturityAction('${d.id}')">↗ Raise action</button>`;
+    const head=`<div class="prof-domain-head"><span class="pdh-badge" style="background:${d.badge};">${idx+1}</span><h4>${idx+1}. ${esc(d.name)}</h4>${chip}${raiseBtn}</div>`;
+    const btns=JUDGEMENT_LEVELS.map(x=>`<button class="jl-btn${cur.level===x.k?' on':''}"${dis} style="${cur.level===x.k?('background:'+x.colour+';'):''}" onclick="setJudgement('${d.id}','${x.k}')">${x.label}</button>`).join(' ');
+    const body=`<div style="padding:10px 2px 16px;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${btns}</div>
+      <input type="text"${dis} value="${esc(cur.note||'')}" placeholder="One line on why — what you saw, what convinced you" oninput="setJudgementNote('${d.id}',this.value)" style="width:100%;margin-top:8px;font-size:12.5px;">
+      ${cur.at?`<div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">judged ${esc(fmtDate(cur.at))}${cur.by?(' by '+esc(cur.by)):''}</div>`:''}
+    </div>`;
+    return head+body;
   }).join('');
 }
 
@@ -17183,19 +17203,14 @@ function _renderMaturityAssessment(dis){
 function openMaturityAction(domId){
   if(_blockIfReadOnly()) return;
   const d=_maturityDomains().find(x=>x.id===domId); if(!d) return;
-  const m=(S.profiler&&S.profiler.maturity)||{};
-  const weak=(d.items||[]).map(it=>({q:it.q, v:m[it.id]}))
-    .filter(x=>x.v!==''&&x.v!=null&&String(x.v)!=='na'&&Number(x.v)<=2)
-    .sort((a,b)=>Number(a.v)-Number(b.v)).slice(0,3);
-  const mat=_profMaturity(d.id);
-  const desc='Improve '+d.name+' maturity'+(mat.avg!=null?(' from '+mat.avg.toFixed(1)+' of 5'):'')
-    +(weak.length?(' - starting with: '+weak.map(x=>x.q).join('; ')):'');
+  const jj=(_judgeState()[d.id])||{};
+  const desc='Strengthen '+d.name+(jj.level?(' - currently judged '+jj.level):'')+(jj.note?(' ('+jj.note+')'):'');
   const old=document.getElementById('matActionOv'); if(old) old.remove();
   const ov=document.createElement('div'); ov.id='matActionOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
   ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:540px;width:100%;padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.35);">
     <div style="font-weight:800;font-size:15px;margin-bottom:4px;">Raise a maturity action — ${esc(d.name)}</div>
-    <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Lands on the client execution plan like every other action${mat.avg!=null?(' · this domain currently scores <b>'+mat.avg.toFixed(1)+' of 5</b>'):''}${weak.length?(' · weakest items are pre-filled below - edit freely'):''}.</div>
+    <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Lands on the client execution plan like every other action${jj.level?(' · this area is currently judged <b>'+jj.level+'</b>'):''}. Edit the wording freely.</div>
     <div class="field-group"><label class="field-label">What needs doing</label>
       <textarea id="maDesc" rows="3" style="width:100%;">${esc(desc)}</textarea></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px;margin-top:10px;">
@@ -17262,15 +17277,13 @@ function _reportData(){
   const energyCov=_energyCoverage();
   const energyMissing=ENERGY_SOURCES.filter(e=>!energyCov[e.k]).map(e=>e.label);
   const clDist=_controlLevelDist();
-  const matDoms=_maturityDomains(); const matScored=matDoms.filter(d=>_profMaturity(d.id).avg!=null).length;
-  const overallMat=_overallMaturity();
+  const matDoms=_maturityDomains(); const matJudged=matDoms.filter(d=>!!((_judgeState()[d.id]||{}).level)).length;
   const as=S.riskAssurance||{}; const monPop=['leading','lagging','assurance'].some(k=>Array.isArray(as[k])&&as[k].length);
   // completeness + gap list
   let filled=0, tot=0; const gaps=[];
   tot+=risks.length; filled+=rated.length; if(unrated.length) gaps.push(unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated');
   if(actNoOwner) gaps.push(actNoOwner+' action'+(actNoOwner!==1?'s':'')+' without an owner');
   if(actNoDate) gaps.push(actNoDate+' action'+(actNoDate!==1?'s':'')+' without a target date');
-  tot+=matDoms.length; filled+=matScored; if(matScored<matDoms.length) gaps.push((matDoms.length-matScored)+' of '+matDoms.length+' management-maturity domains not scored');
   tot+=1; filled+=monPop?1:0; if(!monPop) gaps.push('Monitoring indicators not populated');
   const completeness = tot? Math.round(filled/tot*100) : 0;
   // Whole-plan action figures (same aggregate the execution plan shows) so the
@@ -17280,7 +17293,7 @@ function _reportData(){
   return { risks, scored, rated, unrated, byBand, byCategory, sif, sifUncontrolled, sifNoOwner,
     highestHarm:_HARM_LADDER[maxSev]||'—', maxSev, acts, actOverdue, actNoOwner, actNoDate,
     execTotal, execOverdue,
-    energyCov, energyMissing, clDist, matDoms, matScored, overallMat, monPop, completeness, gaps };
+    energyCov, energyMissing, clDist, matDoms, matJudged, monPop, completeness, gaps };
 }
 // ══════════════════════════════════════════════════════════════
 //  DOCUMENT CONTROL — every generated report is a controlled document.
@@ -17483,13 +17496,13 @@ function _riskVsMaturity(){
   const RD=_reportData(); const total=RD.risks.length||1;
   const w=RD.byBand.Critical*3 + RD.byBand.High*2 + RD.byBand.Medium*1 + RD.byBand.Low*0.5;
   const riskIndex=Math.round(Math.min(100, (total*3)? w/(total*3)*100 : 0));
-  const mat=RD.overallMat; const matPct = mat.avg==null?null:Math.round(mat.avg/5*100);
+  const H=_holdSummary();
   let rag, verdict;
-  if(matPct==null){ rag='#9CA3AF'; verdict='Score the management maturity to complete the comparison.'; }
-  else if(RD.sifUncontrolled.length>0 || (riskIndex>=60 && matPct<50)){ rag='#DC2626'; verdict='High residual risk with weak management — the top priority.'; }
-  else if(riskIndex>=40 && matPct<70){ rag='#F59E0B'; verdict='Meaningful risk only partly matched by management maturity.'; }
-  else { rag='#16A34A'; verdict='Risk is matched by reasonable management maturity.'; }
-  return { riskIndex, riskLabel: riskIndex>=60?'High':riskIndex>=35?'Moderate':riskIndex>0?'Lower':'None', matPct, matAvg:mat.avg, matCritFail:mat.critFail, rag, verdict, sifUncontrolled:RD.sifUncontrolled.length, ragLabel: rag==='#DC2626'?'Priority':rag==='#F59E0B'?'Improving':rag==='#16A34A'?'Controlled':'Incomplete' };
+  if(!H.total){ rag='#9CA3AF'; verdict='Add and score the risks to complete the picture.'; }
+  else if(RD.sifUncontrolled.length>0 || H.breaches.length){ rag='#DC2626'; verdict=(H.breaches.length||RD.sifUncontrolled.length)+' rule breach'+(((H.breaches.length||RD.sifUncontrolled.length))!==1?'es':'')+' — the top priority.'; }
+  else if(H.held<H.total){ rag='#F59E0B'; verdict=H.held+' of '+H.total+' risks properly held; the rest are being worked on time.'; }
+  else { rag='#16A34A'; verdict='All risks properly held.'; }
+  return { riskIndex, riskLabel: riskIndex>=60?'High':riskIndex>=35?'Moderate':riskIndex>0?'Lower':'None', rag, verdict, sifUncontrolled:RD.sifUncontrolled.length, H, ragLabel: rag==='#DC2626'?'Priority':rag==='#F59E0B'?'Working':rag==='#16A34A'?'Held':'Incomplete' };
 }
 // (The old on-screen 0-100 risk-vs-maturity bars were replaced by _riskPanelHTML
 //  on 2026-08-18. _riskVsMaturity() above stays: the PDF reports and the optional
@@ -17561,7 +17574,7 @@ function buildBoardReport(){
   const decisions=[];
   if(nUnc>0) decisions.push(['Authorise resources to control the '+nUnc+' fatal-potential risk(s) with no control in place.','Removes or prevents the energy on the highest-consequence exposures.']);
   if(data.risks.some(r=>r.category==='Legal / Regulatory')) decisions.push(['Confirm and evidence dutyholder competence before accepting further statutory appointments.','Building Safety Act / CDM competence is a personal duty carrying custodial exposure.']);
-  if(!data.overallMat||data.overallMat.avg==null||data.overallMat.avg<3) decisions.push(['Adopt and communicate a stop-work rule so any worker can halt unsafe work without reprisal.','The lowest-cost control that applies to every fatal-potential risk.']);
+  if((typeof _holdSummary==='function') && (_holdSummary().breaches.length || _holdSummary().notheld)) decisions.push(['Adopt and communicate a stop-work rule so any worker can halt unsafe work without reprisal.','The lowest-cost control that applies to every fatal-potential risk.']);
   if(data.sifNoOwner.length) decisions.push(['Assign a named owner to every fatal-potential risk.',data.sifNoOwner.length+' currently have no one accountable.']);
   if(!decisions.length) decisions.push(['Maintain and verify the existing controls at the next review.','Profile is controlled; the duty is to keep it that way.']);
 
@@ -17585,7 +17598,7 @@ function buildBoardReport(){
       {num:String(data.sifUncontrolled.length), label:'Of those, uncontrolled', color:data.sifUncontrolled.length?RED:NAVY, sub:'No completed control'},
       {num:data.execOverdue+' / '+data.execTotal, label:'Actions overdue', color:data.execOverdue?AMBER:NAVY, sub:'Across the whole plan'},
       {num:data.completeness+'%', label:'Assessment completeness', color:data.completeness<100?AMBER:GREEN, sub:'Profile built to date'},
-      {num:(data.overallMat.avg==null?'-':data.overallMat.avg.toFixed(1)+' / 5'), label:'Management maturity', color:data.overallMat.avg==null?GREY:data.overallMat.avg>=3.5?GREEN:AMBER, sub:'HSG65 average'} ],
+      {num:(function(){const H=_holdSummary();return H.total?(H.held+' / '+H.total):'-';})(), label:'Risks properly held', color:(function(){const H=_holdSummary();return !H.total?GREY:(H.breaches.length?RED:(H.held===H.total?GREEN:AMBER));})(), sub:'graded on facts'} ],
     { title:'Board summary',
       paras:['Significant risks scored against the HSG65 framework, both before controls (inherent) and after (residual). '+(nFatal?(nFatal+(nFatal===1?' activity carries':' activities carry')+' inherent fatal or major potential; with the controls in place '+(sifResHigh?(sifResHigh+' remain High or above'):'all sit at Medium or lower')+'. '):'')+'The profile is '+data.completeness+'% complete, so these figures firm up as the rest is scored.'],
       subhead:'What the board must decide',
@@ -17599,7 +17612,7 @@ function buildBoardReport(){
     K.section('Risk exposure vs management maturity', NAVY);
     K.bars([
       {label:'Risk exposure', val:rvm.riskIndex, color:rvm.riskIndex>=60?RED:rvm.riskIndex>=35?AMBER:GREEN, valLabel:rvm.riskLabel+' ('+rvm.riskIndex+'/100)'},
-      {label:'Management maturity', val:rvm.matPct==null?0:rvm.matPct, color:rvm.matPct==null?[150,150,150]:rvm.matPct>=70?GREEN:rvm.matPct>=40?AMBER:RED, valLabel:rvm.matAvg==null?'not scored':(rvm.matAvg.toFixed(1)+'/5')}
+      {label:'Risks properly held', val:(rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, color:(rvm.H&&rvm.H.breaches.length)?RED:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?GREEN:AMBER), valLabel:(rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed'}
     ]);
     K.text('Verdict: '+rvm.verdict, 9, {color:[90,90,90], gap:1});
   }
@@ -17637,7 +17650,7 @@ function buildBoardReport(){
     }
   } else { K.text('No fatal-potential risks are recorded. If the business surveys pre-2000 stock, works at height or drives, this list should not be empty - check the profile is complete.', 9.5, {color:GREY}); }
 
-  // Page 3 — legal exposure, maturity, sign-off
+  // Page 3 — legal exposure, judgement, sign-off
   doc.addPage(); st.y=K.TOP;
   if(_reportSectionOn('board.legal')){
     K.section('Legal exposure', [71,85,105]);
@@ -17647,15 +17660,15 @@ function buildBoardReport(){
     else K.text('Add the statutory basis to each significant risk (linked evidence) to populate the named-duty list here.', 9, {color:[130,130,130]});
   }
 
-  // Management maturity by domain (optional per client)
+  // Consultant judgement of the six HSG65 areas (optional per client) - words, never numbers.
   if(_reportSectionOn('board.maturity')){
-    K.section('Management maturity', [14,165,233]);
+    K.section('Consultant judgement - the six HSG65 areas', [14,165,233]);
     K.table(
-      [{header:'DOMAIN',w:96},{header:'SCORE',w:24,align:'right'},{header:'STATUS',w:34}],
-      data.matDoms.map((dm,i)=>{ const mt=_profMaturity(dm.id); const avg=mt.avg; const col=avg==null?[150,150,150]:avg>=4?[22,120,60]:avg>=2.5?[180,110,10]:[197,32,32];
-        return [ (i+1)+'. '+dm.name, {text:avg==null?'—':avg.toFixed(1)+'/5', bold:true, color:col, align:'right'}, {text:avg==null?'not scored':mt.critFail?'CRITICAL GAP':avg>=4?'Strong':avg>=2.5?'Developing':'Weak', color:col, bold:true} ]; })
+      [{header:'AREA',w:60},{header:'JUDGEMENT',w:28},{header:'CONSULTANT NOTE',w:66}],
+      data.matDoms.map((dm,i)=>{ const jj=(_judgeState()[dm.id])||{}; const col=JUDGE_RGB[jj.level]||[150,150,150]; const word=jj.level?(jj.level.charAt(0).toUpperCase()+jj.level.slice(1)):'not judged';
+        return [ (i+1)+'. '+dm.name, {text:word, bold:true, color:col}, {text:jj.note||'-', color:[110,110,110]} ]; })
     );
-    if(data.matScored<data.matDoms.length) K.text('So what: '+(data.matDoms.length-data.matScored)+' of '+data.matDoms.length+' domains are not yet scored — complete these for a full picture.', 8.5, {color:[110,110,110]});
+    if(data.matJudged<data.matDoms.length) K.text('So what: '+(data.matDoms.length-data.matJudged)+' of '+data.matDoms.length+' areas are not yet judged - the consultant records these in words at each review.', 8.5, {color:[110,110,110]});
   }
 
   K.section('Sign-off', NAVY);
@@ -18235,7 +18248,7 @@ function buildRiskProfileReportPDF(){
       doc.setFillColor(235,237,240); doc.roundedRect(bx,y,bw,5,2,2,'F'); doc.setFillColor(col[0],col[1],col[2]); if(v>0) doc.roundedRect(bx,y,Math.max(3,bw*v/100),5,2,2,'F');
       doc.setFont('helvetica','bold'); doc.setTextColor(col[0],col[1],col[2]); doc.text(vlab, RM, y+3.8, {align:'right'}); y+=10; };
     drawBar('Risk exposure', rvm.riskIndex, rvm.riskIndex>=60?[197,32,32]:rvm.riskIndex>=35?[180,110,10]:[22,120,60], rvm.riskLabel+' ('+rvm.riskIndex+'/100)');
-    drawBar('Management maturity', rvm.matPct==null?0:rvm.matPct, rvm.matPct==null?[150,150,150]:rvm.matPct>=70?[22,120,60]:rvm.matPct>=40?[180,110,10]:[197,32,32], rvm.matAvg==null?'not scored':(rvm.matAvg.toFixed(1)+'/5'));
+    drawBar('Risks properly held', (rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, (rvm.H&&rvm.H.breaches.length)?[197,32,32]:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?[22,120,60]:[180,110,10]), (rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed');
     text('Verdict: '+rvm.verdict+'  Risk exposure reflects the spread of severity across the register, not an average; maturity is the mean of the scored domains.', 8.5, false, [110,110,110]);
   }
 
@@ -18266,7 +18279,7 @@ function buildRiskProfileReportPDF(){
     const rated2=risks.map(_riskScore).filter(s=>s.rating);
     const avgRating=rated2.length?rated2.reduce((a,s)=>a+s.rating,0)/rated2.length:0;
     const avgBand=_bandFor(Math.round(avgRating)); const avgCol=_RISK_PRIO_RGB[avgBand]||[120,120,120];
-    const os=_overallScore(); const matAvg=os.mat.avg;
+    const os=_overallScore(); const H=os.H;
     const ragCol=os.rag==='#DC2626'?[197,32,32]:os.rag==='#F59E0B'?[180,110,10]:os.rag==='#16A34A'?[22,120,60]:[120,120,120];
     const px=ML+72, pw=RM-px, ph=Math.max(46, matBottom-my-4);
     doc.setDrawColor(224,228,233); doc.setFillColor(249,250,251); doc.roundedRect(px, my+2, pw, ph, 2.4, 2.4, 'FD');
@@ -18277,7 +18290,7 @@ function buildRiskProfileReportPDF(){
     doc.setFontSize(12); doc.setTextColor(150,155,162); doc.text('/ 25', pl+nlw+2, py);
     doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(avgCol[0],avgCol[1],avgCol[2]); doc.text(avgBand, pl+nlw+18, py);
     py+=6; doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120,128,140); doc.text('mean L x S of '+rated2.length+' rated risk'+(rated2.length!==1?'s':''), pl, py);
-    py+=8; doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); doc.text('Maturity', pl, py); doc.setFont('helvetica','normal'); doc.setTextColor(70,70,70); doc.text(matAvg==null?'not scored':(matAvg.toFixed(1)+' / 5'), pl+26, py);
+    py+=8; doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); doc.text('Held', pl, py); doc.setFont('helvetica','normal'); doc.setTextColor(70,70,70); doc.text(H.held+' of '+H.total+' risks'+(H.breaches.length?(' - '+H.breaches.length+' rule breach'+(H.breaches.length!==1?'es':'')):''), pl+26, py);
     py+=6; doc.setFont('helvetica','bold'); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); doc.text('Position', pl, py); doc.setFont('helvetica','bold'); doc.setTextColor(ragCol[0],ragCol[1],ragCol[2]); doc.text(os.ragLabel, pl+26, py);
     py+=6; doc.setFont('helvetica','normal'); doc.setFontSize(7.8); doc.setTextColor(110,116,126); doc.splitTextToSize(os.verdict, pw-12).forEach(ln=>{ doc.text(ln, pl, py); py+=3.4; });
     y=Math.max(matBottom, my+2+ph);
@@ -18359,15 +18372,15 @@ function buildRiskProfileReportPDF(){
     block('leading'); block('lagging'); block('assurance');
   }
 
-  // ── Management maturity assessment — table ──
+  // ── Consultant judgement - six HSG65 areas ──
   if(_reportSectionOn('risk.maturity')){
-    section('Management maturity assessment', RD.matScored+' of '+RD.matDoms.length+' domains scored', [14,165,233], 30);
+    section('Consultant judgement - six HSG65 areas', RD.matJudged+' of '+RD.matDoms.length+' areas judged', [14,165,233], 30);
     tableY(
-      [{header:'DOMAIN',w:96},{header:'SCORE',w:22,align:'right'},{header:'STATUS',w:30}],
-      RD.matDoms.map((dm,i)=>{ const mt=_profMaturity(dm.id); const avg=mt.avg; const col=avg==null?[150,150,150]:avg>=4?[22,120,60]:avg>=2.5?[180,110,10]:[197,32,32];
-        return [ (i+1)+'. '+dm.name, {text:avg==null?'-':avg.toFixed(1)+'/5', bold:true, color:col, align:'right'}, {text:avg==null?'not scored':mt.critFail?'CRITICAL GAP':avg>=4?'Strong':avg>=2.5?'Developing':'Weak', color:col, bold:true} ]; })
+      [{header:'AREA',w:70},{header:'JUDGEMENT',w:28},{header:'CONSULTANT NOTE',w:50}],
+      RD.matDoms.map((dm,i)=>{ const jj=(_judgeState()[dm.id])||{}; const col=JUDGE_RGB[jj.level]||[150,150,150]; const word=jj.level?(jj.level.charAt(0).toUpperCase()+jj.level.slice(1)):'not judged';
+        return [ (i+1)+'. '+dm.name, {text:word, bold:true, color:col}, {text:jj.note||'-', color:[110,110,110]} ]; })
     );
-    if(RD.matScored<RD.matDoms.length) text('So what: '+(RD.matDoms.length-RD.matScored)+' of '+RD.matDoms.length+' domains not yet scored - the score above reflects exposure more than management until these are completed.', 8.5, false, [110,110,110]);
+    if(RD.matJudged<RD.matDoms.length) text('So what: '+(RD.matDoms.length-RD.matJudged)+' of '+RD.matDoms.length+' areas not yet judged - the consultant records these in words at each review.', 8.5, false, [110,110,110]);
   }
 
   // ── Controls by level (energy hierarchy) ──
@@ -18665,8 +18678,8 @@ function renderRiskReview(){
             ${chip(rl.total,'Significant risks','var(--text)')}
             ${chip(rl.crit,'Critical',_RISK_PRIO_COLOR.Critical)}
             ${chip(rl.high,'High',_RISK_PRIO_COLOR.High)}
-            ${chip(os.mat.avg==null?'—':os.mat.avg.toFixed(1)+'/5','Management maturity', os.mat.avg==null?'':_matColor(Math.round(os.mat.avg)))}
-            ${os.required!=null?chip(os.required+'.0','Needed for this profile','var(--text-muted)'):''}
+            ${chip(os.H.held+'/'+os.H.total,'Properly held', os.H.total&&os.H.held===os.H.total?'#16A34A':'var(--text)')}
+            ${chip(os.H.breaches.length,'Rule breaches', os.H.breaches.length?'#DC2626':'#16A34A')}
           </div>
           <div style="font-size:13px;color:var(--text);line-height:1.5;">${esc(os.verdict)}</div>
           ${(_rpVerdictBits(os.M||_riskPanelModel()).explainHTML)||''}
@@ -18715,9 +18728,8 @@ function renderRiskReview(){
     analysis = sifCard;
   }
 
-  // 4) Management maturity assessment (six domains, scored 0-5).
-  const maturity=`<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:8px;line-height:1.5;">Score how well the organisation manages health &amp; safety, 0 (absent) to 5 (embedded and evidenced), against the written anchors. This drives the maturity half of the overall score at the top.</div>
-    ${_renderMaturityAssessment(dis)}`;
+  // 4) Consultant judgement — the six HSG65 areas, in words.
+  const maturity=`${_renderMaturityAssessment(dis)}`;
 
   if(scoreEl){ const _k=_detailsSnapshot(scoreEl); scoreEl.innerHTML = scorePanel; _detailsApply(scoreEl,_k); }
   if(sumEl)   sumEl.innerHTML   = summary;
@@ -22347,8 +22359,8 @@ function _suggestReviewFeedbackText(){
   const del=delRisk+delPlan;
   const br=((S.consultation&&S.consultation.briefings)||[]);
   const bits=[];
-  bits.push('Where you are: '+((S.riskProfile||[]).length)+' risks profiled'
-    +(M.maturity!=null?('; management maturity averages '+M.maturity.toFixed(1)+' of 5 against the '+(M.required!=null?M.required+'.0':'level')+' this profile needs'):'; the management maturity domains are not yet scored')+'.');
+  bits.push('Where you are: '+M.H.held+' of '+M.H.total+' risks properly held'
+    +(M.H.breaches.length?('; '+M.H.breaches.length+' breach'+(M.H.breaches.length!==1?'es':'')+' of the rule to close'):'; no breaches of the rule')+'.');
   if(del) bits.push(del+' action'+(del!==1?'s have':' has')+' been delivered and kept as evidence - real progress the business should take credit for.');
   if(sc.compliance!=null) bits.push('Inspection compliance is running at '+sc.compliance+'%.');
   if(br.length) bits.push(br.length+' recorded briefing'+(br.length!==1?'s':'')+' show'+(br.length===1?'s':'')+' communication running both ways.');
@@ -22360,8 +22372,8 @@ function _suggestReviewSuggestionsText(){
   const pd=(typeof _policyState==='function')?_policyState():{};
   const out=[];
   if(sc.overdueA) out.push('Clear the '+sc.overdueA+' overdue action'+(sc.overdueA!==1?'s':'')+' on the execution plan first - overdue items are the quickest credibility win.');
-  if(M.shortfall!=null && M.shortfall>0 && M.hotspots.length){ const h=M.hotspots[0]; out.push('Close the '+M.shortfall.toFixed(1)+'-point maturity gap, starting with the L'+h.l+' × S'+h.s+' square on the risk panel ('+h.items.length+' risk'+(h.items.length!==1?'s':'')+').'); }
-  if(M.maturity==null) out.push('Score the six management maturity domains so the risk panel can show whether the system is strong enough.');
+  if(M.H.breaches.length){ const b=M.H.breaches[0]; out.push('Close the '+M.H.breaches.length+' breach'+(M.H.breaches.length!==1?'es':'')+' of the rule, starting with "'+b.name+'" ('+(b.hold.reasons[0]||b.breach)+').'); }
+  if(M.H.notheld) out.push('Get controls and an owned, dated plan recorded on the '+M.H.notheld+' risk'+(M.H.notheld!==1?'s':'')+' not yet held.');
   if(!pd.signedDate) out.push('Get the health and safety policy statement signed and dated by the person at the top - it is not complete until then.');
   const exp=(typeof _trainingDueCount==='function')?_trainingDueCount():0;
   if(exp) out.push('Book the '+exp+' expired or expiring training renewal'+(exp!==1?'s':'')+' (raise them onto the plan from the training matrix).');
@@ -22434,7 +22446,7 @@ function buildFeedbackReportPDF(){
   try{ const rvm=_riskVsMaturity(); K.section('Risk exposure vs management maturity', NAVY);
     K.bars([
       {label:'Risk exposure', val:rvm.riskIndex, color: rvm.riskIndex>=60?RED:rvm.riskIndex>=35?AMBER:GREEN, valLabel: rvm.riskLabel+' ('+rvm.riskIndex+')'},
-      {label:'Management maturity', val: rvm.matPct==null?0:rvm.matPct, color: rvm.matPct==null?GREY:rvm.matPct>=70?GREEN:rvm.matPct>=40?AMBER:RED, valLabel: rvm.matAvg==null?'not scored':rvm.matAvg.toFixed(1)+'/5'}
+      {label:'Risks properly held', val: (rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, color: (rvm.H&&rvm.H.breaches.length)?RED:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?GREEN:AMBER), valLabel: (rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed'}
     ]);
     K.text(rvm.verdict, 9, {color:GREY, gap:1});
   }catch(e){}
@@ -22568,12 +22580,12 @@ function buildAuditReportPDF(){
     const base=snaps[0];
     K.section('Progress against baseline', NAVY);
     K.kv('Baseline recorded', fd(base.date)+(base.takenBy?(' by '+base.takenBy):''));
-    const tgt=S.auditTarget||{}; const tgtMat=parseFloat(tgt.maturity)||nowM.required||4;
-    K.kv('Agreed target', 'Management maturity '+tgtMat.toFixed(1)+' of 5'+(tgt.targetDate?(' by '+fd(tgt.targetDate)):''));
+    const tgt=S.auditTarget||{};
+    K.kv('Agreed target', 'Every risk properly held, no rule breaches'+(tgt.targetDate?(' by '+fd(tgt.targetDate)):''));
     const fmt1=(v)=>v==null?'-':Number(v).toFixed(1);
     K.table([{header:'MEASURE',w:66},{header:'BASELINE',w:30},{header:'NOW',w:30},{header:'MOVEMENT',w:52}],
-      [ ['Management maturity (of 5)', fmt1(base.metrics.maturity), fmt1(nowM.maturity), null],
-        ['Maturity shortfall (points)', fmt1(base.metrics.shortfall), fmt1(nowM.shortfall), null],
+      [ ['Risks properly held', String(base.metrics.held ?? '-'), String(nowM.held ?? '-'), null],
+        ['Rule breaches', String(base.metrics.ruleBreaches ?? '-'), String(nowM.ruleBreaches ?? '-'), null],
         ['High + critical risks', String(base.metrics.highCrit??'-'), String(nowM.highCrit??'-'), null],
         ['Open actions', String(base.metrics.openActions??'-'), String(nowM.openActions??'-'), null],
         ['Overdue actions', String(base.metrics.overdueActions??'-'), String(nowM.overdueActions??'-'), null],
@@ -22583,14 +22595,14 @@ function buildAuditReportPDF(){
         ['Accreditation ready', base.metrics.casReady==null?'-':base.metrics.casReady+'%', nowM.casReady==null?'-':nowM.casReady+'%', null],
       ].map(r=>{
         const b=parseFloat(r[1]), n=parseFloat(r[2]);
-        const goodDown=/shortfall|critical|Open|Overdue|expired|gaps/i.test(r[0]);
+        const goodDown=/breach|critical|Open|Overdue|expired|gaps/i.test(r[0]);
         let mv='no change', col=[130,130,130];
         if(!isNaN(b)&&!isNaN(n)&&b!==n){ const d=+(n-b).toFixed(1); const good=goodDown?d<0:d>0; mv=(d>0?'up ':'down ')+Math.abs(d); col=good?GREEN:RED; }
         return [ {text:r[0], bold:true}, r[1], r[2], {text:mv, color:col} ];
       }),
       {headFill:NAVY, headText:[255,255,255]});
     if(snaps.length>1){
-      K.text('Snapshots on record: '+snaps.map(s=>fd(s.date)+(s.metrics.maturity!=null?(' (mat '+Number(s.metrics.maturity).toFixed(1)+')'):'')).join(' · '), 8.5, {color:GREY});
+      K.text('Snapshots on record: '+snaps.map(s=>fd(s.date)+(s.metrics.held!=null?(' ('+s.metrics.held+' held)'):'')).join(' · '), 8.5, {color:GREY});
     }
   }
   // 4. Process observations

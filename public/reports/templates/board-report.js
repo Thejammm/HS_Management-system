@@ -67,9 +67,12 @@ export function buildBoardReport(state, opts = {}) {
   ];
 
   const decisions = [];
-  if (D.fatalUncontrolled) decisions.push({ text: 'Direct that the ' + countPhrase(D.fatalUncontrolled, 'uncontrolled fatal-potential risk', 'uncontrolled fatal-potential risks') + ' receive recorded controls this quarter.', rationale: 'Fatal-potential exposure with no recorded controls is the first thing an inspector or prosecutor will ask about.' });
+  if (D.fatalUncontrolled) decisions.push({ text: 'Direct that the ' + countPhrase(D.fatalUncontrolled, 'risk that could kill or seriously injure and has', 'risks that could kill or seriously injure and have') + ' no recorded controls get controls recorded this quarter.', rationale: 'A could-kill risk with no recorded controls is the first thing an inspector or prosecutor will ask about.' });
   if (D.overdue) decisions.push({ text: 'Reset owners and dates on the ' + countPhrase(D.overdue, 'overdue action', 'overdue actions') + '.', rationale: 'Overdue actions with no intervention become evidence of a plan the organisation does not follow.' });
-  if (D.maturityAvg != null && D.maturityAvg < 3) decisions.push({ text: 'Fund the management-system improvements needed to lift maturity from ' + D.maturityAvg.toFixed(1) + ' toward 3.0.', rationale: 'The risk profile currently outweighs the management system carrying it.' });
+  // Target the level THIS profile needs (HSG65), never a hardcoded number —
+  // saying "toward 3.0" to a High profile that needs 4.0 was itself an
+  // inconsistency (caught by the report audit).
+  if (D.maturityShortfall != null && D.maturityShortfall > 0) decisions.push({ text: 'Fund the management improvements needed to lift the management score from ' + D.maturityAvg.toFixed(1) + ' to the ' + D.requiredMaturity + '.0 this risk profile needs.', rationale: 'The risk currently outweighs the management carrying it (gap ' + D.maturityShortfall.toFixed(1) + ').' });
   if (!decisions.length) decisions.push({ text: D.empty ? 'Commission completion of the risk profile before the next board cycle.' : 'Note the position and maintain the current programme.', rationale: D.empty ? 'No decision can be soundly made from an incomplete profile.' : 'No exception requires a board decision this period.' });
 
   // Two bars, each on its OWN true scale, each showing its own exact figure —

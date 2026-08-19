@@ -3147,6 +3147,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rp-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;}
     .rp-stat-num{font-size:30px;font-weight:700;line-height:1;letter-spacing:-.02em;color:var(--text);}
     .rp-stat-label{font-size:12px;font-weight:600;color:var(--text-muted);margin-top:7px;}
+    .rp-stat-link{font-family:inherit;text-align:left;cursor:pointer;transition:border-color .12s, transform .12s;display:block;width:100%;}
+    .rp-stat-link:hover{border-color:var(--accent);transform:translateY(-1px);}
+    .rp-stat-go{font-size:11px;font-weight:700;color:var(--accent);margin-top:6px;opacity:0;transition:opacity .12s;}
+    .rp-stat-link:hover .rp-stat-go{opacity:1;}
     /* Left column bounded (matrix/heat-map are compact) so a long caption can't blow it out and shove the right panel off-screen; both children can shrink. */
     .rp-grid2{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:16px;margin-bottom:18px;align-items:start;}
     .rp-grid2>*{min-width:0;}
@@ -3296,16 +3300,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 
   <div id="tab-risk" class="tab-panel">
-    <details class="coll no-print" style="margin-bottom:14px;">
-      <summary><h3>Risk profile</h3>
-        <span class="badge badge-muted" id="riskCountBadge"></span>
-      </summary>
-      <div class="coll-body">
-        <div id="riskRegisterIntro" style="font-size:13px;color:var(--text-muted);line-height:1.5;">
-          Build the profile top to bottom: record consultation &amp; communication, add and complete the risks, record monitoring &amp; assurance, then score the management maturity. The summary stays at the top; each panel below opens and closes on click.
+    <div class="card no-print" style="margin-bottom:14px;">
+      <div class="card-body" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="flex:1 1 340px;font-size:13px;color:var(--text-muted);line-height:1.55;" id="riskRegisterIntro">
+          <strong style="color:var(--text);">This screen builds the client's risk picture.</strong>
+          It lists the things in the business that could seriously hurt someone, scores how big each risk is, and plans the work that brings it under control.
+          Complete it top to bottom: answer the discovery questions with the client, add the risks (from the library or your own), agree the scores, then give every risk an owned, dated action - or a recorded reason to accept it.
+          Everything here feeds the cockpit and the reports automatically.
         </div>
+        <span class="badge badge-muted" id="riskCountBadge" style="flex:0 0 auto;"></span>
       </div>
-    </details>
+    </div>
 
     <!-- SUMMARIES — always at the top -->
     <div id="discoveryPanel"></div>
@@ -3313,19 +3318,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="riskDashboard"></div>
 
     <div id="riskRegisterView">
-      <!-- 1 · Consultation & communication -->
-      <details class="coll wf-sec" id="wfDocControl">
-        <summary><h3>Consultation &amp; communication</h3><span class="coll-meta">employee consultation &middot; risk scoring key</span></summary>
-        <div class="coll-body">
-          <div id="riskDocControl"></div>
-          <div id="riskScoreKey"></div>
-        </div>
-      </details>
-
-      <!-- 2 · Add & complete the risks -->
+      <!-- 1 · Add & complete the risks -->
       <details class="coll wf-sec" id="wfRegister">
         <summary><h3>Risks — add &amp; complete the profile</h3><span class="coll-meta" id="wfRegisterMeta"></span></summary>
         <div class="coll-body">
+          <div id="riskScoreKey"></div>
           <div id="riskRegisterTools" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
             <button class="btn btn-primary no-print" id="addRiskBtn" onclick="addRiskEntry()">＋ Add risk</button>
             <button class="btn btn-outline no-print" id="addLibRiskBtn" onclick="openHazardLibrary()">＋ From hazard library</button>
@@ -3338,25 +3335,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </details>
 
-      <!-- 3 · Monitoring & assurance -->
-      <details class="coll wf-sec" id="wfAssurance">
-        <summary><h3>Monitoring &amp; assurance</h3><span class="coll-meta">leading &amp; lagging indicators</span></summary>
-        <div class="coll-body"><div id="riskAssurance"></div></div>
-      </details>
-
-      <!-- 4 · Management maturity assessment -->
+      <!-- 2 · Management maturity assessment -->
       <details class="coll wf-sec" id="wfMaturity">
         <summary><h3>Management maturity assessment</h3><span class="coll-meta">six domains, 0-5</span></summary>
         <div class="coll-body"><div id="riskMaturity"></div></div>
-      </details>
-
-      <!-- Risk review — summary & energy analysis (below the workflow) -->
-      <details class="coll wf-sec" id="wfReview">
-        <summary><h3>Risk review — by hazard type &amp; SIF register</h3><span class="coll-meta">summary &amp; energy analysis</span></summary>
-        <div class="coll-body">
-          <div id="riskReviewSummary"></div>
-          <div id="riskReviewAnalysis"></div>
-        </div>
       </details>
     </div>
   </div>
@@ -3546,6 +3528,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div id="tab-signoff" class="tab-panel">
     <div class="rep-hero"><h2>Policy &amp; procedure sign-off</h2><p>Evidence that policies have been communicated to and understood by employees. Build the policy list (from Documents, the risk profile, or typed in), add your staff, print the acknowledgement sheets, then record who has signed for a live compliance picture.</p></div>
     <div id="signoffContainer"></div>
+    <div id="riskDocControl" style="margin-top:18px;"></div>
   </div>
 
   <div id="tab-documents" class="tab-panel">
@@ -3660,6 +3643,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
     </div>
     <div id="monitoringContainer"></div>
+    <div id="riskAssurance"></div>
     <div id="incidentPanel"></div>
 
     <!-- Risk assessment register -->
@@ -9954,6 +9938,8 @@ function migrateLoadedState(){
   if(!Array.isArray(S.training)) S.training = [];   // training-matrix records (one per person-per-course)
   if(!S.policyDoc || typeof S.policyDoc !== 'object') S.policyDoc = { statement:'', signedBy:'', signedRole:'', signedDate:'', reviewDate:'' };
   if(!Array.isArray(S.incidents)) S.incidents = [];   // incident register: records + investigations, deliberately outside the KPI figures
+  if(!S.consultation || typeof S.consultation !== 'object') S.consultation = { briefings:[] };   // two-way communication record (sign-off tab)
+  if(!Array.isArray(S.consultation.briefings)) S.consultation.briefings = [];
   // Regulatory tracker is now organised into named sections, each holding statutory
   // items. Migrate the legacy flat list into a default section the first time.
   if(!Array.isArray(S.monitoring.regSections)){
@@ -12999,7 +12985,7 @@ function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null;
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),
     draft:{typeId:'garage_inspection',results:{},notes:{},actionDetails:{},rectifyDetails:{},formData:{},periodFrom:'',periodTo:'',manager:'',location:'',ref:'',freq:'weekly',generalNotes:'',title:'',inspType:''},
-    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], activeClient:null, branding:S.branding };
+    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], consultation:{briefings:[]}, activeClient:null, branding:S.branding };
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -13380,17 +13366,49 @@ const COCKPIT_WIDGETS = {
   // Dials & gauges — richer visuals, OFF by default (enable per client in the customiser).
   gaugeCompleteness:{ id:'gaugeCompleteness', label:'Completeness gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Assessment completeness', `${_gaugeSVG(x.RD.completeness)}<div class="ck-pending" style="text-align:center;margin-top:2px;">of the assessment complete</div><button class="ck-link" onclick="openCompletenessModal()" style="align-self:center;">What's left →</button>`) },
   gaugeCompliance:  { id:'gaugeCompliance', label:'Compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Inspection compliance', `${_gaugeSVG(x.compliance==null?0:x.compliance,{text:x.compliance==null?'--':x.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">pass + rectified</div><button class="ck-link" onclick="switchTab('monthly')" style="align-self:center;">Monthly report</button>`) },
-  gaugeMaturity:    { id:'gaugeMaturity', label:'Maturity gauge', group:'Gauge', defaultOff:true, render:x=>{ const a=x.RD.overallMat.avg; return _ckMod('Management maturity', `${_gaugeSVG(a==null?0:a/5*100,{text:a==null?'--':a.toFixed(1)})}<div class="ck-pending" style="text-align:center;margin-top:2px;">out of 5 (HSG65)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk review</button>`); } },
-  tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(100 - x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk review</button>`) },
+  gaugeMaturity:    { id:'gaugeMaturity', label:'Maturity gauge', group:'Gauge', defaultOff:true, render:x=>{ const a=x.RD.overallMat.avg; return _ckMod('Management maturity', `${_gaugeSVG(a==null?0:a/5*100,{text:a==null?'--':a.toFixed(1)})}<div class="ck-pending" style="text-align:center;margin-top:2px;">out of 5 (HSG65)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
+  tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(100 - x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`) },
   gaugeAccreditation:{ id:'gaugeAccreditation', label:'Accreditation gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Accreditation readiness', `${_gaugeSVG(x.cas.pctReady==null?0:x.cas.pctReady,{text:x.cas.pctReady==null?'--':x.cas.pctReady+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">criteria ready</div><button class="ck-link" onclick="switchTab('cas')" style="align-self:center;">Open accreditation</button>`) },
   gaugeMgmtCompliance:{ id:'gaugeMgmtCompliance', label:'Mgmt-system compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Management-system compliance', `${_gaugeSVG(x.reqStats.compliance==null?0:x.reqStats.compliance,{text:x.reqStats.compliance==null?'--':x.reqStats.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">requirements met</div><button class="ck-link" onclick="switchTab('requirements')" style="align-self:center;">Open management system</button>`) },
-  gaugeSifControl:  { id:'gaugeSifControl', label:'Fatal-risk control gauge', group:'Gauge', defaultOff:true, render:x=>{ const t=x.RD.sif.length, pct=t?Math.round((t-x.RD.sifUncontrolled.length)/t*100):0; return _ckMod('Fatal-risk control', `${_gaugeSVG(pct,{text:t?pct+'%':'n/a'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${t?('of '+t+' fatal-potential controlled'):'no fatal-potential risks'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk review</button>`); } },
+  gaugeSifControl:  { id:'gaugeSifControl', label:'Fatal-risk control gauge', group:'Gauge', defaultOff:true, render:x=>{ const t=x.RD.sif.length, pct=t?Math.round((t-x.RD.sifUncontrolled.length)/t*100):0; return _ckMod('Fatal-risk control', `${_gaugeSVG(pct,{text:t?pct+'%':'n/a'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${t?('of '+t+' fatal-potential controlled'):'no fatal-potential risks'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
+  // Moved up from the Risk profile tab (they were text lists there): the
+  // category split as a pie and the emerging-risk count as a gauge.
+  chartRiskCats:    { id:'chartRiskCats', label:'Risks by category (pie)', group:'Chart', render:x=>{
+      const byCat={}; (S.riskProfile||[]).forEach(r=>{ const c=r.category||'Uncategorised'; byCat[c]=(byCat[c]||0)+1; });
+      const cats=Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]); const total=cats.reduce((a,c)=>a+byCat[c],0);
+      if(!total) return `<div class="ckx-panel"><h4>Risks by category</h4><div class="ck-pending">No risks in the profile yet.</div></div>`;
+      let a0=-Math.PI/2, segs='';
+      cats.forEach(c=>{ const frac=byCat[c]/total, a1=a0+frac*2*Math.PI, large=frac>0.5?1:0;
+        const col=(typeof HAZARD_TYPE_COLOR!=='undefined'&&HAZARD_TYPE_COLOR[c])||'#9CA3AF';
+        const x0=60+48*Math.cos(a0), y0=60+48*Math.sin(a0), x1=60+48*Math.cos(a1), y1=60+48*Math.sin(a1);
+        segs += frac>=0.999 ? `<circle cx="60" cy="60" r="48" fill="${col}"/>`
+          : `<path d="M60 60 L${x0.toFixed(1)} ${y0.toFixed(1)} A48 48 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${col}"/>`;
+        a0=a1; });
+      const legend=cats.map(c=>{ const col=(typeof HAZARD_TYPE_COLOR!=='undefined'&&HAZARD_TYPE_COLOR[c])||'#9CA3AF';
+        return `<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:3px;background:${col};display:inline-block;flex:0 0 auto;"></span>${esc(c)}&nbsp;<b>${byCat[c]}</b></span>`; }).join('');
+      return `<div class="ckx-panel"><h4>Risks by category</h4>
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+          <svg viewBox="0 0 120 120" width="108" height="108" role="img" aria-label="Risks by category">${segs}<circle cx="60" cy="60" r="26" fill="var(--surface)"/><text x="60" y="66" text-anchor="middle" style="font-size:20px;font-weight:700;fill:var(--text);">${total}</text></svg>
+          <div style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--text-muted);min-width:0;">${legend}</div>
+        </div>
+        <button class="ck-link" onclick="switchTab('risk')">Open the risk profile →</button></div>`;
+    } },
+  chartEmerging:    { id:'chartEmerging', label:'Emerging risks (gauge)', group:'Chart', render:x=>{
+      const risks=(S.riskProfile||[]); const em=risks.filter(r=>r.trend==='Increasing');
+      const pct=risks.length?Math.round(em.length/risks.length*100):0;
+      const names=em.slice(0,3).map(r=>(r.activity||r.hazard||'Unnamed risk').slice(0,48));
+      return `<div class="ckx-panel"><h4>Emerging risks</h4>
+        <div style="display:flex;flex-direction:column;align-items:center;">${_gaugeSVG(pct,{text:String(em.length)})}
+          <div class="ck-pending" style="text-align:center;margin-top:2px;">${em.length?(em.length+' of '+risks.length+' risks trending up'):'no risks trending up'}</div></div>
+        ${names.length?`<ul style="list-style:none;padding:0;margin:8px 0 0;font-size:11.5px;color:var(--text-muted);">${names.map(n=>`<li style="padding:2px 0;">▲ ${esc(n)}</li>`).join('')}</ul>`:''}
+        <button class="ck-link" onclick="switchTab('risk');_rpStatJump('emerging')">See them →</button></div>`;
+    } },
 };
 
 // Cockpit zones = ordered containers, one per widget group. The default order.
 const COCKPIT_LAYOUT_DEFAULT = [
   { wrap:'ckx-kpis',  group:'KPI',     ids:['kpiFatal','kpiHighCrit','kpiOpenActions','kpiMgmtGaps','kpiCompleteness','kpiInspections','kpiTraining'] },
-  { wrap:'ckx-row2',  group:'Chart',   ids:['chartInspections','chartCompliance'] },
+  { wrap:'ckx-row2',  group:'Chart',   ids:['chartInspections','chartCompliance','chartRiskCats','chartEmerging'] },
   { wrap:'',          group:'Feature', ids:['riskVsMaturity'] },
   { wrap:'ckx-mods',  group:'Card',    ids:['cardRiskPriorities','cardMgmtSystem','cardMonitoring','cardAccreditation','cardLastReview','cardDocuments','cardReports'] },
 ];
@@ -14400,9 +14418,8 @@ function setRiskFilter(f, v){ _riskFilter[f] = v; renderRiskProfile(); }
 function clearRiskFilters(){ _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false }; renderRiskProfile(); }
 // Jump from the cockpit to just the fatal-potential (SIF) risks.
 function gotoSifRisks(){
-  _riskFilter = { category:'', priority:'', trend:'', sif:true, highcrit:false };
   switchTab('risk');
-  setTimeout(()=>{ const el=document.getElementById('riskFilters'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }, 90);
+  _rpStatJump('sif');   // opens the risks section with the fatal-potential filter on
 }
 // Jump from the cockpit to just the High and Critical (residual) risks.
 function gotoHighCritRisks(){
@@ -14545,24 +14562,26 @@ function _riskPanelHTML(o){
     <div class="rpx-matrix">${grid}${xlabs}</div>
     <div class="rpx-microlab rpx-mono" style="text-align:right;margin:4px 0 0;">Likelihood</div>
     ${legend}
-    <div class="rpx-caption">Cell colour is the risk band from likelihood × severity (${esc(_bandRangeText())}).<br>The white bar along each cell's base shows how maturely those risks are managed, out of 5.</div>
+    <div class="rpx-caption"><b>Where is the risk?</b> Each square is one mix of likelihood (1-5, across) and severity (1-5, up). The number is how many risks sit in that square; the colour is how serious that square is (${esc(_bandRangeText())}).<br><b>Where is the maturity?</b> The small white bar along a square's base shows how well those risks are managed, out of 5 - the fuller the bar, the better managed.</div>
   </div>`;
   // ── Right: rating derived from both ──
   const bandWord = { Low:'Low', Medium:'Moderate', High:'High', Critical:'Critical' }[M.profileBand] || '';
   let verdictLine, explain;
   if(M.verdict==='incomplete'){
-    verdictLine = M.maturity==null ? 'Exposure recorded, maturity not yet scored.' : 'Rate the risks to complete the position.';
-    explain = 'The '+M.rated.length+' rated risk'+(M.rated.length!==1?'s':'')+' average '+(M.meanScore==null?'-':M.meanScore.toFixed(1))+' of 25.'
-      + ' Score the management-maturity domains in the risk review to see whether the system is strong enough to carry that profile.';
+    verdictLine = M.maturity==null ? 'Risks scored - management strength not measured yet.' : 'Score each risk to complete the picture.';
+    explain = 'Your '+M.rated.length+' risk'+(M.rated.length!==1?'s':'')+' average '+(M.meanScore==null?'-':M.meanScore.toFixed(1))+' of 25 (each risk scores likelihood × severity, top score 25).'
+      + ' Now score the six domains in the Management maturity assessment (Risk profile tab) to measure whether the management is strong enough for these risks.';
   } else {
-    verdictLine = bandWord+' exposure, managed at '+M.maturity.toFixed(1)+'/5'
-      + (M.shortfall>0 ? ', a '+M.shortfall.toFixed(1)+' point maturity shortfall.' : ', meeting the '+M.required+'.0 this profile requires.');
-    explain = 'The mean current score of the '+M.rated.length+' rated risk'+(M.rated.length!==1?'s':'')+' is '+M.meanScore.toFixed(1)+' of 25, a '
-      + M.profileBand.toLowerCase()+' profile. A '+M.profileBand.toLowerCase()+' profile needs the management system running at '
-      + M.required+'.0 ('+(RISK_MATURITY_NAMES[M.required]||M.required)+') or better; the scored domains currently average '+M.maturity.toFixed(1)+'.';
+    verdictLine = 'Risk: '+bandWord.toLowerCase()+' ('+M.meanScore.toFixed(1)+' of 25). Management: '+M.maturity.toFixed(1)+' of 5 - '
+      + (M.shortfall>0 ? ('this much risk needs '+M.required+'.0, so you are '+M.shortfall.toFixed(1)+' short.') : ('meets the '+M.required+'.0 this much risk needs.'));
+    explain = 'The risk number is the average of your risk scores (each is likelihood × severity, top score 25). '
+      + 'The management number is your average maturity score across the six domains, out of 5. '
+      + 'HSG65 - the HSE\'s management standard - expects management strength to match the size of the risk: a '
+      + M.profileBand.toLowerCase()+' profile needs at least '+M.required+'.0 ('+(RISK_MATURITY_NAMES[M.required]||M.required)+').'
+      + (M.shortfall>0 ? ' Closing the '+M.shortfall.toFixed(1)+'-point gap means improving the squares listed below.' : '');
   }
   const rating = `<div>
-    <div class="rpx-microlab rpx-mono">Company rating</div>
+    <div class="rpx-microlab rpx-mono">Your position</div>
     <div class="rpx-verdict">${esc(verdictLine)}</div>
     <div class="rpx-explain">${esc(explain)}</div>
   </div>`;
@@ -14574,7 +14593,7 @@ function _riskPanelHTML(o){
   }).join('');
   const nowPct = Math.round(m/5*100), reqPct = M.required==null?0:Math.round(M.required/5*100);
   const matbar = `<div>
-    <div class="rpx-microlab rpx-mono">Control maturity vs profile requirement</div>
+    <div class="rpx-microlab rpx-mono">Management strength - where you are vs where you need to be</div>
     <div class="rpx-segbar" role="progressbar" aria-valuenow="${m.toFixed(1)}" aria-valuemin="0" aria-valuemax="5">${segs}</div>
     <div class="rpx-marks rpx-mono">
       ${M.maturity==null?'':`<span style="left:${Math.min(94,Math.max(6,nowPct))}%;color:#c2740a;">now ${m.toFixed(1)}</span>`}
@@ -14607,8 +14626,8 @@ function _riskPanelHTML(o){
       </button>`;
     }).join('');
     listBlock = `<div aria-live="polite">
-      <div class="rpx-microlab rpx-mono">Cells pulling the rating down</div>
-      ${hot || `<div class="rpx-explain">${M.maturity==null ? 'Score the maturity domains to see which cells fall short.' : 'No populated cell falls short of the maturity its band requires.'}</div>`}
+      <div class="rpx-microlab rpx-mono">Squares to fix first</div>
+      ${hot || `<div class="rpx-explain">${M.maturity==null ? 'Score the six domains in the Management maturity assessment to see which squares fall short.' : 'No square falls short of the maturity its risk level needs.'}</div>`}
     </div>`;
   }
   let nextTx;
@@ -14621,7 +14640,7 @@ function _riskPanelHTML(o){
         ? 'These '+sel.items.length+' risk'+(sel.items.length!==1?'s':'')+' need maturity '+sel.required+'.0; '+(doms.length?doms.join(' and '):'the controlling domains')+' currently average'+(doms.length!==1?'':'s')+' '+sel.maturity.toFixed(1)+'. Raise those scores to close the '+sel.shortfall.toFixed(1)+' point gap.'
         : 'This cell meets the maturity its band requires. Keep the controls under review.');
   } else if(M.verdict==='incomplete'){
-    nextTx = 'Rate likelihood and severity on every risk, and score the maturity domains in the risk review, to complete the rating.';
+    nextTx = 'Rate likelihood and severity on every risk, and score the six domains in the Management maturity assessment, to complete the rating.';
   } else if(M.hotspots.length){
     const h=M.hotspots[0];
     nextTx = 'Start at L'+h.l+' × S'+h.s+': '+h.items.length+' '+h.band.toLowerCase()+'-band risk'+(h.items.length!==1?'s':'')+' managed at '+(h.maturity==null?'0':h.maturity.toFixed(1))+' against the '+h.required+'.0 required.';
@@ -14764,7 +14783,7 @@ function _completenessGaps(RD){
   add(reqPend,'management-system duties not yet assessed','Management system',"switchTab('requirements')");
   try{ add(_covGaps().length,'coverage gaps — statutory or training implied but not evidenced','Coverage check',"switchTab('monitoring'); setTimeout(runCoverageCheck,450)"); }catch(e){}
   const as=S.riskAssurance||{}; const monPop=['leading','lagging','assurance'].some(k=>Array.isArray(as[k])&&as[k].length);
-  if(!monPop) g.push({count:'—',label:'monitoring indicators not populated',goLabel:'Set indicators',go:"switchTab('risk'); setTimeout(()=>{ const el=document.getElementById('wfAssurance'); if(el){ el.open=true; el.scrollIntoView({behavior:'smooth'}); } },350)"});
+  if(!monPop) g.push({count:'—',label:'monitoring indicators not populated',goLabel:'Set indicators',go:"switchTab('monitoring'); setTimeout(()=>{ const el=document.getElementById('riskAssurance'); if(el) el.scrollIntoView({behavior:'smooth'}); },350)"});
   return g;
 }
 function openCompletenessModal(){
@@ -14809,26 +14828,37 @@ function _renderRiskDashboard(){
   const catRows = Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a])
     .map(c=>`<li><span>${esc(c)}</span><span style="font-weight:700;">${byCat[c]}</span></li>`).join('')
     || '<li style="color:var(--text-muted);list-style:none;">No categories yet.</li>';
-  const emergingRows = emergingList.length
-    ? emergingList.sort((a,b)=>(_riskScore(b).rating||0)-(_riskScore(a).rating||0))
-        .map(r=>{const s=_riskScore(r);return `<li><strong style="color:${_RISK_PRIO_COLOR[s.priority]||'var(--text-muted)'};">${s.priority||'Unrated'}${s.rating?' · '+s.rating:''}</strong> &mdash; ${esc(r.activity||r.hazard||'Unnamed risk')}</li>`;}).join('')
-    : '<li style="color:var(--text-muted);list-style:none;margin-left:-18px;">No emerging (increasing) risks flagged.</li>';
   const sifCount = risks.filter(r=>_riskSif(r)).length;
-  const card = (num,label,colour) => `<div class="rp-stat"><div class="rp-stat-num"${colour?` style="color:${colour};"`:''}>${num}</div><div class="rp-stat-label">${label}</div></div>`;
+  // Each tile is a link: it opens the risks section filtered to what the
+  // number counts, so the user can always see what is behind a figure.
+  // (The combined risk/maturity panel and the category + emerging views now
+  // live on the cockpit only — no duplicates here.)
+  const card = (num,label,colour,jump) => `<button type="button" class="rp-stat rp-stat-link" onclick="_rpStatJump('${jump}')" title="See the risks behind this number">
+      <div class="rp-stat-num"${colour?` style="color:${colour};"`:''}>${num}</div><div class="rp-stat-label">${label}</div><div class="rp-stat-go">Open →</div></button>`;
   const _keep=_detailsSnapshot(el);
   el.innerHTML = `
     <div class="rp-stats">
-      ${card(rated.length,'Total significant risks')}
-      ${card(sifCount,'SIF potential (can kill/maim)', sifCount?'#DC2626':'')}
-      ${card(crit,'Critical risks', crit?_RISK_PRIO_COLOR.Critical:'')}
-      ${card(high,'High risks', high?_RISK_PRIO_COLOR.High:'')}
-      ${card(emergingList.length,'Emerging risks (increasing)', emergingList.length?_RISK_PRIO_COLOR.High:'')}
-      ${card(overdueActions,'Overdue actions', overdueActions?_RISK_PRIO_COLOR.Critical:'')}
-    </div>
-    <details class="coll" data-keep="rpCombined" style="margin:0 0 18px;"><summary><h3>Risk profile &amp; control maturity</h3></summary><div class="coll-body"><div data-riskpanel="bare">${_riskPanelHTML({heading:false})}</div></div></details>
-    <details class="coll" data-keep="rpByCat" style="margin:0 0 18px;"><summary><h3>Risks by category</h3></summary><div class="coll-body"><ul class="rp-impacts" style="list-style:none;padding:0;">${catRows.replace(/<li>/g,'<li style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;">')}</ul></div></details>
-    <details class="coll" data-keep="rpEmerging"><summary><h3>Emerging risks (trend increasing)</h3></summary><div class="coll-body"><ul class="rp-impacts">${emergingRows}</ul></div></details>`;
+      ${card(rated.length,'Total significant risks','','all')}
+      ${card(sifCount,'SIF potential (can kill/maim)', sifCount?'#DC2626':'','sif')}
+      ${card(crit,'Critical risks', crit?_RISK_PRIO_COLOR.Critical:'','critical')}
+      ${card(high,'High risks', high?_RISK_PRIO_COLOR.High:'','high')}
+      ${card(emergingList.length,'Emerging risks (increasing)', emergingList.length?_RISK_PRIO_COLOR.High:'','emerging')}
+      ${card(overdueActions,'Overdue actions', overdueActions?_RISK_PRIO_COLOR.Critical:'','overdue')}
+    </div>`;
   _detailsApply(el,_keep);
+}
+// Tile → the place the number comes from: open the risks section with the
+// matching filter (or the execution plan for overdue actions) and scroll to it.
+function _rpStatJump(kind){
+  if(kind==='overdue'){ switchTab('execplan'); return; }
+  _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false };
+  if(kind==='sif') _riskFilter.sif=true;
+  if(kind==='critical') _riskFilter.priority='Critical';
+  if(kind==='high') _riskFilter.priority='High';
+  if(kind==='emerging') _riskFilter.trend='Increasing';
+  renderRiskProfile();
+  const sec=document.getElementById('wfRegister');
+  if(sec){ sec.open=true; setTimeout(()=>sec.scrollIntoView({behavior:'smooth',block:'start'}),80); }
 }
 
 function _renderRiskFilters(show){
@@ -15266,6 +15296,14 @@ function suggestRiskDocText(field){
   if((rd[field]||'').trim() && !confirm('Replace the current wording with the suggested text built from what Compass is doing for this client?')) return;
   rd[field]=txt; scheduleAutoSave(); _renderRiskDocControl();
 }
+// ── Two-way communication record (HSG65: tell people, and listen to what
+//    comes back). Lives on the Sign-off tab with the consultation wording.
+const BRIEFING_TYPES=['Daily briefing','Toolbox talk','Project briefing','Safety committee','One-to-one','Other'];
+function _consultState(){ if(!S.consultation||typeof S.consultation!=='object') S.consultation={briefings:[]}; if(!Array.isArray(S.consultation.briefings)) S.consultation.briefings=[]; return S.consultation; }
+function addBriefing(){ if(_blockIfReadOnly()) return; const b={ id:_reqUid('brf'), date:new Date().toISOString().slice(0,10), type:'Daily briefing', topic:'', led:'', attendees:'', feedback:'', ref:'', signedBy:'', signedAt:'' }; if(typeof _stamp==='function') _stamp(b,'created'); _consultState().briefings.unshift(b); saveData(); _renderRiskDocControl(); }
+function updateBriefing(id,f,v){ if(_roLocked()) return; const b=_consultState().briefings.find(x=>x.id===id); if(!b) return; b[f]=v; if(typeof _stamp==='function') _stamp(b,'updated'); scheduleAutoSave(); }
+function deleteBriefing(id){ if(_blockIfReadOnly()) return; if(!confirm('Delete this briefing record?')) return; const c=_consultState(); c.briefings=c.briefings.filter(x=>x.id!==id); saveData(); _renderRiskDocControl(); }
+function signBriefing(id){ if(_blockIfReadOnly()) return; const b=_consultState().briefings.find(x=>x.id===id); if(!b) return; const u=(typeof Auth!=='undefined'&&Auth.user)?Auth.user():null; b.signedBy=(u&&(u.name||u.email))||'Signed'; b.signedAt=new Date().toISOString().slice(0,10); if(typeof _stamp==='function') _stamp(b,'updated'); saveData(); _renderRiskDocControl(); }
 function _renderRiskDocControl(){
   const el=document.getElementById('riskDocControl'); if(!el) return;
   const dis=_roLocked()?' disabled':''; const rd=S.riskDoc=S.riskDoc||{};
@@ -15280,17 +15318,44 @@ function _renderRiskDocControl(){
   // Consultation & communication — the legal duty to consult and inform employees
   // on health and safety. (Report version/approval lives in the Document Control
   // register on the Reports tab, not here.)
-  const _dcD=el.querySelector('details'); const _dcOpen=_dcD?_dcD.open:true;   // user's choice survives re-renders
+  const ro=_roLocked();
   const sug=(f)=>dis?'':`<button class="btn btn-ghost btn-xs no-print" style="margin-left:8px;font-size:10.5px;" title="Rewrite from what Compass is currently doing for this client (logins, execution plan, sign-off register, documents, reports)" onclick="suggestRiskDocText('${f}')">↻ Suggest from the app</button>`;
-  el.innerHTML = `<details class="rp-subcard"${_dcOpen?' open':''}>
-    <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('clipboard',17)} Consultation &amp; communication</summary>
-    <div class="sc-body">
+  const inp='font-size:12.5px;padding:6px 8px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;';
+  const br=_consultState().briefings;
+  const bTot=br.length, bFb=br.filter(b=>(b.feedback||'').trim()).length, bSigned=br.filter(b=>b.signedBy).length;
+  const rows=br.map(b=>`<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input type="date" value="${esc(b.date||'')}"${dis} onchange="updateBriefing('${b.id}','date',this.value)" style="flex:0 0 132px;${inp}">
+        <select${dis} onchange="updateBriefing('${b.id}','type',this.value)" style="flex:0 0 145px;${inp}">${BRIEFING_TYPES.map(t=>`<option${(b.type||'Daily briefing')===t?' selected':''}>${t}</option>`).join('')}</select>
+        <input value="${esc(b.topic||'')}" placeholder="Topic - what was briefed"${dis} oninput="updateBriefing('${b.id}','topic',this.value)" style="flex:2;min-width:160px;${inp}">
+        <input value="${esc(b.led||'')}" placeholder="Led by"${dis} oninput="updateBriefing('${b.id}','led',this.value)" style="flex:1;min-width:100px;${inp}">
+        <input value="${esc(b.attendees||'')}" placeholder="Attendees (names or number)"${dis} oninput="updateBriefing('${b.id}','attendees',this.value)" style="flex:1;min-width:130px;${inp}">
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+        <input value="${esc(b.feedback||'')}" placeholder="What came back from the workforce (questions, concerns, suggestions - and what was done)"${dis} oninput="updateBriefing('${b.id}','feedback',this.value)" style="flex:2.5;min-width:220px;${inp}">
+        <input value="${esc(b.ref||'')}" placeholder="Ref / link to the client's own record"${dis} oninput="updateBriefing('${b.id}','ref',this.value)" style="flex:1;min-width:140px;${inp}">
+        ${b.signedBy?`<span style="font-size:11.5px;font-weight:700;color:#16A34A;flex:0 0 auto;">✓ Signed off - ${esc(b.signedBy)}${b.signedAt?(' · '+esc(b.signedAt)):''}</span>`
+          :(ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="signBriefing('${b.id}')" title="Sign this briefing off as delivered and recorded">Sign off</button>`)}
+        ${ro?'':`<button class="btn btn-ghost btn-xs" onclick="deleteBriefing('${b.id}')" title="Delete">${_ic('trash',13)}</button>`}
+      </div>
+    </div>`).join('') || '<div class="ck-pending" style="padding:4px 0 8px;">No briefings recorded yet. Add the daily starts, toolbox talks and project briefings as they happen.</div>';
+  el.innerHTML = `<div class="card">
+    <div class="card-band"><h3><span class="dot">●</span> Consultation &amp; two-way communication</h3>
+      <span class="badge badge-muted">${bTot?(bTot+' briefing'+(bTot!==1?'s':'')+' · '+bFb+' with feedback · '+bSigned+' signed off'):'none recorded yet'}</span></div>
+    <div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">HSG65 expects communication to run both ways: the business tells people about the risks and controls, and listens to what comes back. Record the regular briefings below - what was covered, who led it, and what the workforce raised - then sign each one off as evidence of compliance.</div>
       <div class="field-group"><label class="field-label">Consulted with (employee consultation record)${sug('consulted')}</label>
         <textarea${dis} rows="3" placeholder="Who was consulted in preparing this profile — e.g. staff, safety reps, contractors" oninput="updateRiskDoc('consulted',this.value)">${esc(rd.consulted||'')}</textarea></div>
       <div class="field-group"><label class="field-label">How this is communicated to staff${sug('communicated')}</label>
         <textarea${dis} rows="3" placeholder="How the risk profile and its controls are shared — e.g. team briefings, toolbox talks, induction, noticeboard" oninput="updateRiskDoc('communicated',this.value)">${esc(rd.communicated||'')}</textarea></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 0 4px;">
+        <div style="font-weight:700;font-size:13px;">Briefings &amp; talks - the two-way record</div>
+        ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="addBriefing()">＋ Add briefing</button>`}
+      </div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Daily starts, toolbox talks and project briefings, linked by reference to the client's own paperwork. "What came back" is the evidence the conversation ran both ways.</div>
+      ${rows}
       <div style="font-size:12px;color:var(--text-muted);margin-top:10px;">Meets the duty to consult and inform employees on health and safety (Health and Safety (Consultation with Employees) Regulations 1996; MHSWR 1999 reg. 10). The wording above is written from what Compass is actually doing for this client — edit it freely.</div>
-    </div></details>`;
+    </div></div>`;
 }
 
 // ── Scoring key (spec #1) ──
@@ -15950,10 +16015,12 @@ function _renderAssurance(){
   const seedBtn = dis ? '' : (empty
     ? `<button class="btn btn-primary btn-sm no-print" style="flex:0 0 auto;" onclick="prefillAssurance()">⚙ Pre-fill from the profile</button>`
     : `<button class="btn btn-ghost btn-xs no-print" style="flex:0 0 auto;" title="Adds any missing suggested rows — never changes what is already recorded" onclick="prefillAssurance()">↻ Suggest additions</button>`);
-  el.innerHTML=`<div class="card" style="margin-bottom:18px;">
+  el.innerHTML=`<div class="card" style="margin:26px 0 16px;">
+    <div class="card-band"><h3><span class="dot">●</span> Leading &amp; lagging indicators</h3>
+      <span class="badge badge-muted">what the monthly figures track against</span></div>
     <div class="card-body">
       <div style="display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;">
-        <div style="font-size:12.5px;color:var(--text-muted);flex:1 1 320px;">The framework for monitoring and assurance HSG65 expects — how the organisation will check the risk profile stays under control. Suggestions come from the standard measures and the arrangements the discovery answers require; targets, figures and owners are yours to set.</div>
+        <div style="font-size:12.5px;color:var(--text-muted);flex:1 1 320px;">The framework behind the figures above: what this business watches to see trouble coming (leading), what it counts after the event (lagging), and the checks that prove the system is working (assurance). HSG65 expects all three. Suggestions come from the risk profile and the discovery answers; targets, figures and owners are yours to set.</div>
         ${seedBtn}
       </div>
       ${_assurTableHTML('leading',dis)}
@@ -17870,7 +17937,7 @@ function renderDiscoveryPanel(){
   const orphN=(function(){ try{ return _discOrphanedThemes().length; }catch(e){ return 0; } })();
   const _keepDisc=_detailsSnapshot(el);
   el.innerHTML=`<details class="coll" data-keep="rpDiscovery" style="margin-bottom:16px;">
-    <summary><h3>Discovery questionnaire</h3><span class="badge badge-muted">${st.answered}/${st.total} answered${st.fired?(' · '+st.fired+' rules fired'):''}${sugN?(' · '+sugN+' themes suggested'):''}</span></summary>
+    <summary><h3>Start here — the discovery questions</h3><span class="badge badge-muted">${st.answered}/${st.total} answered${st.fired?(' · '+st.fired+' rules fired'):''}${sugN?(' · '+sugN+' themes suggested'):''}</span></summary>
     <div class="coll-body" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
       <div style="font-size:12.5px;color:var(--text-muted);max-width:640px;">The sit-down intake: ${st.total} yes/no questions across 7 profiles (business, operations, premises, workforce, plant &amp; equipment, dutyholder, change). Answers drive the generated requirements, significant risks, the maturity heat-map — and suggest the risk-profile themes below.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -20396,6 +20463,7 @@ function renderMonitoring(){
     const done = entered.length ? ('  Months with figures: ' + entered.map(monLabel).join(', ')) : '';
     note.textContent = cur + done;
   }
+  _renderAssurance();   // leading & lagging indicators live here now (moved from the Risk profile tab)
 }
 
 function saveMonthlyFigures(){
@@ -20793,6 +20861,7 @@ function renderPolicySignoff(){
         <div style="font-size:12.5px;color:var(--text-muted);flex:1;min-width:200px;">One page per employee, listing every policy with the risks it controls and a signature block. Print, get them signed, then record above.</div>
         <button class="btn btn-primary btn-sm no-print" onclick="downloadSignoffSheets()"${p.staff.length&&p.policies.length?'':' disabled'}>⭳ Acknowledgement sheets PDF</button>
       </div></div>`;
+  _renderRiskDocControl();
 }
 function downloadSignoffSheets(){ try{ buildSignoffPDF(); showToast('✓ Sign-off sheets created','success'); }catch(e){ console.error('Sign-off PDF failed',e); showToast('Could not build the sheets — see console','error'); } }
 // One-page attendance sign-off for a single delivered item (toolbox talk,

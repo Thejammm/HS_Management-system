@@ -211,3 +211,24 @@
   .r-root { background:#fff; }
   .r-page { margin:0; box-shadow:none; }
 }
+
+/* ── Gap bars: each row on its own true scale, needed level marked ── */
+.r-gap-row { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+.r-gap-lab { font-family:'Inter',Arial,sans-serif; font-weight:600; text-transform:uppercase; letter-spacing:.16em; font-size:7.5px; width:110px; flex:0 0 auto; }
+.r-gap-track { flex:1; height:11px; background:#e6e6e8; border:1px solid var(--r-hair); position:relative; display:block; }
+.r-gap-fill { position:absolute; left:0; top:0; bottom:0; background:var(--r-accent); display:block; }
+.r-gap-mark { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--r-ink); display:block; }
+.r-gap-marklab { position:absolute; top:-11px; transform:translateX(-50%); font-size:6.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--r-muted); white-space:nowrap; }
+.r-gap-val { font-size:9.5px; font-weight:700; width:150px; flex:0 0 auto; text-align:right; }
+.r-page-cover .r-gap-track { background:#14222f; border-color:#416180; }
+.r-page-cover .r-gap-mark { background:#e8edf4; }
+.r-page-cover .r-gap-marklab { color:#a7c4e0; }
+.r-page-cover .r-gap-lab { color:#a7c4e0; }
+
+/* ── Plan bar additions: projected-score row + delivery progress ── */
+.r-wn-plan { opacity:.45; }
+.r-wn-none { font-size:7.5px; color:var(--r-muted); font-style:normal; }
+.r-wn-prog { display:block; font-size:7px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--r-muted); margin-top:2px; padding-left:25px; }
+.r-wn-prog-none { color:var(--r-high); }
+.r-page-cover .r-wn-lab, .r-page-cover .r-wn-none, .r-page-cover .r-wn-prog { color:#a7c4e0; }
+.r-page-cover .r-wn-track { background:#14222f; border-color:#416180; }

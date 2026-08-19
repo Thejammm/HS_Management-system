@@ -212,3 +212,8 @@ export function hazardTypeOf(category, hazardText) {
   }
   return 'Physical';
 }
+
+// ── Required maturity per risk band — verbatim from the app's
+//    RISK_REQUIRED_MATURITY (HSG65: management strength in proportion
+//    to the risk). The consistency check asserts this still matches. ──
+export const REQUIRED_MATURITY = { Low: 2, Medium: 3, High: 4, Critical: 5 };

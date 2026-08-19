@@ -1,7 +1,7 @@
 // Board report template — Signal (data-forward) and Brief (editorial) formats.
 // Both build the SAME content; format changes the skin class only.
 import { deriveBoard, deriveBoardExtras, noneOrCount, countPhrase, hasHave, TIER_COLOURS } from '../derive.js';
-import { esc, tierWord, dualBar } from '../blocks.js';
+import { esc, tierWord, planBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
 
 // The report's sections, defaulted to what HSG65 says a leadership review
@@ -72,17 +72,29 @@ export function buildBoardReport(state, opts = {}) {
   if (D.maturityAvg != null && D.maturityAvg < 3) decisions.push({ text: 'Fund the management-system improvements needed to lift maturity from ' + D.maturityAvg.toFixed(1) + ' toward 3.0.', rationale: 'The risk profile currently outweighs the management system carrying it.' });
   if (!decisions.length) decisions.push({ text: D.empty ? 'Commission completion of the risk profile before the next board cycle.' : 'Note the position and maintain the current programme.', rationale: D.empty ? 'No decision can be soundly made from an incomplete profile.' : 'No exception requires a board decision this period.' });
 
+  // Two bars, each on its OWN true scale, each showing its own exact figure —
+  // never a transformed number (the old "×5 so they share an axis" printed a
+  // bar reading 4 beside a sentence reading 0.7). The line on the management
+  // bar marks the level this risk profile needs (HSG65).
   const expBars = {
-    type: 'distributionBars', title: 'Risk vs management — on the same scale',
-    items: [
-      { label: 'Risk score (avg of 25)', n: D.meanScore != null ? Math.round(D.meanScore) : 0, colour: D.profileTier ? TIER_COLOURS[D.profileTier] : undefined },
-      { label: 'Management (score × 5)', n: D.maturityAvg != null ? Math.round(D.maturityAvg * 5) : 0 },
+    type: 'gapBars', title: 'Risk vs management — each on its own scale',
+    rows: [
+      { label: 'Risk score (0–25)', value: D.meanScore, max: 25,
+        text: D.meanScore != null ? (D.meanScore.toFixed(1) + ' of 25' + (D.profileTier ? (' · ' + D.profileTier) : '')) : 'not yet scored',
+        colour: D.profileTier ? TIER_COLOURS[D.profileTier] : undefined },
+      { label: 'Management (0–5)', value: D.maturityAvg, max: 5,
+        text: D.maturityAvg != null ? (D.maturityAvg.toFixed(1) + ' of 5' + (D.requiredMaturity != null ? (' · needs ' + D.requiredMaturity + '.0') : '')) : 'not yet scored',
+        marker: D.requiredMaturity != null ? { at: D.requiredMaturity, label: 'needed ' + D.requiredMaturity + '.0' } : undefined },
     ],
+    footnote: 'Bars are drawn to scale on their own axes; figures are shown to one decimal place.',
   };
   const verdictLine = D.empty
     ? 'No verdict — the profile is not yet rated.'
     : (D.meanScore != null && D.maturityAvg != null)
-      ? ('Risk: ' + D.meanScore.toFixed(1) + ' of 25. Management: ' + D.maturityAvg.toFixed(1) + ' of 5' + (D.maturityAvg < 3 && D.highPlus ? ' — the risk currently outweighs the management carrying it.' : ' — broadly matched.'))
+      ? ('Risk: ' + (D.profileTier ? D.profileTier.toLowerCase() + ' ' : '') + '(' + D.meanScore.toFixed(1) + ' of 25). Management: ' + D.maturityAvg.toFixed(1) + ' of 5 — '
+        + (D.maturityShortfall != null && D.maturityShortfall > 0
+          ? ('this much risk needs ' + D.requiredMaturity + '.0, so the management is ' + D.maturityShortfall.toFixed(1) + ' short.')
+          : (D.requiredMaturity != null ? ('meets the ' + D.requiredMaturity + '.0 this much risk needs.') : 'broadly matched.')))
       : 'Management maturity not yet scored — the risk side of this comparison stands alone.';
 
   const page1 = {
@@ -207,14 +219,14 @@ export function buildBoardReport(state, opts = {}) {
   // ── Page 2+: Register (spills beyond ~16 rows) ──
   const regCols = [
     { header: 'Activity / risk', w: '34%' },
-    { header: 'Score — was → now (of 25)', w: '30%' },
+    { header: 'Score — now → after the plan (of 25)', w: '30%' },
     { header: 'Band', w: '12%' },
     { header: 'Controls', w: '12%' },
     { header: 'Owner', w: '12%' },
   ];
   const rowFor = r => ([
     r.name + (r.fatal ? '  ⚑' : ''),
-    { html: dualBar({ inherent: r.inherent, residual: r.residual, tier: r.tier }) },
+    { html: planBar({ residual: r.residual, target: r.target, tier: r.tier, targetTier: r.targetTier, actsTotal: r.actsTotal, actsClosed: r.actsClosed }) },
     { html: tierWord(r.tier) },
     r.control,
     r.owner || '—',
@@ -226,7 +238,7 @@ export function buildBoardReport(state, opts = {}) {
       mast,
       { type: 'titleBlock', kicker: 'Fatal and major-harm register' + (slices.length > 1 ? (' · part ' + (i + 1) + ' of ' + slices.length) : ''), headline: i === 0 ? (D.registerRows.length ? countPhrase(D.registerRows.length, 'activity that can cause', 'activities that can cause') + ' serious harm' : 'No fatal or major-harm activities recorded') : 'Register, continued' },
       D.registerRows.length
-        ? { type: 'dataTable', cols: regCols, rows: slice.map(rowFor), footnote: i === slices.length - 1 ? 'Controls reduce likelihood, not severity — a fatal-potential risk stays fatal-potential however well controlled. ⚑ fatal potential.' : undefined }
+        ? { type: 'dataTable', cols: regCols, rows: slice.map(rowFor), footnote: i === slices.length - 1 ? '"Plan" is the score the open actions are working towards (target likelihood × severity); the done-count shows how far the plan has been delivered. Controls reduce likelihood, not severity — a fatal-potential risk stays fatal-potential however well controlled. ⚑ fatal potential.' : undefined }
         : { type: 'textBlock', body: 'Nothing in the profile currently carries a worst-case severity of major injury or above. Confirm this reflects the work actually done, not gaps in the profile.' },
     ],
   }));

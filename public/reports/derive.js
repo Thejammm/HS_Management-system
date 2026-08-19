@@ -7,8 +7,8 @@
 // from the app itself) and scripts/check-app-report-consistency.mjs diffs the
 // two implementations on a seeded edge-case state — run it before deploying
 // anything that touches either side.
-import { sifOf, controlStatusOf, riskMaturityOf, MATURITY_DOMAINS, domainMaturity } from './app-contract.js';
-export { sifOf, controlStatusOf, riskMaturityOf, MATURITY_DOMAINS, domainMaturity };
+import { sifOf, controlStatusOf, riskMaturityOf, MATURITY_DOMAINS, domainMaturity, REQUIRED_MATURITY } from './app-contract.js';
+export { sifOf, controlStatusOf, riskMaturityOf, MATURITY_DOMAINS, domainMaturity, REQUIRED_MATURITY };
 
 // ── Tier banding ──
 // The app's bands are tenant-tunable (state.riskConfig.bands). The report must
@@ -46,6 +46,10 @@ export function residualOf(risk) {
 }
 export function inherentOf(risk) {
   const l = int(risk && risk.inherentL), s = int(risk && risk.inherentS);
+  return (l && s) ? { l, s, score: l * s } : null;
+}
+export function targetOf(risk) {
+  const l = int(risk && risk.targetL), s = int(risk && risk.targetS);
   return (l && s) ? { l, s, score: l * s } : null;
 }
 
@@ -216,6 +220,10 @@ export function deriveBoard(state, opts = {}) {
   // Exposure score for the bars: mean residual score of rated risks (0–25).
   const meanScore = rated.length ? rated.reduce((a, x) => a + x.res.score, 0) / rated.length : null;
   const profileTier = meanScore != null ? tierFor(Math.max(1, Math.round(meanScore)), bands) : null;
+  // Required maturity for this profile + the gap, exactly as the app panel
+  // computes them (one decimal, needed minus have).
+  const requiredMaturity = profileTier ? REQUIRED_MATURITY[profileTier] : null;
+  const maturityShortfall = (requiredMaturity != null && maturityAvg != null) ? +(requiredMaturity - maturityAvg).toFixed(1) : null;
 
   // Hierarchy of control shares (of risks with a recorded level).
   const hierarchy = HIERARCHY.map(h => ({ ...h, n: risks.filter(r => r.controlLevel === h.key).length }));
@@ -227,14 +235,20 @@ export function deriveBoard(state, opts = {}) {
   const registerRows = scored
     .filter(x => { const sev = Math.max((x.inh && x.inh.s) || 0, (x.res && x.res.s) || 0); return sev >= 4; })
     .sort((a, b) => ((b.res && b.res.score) || 0) - ((a.res && a.res.score) || 0))
-    .map(x => ({
-      name: String(x.r.activity || x.r.hazard || 'Unnamed risk'),
-      inherent: x.inh, residual: x.res,
-      tier: x.res ? tierFor(x.res.score, bands) : null,
-      control: controlState(x.r),
-      owner: ownerOf(x.r),
-      fatal: isFatal(x),
-    }));
+    .map(x => {
+      const racts = ((x.r.actions) || []).filter(a => a && !a.deleted && (a.desc || a.owner || a.due));
+      return {
+        name: String(x.r.activity || x.r.hazard || 'Unnamed risk'),
+        inherent: x.inh, residual: x.res, target: targetOf(x.r),
+        tier: x.res ? tierFor(x.res.score, bands) : null,
+        targetTier: (function(){ const t = targetOf(x.r); return t ? tierFor(t.score, bands) : null; })(),
+        control: controlState(x.r),
+        owner: ownerOf(x.r),
+        fatal: isFatal(x),
+        actsTotal: racts.length,
+        actsClosed: racts.filter(a => a.status === 'Complete' || a.status === 'Accepted').length,
+      };
+    });
 
   // Highest credible harm from the severity ladder.
   const maxSev = Math.max(0, ...scored.map(x => Math.max((x.inh && x.inh.s) || 0, (x.res && x.res.s) || 0)));
@@ -270,7 +284,7 @@ export function deriveBoard(state, opts = {}) {
     fatal: fatal.length, fatalUncontrolled: fatalUncontrolled.length,
     highPlus, openActions: openActs.length, overdue: overdue.length,
     noOwner: noOwner.length, noDate: noDate.length,
-    maturityAvg, meanScore, profileTier, hierarchy, hierTotal, protectDown,
+    maturityAvg, meanScore, profileTier, requiredMaturity, maturityShortfall, hierarchy, hierTotal, protectDown,
     registerRows, maxSev, highestHarm: HARM_LADDER[maxSev] || '—',
     duties, headline, standfirst,
     // Assessment completeness, the app's own formula: rated risks + scored

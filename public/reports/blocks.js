@@ -83,6 +83,24 @@ export function dualBar({ inherent, residual, tier }) {
   </span>`;
 }
 
+// The board register's score cell, matching the app's own strip
+// (now → plan → projected): the score as it stands, the score the plan is
+// working towards, and how much of the plan is delivered. Forward-looking on
+// Simon's instruction — the board wants "how are we doing", not history.
+export function planBar({ residual, target, tier, targetTier, actsTotal, actsClosed }) {
+  const w = s => Math.max(3, Math.min(100, ((s && s.score) || 0) / 25 * 100));
+  const nowColour = tier ? (TIER_COLOURS[tier] || '#749dc4') : '#b7b7ba';
+  const tgtColour = targetTier ? (TIER_COLOURS[targetTier] || '#749dc4') : '#749dc4';
+  const nowRow = `<span class="r-wn-row"><i class="r-wn-lab">now</i><i class="r-wn-track">${residual ? `<i class="r-wn-fill" style="width:${w(residual)}%;background:${nowColour}"></i>` : ''}</i><b class="r-wn-val">${residual ? residual.score : '—'}</b></span>`;
+  const planRow = target
+    ? `<span class="r-wn-row"><i class="r-wn-lab">plan</i><i class="r-wn-track"><i class="r-wn-fill r-wn-plan" style="width:${w(target)}%;background:${tgtColour}"></i></i><b class="r-wn-val">${target.score}</b></span>`
+    : `<span class="r-wn-row"><i class="r-wn-lab">plan</i><i class="r-wn-none">no target score set</i></span>`;
+  const prog = actsTotal
+    ? `<span class="r-wn-prog">${actsClosed} of ${actsTotal} action${actsTotal !== 1 ? 's' : ''} done</span>`
+    : `<span class="r-wn-prog r-wn-prog-none">no actions planned yet</span>`;
+  return `<span class="r-wasnow">${nowRow}${planRow}${prog}</span>`;
+}
+
 // counts: { "l|s": n } keyed by likelihood|severity, residual only.
 export function matrix5x5({ counts, caption }) {
   let rows = '';
@@ -101,6 +119,28 @@ export function matrix5x5({ counts, caption }) {
     <table class="r-mx"><tbody>${rows}${axis}</tbody></table>
     <div class="r-mx-xlab">Likelihood</div>
     ${caption ? `<div class="r-footnote">${esc(caption)}</div>` : ''}</div>`;
+}
+
+// rows: [{label, value, max, text, colour?, marker?:{at,label}}] — bars where
+// EACH row keeps its own real scale and shows its own exact figure. Built to
+// replace the "×5 so they share an axis" trick, which printed a bar reading 4
+// beside a sentence reading 0.7 (Simon: any small number that doesn't match
+// up ruins the whole app). A marker draws the needed level on the track.
+export function gapBars({ title, rows, footnote }) {
+  return `<div class="r-gap">${title ? `<div class="r-block-title">${esc(title)}</div>` : ''}` +
+    rows.map(r => {
+      const pct = (r.max > 0 && Number.isFinite(r.value)) ? Math.min(100, Math.max(0, r.value / r.max * 100)) : 0;
+      const mk = (r.marker && Number.isFinite(r.marker.at) && r.max > 0)
+        ? `<i class="r-gap-mark" style="left:${Math.min(100, Math.max(0, r.marker.at / r.max * 100))}%"></i>` : '';
+      const mkLab = (r.marker && r.marker.label)
+        ? `<span class="r-gap-marklab" style="left:${Math.min(94, Math.max(3, r.marker.at / r.max * 100))}%">${esc(r.marker.label)}</span>` : '';
+      return `<div class="r-gap-row">
+        <span class="r-gap-lab">${esc(r.label)}</span>
+        <span class="r-gap-track">${Number.isFinite(r.value) ? `<i class="r-gap-fill" style="width:${pct}%;${r.colour ? `background:${r.colour}` : ''}"></i>` : ''}${mk}${mkLab}</span>
+        <span class="r-gap-val">${esc(r.text)}</span>
+      </div>`;
+    }).join('') +
+    (footnote ? `<div class="r-footnote">${esc(footnote)}</div>` : '') + `</div>`;
 }
 
 // items: [{label, n, colour?}] — horizontal distribution bars with counts.
@@ -189,7 +229,7 @@ export function coverBlock({ org, title, period, refCode, issued }) {
 }
 
 const BLOCKS = {
-  masthead, titleBlock, kpiStrip, decisionsPanel, dataTable, dualBar, matrix5x5,
+  masthead, titleBlock, kpiStrip, decisionsPanel, dataTable, dualBar, planBar, gapBars, matrix5x5,
   distributionBars, hierarchyStrip, statementPanel, tagList, stepScale,
   signoffGrid, soWhat, pageFooter, textBlock, coverBlock,
 };

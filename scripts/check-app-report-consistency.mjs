@@ -78,6 +78,9 @@ const app = await page.evaluate((STATE, TODAY) => {
     cells: Object.fromEntries(Object.entries(M.cells).map(([k, c]) => [k, c.items.length])),
     open: ex.filter(a => a.status !== 'Complete' && a.status !== 'Accepted').length,
     overdue: ex.filter(a => a.rag === 'red').length,
+    panelRequired: M.required == null ? null : M.required,
+    panelShortfall: M.shortfall == null ? null : +(+M.shortfall).toFixed(1),
+    liveRequired: RISK_REQUIRED_MATURITY,
     liveMap: RISK_MATURITY_DOMAIN,
     liveDomains: PROF_LIBRARY.domains.filter(d => d.type === 'maturity').map(d => ({ id: d.id, name: d.name, items: d.items.map(it => ({ id: it.id, crit: !!it.crit })) })),
   };
@@ -102,6 +105,9 @@ eq('mean risk score', app.meanScore, D.meanScore == null ? null : +D.meanScore.t
 eq('matrix cells', app.cells, D.matrix);
 eq('open actions (all sources)', app.open, D.openActions);
 eq('overdue actions (all sources)', app.overdue, D.overdue);
+eq('required maturity for the profile', app.panelRequired, D.requiredMaturity == null ? null : D.requiredMaturity);
+eq('maturity shortfall', app.panelShortfall, D.maturityShortfall == null ? null : +D.maturityShortfall.toFixed(1));
+eq('contract: required-maturity map', app.liveRequired, contract.REQUIRED_MATURITY);
 eq('contract: category→domain map', app.liveMap, contract.RISK_MATURITY_DOMAIN);
 eq('contract: maturity domains/items', app.liveDomains, contract.MATURITY_DOMAINS);
 

@@ -1,6 +1,14 @@
 // Report data derivation — the single place report numbers come from.
 // Pure functions over the tenant state blob; nothing here touches the DOM,
 // nothing is stored back. Unit-tested in test/reports.test.js.
+//
+// HOUSE RULE (Simon): a report may NEVER count differently from the screens.
+// Every definition the app also computes lives in app-contract.js (generated
+// from the app itself) and scripts/check-app-report-consistency.mjs diffs the
+// two implementations on a seeded edge-case state — run it before deploying
+// anything that touches either side.
+import { sifOf, controlStatusOf, riskMaturityOf, MATURITY_DOMAINS, domainMaturity } from './app-contract.js';
+export { sifOf, controlStatusOf, riskMaturityOf, MATURITY_DOMAINS, domainMaturity };
 
 // ── Tier banding ──
 // The app's bands are tenant-tunable (state.riskConfig.bands). The report must
@@ -60,12 +68,11 @@ export function hasHave(n) { return n === 1 ? 'has' : 'have'; }
 // ── Register selection and rollups ──
 const HARM_LADDER = ['—', 'Insignificant', 'Minor injury', 'Moderate injury', 'Major injury', 'Fatality / permanent disability'];
 
+// Control status comes from the contract (the app's own logic); the report
+// only maps the 'None' state to its display wording.
 function controlState(risk) {
-  const hasControls = !!(risk && risk.controls && String(risk.controls).trim());
-  const strong = risk && (risk.controlLevel === 'remove' || risk.controlLevel === 'prevent');
-  if (!hasControls && !(risk && risk.controlLevel)) return 'None recorded';
-  if (hasControls && strong) return 'In place';
-  return 'Partial';
+  const s = controlStatusOf(risk);
+  return s === 'None' ? 'None recorded' : s;
 }
 
 function ownerOf(risk) {
@@ -176,30 +183,35 @@ export function deriveBoard(state, opts = {}) {
   const byTier = { Critical: 0, High: 0, Medium: 0, Low: 0 };
   rated.forEach(x => { const t = tierFor(x.res.score, bands); if (t) byTier[t]++; });
 
-  // Fatal potential: explicit SIF flag, or worst-case severity 5 on either scale.
-  const isFatal = x => (x.r.sif === 'yes' || x.r.sif === true) ||
-    (x.inh && x.inh.s === 5) || (x.res && x.res.s === 5) || int(x.r.inherentS) === 5;
+  // Fatal potential: the app's _riskSif via the contract — explicit boolean
+  // override wins, else credible worst case (inherent, residual OR target
+  // severity) of 4-5. The old "severity 5 only" version disagreed with the
+  // cockpit by exactly the class of risk Simon caught (a severity-4 SIF).
+  const isFatal = x => sifOf(x.r);
   const fatal = scored.filter(isFatal);
-  const fatalUncontrolled = fatal.filter(x => controlState(x.r) === 'None recorded');
+  const fatalUncontrolled = fatal.filter(x => controlStatusOf(x.r) === 'None');
   const highPlus = byTier.Critical + byTier.High;
 
+  // Actions across ALL sources, exactly as the execution plan aggregates them
+  // (risk-profile actions + management-system item actions + plan-added) —
+  // the board pack may never disagree with the plan (UAT finding #9).
   const acts = [];
-  risks.forEach(r => ((r.actions) || []).forEach(a => {
-    if (!a || a.deleted || !(a.desc || a.owner || a.due)) return;
-    acts.push({ r, a });
-  }));
+  const pushAct = a => { if (a && !a.deleted && (a.desc || a.owner || a.due)) acts.push(a); };
+  risks.forEach(r => ((r.actions) || []).forEach(pushAct));
+  (Array.isArray(s.requirements) ? s.requirements : []).forEach(sec => (sec.items || []).forEach(it => (it.actions || []).forEach(pushAct)));
+  (Array.isArray(s.actionPlan) ? s.actionPlan : []).forEach(pushAct);
   const today = (opts.today || new Date().toISOString().slice(0, 10));
-  const openActs = acts.filter(x => x.a.status !== 'Complete' && x.a.status !== 'Accepted');
-  const overdue = openActs.filter(x => x.a.due && x.a.due < today);
-  const noOwner = openActs.filter(x => !(x.a.owner && String(x.a.owner).trim()));
-  const noDate = openActs.filter(x => !x.a.due);
+  const openActs = acts.filter(a => a.status !== 'Complete' && a.status !== 'Accepted');
+  const overdue = openActs.filter(a => a.due && a.due < today);
+  const noOwner = openActs.filter(a => !(a.owner && String(a.owner).trim()));
+  const noDate = openActs.filter(a => !a.due);
 
-  // Maturity: mean of scored item values per domain map (state.profiler.maturity
-  // holds item-level 0–5 values; domain grouping needs the front-end library, so
-  // the report derives the overall picture from the values present).
-  const matVals = Object.values((s.profiler && s.profiler.maturity) || {})
-    .filter(v => v !== '' && v !== 'na' && v != null).map(Number).filter(n => Number.isFinite(n));
-  const maturityAvg = matVals.length ? matVals.reduce((a, b) => a + b, 0) / matVals.length : null;
+  // Maturity: the SAME number the app's combined panel shows — each rated
+  // risk carries the maturity of the domain that controls it (via the
+  // contract's category→domain map, crit veto included), averaged across the
+  // rated risks. The old plain mean of all item values was a different number.
+  const matPerRisk = rated.map(x => riskMaturityOf(s, x.r)).filter(v => v != null);
+  const maturityAvg = matPerRisk.length ? matPerRisk.reduce((a, b) => a + b, 0) / matPerRisk.length : null;
 
   // Exposure score for the bars: mean residual score of rated risks (0–25).
   const meanScore = rated.length ? rated.reduce((a, x) => a + x.res.score, 0) / rated.length : null;
@@ -261,7 +273,16 @@ export function deriveBoard(state, opts = {}) {
     maturityAvg, meanScore, profileTier, hierarchy, hierTotal, protectDown,
     registerRows, maxSev, highestHarm: HARM_LADDER[maxSev] || '—',
     duties, headline, standfirst,
-    completeness: scored.length ? Math.round(rated.length / scored.length * 100) : 0,
+    // Assessment completeness, the app's own formula: rated risks + scored
+    // maturity domains + monitoring populated, over risks + domains + 1.
+    completeness: (function () {
+      const scoredDoms = MATURITY_DOMAINS.filter(d => domainMaturity(s, d.id).avg != null).length;
+      const as = s.riskAssurance || {};
+      const monPop = ['leading', 'lagging', 'assurance'].some(k => Array.isArray(as[k]) && as[k].length) ? 1 : 0;
+      const tot = risks.length + MATURITY_DOMAINS.length + 1;
+      const filled = rated.length + scoredDoms + monPop;
+      return tot ? Math.round(filled / tot * 100) : 0;
+    })(),
     company: co, empty: !rated.length,
   };
 }

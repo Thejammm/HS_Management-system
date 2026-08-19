@@ -32,40 +32,14 @@ export function boardHidden(state) {
   return out;
 }
 
-const MATURITY_DOMAIN_LABELS = {
-  leadership: 'Leadership & Governance', contractor: 'Contractor & Supply Chain',
-  ohealth: 'Occupational Health', opcontrol: 'Operational Control',
-  assurance: 'Assurance & Monitoring', resilience: 'Business Resilience',
-};
-
+import { MATURITY_DOMAINS, domainMaturity } from '../app-contract.js';
 function maturityRows(state) {
-  // Item ids in state.profiler.maturity are prefixed by domain conventions
-  // (l_, c_, oh_/o_, op_, a_, r_) but the reliable grouping ships with the SPA
-  // library; the report groups by known prefixes and falls back to one row.
-  const m = (state.profiler && state.profiler.maturity) || {};
-  const groups = { leadership: [], contractor: [], ohealth: [], opcontrol: [], assurance: [], resilience: [] };
-  const prefix = [
-    [/^l_/, 'leadership'], [/^c_/, 'contractor'], [/^oh?_/, 'ohealth'],
-    [/^op_/, 'opcontrol'], [/^a_/, 'assurance'], [/^r_/, 'resilience'],
-  ];
-  let matched = 0, total = 0;
-  Object.entries(m).forEach(([id, v]) => {
-    if (v === '' || v === 'na' || v == null) return;
-    const n = Number(v); if (!Number.isFinite(n)) return;
-    total++;
-    const hit = prefix.find(([re]) => re.test(id));
-    if (hit) { groups[hit[1]].push(n); matched++; }
-  });
-  if (!total) return [];
-  if (matched / total < 0.6) {
-    const all = Object.values(m).filter(v => v !== '' && v !== 'na' && v != null).map(Number).filter(Number.isFinite);
-    const avg = all.length ? all.reduce((a, b) => a + b, 0) / all.length : null;
-    return [{ label: 'Management maturity (overall)', value: avg }];
-  }
-  return Object.entries(groups).filter(([, vals]) => vals.length).map(([k, vals]) => ({
-    label: MATURITY_DOMAIN_LABELS[k] || k,
-    value: vals.reduce((a, b) => a + b, 0) / vals.length,
-  }));
+  // The app's own domains and item ids, via the contract — one row per scored
+  // domain, averaged exactly as the app's _profMaturity does.
+  return MATURITY_DOMAINS
+    .map(d => ({ label: d.name, m: domainMaturity(state, d.id) }))
+    .filter(x => x.m.avg != null)
+    .map(x => ({ label: x.label, value: x.m.avg }));
 }
 
 export function buildBoardReport(state, opts = {}) {

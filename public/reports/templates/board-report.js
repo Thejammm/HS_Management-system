@@ -62,7 +62,20 @@ export function buildBoardReport(state, opts = {}) {
     { value: D.maxSev ? String(D.maxSev) + '/5' : '—', label: 'Worst possible harm', note: D.highestHarm, tone: D.maxSev >= 5 ? 'bad' : D.maxSev >= 4 ? 'warn' : undefined },
     { value: String(D.fatal), label: 'Could kill or seriously injure', tone: D.fatal ? 'bad' : 'ok' },
     { value: String(D.fatalUncontrolled), label: 'Of those, no controls recorded', tone: D.fatalUncontrolled ? 'bad' : 'ok' },
-    { value: String(D.highPlus), label: 'Risks sitting High or Critical', note: 'with controls in place', tone: D.highPlus ? 'warn' : 'ok' },
+    // The positive half: work CLOSED OUT. A risk counts when every planned
+    // action on it is complete; formal acceptances are stated as a caveat,
+    // never counted as done. (Replaced the High-or-Critical tile — that
+    // repeats what the band bars and register already show.)
+    (function () {
+      const total = D.holdS.total;
+      const rest = total - D.planDone - D.planAccepted;
+      const bits = [];
+      if (rest) bits.push(countPhrase(rest, 'risk still in delivery', 'risks still in delivery'));
+      if (D.planAccepted) bits.push(countPhrase(D.planAccepted, 'risk formally accepted, not counted as done', 'risks formally accepted, not counted as done'));
+      const note = bits.length ? bits.join(' · ') : (total ? 'every planned action closed' : 'no risks recorded');
+      return { value: D.planDone + '/' + total, label: 'Risks fully actioned', note,
+               tone: total && (D.planDone + D.planAccepted === total) ? 'ok' : undefined };
+    })(),
     { value: D.holdS.held + '/' + D.holdS.total, label: 'Risks properly held', note: D.holdS.breaches.length ? (D.holdS.breaches.length + ' rule breach' + (D.holdS.breaches.length !== 1 ? 'es' : '')) : 'no rule breaches', tone: D.holdS.breaches.length ? 'bad' : (D.holdS.total && D.holdS.held === D.holdS.total ? 'ok' : undefined) },
     { value: String(D.overdue), label: 'Actions overdue', tone: D.overdue ? 'warn' : 'ok' },
   ];

@@ -184,6 +184,9 @@ test('hold model grades every state and catches both breach kinds', () => {
   assert.match(kinds, /is slipping/i);              // h4: high band slipping
   assert.equal(D.holdS.breaches.length, 2);         // h5 is Low — no Medium/High rule engaged
   assert.match(D.holdS.verdict, /2 of 5 risks properly held/);
+  // Plan delivery: closed = every action complete; accepted is a caveat.
+  assert.equal(D.planDone, 1);                      // h1 (all actions Complete)
+  assert.equal(D.planAccepted, 1);                  // h2 (all actions Accepted)
 });
 
 test('board report speaks hold language and never the 0-5 scale', () => {
@@ -192,6 +195,8 @@ test('board report speaks hold language and never the 0-5 scale', () => {
   state.profiler.judgement = { leadership: { level: 'strong', note: 'Board reviews quarterly' } };
   const html = reportHTML(buildReport(state, 'board-report', OPTS));
   assert.match(html, /Risks properly held/);
+  assert.match(html, /Risks fully actioned/);                // plan-delivery tile (positive)
+  assert.doesNotMatch(html, /Risks sitting High or Critical/); // removed — added nothing
   assert.match(html, /What it means/);                       // state definitions table
   assert.match(html, /Consultant judgement/);
   assert.match(html, /Board reviews quarterly/);             // the judgement note prints

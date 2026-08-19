@@ -81,6 +81,10 @@ const app = await page.evaluate((STATE) => {
     cells: Object.fromEntries(Object.entries(M.cells).map(([k, c]) => [k, c.items.length])),
     open: ex.filter(a => a.status !== 'Complete' && a.status !== 'Accepted').length,
     overdue: ex.filter(a => a.rag === 'red').length,
+    // Plan delivery (the "risks fully actioned" tile): the app's own
+    // per-risk plan state, counted the same way the report counts it.
+    planDone: (S.riskProfile || []).filter(r => _riskPlanState(r).k === 'managed').length,
+    planAccepted: (S.riskProfile || []).filter(r => _riskPlanState(r).k === 'accepted').length,
     // The hold model as the SCREEN computes it — per-risk states + summary.
     hold: { total: H.total, held: H.held, working: H.working, slipping: H.slipping, notheld: H.notheld,
             breaches: H.breaches.map(b => ({ id: b.id, band: b.band, k: b.hold.k, breach: b.breach })),
@@ -109,6 +113,8 @@ eq('mean risk score', app.meanScore, D.meanScore == null ? null : +D.meanScore.t
 eq('matrix cells', app.cells, D.matrix);
 eq('open actions (all sources)', app.open, D.openActions);
 eq('overdue actions (all sources)', app.overdue, D.overdue);
+eq('risks fully actioned (plan complete)', app.planDone, D.planDone);
+eq('risks formally accepted', app.planAccepted, D.planAccepted);
 // Hold model: counts, per-risk states, breaches, and the exact pill/verdict
 // wording — the report must speak the app's words, not a paraphrase.
 eq('hold: state counts', { t: app.hold.total, h: app.hold.held, w: app.hold.working, s: app.hold.slipping, n: app.hold.notheld },

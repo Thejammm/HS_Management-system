@@ -7,8 +7,8 @@
 // from the app itself) and scripts/check-app-report-consistency.mjs diffs the
 // two implementations on a seeded edge-case state — run it before deploying
 // anything that touches either side.
-import { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf } from './app-contract.js';
-export { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf };
+import { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf } from './app-contract.js';
+export { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf };
 
 // ── Tier banding ──
 // The app's bands are tenant-tunable (state.riskConfig.bands). The report must
@@ -195,6 +195,13 @@ export function deriveBoard(state, opts = {}) {
   const fatal = scored.filter(isFatal);
   const fatalUncontrolled = fatal.filter(x => controlStatusOf(x.r) === 'None');
   const highPlus = byTier.Critical + byTier.High;
+  // Plan delivery, the positive half of the story: a risk counts as CLOSED
+  // when every planned action on it is complete (the app's plan state
+  // 'managed'); a risk formally accepted is its own caveat, never lumped in.
+  // Same action-status rules as the app via the contract's planStateOf.
+  const planStates = risks.map(r => planStateOf(r));
+  const planDone = planStates.filter(p => p === 'managed').length;
+  const planAccepted = planStates.filter(p => p === 'accepted').length;
 
   // Actions across ALL sources, exactly as the execution plan aggregates them
   // (risk-profile actions + management-system item actions + plan-added) —
@@ -273,7 +280,7 @@ export function deriveBoard(state, opts = {}) {
   return {
     bands, risks, rated: rated.length, unrated, matrix, byTier,
     fatal: fatal.length, fatalUncontrolled: fatalUncontrolled.length,
-    highPlus, openActions: openActs.length, overdue: overdue.length,
+    highPlus, planDone, planAccepted, openActions: openActs.length, overdue: overdue.length,
     noOwner: noOwner.length, noDate: noDate.length,
     holdS, meanScore, profileTier, hierarchy, hierTotal, protectDown,
     registerRows, maxSev, highestHarm: HARM_LADDER[maxSev] || '—',

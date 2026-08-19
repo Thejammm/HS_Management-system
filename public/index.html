@@ -14720,8 +14720,18 @@ function _riskPanelHTML(o){
   if(!M.rated.length) return '<div class="ck-pending">No rated risks yet. Rate likelihood and severity in the register to build the profile.</div>';
   if(_rpSel && !M.cells[_rpSel]) _rpSel=null;                 // stale selection guard
   const sel = _rpSel ? M.cells[_rpSel] : null;
+  // Pill wording, HSG65-framed: the panel answers one question — does the
+  // management match the size of the risk? ("Under-controlled" read as
+  // "under control" at a glance while the red said problem, so say it
+  // straight: matches / nearly matches / falls short.)
   const pillC = { 'adequately controlled':'#0f6f5c', 'broadly controlled':'#c2740a', 'under-controlled':'#DC2626', 'incomplete':'#8b949a' }[M.verdict];
-  const pillT = M.verdict==='incomplete' ? 'incomplete' : M.verdict;
+  const pillT = { 'adequately controlled':'matches the risk', 'broadly controlled':'nearly matches the risk', 'under-controlled':'falls short of the risk', 'incomplete':'not yet measured' }[M.verdict];
+  const pillTip = {
+    'adequately controlled':'HSG65 expects management strength to match the size of the risk. The scored maturity meets what this risk profile needs - keep it there as the risks change.',
+    'broadly controlled':'Close: the management is within half a point of what this risk profile needs. The squares listed below show where to finish the job.',
+    'under-controlled':'HSG65 expects management strength to match the size of the risk. Right now the management is weaker than this profile needs - the size of the gap and the squares to fix first are shown below.',
+    'incomplete':'Score every risk (likelihood × severity) and the six maturity domains to get the verdict.'
+  }[M.verdict];
   const period = 'Position at '+fmtDate(new Date().toISOString().slice(0,10));
   // ── Left: the matrix with maturity bars ──
   let grid='';
@@ -14843,7 +14853,7 @@ function _riskPanelHTML(o){
   const head = `<div class="rpx-head">
     <div>${o.heading?'<h4>Risk profile &amp; control maturity</h4>':''}
       <div class="rpx-sub">${esc(period)} · ${M.rated.length} rated risk${M.rated.length!==1?'s':''} · HSG65 maturity scale</div></div>
-    <span class="rpx-pill" style="background:${pillC};">${esc(pillT)}</span>
+    <span class="rpx-pill" style="background:${pillC};" title="${esc(pillTip)}">${esc(pillT)}</span>
   </div>`;
   // Split modes so a client's bespoke cockpit can show just the matrix or just
   // the maturity reading (customiser widgets "Risk matrix (only)" / "Control

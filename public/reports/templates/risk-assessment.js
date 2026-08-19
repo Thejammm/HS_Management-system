@@ -53,7 +53,7 @@ export function buildRiskAssessment(state, opts = {}) {
           { value: String(D.fatal), label: 'Could kill or seriously injure', tone: D.fatal ? 'bad' : 'ok' },
           { value: D.completeness + '%', label: 'Assessment complete' },
         ] },
-        { type: 'matrix5x5', counts: D.matrix, caption: 'Where each risk sits now, with controls in place (likelihood × severity).' },
+        { type: 'matrix5x5', counts: D.matrix, bands: D.bands, caption: 'Where each risk sits now, with controls in place (likelihood × severity). Each square is coloured by its risk band: red Critical, orange High, amber Medium, green Low.' },
       ],
     },
     ...slices.map((slice, i) => ({

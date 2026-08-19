@@ -283,7 +283,7 @@ export function buildBoardReport(state, opts = {}) {
     label: 'The picture explained', blocks: [
       mast,
       { type: 'titleBlock', kicker: 'The picture explained', headline: 'Where the risk sits and how it is held' },
-      { type: 'matrix5x5', counts: D.matrix, caption: 'Where every rated risk sits now, with controls in place (likelihood across, severity up; the number is how many risks sit in that square).' },
+      { type: 'matrix5x5', counts: D.matrix, bands: D.bands, caption: 'Where every rated risk sits now, with controls in place (likelihood across, severity up; the number is how many risks sit in that square). Each square is coloured by its risk band: red Critical, orange High, amber Medium, green Low.' },
       { type: 'distributionBars', title: 'How many risks sit in each band (with controls in place)', items: ['Critical', 'High', 'Medium', 'Low'].map(t => ({ label: t, n: D.byTier[t], colour: TIER_COLOURS[t] })) },
       { type: 'hierarchyStrip', title: 'How the risks are controlled - strongest measures first', items: D.hierarchy, total: D.hierTotal, protectDown: D.protectDown },
       { type: 'textBlock', title: 'Loose ends', body: zeros.join(' ') },

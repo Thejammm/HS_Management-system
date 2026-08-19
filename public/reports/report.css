@@ -12,7 +12,7 @@
 .r-root {
   --r-ground:#f2f2f3; --r-ink:#1d1f20; --r-hair:#d4d4d7; --r-hair2:#b7b7ba;
   --r-accent:#5980a6; --r-cover:#1d2d3d; --r-muted:#6a6c6e;
-  --r-crit:#8c2f1e; --r-high:#c05621; --r-med:#d9a13b; --r-low:#749dc4;
+  --r-crit:#DC2626; --r-high:#EA580C; --r-med:#F59E0B; --r-low:#16A34A;   /* the app's own band colours */
   font-family:'Inter',Arial,sans-serif; color:var(--r-ink); background:#8b8d90;
   -webkit-print-color-adjust:exact; print-color-adjust:exact;
   line-height:1.45; font-size:11px;

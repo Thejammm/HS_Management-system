@@ -1,7 +1,7 @@
 // Reusable report blocks. Every template composes pages from these; each is a
 // pure function returning an HTML string (renderable in Node for snapshot
 // tests - no DOM access here). Styling lives in report.css.
-import { TIER_COLOURS } from './derive.js';
+import { TIER_COLOURS, tierFor, DEFAULT_BANDS } from './derive.js';
 
 export const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -9,7 +9,7 @@ export const esc = (s) => String(s == null ? '' : s)
 
 export function tierWord(tier) {
   if (!tier) return '<span class="r-tier r-tier-none">Not rated</span>';
-  const c = TIER_COLOURS[tier] || '#749dc4';
+  const c = TIER_COLOURS[tier] || '#b7b7ba';
   return `<span class="r-tier"><i style="background:${c}"></i>${esc(tier)}</span>`;
 }
 
@@ -76,7 +76,7 @@ export function dataTable({ title, cols, rows, footnote }) {
 // numbers alongside. Replaced the single overlaid ghost bar, which read
 // as one confusing bar rather than a change.
 export function dualBar({ inherent, residual, tier }) {
-  const colour = tier ? (TIER_COLOURS[tier] || '#749dc4') : '#b7b7ba';
+  const colour = tier ? (TIER_COLOURS[tier] || '#b7b7ba') : '#b7b7ba';
   const w = s => Math.max(3, Math.min(100, ((s && s.score) || 0) / 25 * 100));
   return `<span class="r-wasnow">
     <span class="r-wn-row"><i class="r-wn-lab">was</i><i class="r-wn-track">${inherent ? `<i class="r-wn-fill r-wn-ghost" style="width:${w(inherent)}%"></i>` : ''}</i><b class="r-wn-val">${inherent ? inherent.score : '-'}</b></span>
@@ -90,8 +90,8 @@ export function dualBar({ inherent, residual, tier }) {
 // Simon's instruction - the board wants "how are we doing", not history.
 export function planBar({ residual, target, tier, targetTier, actsTotal, actsClosed }) {
   const w = s => Math.max(3, Math.min(100, ((s && s.score) || 0) / 25 * 100));
-  const nowColour = tier ? (TIER_COLOURS[tier] || '#749dc4') : '#b7b7ba';
-  const tgtColour = targetTier ? (TIER_COLOURS[targetTier] || '#749dc4') : '#749dc4';
+  const nowColour = tier ? (TIER_COLOURS[tier] || '#b7b7ba') : '#b7b7ba';
+  const tgtColour = targetTier ? (TIER_COLOURS[targetTier] || '#b7b7ba') : '#b7b7ba';
   const nowRow = `<span class="r-wn-row"><i class="r-wn-lab">now</i><i class="r-wn-track">${residual ? `<i class="r-wn-fill" style="width:${w(residual)}%;background:${nowColour}"></i>` : ''}</i><b class="r-wn-val">${residual ? residual.score : '-'}</b></span>`;
   const planRow = target
     ? `<span class="r-wn-row"><i class="r-wn-lab">plan</i><i class="r-wn-track"><i class="r-wn-fill r-wn-plan" style="width:${w(target)}%;background:${tgtColour}"></i></i><b class="r-wn-val">${target.score}</b></span>`
@@ -103,15 +103,20 @@ export function planBar({ residual, target, tier, targetTier, actsTotal, actsClo
 }
 
 // counts: { "l|s": n } keyed by likelihood|severity, residual only.
-export function matrix5x5({ counts, caption }) {
+// Every square is bordered in its band colour (the tenant's own bands), and
+// an occupied square is filled with it - the grid itself shows how serious
+// each position is, exactly as the app's cockpit matrix does.
+export function matrix5x5({ counts, caption, bands }) {
+  const b = bands || DEFAULT_BANDS;
   let rows = '';
   for (let sev = 5; sev >= 1; sev--) {
     rows += `<tr><th class="r-mx-ax">${sev}</th>`;
     for (let lik = 1; lik <= 5; lik++) {
       const n = counts[lik + '|' + sev] || 0;
+      const col = TIER_COLOURS[tierFor(lik * sev, b)] || '#b7b7ba';
       rows += n
-        ? `<td class="r-mx-cell r-mx-full"><b>${n}</b></td>`
-        : `<td class="r-mx-cell"></td>`;
+        ? `<td class="r-mx-cell r-mx-full" style="border-color:${col};background:${col}"><b>${n}</b></td>`
+        : `<td class="r-mx-cell" style="border-color:${col}"></td>`;
     }
     rows += '</tr>';
   }

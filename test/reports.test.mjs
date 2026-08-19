@@ -9,6 +9,7 @@ import url from 'node:url';
 
 import { tierFor, bandsFrom, noneOrCount, countPhrase, isAre, hasHave, deriveBoard, deriveBoardExtras, residualOf } from '../public/reports/derive.js';
 import { reportHTML, paginateRows } from '../public/reports/engine.js';
+import { matrix5x5 } from '../public/reports/blocks.js';
 import { REPORTS, buildReport, getReportFormat, setReportFormat } from '../public/reports/templates/index.js';
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
@@ -97,6 +98,16 @@ test('attention list lives on its own page, never the front page', () => {
   const big = reportHTML(buildReport(fixture('oversized'), 'board-report', OPTS));
   assert.match(big, /Needs attention first - part 1 of 2/);
   assert.match(big, /Needs attention first - part 2 of 2/);
+});
+
+test('matrix squares are coloured by their band, on the tenant bands', () => {
+  const html = matrix5x5({ counts: { '5|5': 2, '1|1': 1 }, bands: { med: 5, high: 10, crit: 16 } });
+  assert.match(html, /border-color:#DC2626;background:#DC2626/);  // 5x5 occupied = Critical red fill
+  assert.match(html, /border-color:#16A34A;background:#16A34A/);  // 1x1 occupied = Low green fill
+  assert.match(html, /style="border-color:#F59E0B"/);             // an empty Medium square keeps its border
+  // Tenant bands are honoured: crit at 4 turns a 2x2 square red.
+  const custom = matrix5x5({ counts: { '2|2': 1 }, bands: { med: 2, high: 3, crit: 4 } });
+  assert.match(custom, /border-color:#DC2626;background:#DC2626/);
 });
 
 test('no long dashes anywhere in the rendered report', () => {

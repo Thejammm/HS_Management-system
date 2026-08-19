@@ -44,6 +44,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/training', require('./routes/training'));
 app.use('/api/statutory', require('./routes/statutory'));
 app.use('/api/linked', require('./routes/linked'));   // server-to-server pull from linked apps
+app.use('/api/reports', require('./routes/reports'));  // server-side PDF for the shared report layer
 
 // 404 for any unknown /api/* path (don't fall through to the SPA)
 app.use('/api', (_req, res) => {
@@ -61,6 +62,12 @@ app.use(express.static(path.join(__dirname, 'public'), {
       res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     } else {
       res.setHeader('Cache-Control', 'public, max-age=300');
+    }
+    // Fonts are fetched in CORS mode by spec; the server-side PDF renderer
+    // loads the page from an opaque origin, so without this the report PDFs
+    // silently fall back to Arial. Fonts are public assets — * is safe.
+    if(/\.woff2?$/i.test(filePath)){
+      res.setHeader('Access-Control-Allow-Origin', '*');
     }
   }
 }));

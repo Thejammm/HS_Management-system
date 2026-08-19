@@ -17064,6 +17064,28 @@ function buildActionPlanReport(){
 // (including the offline file:// master).
 async function openBoardReportPrint(){
   try{ if(new URLSearchParams(location.search).get('report')==='legacy'){ downloadBoardReport(); return; } }catch(e){}
+  // First choice: the server renders the SAME template + CSS through headless
+  // Chromium and hands back a real PDF file — identical look, selectable text,
+  // same click-to-download behaviour as every other report. Falls back to the
+  // in-browser print dialog when signed out or the renderer is unavailable.
+  if(typeof Auth!=='undefined' && Auth.isSignedIn() && Auth.activeTenantId()){
+    try{
+      showToast('Building the board report…','info');
+      const r = await fetch('/api/reports/pdf?report=board-report&tenantId='+encodeURIComponent(Auth.activeTenantId()), { credentials:'include' });
+      if(r.ok){
+        const blob = await r.blob();
+        const cd = r.headers.get('Content-Disposition')||'';
+        const m = cd.match(/filename="([^"]+)"/);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = (m && m[1]) || 'board-report.pdf';
+        a.click(); URL.revokeObjectURL(a.href);
+        showToast('✓ Board report downloaded','success');
+        return;
+      }
+      console.warn('Server PDF unavailable ('+r.status+') — falling back to print.');
+    }catch(e){ console.warn('Server PDF failed — falling back to print:', e); }
+  }
   try{
     const [tpl, eng] = await Promise.all([ import('/reports/templates/index.js'), import('/reports/engine.js') ]);
     const tenantName = (_consultantView&&_consultantView.name) || (typeof _cockpitClientName==='function'?_cockpitClientName():'') || '';

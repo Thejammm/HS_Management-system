@@ -273,3 +273,45 @@ export function holdSummaryOf(state, tierOfRisk, opts = {}) {
   }
   return { rows, total, held, working, slipping, notheld, breaches, pillT, pillC, verdict };
 }
+
+// ══════════════════════════════════════════════════════════════
+// DOCUMENT CONTROL - verbatim port of the app's _docFor / _autoDocRef /
+// _docClientCode. Every generated report is a controlled document: its own
+// register row (state.docControl.docs[key]) falling back to the org
+// defaults, with auto reference, issue date and next review when blank.
+// The app's version prefers the client display name for the reference code;
+// the server passes it via opts.clientName (the tenant name).
+// ══════════════════════════════════════════════════════════════
+export const REPORT_DOC_CODES = {
+  companyProfile: 'CP', policySignoff: 'PSO', boardReport: 'BR', riskProfile: 'RP',
+  actionPlan: 'AP', executionPlan: 'EP', completedActions: 'CA', actionArchive: 'AA',
+  managementSystem: 'MS', raRegister: 'RAR', riskAcceptance: 'RAC', audit: 'AUD',
+  siteInspections: 'SIT', feedback: 'CR', cas: 'CAS', acp: 'ACP', policy: 'POL',
+  incidents: 'INC', consultation: 'CCR', trainingMatrix: 'TCR',
+};
+export function docFor(state, key, opts = {}) {
+  const s = state || {};
+  const dcAll = (s.docControl && typeof s.docControl === 'object') ? s.docControl : {};
+  const def = dcAll.defaults || {};
+  const d = (dcAll.docs && dcAll.docs[key]) || {};
+  const code = REPORT_DOC_CODES[key] || 'DOC';
+  const version = (d.version && String(d.version).trim()) || '1.0';
+  const author = (d.author || def.author || '').trim();
+  const approverName = (d.approverName || def.approverName || '').trim();
+  const approverRole = (d.approverRole || def.approverRole || '').trim();
+  const today = opts.today || new Date().toISOString().slice(0, 10);
+  const issued = (d.issued && String(d.issued).trim()) || today;
+  let nextReview = (d.nextReview && String(d.nextReview).trim()) || '';
+  if (!nextReview) {
+    const m = parseInt(def.reviewMonths, 10) || 12;
+    const nx = new Date(issued + 'T12:00:00');
+    if (!isNaN(nx)) { nx.setMonth(nx.getMonth() + m); nextReview = nx.toISOString().slice(0, 10); }
+  }
+  // Same precedence as the app's _cockpitClientName: the client/tenant name
+  // (the server passes it), then the branding name, then the placeholder.
+  const clientName = opts.clientName || (s.branding && s.branding.name) || 'Your organisation';
+  const clientCode = (String(clientName).replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase()) || 'AHS';
+  const pfx = (def.refPrefix && String(def.refPrefix).trim()) ? String(def.refPrefix).trim() : ('AHS-' + clientCode);
+  const ref = (d.ref && String(d.ref).trim()) || (pfx + '-' + code + '-v' + String(version));
+  return { ref, version, author, approverName, approverRole, issued, nextReview, omit: !!d.omit };
+}

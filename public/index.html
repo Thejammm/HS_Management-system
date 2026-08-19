@@ -17348,7 +17348,7 @@ function _docFor(key){
   const today=new Date().toISOString().slice(0,10);
   const issued=(d.issued&&d.issued.trim())||today;   // issue date defaults to the day it is generated
   let nextReview=(d.nextReview&&d.nextReview.trim())||'';
-  if(!nextReview){ const m=parseInt(def.reviewMonths,10)||12; const nx=new Date(issued+'T00:00:00'); if(!isNaN(nx)){ nx.setMonth(nx.getMonth()+m); nextReview=nx.toISOString().slice(0,10); } }
+  if(!nextReview){ const m=parseInt(def.reviewMonths,10)||12; const nx=new Date(issued+'T12:00:00'); if(!isNaN(nx)){ nx.setMonth(nx.getMonth()+m); nextReview=nx.toISOString().slice(0,10); } }
   const ref=(d.ref&&d.ref.trim())||_autoDocRef(meta.code, version);
   return { ref, version, author, approverName, approverRole, issued, nextReview,
            approvedName:approverName, approvedRole:approverRole,   // legacy aliases

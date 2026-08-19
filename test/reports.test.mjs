@@ -10,6 +10,7 @@ import url from 'node:url';
 import { tierFor, bandsFrom, noneOrCount, countPhrase, isAre, hasHave, deriveBoard, deriveBoardExtras, residualOf } from '../public/reports/derive.js';
 import { reportHTML, paginateRows } from '../public/reports/engine.js';
 import { matrix5x5 } from '../public/reports/blocks.js';
+import { docFor } from '../public/reports/app-contract.js';
 import { REPORTS, buildReport, getReportFormat, setReportFormat } from '../public/reports/templates/index.js';
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
@@ -108,6 +109,43 @@ test('matrix squares are coloured by their band, on the tenant bands', () => {
   // Tenant bands are honoured: crit at 4 turns a 2x2 square red.
   const custom = matrix5x5({ counts: { '2|2': 1 }, bands: { med: 2, high: 3, crit: 4 } });
   assert.match(custom, /border-color:#DC2626;background:#DC2626/);
+});
+
+// ── Document control: every report pulls its details from the register ──
+test('docFor resolves the register row with org-default fallbacks', () => {
+  const state = { docControl: {
+    defaults: { author: 'Simon Archer', approverName: 'J Board', approverRole: 'Managing Director', reviewMonths: 6, refPrefix: '' },
+    docs: { boardReport: { version: '2.1' }, riskProfile: { ref: 'CUSTOM-1', author: 'A N Other', omit: false } },
+  }, branding: { name: 'Easy Travel' } };
+  const b = docFor(state, 'boardReport', { today: '2026-08-18' });
+  assert.equal(b.author, 'Simon Archer');                 // org default fills the blank
+  assert.equal(b.approverName, 'J Board');
+  assert.equal(b.version, '2.1');
+  assert.equal(b.ref, 'AHS-EASY-BR-v2.1');                // auto ref: prefix + client code + doc code + version
+  assert.equal(b.issued, '2026-08-18');                   // defaults to generation day
+  assert.equal(b.nextReview, '2027-02-18');               // issued + reviewMonths
+  const r = docFor(state, 'riskProfile', { today: '2026-08-18', clientName: 'Tenant Co' });
+  assert.equal(r.ref, 'CUSTOM-1');                        // explicit ref wins
+  assert.equal(r.author, 'A N Other');                    // row beats default
+  const o = docFor({ docControl: { docs: { boardReport: { omit: true } } } }, 'boardReport', { today: '2026-08-18' });
+  assert.equal(o.omit, true);
+});
+
+test('board and risk-assessment print the document-control details', () => {
+  const state = fixture('typical');
+  state.docControl = { defaults: { author: 'Simon Archer', approverName: 'J Board', approverRole: 'Managing Director', reviewMonths: 12, refPrefix: '' },
+    docs: { boardReport: { version: '3.0' } } };
+  const html = reportHTML(buildReport(state, 'board-report', OPTS));
+  assert.match(html, /Simon Archer/);                      // prepared-by on the sign-off grid
+  assert.match(html, /J Board/);                           // approver
+  assert.match(html, /Managing Director/);
+  assert.match(html, /-BR-v3\.0/);                         // controlled reference in the masthead
+  assert.match(html, /Version 3\.0/);
+  assert.match(html, /next review/i);
+  const ra = reportHTML(buildReport(state, 'risk-assessment', OPTS));
+  assert.match(ra, /prepared by Simon Archer/);
+  assert.match(ra, /approved by J Board, Managing Director/);
+  assert.match(ra, /-RP-v1\.0/);
 });
 
 test('no long dashes anywhere in the rendered report', () => {

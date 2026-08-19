@@ -1,6 +1,6 @@
 // Board report template - Signal (data-forward) and Brief (editorial) formats.
 // Both build the SAME content; format changes the skin class only.
-import { deriveBoard, deriveBoardExtras, noneOrCount, countPhrase, hasHave, TIER_COLOURS, HOLD_STATES, HOLD_ORDER } from '../derive.js';
+import { deriveBoard, deriveBoardExtras, noneOrCount, countPhrase, hasHave, TIER_COLOURS, HOLD_STATES, HOLD_ORDER, docFor } from '../derive.js';
 import { esc, tierWord, planBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
 
@@ -49,10 +49,17 @@ export function buildBoardReport(state, opts = {}) {
   const org = (opts.tenant && opts.tenant.name) || co.tradingName || co.legalName || 'Client';
   const period = (opts.period) || new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
   const today = (opts.today ? new Date(opts.today) : new Date()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  const ref = ((opts.meta && opts.meta.ref) || ('BR-' + new Date().toISOString().slice(0, 7)));
   const format = opts.format || 'signal';
 
-  const mast = { type: 'masthead', org, refCode: ref, issued: today, review: (opts.meta && opts.meta.review) || '' };
+  // Document control: this report's own row from the app's register
+  // (Reports tab), falling back to the org defaults - reference, version,
+  // prepared-by, approver, issue date, next review. Same resolution as the
+  // in-app PDFs (_docFor), via the contract.
+  const dc = docFor(state, 'boardReport', { clientName: (opts.tenant && opts.tenant.name) || '', today: opts.today });
+  const fmtDC = (d) => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  const ref = ((opts.meta && opts.meta.ref) || (dc.omit ? '' : dc.ref));
+
+  const mast = { type: 'masthead', org, refCode: ref, issued: dc.omit ? today : fmtDC(dc.issued), review: dc.omit ? '' : fmtDC(dc.nextReview) };
 
   // ── Page 1: Position ──
   // Every label must say what the number is in plain words - no term a
@@ -311,11 +318,13 @@ export function buildBoardReport(state, opts = {}) {
             cols: [ { header: 'Area', w: '28%' }, { header: 'Judgement', w: '16%' }, { header: 'Consultant’s note', w: '56%' } ],
             rows: judRows.map(x => [ x.label, x.level, x.note || '-' ]) }
         : { type: 'textBlock', title: 'Consultant judgement - the six areas of the management system', body: 'Not yet judged. The consultant records a judgement in words (Weak, Adequate or Strong) against each of the six areas in the risk review.' },
+      // Pre-filled from the document-control register; signature stays a
+      // blank rule for the wet signature.
       { type: 'signoffGrid', cells: [
-        { label: 'Prepared by' }, { label: 'Position' }, { label: 'Signature' }, { label: 'Date' },
-        { label: 'Received for the board' }, { label: 'Position' }, { label: 'Signature' }, { label: 'Date' },
+        { label: 'Prepared by', value: dc.omit ? '' : dc.author }, { label: 'Position', value: dc.omit ? '' : (dc.author ? 'Consultant' : '') }, { label: 'Signature' }, { label: 'Date', value: dc.omit ? '' : fmtDC(dc.issued) },
+        { label: 'Received for the board', value: dc.omit ? '' : dc.approverName }, { label: 'Position', value: dc.omit ? '' : dc.approverRole }, { label: 'Signature' }, { label: 'Date' },
       ] },
-      { type: 'textBlock', body: 'Version ' + ((opts.meta && opts.meta.version) || '1.0') + ' · generated from the live profile on ' + today + '.', cls: 'r-stamp' },
+      { type: 'textBlock', body: (dc.omit ? ('Generated from the live profile on ' + today + '.') : ('Version ' + dc.version + ' · ref ' + dc.ref + ' · generated from the live profile on ' + today + (dc.nextReview ? (' · next review ' + fmtDC(dc.nextReview)) : '') + '.')), cls: 'r-stamp' },
     ],
   };
 

@@ -54,6 +54,8 @@ const STATE = {
   ],
   profiler: { maturity: {}, exposure: {}, judgement: { leadership: { level: 'adequate', note: 'Visible but informal' }, opcontrol: { level: 'weak', note: 'Permits not enforced' } } },
   riskAssurance: { leading: [{ id: 'l1', measure: 'x' }], lagging: [], assurance: [] },
+  docControl: { defaults: { author: 'Simon Archer', approverName: 'J Board', approverRole: 'Managing Director', reviewMonths: 6, refPrefix: '' },
+    docs: { boardReport: { version: '2.0' }, riskProfile: { ref: 'FIXED-REF-1' } } },
 };
 
 const browser = await puppeteer.launch({
@@ -98,6 +100,8 @@ const app = await page.evaluate((STATE) => {
             pillT: H.pillT, pillC: H.pillC, verdict: H.verdict,
             rows: H.rows.map(r => ({ id: r.id, k: r.hold.k, reasons: r.hold.reasons })) },
     panelPill: (function () { const bits = _rpVerdictBits(M); return { pill: bits.pillT, pillColor: bits.pillC }; })(),
+    // Document control: the record the app itself would stamp on each PDF.
+    docBoard: _docFor('boardReport'), docRisk: _docFor('riskProfile'),
     liveHoldStates: HOLD_STATES, liveHoldOrder: HOLD_ORDER,
     liveDomains: PROF_LIBRARY.domains.filter(d => d.type === 'maturity').map(d => ({ id: d.id, name: d.name, items: d.items.map(it => ({ id: it.id, crit: !!it.crit })) })),
   };
@@ -136,6 +140,11 @@ eq('hold: pill colour', app.hold.pillC, D.holdS.pillC);
 eq('hold: verdict sentence', app.hold.verdict, D.holdS.verdict);
 eq('panel pill = hold pill', app.panelPill.pill, D.holdS.pillT);
 eq('judged areas count', app.matJudged, Object.values(STATE.profiler.judgement).filter(j => j && j.level).length);
+// Document control resolves identically (the app returns legacy aliases and
+// an underscored omit flag on top; compare the shared fields).
+const dcPick = (d) => ({ ref: d.ref, version: d.version, author: d.author, approverName: d.approverName, approverRole: d.approverRole, issued: d.issued, nextReview: d.nextReview, omit: !!(d.omit || d._omit) });
+eq('doc control: board report row', dcPick(app.docBoard), dcPick(contract.docFor(STATE, 'boardReport', { today: TODAY })));
+eq('doc control: risk profile row', dcPick(app.docRisk), dcPick(contract.docFor(STATE, 'riskProfile', { today: TODAY })));
 // Contract tables still mirror the live app.
 eq('contract: hold states', app.liveHoldStates, contract.HOLD_STATES);
 eq('contract: hold order', app.liveHoldOrder, contract.HOLD_ORDER);

@@ -1,6 +1,6 @@
 // Risk assessment report - the full register through the shared engine.
 // Proves the engine is template-agnostic: no engine changes were needed.
-import { deriveBoard, countPhrase, TIER_COLOURS } from '../derive.js';
+import { deriveBoard, countPhrase, TIER_COLOURS, docFor } from '../derive.js';
 import { tierWord, dualBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
 import { residualOf, inherentOf, tierFor, bandsFrom } from '../derive.js';
@@ -11,9 +11,12 @@ export function buildRiskAssessment(state, opts = {}) {
   const co = D.company;
   const org = (opts.tenant && opts.tenant.name) || co.tradingName || co.legalName || 'Client';
   const today = (opts.today ? new Date(opts.today) : new Date()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  const ref = ((opts.meta && opts.meta.ref) || ('RA-' + new Date().toISOString().slice(0, 7)));
   const format = opts.format || 'signal';
-  const mast = { type: 'masthead', org, refCode: ref, issued: today };
+  // Document control from the app's register (the Risk Profile row).
+  const dc = docFor(state, 'riskProfile', { clientName: (opts.tenant && opts.tenant.name) || '', today: opts.today });
+  const fmtDC = (d) => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  const ref = ((opts.meta && opts.meta.ref) || (dc.omit ? '' : dc.ref));
+  const mast = { type: 'masthead', org, refCode: ref, issued: dc.omit ? today : fmtDC(dc.issued), review: dc.omit ? '' : fmtDC(dc.nextReview) };
 
   const rows = (Array.isArray(state.riskProfile) ? state.riskProfile : []).map(r => {
     const res = residualOf(r), inh = inherentOf(r);
@@ -64,6 +67,12 @@ export function buildRiskAssessment(state, opts = {}) {
         rows.length
           ? { type: 'dataTable', cols, rows: slice.map(rowFor), footnote: i === slices.length - 1 ? 'Assessed under MHSWR 1999 reg 3. Controls reduce likelihood, not severity.' : undefined }
           : { type: 'textBlock', body: 'No risks recorded yet.' },
+        ...(i === slices.length - 1 && !dc.omit ? [{ type: 'textBlock', cls: 'r-stamp',
+          body: 'Version ' + dc.version + ' · ref ' + dc.ref
+            + (dc.author ? (' · prepared by ' + dc.author) : '')
+            + (dc.approverName ? (' · approved by ' + dc.approverName + (dc.approverRole ? (', ' + dc.approverRole) : '')) : '')
+            + ' · issued ' + fmtDC(dc.issued)
+            + (dc.nextReview ? (' · next review ' + fmtDC(dc.nextReview)) : '') + '.' }] : []),
       ],
     })),
   ];

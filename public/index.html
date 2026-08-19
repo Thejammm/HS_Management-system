@@ -19812,6 +19812,10 @@ function importTrainingCSV(text){
     else { t.push({ id:_reqUid('trn'), employee:employee, course:course, completed:completed, expiry:expiry }); }
     added++;
   }
+  // The cockpit reads the derived S.trainingData snapshot; drop it so it is
+  // rebuilt from these records (otherwise a snapshot cached before the import
+  // leaves the Training KPI saying "no matrix uploaded" forever).
+  delete S.trainingData;
   saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
   showToast('✓ Imported '+added+' training record'+(added!==1?'s':'')+' — use “Raise renewal actions” to add renewals to the plan','success');
 }
@@ -20032,7 +20036,7 @@ function _trainingMatrixHTML(){
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Expiry traffic lights: <span style="color:${RAGC.red};font-weight:700;">expired</span> · <span style="color:${RAGC.amber};font-weight:700;">expiring ≤60 days</span> · <span style="color:${RAGC.green};font-weight:700;">in date</span>. Expired / expiring courses raise an action in the execution plan.</div>
       <div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div>
       ${ro?'':`<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${(function(){ const n=_trainingDueCount(); return `<button class="btn btn-outline btn-sm no-print" onclick="raiseTrainingRenewals()"${n?'':' disabled'}>＋ Raise renewal actions${n?(' ('+n+')'):''}</button><span style="font-size:11.5px;color:var(--text-muted);">Adds expired/expiring courses to the execution plan — on demand, deduped.</span>`; })()}</div>
-      <button class="btn btn-ghost btn-xs no-print" style="margin-top:10px;" onclick="if(confirm('Clear all training records? (This does not remove any actions already raised.)')){S.training=[];saveData();renderMonitoring();}">Clear training data</button>`}
+      <button class="btn btn-ghost btn-xs no-print" style="margin-top:10px;" onclick="if(confirm('Clear all training records? (This does not remove any actions already raised.)')){S.training=[];delete S.trainingData;saveData();renderMonitoring();}">Clear training data</button>`}
     </div>
   </div>`;
 }

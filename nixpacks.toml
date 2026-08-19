@@ -1,0 +1,4 @@
+# Adds system Chromium to the build for the server-side report PDF renderer
+# (routes/reports.js via puppeteer-core). "..." keeps the default Node setup.
+[phases.setup]
+nixPkgs = ["...", "chromium"]

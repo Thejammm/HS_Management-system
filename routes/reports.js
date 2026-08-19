@@ -20,23 +20,37 @@ const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-function findChromium(){
-  const cands = [
-    process.env.PUPPETEER_EXECUTABLE_PATH,
-    process.env.CHROMIUM_PATH,
-    '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome',
-    'C:/Program Files/Google/Chrome/Application/chrome.exe',
-    'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-  ].filter(Boolean);
-  for(const c of cands){ try { if(fs.existsSync(c)) return c; } catch(e){} }
-  // PATH lookup (nix puts chromium on PATH)
+// A candidate is only usable if it's a real browser binary. Ubuntu images
+// carry /usr/bin/chromium-browser as a tiny snap STUB that fails with
+// "requires the chromium snap" — a real Chromium is tens of MB; the stub is
+// a shell script. Filter those out, and prefer the nix-provided binary.
+function isRealBrowser(p){
+  try {
+    const st = fs.statSync(p);
+    if(!st.isFile() && !st.isSymbolicLink()) return false;
+    if(st.size < 1024 * 1024){                       // stubs are a few KB
+      const head = fs.readFileSync(p, { encoding: 'utf8', flag: 'r' }).slice(0, 400);
+      if(/snap|exec /i.test(head) && head.startsWith('#!')) return false;
+      return false;                                  // <1MB is never a browser
+    }
+    return true;
+  } catch(e){ return false; }
+}
+function chromiumCandidates(){
+  const cands = [];
+  const push = c => { if(c && !cands.includes(c)) cands.push(c); };
+  push(process.env.PUPPETEER_EXECUTABLE_PATH);
+  push(process.env.CHROMIUM_PATH);
+  // PATH lookup first — nix (nixpacks.toml) puts its chromium on PATH.
   try {
     const { execSync } = require('child_process');
-    const cmd = process.platform === 'win32' ? 'where chromium' : 'which chromium chromium-browser google-chrome 2>/dev/null';
-    const out = execSync(cmd, { encoding: 'utf8' }).split(/\r?\n/).find(l => l.trim());
-    if(out && fs.existsSync(out.trim())) return out.trim();
+    const cmd = process.platform === 'win32' ? 'where chromium' : 'which -a chromium chromium-browser google-chrome 2>/dev/null || true';
+    execSync(cmd, { encoding: 'utf8' }).split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(push);
   } catch(e){}
-  return null;
+  ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome',
+   'C:/Program Files/Google/Chrome/Application/chrome.exe',
+   'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].forEach(push);
+  return cands.filter(c => { try { return fs.existsSync(c) && isRealBrowser(c); } catch(e){ return false; } });
 }
 
 // One warm browser, one render at a time — report generation is a rare,
@@ -48,13 +62,21 @@ async function withPage(fn){
     let puppeteer;
     try { puppeteer = require('puppeteer-core'); }
     catch(e){ const err = new Error('renderer_unavailable'); err.code = 501; throw err; }
-    const exe = findChromium();
-    if(!exe){ const err = new Error('chromium_not_found'); err.code = 501; throw err; }
     if(!_browser || !_browser.connected){
-      _browser = await puppeteer.launch({
-        executablePath: exe,
-        args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--font-render-hinting=none'],
-      });
+      const cands = chromiumCandidates();
+      if(!cands.length){ const err = new Error('chromium_not_found'); err.code = 501; throw err; }
+      let lastErr = null;
+      for(const exe of cands){
+        try {
+          _browser = await puppeteer.launch({
+            executablePath: exe,
+            args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--font-render-hinting=none'],
+          });
+          lastErr = null;
+          break;
+        } catch(e){ lastErr = e; _browser = null; console.error('Chromium candidate failed:', exe, '-', e.message.split('\n')[0]); }
+      }
+      if(!_browser){ const err = new Error('chromium_launch_failed: ' + (lastErr ? lastErr.message.split('\n')[0] : '')); err.code = 501; throw err; }
     }
     const page = await _browser.newPage();
     try { return await fn(page); }

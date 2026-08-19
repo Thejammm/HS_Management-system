@@ -45,7 +45,7 @@ export function buildBoardReport(state, opts = {}) {
   const co = D.company;
   const org = (opts.tenant && opts.tenant.name) || co.tradingName || co.legalName || 'Client';
   const period = (opts.period) || new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-  const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const today = (opts.today ? new Date(opts.today) : new Date()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   const ref = ((opts.meta && opts.meta.ref) || ('BR-' + new Date().toISOString().slice(0, 7)));
   const format = opts.format || 'signal';
 

@@ -6,20 +6,14 @@
    beside the colour.
    ══════════════════════════════════════════════════════════════ */
 
-@font-face { font-family:'Barlow'; font-weight:400; font-style:normal; font-display:swap;
-  src:url('/fonts/barlow-400.woff2') format('woff2'); }
-@font-face { font-family:'Barlow'; font-weight:500; font-style:normal; font-display:swap;
-  src:url('/fonts/barlow-500.woff2') format('woff2'); }
-@font-face { font-family:'Barlow'; font-weight:600; font-style:normal; font-display:swap;
-  src:url('/fonts/barlow-600.woff2') format('woff2'); }
-@font-face { font-family:'Barlow Condensed'; font-weight:600; font-style:normal; font-display:swap;
-  src:url('/fonts/barlow-condensed-600.woff2') format('woff2'); }
+@font-face { font-family:'Inter'; font-weight:400 700; font-style:normal; font-display:swap;
+  src:url('/fonts/inter-var.woff2') format('woff2'); }
 
 .r-root {
   --r-ground:#f2f2f3; --r-ink:#1d1f20; --r-hair:#d4d4d7; --r-hair2:#b7b7ba;
   --r-accent:#5980a6; --r-cover:#1d2d3d; --r-muted:#6a6c6e;
   --r-crit:#8c2f1e; --r-high:#c05621; --r-med:#d9a13b; --r-low:#749dc4;
-  font-family:'Barlow',Arial,sans-serif; color:var(--r-ink); background:#8b8d90;
+  font-family:'Inter',Arial,sans-serif; color:var(--r-ink); background:#8b8d90;
   -webkit-print-color-adjust:exact; print-color-adjust:exact;
   line-height:1.45; font-size:11px;
 }
@@ -37,21 +31,21 @@
 .r-page-body { flex:1; min-height:0; display:flex; flex-direction:column; gap:10px; }
 
 /* ── Type ── */
-.r-condensed, .r-headline, .r-kpi-val, .r-cover-title { font-family:'Barlow Condensed','Arial Narrow',sans-serif; font-weight:600; }
+.r-condensed, .r-headline, .r-kpi-val, .r-cover-title { font-family:'Inter',Arial,sans-serif; font-weight:700; letter-spacing:-.01em; }
 .r-lab, .r-kicker, .r-block-title, .r-frame-title, .r-mast-meta, .r-kpi-lab,
 .r-cover-org, .r-statement-title, .r-pagefoot, .r-so-lab, .r-dist-lab, .r-step-lab, .r-mx-ax {
-  font-family:'Barlow',Arial,sans-serif; font-weight:600; text-transform:uppercase; letter-spacing:.16em;
+  font-family:'Inter',Arial,sans-serif; font-weight:600; text-transform:uppercase; letter-spacing:.16em;
 }
 
 /* ── Masthead ── */
 .r-masthead { display:flex; justify-content:space-between; align-items:baseline;
   border-bottom:1px solid var(--r-ink); padding-bottom:6px; margin-bottom:2px; }
-.r-mast-org { font-family:'Barlow Condensed'; font-weight:600; font-size:15px; text-transform:uppercase; letter-spacing:.04em; }
+.r-mast-org { font-family:'Inter'; font-weight:600; font-size:15px; text-transform:uppercase; letter-spacing:.04em; }
 .r-mast-meta { font-size:7.5px; color:var(--r-muted); display:flex; gap:12px; }
 
 /* ── Title block ── */
 .r-kicker { font-size:8px; color:var(--r-accent); margin:6px 0 4px; }
-.r-headline { font-size:30px; line-height:1.02; text-transform:uppercase; letter-spacing:.005em; margin:0 0 6px; }
+.r-headline { font-size:26px; line-height:1.02; text-transform:uppercase; letter-spacing:.005em; margin:0 0 6px; }
 .r-standfirst { font-size:11.5px; font-weight:500; line-height:1.5; margin:0; max-width:88%; }
 
 /* ── KPI strip ── */
@@ -162,7 +156,7 @@
 /* ── Cover ── */
 .r-cover { flex:1; display:flex; flex-direction:column; justify-content:flex-end; padding-bottom:8mm; }
 .r-cover-org { font-size:9px; letter-spacing:.2em; color:#94bce3; }
-.r-cover-title { font-size:52px; line-height:1; text-transform:uppercase; margin:10px 0 14px; }
+.r-cover-title { font-size:42px; line-height:1; text-transform:uppercase; margin:10px 0 14px; }
 .r-cover-meta { font-size:9px; color:#b5d9fd; }
 
 /* ── Footer ── */
@@ -171,14 +165,14 @@
 .r-page-cover .r-pagefoot { border-top-color:#416180; color:#94bce3; }
 
 /* ── Brief format skin: editorial, lighter furniture, serif-feel weightings ── */
-.r-fmt-brief .r-headline { font-size:24px; letter-spacing:.01em; }
+.r-fmt-brief .r-headline { font-size:22px; letter-spacing:.01em; }
 .r-fmt-brief .r-kpis { border:0; border-top:1px solid var(--r-ink); border-bottom:1px solid var(--r-ink); }
 .r-fmt-brief .r-kpi { border-right:0; }
 .r-fmt-brief .r-kpi-val { font-size:20px; }
 .r-fmt-brief .r-page-cover { background:var(--r-ground); color:var(--r-ink); }
 .r-fmt-brief .r-cover-org { color:var(--r-muted); }
 .r-fmt-brief .r-cover-meta { color:var(--r-muted); }
-.r-fmt-brief .r-cover-title { font-size:40px; }
+.r-fmt-brief .r-cover-title { font-size:34px; }
 .r-fmt-brief .r-page-cover .r-pagefoot { border-top-color:var(--r-hair2); color:var(--r-muted); }
 
 /* ── Print ── */

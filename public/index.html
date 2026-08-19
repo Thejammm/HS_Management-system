@@ -4378,9 +4378,17 @@ function _ensureVisibleType(){
 // Every meaningful write stamps who did it and when, so nothing is anonymous.
 // _actor() resolves the current signed-in user; offline it falls back to a
 // local marker. These stamps cannot be retrofitted, so they are captured now.
+// The PC-held copy (file://) has no server behind it: passwords cannot be
+// checked and nothing can sync live. Offline working uses a NAME, not a
+// password — a password prompt on a local file would be security theatre.
+function _isOfflineCopy(){ return location.protocol !== 'http:' && location.protocol !== 'https:'; }
+function _offlineActorName(){ try{ return String(localStorage.getItem('hsms_offline_actor')||'').trim(); }catch(e){ return ''; } }
+function _setOfflineActor(name){ try{ if(String(name||'').trim()) localStorage.setItem('hsms_offline_actor', String(name).trim()); }catch(e){} }
 function _actor(){
   const u = (typeof Auth !== 'undefined' && Auth.user) ? Auth.user() : null;
   if(u) return { id: u.id || null, name: u.name || u.email || 'User' };
+  const off = _offlineActorName();
+  if(off) return { id: null, name: off };
   return { id: null, name: 'Local (offline)' };
 }
 // Write event stamps onto a record: rec.{event}By / {event}ById / {event}At.
@@ -5177,9 +5185,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       _updateAuthIndicator();
       // Reload state from server (overrides local cache if server has data)
       await loadFromServerAndRender();
+    } else if(_isOfflineCopy()){
+      _updateAuthIndicator();   // offline copy: show the "Offline copy · name" chip and relabel Sign in → Work offline at boot
     }
   } catch(e){
     console.warn('Auth refresh failed:', e);
+    try{ if(_isOfflineCopy()) _updateAuthIndicator(); }catch(_){}
   }
 
   // PDF save folder picker has been removed — downloads go straight to the
@@ -8757,12 +8768,54 @@ function _qrDataUrl(text){ try{ if(typeof qrcode!=='function') return ''; const 
 function _downloadDataUrl(dataUrl, filename){ if(!dataUrl){ if(typeof showToast==='function') showToast('QR not available','error'); return; } try{ const a=document.createElement('a'); a.href=dataUrl; a.download=filename||'qr.gif'; document.body.appendChild(a); a.click(); a.remove(); }catch(e){ if(typeof showToast==='function') showToast('Download failed','error'); } }
 // ── Login modal handlers ──
 function openLoginModal(){
+  if(_isOfflineCopy()){ openOfflineWorkModal(); return; }   // no server behind a file:// copy — passwords cannot be checked
   document.getElementById('loginError').style.display = 'none';
   const _pref=_urlLoginEmail();
   document.getElementById('loginEmail').value = _pref;
   document.getElementById('loginPassword').value = '';
   document.getElementById('loginModal').classList.add('open');
   setTimeout(() => document.getElementById(_pref?'loginPassword':'loginEmail').focus(), 50);
+}
+// The offline copy's version of "sign in": say who is working (for the
+// created-by / updated-by stamps) and show the one honest sync route —
+// export here, import on the live app. No password: there is nothing on
+// this PC that could check one, and pretending otherwise is worse.
+function openOfflineWorkModal(){
+  const old=document.getElementById('offlineWorkOv'); if(old) old.remove();
+  const cur=_offlineActorName();
+  const ov=document.createElement('div'); ov.id='offlineWorkOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:520px;width:100%;padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.35);">
+    <div style="font-weight:800;font-size:15px;margin-bottom:6px;">Working on the offline copy</div>
+    <div style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin-bottom:12px;">
+      This is the offline file on this PC — there is no server behind it, so your online password cannot be checked here (that is why sign-in fails; the password itself is fine).
+      Everything you do is saved <b>in this browser on this PC</b>. Put your name below so the records show who did the work.
+    </div>
+    <div class="field-group"><label class="field-label">Your name (goes on the created-by and updated-by stamps)</label>
+      <input type="text" id="offActorName" value="${esc(cur)}" placeholder="e.g. Simon Archer" style="width:100%;"></div>
+    <div style="background:var(--muted-bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.55;margin-top:12px;">
+      <b>Getting your offline work online</b> — when you are back at a connection:<br>
+      1. Click <b>⭳ Export client</b> here (also in the header) — it downloads a timestamped JSON of this client.<br>
+      2. Open <b>compass.archerhs.co.uk</b>, sign in, dial into the client and click <b>⭱ Import</b> with that file.
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px;flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="exportClient()" title="Download this client's data as an import-compatible JSON — the file you import on the live app">⭳ Export client</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="document.getElementById('offlineWorkOv').remove()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmOfflineWork()">Continue offline</button>
+      </div>
+    </div></div>`;
+  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+  setTimeout(()=>{ const el=document.getElementById('offActorName'); if(el) el.focus(); },50);
+}
+function confirmOfflineWork(){
+  const name=(document.getElementById('offActorName')||{}).value||'';
+  if(!String(name).trim()){ showToast('Put your name in first — it goes on the record stamps','info'); return; }
+  _setOfflineActor(name);
+  const ov=document.getElementById('offlineWorkOv'); if(ov) ov.remove();
+  _updateAuthIndicator();
+  showToast('✓ Working offline as '+String(name).trim()+' — export and import to sync when online','success',6000);
 }
 function closeLoginModal(){
   document.getElementById('loginModal').classList.remove('open');
@@ -8786,7 +8839,9 @@ async function handleLoginSubmit(event){
   } catch(err){
     errEl.textContent = err.body?.error === 'invalid_credentials'
       ? 'Wrong email or password — please try again.'
-      : `Sign-in failed: ${err.message}`;
+      : (err.status === undefined
+        ? 'The server can\'t be reached — you look offline. Your password is not the problem. Keep working; changes save in this browser, and sign in again when the connection is back.'
+        : `Sign-in failed: ${err.message}`);
     errEl.style.display = 'block';
   } finally {
     btn.disabled = false;
@@ -8833,9 +8888,21 @@ function _updateAuthIndicator(){
     if(inBtn)  inBtn.style.display  = 'inline-flex';
     if(outBtn) outBtn.style.display = 'none';
     if(ind){
-      ind.style.display = 'none';
-      ind.onclick = null;
+      // Offline copy: the header says so plainly, with who is working and the
+      // sync route one click away — instead of a sign-in that cannot succeed.
+      if(_isOfflineCopy()){
+        const nm=_offlineActorName();
+        ind.style.display = 'inline-flex';
+        ind.style.cursor = 'pointer';
+        ind.title = 'Offline copy — everything saves in this browser on this PC. Click to set who is working, or to export for import on the live app.';
+        ind.onclick = openOfflineWorkModal;
+        ind.innerHTML = `${_ic('shield',13)} <span style="vertical-align:middle;">Offline copy${nm?(' · '+esc(nm)):''}</span>`;
+      } else {
+        ind.style.display = 'none';
+        ind.onclick = null;
+      }
     }
+    if(inBtn && _isOfflineCopy()){ inBtn.textContent='Work offline'; inBtn.title='This copy has no server behind it — set your name for the record stamps and see how to sync your work online.'; }
     const cPick = document.getElementById('consultantPicker');
     if(cPick) cPick.classList.remove('on');
     if(_consultantView) exitConsultantView(true);

@@ -17395,7 +17395,8 @@ async function openBoardReportPrint(){
         return;
       }
       console.warn('Server PDF unavailable ('+r.status+') — falling back to print.');
-    }catch(e){ console.warn('Server PDF failed — falling back to print:', e); }
+      showToast('The server PDF maker is unavailable ('+r.status+') — opening the print dialog instead. Tell Simon if you see this.','error',7000);
+    }catch(e){ console.warn('Server PDF failed — falling back to print:', e); showToast('The server PDF maker could not be reached — opening the print dialog instead.','error',7000); }
   }
   try{
     const [tpl, eng] = await Promise.all([ import('/reports/templates/index.js'), import('/reports/engine.js') ]);

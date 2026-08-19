@@ -20,38 +20,51 @@ const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-// A candidate is only usable if it's a real browser binary. Ubuntu images
-// carry /usr/bin/chromium-browser as a tiny snap STUB that fails with
-// "requires the chromium snap" — a real Chromium is tens of MB; the stub is
-// a shell script. Filter those out, and prefer the nix-provided binary.
-function isRealBrowser(p){
-  try {
-    const st = fs.statSync(p);
-    if(!st.isFile() && !st.isSymbolicLink()) return false;
-    if(st.size < 1024 * 1024){                       // stubs are a few KB
-      const head = fs.readFileSync(p, { encoding: 'utf8', flag: 'r' }).slice(0, 400);
-      if(/snap|exec /i.test(head) && head.startsWith('#!')) return false;
-      return false;                                  // <1MB is never a browser
-    }
-    return true;
-  } catch(e){ return false; }
-}
 function chromiumCandidates(){
   const cands = [];
   const push = c => { if(c && !cands.includes(c)) cands.push(c); };
   push(process.env.PUPPETEER_EXECUTABLE_PATH);
   push(process.env.CHROMIUM_PATH);
-  // PATH lookup first — nix (nixpacks.toml) puts its chromium on PATH.
+  // PATH lookup — nix (nixpacks.toml) puts its chromium on PATH in the build
+  // shell, but the runtime process PATH does not always carry the nix profile.
   try {
     const { execSync } = require('child_process');
     const cmd = process.platform === 'win32' ? 'where chromium' : 'which -a chromium chromium-browser google-chrome 2>/dev/null || true';
     execSync(cmd, { encoding: 'utf8' }).split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(push);
   } catch(e){}
+  // Nix store scan — the reliable route in the nixpacks image, independent of
+  // PATH. The chromium package's launcher lives at /nix/store/<hash>-chromium-<v>/bin/chromium.
+  try {
+    const { execSync } = require('child_process');
+    execSync('ls -d /nix/store/*/bin/chromium /nix/store/*/bin/chromium-browser 2>/dev/null || true', { encoding: 'utf8' })
+      .split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(push);
+  } catch(e){}
   ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome',
    'C:/Program Files/Google/Chrome/Application/chrome.exe',
    'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].forEach(push);
-  return cands.filter(c => { try { return fs.existsSync(c) && isRealBrowser(c); } catch(e){ return false; } });
+  return cands.filter(c => { try { return fs.existsSync(c) && usableBrowser(c); } catch(e){ return false; } });
 }
+// A nix bin/chromium is a small wrapper SCRIPT that execs the real binary from
+// the store — size alone must not disqualify it (unlike Ubuntu's snap stub,
+// which demands "snap install"). Accept small files only when they are nix
+// wrappers; keep rejecting the snap stub.
+function usableBrowser(p){
+  try {
+    const st = fs.statSync(p);
+    if(!st.isFile() && !st.isSymbolicLink()) return false;
+    if(st.size >= 1024 * 1024) return true;            // real binary
+    const head = fs.readFileSync(p, { encoding: 'utf8', flag: 'r' }).slice(0, 600);
+    if(/snap/i.test(head)) return false;               // Ubuntu snap stub
+    if(p.startsWith('/nix/store/') && head.startsWith('#!')) return true;   // nix wrapper script
+    return false;
+  } catch(e){ return false; }
+}
+// Boot probe: one log line so every deploy shows what the renderer can see —
+// a silent 501-and-print-dialog must never be the only signal again.
+try {
+  const _boot = chromiumCandidates();
+  console.log('PDF renderer: ' + (_boot.length ? ('chromium found — ' + _boot[0] + (_boot.length > 1 ? (' (+' + (_boot.length - 1) + ' more)') : '')) : 'NO usable chromium found (PATH=' + (process.env.PATH || '') + ')'));
+} catch(e){ console.log('PDF renderer probe failed:', e.message); }
 
 // One warm browser, one render at a time — report generation is a rare,
 // consultant-driven event; a queue beats a memory spike.
@@ -134,6 +147,9 @@ router.get('/pdf', requireAuth, async (req, res) => {
     res.end(Buffer.from(pdf));
   } catch(err){
     if(err && err.code === 501){
+      // Never fail silently: the front end falls back to the print dialog,
+      // so this line is the only trace of WHY the download didn't happen.
+      console.error('GET /api/reports/pdf: renderer unavailable —', err.message);
       return res.status(501).json({ error: 'renderer_unavailable' });
     }
     console.error('GET /api/reports/pdf error:', err);

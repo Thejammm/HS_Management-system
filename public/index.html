@@ -4295,6 +4295,19 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <div id="adminUsersList"><em style="color:var(--text-muted);font-size:13px;">Loading…</em></div>
         </div>
       </div>
+
+      <!-- Offline copy pairing -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card-band"><h3><span class="dot">●</span> Offline copy access</h3></div>
+        <div class="card-body">
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.55;">The PC-held offline file cannot use your password (it has no server behind it). Generate a pairing token here, paste it into the offline copy once (Work offline → Connect to the live app), and that copy can then <b>pull a client down</b> before you go offline and <b>push your work back</b> when you return. Generating a new token revokes the old one; keep it private — it reads and writes client data.</div>
+          <div id="offlineTokenOut" style="display:none;margin-top:10px;padding:10px 12px;background:var(--muted-bg);border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:13px;word-break:break-all;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+            <button class="btn btn-primary btn-sm no-print" onclick="generateOfflineToken()">Generate pairing token</button>
+            <button class="btn btn-ghost btn-sm no-print" onclick="revokeOfflineToken()" title="Invalidates any token previously generated — offline copies will need a new one">Revoke</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div> <!-- /tab-admin -->
 
@@ -8794,10 +8807,20 @@ function openOfflineWorkModal(){
     <div class="field-group"><label class="field-label">Your name (goes on the created-by and updated-by stamps)</label>
       <input type="text" id="offActorName" value="${esc(cur)}" placeholder="e.g. Simon Archer" style="width:100%;"></div>
     <div style="background:var(--muted-bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.55;margin-top:12px;">
-      <b>Getting your offline work online</b> — when you are back at a connection:<br>
-      1. Click <b>⭳ Export client</b> here (also in the header) — it downloads a timestamped JSON of this client.<br>
-      2. Open <b>compass.archerhs.co.uk</b>, sign in, dial into the client and click <b>⭱ Import</b> with that file.
+      <b>Connect to the live app</b> — with a pairing token (live app → Admin → Offline copy access) this copy can <b>pull a client's data down</b> while you have signal and <b>push your work back</b> afterwards.
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+        <input type="text" id="offSrvUrl" value="${esc(_offLink().url||_OFF_DEFAULT_URL)}" placeholder="https://compass.archerhs.co.uk" style="flex:1.4;min-width:170px;font-size:12px;padding:6px 8px;">
+        <input type="password" id="offSrvToken" value="${esc(_offLink().token||'')}" placeholder="pairing token" style="flex:1;min-width:130px;font-size:12px;padding:6px 8px;">
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+        <button class="btn btn-outline btn-xs" onclick="offlinePull()">⭳ Pull a client from the server</button>
+        <select id="offTenantPick" style="display:none;font-size:12px;padding:5px 7px;max-width:190px;"></select>
+        <button class="btn btn-primary btn-xs" id="offPullGo" style="display:none;" onclick="offlinePullGo()">Pull</button>
+        <button class="btn btn-outline btn-xs" onclick="offlinePush()" title="Send what this copy is holding back to the server (it checks nobody changed it online first)">⭱ Push this client back</button>
+      </div>
+      <div id="offConnStatus" style="font-size:11.5px;color:var(--text-muted);margin-top:6px;">${(function(){const L=_offLink();return L.tenantName?('Holding: '+esc(L.tenantName)+(L.pulledAt?(' · pulled '+new Date(L.pulledAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})):'')+(L.pushedAt?(' · pushed '+new Date(L.pushedAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})):'')):'Not holding a server client yet — pull one before you go offline.';})()}</div>
     </div>
+    <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-top:8px;">No connection or no token? The manual route always works: <b>⭳ Export client</b> here, then sign in at compass.archerhs.co.uk, dial into the client and <b>⭱ Import</b> the file.</div>
     <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px;flex-wrap:wrap;">
       <button class="btn btn-outline" onclick="exportClient()" title="Download this client's data as an import-compatible JSON — the file you import on the live app">⭳ Export client</button>
       <div style="display:flex;gap:8px;">
@@ -8813,9 +8836,84 @@ function confirmOfflineWork(){
   const name=(document.getElementById('offActorName')||{}).value||'';
   if(!String(name).trim()){ showToast('Put your name in first — it goes on the record stamps','info'); return; }
   _setOfflineActor(name);
+  const url=(document.getElementById('offSrvUrl')||{}).value; const tok=(document.getElementById('offSrvToken')||{}).value;
+  if(url!==undefined||tok!==undefined) _setOffLink({ url:String(url||'').trim()||_OFF_DEFAULT_URL, token:String(tok||'').trim()||_offLink().token });
   const ov=document.getElementById('offlineWorkOv'); if(ov) ov.remove();
   _updateAuthIndicator();
-  showToast('✓ Working offline as '+String(name).trim()+' — export and import to sync when online','success',6000);
+  showToast('✓ Working offline as '+String(name).trim(),'success',5000);
+}
+// ── Live-app connection for the offline copy: pull a client down while you
+//    still have signal, work offline, push it back when you return. Auth is
+//    the pairing token from Admin → Offline copy access (never a password —
+//    a cookie session cannot cross from https to a file:// page). ──
+const _OFF_DEFAULT_URL='https://compass.archerhs.co.uk';
+function _offLink(){ try{ return JSON.parse(localStorage.getItem('hsms_offline_link')||'{}')||{}; }catch(e){ return {}; } }
+function _setOffLink(patch){ try{ localStorage.setItem('hsms_offline_link', JSON.stringify(Object.assign({}, _offLink(), patch))); }catch(e){} }
+async function _offApi(path, opts){
+  const L=_offLink();
+  const base=String(L.url||_OFF_DEFAULT_URL).replace(/\/+$/,'');
+  if(!L.token) throw new Error('no_token');
+  const res=await fetch(base+path, Object.assign({}, opts, { headers: Object.assign({ 'Authorization':'Bearer '+L.token, 'Content-Type':'application/json' }, (opts&&opts.headers)||{}) }));
+  const body=await res.json().catch(()=>({}));
+  if(!res.ok){ const e=new Error(body.error||('HTTP '+res.status)); e.status=res.status; e.body=body; throw e; }
+  return body;
+}
+function _offlineConnMsg(err){
+  if(err && err.message==='no_token') return 'Paste the pairing token first — generate it on the live app under Admin → Offline copy access.';
+  if(err && err.status===401) return 'The token was not accepted — generate a fresh one on the live app (Admin → Offline copy access) and paste it here.';
+  if(err && err.status===undefined) return 'Could not reach the live app — check the internet connection and the server address.';
+  return 'Failed: '+(err&&err.message||'unknown error');
+}
+async function offlinePull(){
+  const urlEl=document.getElementById('offSrvUrl'), tokEl=document.getElementById('offSrvToken');
+  _setOffLink({ url:String((urlEl||{}).value||'').trim()||_OFF_DEFAULT_URL, token:String((tokEl||{}).value||'').trim() });
+  const st=document.getElementById('offConnStatus'); if(st) st.textContent='Fetching the client list…';
+  let tenants;
+  try{ tenants=(await _offApi('/api/offline/tenants')).tenants||[]; }
+  catch(err){ if(st) st.textContent=_offlineConnMsg(err); return; }
+  if(!tenants.length){ if(st) st.textContent='The server has no clients yet.'; return; }
+  const sel=document.getElementById('offTenantPick');
+  if(sel){ sel.innerHTML=tenants.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join(''); sel.style.display='inline-block'; }
+  const go=document.getElementById('offPullGo'); if(go) go.style.display='inline-flex';
+  if(st) st.textContent='Pick the client to bring down, then Pull.';
+}
+async function offlinePullGo(){
+  const sel=document.getElementById('offTenantPick'); if(!sel||!sel.value) return;
+  const st=document.getElementById('offConnStatus');
+  const name=sel.options[sel.selectedIndex].textContent;
+  if(!confirm('Pull "'+name+'" from the server?\n\nThis REPLACES what this offline copy is currently holding. A backup of the current data is kept in this browser (and you can Export it first if you want a file).')) return;
+  if(st) st.textContent='Pulling '+name+'…';
+  try{
+    const r=await _offApi('/api/offline/state?tenantId='+encodeURIComponent(sel.value));
+    try{ localStorage.setItem('hsms_offline_prev_backup', JSON.stringify({ at:new Date().toISOString(), S })); }catch(e){}
+    S = (r.state && typeof r.state==='object') ? r.state : {};
+    migrateLoadedState();
+    saveData();
+    _setOffLink({ tenantId:r.tenantId, tenantName:r.name, pulledAt:new Date().toISOString(), baseUpdatedAt:r.updatedAt||null });
+    _rerenderEverything();
+    const ov=document.getElementById('offlineWorkOv'); if(ov) ov.remove();
+    _updateAuthIndicator();
+    showToast('✓ Holding "'+r.name+'" — work away; push it back when you are online again','success',7000);
+  }catch(err){ if(st) st.textContent=_offlineConnMsg(err); }
+}
+async function offlinePush(force){
+  const L=_offLink();
+  if(!L.tenantId){ showToast('Nothing to push — pull a client first.','info'); return; }
+  const st=document.getElementById('offConnStatus'); if(st) st.textContent='Pushing '+(L.tenantName||L.tenantId)+'…';
+  try{
+    const r=await _offApi('/api/offline/state?tenantId='+encodeURIComponent(L.tenantId), {
+      method:'POST', body: JSON.stringify({ state:S, baseUpdatedAt:L.baseUpdatedAt||null, force:!!force }) });
+    _setOffLink({ baseUpdatedAt:r.updatedAt||null, pushedAt:new Date().toISOString() });
+    if(st) st.textContent='✓ Pushed to the server '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+'.';
+    showToast('✓ "'+(L.tenantName||L.tenantId)+'" pushed to the server','success',6000);
+  }catch(err){
+    if(err && err.status===409){
+      if(confirm('The server copy of "'+(L.tenantName||L.tenantId)+'" has CHANGED since you pulled it (someone worked on it online).\n\nPush anyway and OVERWRITE the server version with this offline one?\n\nIf unsure, Cancel and Export this copy as a file instead, then compare online.')){ return offlinePush(true); }
+      if(st) st.textContent='Push held back — the server version is newer.';
+      return;
+    }
+    if(st) st.textContent=_offlineConnMsg(err);
+  }
 }
 function closeLoginModal(){
   document.getElementById('loginModal').classList.remove('open');
@@ -8914,6 +9012,28 @@ function _updateAuthIndicator(){
   // consultant view.
   _viewMode = (Auth.user()?.role === 'client_user') ? 'management' : 'consultant';
   applyViewMode();
+}
+
+// ── Offline-copy pairing token (live app, Admin tab, consultant only) ──
+async function generateOfflineToken(){
+  if(!confirm('Generate a pairing token for the offline copy?\n\nAny token generated before stops working. The new one is shown ONCE — paste it into the offline copy straight away.')) return;
+  try{
+    const r=await fetch('/api/offline/token',{method:'POST',credentials:'include'});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error||('HTTP '+r.status));
+    const out=document.getElementById('offlineTokenOut');
+    if(out){ out.style.display='block'; out.innerHTML='<b>Pairing token (shown once):</b><br>'+esc(j.token)+'<br><button class="btn btn-outline btn-xs no-print" style="margin-top:6px;" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+esc(j.token)+'\').then(()=>showToast(\'✓ Copied\',\'success\'))">Copy</button>'; }
+    showToast('✓ Token generated — paste it into the offline copy now','success',6000);
+  }catch(e){ showToast('Could not generate the token: '+e.message,'error'); }
+}
+async function revokeOfflineToken(){
+  if(!confirm('Revoke the offline pairing token?\n\nEvery offline copy paired with it loses server access until you generate and paste a new one.')) return;
+  try{
+    const r=await fetch('/api/offline/token/revoke',{method:'POST',credentials:'include'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const out=document.getElementById('offlineTokenOut'); if(out){ out.style.display='none'; out.innerHTML=''; }
+    showToast('✓ Token revoked','success');
+  }catch(e){ showToast('Could not revoke: '+e.message,'error'); }
 }
 
 // ══════════════════════════════════════════════════════════════

@@ -74,3 +74,8 @@ CREATE TABLE IF NOT EXISTS statutory_workbook (
   data       TEXT NOT NULL,               -- the .xlsx, base64-encoded
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Offline-copy pairing: a per-consultant bearer token (stored hashed) that
+-- lets the PC-held file:// copy pull and push tenant state without cookies.
+-- Added via ALTER so existing databases pick it up on deploy.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS offline_token_hash TEXT;

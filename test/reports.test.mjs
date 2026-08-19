@@ -203,6 +203,7 @@ test('board report speaks hold language and never the 0-5 scale', () => {
   assert.doesNotMatch(html, /maturity/i);                    // the old scale is gone
   assert.doesNotMatch(html, /HSG65 scale/);
   assert.doesNotMatch(html, /shortfall/i);
+  assert.doesNotMatch(html, /rule breach|breaches of the rule/i); // renamed: needs attention first
 });
 
 test('snapshots per fixture are stable', () => {

@@ -262,14 +262,14 @@ export function holdSummaryOf(state, tierOfRisk, opts = {}) {
   let pillT, pillC, verdict;
   if (!total) { pillT = 'no risks recorded'; pillC = '#8b949a'; verdict = 'Add the risks to the profile to see the position.'; }
   else if (breaches.length) {
-    pillT = breaches.length + ' rule breach' + (breaches.length !== 1 ? 'es' : ''); pillC = '#DC2626';
+    pillT = breaches.length + ' need' + (breaches.length !== 1 ? '' : 's') + ' attention first'; pillC = '#DC2626';
     const names = breaches.slice(0, 2).map(b => b.name + ' (' + (b.hold.reasons[0] || b.breach) + ')');
-    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' properly held. ' + breaches.length + ' breach' + (breaches.length !== 1 ? 'es' : '') + ' of the rule: ' + names.join('; ') + (breaches.length > 2 ? ('; and ' + (breaches.length - 2) + ' more.') : '.');
+    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' properly held. ' + breaches.length + ' need' + (breaches.length !== 1 ? '' : 's') + ' attention first: ' + names.join('; ') + (breaches.length > 2 ? ('; and ' + (breaches.length - 2) + ' more.') : '.');
   }
   else if (held === total) { pillT = 'all risks held'; pillC = '#0f6f5c'; verdict = 'All ' + total + ' risk' + (total !== 1 ? 's are' : ' is') + ' properly held - controls recorded, plans delivered and signed off, or formally accepted.'; }
   else {
     pillT = 'working to plan'; pillC = '#c2740a';
-    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' properly held; ' + (working + slipping) + ' being worked' + (slipping ? (' (' + slipping + ' slipping)') : '') + (notheld ? ('; ' + notheld + ' not held') : '') + '. No breaches of the rule - every higher-band risk is held or being worked on time.';
+    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' properly held; ' + (working + slipping) + ' being worked' + (slipping ? (' (' + slipping + ' slipping)') : '') + (notheld ? ('; ' + notheld + ' not held') : '') + '. Nothing needs attention first - every Critical and High risk is held or being worked on time.';
   }
   return { rows, total, held, working, slipping, notheld, breaches, pillT, pillC, verdict };
 }

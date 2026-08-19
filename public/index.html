@@ -7594,7 +7594,7 @@ function renderAuditProgress(){
     const good=goodDown?d<0:d>0; return `<span style="color:${good?'#16A34A':'#DC2626'};font-weight:700;font-size:11px;">${d>0?'▲':'▼'} ${Math.abs(d)}</span>`; };
   const rows=[
     ['Risks properly held', m=>fmt(m.held), false],
-    ['Rule breaches', m=>fmt(m.ruleBreaches), true],
+    ['Need attention first', m=>fmt(m.ruleBreaches), true],
     ['Slipping', m=>fmt(m.slipping), true],
     ['Not held', m=>fmt(m.notHeld), true],
     ['Risks profiled', m=>fmt(m.risks), false],
@@ -7607,7 +7607,7 @@ function renderAuditProgress(){
     ['Briefings recorded', m=>fmt(m.briefings), false],
     ['Accreditation ready %', m=>m.casReady==null?'—':m.casReady+'%', false],
   ];
-  const rawOf=(m,label)=>{ const map={'Risks properly held':m.held,'Rule breaches':m.ruleBreaches,'Slipping':m.slipping,'Not held':m.notHeld,'Risks profiled':m.risks,'High + critical risks':m.highCrit,'Open actions':m.openActions,'Overdue actions':m.overdueActions,'Actions delivered':m.delivered,'Training expired':m.trainingExpired,'Management system gaps':m.mgmtGaps,'Briefings recorded':m.briefings,'Accreditation ready %':m.casReady}; return map[label]; };
+  const rawOf=(m,label)=>{ const map={'Risks properly held':m.held,'Need attention first':m.ruleBreaches,'Slipping':m.slipping,'Not held':m.notHeld,'Risks profiled':m.risks,'High + critical risks':m.highCrit,'Open actions':m.openActions,'Overdue actions':m.overdueActions,'Actions delivered':m.delivered,'Training expired':m.trainingExpired,'Management system gaps':m.mgmtGaps,'Briefings recorded':m.briefings,'Accreditation ready %':m.casReady}; return map[label]; };
   const table = base ? `<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12.5px;min-width:100%;">
       <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;border-bottom:1.5px solid var(--border);">
         <th style="padding:6px 8px;">Measure</th><th style="padding:6px 8px;">Baseline<br><span style="font-weight:400;">${fmtDate(base.date)}</span></th>
@@ -7638,7 +7638,7 @@ function renderAuditProgress(){
       <div style="display:flex;gap:6px;flex-wrap:wrap;">${snaps.map((s,i)=>`<span class="badge badge-muted" style="display:inline-flex;gap:6px;align-items:center;">${i===0?'★ baseline · ':''}${fmtDate(s.date)}${s.metrics.held!=null?(' · '+s.metrics.held+' held'):(s.metrics.maturity!=null?(' · mat '+Number(s.metrics.maturity).toFixed(1)):'')}${dis?'':` <button style="background:none;border:none;cursor:pointer;color:var(--danger);padding:0;font-size:11px;" title="Delete snapshot" onclick="deleteAuditSnapshot('${s.id}')">✕</button>`}</span>`).join('')}</div></div>`:'';
   el.innerHTML=`
     <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
-      <span style="font-size:12px;color:var(--text-muted);">Agreed target: <b>every risk properly held, no rule breaches</b></span>
+      <span style="font-size:12px;color:var(--text-muted);">Agreed target: <b>every risk properly held, nothing needing attention</b></span>
       <label style="font-size:12px;color:var(--text-muted);">Agreed by
         <input type="date"${dis} value="${esc(tgt.targetDate||'')}" onchange="setAuditTarget('targetDate',this.value)" style="margin-left:6px;" title="The date you and the client agreed to reach the target by"></label>
       ${eta?`<div style="flex:1;min-width:240px;font-size:12.5px;">${eta}</div>`:''}
@@ -7648,7 +7648,7 @@ function renderAuditProgress(){
 }
 const AUDIT_AREAS=[
   { id:'ar_risk', name:'Risk profile', live:m=>m.risks+' risks ('+m.highCrit+' high/critical, '+m.sif+' fatal-potential)' },
-  { id:'ar_maturity', name:'Risk control status', live:m=>(m.held!=null?(m.held+' of '+m.risks+' held · '+(m.ruleBreaches?m.ruleBreaches+' rule breach'+(m.ruleBreaches!==1?'es':''):'no breaches')):'not yet assessed') },
+  { id:'ar_maturity', name:'Risk control status', live:m=>(m.held!=null?(m.held+' of '+m.risks+' held · '+(m.ruleBreaches?m.ruleBreaches+' need'+(m.ruleBreaches!==1?'':'s')+' attention first':'nothing needs attention')):'not yet assessed') },
   { id:'ar_plan', name:'Execution plan', live:m=>m.openActions+' open ('+m.overdueActions+' overdue) · '+m.delivered+' delivered' },
   { id:'ar_training', name:'Training & competence', live:m=>m.trainingRecords?(m.trainingRecords+' records · '+m.trainingExpired+' expired'):'no matrix yet' },
   { id:'ar_consult', name:'Consultation & communication', live:m=>m.briefings?(m.briefings+' briefings recorded'):'no briefings recorded yet' },
@@ -13755,7 +13755,7 @@ const COCKPIT_WIDGETS = {
   // Dials & gauges — richer visuals, OFF by default (enable per client in the customiser).
   gaugeCompleteness:{ id:'gaugeCompleteness', label:'Completeness gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Assessment completeness', `${_gaugeSVG(x.RD.completeness)}<div class="ck-pending" style="text-align:center;margin-top:2px;">of the assessment complete</div><button class="ck-link" onclick="openCompletenessModal()" style="align-self:center;">What's left →</button>`) },
   gaugeCompliance:  { id:'gaugeCompliance', label:'Compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Inspection compliance', `${_gaugeSVG(x.compliance==null?0:x.compliance,{text:x.compliance==null?'--':x.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">pass + rectified</div><button class="ck-link" onclick="switchTab('monthly')" style="align-self:center;">Monthly report</button>`) },
-  gaugeMaturity:    { id:'gaugeMaturity', label:'Risks properly held (gauge)', group:'Gauge', defaultOff:true, render:x=>{ const H=_holdSummary(); const pct=H.total?Math.round(H.held/H.total*100):0; return _ckMod('Risks properly held', `${_gaugeSVG(pct,{text:H.total?(H.held+'/'+H.total):'--'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${H.breaches.length?(H.breaches.length+' rule breach'+(H.breaches.length!==1?'es':'')):'no rule breaches'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
+  gaugeMaturity:    { id:'gaugeMaturity', label:'Risks properly held (gauge)', group:'Gauge', defaultOff:true, render:x=>{ const H=_holdSummary(); const pct=H.total?Math.round(H.held/H.total*100):0; return _ckMod('Risks properly held', `${_gaugeSVG(pct,{text:H.total?(H.held+'/'+H.total):'--'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${H.breaches.length?(H.breaches.length+' need'+(H.breaches.length!==1?'':'s')+' attention first'):'nothing needs attention'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
   tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(100 - x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`) },
   gaugeAccreditation:{ id:'gaugeAccreditation', label:'Accreditation gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Accreditation readiness', `${_gaugeSVG(x.cas.pctReady==null?0:x.cas.pctReady,{text:x.cas.pctReady==null?'--':x.cas.pctReady+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">criteria ready</div><button class="ck-link" onclick="switchTab('cas')" style="align-self:center;">Open accreditation</button>`) },
   gaugeMgmtCompliance:{ id:'gaugeMgmtCompliance', label:'Mgmt-system compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Management-system compliance', `${_gaugeSVG(x.reqStats.compliance==null?0:x.reqStats.compliance,{text:x.reqStats.compliance==null?'--':x.reqStats.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">requirements met</div><button class="ck-link" onclick="switchTab('requirements')" style="align-self:center;">Open management system</button>`) },
@@ -14997,14 +14997,14 @@ function _holdSummary(){
   let pillT, pillC, verdict;
   if(!total){ pillT='no risks recorded'; pillC='#8b949a'; verdict='Add the risks to the profile to see the position.'; }
   else if(breaches.length){
-    pillT=breaches.length+' rule breach'+(breaches.length!==1?'es':''); pillC='#DC2626';
+    pillT=breaches.length+' need'+(breaches.length!==1?'':'s')+' attention first'; pillC='#DC2626';
     const names=breaches.slice(0,2).map(b=>b.name+' ('+(b.hold.reasons[0]||b.breach)+')');
-    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' properly held. '+breaches.length+' breach'+(breaches.length!==1?'es':'')+' of the rule: '+names.join('; ')+(breaches.length>2?('; and '+(breaches.length-2)+' more.'):'.');
+    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' properly held. '+breaches.length+' need'+(breaches.length!==1?'':'s')+' attention first: '+names.join('; ')+(breaches.length>2?('; and '+(breaches.length-2)+' more.'):'.');
   }
   else if(held===total){ pillT='all risks held'; pillC='#0f6f5c'; verdict='All '+total+' risk'+(total!==1?'s are':' is')+' properly held - controls recorded, plans delivered and signed off, or formally accepted.'; }
   else {
     pillT='working to plan'; pillC='#c2740a';
-    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' properly held; '+(working+slipping)+' being worked'+(slipping?(' ('+slipping+' slipping)'):'')+(notheld?('; '+notheld+' not held'):'')+'. No breaches of the rule - every higher-band risk is held or being worked on time.';
+    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' properly held; '+(working+slipping)+' being worked'+(slipping?(' ('+slipping+' slipping)'):'')+(notheld?('; '+notheld+' not held'):'')+'. Nothing needs attention first - every Critical and High risk is held or being worked on time.';
   }
   return { rows, total, held, working, slipping, notheld, breaches, pillT, pillC, verdict };
 }
@@ -15017,7 +15017,7 @@ function _rpVerdictBits(M){
   const H = M.H || _holdSummary();
   const pillC = H.pillC;
   const pillT = H.pillT;
-  const pillTip = 'The rule (HSG65 - management in proportion to the risk): every Critical and High risk must be Held or Being worked, and never run on acceptance alone; a Medium risk must not be Not held. A breach names the risk and the reason.';
+  const pillTip = 'HSG65 - the response must match the size of the risk: every Critical and High risk must be Held or Being worked, and never run on acceptance alone; a Medium risk must not be Not held. A risk that falls short needs attention first, named with the reason.';
   const verdictLine = H.verdict;
   const explain = 'Each risk is graded by facts the app records: Held = controls recorded and the plan delivered and signed off (or formally accepted); Being worked = owned, dated actions, all on time; Slipping = overdue or missing owner/date; Not held = no controls, or no plan and no acceptance.';
   // Visual "how a risk earns Held" — three fact boxes, no numbers to decode.
@@ -15036,7 +15036,7 @@ function _rpVerdictBits(M){
           <span class="v">Being worked</span>
         </div>
         <span class="rpx-how-op">→</span>
-        <div class="rpx-how-step" title="The plan is delivered and the risk signed off as reviewed - or formally accepted with who and why on the acceptance register (acceptance is only acceptable for Low and Medium risks; a High or Critical risk run on acceptance alone is a rule breach).">
+        <div class="rpx-how-step" title="The plan is delivered and the risk signed off as reviewed - or formally accepted with who and why on the acceptance register (acceptance is only acceptable for Low and Medium risks; a High or Critical risk run on acceptance alone needs attention first).">
           <span class="t">3 · Delivered &amp; signed off</span>
           <span class="e">or formally accepted (Low/Medium only)</span>
           <span class="v">Held ✓</span>
@@ -15063,7 +15063,7 @@ function _riskPanelHTML(o){
   const { pillC, pillT, pillTip, verdictLine, explainHTML } = _rpVerdictBits(M);
   const H = M.H;
   const period = 'Position at '+fmtDate(new Date().toISOString().slice(0,10));
-  // ── Left: the risk matrix (facts only — a white ! marks a rule breach) ──
+  // ── Left: the risk matrix (facts only — a white ! marks a risk needing attention first) ──
   let grid='';
   for(let s=5;s>=1;s--){
     grid += `<div class="rpx-ylab rpx-mono">${s}</div>`;
@@ -15073,9 +15073,9 @@ function _riskPanelHTML(o){
       const on = sel && sel.l===l && sel.s===s;
       const cellBreach = c.items.some(x=>_holdBreach(x.sc.priority, x.hold));
       grid += `<button type="button" class="rpx-cell${on?' on':''}" style="background:${col};" onclick="_rpSelectCell(${l},${s})"
-        aria-label="Likelihood ${l}, severity ${s}: ${c.items.length} risk${c.items.length!==1?'s':''}${cellBreach?', contains a rule breach':''}" aria-pressed="${on?'true':'false'}">
+        aria-label="Likelihood ${l}, severity ${s}: ${c.items.length} risk${c.items.length!==1?'s':''}${cellBreach?', contains a risk needing attention first':''}" aria-pressed="${on?'true':'false'}">
         <span class="rpx-n rpx-mono">${c.items.length}</span>
-        ${cellBreach?'<span class="rpx-flag" title="This square holds a rule breach">!</span>':''}
+        ${cellBreach?'<span class="rpx-flag" title="This square holds a risk that needs attention first">!</span>':''}
       </button>`;
     }
   }
@@ -15089,13 +15089,9 @@ function _riskPanelHTML(o){
     <div class="rpx-matrix">${grid}${xlabs}</div>
     <div class="rpx-microlab rpx-mono" style="text-align:right;margin:4px 0 0;">Likelihood</div>
     ${legend}
-    <div class="rpx-caption"><b>Where is the risk?</b> Each square is one mix of likelihood (1-5, across) and severity (1-5, up). The number is how many risks sit in that square; the colour is how serious that square is (${esc(_bandRangeText())}). A white <b>!</b> marks a square holding a rule breach.</div>
+    <div class="rpx-caption"><b>Where is the risk?</b> Each square is one mix of likelihood (1-5, across) and severity (1-5, up). The number is how many risks sit in that square; the colour is how serious that square is (${esc(_bandRangeText())}). A white <b>!</b> marks a square with a risk that needs attention first.</div>
   </div>`;
-  // ── Right: the position, graded on facts ──
-  const rating = `<div>
-    <div class="rpx-microlab rpx-mono">Your position</div>
-    <div class="rpx-verdict">${esc(verdictLine)}</div>
-  </div>`;
+  // ── Right side is visual-first: the pill carries the verdict, no prose. ──
   const stateBars = `<div>
     <div class="rpx-microlab rpx-mono">Where the ${H.total} risk${H.total!==1?'s':''} stand</div>
     ${HOLD_ORDER.map(k=>{ const st=HOLD_STATES[k]; const n=H[k];
@@ -15125,8 +15121,8 @@ function _riskPanelHTML(o){
         <span class="rpx-short rpx-mono" style="color:${b.hold.colour};">${esc(b.hold.label)}</span>
       </button>`).join('');
     listBlock = `<div aria-live="polite">
-      <div class="rpx-microlab rpx-mono">Breaches of the rule${H.breaches.length?(' · '+H.breaches.length):''}</div>
-      ${br || `<div class="rpx-explain">None. Every Critical and High risk is held or being worked on time, and no Medium risk is unheld.</div>`}
+      <div class="rpx-microlab rpx-mono">Needs attention first${H.breaches.length?(' · '+H.breaches.length):''}</div>
+      ${br || `<div class="rpx-explain">None. Every Critical and High risk is held or being worked on time, and no Medium risk is left not held.</div>`}
       ${H.breaches.length>4?`<div class="rpx-explain">…and ${H.breaches.length-4} more — they are flagged in the register.</div>`:''}
     </div>`;
   }
@@ -15142,7 +15138,7 @@ function _riskPanelHTML(o){
   } else if(H.total && H.held===H.total){
     nextTx = 'All risks held. Keep it that way as the work changes.';
   } else {
-    nextTx = 'No breaches of the rule. Keep the '+(H.working+H.slipping)+' open plan'+((H.working+H.slipping)!==1?'s':'')+' on time, and sign off delivered work to move risks to Held.';
+    nextTx = 'Nothing needs attention first. Keep the '+(H.working+H.slipping)+' open plan'+((H.working+H.slipping)!==1?'s':'')+' on time, and sign off delivered work to move risks to Held.';
   }
   const next = `<div class="rpx-next">
     <span class="rpx-microlab rpx-mono" style="margin:0;flex:0 0 auto;">Next action</span><span class="dv"></span>
@@ -15158,8 +15154,8 @@ function _riskPanelHTML(o){
   // "Risk control status (only)" — the mode key stays 'maturity' for
   // compatibility with saved cockpit configs).
   if(o.only==='matrix')   return `<div class="rpx">${head}${left}</div>`;
-  if(o.only==='maturity') return `<div class="rpx">${head}<div class="rpx-right" style="border-left:0;padding-left:0;">${rating}${stateBars}${listBlock}${explainHTML}${next}</div></div>`;
-  return `<div class="rpx">${head}<div class="rpx-grid">${left}<div class="rpx-right">${rating}${stateBars}${listBlock}${explainHTML}${next}</div></div></div>`;
+  if(o.only==='maturity') return `<div class="rpx">${head}<div class="rpx-right" style="border-left:0;padding-left:0;">${stateBars}${listBlock}${explainHTML}${next}</div></div>`;
+  return `<div class="rpx">${head}<div class="rpx-grid">${left}<div class="rpx-right">${stateBars}${listBlock}${explainHTML}${next}</div></div></div>`;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -15619,7 +15615,7 @@ function openAcceptRisk(id){
   ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:520px;width:100%;padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.35);">
     <div style="font-weight:800;font-size:15px;margin-bottom:6px;">Accept this risk</div>
     <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Accepting means the business runs <b>${esc(r.activity||r.hazard||'this risk')}</b> with the current controls and no further action. It is recorded on the acceptance register with who and why, and the risk stays on the profile to be reviewed like any other.</div>
-    ${(function(){ const b=_riskScore(r).priority; return (b==='High'||b==='Critical')?`<div style="background:#DC26261a;border:1px solid #DC262655;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.5;margin-bottom:12px;"><b>This is a ${b} risk.</b> The rule is that High and Critical risks are never run on acceptance alone — accepting it will show as a <b>rule breach</b> on the cockpit and the board report until it has a delivered plan.</div>`:''; })()}
+    ${(function(){ const b=_riskScore(r).priority; return (b==='High'||b==='Critical')?`<div style="background:#DC26261a;border:1px solid #DC262655;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.5;margin-bottom:12px;"><b>This is a ${b} risk.</b> The rule is that High and Critical risks are never run on acceptance alone — accepting it will flag it as <b>needs attention first</b> on the cockpit and the board report until it has a delivered plan.</div>`:''; })()}
     ${openActs.length?`<div style="background:#D977061a;border:1px solid #D9770655;border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.5;margin-bottom:12px;">
       This risk still has <b>${openActs.length} open action${openActs.length!==1?'s':''}</b>. A risk with open actions stays "in plan" even after acceptance.
       <label style="display:flex;gap:7px;align-items:flex-start;margin-top:7px;cursor:pointer;"><input type="checkbox" id="arClose" checked style="margin-top:2px;">
@@ -17499,7 +17495,7 @@ function _riskVsMaturity(){
   const H=_holdSummary();
   let rag, verdict;
   if(!H.total){ rag='#9CA3AF'; verdict='Add and score the risks to complete the picture.'; }
-  else if(RD.sifUncontrolled.length>0 || H.breaches.length){ rag='#DC2626'; verdict=(H.breaches.length||RD.sifUncontrolled.length)+' rule breach'+(((H.breaches.length||RD.sifUncontrolled.length))!==1?'es':'')+' — the top priority.'; }
+  else if(RD.sifUncontrolled.length>0 || H.breaches.length){ rag='#DC2626'; const _na=(H.breaches.length||RD.sifUncontrolled.length); verdict=_na+' risk'+(_na!==1?'s':'')+' need'+(_na!==1?'':'s')+' attention first.'; }
   else if(H.held<H.total){ rag='#F59E0B'; verdict=H.held+' of '+H.total+' risks properly held; the rest are being worked on time.'; }
   else { rag='#16A34A'; verdict='All risks properly held.'; }
   return { riskIndex, riskLabel: riskIndex>=60?'High':riskIndex>=35?'Moderate':riskIndex>0?'Lower':'None', rag, verdict, sifUncontrolled:RD.sifUncontrolled.length, H, ragLabel: rag==='#DC2626'?'Priority':rag==='#F59E0B'?'Working':rag==='#16A34A'?'Held':'Incomplete' };
@@ -18290,7 +18286,7 @@ function buildRiskProfileReportPDF(){
     doc.setFontSize(12); doc.setTextColor(150,155,162); doc.text('/ 25', pl+nlw+2, py);
     doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(avgCol[0],avgCol[1],avgCol[2]); doc.text(avgBand, pl+nlw+18, py);
     py+=6; doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120,128,140); doc.text('mean L x S of '+rated2.length+' rated risk'+(rated2.length!==1?'s':''), pl, py);
-    py+=8; doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); doc.text('Held', pl, py); doc.setFont('helvetica','normal'); doc.setTextColor(70,70,70); doc.text(H.held+' of '+H.total+' risks'+(H.breaches.length?(' - '+H.breaches.length+' rule breach'+(H.breaches.length!==1?'es':'')):''), pl+26, py);
+    py+=8; doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); doc.text('Held', pl, py); doc.setFont('helvetica','normal'); doc.setTextColor(70,70,70); doc.text(H.held+' of '+H.total+' risks'+(H.breaches.length?(' - '+H.breaches.length+' need'+(H.breaches.length!==1?'':'s')+' attention first'):''), pl+26, py);
     py+=6; doc.setFont('helvetica','bold'); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); doc.text('Position', pl, py); doc.setFont('helvetica','bold'); doc.setTextColor(ragCol[0],ragCol[1],ragCol[2]); doc.text(os.ragLabel, pl+26, py);
     py+=6; doc.setFont('helvetica','normal'); doc.setFontSize(7.8); doc.setTextColor(110,116,126); doc.splitTextToSize(os.verdict, pw-12).forEach(ln=>{ doc.text(ln, pl, py); py+=3.4; });
     y=Math.max(matBottom, my+2+ph);
@@ -18679,7 +18675,7 @@ function renderRiskReview(){
             ${chip(rl.crit,'Critical',_RISK_PRIO_COLOR.Critical)}
             ${chip(rl.high,'High',_RISK_PRIO_COLOR.High)}
             ${chip(os.H.held+'/'+os.H.total,'Properly held', os.H.total&&os.H.held===os.H.total?'#16A34A':'var(--text)')}
-            ${chip(os.H.breaches.length,'Rule breaches', os.H.breaches.length?'#DC2626':'#16A34A')}
+            ${chip(os.H.breaches.length,'Need attention first', os.H.breaches.length?'#DC2626':'#16A34A')}
           </div>
           <div style="font-size:13px;color:var(--text);line-height:1.5;">${esc(os.verdict)}</div>
           ${(_rpVerdictBits(os.M||_riskPanelModel()).explainHTML)||''}
@@ -22360,7 +22356,7 @@ function _suggestReviewFeedbackText(){
   const br=((S.consultation&&S.consultation.briefings)||[]);
   const bits=[];
   bits.push('Where you are: '+M.H.held+' of '+M.H.total+' risks properly held'
-    +(M.H.breaches.length?('; '+M.H.breaches.length+' breach'+(M.H.breaches.length!==1?'es':'')+' of the rule to close'):'; no breaches of the rule')+'.');
+    +(M.H.breaches.length?('; '+M.H.breaches.length+' need'+(M.H.breaches.length!==1?'':'s')+' attention first'):'; nothing needs attention first')+'.');
   if(del) bits.push(del+' action'+(del!==1?'s have':' has')+' been delivered and kept as evidence - real progress the business should take credit for.');
   if(sc.compliance!=null) bits.push('Inspection compliance is running at '+sc.compliance+'%.');
   if(br.length) bits.push(br.length+' recorded briefing'+(br.length!==1?'s':'')+' show'+(br.length===1?'s':'')+' communication running both ways.');
@@ -22581,11 +22577,11 @@ function buildAuditReportPDF(){
     K.section('Progress against baseline', NAVY);
     K.kv('Baseline recorded', fd(base.date)+(base.takenBy?(' by '+base.takenBy):''));
     const tgt=S.auditTarget||{};
-    K.kv('Agreed target', 'Every risk properly held, no rule breaches'+(tgt.targetDate?(' by '+fd(tgt.targetDate)):''));
+    K.kv('Agreed target', 'Every risk properly held, nothing needing attention'+(tgt.targetDate?(' by '+fd(tgt.targetDate)):''));
     const fmt1=(v)=>v==null?'-':Number(v).toFixed(1);
     K.table([{header:'MEASURE',w:66},{header:'BASELINE',w:30},{header:'NOW',w:30},{header:'MOVEMENT',w:52}],
       [ ['Risks properly held', String(base.metrics.held ?? '-'), String(nowM.held ?? '-'), null],
-        ['Rule breaches', String(base.metrics.ruleBreaches ?? '-'), String(nowM.ruleBreaches ?? '-'), null],
+        ['Need attention first', String(base.metrics.ruleBreaches ?? '-'), String(nowM.ruleBreaches ?? '-'), null],
         ['High + critical risks', String(base.metrics.highCrit??'-'), String(nowM.highCrit??'-'), null],
         ['Open actions', String(base.metrics.openActions??'-'), String(nowM.openActions??'-'), null],
         ['Overdue actions', String(base.metrics.overdueActions??'-'), String(nowM.overdueActions??'-'), null],
@@ -22595,7 +22591,7 @@ function buildAuditReportPDF(){
         ['Accreditation ready', base.metrics.casReady==null?'-':base.metrics.casReady+'%', nowM.casReady==null?'-':nowM.casReady+'%', null],
       ].map(r=>{
         const b=parseFloat(r[1]), n=parseFloat(r[2]);
-        const goodDown=/breach|critical|Open|Overdue|expired|gaps/i.test(r[0]);
+        const goodDown=/attention|critical|Open|Overdue|expired|gaps/i.test(r[0]);
         let mv='no change', col=[130,130,130];
         if(!isNaN(b)&&!isNaN(n)&&b!==n){ const d=+(n-b).toFixed(1); const good=goodDown?d<0:d>0; mv=(d>0?'up ':'down ')+Math.abs(d); col=good?GREEN:RED; }
         return [ {text:r[0], bold:true}, r[1], r[2], {text:mv, color:col} ];

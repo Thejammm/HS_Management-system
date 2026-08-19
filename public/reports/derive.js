@@ -270,11 +270,11 @@ export function deriveBoard(state, opts = {}) {
     standfirst = 'Of ' + countPhrase(rated.length, 'rated risk', 'rated risks') + ', ' +
       noneOrCount(highPlus, 'still sits', 'still sit', 'none') + ' High or Critical with controls in place, and ' +
       noneOrCount(fatalUncontrolled.length, 'fatal-potential risk has', 'fatal-potential risks have', 'no') +
-      ' no recorded controls. ' + holdS.held + ' of ' + holdS.total + ' risk' + (holdS.total !== 1 ? 's are' : ' is') + ' properly held' + (holdS.breaches.length ? (' - ' + holdS.breaches.length + ' rule breach' + (holdS.breaches.length !== 1 ? 'es' : '') + '.') : '.');
+      ' no recorded controls. ' + holdS.held + ' of ' + holdS.total + ' risk' + (holdS.total !== 1 ? 's are' : ' is') + ' properly held' + (holdS.breaches.length ? (' - ' + holdS.breaches.length + ' need' + (holdS.breaches.length !== 1 ? '' : 's') + ' attention first.') : '.');
   } else {
     headline = noneOrCount(highPlus, 'risk still sits', 'risks still sit', 'No') + ' High or Critical with controls in place.';
     standfirst = countPhrase(rated.length, 'risk is', 'risks are') + ' rated. ' +
-      holdS.held + ' of ' + holdS.total + ' risk' + (holdS.total !== 1 ? 's are' : ' is') + ' properly held' + (holdS.breaches.length ? (' - ' + holdS.breaches.length + ' rule breach' + (holdS.breaches.length !== 1 ? 'es' : '') + '.') : '.');
+      holdS.held + ' of ' + holdS.total + ' risk' + (holdS.total !== 1 ? 's are' : ' is') + ' properly held' + (holdS.breaches.length ? (' - ' + holdS.breaches.length + ' need' + (holdS.breaches.length !== 1 ? '' : 's') + ' attention first.') : '.');
   }
 
   return {

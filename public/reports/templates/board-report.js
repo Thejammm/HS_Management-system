@@ -76,14 +76,14 @@ export function buildBoardReport(state, opts = {}) {
       return { value: D.planDone + '/' + total, label: 'Risks fully actioned', note,
                tone: total && (D.planDone + D.planAccepted === total) ? 'ok' : undefined };
     })(),
-    { value: D.holdS.held + '/' + D.holdS.total, label: 'Risks properly held', note: D.holdS.breaches.length ? (D.holdS.breaches.length + ' rule breach' + (D.holdS.breaches.length !== 1 ? 'es' : '')) : 'no rule breaches', tone: D.holdS.breaches.length ? 'bad' : (D.holdS.total && D.holdS.held === D.holdS.total ? 'ok' : undefined) },
+    { value: D.holdS.held + '/' + D.holdS.total, label: 'Risks properly held', note: D.holdS.breaches.length ? (D.holdS.breaches.length + ' need' + (D.holdS.breaches.length !== 1 ? '' : 's') + ' attention first') : 'nothing needs attention', tone: D.holdS.breaches.length ? 'bad' : (D.holdS.total && D.holdS.held === D.holdS.total ? 'ok' : undefined) },
     { value: String(D.overdue), label: 'Actions overdue', tone: D.overdue ? 'warn' : 'ok' },
   ];
 
   const decisions = [];
   if (D.fatalUncontrolled) decisions.push({ text: 'Direct that the ' + countPhrase(D.fatalUncontrolled, 'risk that could kill or seriously injure and has', 'risks that could kill or seriously injure and have') + ' no recorded controls get controls recorded this quarter.', rationale: 'A could-kill risk with no recorded controls is the first thing an inspector or prosecutor will ask about.' });
   if (D.overdue) decisions.push({ text: 'Reset owners and dates on the ' + countPhrase(D.overdue, 'overdue action', 'overdue actions') + '.', rationale: 'Overdue actions with no intervention become evidence of a plan the organisation does not follow.' });
-  if (D.holdS.breaches.length) { const b = D.holdS.breaches[0]; decisions.push({ text: 'Direct that the ' + countPhrase(D.holdS.breaches.length, 'breach', 'breaches') + ' of the rule ' + (D.holdS.breaches.length === 1 ? 'is' : 'are') + ' closed this month, starting with "' + b.name + '" (' + (b.hold.reasons[0] || b.breach) + ').', rationale: 'The rule: Critical and High risks must be held or being worked on time, never run on acceptance alone; Medium risks must not be unheld.' }); }
+  if (D.holdS.breaches.length) { const b = D.holdS.breaches[0]; decisions.push({ text: 'Direct that the ' + countPhrase(D.holdS.breaches.length, 'risk needing attention first', 'risks needing attention first') + ' ' + (D.holdS.breaches.length === 1 ? 'is' : 'are') + ' dealt with this month, starting with "' + b.name + '" (' + (b.hold.reasons[0] || b.breach) + ').', rationale: 'HSG65: the response must match the size of the risk - Critical and High risks held or being worked, never run on acceptance alone; Medium risks never left not held.' }); }
   if (!decisions.length) decisions.push({ text: D.empty ? 'Commission completion of the risk profile before the next board cycle.' : 'Note the position and maintain the current programme.', rationale: D.empty ? 'No decision can be soundly made from an incomplete profile.' : 'No exception requires a board decision this period.' });
 
   // Where the risks stand — real counts in the four factual states, plus the
@@ -197,7 +197,7 @@ export function buildBoardReport(state, opts = {}) {
       cols: [ { header: 'Measure', w: '40%' }, { header: 'Baseline ' + fmtD(X.baseline.date), w: '20%' }, { header: 'Now', w: '20%' }, { header: 'Movement', w: '20%' } ],
       rows: [
         [ 'Risks properly held', String(b.held ?? '—'), String(D.holdS.held), (b.held != null) ? ((D.holdS.held > b.held) ? ('up ' + (D.holdS.held - b.held)) : (D.holdS.held < b.held) ? ('down ' + (b.held - D.holdS.held)) : 'no change') : '—' ],
-        [ 'Rule breaches', String(b.ruleBreaches ?? '—'), String(D.holdS.breaches.length), (b.ruleBreaches != null) ? ((D.holdS.breaches.length < b.ruleBreaches) ? ('down ' + (b.ruleBreaches - D.holdS.breaches.length)) : (D.holdS.breaches.length > b.ruleBreaches) ? ('up ' + (D.holdS.breaches.length - b.ruleBreaches)) : 'no change') : '—' ],
+        [ 'Need attention first', String(b.ruleBreaches ?? '—'), String(D.holdS.breaches.length), (b.ruleBreaches != null) ? ((D.holdS.breaches.length < b.ruleBreaches) ? ('down ' + (b.ruleBreaches - D.holdS.breaches.length)) : (D.holdS.breaches.length > b.ruleBreaches) ? ('up ' + (D.holdS.breaches.length - b.ruleBreaches)) : 'no change') : '—' ],
         [ 'High + critical risks', String(b.highCrit ?? '—'), String(D.highPlus), mv(b.highCrit, D.highPlus) ],
         [ 'Open actions', String(b.openActions ?? '—'), String(D.openActions), mv(b.openActions, D.openActions) ],
         [ 'Overdue actions', String(b.overdueActions ?? '—'), String(D.overdue), mv(b.overdueActions, D.overdue) ],
@@ -275,12 +275,12 @@ export function buildBoardReport(state, opts = {}) {
       { type: 'dataTable', title: 'Risk control status — what each state means',
         cols: [ { header: 'State', w: '18%' }, { header: 'Risks', w: '10%' }, { header: 'What it means', w: '72%' } ],
         rows: holdRows,
-        footnote: 'Graded on recorded facts, not opinion. The rule: Critical and High risks must be held or being worked on time, and never run on acceptance alone; Medium risks must not be left not held.' },
+        footnote: 'Graded on recorded facts, not opinion. HSG65 expects the response to match the size of the risk: Critical and High risks must be held or being worked on time, and never run on acceptance alone; Medium risks must not be left not held.' },
       D.holdS.breaches.length
-        ? { type: 'dataTable', title: 'Breaches of the rule — for board direction',
-            cols: [ { header: 'Risk', w: '34%' }, { header: 'Band', w: '12%' }, { header: 'State', w: '16%' }, { header: 'Why it breaches', w: '38%' } ],
+        ? { type: 'dataTable', title: 'Needs attention first — for board direction',
+            cols: [ { header: 'Risk', w: '34%' }, { header: 'Band', w: '12%' }, { header: 'State', w: '16%' }, { header: 'Why', w: '38%' } ],
             rows: D.holdS.breaches.map(b => [ b.name, b.band || '—', b.hold.label, (b.hold.reasons && b.hold.reasons.join('; ')) || b.breach ]) }
-        : { type: 'textBlock', title: 'Breaches of the rule', body: 'None. Every Critical and High risk is held or being worked on time, and no Medium risk is left not held.' },
+        : { type: 'textBlock', title: 'Needs attention first', body: 'None. Every Critical and High risk is held or being worked on time, and no Medium risk is left not held.' },
       judRows.length
         ? { type: 'dataTable', title: 'Consultant judgement — the six HSG65 areas, in words',
             cols: [ { header: 'Area', w: '28%' }, { header: 'Judgement', w: '16%' }, { header: 'Consultant’s note', w: '56%' } ],

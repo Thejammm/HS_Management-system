@@ -256,7 +256,8 @@ export function deriveBoard(state, opts = {}) {
   // Risk control status: the app's hold model via the contract - each risk
   // graded by recorded facts, the company measure a count, HSG65
   // proportionality a rule. Replaces the abstract 0-5 maturity number.
-  const holdS = holdSummaryOf(s, (r) => { const res = residualOf(r); return res ? tierFor(res.score, bands) : null; }, { today: opts.today });
+  const holdS = holdSummaryOf(s, (r) => { const res = residualOf(r); return res ? tierFor(res.score, bands) : null; },
+    { today: opts.today, ratingOf: (r) => { const res = residualOf(r); return res ? res.score : 0; } });
 
   // Exposure score for the bars: mean residual score of rated risks (0-25).
   const meanScore = rated.length ? rated.reduce((a, x) => a + x.res.score, 0) / rated.length : null;

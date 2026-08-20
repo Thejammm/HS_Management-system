@@ -248,18 +248,34 @@ export function holdBreachOf(band, hold) {
   }
   return null;
 }
+// Worst first, by a rule that can be said out loud: the most serious band,
+// then the weakest control, then the higher score. Name breaks any tie so
+// the order never wobbles between renders. (Verbatim port of the app's
+// _holdWorstFirst - the cockpit's top-five list and the report's attention
+// pages must name the risks in the same order.)
+export const HOLD_BANDRANK = { Critical: 4, High: 3, Medium: 2, Low: 1 };
+export function holdWorstFirst(a, b) {
+  return (HOLD_BANDRANK[b.band] || 0) - (HOLD_BANDRANK[a.band] || 0)
+      || a.hold.level - b.hold.level
+      || (b.rating || 0) - (a.rating || 0)
+      || String(a.name).localeCompare(String(b.name));
+}
 // bandOfRisk needs the tier function; the caller passes it in to avoid a
-// circular import (derive.js owns tierFor/bands).
+// circular import (derive.js owns tierFor/bands). opts.ratingOf supplies the
+// residual score used only as a tie-break in the ordering.
 export function holdSummaryOf(state, tierOfRisk, opts = {}) {
   const risks = (state && Array.isArray(state.riskProfile)) ? state.riskProfile : [];
+  const ratingOf = opts.ratingOf || (() => 0);
   const rows = risks.map(r => {
     const band = tierOfRisk(r);
     const hold = holdOf(r, opts);
-    return { id: r.id, name: String(r.activity || r.hazard || 'Unnamed risk'), band, hold, breach: holdBreachOf(band, hold) };
+    return { id: r.id, name: String(r.activity || r.hazard || 'Unnamed risk'), band, rating: ratingOf(r) || null, hold, breach: holdBreachOf(band, hold) };
   });
   const count = k => rows.filter(x => x.hold.k === k).length;
   const held = count('held'), working = count('working'), slipping = count('slipping'), notheld = count('notheld');
-  const breaches = rows.filter(x => x.breach);
+  const breaches = rows.filter(x => x.breach).sort(holdWorstFirst);
+  // Not a breach, but not assured either - used to top the top-five list up.
+  const nextWorst = rows.filter(x => !x.breach && x.hold.k !== 'held').sort(holdWorstFirst);
   const total = rows.length;
   let pillT, pillC, verdict;
   if (!total) { pillT = 'no risks recorded'; pillC = '#8b949a'; verdict = 'Add the risks to the profile to see the position.'; }
@@ -273,7 +289,7 @@ export function holdSummaryOf(state, tierOfRisk, opts = {}) {
     pillT = 'working to plan'; pillC = '#c2740a';
     verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' assured; ' + working + ' managed' + (slipping ? ('; ' + slipping + ' vulnerable') : '') + (notheld ? ('; ' + notheld + ' uncontrolled') : '') + '. Nothing needs attention first - every Critical and High risk is assured or managed on time.';
   }
-  return { rows, total, held, working, slipping, notheld, breaches, pillT, pillC, verdict };
+  return { rows, total, held, working, slipping, notheld, breaches, nextWorst, pillT, pillC, verdict };
 }
 
 // ══════════════════════════════════════════════════════════════

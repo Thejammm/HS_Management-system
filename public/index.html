@@ -3429,13 +3429,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rpx-explain{font-size:12.5px;color:var(--text-muted);line-height:1.6;}
     .rpx-how{margin-top:8px;}
     .rpx-how-lab{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:5px;}
-    .rpx-how-row{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;}
-    .rpx-how-step{flex:1 1 150px;min-width:150px;border:1px dashed var(--border);border-radius:8px;padding:7px 9px;cursor:help;}
-    .rpx-how-step .t{display:block;font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;}
-    .rpx-how-step .e{display:block;font-size:10.5px;color:var(--text-muted);margin:2px 0 3px;line-height:1.35;}
-    .rpx-how-step .v{display:block;font-size:14px;font-weight:800;color:var(--text);}
-    .rpx-how-step .v i{font-style:normal;font-weight:600;font-size:11px;color:var(--text-muted);}
-    .rpx-how-op{align-self:center;font-size:11px;font-weight:800;color:var(--text-muted);flex:0 0 auto;}
+    .rpx-key{margin-top:10px;border-top:1px solid var(--border);padding-top:9px;}
+    .rpx-keyrow{display:flex;align-items:baseline;gap:9px;font-size:11.5px;line-height:1.55;padding:2px 0;}
+    .rpx-keyrow .sw{flex:0 0 auto;width:9px;height:9px;border-radius:3px;align-self:center;}
+    .rpx-keyrow .nm{flex:0 0 auto;font-weight:700;color:var(--text);min-width:98px;}
+    .rpx-keyrow .ds{flex:1 1 auto;color:var(--text-muted);min-width:0;}
     .rpx-req{border-collapse:collapse;margin:3px 0 4px;}
     .rpx-req td{border:1px solid var(--border);font-size:9px;padding:2px 6px;text-align:center;color:var(--text-muted);line-height:1.25;}
     .rpx-req td b{font-size:10.5px;color:var(--text);}
@@ -3458,9 +3456,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rpx-selrow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);padding:8px 2px;font-size:12.5px;color:var(--text);}
     .rpx-selrow .t{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .rpx-selrow .o{flex:0 1 auto;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:34%;}
-    .rpx-next{margin-top:auto;background:var(--muted-bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:12px;}
-    .rpx-next .dv{width:1px;align-self:stretch;background:var(--border);flex:0 0 auto;}
-    .rpx-next .tx{font-size:12.5px;color:var(--text);line-height:1.5;}
     .rpx-grid>*{min-width:0;}
     .rpx-verdict{overflow-wrap:break-word;}
     /* The panel adapts to ITS OWN width (container query), not the viewport -
@@ -3470,10 +3465,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     @container (max-width:760px){
       .rpx-grid{grid-template-columns:1fr;}
       .rpx-right{border-left:0;padding-left:0;margin-top:18px;}
-    }
-    @container (max-width:520px){
-      .rpx-next{flex-wrap:wrap;}
-      .rpx-next .dv{display:none;}
     }
     .rpx-verdict{font-size:clamp(17px,4.2cqi,23px);}
     @media(max-width:900px){
@@ -15119,13 +15110,25 @@ function _holdBreach(band, hold){
   }
   return null;
 }
+// Worst first, by a rule that can be said out loud: the most serious band,
+// then the weakest control, then the higher score. Name breaks any tie so
+// the order never wobbles between renders.
+const _HOLD_BANDRANK={Critical:4,High:3,Medium:2,Low:1};
+function _holdWorstFirst(a,b){
+  return (_HOLD_BANDRANK[b.band]||0)-(_HOLD_BANDRANK[a.band]||0)
+      || a.hold.level-b.hold.level
+      || (b.rating||0)-(a.rating||0)
+      || String(a.name).localeCompare(String(b.name));
+}
 function _holdSummary(){
   const risks=(S.riskProfile||[]);
   const rows=risks.map(r=>{ const sc=_riskScore(r); const hold=_riskHold(r);
     return { r, id:r.id, name:String(r.activity||r.hazard||'Unnamed risk'), band:sc.priority||null, rating:sc.rating||null, hold, breach:_holdBreach(sc.priority, hold) }; });
   const count=k=>rows.filter(x=>x.hold.k===k).length;
   const held=count('held'), working=count('working'), slipping=count('slipping'), notheld=count('notheld');
-  const breaches=rows.filter(x=>x.breach);
+  const breaches=rows.filter(x=>x.breach).sort(_holdWorstFirst);
+  // Not a breach, but not assured either - used to top the top-five list up.
+  const nextWorst=rows.filter(x=>!x.breach&&x.hold.k!=="held").sort(_holdWorstFirst);
   const total=rows.length;
   let pillT, pillC, verdict;
   if(!total){ pillT='no risks recorded'; pillC='#8b949a'; verdict='Add the risks to the profile to see the position.'; }
@@ -15139,7 +15142,7 @@ function _holdSummary(){
     pillT='working to plan'; pillC='#c2740a';
     verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' assured; '+working+' managed'+(slipping?('; '+slipping+' vulnerable'):'')+(notheld?('; '+notheld+' uncontrolled'):'')+'. Nothing needs attention first - every Critical and High risk is assured or managed on time.';
   }
-  return { rows, total, held, working, slipping, notheld, breaches, pillT, pillC, verdict };
+  return { rows, total, held, working, slipping, notheld, breaches, nextWorst, pillT, pillC, verdict };
 }
 
 // ── ONE verdict everywhere. The combined panel (cockpit), the "Overall H&S
@@ -15153,28 +15156,18 @@ function _rpVerdictBits(M){
   const pillTip = 'HSG65 - the response must match the size of the risk: every Critical and High risk must be 4 · Assured or 3 · Managed, and never assured on acceptance alone; a Medium risk must not be 1 · Uncontrolled. A risk that falls short needs attention first, named with the reason.';
   const verdictLine = H.verdict;
   const explain = 'Each risk is graded by facts the app records onto the H&S Control Maturity scale: 4 Assured = controls recorded and the plan delivered and signed off (or formally accepted); 3 Managed = owned, dated actions, all on time; 2 Vulnerable = overdue or missing owner/date; 1 Uncontrolled = no controls, or no plan and no acceptance.';
-  // Visual "how a risk earns Held" - three fact boxes, no numbers to decode.
-  const explainHTML = `<div class="rpx-how">
-      <div class="rpx-how-lab rpx-mono">How a risk earns 4 · Assured - hover any box</div>
-      <div class="rpx-how-row">
-        <div class="rpx-how-step" title="The risk is scored (likelihood × severity) and its controls are written down with a control level. A risk with no recorded controls, or no score, is 1 · Uncontrolled - whatever else is true.">
-          <span class="t">Controls recorded</span>
-          <span class="e">scored, controls written down</span>
-          <span class="v">the floor</span>
-        </div>
-        <span class="rpx-how-op">→</span>
-        <div class="rpx-how-step" title="Every remaining gap has an action with a named owner and a target date, and none of them is overdue. Overdue or unowned actions make the risk 2 · Vulnerable.">
-          <span class="t">Owned, dated plan</span>
-          <span class="e">every action owned + dated, on time</span>
-          <span class="v">3 · Managed</span>
-        </div>
-        <span class="rpx-how-op">→</span>
-        <div class="rpx-how-step" title="The plan is delivered and the risk signed off as reviewed - or formally accepted with who and why on the acceptance register (acceptance is only acceptable for Low and Medium risks; a High or Critical risk run on acceptance alone needs attention first).">
-          <span class="t">Delivered &amp; signed off</span>
-          <span class="e">or formally accepted (Low/Medium only)</span>
-          <span class="v">4 · Assured ✓</span>
-        </div>
-      </div>
+  // The key: what each of the four levels means, in the panel itself rather
+  // than hidden on hover. Both halves are split out of HOLD_STATES.desc so
+  // the key can never drift from the wording used everywhere else.
+  const _keyBits = (d)=>{ const i=String(d).indexOf(': '); return i>0 ? [String(d).slice(0,i), String(d).slice(i+2)] : ['', String(d)]; };
+  const explainHTML = `<div class="rpx-key">
+      <div class="rpx-how-lab rpx-mono">What the four levels mean</div>
+      ${HOLD_ORDER.map(k=>{ const st=HOLD_STATES[k]; const bits=_keyBits(st.desc);
+        return `<div class="rpx-keyrow">
+          <span class="sw" style="background:${st.colour};"></span>
+          <span class="nm">${st.level} &middot; ${esc(st.label)}</span>
+          <span class="ds"><b>${esc(bits[0])}</b>${bits[0]?': ':''}${esc(bits[1])}</span>
+        </div>`; }).join('')}
     </div>`;
   return { pillC, pillT, pillTip, verdictLine, explain, explainHTML, rag: H.breaches.length ? '#DC2626' : (H.total && H.held===H.total ? '#16A34A' : (H.total ? '#F59E0B' : '#9CA3AF')) };
 }
@@ -15248,35 +15241,27 @@ function _riskPanelHTML(o){
       ${rows}
     </div>`;
   } else {
-    const br = H.breaches.slice(0,4).map(b=>`<button type="button" class="rpx-hotrow" onclick="_gotoRisk('${b.id}')" title="${esc(b.breach)} - ${esc(b.hold.reasons.join('; '))}. Click to open this risk.">
-        <span class="ref rpx-mono" style="color:#DC2626;">${esc(b.band||'-')}</span>
+    // Five to work on next, ranked worst first. The risks that need attention
+    // first lead the list; if there are fewer than five of those, it is topped
+    // up with the next most exposed risks that are not yet assured - so the
+    // consultant always leaves the meeting with five, and the count of risks
+    // actually needing attention first stays exactly what it is.
+    const nb = H.breaches.length;
+    const top = H.breaches.concat(H.nextWorst).slice(0,5);
+    const br = top.map(b=>`<button type="button" class="rpx-hotrow" onclick="_gotoRisk('${b.id}')" title="${esc(b.breach || (b.band+' risk, '+b.hold.level+' · '+b.hold.label))} - ${esc(b.hold.reasons.join('; '))}. Click to open this risk.">
+        <span class="ref rpx-mono" style="color:${b.breach?'#DC2626':'var(--text-muted)'};">${esc(b.band||'-')}</span>
         <span class="lbl">${esc(b.name)}</span>
         <span class="rpx-short rpx-mono" style="color:${b.hold.colour};">${b.hold.level} &middot; ${esc(b.hold.label)}</span>
       </button>`).join('');
+    const why = nb
+      ? 'Ranked worst first - highest risk band, then weakest control. The '+nb+' needing attention first lead the list'+(top.length>nb?'; the rest are the next most exposed.':'.')
+      : 'Ranked worst first - highest risk band, then weakest control. Nothing needs attention first; these are simply the risks not yet assured.';
     listBlock = `<div aria-live="polite">
-      <div class="rpx-microlab rpx-mono">Needs attention first${H.breaches.length?(' · '+H.breaches.length):''}</div>
-      ${br || `<div class="rpx-explain">None. Every Critical and High risk is assured or managed on time, and no Medium risk is left uncontrolled.</div>`}
-      ${H.breaches.length>4?`<div class="rpx-explain">…and ${H.breaches.length-4} more - they are flagged in the register.</div>`:''}
+      <div class="rpx-microlab rpx-mono">Top ${top.length} to fix next${nb?(' · '+nb+' need'+(nb!==1?'':'s')+' attention first'):''}</div>
+      ${br || `<div class="rpx-explain">None. Every risk is assured - controls recorded, plans delivered and signed off, or formally accepted.</div>`}
+      ${br ? `<div class="rpx-explain" style="margin-top:8px;">${esc(why)}</div>` : ''}
     </div>`;
   }
-  let nextTx;
-  if(sel){
-    const worst = sel.items.slice().sort((a,b)=>HOLD_ORDER.indexOf(b.hold.k)-HOLD_ORDER.indexOf(a.hold.k))[0];
-    nextTx = worst.hold.k==='held'
-      ? 'Every risk in this square is assured. Keep the controls under review.'
-      : 'Start with "'+(worst.r.activity||worst.r.hazard||'this risk')+'" - '+worst.hold.label.toLowerCase()+': '+worst.hold.reasons.join('; ')+'.';
-  } else if(H.breaches.length){
-    const b=H.breaches[0];
-    nextTx = 'Start with "'+b.name+'" - '+b.breach+' ('+b.hold.reasons.join('; ')+').';
-  } else if(H.total && H.held===H.total){
-    nextTx = 'All risks assured. Keep it that way as the work changes.';
-  } else {
-    nextTx = 'Nothing needs attention first. Keep the '+H.working+' managed plan'+(H.working!==1?'s':'')+' on time'+(H.slipping?(', bring '+H.slipping+' vulnerable risk'+(H.slipping!==1?'s':'')+' back onto an owned date'):'')+', and sign off delivered work to move risks up to 4 · Assured.';
-  }
-  const next = `<div class="rpx-next">
-    <span class="rpx-microlab rpx-mono" style="margin:0;flex:0 0 auto;">Next action</span><span class="dv"></span>
-    <span class="tx">${esc(nextTx)}</span>
-  </div>`;
   const head = `<div class="rpx-head">
     <div>${o.heading?'<h4>Risk profile &amp; H&amp;S control maturity</h4>':''}
       <div class="rpx-sub">${esc(period)} · ${M.rated.length} rated risk${M.rated.length!==1?'s':''} · graded on recorded facts</div></div>
@@ -15287,16 +15272,17 @@ function _riskPanelHTML(o){
   // "H&S control maturity (only)" - the mode key stays 'maturity' for
   // compatibility with saved cockpit configs).
   if(o.only==='matrix')   return `<div class="rpx">${head}${left}</div>`;
-  if(o.only==='maturity') return `<div class="rpx">${head}<div class="rpx-right" style="border-left:0;padding-left:0;">${stateBars}${listBlock}${explainHTML}${next}</div></div>`;
-  return `<div class="rpx">${head}<div class="rpx-grid">${left}<div class="rpx-right">${stateBars}${listBlock}${explainHTML}${next}</div></div></div>`;
+  if(o.only==='maturity') return `<div class="rpx">${head}<div class="rpx-right" style="border-left:0;padding-left:0;">${stateBars}${listBlock}${explainHTML}</div></div>`;
+  return `<div class="rpx">${head}<div class="rpx-grid">${left}<div class="rpx-right">${stateBars}${listBlock}${explainHTML}</div></div></div>`;
 }
 
 // ══════════════════════════════════════════════════════════════
-//  RISK JOURNEY - the story of each risk from identified to managed
+//  RISK JOURNEY - the story of each risk from identified to signed off
 //  (ISO 31000 treatment record in plain English). Read-only narrative
 //  built entirely from data already on the risk: nothing new to fill in.
 //  A risk never disappears - once its plan is delivered and reviewed,
-//  the journey shows it as "Managed": the way the company now runs it.
+//  the journey shows it as "Signed off": the way the company now runs it.
+//  (Not "Managed" - that word belongs to level 3 of the maturity scale.)
 // ══════════════════════════════════════════════════════════════
 var _journeyFilter='all';
 function _journeyMilestones(r){
@@ -15306,7 +15292,7 @@ function _journeyMilestones(r){
   const plan=_riskPlanState(r);
   const evid=(r.linked||[]).filter(l=>l.actionId);
   const impactsRated=RISK_IMPACT_DIMS.some(d=>parseInt((r.impacts||{})[d.k],10)>0);
-  // Managed = the plan actually delivered (and signed off), or the risk was
+  // Signed off = the plan actually delivered (and reviewed), or the risk was
   // FORMALLY accepted. Having no actions never counts - see _riskPlanState.
   const managed=(plan.k==='managed' && r.reviewed && !!sc.rating) || (plan.k==='accepted' && !!sc.rating);
   const m=[];
@@ -15320,7 +15306,7 @@ function _journeyMilestones(r){
     text: acts.length ? (acts.length+' action'+(acts.length!==1?'s':'')+': '+acts.map(a=>(a.desc||'(action)').slice(0,60)+(a.owner?(' - '+a.owner+(a.due?(', due '+a.due):'')):'')).join('; ')) : 'No owned, dated actions yet' });
   m.push({ done:acts.length>0&&closed.length===acts.length, label:'Delivered', when:'',
     text: closed.length ? (closed.map(a=>(a.desc||'(action)').slice(0,50)+' - '+_actionStatus(a)+((a.completedDate||a.acceptDate)?(' '+(a.completedDate||a.acceptDate)):'')).join('; ')+(evid.length?('. Evidence: '+evid.map(l=>l.ref||l.url).join(', ')):'')) : (acts.length?'Plan in progress - '+closed.length+' of '+acts.length+' closed':'Waiting on the action plan') });
-  m.push({ done:managed, label:'Managed', when:'',
+  m.push({ done:managed, label:'Signed off', when:'',
     text: managed ? (plan.k==='accepted'
         ? ('Formally accepted with the current controls - who and why are on the risk acceptance register'+(r.trend?(' · trend '+r.trend):''))
         : ('This is now how the company manages this risk'+(_hist.length?(' - the score moved from '+(_hist[0].l*_hist[0].s)+' to '+(sc.rating||'-')+' as the plan delivered'):'')+(r.controls?(': '+String(r.controls).slice(0,140)):'')+(evid.length?(' · '+evid.length+' piece'+(evid.length!==1?'s':'')+' of evidence on file'):'')+(r.trend?(' · trend '+r.trend):'')))
@@ -15363,7 +15349,7 @@ function renderRiskJourney(){
       <summary style="padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;">
         <span style="font-weight:700;font-size:13.5px;flex:1;min-width:200px;">${esc(r.activity||r.hazard||'New risk')}</span>
         ${_riskPrioBadge(x.sc.priority,x.sc.rating)}
-        <span class="badge" style="border-color:${x.plan.colour};color:${x.plan.colour};background:${x.plan.colour}1a;">${x.m[4].done?(x.plan.k==='accepted'?'≈ Accepted':'✓ Managed'):x.plan.label}</span>
+        <span class="badge" style="border-color:${x.plan.colour};color:${x.plan.colour};background:${x.plan.colour}1a;">${x.m[4].done?(x.plan.k==='accepted'?'≈ Accepted':'✓ Signed off'):x.plan.label}</span>
         <span style="font-size:11.5px;color:var(--text-muted);">${doneN}/5 steps</span>
       </summary>
       <div style="padding:6px 18px 12px;">
@@ -15375,12 +15361,12 @@ function renderRiskJourney(){
   el.innerHTML = `<div class="card" style="margin-bottom:14px;">
       <div class="card-band"><h3><span class="dot">●</span> Risk pathway</h3></div>
       <div class="card-body">
-        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">The story of every risk, from identified to managed. A risk never leaves the profile - once its action plan is delivered, evidenced and signed off, this page shows it as the way the company now manages that risk.</div>
-        <div class="ckx-kpis" style="margin-bottom:12px;">${tile(managedN,'Managed','#16A34A')}${tile(planN,'Plan in progress','#F59E0B')}${tile(earlyN,'Being assessed','#9CA3AF')}</div>
-        <div style="display:flex;gap:8px;" class="no-print">${fbtn('all','All ('+enriched.length+')')}${fbtn('open','In progress ('+(enriched.length-managedN)+')')}${fbtn('managed','Managed ('+managedN+')')}</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">The story of every risk, from identified to signed off. A risk never leaves the profile - once its action plan is delivered, evidenced and signed off, this page shows it as the way the company now manages that risk.</div>
+        <div class="ckx-kpis" style="margin-bottom:12px;">${tile(managedN,'Signed off','#16A34A')}${tile(planN,'Plan in progress','#F59E0B')}${tile(earlyN,'Being assessed','#9CA3AF')}</div>
+        <div style="display:flex;gap:8px;" class="no-print">${fbtn('all','All ('+enriched.length+')')}${fbtn('open','In progress ('+(enriched.length-managedN)+')')}${fbtn('managed','Signed off ('+managedN+')')}</div>
       </div>
     </div>
-    ${rows.length ? rows.map(card).join('') : `<div class="card"><div class="card-body"><div class="empty"><h4>No risks ${_journeyFilter==='managed'?'managed yet':'to show'}</h4><p>${_journeyFilter==='managed'?'Deliver and sign off an action plan and the risk will appear here.':'Build the risk profile first - the journey writes itself from there.'}</p></div></div></div>`}`;
+    ${rows.length ? rows.map(card).join('') : `<div class="card"><div class="card-body"><div class="empty"><h4>No risks ${_journeyFilter==='managed'?'signed off yet':'to show'}</h4><p>${_journeyFilter==='managed'?'Deliver an action plan and tick the risk as reviewed, and it will appear here.':'Build the risk profile first - the journey writes itself from there.'}</p></div></div></div>`}`;
 }
 
 // ══════════════════════════════════════════════════════════════

@@ -13361,6 +13361,15 @@ function applyViewMode(){
 // edits save to that client's record. _consultantEdit stays true so the old
 // read-only gates (routed through _roLocked) never fire. Flip it to false if a
 // read-only "just viewing" mode is ever wanted again - every guard honours it.
+//
+// READ THIS BEFORE RELYING ON _roLocked() OR _blockIfReadOnly() ANYWHERE:
+// as shipped, _consultantEdit is a constant true and nothing reassigns it, so
+// _roLocked() ALWAYS returns false and all ~104 _blockIfReadOnly() call sites
+// are inert BY DESIGN. They are the wiring for a read-only mode that is
+// currently switched off, not live protection. Do NOT add a new guard here
+// expecting it to stop anything - it will read as protection and be none.
+// (Two separate reviews have now mistaken this for a bug. resetAppData()
+// deliberately does not use it; see the note there.)
 let _consultantEdit = true;
 function _roLocked(){ return !!(_consultantView && !_consultantEdit); }
 

@@ -179,18 +179,20 @@ export function hazardTypeOf(category, hazardText) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// RISK CONTROL STATUS - verbatim port of the app's hold model (the
-// replacement for the 0-5 maturity number). Grades each risk by recorded
-// facts; the company measure is a count and the HSG65 proportionality is
+// H&S CONTROL MATURITY - verbatim port of the app's model. Grades each risk
+// by recorded facts onto the 4 to 1 scale (Assured, Managed, Vulnerable,
+// Uncontrolled); the company measure is a count and HSG65 proportionality is
 // a rule. Must stay identical to the app's _riskHold/_holdBreach/
 // _holdSummary - the consistency check diffs them.
 // ══════════════════════════════════════════════════════════════
 export const HOLD_STATES = {
-  held:     { k: 'held',     label: 'Held',         colour: '#16A34A', desc: 'Controls recorded, and the plan delivered and signed off - or the risk formally accepted.' },
-  working:  { k: 'working',  label: 'Being worked', colour: '#F59E0B', desc: 'Controls recorded and every gap has an owned, dated action - all on time.' },
-  slipping: { k: 'slipping', label: 'Slipping',     colour: '#EA580C', desc: 'The plan is overdue, or actions are missing an owner or a date.' },
-  notheld:  { k: 'notheld',  label: 'Not held',     colour: '#DC2626', desc: 'No controls recorded, no plan and no formal acceptance, or the risk is not yet scored.' },
+  held:     { k: 'held',     level: 4, label: 'Assured',      sub: 'Established & effective',      colour: '#16A34A', desc: 'Established and effective: controls recorded, and the plan delivered and signed off - or the risk formally accepted.' },
+  working:  { k: 'working',  level: 3, label: 'Managed',      sub: 'Established with gaps',        colour: '#F59E0B', desc: 'Established with gaps: controls recorded and every gap has an owned, dated action - all on time.' },
+  slipping: { k: 'slipping', level: 2, label: 'Vulnerable',   sub: 'Deteriorating / at risk',      colour: '#EA580C', desc: 'Deteriorating: the plan is overdue, or actions are missing an owner or a date.' },
+  notheld:  { k: 'notheld',  level: 1, label: 'Uncontrolled', sub: 'Not established / ineffective', colour: '#DC2626', desc: 'Not established: no controls recorded, no plan and no formal acceptance, or the risk is not yet scored.' },
 };
+// "4 · Assured" - the level and the word together, for compact labels.
+export function hsLevel(k){ const st = HOLD_STATES[k]; return st ? (st.level + ' · ' + st.label) : ''; }
 export const HOLD_ORDER = ['held', 'working', 'slipping', 'notheld'];
 
 function actionStatusOf(a) {
@@ -242,7 +244,7 @@ export function holdBreachOf(band, hold) {
     if (hold.k === 'slipping' || hold.k === 'notheld') return band + ' risk is ' + hold.label.toLowerCase();
     if (hold.k === 'held' && hold.accepted) return band + ' risk is run on acceptance alone';
   } else if (band === 'Medium') {
-    if (hold.k === 'notheld') return 'Medium risk is not held';
+    if (hold.k === 'notheld') return 'Medium risk is ' + hold.label.toLowerCase();
   }
   return null;
 }
@@ -264,12 +266,12 @@ export function holdSummaryOf(state, tierOfRisk, opts = {}) {
   else if (breaches.length) {
     pillT = breaches.length + ' need' + (breaches.length !== 1 ? '' : 's') + ' attention first'; pillC = '#DC2626';
     const names = breaches.slice(0, 2).map(b => b.name + ' (' + (b.hold.reasons[0] || b.breach) + ')');
-    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' properly held. ' + breaches.length + ' need' + (breaches.length !== 1 ? '' : 's') + ' attention first: ' + names.join('; ') + (breaches.length > 2 ? ('; and ' + (breaches.length - 2) + ' more.') : '.');
+    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' assured. ' + breaches.length + ' need' + (breaches.length !== 1 ? '' : 's') + ' attention first: ' + names.join('; ') + (breaches.length > 2 ? ('; and ' + (breaches.length - 2) + ' more.') : '.');
   }
-  else if (held === total) { pillT = 'all risks held'; pillC = '#0f6f5c'; verdict = 'All ' + total + ' risk' + (total !== 1 ? 's are' : ' is') + ' properly held - controls recorded, plans delivered and signed off, or formally accepted.'; }
+  else if (held === total) { pillT = 'all risks assured'; pillC = '#0f6f5c'; verdict = 'All ' + total + ' risk' + (total !== 1 ? 's are' : ' is') + ' assured - controls recorded, plans delivered and signed off, or formally accepted.'; }
   else {
     pillT = 'working to plan'; pillC = '#c2740a';
-    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' properly held; ' + (working + slipping) + ' being worked' + (slipping ? (' (' + slipping + ' slipping)') : '') + (notheld ? ('; ' + notheld + ' not held') : '') + '. Nothing needs attention first - every Critical and High risk is held or being worked on time.';
+    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' assured; ' + working + ' managed' + (slipping ? ('; ' + slipping + ' vulnerable') : '') + (notheld ? ('; ' + notheld + ' uncontrolled') : '') + '. Nothing needs attention first - every Critical and High risk is assured or managed on time.';
   }
   return { rows, total, held, working, slipping, notheld, breaches, pillT, pillC, verdict };
 }

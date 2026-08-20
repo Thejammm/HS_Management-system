@@ -3399,7 +3399,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rr-typetile .rt-n{font-size:26px;font-weight:700;line-height:1;}
     .rr-typetile .rt-l{font-size:12px;font-weight:600;color:var(--text-muted);margin-top:5px;}
   </style>
-  <!-- Combined risk panel: matrix + risk control status in one frame.
+  <!-- Combined risk panel: matrix + H&S control maturity in one frame.
        Text and chrome ride the app theme vars so dark mode stays readable;
        band colours and in-cell bars are semantic and fixed. -->
   <style>
@@ -7599,10 +7599,11 @@ function renderAuditProgress(){
   const delta=(a,b,goodDown)=>{ if(a==null||b==null) return ''; const d=+(b-a).toFixed(2); if(!d) return '<span style="color:var(--text-muted);font-size:11px;">no change</span>';
     const good=goodDown?d<0:d>0; return `<span style="color:${good?'#16A34A':'#DC2626'};font-weight:700;font-size:11px;">${d>0?'▲':'▼'} ${Math.abs(d)}</span>`; };
   const rows=[
-    ['Risks properly held', m=>fmt(m.held), false],
+    ['Risks assured', m=>fmt(m.held), false],
     ['Need attention first', m=>fmt(m.ruleBreaches), true],
-    ['Slipping', m=>fmt(m.slipping), true],
-    ['Not held', m=>fmt(m.notHeld), true],
+    ['Managed', m=>fmt(m.working), false],
+    ['Vulnerable', m=>fmt(m.slipping), true],
+    ['Uncontrolled', m=>fmt(m.notHeld), true],
     ['Risks profiled', m=>fmt(m.risks), false],
     ['High + critical risks', m=>fmt(m.highCrit), true],
     ['Open actions', m=>fmt(m.openActions), true],
@@ -7613,7 +7614,7 @@ function renderAuditProgress(){
     ['Briefings recorded', m=>fmt(m.briefings), false],
     ['Accreditation ready %', m=>m.casReady==null?'-':m.casReady+'%', false],
   ];
-  const rawOf=(m,label)=>{ const map={'Risks properly held':m.held,'Need attention first':m.ruleBreaches,'Slipping':m.slipping,'Not held':m.notHeld,'Risks profiled':m.risks,'High + critical risks':m.highCrit,'Open actions':m.openActions,'Overdue actions':m.overdueActions,'Actions delivered':m.delivered,'Training expired':m.trainingExpired,'Management system gaps':m.mgmtGaps,'Briefings recorded':m.briefings,'Accreditation ready %':m.casReady}; return map[label]; };
+  const rawOf=(m,label)=>{ const map={'Risks assured':m.held,'Need attention first':m.ruleBreaches,'Managed':m.working,'Vulnerable':m.slipping,'Uncontrolled':m.notHeld,'Risks profiled':m.risks,'High + critical risks':m.highCrit,'Open actions':m.openActions,'Overdue actions':m.overdueActions,'Actions delivered':m.delivered,'Training expired':m.trainingExpired,'Management system gaps':m.mgmtGaps,'Briefings recorded':m.briefings,'Accreditation ready %':m.casReady}; return map[label]; };
   const table = base ? `<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12.5px;min-width:100%;">
       <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;border-bottom:1.5px solid var(--border);">
         <th style="padding:6px 8px;">Measure</th><th style="padding:6px 8px;">Baseline<br><span style="font-weight:400;">${fmtDate(base.date)}</span></th>
@@ -7635,16 +7636,16 @@ function renderAuditProgress(){
     const gain=now.held-base.metrics.held;
     const days=Math.max(1,(new Date().getTime()-new Date(base.date+'T12:00:00').getTime())/86400000);
     const left=(now.risks||0)-now.held;
-    if(left<=0 && !now.ruleBreaches) eta=`<span style="color:#16A34A;font-weight:700;">Target reached - every risk properly held. Keep it there.</span>`;
+    if(left<=0 && !now.ruleBreaches) eta=`<span style="color:#16A34A;font-weight:700;">Target reached - every risk assured. Keep it there.</span>`;
     else if(gain>0){ const est=Math.round(left/(gain/days)); const d=new Date(); d.setDate(d.getDate()+est);
-      eta=`At the current rate (${gain} more risk${gain!==1?'s':''} held in ${Math.round(days)} days), every risk is held around <b>${d.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</b>.`; }
-    else eta='The held count has not moved since the baseline yet - the estimate needs some recorded progress.';
+      eta=`At the current rate (${gain} more risk${gain!==1?'s':''} assured in ${Math.round(days)} days), every risk is assured around <b>${d.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</b>.`; }
+    else eta='The assured count has not moved since the baseline yet - the estimate needs some recorded progress.';
   }
   const hist=snaps.length?`<div style="margin-top:12px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:6px;">Snapshot history</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">${snaps.map((s,i)=>`<span class="badge badge-muted" style="display:inline-flex;gap:6px;align-items:center;">${i===0?'★ baseline · ':''}${fmtDate(s.date)}${s.metrics.held!=null?(' · '+s.metrics.held+' held'):(s.metrics.maturity!=null?(' · mat '+Number(s.metrics.maturity).toFixed(1)):'')}${dis?'':` <button style="background:none;border:none;cursor:pointer;color:var(--danger);padding:0;font-size:11px;" title="Delete snapshot" onclick="deleteAuditSnapshot('${s.id}')">✕</button>`}</span>`).join('')}</div></div>`:'';
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">${snaps.map((s,i)=>`<span class="badge badge-muted" style="display:inline-flex;gap:6px;align-items:center;">${i===0?'★ baseline · ':''}${fmtDate(s.date)}${s.metrics.held!=null?(' · '+s.metrics.held+' assured'):(s.metrics.maturity!=null?' · legacy snapshot':'')}${dis?'':` <button style="background:none;border:none;cursor:pointer;color:var(--danger);padding:0;font-size:11px;" title="Delete snapshot" onclick="deleteAuditSnapshot('${s.id}')">✕</button>`}</span>`).join('')}</div></div>`:'';
   el.innerHTML=`
     <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
-      <span style="font-size:12px;color:var(--text-muted);">Agreed target: <b>every risk properly held, nothing needing attention</b></span>
+      <span style="font-size:12px;color:var(--text-muted);">Agreed target: <b>every risk assured, nothing needing attention</b></span>
       <label style="font-size:12px;color:var(--text-muted);">Agreed by
         <input type="date"${dis} value="${esc(tgt.targetDate||'')}" onchange="setAuditTarget('targetDate',this.value)" style="margin-left:6px;" title="The date you and the client agreed to reach the target by"></label>
       ${eta?`<div style="flex:1;min-width:240px;font-size:12.5px;">${eta}</div>`:''}
@@ -7654,7 +7655,7 @@ function renderAuditProgress(){
 }
 const AUDIT_AREAS=[
   { id:'ar_risk', name:'Risk profile', live:m=>m.risks+' risks ('+m.highCrit+' high/critical, '+m.sif+' fatal-potential)' },
-  { id:'ar_maturity', name:'Risk control status', live:m=>(m.held!=null?(m.held+' of '+m.risks+' held · '+(m.ruleBreaches?m.ruleBreaches+' need'+(m.ruleBreaches!==1?'':'s')+' attention first':'nothing needs attention')):'not yet assessed') },
+  { id:'ar_maturity', name:'H&S control maturity', live:m=>(m.held!=null?(m.held+' of '+m.risks+' assured · '+(m.ruleBreaches?m.ruleBreaches+' need'+(m.ruleBreaches!==1?'':'s')+' attention first':'nothing needs attention')):'not yet assessed') },
   { id:'ar_plan', name:'Execution plan', live:m=>m.openActions+' open ('+m.overdueActions+' overdue) · '+m.delivered+' delivered' },
   { id:'ar_training', name:'Training & competence', live:m=>m.trainingRecords?(m.trainingRecords+' records · '+m.trainingExpired+' expired'):'no matrix yet' },
   { id:'ar_consult', name:'Consultation & communication', live:m=>m.briefings?(m.briefings+' briefings recorded'):'no briefings recorded yet' },
@@ -13740,9 +13741,9 @@ const COCKPIT_WIDGETS = {
     } },
   chartInspections:{ id:'chartInspections', label:'Inspections by month', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Inspections by month</h4><svg viewBox="0 0 ${x.BW} ${x.BH}" width="100%" style="max-height:200px;">${x.barSvg}</svg></div>` },
   chartCompliance:{ id:'chartCompliance', label:'Compliance', group:'Chart', render:x=>`<div class="ckx-panel"><h4>Compliance</h4><div class="ckx-donut-wrap">${x.donut}<div class="ckx-legend">${_ckLeg('var(--success)','Pass',x.pass)}${_ckLeg('#6EE7B7','Rectified',x.rect)}${_ckLeg('var(--warning)','Action',x.act)}</div><button class="ck-link" onclick="switchTab('monthly')">View monthly report</button></div></div>` },
-  riskVsMaturity: { id:'riskVsMaturity', label:'Risk profile & control status', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="full">${_riskPanelHTML({heading:true})}</div></div>` },
+  riskVsMaturity: { id:'riskVsMaturity', label:'Risk profile & H&S control maturity', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="full">${_riskPanelHTML({heading:true})}</div></div>` },
   riskMatrixOnly:   { id:'riskMatrixOnly', label:'Risk matrix (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="matrix">${_riskPanelHTML({heading:true,only:'matrix'})}</div></div>` },
-  riskMaturityOnly: { id:'riskMaturityOnly', label:'Risk control status (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="maturity">${_riskPanelHTML({heading:true,only:'maturity'})}</div></div>` },
+  riskMaturityOnly: { id:'riskMaturityOnly', label:'H&S control maturity (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="maturity">${_riskPanelHTML({heading:true,only:'maturity'})}</div></div>` },
   cardRiskPriorities:{ id:'cardRiskPriorities', label:'Risk priorities', group:'Card', render:x=>{
       const nSif=x.RD.sif.length, nUnc=x.RD.sifUncontrolled.length;
       const resHigh=x.RD.sif.filter(r=>{const p=_riskScore(r).priority;return p==='Critical'||p==='High';}).length;
@@ -13790,7 +13791,7 @@ const COCKPIT_WIDGETS = {
   // Dials & gauges - richer visuals, OFF by default (enable per client in the customiser).
   gaugeCompleteness:{ id:'gaugeCompleteness', label:'Completeness gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Assessment completeness', `${_gaugeSVG(x.RD.completeness)}<div class="ck-pending" style="text-align:center;margin-top:2px;">of the assessment complete</div><button class="ck-link" onclick="openCompletenessModal()" style="align-self:center;">What's left →</button>`) },
   gaugeCompliance:  { id:'gaugeCompliance', label:'Compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Inspection compliance', `${_gaugeSVG(x.compliance==null?0:x.compliance,{text:x.compliance==null?'--':x.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">pass + rectified</div><button class="ck-link" onclick="switchTab('monthly')" style="align-self:center;">Monthly report</button>`) },
-  gaugeMaturity:    { id:'gaugeMaturity', label:'Risks properly held (gauge)', group:'Gauge', defaultOff:true, render:x=>{ const H=_holdSummary(); const pct=H.total?Math.round(H.held/H.total*100):0; return _ckMod('Risks properly held', `${_gaugeSVG(pct,{text:H.total?(H.held+'/'+H.total):'--'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${H.breaches.length?(H.breaches.length+' need'+(H.breaches.length!==1?'':'s')+' attention first'):'nothing needs attention'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
+  gaugeMaturity:    { id:'gaugeMaturity', label:'Risks assured (gauge)', group:'Gauge', defaultOff:true, render:x=>{ const H=_holdSummary(); const pct=H.total?Math.round(H.held/H.total*100):0; const gcol=H.breaches.length?'#DC2626':(H.total&&H.held===H.total?'#16A34A':(H.total?'#F59E0B':'#9CA3AF')); return _ckMod('Risks assured', `${_gaugeSVG(pct,{text:H.total?(H.held+'/'+H.total):'--',color:gcol})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${H.breaches.length?(H.breaches.length+' need'+(H.breaches.length!==1?'':'s')+' attention first'):'nothing needs attention'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
   tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(100 - x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><div style="text-align:center;font-size:10.5px;color:var(--text-muted);line-height:1.45;margin-top:2px;">Lower is better. The score is how much of the register sits in the higher bands - each risk counts by band (Critical 3, High 2, Medium 1, Low a half) against the worst case of 100.</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Open the risks behind this score</button>`) },
   gaugeAccreditation:{ id:'gaugeAccreditation', label:'Accreditation gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Accreditation readiness', `${_gaugeSVG(x.cas.pctReady==null?0:x.cas.pctReady,{text:x.cas.pctReady==null?'--':x.cas.pctReady+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">criteria ready</div><button class="ck-link" onclick="switchTab('cas')" style="align-self:center;">Open accreditation</button>`) },
   gaugeMgmtCompliance:{ id:'gaugeMgmtCompliance', label:'Mgmt-system compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Management-system compliance', `${_gaugeSVG(x.reqStats.compliance==null?0:x.reqStats.compliance,{text:x.reqStats.compliance==null?'--':x.reqStats.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">requirements met</div><button class="ck-link" onclick="switchTab('requirements')" style="align-self:center;">Open management system</button>`) },
@@ -14971,7 +14972,7 @@ function _gotoRisk(id){
 
 // ── Dashboard: summary cards + 5x5 risk matrix + top business impacts ──
 // ══════════════════════════════════════════════════════════════
-//  COMBINED RISK PANEL - matrix + risk control status in one frame.
+//  COMBINED RISK PANEL - matrix + H&S control maturity in one frame.
 //  Replaces the separate "Risk matrix" and "Risk vs management
 //  maturity" cards and the 0-100 exposure bar (2026-08-18).
 //  Colour = how much risk; white bar in each cell = how well the
@@ -14990,7 +14991,7 @@ const RISK_MATURITY_DOMAIN = {
 function _riskPanelModel(){
   // Risk picture (matrix, bands, mean) + the hold summary. The old 0-5
   // maturity machinery is gone - the management side is now the factual
-  // "risk control status" (see _riskHold/_holdSummary above).
+  // "H&S control maturity" (see _riskHold/_holdSummary above).
   const scored=(S.riskProfile||[]).map(r=>({ r, sc:_riskScore(r), hold:_riskHold(r) }));
   const rated=scored.filter(x=>x.sc.rating);
   const unrated=scored.length-rated.length;
@@ -15009,18 +15010,21 @@ function _riskPanelModel(){
 // ══════════════════════════════════════════════════════════════
 //  RISK CONTROL STATUS - the replacement for the 0-5 maturity number
 //  (Simon, 2026-08-19: "the numbers are total bollocks - find a different
-//  way"). Every risk is graded by FACTS the app already records into one
-//  of four plain states; the company measure is a COUNT ("9 of 12 risks
-//  properly held"), and HSG65 proportionality is a RULE (the bigger the
+//  way"). Every risk is graded by FACTS the app already records onto the
+//  H&S Control Maturity scale, 4 down to 1; the company measure is a COUNT
+//  ("9 of 12 risks assured"), and HSG65 proportionality is a RULE (the bigger the
 //  risk, the stricter the state it must be in) - never a ratio, never a
 //  decimal, never an opinion score.
 // ══════════════════════════════════════════════════════════════
 const HOLD_STATES = {
-  held:     { k:'held',     label:'Held',         colour:'#16A34A', desc:'Controls recorded, and the plan delivered and signed off - or the risk formally accepted.' },
-  working:  { k:'working',  label:'Being worked', colour:'#F59E0B', desc:'Controls recorded and every gap has an owned, dated action - all on time.' },
-  slipping: { k:'slipping', label:'Slipping',     colour:'#EA580C', desc:'The plan is overdue, or actions are missing an owner or a date.' },
-  notheld:  { k:'notheld',  label:'Not held',     colour:'#DC2626', desc:'No controls recorded, no plan and no formal acceptance, or the risk is not yet scored.' },
+  held:     { k:'held',     level:4, label:'Assured',      sub:'Established & effective',      colour:'#16A34A', desc:'Established and effective: controls recorded, and the plan delivered and signed off - or the risk formally accepted.' },
+  working:  { k:'working',  level:3, label:'Managed',      sub:'Established with gaps',        colour:'#F59E0B', desc:'Established with gaps: controls recorded and every gap has an owned, dated action - all on time.' },
+  slipping: { k:'slipping', level:2, label:'Vulnerable',   sub:'Deteriorating / at risk',      colour:'#EA580C', desc:'Deteriorating: the plan is overdue, or actions are missing an owner or a date.' },
+  notheld:  { k:'notheld',  level:1, label:'Uncontrolled', sub:'Not established / ineffective', colour:'#DC2626', desc:'Not established: no controls recorded, no plan and no formal acceptance, or the risk is not yet scored.' },
 };
+// "4 · Assured" - the level and the word together, used wherever a compact
+// label is shown (bars, chips, tables, PDFs).
+function _hsLevel(k){ const st=HOLD_STATES[k]; return st ? (st.level+' · '+st.label) : ''; }
 const HOLD_ORDER = ['held','working','slipping','notheld'];
 function _riskHold(r){
   const sc=_riskScore(r);
@@ -15049,15 +15053,15 @@ function _riskHold(r){
   if(plan.k==='managed' && !r.reviewed) return Object.assign({}, HOLD_STATES.working, { reasons:['delivered - awaiting sign-off'] });
   return Object.assign({}, HOLD_STATES.working, { reasons:[open.length+' action'+(open.length!==1?'s':'')+' on time'] });
 }
-// The rule, in words: Critical and High must be Held or Being worked (and
-// never held on acceptance alone); Medium must not be Not held; Low is
+// The rule, in words: Critical and High must be Assured or Managed (and
+// never assured on acceptance alone); Medium must not be Uncontrolled; Low is
 // never a breach. Returns the breach description, or null when compliant.
 function _holdBreach(band, hold){
   if(band==='Critical'||band==='High'){
     if(hold.k==='slipping'||hold.k==='notheld') return band+' risk is '+hold.label.toLowerCase();
     if(hold.k==='held'&&hold.accepted) return band+' risk is run on acceptance alone';
   } else if(band==='Medium'){
-    if(hold.k==='notheld') return 'Medium risk is not held';
+    if(hold.k==='notheld') return 'Medium risk is '+hold.label.toLowerCase();
   }
   return null;
 }
@@ -15074,12 +15078,12 @@ function _holdSummary(){
   else if(breaches.length){
     pillT=breaches.length+' need'+(breaches.length!==1?'':'s')+' attention first'; pillC='#DC2626';
     const names=breaches.slice(0,2).map(b=>b.name+' ('+(b.hold.reasons[0]||b.breach)+')');
-    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' properly held. '+breaches.length+' need'+(breaches.length!==1?'':'s')+' attention first: '+names.join('; ')+(breaches.length>2?('; and '+(breaches.length-2)+' more.'):'.');
+    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' assured. '+breaches.length+' need'+(breaches.length!==1?'':'s')+' attention first: '+names.join('; ')+(breaches.length>2?('; and '+(breaches.length-2)+' more.'):'.');
   }
-  else if(held===total){ pillT='all risks held'; pillC='#0f6f5c'; verdict='All '+total+' risk'+(total!==1?'s are':' is')+' properly held - controls recorded, plans delivered and signed off, or formally accepted.'; }
+  else if(held===total){ pillT='all risks assured'; pillC='#0f6f5c'; verdict='All '+total+' risk'+(total!==1?'s are':' is')+' assured - controls recorded, plans delivered and signed off, or formally accepted.'; }
   else {
     pillT='working to plan'; pillC='#c2740a';
-    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' properly held; '+(working+slipping)+' being worked'+(slipping?(' ('+slipping+' slipping)'):'')+(notheld?('; '+notheld+' not held'):'')+'. Nothing needs attention first - every Critical and High risk is held or being worked on time.';
+    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' assured; '+working+' managed'+(slipping?('; '+slipping+' vulnerable'):'')+(notheld?('; '+notheld+' uncontrolled'):'')+'. Nothing needs attention first - every Critical and High risk is assured or managed on time.';
   }
   return { rows, total, held, working, slipping, notheld, breaches, pillT, pillC, verdict };
 }
@@ -15092,29 +15096,29 @@ function _rpVerdictBits(M){
   const H = M.H || _holdSummary();
   const pillC = H.pillC;
   const pillT = H.pillT;
-  const pillTip = 'HSG65 - the response must match the size of the risk: every Critical and High risk must be Held or Being worked, and never run on acceptance alone; a Medium risk must not be Not held. A risk that falls short needs attention first, named with the reason.';
+  const pillTip = 'HSG65 - the response must match the size of the risk: every Critical and High risk must be 4 · Assured or 3 · Managed, and never assured on acceptance alone; a Medium risk must not be 1 · Uncontrolled. A risk that falls short needs attention first, named with the reason.';
   const verdictLine = H.verdict;
-  const explain = 'Each risk is graded by facts the app records: Held = controls recorded and the plan delivered and signed off (or formally accepted); Being worked = owned, dated actions, all on time; Slipping = overdue or missing owner/date; Not held = no controls, or no plan and no acceptance.';
+  const explain = 'Each risk is graded by facts the app records onto the H&S Control Maturity scale: 4 Assured = controls recorded and the plan delivered and signed off (or formally accepted); 3 Managed = owned, dated actions, all on time; 2 Vulnerable = overdue or missing owner/date; 1 Uncontrolled = no controls, or no plan and no acceptance.';
   // Visual "how a risk earns Held" - three fact boxes, no numbers to decode.
   const explainHTML = `<div class="rpx-how">
-      <div class="rpx-how-lab rpx-mono">How a risk earns "Held" - hover any box</div>
+      <div class="rpx-how-lab rpx-mono">How a risk earns 4 · Assured - hover any box</div>
       <div class="rpx-how-row">
-        <div class="rpx-how-step" title="The risk is scored (likelihood × severity) and its controls are written down with a control level. A risk with no recorded controls, or no score, is Not held - whatever else is true.">
-          <span class="t">1 · Controls recorded</span>
+        <div class="rpx-how-step" title="The risk is scored (likelihood × severity) and its controls are written down with a control level. A risk with no recorded controls, or no score, is 1 · Uncontrolled - whatever else is true.">
+          <span class="t">Controls recorded</span>
           <span class="e">scored, controls written down</span>
           <span class="v">the floor</span>
         </div>
         <span class="rpx-how-op">→</span>
-        <div class="rpx-how-step" title="Every remaining gap has an action with a named owner and a target date, and none of them is overdue. Overdue or unowned actions make the risk Slipping.">
-          <span class="t">2 · Owned, dated plan</span>
+        <div class="rpx-how-step" title="Every remaining gap has an action with a named owner and a target date, and none of them is overdue. Overdue or unowned actions make the risk 2 · Vulnerable.">
+          <span class="t">Owned, dated plan</span>
           <span class="e">every action owned + dated, on time</span>
-          <span class="v">Being worked</span>
+          <span class="v">3 · Managed</span>
         </div>
         <span class="rpx-how-op">→</span>
         <div class="rpx-how-step" title="The plan is delivered and the risk signed off as reviewed - or formally accepted with who and why on the acceptance register (acceptance is only acceptable for Low and Medium risks; a High or Critical risk run on acceptance alone needs attention first).">
-          <span class="t">3 · Delivered &amp; signed off</span>
+          <span class="t">Delivered &amp; signed off</span>
           <span class="e">or formally accepted (Low/Medium only)</span>
-          <span class="v">Held ✓</span>
+          <span class="v">4 · Assured ✓</span>
         </div>
       </div>
     </div>`;
@@ -15168,11 +15172,11 @@ function _riskPanelHTML(o){
   </div>`;
   // ── Right side is visual-first: the pill carries the verdict, no prose. ──
   const stateBars = `<div>
-    <div class="rpx-microlab rpx-mono">Where the ${H.total} risk${H.total!==1?'s':''} stand</div>
+    <div class="rpx-microlab rpx-mono">H&amp;S control maturity of the ${H.total} risk${H.total!==1?'s':''}</div>
     ${HOLD_ORDER.map(k=>{ const st=HOLD_STATES[k]; const n=H[k];
-      return `<button type="button" class="rpx-hotrow" onclick="switchTab('risk');_rpStatJump('all')" title="${esc(st.label)}: ${esc(st.desc)} Click to open the risks.">
+      return `<button type="button" class="rpx-hotrow" onclick="switchTab('risk');_rpStatJump('all')" title="${st.level} · ${esc(st.label)} (${esc(st.sub)}): ${esc(st.desc)} Click to open the risks.">
         <span class="ref rpx-mono" style="color:${st.colour};">●</span>
-        <span class="lbl">${esc(st.label)}</span>
+        <span class="lbl">${st.level} &middot; ${esc(st.label)}</span>
         <span class="rpx-minibar"><span style="width:${H.total?Math.round(n/H.total*100):0}%;background:${st.colour};"></span></span>
         <span class="rpx-short rpx-mono">${n}</span>
       </button>`; }).join('')}
@@ -15182,7 +15186,7 @@ function _riskPanelHTML(o){
     const rows = sel.items.map(x=>`<div class="rpx-selrow">
         <span class="t">${esc(x.r.activity||x.r.hazard||'Unnamed risk')}</span>
         <span class="o">${esc(_riskOwner(x.r)||'no owner')}</span>
-        <span class="rpx-mono" style="flex:0 0 auto;font-size:11.5px;font-weight:700;color:${x.hold.colour};" title="${esc(x.hold.reasons.join('; '))}">${esc(x.hold.label)}</span>
+        <span class="rpx-mono" style="flex:0 0 auto;font-size:11.5px;font-weight:700;color:${x.hold.colour};" title="${esc(x.hold.reasons.join('; '))}">${x.hold.level} &middot; ${esc(x.hold.label)}</span>
       </div>`).join('');
     listBlock = `<div aria-live="polite">
       <div class="rpx-microlab rpx-mono">L${sel.l} × S${sel.s} · ${sel.items.length} risk${sel.items.length!==1?'s':''}
@@ -15193,11 +15197,11 @@ function _riskPanelHTML(o){
     const br = H.breaches.slice(0,4).map(b=>`<button type="button" class="rpx-hotrow" onclick="_gotoRisk('${b.id}')" title="${esc(b.breach)} - ${esc(b.hold.reasons.join('; '))}. Click to open this risk.">
         <span class="ref rpx-mono" style="color:#DC2626;">${esc(b.band||'-')}</span>
         <span class="lbl">${esc(b.name)}</span>
-        <span class="rpx-short rpx-mono" style="color:${b.hold.colour};">${esc(b.hold.label)}</span>
+        <span class="rpx-short rpx-mono" style="color:${b.hold.colour};">${b.hold.level} &middot; ${esc(b.hold.label)}</span>
       </button>`).join('');
     listBlock = `<div aria-live="polite">
       <div class="rpx-microlab rpx-mono">Needs attention first${H.breaches.length?(' · '+H.breaches.length):''}</div>
-      ${br || `<div class="rpx-explain">None. Every Critical and High risk is held or being worked on time, and no Medium risk is left not held.</div>`}
+      ${br || `<div class="rpx-explain">None. Every Critical and High risk is assured or managed on time, and no Medium risk is left uncontrolled.</div>`}
       ${H.breaches.length>4?`<div class="rpx-explain">…and ${H.breaches.length-4} more - they are flagged in the register.</div>`:''}
     </div>`;
   }
@@ -15205,28 +15209,28 @@ function _riskPanelHTML(o){
   if(sel){
     const worst = sel.items.slice().sort((a,b)=>HOLD_ORDER.indexOf(b.hold.k)-HOLD_ORDER.indexOf(a.hold.k))[0];
     nextTx = worst.hold.k==='held'
-      ? 'Every risk in this square is held. Keep the controls under review.'
+      ? 'Every risk in this square is assured. Keep the controls under review.'
       : 'Start with "'+(worst.r.activity||worst.r.hazard||'this risk')+'" - '+worst.hold.label.toLowerCase()+': '+worst.hold.reasons.join('; ')+'.';
   } else if(H.breaches.length){
     const b=H.breaches[0];
     nextTx = 'Start with "'+b.name+'" - '+b.breach+' ('+b.hold.reasons.join('; ')+').';
   } else if(H.total && H.held===H.total){
-    nextTx = 'All risks held. Keep it that way as the work changes.';
+    nextTx = 'All risks assured. Keep it that way as the work changes.';
   } else {
-    nextTx = 'Nothing needs attention first. Keep the '+(H.working+H.slipping)+' open plan'+((H.working+H.slipping)!==1?'s':'')+' on time, and sign off delivered work to move risks to Held.';
+    nextTx = 'Nothing needs attention first. Keep the '+H.working+' managed plan'+(H.working!==1?'s':'')+' on time'+(H.slipping?(', bring '+H.slipping+' vulnerable risk'+(H.slipping!==1?'s':'')+' back onto an owned date'):'')+', and sign off delivered work to move risks up to 4 · Assured.';
   }
   const next = `<div class="rpx-next">
     <span class="rpx-microlab rpx-mono" style="margin:0;flex:0 0 auto;">Next action</span><span class="dv"></span>
     <span class="tx">${esc(nextTx)}</span>
   </div>`;
   const head = `<div class="rpx-head">
-    <div>${o.heading?'<h4>Risk profile &amp; control status</h4>':''}
+    <div>${o.heading?'<h4>Risk profile &amp; H&amp;S control maturity</h4>':''}
       <div class="rpx-sub">${esc(period)} · ${M.rated.length} rated risk${M.rated.length!==1?'s':''} · graded on recorded facts</div></div>
     <span class="rpx-pill" style="background:${pillC};" title="${esc(pillTip)}">${esc(pillT)}</span>
   </div>`;
   // Split modes so a client's bespoke cockpit can show just the matrix or just
   // the control-status reading (customiser widgets "Risk matrix (only)" /
-  // "Risk control status (only)" - the mode key stays 'maturity' for
+  // "H&S control maturity (only)" - the mode key stays 'maturity' for
   // compatibility with saved cockpit configs).
   if(o.only==='matrix')   return `<div class="rpx">${head}${left}</div>`;
   if(o.only==='maturity') return `<div class="rpx">${head}<div class="rpx-right" style="border-left:0;padding-left:0;">${stateBars}${listBlock}${explainHTML}${next}</div></div>`;
@@ -16333,7 +16337,7 @@ function renderActionPlanTab(){
   // Open gaps from the management system + maturity, offered as one-click actions.
   const gaps=_apGaps();
   const gapCard = gaps.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Suggested from gaps</h3><span class="badge badge-muted">${gaps.length}</span></div>
-    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Gaps found in the management system and the risk control status. Add any to the plan to track and close it.</div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Gaps found in the management system and the H&S control maturity. Add any to the plan to track and close it.</div>
     ${gaps.map(g=>`<div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border);padding:8px 0;">
       <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${esc(g.desc)}</div><div style="font-size:11px;color:var(--text-muted);">${esc(g.context)}${g.due?(' · due '+fmtDate(g.due)):''}</div></div>
       ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="addGapToPlan('${g.srcKey}')">＋ Add</button>`}</div>`).join('')}
@@ -17194,7 +17198,7 @@ function _overallMaturity(){
   // consumer show the one number the panel shows. The old plain domain
   // average quietly disagreed with it. critFail/scored keep their meaning.
   // Deprecated: the 0-5 maturity number is gone (replaced by the factual
-  // risk control status). Null-safe stub for any stale caller.
+  // H&S control maturity). Null-safe stub for any stale caller.
   const doms=_maturityDomains();
   return { avg:null, critFail:false, scored:0, total:doms.length };
 }
@@ -17206,7 +17210,7 @@ function _riskProfileLevel(){
 function _overallScore(){
   // Derived from the SAME model as the cockpit's combined panel - one model,
   // one verdict, everywhere. Now hold-based: the position is the count of
-  // properly held risks and any breaches of the proportionality rule.
+  // assured risks and any breaches of the proportionality rule.
   const rl=_riskProfileLevel();
   const M=_riskPanelModel();
   const bits=_rpVerdictBits(M);
@@ -17251,7 +17255,7 @@ function setJudgementNote(domId, note){
 }
 function _renderMaturityAssessment(dis){
   const doms=_maturityDomains(); const j=_judgeState();
-  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Your professional judgement of the six HSG65 areas - <b>words, not scores</b>. Mark each Weak, Adequate or Strong with a one-line reason. This feeds your audit narrative and review; it is never turned into a number. The measured position lives above: risk control status, graded on recorded facts.</div>`;
+  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Your professional judgement of the six HSG65 areas - <b>words, not scores</b>. Mark each Weak, Adequate or Strong with a one-line reason. This feeds your audit narrative and review; it is never turned into a number. The measured position lives above: H&S Control Maturity, graded on recorded facts.</div>`;
   return note + doms.map((d,idx)=>{
     const cur=j[d.id]||{};
     const lv=JUDGEMENT_LEVELS.find(x=>x.k===cur.level);
@@ -17572,9 +17576,9 @@ function _riskVsMaturity(){
   let rag, verdict;
   if(!H.total){ rag='#9CA3AF'; verdict='Add and score the risks to complete the picture.'; }
   else if(RD.sifUncontrolled.length>0 || H.breaches.length){ rag='#DC2626'; const _na=(H.breaches.length||RD.sifUncontrolled.length); verdict=_na+' risk'+(_na!==1?'s':'')+' need'+(_na!==1?'':'s')+' attention first.'; }
-  else if(H.held<H.total){ rag='#F59E0B'; verdict=H.held+' of '+H.total+' risks properly held; the rest are being worked on time.'; }
-  else { rag='#16A34A'; verdict='All risks properly held.'; }
-  return { riskIndex, riskLabel: riskIndex>=60?'High':riskIndex>=35?'Moderate':riskIndex>0?'Lower':'None', rag, verdict, sifUncontrolled:RD.sifUncontrolled.length, H, ragLabel: rag==='#DC2626'?'Priority':rag==='#F59E0B'?'Working':rag==='#16A34A'?'Held':'Incomplete' };
+  else if(H.held<H.total){ rag='#F59E0B'; verdict=H.verdict; }
+  else { rag='#16A34A'; verdict='All risks assured.'; }
+  return { riskIndex, riskLabel: riskIndex>=60?'High':riskIndex>=35?'Moderate':riskIndex>0?'Lower':'None', rag, verdict, sifUncontrolled:RD.sifUncontrolled.length, H, ragLabel: rag==='#DC2626'?'Priority':rag==='#F59E0B'?'Managed':rag==='#16A34A'?'Assured':'Incomplete' };
 }
 // (The old on-screen 0-100 risk-vs-maturity bars were replaced by _riskPanelHTML
 //  on 2026-08-18. _riskVsMaturity() above stays: the PDF reports and the optional
@@ -17670,7 +17674,7 @@ function buildBoardReport(){
       {num:String(data.sifUncontrolled.length), label:'Of those, uncontrolled', color:data.sifUncontrolled.length?RED:NAVY, sub:'No completed control'},
       {num:data.execOverdue+' / '+data.execTotal, label:'Actions overdue', color:data.execOverdue?AMBER:NAVY, sub:'Across the whole plan'},
       {num:data.completeness+'%', label:'Assessment completeness', color:data.completeness<100?AMBER:GREEN, sub:'Profile built to date'},
-      {num:(function(){const H=_holdSummary();return H.total?(H.held+' / '+H.total):'-';})(), label:'Risks properly held', color:(function(){const H=_holdSummary();return !H.total?GREY:(H.breaches.length?RED:(H.held===H.total?GREEN:AMBER));})(), sub:'graded on facts'} ],
+      {num:(function(){const H=_holdSummary();return H.total?(H.held+' / '+H.total):'-';})(), label:'Risks assured', color:(function(){const H=_holdSummary();return !H.total?GREY:(H.breaches.length?RED:(H.held===H.total?GREEN:AMBER));})(), sub:'graded on facts'} ],
     { title:'Board summary',
       paras:['Significant risks scored against the HSG65 framework, both before controls (inherent) and after (residual). '+(nFatal?(nFatal+(nFatal===1?' activity carries':' activities carry')+' inherent fatal or major potential; with the controls in place '+(sifResHigh?(sifResHigh+' remain High or above'):'all sit at Medium or lower')+'. '):'')+'The profile is '+data.completeness+'% complete, so these figures firm up as the rest is scored.'],
       subhead:'What the board must decide',
@@ -17681,10 +17685,10 @@ function buildBoardReport(){
   // 3. Risk vs maturity (optional per client)
   if(_reportSectionOn('board.riskVsMaturity')){
     const rvm=_riskVsMaturity();
-    K.section('Risk exposure vs management maturity', NAVY);
+    K.section('Risk exposure vs H&S control maturity', NAVY);
     K.bars([
       {label:'Risk exposure', val:rvm.riskIndex, color:rvm.riskIndex>=60?RED:rvm.riskIndex>=35?AMBER:GREEN, valLabel:rvm.riskLabel+' ('+rvm.riskIndex+'/100)'},
-      {label:'Risks properly held', val:(rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, color:(rvm.H&&rvm.H.breaches.length)?RED:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?GREEN:AMBER), valLabel:(rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed'}
+      {label:'Risks assured', val:(rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, color:(rvm.H&&rvm.H.breaches.length)?RED:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?GREEN:AMBER), valLabel:(rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed'}
     ]);
     K.text('Verdict: '+rvm.verdict, 9, {color:[90,90,90], gap:1});
   }
@@ -18368,15 +18372,15 @@ function buildRiskProfileReportPDF(){
   if(_reportSectionOn('risk.riskVsMaturity')){
     const rvm=_riskVsMaturity();
     const _rmc = rvm.rag==='#DC2626'?[197,32,32]:rvm.rag==='#F59E0B'?[180,110,10]:rvm.rag==='#16A34A'?[22,120,60]:[150,150,150];
-    section('Risk exposure vs management maturity', rvm.ragLabel, _rmc);
+    section('Risk exposure vs H&S control maturity', rvm.ragLabel, _rmc);
     const drawBar=(label,val,col,vlab)=>{ if(y>276){doc.addPage();y=TOP;} const bx=ML+52, v=Math.max(0,Math.min(100,val));
       doc.setFont('helvetica','bold'); doc.setFontSize(8.5); const lw=doc.getTextWidth(vlab); const bw=Math.max(20, RM-ML-52-lw-5);
       doc.setTextColor(90,90,90); doc.text(label, ML, y+3.6);
       doc.setFillColor(235,237,240); doc.roundedRect(bx,y,bw,5,2,2,'F'); doc.setFillColor(col[0],col[1],col[2]); if(v>0) doc.roundedRect(bx,y,Math.max(3,bw*v/100),5,2,2,'F');
       doc.setFont('helvetica','bold'); doc.setTextColor(col[0],col[1],col[2]); doc.text(vlab, RM, y+3.8, {align:'right'}); y+=10; };
     drawBar('Risk exposure', rvm.riskIndex, rvm.riskIndex>=60?[197,32,32]:rvm.riskIndex>=35?[180,110,10]:[22,120,60], rvm.riskLabel+' ('+rvm.riskIndex+'/100)');
-    drawBar('Risks properly held', (rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, (rvm.H&&rvm.H.breaches.length)?[197,32,32]:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?[22,120,60]:[180,110,10]), (rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed');
-    text('Verdict: '+rvm.verdict+'  Risk exposure reflects the spread of severity across the register, not an average; maturity is the mean of the scored domains.', 8.5, false, [110,110,110]);
+    drawBar('Risks assured', (rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, (rvm.H&&rvm.H.breaches.length)?[197,32,32]:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?[22,120,60]:[180,110,10]), (rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed');
+    text('Verdict: '+rvm.verdict+'  Risk exposure reflects the spread of severity across the register, not an average; H&S control maturity is a count of the risks graded 4 - Assured on recorded facts, not a score.', 8.5, false, [110,110,110]);
   }
 
   // ── Document control ──
@@ -18417,7 +18421,7 @@ function buildRiskProfileReportPDF(){
     doc.setFontSize(12); doc.setTextColor(150,155,162); doc.text('/ 25', pl+nlw+2, py);
     doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(avgCol[0],avgCol[1],avgCol[2]); doc.text(avgBand, pl+nlw+18, py);
     py+=6; doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120,128,140); doc.text('mean L x S of '+rated2.length+' rated risk'+(rated2.length!==1?'s':''), pl, py);
-    py+=8; doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); doc.text('Held', pl, py); doc.setFont('helvetica','normal'); doc.setTextColor(70,70,70); doc.text(H.held+' of '+H.total+' risks'+(H.breaches.length?(' - '+H.breaches.length+' need'+(H.breaches.length!==1?'':'s')+' attention first'):''), pl+26, py);
+    py+=8; doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); doc.text('Assured', pl, py); doc.setFont('helvetica','normal'); doc.setTextColor(70,70,70); doc.text(H.held+' of '+H.total+' risks'+(H.breaches.length?(' - '+H.breaches.length+' need'+(H.breaches.length!==1?'':'s')+' attention first'):''), pl+26, py);
     py+=6; doc.setFont('helvetica','bold'); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); doc.text('Position', pl, py); doc.setFont('helvetica','bold'); doc.setTextColor(ragCol[0],ragCol[1],ragCol[2]); doc.text(os.ragLabel, pl+26, py);
     py+=6; doc.setFont('helvetica','normal'); doc.setFontSize(7.8); doc.setTextColor(110,116,126); doc.splitTextToSize(os.verdict, pw-12).forEach(ln=>{ doc.text(ln, pl, py); py+=3.4; });
     y=Math.max(matBottom, my+2+ph);
@@ -18805,7 +18809,7 @@ function renderRiskReview(){
             ${chip(rl.total,'Significant risks','var(--text)')}
             ${chip(rl.crit,'Critical',_RISK_PRIO_COLOR.Critical)}
             ${chip(rl.high,'High',_RISK_PRIO_COLOR.High)}
-            ${chip(os.H.held+'/'+os.H.total,'Properly held', os.H.total&&os.H.held===os.H.total?'#16A34A':'var(--text)')}
+            ${chip(os.H.held+'/'+os.H.total,'Risks assured', os.H.total&&os.H.held===os.H.total?'#16A34A':'var(--text)')}
             ${chip(os.H.breaches.length,'Need attention first', os.H.breaches.length?'#DC2626':'#16A34A')}
           </div>
           <div style="font-size:13px;color:var(--text);line-height:1.5;">${esc(os.verdict)}</div>
@@ -22769,7 +22773,7 @@ function _suggestReviewFeedbackText(){
   const del=delRisk+delPlan;
   const br=((S.consultation&&S.consultation.briefings)||[]);
   const bits=[];
-  bits.push('Where you are: '+M.H.held+' of '+M.H.total+' risks properly held'
+  bits.push('Where you are: '+M.H.held+' of '+M.H.total+' risks assured'
     +(M.H.breaches.length?('; '+M.H.breaches.length+' need'+(M.H.breaches.length!==1?'':'s')+' attention first'):'; nothing needs attention first')+'.');
   if(del) bits.push(del+' action'+(del!==1?'s have':' has')+' been delivered and kept as evidence - real progress the business should take credit for.');
   if(sc.compliance!=null) bits.push('Inspection compliance is running at '+sc.compliance+'%.');
@@ -22783,7 +22787,7 @@ function _suggestReviewSuggestionsText(){
   const out=[];
   if(sc.overdueA) out.push('Clear the '+sc.overdueA+' overdue action'+(sc.overdueA!==1?'s':'')+' on the execution plan first - overdue items are the quickest credibility win.');
   if(M.H.breaches.length){ const b=M.H.breaches[0]; out.push('Close the '+M.H.breaches.length+' breach'+(M.H.breaches.length!==1?'es':'')+' of the rule, starting with "'+b.name+'" ('+(b.hold.reasons[0]||b.breach)+').'); }
-  if(M.H.notheld) out.push('Get controls and an owned, dated plan recorded on the '+M.H.notheld+' risk'+(M.H.notheld!==1?'s':'')+' not yet held.');
+  if(M.H.notheld) out.push('Get controls and an owned, dated plan recorded on the '+M.H.notheld+' uncontrolled risk'+(M.H.notheld!==1?'s':'')+'.');
   if(!pd.signedDate) out.push('Get the health and safety policy statement signed and dated by the person at the top - it is not complete until then.');
   const exp=(typeof _trainingDueCount==='function')?_trainingDueCount():0;
   if(exp) out.push('Book the '+exp+' expired or expiring training renewal'+(exp!==1?'s':'')+' (raise them onto the plan from the training matrix).');
@@ -22853,10 +22857,10 @@ function buildFeedbackReportPDF(){
   ], {cols:4});
   K.text('Inspections per month: '+sc.trend.map(t=>t.label+' '+t.count).join('   '), 8.5, {color:GREY, gap:1});
   // Risk exposure vs management maturity (signature comparison used across the reports)
-  try{ const rvm=_riskVsMaturity(); K.section('Risk exposure vs management maturity', NAVY);
+  try{ const rvm=_riskVsMaturity(); K.section('Risk exposure vs H&S control maturity', NAVY);
     K.bars([
       {label:'Risk exposure', val:rvm.riskIndex, color: rvm.riskIndex>=60?RED:rvm.riskIndex>=35?AMBER:GREEN, valLabel: rvm.riskLabel+' ('+rvm.riskIndex+')'},
-      {label:'Risks properly held', val: (rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, color: (rvm.H&&rvm.H.breaches.length)?RED:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?GREEN:AMBER), valLabel: (rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed'}
+      {label:'Risks assured', val: (rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, color: (rvm.H&&rvm.H.breaches.length)?RED:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?GREEN:AMBER), valLabel: (rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed'}
     ]);
     K.text(rvm.verdict, 9, {color:GREY, gap:1});
   }catch(e){}
@@ -22991,10 +22995,10 @@ function buildAuditReportPDF(){
     K.section('Progress against baseline', NAVY);
     K.kv('Baseline recorded', fd(base.date)+(base.takenBy?(' by '+base.takenBy):''));
     const tgt=S.auditTarget||{};
-    K.kv('Agreed target', 'Every risk properly held, nothing needing attention'+(tgt.targetDate?(' by '+fd(tgt.targetDate)):''));
+    K.kv('Agreed target', 'Every risk assured, nothing needing attention'+(tgt.targetDate?(' by '+fd(tgt.targetDate)):''));
     const fmt1=(v)=>v==null?'-':Number(v).toFixed(1);
     K.table([{header:'MEASURE',w:66},{header:'BASELINE',w:30},{header:'NOW',w:30},{header:'MOVEMENT',w:52}],
-      [ ['Risks properly held', String(base.metrics.held ?? '-'), String(nowM.held ?? '-'), null],
+      [ ['Risks assured', String(base.metrics.held ?? '-'), String(nowM.held ?? '-'), null],
         ['Need attention first', String(base.metrics.ruleBreaches ?? '-'), String(nowM.ruleBreaches ?? '-'), null],
         ['High + critical risks', String(base.metrics.highCrit??'-'), String(nowM.highCrit??'-'), null],
         ['Open actions', String(base.metrics.openActions??'-'), String(nowM.openActions??'-'), null],
@@ -23012,7 +23016,7 @@ function buildAuditReportPDF(){
       }),
       {headFill:NAVY, headText:[255,255,255]});
     if(snaps.length>1){
-      K.text('Snapshots on record: '+snaps.map(s=>fd(s.date)+(s.metrics.held!=null?(' ('+s.metrics.held+' held)'):'')).join(' · '), 8.5, {color:GREY});
+      K.text('Snapshots on record: '+snaps.map(s=>fd(s.date)+(s.metrics.held!=null?(' ('+s.metrics.held+' assured)'):'')).join(' · '), 8.5, {color:GREY});
     }
   }
   // 4. Process observations

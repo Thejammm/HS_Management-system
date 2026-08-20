@@ -275,7 +275,7 @@ test('registry exposes the picker contract', () => {
 
 // ── Hold model (risk control status) — the replacement for the 0-5 maturity
 //    number: facts per risk, counts for the company, HSG65 rule for breaches.
-test('hold model grades every state and catches both breach kinds', () => {
+test('H&S control maturity grades every level and catches both breach kinds', () => {
   const state = { riskProfile: [
     // held: plan delivered (all Complete) + signed off
     { id: 'h1', activity: 'Held risk', category: 'Physical', likelihood: '4', severity: '5', controls: 'guards', reviewed: true, actions: [{ desc: 'Fit guards', owner: 'AB', due: '2026-01-01', status: 'Complete' }] },
@@ -290,34 +290,36 @@ test('hold model grades every state and catches both breach kinds', () => {
   ] };
   const D = deriveBoard(state, { today: '2026-08-18' });
   assert.equal(D.holdS.total, 5);
-  assert.equal(D.holdS.held, 2);        // h1 delivered+signed off, h2 accepted
+  assert.equal(D.holdS.held, 2);        // 4 Assured: h1 delivered+signed off, h2 accepted
   assert.equal(D.holdS.working, 1);     // h3
   assert.equal(D.holdS.slipping, 1);    // h4
   assert.equal(D.holdS.notheld, 1);     // h5
   const kinds = D.holdS.breaches.map(b => b.breach).join(' | ');
   assert.match(kinds, /run on acceptance alone/);   // h2: high band held by acceptance only
-  assert.match(kinds, /is slipping/i);              // h4: high band slipping
+  assert.match(kinds, /is vulnerable/i);           // h4: high band at 2 Vulnerable
   assert.equal(D.holdS.breaches.length, 2);         // h5 is Low — no Medium/High rule engaged
-  assert.match(D.holdS.verdict, /2 of 5 risks properly held/);
+  assert.match(D.holdS.verdict, /2 of 5 risks assured/);
   // Plan delivery: closed = every action complete; accepted is a caveat.
   assert.equal(D.planDone, 1);                      // h1 (all actions Complete)
   assert.equal(D.planAccepted, 1);                  // h2 (all actions Accepted)
 });
 
-test('board report speaks hold language and never the 0-5 scale', () => {
+test('board report speaks the H&S control maturity scale, never the retired labels', () => {
   const state = fixture('typical');
   state.profiler = state.profiler || {};
   state.profiler.judgement = { leadership: { level: 'strong', note: 'Board reviews quarterly' } };
   const html = reportHTML(buildReport(state, 'board-report', OPTS));
-  assert.match(html, /Risks properly held/);
+  assert.match(html, /Risks assured/);
   assert.match(html, /Risks fully actioned/);                // plan-delivery tile (positive)
   assert.doesNotMatch(html, /Risks sitting High or Critical/); // removed — added nothing
   assert.match(html, /What it means/);                       // state definitions table
   assert.match(html, /Consultant judgement/);
   assert.match(html, /Board reviews quarterly/);             // the judgement note prints
-  assert.doesNotMatch(html, /maturity/i);                    // the old scale is gone
+  assert.doesNotMatch(html, /properly held|Being worked|Not held/);   // the retired labels
   assert.doesNotMatch(html, /HSG65 scale/);
   assert.doesNotMatch(html, /shortfall/i);
+  assert.match(html, /H&amp;S control maturity/);                      // the scale is named
+  assert.match(html, /4 · Assured/);
   assert.doesNotMatch(html, /rule breach|breaches of the rule/i); // renamed: needs attention first
 });
 

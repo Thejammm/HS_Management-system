@@ -22,7 +22,7 @@ export const BOARD_SECTIONS = [
   { id: 'sinceLast',      label: 'Movement since the baseline', hsg: 'Closing the loop' },
   { id: 'register',       label: 'Fatal & major-harm register', hsg: 'Risk assessments' },
   { id: 'interpretation', label: 'The picture explained (matrix, risk bands, control ladder)' },
-  { id: 'maturity',       label: 'Risk control status, consultant judgement, directors’ duty, sign-off', locked: true },
+  { id: 'maturity',       label: 'H&S control maturity, consultant judgement, directors’ duty, sign-off', locked: true },
 ];
 export function boardHidden(state) {
   const p = state && state.reportPrefs && state.reportPrefs['board-report'];
@@ -83,7 +83,7 @@ export function buildBoardReport(state, opts = {}) {
       return { value: D.planDone + '/' + total, label: 'Risks fully actioned', note,
                tone: total && (D.planDone + D.planAccepted === total) ? 'ok' : undefined };
     })(),
-    { value: D.holdS.held + '/' + D.holdS.total, label: 'Risks properly held', note: D.holdS.breaches.length ? (D.holdS.breaches.length + ' need' + (D.holdS.breaches.length !== 1 ? '' : 's') + ' attention first') : 'nothing needs attention', tone: D.holdS.breaches.length ? 'bad' : (D.holdS.total && D.holdS.held === D.holdS.total ? 'ok' : undefined) },
+    { value: D.holdS.held + '/' + D.holdS.total, label: 'Risks assured', note: D.holdS.breaches.length ? (D.holdS.breaches.length + ' need' + (D.holdS.breaches.length !== 1 ? '' : 's') + ' attention first') : 'nothing needs attention', tone: D.holdS.breaches.length ? 'bad' : (D.holdS.total && D.holdS.held === D.holdS.total ? 'ok' : undefined) },
     { value: String(D.overdue), label: 'Actions overdue', tone: D.overdue ? 'warn' : 'ok' },
   ];
 
@@ -92,18 +92,18 @@ export function buildBoardReport(state, opts = {}) {
   if (D.overdue) decisions.push({ text: 'Reset owners and dates on the ' + countPhrase(D.overdue, 'overdue action', 'overdue actions') + '.', rationale: 'Overdue actions with no intervention become evidence of a plan the organisation does not follow.' });
   // Numbers only on the front page - the named list gets its own page so ten
   // of them can never crowd the position (Simon).
-  if (D.holdS.breaches.length) { decisions.push({ text: 'Direct that the ' + countPhrase(D.holdS.breaches.length, 'risk needing attention first', 'risks needing attention first') + ' ' + (D.holdS.breaches.length === 1 ? 'is' : 'are') + ' dealt with this month. The named list follows this page.', rationale: 'The response must match the size of the risk: Critical and High risks held or being worked - never run on acceptance alone; Medium risks never left not held.' }); }
+  if (D.holdS.breaches.length) { decisions.push({ text: 'Direct that the ' + countPhrase(D.holdS.breaches.length, 'risk needing attention first', 'risks needing attention first') + ' ' + (D.holdS.breaches.length === 1 ? 'is' : 'are') + ' dealt with this month. The named list follows this page.', rationale: 'The response must match the size of the risk: Critical and High risks assured or managed - never assured on acceptance alone; Medium risks never left uncontrolled.' }); }
   if (!decisions.length) decisions.push({ text: D.empty ? 'Commission completion of the risk profile before the next board cycle.' : 'Note the position and maintain the current programme.', rationale: D.empty ? 'No decision can be soundly made from an incomplete profile.' : 'No exception requires a board decision this period.' });
 
   // Where the risks stand - real counts in the four factual states. The
   // front-page verdict carries COUNTS ONLY; the named list lives on its own
   // page so it can never crowd the position.
   const expBars = {
-    type: 'distributionBars', title: 'Where the ' + D.holdS.total + ' risk' + (D.holdS.total !== 1 ? 's' : '') + ' stand',
-    items: HOLD_ORDER.map(k => ({ label: HOLD_STATES[k].label, n: D.holdS[k], colour: HOLD_STATES[k].colour })),
+    type: 'distributionBars', title: 'H&S control maturity of the ' + D.holdS.total + ' risk' + (D.holdS.total !== 1 ? 's' : ''),
+    items: HOLD_ORDER.map(k => ({ label: HOLD_STATES[k].level + ' · ' + HOLD_STATES[k].label, n: D.holdS[k], colour: HOLD_STATES[k].colour })),
   };
   const verdictLine = D.holdS.breaches.length
-    ? (D.holdS.held + ' of ' + D.holdS.total + ' risk' + (D.holdS.total !== 1 ? 's' : '') + ' properly held. ' + D.holdS.breaches.length + ' need' + (D.holdS.breaches.length !== 1 ? '' : 's') + ' attention first - the named list has its own page.')
+    ? (D.holdS.held + ' of ' + D.holdS.total + ' risk' + (D.holdS.total !== 1 ? 's' : '') + ' assured. ' + D.holdS.breaches.length + ' need' + (D.holdS.breaches.length !== 1 ? '' : 's') + ' attention first - the named list has its own page.')
     : D.holdS.verdict;
 
   // ── The attention page(s): every risk needing attention first, named with
@@ -116,10 +116,10 @@ export function buildBoardReport(state, opts = {}) {
         mast,
         ...(i === 0 ? [{ type: 'titleBlock', kicker: 'Needs attention first',
           headline: D.holdS.breaches.length + ' risk' + (D.holdS.breaches.length !== 1 ? 's need' : ' needs') + ' attention first.',
-          standfirst: 'The response must match the size of the risk. These are the risks where it currently does not - each named, with its state and the reason. Deal with these before anything else on the plan.' }] : []),
+          standfirst: 'The response must match the size of the risk. These are the risks where it currently does not - each named, with its H&S control maturity and the reason. Deal with these before anything else on the plan.' }] : []),
         { type: 'dataTable', title: slices.length > 1 ? ('Needs attention first - part ' + (i + 1) + ' of ' + slices.length) : undefined,
-          cols: [ { header: 'Risk', w: '32%' }, { header: 'Band', w: '12%' }, { header: 'State', w: '16%' }, { header: 'Why', w: '40%' } ],
-          rows: slice.map(b => [ b.name, b.band || '-', b.hold.label, (b.hold.reasons && b.hold.reasons.join('; ')) || b.breach ]),
+          cols: [ { header: 'Risk', w: '32%' }, { header: 'Band', w: '12%' }, { header: 'Maturity', w: '16%' }, { header: 'Why', w: '40%' } ],
+          rows: slice.map(b => [ b.name, b.band || '-', b.hold.level + ' · ' + b.hold.label, (b.hold.reasons && b.hold.reasons.join('; ')) || b.breach ]),
           footnote: i === slices.length - 1 ? 'Also flagged with a ! on the front-page matrix and named in the register.' : undefined },
       ],
     }));
@@ -227,7 +227,7 @@ export function buildBoardReport(state, opts = {}) {
     progBlocks.push({ type: 'dataTable',
       cols: [ { header: 'Measure', w: '40%' }, { header: 'Baseline ' + fmtD(X.baseline.date), w: '20%' }, { header: 'Now', w: '20%' }, { header: 'Movement', w: '20%' } ],
       rows: [
-        [ 'Risks properly held', String(b.held ?? '-'), String(D.holdS.held), (b.held != null) ? ((D.holdS.held > b.held) ? ('up ' + (D.holdS.held - b.held)) : (D.holdS.held < b.held) ? ('down ' + (b.held - D.holdS.held)) : 'no change') : '-' ],
+        [ 'Risks assured', String(b.held ?? '-'), String(D.holdS.held), (b.held != null) ? ((D.holdS.held > b.held) ? ('up ' + (D.holdS.held - b.held)) : (D.holdS.held < b.held) ? ('down ' + (b.held - D.holdS.held)) : 'no change') : '-' ],
         [ 'Need attention first', String(b.ruleBreaches ?? '-'), String(D.holdS.breaches.length), (b.ruleBreaches != null) ? ((D.holdS.breaches.length < b.ruleBreaches) ? ('down ' + (b.ruleBreaches - D.holdS.breaches.length)) : (D.holdS.breaches.length > b.ruleBreaches) ? ('up ' + (D.holdS.breaches.length - b.ruleBreaches)) : 'no change') : '-' ],
         [ 'High + critical risks', String(b.highCrit ?? '-'), String(D.highPlus), mv(b.highCrit, D.highPlus) ],
         [ 'Open actions', String(b.openActions ?? '-'), String(D.openActions), mv(b.openActions, D.openActions) ],
@@ -244,7 +244,7 @@ export function buildBoardReport(state, opts = {}) {
           const parts = [];
           if (done) parts.push(countPhrase(done, 'action delivered', 'actions delivered'));
           if (acc) parts.push(countPhrase(acc, 'risk formally accepted', 'risks formally accepted'));
-          return parts.length ? (parts.join(' and ') + ' - the plan is being worked.') : 'Progress against the plan.';
+          return parts.length ? (parts.join(' and ') + ' - the plan is being delivered.') : 'Progress against the plan.';
         })(),
         standfirst: 'What the business delivered this period, and how far it has moved since the baseline. The outcomes of this review become what is planned next - that closes the loop.' },
       ...progBlocks,
@@ -289,7 +289,7 @@ export function buildBoardReport(state, opts = {}) {
   const page3 = {
     label: 'The picture explained', blocks: [
       mast,
-      { type: 'titleBlock', kicker: 'The picture explained', headline: 'Where the risk sits and how it is held' },
+      { type: 'titleBlock', kicker: 'The picture explained', headline: 'Where the risk sits and how well it is controlled' },
       { type: 'matrix5x5', counts: D.matrix, bands: D.bands, caption: 'Where every rated risk sits now, with controls in place (likelihood across, severity up; the number is how many risks sit in that square). Each square is coloured by its risk band: red Critical, orange High, amber Medium, green Low.' },
       { type: 'distributionBars', title: 'How many risks sit in each band (with controls in place)', items: ['Critical', 'High', 'Medium', 'Low'].map(t => ({ label: t, n: D.byTier[t], colour: TIER_COLOURS[t] })) },
       { type: 'hierarchyStrip', title: 'How the risks are controlled - strongest measures first', items: D.hierarchy, total: D.hierTotal, protectDown: D.protectDown },
@@ -298,21 +298,21 @@ export function buildBoardReport(state, opts = {}) {
     ],
   };
 
-  // ── Page 4: Risk control status, consultant judgement, duty, sign-off ──
+  // ── Page 4: H&S control maturity, consultant judgement, duty, sign-off ──
   // Facts, not scores: each risk sits in one of four states graded on what is
   // recorded; the rule (HSG65 proportionality) is printed in full; the six
   // HSG65 areas carry the consultant's judgement in words.
   const judRows = judgementRows(state);
-  const holdRows = HOLD_ORDER.map(k => [HOLD_STATES[k].label, String(D.holdS[k]), HOLD_STATES[k].desc]);
+  const holdRows = HOLD_ORDER.map(k => [HOLD_STATES[k].level + ' · ' + HOLD_STATES[k].label, String(D.holdS[k]), HOLD_STATES[k].desc]);
   const page4 = {
-    label: 'Risk control status', blocks: [
+    label: 'Control maturity', blocks: [
       mast,
       { type: 'statementPanel', title: 'Directors’ duty', cite: 'Health and Safety at Work etc. Act 1974, s.37', body: 'Where an offence by the company is proved to have been committed with the consent, connivance or neglect of a director, manager or similar officer, that individual - as well as the company - is liable to prosecution. This report exists so the board can show it directed and reviewed the management of these risks.' },
       { type: 'tagList', title: 'The laws this risk profile brings into play', tags: D.duties },
-      { type: 'dataTable', title: 'Risk control status - what each state means',
-        cols: [ { header: 'State', w: '18%' }, { header: 'Risks', w: '10%' }, { header: 'What it means', w: '72%' } ],
+      { type: 'dataTable', title: 'H&S control maturity - what each level means',
+        cols: [ { header: 'Level', w: '18%' }, { header: 'Risks', w: '10%' }, { header: 'What it means', w: '72%' } ],
         rows: holdRows,
-        footnote: 'Graded on recorded facts, not opinion. The response must match the size of the risk: Critical and High risks must be held or being worked on time, and never run on acceptance alone; Medium risks must not be left not held.' },
+        footnote: 'Graded on recorded facts, not opinion. The response must match the size of the risk: Critical and High risks must be 4 · Assured or 3 · Managed on time, and never assured on acceptance alone; Medium risks must not be left 1 · Uncontrolled.' },
       judRows.length
         ? { type: 'dataTable', title: 'Consultant judgement - the six areas of the management system, in words',
             cols: [ { header: 'Area', w: '28%' }, { header: 'Judgement', w: '16%' }, { header: 'Consultant’s note', w: '56%' } ],

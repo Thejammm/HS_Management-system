@@ -7542,7 +7542,7 @@ function _auditMetricsNow(){
   const open=acts.filter(a=>a.status!=='Complete'&&a.status!=='Accepted');
   const overdue=acts.filter(a=>a.rag==='red');
   const delivered=acts.filter(a=>a.status==='Complete'||a.status==='Accepted');
-  const trn=(S.training||[]);
+  const trn=(typeof _trainingRows==='function')?_trainingRows():(S.training||[]);
   const trnExp=trn.filter(x=>_trainingRag(x.expiry)==='red').length;
   const br=((S.consultation&&S.consultation.briefings)||[]);
   const reqSecs=(S.requirements||[]);
@@ -10336,6 +10336,22 @@ function migrateLoadedState(){
       S.monitoring.regSeeded = true;  // don't auto-seed over a migrated tracker
     }
   }
+  // The tracker used to auto-seed three guessed rows (LOLER / Gas safety /
+  // Fixed wire) on first open. The seed is gone - what a client needs comes
+  // from their spreadsheet, manual rows or the discovery coverage check.
+  // Clean the guesses out of already-seeded states, but ONLY rows still
+  // exactly as seeded: any row the client has touched is never removed.
+  try{
+    const OLD_SEED=['LOLER (lifting equipment)','Gas safety','Fixed wire (electrical installation)'];
+    (S.monitoring.regSections||[]).forEach(sec=>{
+      if((sec.name||'')!=='Statutory inspections') return;
+      sec.items=(sec.items||[]).filter(it=>{
+        const blank=!(it.dueDate||it.result||it.resultDate||it.certRef||it.notes||it.area||it.frequency);
+        return !(blank && OLD_SEED.includes(String(it.item||'').trim()));
+      });
+    });
+    S.monitoring.regSections=(S.monitoring.regSections||[]).filter(sec=>!((sec.name||'')==='Statutory inspections' && !(sec.items||[]).length));
+  }catch(e){ /* never block a load on tidy-up */ }
 
   // Stage 2: consultant review (rating history + feedback) moves into per-tenant
   // state so it syncs to the server instead of living only in this device's
@@ -13756,7 +13772,7 @@ const COCKPIT_WIDGETS = {
   gaugeCompleteness:{ id:'gaugeCompleteness', label:'Completeness gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Assessment completeness', `${_gaugeSVG(x.RD.completeness)}<div class="ck-pending" style="text-align:center;margin-top:2px;">of the assessment complete</div><button class="ck-link" onclick="openCompletenessModal()" style="align-self:center;">What's left →</button>`) },
   gaugeCompliance:  { id:'gaugeCompliance', label:'Compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Inspection compliance', `${_gaugeSVG(x.compliance==null?0:x.compliance,{text:x.compliance==null?'--':x.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">pass + rectified</div><button class="ck-link" onclick="switchTab('monthly')" style="align-self:center;">Monthly report</button>`) },
   gaugeMaturity:    { id:'gaugeMaturity', label:'Risks properly held (gauge)', group:'Gauge', defaultOff:true, render:x=>{ const H=_holdSummary(); const pct=H.total?Math.round(H.held/H.total*100):0; return _ckMod('Risks properly held', `${_gaugeSVG(pct,{text:H.total?(H.held+'/'+H.total):'--'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${H.breaches.length?(H.breaches.length+' need'+(H.breaches.length!==1?'':'s')+' attention first'):'nothing needs attention'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
-  tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(100 - x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`) },
+  tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(100 - x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><div style="text-align:center;font-size:10.5px;color:var(--text-muted);line-height:1.45;margin-top:2px;">Lower is better. The score is how much of the register sits in the higher bands - each risk counts by band (Critical 3, High 2, Medium 1, Low a half) against the worst case of 100.</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Open the risks behind this score</button>`) },
   gaugeAccreditation:{ id:'gaugeAccreditation', label:'Accreditation gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Accreditation readiness', `${_gaugeSVG(x.cas.pctReady==null?0:x.cas.pctReady,{text:x.cas.pctReady==null?'--':x.cas.pctReady+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">criteria ready</div><button class="ck-link" onclick="switchTab('cas')" style="align-self:center;">Open accreditation</button>`) },
   gaugeMgmtCompliance:{ id:'gaugeMgmtCompliance', label:'Mgmt-system compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Management-system compliance', `${_gaugeSVG(x.reqStats.compliance==null?0:x.reqStats.compliance,{text:x.reqStats.compliance==null?'--':x.reqStats.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">requirements met</div><button class="ck-link" onclick="switchTab('requirements')" style="align-self:center;">Open management system</button>`) },
   gaugeSifControl:  { id:'gaugeSifControl', label:'Fatal-risk control gauge', group:'Gauge', defaultOff:true, render:x=>{ const t=x.RD.sif.length, pct=t?Math.round((t-x.RD.sifUncontrolled.length)/t*100):0; return _ckMod('Fatal-risk control', `${_gaugeSVG(pct,{text:t?pct+'%':'n/a'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${t?('of '+t+' fatal-potential controlled'):'no fatal-potential risks'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
@@ -13998,7 +14014,7 @@ function renderReports(){
       desc:'The two-way evidence: how employees are consulted and informed, plus the signed briefing record - what was covered and what the workforce raised (HSCER 1996; SRSC 1977).',
       tags:['Two-way','Briefings','Statutory duty'] },
     { title:'Training & Competence Record', accent:'#0D9488', tint:'#E6F4F2', fn:'downloadTrainingReport()',
-      meta:(function(){ const n=(S.training||[]).length; if(!n) return 'No records yet'; const ex=(S.training||[]).filter(x=>_trainingRag(x.expiry)==='red').length; return n+' record'+(n!==1?'s':'')+(ex?(' · '+ex+' expired'):' · all in date'); })(),
+      meta:(function(){ const t=_trainingRows(); const n=t.length; if(!n) return 'No records yet'; const ex=t.filter(x=>_trainingRag(x.expiry)==='red').length; return n+' record'+(n!==1?'s':'')+(ex?(' · '+ex+' expired'):' · all in date'); })(),
       icon:svg('<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>'),
       desc:'Who is trained in what, with completion and expiry status per person per course - the competence evidence behind the risk profile (MHSWR 1999 reg 13).',
       tags:['Competence','Expiry RAG','Matrix'] },
@@ -19617,7 +19633,6 @@ const MONITORING_FAMILIES = [
     {key:'teamGoals',         label:'Team goals', type:'text'},
     {key:'improvementAreas',  label:'Areas of improvement identified', type:'text'} ] }
 ];
-const REGULATORY_SEED = ['LOLER (lifting equipment)', 'Gas safety', 'Fixed wire (electrical installation)'];
 
 function _inspScore(insp){
   const r = insp.results || {}; let p=0,rc=0,a=0;
@@ -20446,22 +20461,22 @@ function importStatutoryCSV(text){
 }
 function importTrainingCSV(text){
   const rows=_parseCSV(text); if(rows.length<2){ showToast('No data rows found in that file','error'); return; }
-  const map=_csvHeaderMap(rows[0]); const t=_trainingState(); let added=0;
+  const map=_csvHeaderMap(rows[0]); const d=_trainingData(); const norm=(x)=>String(x||'').replace(/[,\s]+/g,' ').trim().toLowerCase(); let added=0;
   for(let i=1;i<rows.length;i++){ const r=rows[i];
     const employee=_csvGet(r,map,['employee','name','staff','person']);
     const course=_csvGet(r,map,['course','training','qualification','competency','competence']);
     if(!employee || !course) continue;
-    const completed=_csvDate(_csvGet(r,map,['completed','date completed','completed date','achieved','date']));
     const expiry=_csvDate(_csvGet(r,map,['expiry','expires','expiry date','renewal','renewal date','valid until']));
-    let rec=t.find(x=>(x.employee||'').toLowerCase()===employee.toLowerCase() && (x.course||'').toLowerCase()===course.toLowerCase());
-    if(rec){ rec.completed=completed||rec.completed; rec.expiry=expiry||rec.expiry; }
-    else { t.push({ id:_reqUid('trn'), employee:employee, course:course, completed:completed, expiry:expiry }); }
+    const k=norm(employee);
+    let p=(d.people||[]).find(x=>norm((x.firstName||'')+' '+(x.lastName||''))===k || norm((x.lastName||'')+' '+(x.firstName||''))===k);
+    if(!p){ p={ id:_reqUid('trp'), sheet:null, row:null, group:'staff', status:'active', lastName:'', firstName:employee, badge:'', job:'', cells:{} }; d.people.push(p); }
+    if(!p.cells) p.cells={};
+    const isoOk=/^\d{4}-\d{2}-\d{2}$/.test(expiry||'');
+    p.cells[course]= isoOk ? { type:'date', v:expiry } : { type:'text', v: expiry||'✓' };
     added++;
   }
-  // The cockpit reads the derived S.trainingData snapshot; drop it so it is
-  // rebuilt from these records (otherwise a snapshot cached before the import
-  // leaves the Training KPI saying "no matrix uploaded" forever).
-  delete S.trainingData;
+  // (trainingData IS the store now - never delete it here; the old "derived
+  // snapshot" reset predates v2 and silently destroyed imports.)
   saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
   showToast('✓ Imported '+added+' training record'+(added!==1?'s':'')+' - use “Raise renewal actions” to add renewals to the plan','success');
 }
@@ -20560,10 +20575,13 @@ function _impGoPreview(){
 function _impTrainingRecords(){
   const H=_impWiz.headers, ni=_impWiz.nameIdx;
   const courseCols=H.map((h,i)=>i).filter(i=>i!==ni && !_impWiz.exclude[i] && H[i]);
-  const t=_trainingState(); const recs=[]; let skipped=0;
+  const recs=[]; let skipped=0;
   _impWiz.rows.forEach(r=>{ const name=String(r[ni]==null?'':r[ni]).trim(); if(!name){ skipped++; return; }
-    courseCols.forEach(ci=>{ const cell=String(r[ci]==null?'':r[ci]).trim(); if(!cell) return; recs.push({ employee:name, course:H[ci], expiry:_xlDate(cell) }); }); });
-  let nw=0,up=0; recs.forEach(rec=>{ const ex=t.find(x=>(x.employee||'').toLowerCase()===rec.employee.toLowerCase() && (x.course||'').toLowerCase()===rec.course.toLowerCase()); if(ex) up++; else nw++; });
+    courseCols.forEach(ci=>{ const cell=String(r[ci]==null?'':r[ci]).trim(); if(!cell) return; recs.push({ employee:name, course:H[ci], expiry:_xlDate(cell), raw:cell }); }); });
+  const people=_trainingData().people||[]; const norm=(x)=>String(x||'').replace(/[,\s]+/g,' ').trim().toLowerCase();
+  let nw=0,up=0; recs.forEach(rec=>{ const k=norm(rec.employee);
+    const ex=people.find(p=>norm((p.firstName||'')+' '+(p.lastName||''))===k || norm((p.lastName||'')+' '+(p.firstName||''))===k);
+    if(ex && ex.cells && ex.cells[rec.course]!=null) up++; else nw++; });
   return { recs, nw, up, skipped, courseCols:courseCols.length };
 }
 function _impStatutoryRecords(){
@@ -20580,9 +20598,16 @@ function _impStatutoryRecords(){
 }
 function _impApply(){
   if(_impWiz.kind==='training'){
-    const {recs}=_impTrainingRecords(); const t=_trainingState();
-    recs.forEach(rec=>{ let ex=t.find(x=>(x.employee||'').toLowerCase()===rec.employee.toLowerCase() && (x.course||'').toLowerCase()===rec.course.toLowerCase());
-      if(ex){ ex.expiry=rec.expiry||ex.expiry; } else { t.push({ id:_reqUid('trn'), employee:rec.employee, course:rec.course, completed:'', expiry:rec.expiry }); } });
+    // Writes the v2 people store (what the matrix reads) - the legacy flat
+    // list is migration input only, never written.
+    const {recs}=_impTrainingRecords(); const d=_trainingData(); const norm=(x)=>String(x||'').replace(/[,\s]+/g,' ').trim().toLowerCase();
+    recs.forEach(rec=>{ const k=norm(rec.employee);
+      let p=(d.people||[]).find(x=>norm((x.firstName||'')+' '+(x.lastName||''))===k || norm((x.lastName||'')+' '+(x.firstName||''))===k);
+      if(!p){ p={ id:_reqUid('trp'), sheet:null, row:null, group:'staff', status:'active', lastName:'', firstName:rec.employee, badge:'', job:'', cells:{} }; d.people.push(p); }
+      if(!p.cells) p.cells={};
+      const isoOk=/^\d{4}-\d{2}-\d{2}$/.test(rec.expiry||'');
+      p.cells[rec.course]= isoOk ? { type:'date', v:rec.expiry } : { type:'text', v:rec.raw||'' };
+    });
     _importProfiles().training={ nameHeader:_impWiz.headers[_impWiz.nameIdx]||'', excludeHeaders:Object.keys(_impWiz.exclude).filter(i=>_impWiz.exclude[i]).map(i=>_impWiz.headers[i]).filter(Boolean) };
     saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
     showToast('✓ Imported '+recs.length+' training record'+(recs.length!==1?'s':'')+' - use “Raise renewal actions” to add renewals to the plan','success');
@@ -20661,7 +20686,7 @@ function _impPreviewHTML(){
     <div style="display:flex;justify-content:space-between;gap:8px;margin-top:16px;"><button class="btn btn-ghost btn-sm" onclick="_impBack('map')">← Back</button><button class="btn btn-primary btn-sm"${total?'':' disabled'} onclick="_impApply()">Import ${total} ${_impWiz.kind==='training'?'record'+(total!==1?'s':''):'item'+(total!==1?'s':'')}</button></div>`;
 }
 
-function _trainingMatrixHTML(){
+function _trainingMatrixHTML_legacyDead(){   // shadowed by the v2 renderer below - kept only as reference
   const t=_trainingState(); if(!t.length) return '';
   const ro=_roLocked();
   const RAGC={red:'#DC2626',amber:'#F59E0B',green:'#16A34A',grey:'#9CA3AF'};
@@ -20706,6 +20731,19 @@ function _trainingData(){
   (S.trainingData.people||[]).forEach(p=>{ if(!p.id) p.id=_reqUid('trp'); if(!p.cells) p.cells={}; if(!p.group) p.group='staff'; if(!p.status) p.status='active'; });
   return S.trainingData;
 }
+// ONE flat reader over the v2 store (legacy S.training auto-migrates inside
+// _trainingData): active people only, one row per recorded course; only date
+// cells carry an expiry. Everything that needs {employee, course, expiry}
+// reads THIS - never S.training directly.
+function _trainingRows(){
+  const d=_trainingData(); const out=[];
+  (d.people||[]).forEach(p=>{ if(p.status==='left') return;
+    const nm=(((p.firstName||'')+' '+(p.lastName||'')).replace(/\s+/g,' ').trim())||String(p.lastName||'');
+    Object.keys(p.cells||{}).forEach(course=>{ const c=p.cells[course]; if(!c||c.type==='empty'||c.v===''||c.v==null) return;
+      out.push({ employee:nm, course:course, completed:'', expiry:(c.type==='date'?(c.v||''):'') }); });
+  });
+  return out;
+}
 function _tOnline(){ try{ return !!(Auth.isSignedIn() && Auth.activeTenantId()); }catch(e){ return false; } }
 function _tFmt(iso){ try{ return iso? new Date(String(iso)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}):''; }catch(e){ return ''; } }
 function _tCoursesFor(group){
@@ -20746,10 +20784,21 @@ function _tGroupTable(group,label){
 function _trainingMatrixHTML(){
   const d=_trainingData(), ro=_roLocked();
   const onl=_tOnline(), impAttr=onl?'':' disabled title="Sign in to sync the spreadsheet"';
+  // The matrix card is ALWAYS here, arranged like the statutory tracker: one
+  // card per register with its own full toolbar (upload, paste, template,
+  // add, raise). The separate "Import from spreadsheet" hub card is gone -
+  // it was the duplication (Simon, 2026-08-19).
+  const waysIn = ro?'':`<button class="btn btn-primary btn-sm no-print" onclick="trainingUploadXlsx()"${impAttr}>⭱ Upload spreadsheet (.xlsx)</button>
+    <button class="btn btn-ghost btn-sm no-print" onclick="openImportWizard('training')">⎘ Paste from Excel</button>
+    <button class="btn btn-ghost btn-sm no-print" onclick="downloadTrainingTemplate()">⭳ Template</button>`;
   if(!(d.people||[]).length){
-    return `<div class="card"><div class="card-band"><h3><span class="dot">●</span> Training matrix</h3></div><div class="card-body">
-      <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">No training data yet. Upload the client's training spreadsheet - it stays the source of truth; the app reads, manages and exports it.</div>
-      ${ro?'':`<button class="btn btn-primary btn-sm no-print" onclick="trainingUploadXlsx()"${impAttr}>⭱ Upload training spreadsheet (.xlsx)</button>`}
+    return `<div class="card">
+    <div class="card-band"><h3><span class="dot">●</span> Training matrix</h3></div>
+    <div class="card-body">
+      <div class="ck-pending" style="padding:6px 0;">No training data yet. Upload the client's spreadsheet, paste straight from Excel, or start from the template - their file stays the source of truth; the app reads, manages and exports it.</div>
+      ${ro?'':`<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${waysIn}
+        <button class="btn btn-ghost btn-sm no-print" onclick="trainingAddPerson()">＋ Add person</button>
+      </div>`}
     </div></div>`;
   }
   let nExp=0,nSoon=0; (d.people||[]).filter(p=>p.status==='active').forEach(p=>Object.values(p.cells||{}).forEach(c=>{ if(c&&c.type==='date'){ const r=_trainingRag(c.v); if(r==='red')nExp++; else if(r==='amber')nSoon++; }}));
@@ -20761,8 +20810,11 @@ function _trainingMatrixHTML(){
   const toolbar=ro?'':`<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
     <button class="btn btn-outline btn-sm no-print" onclick="trainingUploadXlsx()"${impAttr}>⭱ Import / update (overwrite)</button>
     <button class="btn btn-outline btn-sm no-print" onclick="trainingExportXlsx()"${impAttr}>⭳ Export spreadsheet</button>
+    <button class="btn btn-ghost btn-sm no-print" onclick="openImportWizard('training')">⎘ Paste from Excel</button>
+    <button class="btn btn-ghost btn-sm no-print" onclick="downloadTrainingTemplate()">⭳ Template</button>
     <button class="btn btn-ghost btn-sm no-print" onclick="trainingAddPerson()">＋ Add person</button>
     <button class="btn btn-ghost btn-sm no-print" onclick="raiseTrainingRenewals()"${due?'':' disabled'}>Raise renewal actions${due?(' ('+due+')'):''}</button>
+    <span style="font-size:11.5px;color:var(--text-muted);">The client's spreadsheet stays the source of truth - import overwrites, export writes their exact file back.</span>
   </div>`;
   return `<div class="card">
     <div class="card-band"><h3><span class="dot">●</span> Training matrix</h3><span class="badge badge-muted">${nActive} staff${nLeft?(' · '+nLeft+' left'):''}${nExp?(' · '+nExp+' expired'):''}${nSoon?(' · '+nSoon+' expiring'):''}</span></div>
@@ -20860,6 +20912,11 @@ function trainingOffboard(pid){
   p.status='left'; saveData(); renderMonitoring();
 }
 function _spreadsheetImportHTML(){
+  // GONE (Simon 2026-08-19): this hub card duplicated the upload / paste /
+  // template routes that now live on each register's own card toolbar
+  // (statutory tracker + training matrix). Kept as an empty stub.
+  return '';
+  /* eslint-disable no-unreachable */
   if(_roLocked()) return '';
   const _u=(typeof Auth!=='undefined'&&Auth.user)?Auth.user():null;
   if(_u && _u.role!=='consultant') return '';   // clients don't import; consultant (or offline) does
@@ -20874,8 +20931,8 @@ function _spreadsheetImportHTML(){
         </div>
         <div style="flex:1;min-width:230px;border:1.5px solid var(--border);border-radius:9px;padding:12px;">
           <div style="font-weight:700;margin-bottom:2px;">Training matrix</div>
-          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">→ upload the client's own .xlsx (round-trips in/out)</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="trainingUploadXlsx()">⭱ Upload spreadsheet</button></div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">→ upload the client's own .xlsx (round-trips in/out), paste straight from Excel, or start from the template</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="trainingUploadXlsx()">⭱ Upload spreadsheet</button><button class="btn btn-ghost btn-sm no-print" onclick="openImportWizard('training')">⎘ Paste from Excel</button><button class="btn btn-ghost btn-sm no-print" onclick="downloadTrainingTemplate()">⭳ Template</button></div>
         </div>
       </div>
     </div></div>`;
@@ -20984,13 +21041,11 @@ function renderMonitoring(){
   // Review date field
   const revEl = document.getElementById('monReviewDate');
   if(revEl){ revEl.value = md.monthlyReviewDate || ''; revEl.disabled = ro; }
-  // Seed the regulatory tracker once (owner only) - a default section of common items.
-  // The regSeeded flag ensures a deliberately-emptied tracker is not re-seeded.
-  if(!ro && !S.monitoring.regSeeded && (!Array.isArray(S.monitoring.regSections) || !S.monitoring.regSections.length)){
-    S.monitoring.regSections = [{ id:_reqUid('regsec'), name:'Statutory inspections', items: REGULATORY_SEED.map(it => ({ id:_reqUid('reg'), item:it, dueDate:'', result:'', resultDate:'' })) }];
-    S.monitoring.regSeeded = true;
-    saveData();
-  }
+  // No pre-baked statutory rows: a fresh client starts EMPTY. What a client
+  // actually needs comes from their own spreadsheet (import hub), manual
+  // rows, or the discovery-driven coverage check - which raises missing
+  // statutory cover as ACTIONS, never as guessed rows (a garage got LOLER,
+  // gas and fixed-wire rows it may not have; Simon 2026-08-19).
   const dis = ro ? ' disabled' : '';
 
   const metricRow = (m) => {
@@ -21084,6 +21139,8 @@ function renderMonitoring(){
           <button class="btn btn-primary btn-sm no-print" onclick="addRegSection()">＋ Add section</button>
           <button class="btn btn-outline btn-sm no-print" onclick="statutoryUploadXlsx()"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⭱ Import / update (overwrite)</button>
           <button class="btn btn-outline btn-sm no-print" onclick="statutoryExportXlsx()"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⭳ Export spreadsheet</button>
+          <button class="btn btn-ghost btn-sm no-print" onclick="openImportWizard('statutory')">⎘ Paste from Excel</button>
+          <button class="btn btn-ghost btn-sm no-print" onclick="downloadStatutoryTemplate()">⭳ Template</button>
           ${(function(){ const n=_statDueCount(); return `<button class="btn btn-ghost btn-sm no-print" onclick="raiseStatutoryDue()"${n?'':' disabled'}>Raise due actions${n?(' ('+n+')'):''}</button>`; })()}
           ${(function(){ const g=(typeof _covGaps==='function')?_covGaps().length:0; return `<button class="btn btn-ghost btn-sm no-print" onclick="runCoverageCheck()" title="Compare what the discovery answers imply against the statutory tracker and training matrix - gaps become actions, never rows">🛡 Coverage check${g?(' ('+g+')'):''}</button>`; })()}
           <span style="font-size:11.5px;color:var(--text-muted);">The client's spreadsheet stays the source of truth - import overwrites, export writes their exact file back.</span>
@@ -21091,7 +21148,6 @@ function renderMonitoring(){
       </div>
     </div>`
     + _trainingMatrixHTML()
-    + _spreadsheetImportHTML()
     + (ro?'':`<div class="card"><div class="card-body" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;">
         <div style="font-size:13px;color:var(--text-muted);">Spotted something in assurance that needs doing (a failed inspection, an overdue statutory item, a gap)? Raise it into the client's execution plan.</div>
         <button class="btn btn-outline btn-sm no-print" onclick="raiseExecAction('Assurance','Assurance record')">＋ Raise action into the plan</button>
@@ -21362,7 +21418,7 @@ const PSO_TYPES = ['Policy','Procedure','Risk assessment','Toolbox talk','Traini
 //    register). Suggestions only - nothing is added without a click.
 function _signoffSuggestions(staff){
   const n=String(staff.name||'').trim().toLowerCase(); if(!n) return null;
-  const recs=(S.training||[]).filter(t=>String(t.employee||'').trim().toLowerCase()===n);
+  const recs=_trainingRows().filter(t=>String(t.employee||'').trim().toLowerCase()===n);
   if(!recs.length) return null;
   const p=_psoState();
   const have=new Set(p.policies.map(x=>String(x.title||'').trim().toLowerCase()).filter(Boolean));
@@ -22715,7 +22771,7 @@ function buildTrainingMatrixPDF(){
   const K=_mkPdf('Training & Competence Record', client, d, 'Who is trained in what, with expiry status (MHSWR 1999 reg 13; HSWA 1974 s.2(2)(c)).');
   const { doc } = K;
   const fd=(s)=> s ? new Date(s+(String(s).length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '-';
-  const t=(S.training||[]).slice().sort((a,b)=>String(a.employee||'').localeCompare(String(b.employee||''))||String(a.course||'').localeCompare(String(b.course||'')));
+  const t=_trainingRows().slice().sort((a,b)=>String(a.employee||'').localeCompare(String(b.employee||''))||String(a.course||'').localeCompare(String(b.course||'')));
   if(!t.length){
     K.section('Training record', NAVY);
     K.text('No training records yet. Import the client\'s training matrix (CSV) or add records on the Assurance records tab; each person-course record appears here with its expiry status.', 10, {color:GREY});

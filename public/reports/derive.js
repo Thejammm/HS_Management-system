@@ -7,8 +7,8 @@
 // from the app itself) and scripts/check-app-report-consistency.mjs diffs the
 // two implementations on a seeded edge-case state - run it before deploying
 // anything that touches either side.
-import { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor } from './app-contract.js';
-export { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor };
+import { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf } from './app-contract.js';
+export { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf };
 
 // ── Tier banding ──
 // The app's bands are tenant-tunable (state.riskConfig.bands). The report must
@@ -127,8 +127,9 @@ export function deriveBoardExtras(state, opts = {}) {
   const months = (s.monitoring && s.monitoring.months) || {};
   const monthsSaved = Object.keys(months).filter(k => months[k] && months[k].enteredAt).sort();
 
-  // Training record.
-  const trn = Array.isArray(s.training) ? s.training : [];
+  // Training record - the SAME flat rows the app derives from its v2
+  // people store (legacy flat lists migrate identically), via the contract.
+  const trn = trainingRowsOf(s);
   const trag = (expiry) => { if (!expiry) return 'grey'; if (expiry < today) return 'red'; return expiry <= soon ? 'amber' : 'green'; };
   const trnExpired = trn.filter(x => trag(x.expiry) === 'red');
   const trnSoon = trn.filter(x => trag(x.expiry) === 'amber');

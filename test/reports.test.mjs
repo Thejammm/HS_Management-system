@@ -10,7 +10,7 @@ import url from 'node:url';
 import { tierFor, bandsFrom, noneOrCount, countPhrase, isAre, hasHave, deriveBoard, deriveBoardExtras, residualOf } from '../public/reports/derive.js';
 import { reportHTML, paginateRows } from '../public/reports/engine.js';
 import { matrix5x5 } from '../public/reports/blocks.js';
-import { docFor } from '../public/reports/app-contract.js';
+import { docFor, trainingRowsOf } from '../public/reports/app-contract.js';
 import { REPORTS, buildReport, getReportFormat, setReportFormat } from '../public/reports/templates/index.js';
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
@@ -146,6 +146,19 @@ test('board and risk-assessment print the document-control details', () => {
   assert.match(ra, /prepared by Simon Archer/);
   assert.match(ra, /approved by J Board, Managing Director/);
   assert.match(ra, /-RP-v1\.0/);
+});
+
+test('training rows come from the v2 people store, legacy migrates identically', () => {
+  const v2 = { trainingData: { people: [
+    { firstName: 'Jo', lastName: 'Hart', status: 'active', cells: { 'First aid': { type: 'date', v: '2027-01-01' }, 'IPAF': { type: 'text', v: 'Trainer' }, 'Empty': { type: 'empty', v: '' } } },
+    { firstName: 'Old', lastName: 'Leaver', status: 'left', cells: { 'First aid': { type: 'date', v: '2020-01-01' } } },
+  ] } };
+  const rows = trainingRowsOf(v2);
+  assert.equal(rows.length, 2);                                   // empty cell skipped, leaver skipped
+  assert.deepEqual(rows.find(r => r.course === 'First aid'), { employee: 'Jo Hart', course: 'First aid', completed: '', expiry: '2027-01-01' });
+  assert.equal(rows.find(r => r.course === 'IPAF').expiry, '');   // text entries carry no expiry
+  const legacy = trainingRowsOf({ training: [ { employee: 'A. Jones', course: 'Manual handling', expiry: '2021-05-01' } ] });
+  assert.deepEqual(legacy, [{ employee: 'A. Jones', course: 'Manual handling', completed: '', expiry: '2021-05-01' }]);
 });
 
 test('no long dashes anywhere in the rendered report', () => {

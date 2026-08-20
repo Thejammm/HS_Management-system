@@ -56,6 +56,10 @@ const STATE = {
   riskAssurance: { leading: [{ id: 'l1', measure: 'x' }], lagging: [], assurance: [] },
   docControl: { defaults: { author: 'Simon Archer', approverName: 'J Board', approverRole: 'Managing Director', reviewMonths: 6, refPrefix: '' },
     docs: { boardReport: { version: '2.0' }, riskProfile: { ref: 'FIXED-REF-1' } } },
+  trainingData: { people: [
+    { firstName: 'Jo', lastName: 'Hart', status: 'active', cells: { 'First aid': { type: 'date', v: '2020-01-01' }, 'IPAF': { type: 'text', v: 'Trainer' } } },
+    { firstName: 'Old', lastName: 'Leaver', status: 'left', cells: { 'First aid': { type: 'date', v: '2019-01-01' } } },
+  ] },
 };
 
 const browser = await puppeteer.launch({
@@ -87,6 +91,7 @@ const app = await page.evaluate((STATE) => {
     // per-risk plan state, counted the same way the report counts it.
     planDone: (S.riskProfile || []).filter(r => _riskPlanState(r).k === 'managed').length,
     planAccepted: (S.riskProfile || []).filter(r => _riskPlanState(r).k === 'accepted').length,
+    trnExp: _auditMetricsNow().trainingExpired,
     // Wins (board "Successes" page): the app's aggregator is the truth -
     // every action closed in the report period (or undated) from all three
     // sources, removed/deleted excluded.
@@ -140,6 +145,8 @@ eq('hold: pill colour', app.hold.pillC, D.holdS.pillC);
 eq('hold: verdict sentence', app.hold.verdict, D.holdS.verdict);
 eq('panel pill = hold pill', app.panelPill.pill, D.holdS.pillT);
 eq('judged areas count', app.matJudged, Object.values(STATE.profiler.judgement).filter(j => j && j.level).length);
+// Training: the audit metric and the report read the SAME v2 rows.
+eq('training expired (v2 store)', app.trnExp, deriveBoardExtras(STATE, { today: TODAY }).trnExpired.length);
 // Document control resolves identically (the app returns legacy aliases and
 // an underscored omit flag on top; compare the shared fields).
 const dcPick = (d) => ({ ref: d.ref, version: d.version, author: d.author, approverName: d.approverName, approverRole: d.approverRole, issued: d.issued, nextReview: d.nextReview, omit: !!(d.omit || d._omit) });

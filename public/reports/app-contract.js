@@ -315,3 +315,33 @@ export function docFor(state, key, opts = {}) {
   const ref = (d.ref && String(d.ref).trim()) || (pfx + '-' + code + '-v' + String(version));
   return { ref, version, author, approverName, approverRole, issued, nextReview, omit: !!d.omit };
 }
+
+// ── Training rows - verbatim port of the app's _trainingRows over the v2
+//    people store (S.trainingData), with the same in-memory migration of the
+//    legacy flat S.training list the app performs (_trainingData). Pure:
+//    never writes the state. Active people only; only date cells carry an
+//    expiry. Rows: { employee, course, completed, expiry }. ──
+export function trainingRowsOf(state) {
+  const s = state || {};
+  let people;
+  if (s.trainingData && typeof s.trainingData === 'object' && Array.isArray(s.trainingData.people)) {
+    people = s.trainingData.people;
+  } else {
+    people = []; const seen = {};
+    (Array.isArray(s.training) ? s.training : []).forEach(r => {
+      const key = (r.employee || '').toLowerCase(); if (!key) return;
+      let p = seen[key]; if (!p) { p = { group: 'staff', status: 'active', lastName: '', firstName: r.employee || '', cells: {} }; seen[key] = p; people.push(p); }
+      if (r.course) p.cells[r.course] = { type: r.expiry ? 'date' : 'empty', v: r.expiry || '' };
+    });
+  }
+  const out = [];
+  people.forEach(p => {
+    if (!p || p.status === 'left') return;
+    const nm = (((p.firstName || '') + ' ' + (p.lastName || '')).replace(/\s+/g, ' ').trim()) || String(p.lastName || '');
+    Object.keys(p.cells || {}).forEach(course => {
+      const c = p.cells[course]; if (!c || c.type === 'empty' || c.v === '' || c.v == null) return;
+      out.push({ employee: nm, course, completed: '', expiry: (c.type === 'date' ? (c.v || '') : '') });
+    });
+  });
+  return out;
+}

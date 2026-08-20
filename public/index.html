@@ -4269,6 +4269,21 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
     </div>
 
+      <!-- ══════════ RESTORE A PREVIOUS VERSION ══════════ -->
+      <div class="card no-print" style="margin-bottom:18px;">
+        <div class="card-band"><h3><span class="dot">●</span> Restore a previous version</h3></div>
+        <div class="card-body">
+          <div style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:14px;max-width:70ch;">
+            The record as it stood before each save is kept on the server. If something is cleared by mistake, whether by a reset, an import that replaced the wrong section, or an edit that turned out to be wrong, put it back from here. Restoring is itself kept, so a restore to the wrong point can be undone as well.
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+            <button class="btn btn-outline btn-sm" onclick="renderRestorePoints()">&#8635; Load restore points</button>
+            <span style="font-size:11.5px;color:var(--text-muted);">Kept automatically. Nothing to switch on.</span>
+          </div>
+          <div id="restorePointsBody"><div class="ck-pending">Not loaded yet.</div></div>
+        </div>
+      </div>
+
     </div> <!-- /consultantContent -->
   </div> <!-- /tab-setup -->
 
@@ -12891,22 +12906,174 @@ function fmtPeriod(insp){
   if(f&&t) return `${fmtDate(f)} - ${fmtDate(t)}`;
   return fmtDate(t||f);
 }
+// ── Restore points ──
+// The server keeps the record as it stood before each save (routes/state.js).
+// This is the way back into it without anybody running SQL: what was kept,
+// when, by whom, how big, and why - and a button to put one back.
+function _restoreTenantId(){
+  try { return (typeof Auth!=='undefined' && Auth.activeTenantId) ? (Auth.activeTenantId()||null) : null; } catch(e){ return null; }
+}
+function _restoreBytes(n){
+  n = Number(n)||0;
+  if(n >= 1048576) return (n/1048576).toFixed(1)+' MB';
+  if(n >= 1024)    return Math.round(n/1024)+' KB';
+  return n+' bytes';
+}
+function _restoreWhen(iso){
+  try {
+    const d = new Date(iso);
+    if(isNaN(d)) return String(iso||'');
+    return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) + ', ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  } catch(e){ return String(iso||''); }
+}
+// Plain words for why a copy was kept, so the list reads as a history rather
+// than as log output.
+function _restoreWhy(reason){
+  const r = String(reason||'');
+  if(/cleared/.test(r))              return 'kept because that save cleared the record';
+  if(/records removed/.test(r))      return 'kept because that save removed a lot of records';
+  if(/large reduction/.test(r))      return 'kept because that save removed a lot';
+  if(/replaced by a restore/.test(r)) return 'kept before an earlier restore';
+  return 'routine copy';
+}
+async function renderRestorePoints(){
+  const host = document.getElementById('restorePointsBody');
+  if(!host) return;
+  const tid = _restoreTenantId();
+  if(!tid){
+    host.innerHTML = '<div class="rpx-explain">Restore points are kept on the server, so they apply to a client record you are signed in to. An offline copy has no server history behind it.</div>';
+    return;
+  }
+  host.innerHTML = '<div class="ck-pending">Loading…</div>';
+  let snaps = [];
+  try {
+    const r = await fetch('/api/state/history?tenantId='+encodeURIComponent(tid), { credentials:'include' });
+    const body = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(body.error || ('HTTP '+r.status));
+    snaps = Array.isArray(body.snapshots) ? body.snapshots : [];
+  } catch(e){
+    host.innerHTML = '<div class="rpx-explain" style="color:var(--danger,#DC2626);">Could not read the restore points: '+esc(String(e.message||e))+'</div>';
+    return;
+  }
+  if(!snaps.length){
+    host.innerHTML = '<div class="rpx-explain">Nothing kept yet for this client. A copy is taken before any save that changes the record materially, so the first one will appear once there is something to keep.</div>';
+    return;
+  }
+  const rows = snaps.map(function(s){
+    const when = esc(_restoreWhen(s.taken_at));
+    const who  = esc(String(s.taken_by||'').split('@')[0] || 'unknown');
+    const big  = /cleared|records removed|large reduction/.test(String(s.reason||''));
+    return '<tr>'
+      + '<td style="white-space:nowrap;font-weight:600;">'+when+'</td>'
+      + '<td style="white-space:nowrap;color:var(--text-muted);">'+who+'</td>'
+      + '<td style="white-space:nowrap;color:var(--text-muted);">'+esc(_restoreBytes(s.bytes))+'</td>'
+      + '<td style="color:'+(big?'#DC2626':'var(--text-muted)')+';font-weight:'+(big?'600':'400')+';">'+esc(_restoreWhy(s.reason))+'</td>'
+      + '<td style="text-align:right;white-space:nowrap;"><button class="btn btn-outline btn-xs" onclick="restoreStatePoint(\'' + String(s.id) + '\')">Restore this</button></td>'
+      + '</tr>';
+  }).join('');
+  host.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;">'
+    + '<thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;">'
+    +   '<th style="padding:6px 8px;">Taken</th><th style="padding:6px 8px;">By</th><th style="padding:6px 8px;">Size</th><th style="padding:6px 8px;">Why</th><th></th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '<div class="rpx-explain" style="margin-top:10px;">Newest first. Restoring replaces what is on screen and on the server with that copy, and keeps the current one first.</div>';
+}
+async function restoreStatePoint(id){
+  const tid = _restoreTenantId();
+  if(!tid || !id) return;
+  if(!confirm('Restore this version?\n\nWhat is on screen and on the server now will be replaced by that copy. The current one is kept first, so this can be undone.')) return;
+  try {
+    const r = await fetch('/api/state/history/'+encodeURIComponent(id)+'/restore?tenantId='+encodeURIComponent(tid),
+      { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const body = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(body.error || ('HTTP '+r.status));
+    if(!body.state || typeof body.state !== 'object') throw new Error('the restored copy came back empty');
+    // Same path the app uses when it loads a record from the server.
+    S = body.state;
+    if(typeof migrateLoadedState==='function') migrateLoadedState();
+    try{ localStorage.setItem('ahs:workplace-inspection:v3', JSON.stringify({meta:{version:3,savedAt:new Date().toISOString()},S})); }catch(e){}
+    if(typeof _rerenderEverything==='function') _rerenderEverything();
+    showToast('✓ Restored the version from '+_restoreWhen(body.takenAt), 'success');
+    renderRestorePoints();
+  } catch(e){
+    showToast('Could not restore: '+String(e.message||e), 'error');
+  }
+}
+
+// ── Reset: the most destructive thing in the app ──
+// It clears the client's whole record AND saves, and app_state is one row per
+// tenant on the server, so the save lands on the only copy there is. It
+// therefore names what will go, counts it, and asks for the client's name to be
+// typed - a single OK is not a decision. The server keeps what was there
+// before any overwrite, so a reset is recoverable from Settings.
+function _resetClientName(){
+  const b=(typeof S!=='undefined' && S && S.branding) ? S.branding : {};
+  const c=(typeof S!=='undefined' && S && S.company) ? S.company : {};
+  return String(b.name || c.tradingName || c.legalName || '').trim();
+}
+// What is actually about to be destroyed, counted from the record itself.
+function _resetTally(){
+  const n=(v)=>Array.isArray(v)?v.length:0;
+  const reqs=(S.requirements||[]).reduce((a,sec)=>a+n(sec&&sec.items),0);
+  const trn=(S.trainingData&&Array.isArray(S.trainingData.people))?S.trainingData.people.length:0;
+  const out=[];
+  const add=(c,one,many)=>{ if(c) out.push(c+' '+(c===1?one:(many||one+'s'))); };
+  add(n(S.riskProfile),'risk');
+  add(n(S.actionPlan),'action on the execution plan','actions on the execution plan');
+  add(reqs,'management system item');
+  add(n(S.incidents),'incident');
+  add(n(S.inspections),'inspection');
+  add(n(S.documents),'document link');
+  add(trn,'person on the training matrix','people on the training matrix');
+  return out;
+}
 function resetAppData(){
-  if(!confirm('⚠️ Reset all app data?\n\nThis will clear all inspections, actions, the audit record, templates and branding - returning the app to its default state.\n\nThis cannot be undone. Continue?')) return;
+  // Deliberately NOT guarded with _blockIfReadOnly(): _consultantEdit is a
+  // hard-coded true that is never reassigned, so _roLocked() can never return
+  // true and every gate routed through it is inert. Relying on it here would
+  // have looked like protection and been none. The real protection is naming
+  // the record and making you type it.
+  if(document.getElementById('resetConfirmOv')) return;
+  const nm=_resetClientName();
+  const tally=_resetTally();
+  const listed = tally.length
+    ? ('<ul style="margin:8px 0 0 18px;padding:0;font-size:12.5px;color:var(--text);line-height:1.7;">'+tally.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul>')
+    : '<div style="font-size:12.5px;color:var(--text-muted);margin-top:8px;">This record looks empty already.</div>';
+  const ov=document.createElement('div'); ov.id='resetConfirmOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;';
+  ov.innerHTML='<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:560px;width:100%;box-shadow:0 18px 60px rgba(0,0,0,.4);">'
+    + '<div style="padding:16px 20px;border-bottom:1.5px solid var(--border);">'
+    +   '<div style="font-weight:800;font-size:15px;color:#DC2626;">Reset this record</div>'
+    +   '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">'+(nm?('Everything recorded for <b>'+esc(nm)+'</b> will be cleared.'):'Everything recorded for this client will be cleared.')+'</div>'
+    + '</div>'
+    + '<div style="padding:16px 20px;">'
+    +   '<div style="font-size:12.5px;color:var(--text);">This removes, on this device and on the server:</div>'
+    +   listed
+    +   '<div style="font-size:12px;color:var(--text-muted);margin-top:12px;line-height:1.6;">A copy of the record as it stands now is kept on the server first, so this can be undone from <b>Settings, Restore a previous version</b>. Your practice branding and logins are not touched.</div>'
+    +   '<label style="display:block;font-size:12px;font-weight:700;margin:14px 0 5px;">Type '+(nm?('<span style="color:#DC2626;">'+esc(nm)+'</span>'):'the client name')+' to confirm</label>'
+    +   '<input id="resetConfirmInput" type="text" autocomplete="off" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;">'
+    + '</div>'
+    + '<div style="padding:12px 20px 16px;display:flex;gap:8px;justify-content:flex-end;">'
+    +   '<button class="btn btn-outline btn-sm" onclick="_closeResetConfirm()">Cancel</button>'
+    +   '<button id="resetConfirmGo" class="btn btn-sm" disabled style="background:#DC2626;color:#fff;border-color:#DC2626;opacity:.45;cursor:not-allowed;" onclick="_doResetAppData()">Reset the record</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  const inp=document.getElementById('resetConfirmInput'), go=document.getElementById('resetConfirmGo');
+  const check=()=>{ const okNow = nm ? (inp.value.trim().toLowerCase()===nm.toLowerCase()) : (inp.value.trim().length>2);
+    go.disabled=!okNow; go.style.opacity=okNow?'1':'.45'; go.style.cursor=okNow?'pointer':'not-allowed'; };
+  inp.addEventListener('input', check);
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter' && !go.disabled) _doResetAppData(); if(e.key==='Escape') _closeResetConfirm(); });
+  setTimeout(()=>inp.focus(), 30);
+}
+function _closeResetConfirm(){ const o=document.getElementById('resetConfirmOv'); if(o) o.remove(); }
+function _doResetAppData(){
+  _closeResetConfirm();
   try{ localStorage.removeItem('ahs:workplace-inspection:v3'); } catch(e){}
   _consultantUnlocked = false; // re-lock on reset
-  // Re-initialise state to defaults
-  S = {
-    checklist:   JSON.parse(JSON.stringify(DEFAULT_CHECKLIST)),
-    inspectionTypes: buildDefaultInspectionTypes(),
-    draft:       { typeId:'garage_inspection', results:{}, notes:{}, actionDetails:{}, rectifyDetails:{}, formData:{}, periodFrom:'', periodTo:'', manager:'', location:'', ref:'', freq:'weekly', generalNotes:'', title:'', inspType:'' },
-    inspections: [],
-    actions:     [],
-    audit:       {},
-    templates:   [],
-    activeClient: null,
-    branding:    { name:'AHS Compliance Consulting', producer:'AHS Compliance Consulting', producerLine:'Health, safety & environmental advisers', tagline:'Health & Safety Consultancy', website:'', phone:'', email:'', primary:'#757575', accent:'#4BBFD6', textColor:'#3a3a3a', logoB64:'', logoName:'' }
-  };
+  // The app's own fresh-client factory - the same shape dialling in to a new
+  // client produces. The old literal here rebuilt the retired
+  // workplace-inspection shape, so every Compass section was simply dropped.
+  S = _emptyConsultantState();
+  if(typeof migrateLoadedState==='function') migrateLoadedState();
 
   // ── Explicitly clear all known form fields ──
   // populateInspectionForm / populateAuditForm only fill when a value is truthy,
@@ -12945,7 +13112,7 @@ function resetAppData(){
   populateReportLocationFilter();
   renderMonthlyReport();
   saveData();
-  showToast('✓ App reset - all fields cleared, fresh slate', 'info');
+  showToast('Record reset. The previous version is kept - Settings, Restore a previous version', 'info');
 }
 
 // ══════════════════════════════════════════════════════════════

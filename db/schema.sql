@@ -56,6 +56,22 @@ CREATE TABLE IF NOT EXISTS app_state (
   updated_by  TEXT REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- State history: the PREVIOUS contents of app_state, kept before each
+-- overwrite, so no single save - a mis-click, a bad import, a reset, a bug -
+-- can destroy a client's record beyond recovery. app_state itself is one row
+-- per tenant and is overwritten in place, so without this there is nothing to
+-- go back to. Bounded per tenant; see routes/state.js for the policy.
+CREATE TABLE IF NOT EXISTS state_history (
+  id         BIGSERIAL PRIMARY KEY,
+  tenant_id  TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  state      JSONB NOT NULL,
+  taken_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  taken_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+  reason     TEXT,
+  bytes      BIGINT
+);
+CREATE INDEX IF NOT EXISTS state_history_tenant_idx ON state_history (tenant_id, taken_at DESC);
+
 -- Training-matrix template workbook: the client's uploaded .xlsx kept verbatim
 -- so export can write the current values back into a byte-faithful copy of
 -- their own file (their exact tabs, formatting and formulas). One per tenant.

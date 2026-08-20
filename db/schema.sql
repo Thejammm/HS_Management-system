@@ -72,6 +72,22 @@ CREATE TABLE IF NOT EXISTS state_history (
 );
 CREATE INDEX IF NOT EXISTS state_history_tenant_idx ON state_history (tenant_id, taken_at DESC);
 
+-- Final resting place for a deleted client. state_history hangs off tenants
+-- with ON DELETE CASCADE, so deleting a tenant destroys the very safety net
+-- that exists to make loss recoverable. This table deliberately does NOT
+-- reference tenants: it keeps the client's last state, and their name, after
+-- the tenant row is gone, so a deletion made in error is still answerable.
+CREATE TABLE IF NOT EXISTS deleted_tenant_archive (
+  id          BIGSERIAL PRIMARY KEY,
+  tenant_id   TEXT NOT NULL,
+  tenant_name TEXT,
+  state       JSONB,
+  users_removed INTEGER,
+  deleted_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_by  TEXT
+);
+CREATE INDEX IF NOT EXISTS deleted_tenant_archive_idx ON deleted_tenant_archive (deleted_at DESC);
+
 -- Training-matrix template workbook: the client's uploaded .xlsx kept verbatim
 -- so export can write the current values back into a byte-faithful copy of
 -- their own file (their exact tabs, formatting and formulas). One per tenant.

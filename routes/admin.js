@@ -126,16 +126,33 @@ router.patch('/tenants/:id', async (req, res) => {
 // so the admin can't lock themselves out.
 router.delete('/tenants/:id', async (req, res) => {
   const id = req.params.id;
+  const db = await pool.connect();
   try {
-    const exists = await pool.query(`SELECT 1 FROM tenants WHERE id = $1 LIMIT 1`, [id]);
+    const exists = await db.query(`SELECT id, name FROM tenants WHERE id = $1 LIMIT 1`, [id]);
     if(!exists.rows.length){ return res.status(404).json({ error: 'tenant_not_found' }); }
-    const usr = await pool.query(`DELETE FROM users WHERE tenant_id = $1`, [id]);
-    await pool.query(`DELETE FROM app_state WHERE tenant_id = $1`, [id]);
-    await pool.query(`DELETE FROM tenants WHERE id = $1`, [id]);
-    res.json({ ok: true, usersRemoved: usr.rowCount });
+    await db.query('BEGIN');
+    // Archive the record BEFORE anything is removed. state_history cascades off
+    // the tenant row, so deleting a client also destroys every restore point it
+    // had - the deletion was the one destructive act with no way back at all.
+    // This table does not reference tenants, so it survives the cascade.
+    const st = await db.query(`SELECT state FROM app_state WHERE tenant_id = $1`, [id]);
+    const usr = await db.query(`DELETE FROM users WHERE tenant_id = $1`, [id]);
+    await db.query(
+      `INSERT INTO deleted_tenant_archive (tenant_id, tenant_name, state, users_removed, deleted_by)
+       VALUES ($1, $2, $3::jsonb, $4, $5)`,
+      [id, exists.rows[0].name || null, JSON.stringify(st.rows.length ? st.rows[0].state : {}), usr.rowCount, (req.user && req.user.id) || null]);
+    await db.query(`DELETE FROM app_state WHERE tenant_id = $1`, [id]);
+    await db.query(`DELETE FROM tenants WHERE id = $1`, [id]);
+    // One transaction, so a failure half way cannot leave a client with its
+    // logins gone and its record still there.
+    await db.query('COMMIT');
+    res.json({ ok: true, usersRemoved: usr.rowCount, archived: true });
   } catch(err){
+    try { await db.query('ROLLBACK'); } catch(e){}
     console.error('DELETE /tenants/:id error:', err);
     res.status(500).json({ error: 'server_error' });
+  } finally {
+    try { db.release(); } catch(e){}
   }
 });
 

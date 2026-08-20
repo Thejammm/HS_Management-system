@@ -15,6 +15,9 @@
 const express = require('express');
 const crypto = require('crypto');
 const { pool } = require('../db');
+// The same safety net /api/state uses. This route is the one that offers to
+// overwrite a client's record outright, and it used to keep no copy at all.
+const { keepPrevious } = require('../lib/state-history');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -120,25 +123,42 @@ router.post('/state', requireOfflineToken, express.json({ limit: '25mb' }), asyn
   if (!tenantId) return res.status(400).json({ error: 'tenant_required' });
   const state = req.body && req.body.state;
   if (!state || typeof state !== 'object') return res.status(400).json({ error: 'state_required' });
+  const db = await pool.connect();
   try {
-    const t = await pool.query(`SELECT id FROM tenants WHERE id = $1 LIMIT 1`, [tenantId]);
-    if (!t.rows.length) return res.status(404).json({ error: 'tenant_not_found' });
-    const cur = await pool.query(`SELECT updated_at FROM app_state WHERE tenant_id = $1 LIMIT 1`, [tenantId]);
+    const t = await db.query(`SELECT id FROM tenants WHERE id = $1 LIMIT 1`, [tenantId]);
+    if (!t.rows.length) return res.status(404).json({ error: 'tenant_not_found' });   // finally releases
+    await db.query('BEGIN');
+    // Lock the row, so the conflict check cannot be overtaken between reading
+    // and writing. This route used to read and write unlocked.
+    const cur = await db.query(`SELECT state, updated_at FROM app_state WHERE tenant_id = $1 FOR UPDATE`, [tenantId]);
     const serverUpd = cur.rows.length ? cur.rows[0].updated_at : null;
     const base = req.body.baseUpdatedAt ? new Date(req.body.baseUpdatedAt) : null;
     if (!req.body.force && serverUpd && (!base || new Date(serverUpd).getTime() !== base.getTime())) {
+      await db.query('ROLLBACK');
       return res.status(409).json({ error: 'conflict', serverUpdatedAt: serverUpd });
     }
-    const upd = await pool.query(
+    // Keep what is there before overwriting it. Forcing past a conflict is
+    // exactly the moment somebody else's work is about to disappear, so the
+    // reason is recorded plainly for whoever has to find it later.
+    if (cur.rows.length) {
+      await keepPrevious(pool, tenantId, cur.rows[0].state, state,
+        Buffer.byteLength(JSON.stringify(state)), req.offlineUser.id,
+        req.body.force ? 'overwritten by an offline push, forced past a conflict' : null);
+    }
+    const upd = await db.query(
       `INSERT INTO app_state (tenant_id, state, updated_at, updated_by)
          VALUES ($1, $2, NOW(), $3)
        ON CONFLICT (tenant_id) DO UPDATE SET state = $2, updated_at = NOW(), updated_by = $3
        RETURNING updated_at`,
       [tenantId, state, req.offlineUser.id]);
+    await db.query('COMMIT');
     res.json({ ok: true, updatedAt: upd.rows[0].updated_at });
   } catch (err) {
+    try { await db.query('ROLLBACK'); } catch (e) {}
     console.error('POST /api/offline/state error:', err);
     res.status(500).json({ error: 'server_error' });
+  } finally {
+    try { db.release(); } catch (e) {}
   }
 });
 

@@ -5272,7 +5272,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // PDF save folder picker has been removed - downloads go straight to the
   // browser's Downloads folder now. restorePersistedSaveFolder() is no longer called.
-  setInterval(saveData, 30000);
+  // Save on the way out. pagehide is the event that still fires reliably when
+  // a tab closes; visibilitychange covers the phone being locked or switched
+  // away from. The server POST will not survive the unload, but the local write
+  // does, which is what makes the edit recoverable at all.
+  const _flushOnLeave=function(){ try{ if(typeof _autoTimer!=='undefined' && _autoTimer){ clearTimeout(_autoTimer); _autoTimer=null; } saveData(); }catch(e){} };
+  window.addEventListener('pagehide', _flushOnLeave);
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='hidden') _flushOnLeave(); });
+
+  // The background save used to fire every thirty seconds whether or not
+  // anything had changed, so every open tab reposted the whole record twice a
+  // minute. That bumped updated_at, which made the other side's poll think
+  // there was something new and swap its screen out from under whoever was
+  // reading it. Now it only saves when the record has actually moved.
+  setInterval(function(){
+    var sig; try{ sig=_stateSig(); }catch(e){ sig=null; }
+    if(sig!==null && sig===_lastSavedSig) return;
+    saveData();
+  }, 30000);
 });
 // Ctrl+S shortcut removed - saveAs() would let users download the whole app HTML with embedded data.
 // document.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveAs();} });
@@ -8568,6 +8585,12 @@ function getInitials(name){
 
 let _autoTimer=null, _quotaWarn=false;
 function scheduleAutoSave(){clearTimeout(_autoTimer);_autoTimer=setTimeout(saveData,3000);}
+var _lastSavedSig=null;
+function _stateSig(){
+  var str=JSON.stringify(S), h=5381;
+  for(var i=0;i<str.length;i++){ h=((h<<5)+h+str.charCodeAt(i))|0; }
+  return h+':'+str.length;
+}
 
 function flushDraft(){
   const g=id=>document.getElementById(id)?.value||'';
@@ -8710,7 +8733,7 @@ function saveData(){
   const inClient = !!_consultantView;
   flushDraft();
   if(!inClient){
-    const payload={meta:{version:3,savedAt:new Date().toISOString(),appKey:'ahs:workplace-inspection:v3'},S};
+    const payload={meta:{version:3,savedAt:new Date().toISOString(),appKey:'ahs:workplace-inspection:v3',tenantId:(function(){ try{ return Auth.activeTenantId()||''; }catch(e){ return ''; } })()},S};
     // Own workspace: write to localStorage as a cache / offline fallback
     try{
       localStorage.setItem('ahs:workplace-inspection:v3',JSON.stringify(payload));
@@ -8801,7 +8824,15 @@ async function loadFromServerAndRender(){
   _rerenderEverything();
   _startOwnPoll();   // client_user with an empty server: poll picks up their first save / other devices
   // Server is empty: offer to push local data up (one-time migration)
-  if(localStorage.getItem('ahs:workplace-inspection:v3')){
+  // Only offer data this browser recorded for THIS client. It used to offer
+  // whatever was cached, so on a shared machine the second person to sign in
+  // was invited to upload the first person's record into their own tenant.
+  // Anything unstamped predates that check and is not offered at all.
+  const _cachedRaw=localStorage.getItem('ahs:workplace-inspection:v3');
+  let _cachedTenant='';
+  try{ _cachedTenant=String((((JSON.parse(_cachedRaw)||{}).meta)||{}).tenantId||''); }catch(e){}
+  const _mine=(function(){ try{ return Auth.activeTenantId()||''; }catch(e){ return ''; } })();
+  if(_cachedRaw && _cachedTenant && _mine && _cachedTenant===_mine){
     if(confirm('No data found on the server for your account. Would you like to upload your local data to the server?')){
       const ok = await Auth.saveToServer(S);
       if(ok) showToast('✓ Local data uploaded to server','success');
@@ -8826,33 +8857,48 @@ function _applyClientConfigDefaults(){
     if(cfg.branding.accent)    S.branding.accent    = cfg.branding.accent;
     if(cfg.branding.textColor) S.branding.textColor = cfg.branding.textColor;
   }
+  // renderChecklist reads S.checklist.length unguarded, so a state that
+  // arrives without the key - from a restore, a conflict swap or an import -
+  // used to take the whole repaint down with it. Guaranteed here alongside
+  // the forty-odd other keys this repair already backfills.
+  if(!Array.isArray(S.checklist)) S.checklist = [];
+  // The legacy inspection screens read these unguarded (S.actions.length,
+  // S.inspections.length). A record that arrives without them - a restore, a
+  // conflict swap, an import - used to break the repaint on the first one.
+  if(!Array.isArray(S.actions)) S.actions = [];
+  if(!Array.isArray(S.inspections)) S.inspections = [];
+  if(!Array.isArray(S.templates)) S.templates = [];
   if(!S.draft) S.draft = {};
   if(cfg.location && !S.draft.location) S.draft.location = cfg.location;
   if(cfg.inspType && !S.draft.inspType) S.draft.inspType = cfg.inspType;
 }
 
 function _rerenderEverything(){
+  // Every Compass tab, not just the cockpit and the legacy inspection screens.
+  // A partial repaint after a state swap leaves the old client's numbers on
+  // screen with nothing to say they are stale.
+  setTimeout(function(){
+    ['renderRiskProfile','renderRequirements','renderMonitoring','renderDocuments','renderCompany',
+     'renderReview','renderCAS','renderExecPlan','renderRiskJourney','renderCPD','renderSiteInsp',
+     'renderIncidents','renderConsultation','renderAppLinks','renderApprovedPartner','renderReportsHub']
+      .forEach(function(fn){ try{ if(typeof window[fn]==='function') window[fn](); }catch(e){} });
+  }, 0);
   // After (re)loading state from server, re-apply brand colours to the live
   // CSS variables so the UI reflects whatever branding the tenant has saved.
   applyBrandingToCSS();
   // Linked-app auto-sync fires on client load (throttled inside; silent).
   try{ if(typeof _autoSyncLinkedApps==='function') setTimeout(_autoSyncLinkedApps, 800); }catch(e){}
-  if(typeof renderCockpit === 'function') renderCockpit();
-  setDefaultDates();
-  populateInspectionForm();
-  renderInspectionTypeGrid();
-  renderActiveInspectionBody();
-  renderActionStats();
-  updateBadge();
-  renderAuditSections();
-  populateAuditForm();
-  renderScenarioGrid();
-  renderMyChecklist();
-  renderTemplates();
-  populateBrandingForm();
-  populateReportLocationFilter();
-  renderMonthlyReport();
-  renderManagerDashboard();
+  // Each screen is redrawn independently. A repaint follows a state swap, and
+  // a swapped-in record can be one an older screen does not understand - a
+  // legacy inspection renderer reading a key the record has never had. One of
+  // them throwing must not leave the rest of the app showing the previous
+  // client's numbers, which is exactly what an unguarded chain did. Failures
+  // are logged rather than swallowed, so they stay findable.
+  ['renderCockpit','setDefaultDates','populateInspectionForm','renderInspectionTypeGrid',
+   'renderActiveInspectionBody','renderActionStats','updateBadge','renderAuditSections',
+   'populateAuditForm','renderScenarioGrid','renderMyChecklist','renderTemplates',
+   'populateBrandingForm','populateReportLocationFilter','renderMonthlyReport','renderManagerDashboard']
+    .forEach(function(fn){ try{ if(typeof window[fn]==='function') window[fn](); }catch(e){ console.warn('repaint: '+fn+' failed -', e && e.message); } });
 }
 
 // ── QR + login pre-fill helpers (client-onboarding QR points here with ?u=email) ──
@@ -9856,13 +9902,69 @@ async function renameTenant(tenantId){
 // ── Delete a tenant (only if it has zero users) ──
 // Delete a whole client in one step: the client, all its saved data/reports
 // and its logins. Used by both the Admin table and the client hub tiles.
+// ── Type-the-name confirmation ──
+// For the handful of actions that destroy a client's work. A browser confirm()
+// is one keystroke from yes, which is a reflex rather than a decision, and it
+// cannot show what is about to go. This shows it, and makes you write the name.
+// Used by deleting a client; Reset has its own copy of the same idea.
+function _confirmByTyping(o){
+  o=o||{};
+  if(document.getElementById('typedConfirmOv')) return;
+  const expect=String(o.expect||'').trim();
+  const ov=document.createElement('div'); ov.id='typedConfirmOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;';
+  ov.innerHTML='<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:540px;width:100%;box-shadow:0 18px 60px rgba(0,0,0,.4);">'
+    + '<div style="padding:16px 20px;border-bottom:1.5px solid var(--border);">'
+    +   '<div style="font-weight:800;font-size:15px;color:#DC2626;">'+esc(o.title||'Are you sure?')+'</div>'
+    +   (o.lead?('<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">'+o.lead+'</div>'):'')
+    + '</div>'
+    + '<div style="padding:16px 20px;">'
+    +   (o.bodyHTML||'')
+    +   '<label style="display:block;font-size:12px;font-weight:700;margin:14px 0 5px;">Type <span style="color:#DC2626;">'+esc(expect)+'</span> to confirm</label>'
+    +   '<input id="typedConfirmInput" type="text" autocomplete="off" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;">'
+    + '</div>'
+    + '<div style="padding:12px 20px 16px;display:flex;gap:8px;justify-content:flex-end;">'
+    +   '<button class="btn btn-outline btn-sm" onclick="_closeTypedConfirm()">Cancel</button>'
+    +   '<button id="typedConfirmGo" class="btn btn-sm" disabled style="background:#DC2626;color:#fff;border-color:#DC2626;opacity:.45;cursor:not-allowed;">'+esc(o.confirmLabel||'Delete')+'</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  const inp=document.getElementById('typedConfirmInput'), go=document.getElementById('typedConfirmGo');
+  const check=()=>{ const okNow = expect ? (inp.value.trim().toLowerCase()===expect.toLowerCase()) : (inp.value.trim().length>2);
+    go.disabled=!okNow; go.style.opacity=okNow?'1':'.45'; go.style.cursor=okNow?'pointer':'not-allowed'; };
+  const fire=()=>{ if(go.disabled) return; _closeTypedConfirm(); try{ if(typeof o.onConfirm==='function') o.onConfirm(); }catch(e){ console.error(e); } };
+  inp.addEventListener('input', check);
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') fire(); if(e.key==='Escape') _closeTypedConfirm(); });
+  go.addEventListener('click', fire);
+  setTimeout(()=>inp.focus(), 30);
+}
+function _closeTypedConfirm(){ const o=document.getElementById('typedConfirmOv'); if(o) o.remove(); }
+
 async function deleteTenant(tenantId){
   const t = _adminTenantsCache.find(x => x.id === tenantId)
          || (typeof _consultantTenants !== 'undefined' ? _consultantTenants.find(x => x.id === tenantId) : null);
   const name = t ? String(t.name||'') : tenantId;
   const userCount = t ? (t.user_count || 0) : 0;
   const loginBit = userCount > 0 ? ` and its ${userCount} login${userCount>1?'s':''}` : '';
-  if(!confirm(`Delete the client "${name}"?\n\nThis permanently removes the client, all its saved data and reports${loginBit}. This cannot be undone.`)) return;
+  // This removes strictly MORE than Reset does - the record, its restore
+  // points (they cascade off the tenant row) and its logins - and it used to
+  // ask once, with an ordinary confirm. The server archives the record first
+  // now, but the decision still deserves more than a reflex.
+  _confirmByTyping({
+    title: 'Delete the client ' + name,
+    lead: 'This removes the client from the server for good.',
+    bodyHTML: '<div style="font-size:12.5px;color:var(--text);line-height:1.6;">It takes with it:'
+      + '<ul style="margin:8px 0 0 18px;padding:0;line-height:1.7;">'
+      + '<li>everything recorded for them - risks, actions, management system, assurance</li>'
+      + '<li>their restore points, which hang off the client and go with it</li>'
+      + (userCount > 0 ? ('<li>' + userCount + ' login' + (userCount>1?'s':'') + '</li>') : '')
+      + '</ul></div>'
+      + '<div style="font-size:12px;color:var(--text-muted);margin-top:12px;line-height:1.6;">The server keeps an archive copy of their record before deleting, so this is answerable, but nothing in the app will show it to you.</div>',
+    expect: name,
+    confirmLabel: 'Delete this client',
+    onConfirm: function(){ _doDeleteTenant(tenantId, name); },
+  });
+}
+async function _doDeleteTenant(tenantId, name){
   try {
     const res = await fetch(`/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
       method: 'DELETE', credentials: 'include'
@@ -10212,6 +10314,17 @@ function migrateLoadedState(){
     S.inspectionTypes.garage_inspection.name = 'Garage Inspection (Full Walkround)';
   }
   // Tag draft with a typeId if missing
+  // renderChecklist reads S.checklist.length unguarded, so a state that
+  // arrives without the key - from a restore, a conflict swap or an import -
+  // used to take the whole repaint down with it. Guaranteed here alongside
+  // the forty-odd other keys this repair already backfills.
+  if(!Array.isArray(S.checklist)) S.checklist = [];
+  // The legacy inspection screens read these unguarded (S.actions.length,
+  // S.inspections.length). A record that arrives without them - a restore, a
+  // conflict swap, an import - used to break the repaint on the first one.
+  if(!Array.isArray(S.actions)) S.actions = [];
+  if(!Array.isArray(S.inspections)) S.inspections = [];
+  if(!Array.isArray(S.templates)) S.templates = [];
   if(!S.draft) S.draft = {};
   if(!S.draft.typeId) S.draft.typeId = 'garage_inspection';
   if(!S.draft.formData) S.draft.formData = {};
@@ -24227,7 +24340,10 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff'];
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
+  // Added: these are the client's work too, and their absence made a round
+  // trip through export/import quietly lossy.
+  'incidents','trainingData','consultation','cpd','policyDoc'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

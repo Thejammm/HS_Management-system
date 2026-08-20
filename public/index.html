@@ -19695,14 +19695,59 @@ function addRegItem(secId){
   if(_blockIfReadOnly()) return;
   const s = _regSection(secId); if(!s) return;
   if(!Array.isArray(s.items)) s.items = [];
-  s.items.push({ id:_reqUid('reg'), item:'', area:'', frequency:'', resultDate:'', dueDate:'', result:'', certRef:'', notes:'' });
+  const it={ id:_reqUid('reg'), item:'', area:'', frequency:'', resultDate:'', dueDate:'', result:'', certRef:'', notes:'' };
+  s.items.push(it);
   saveData(); renderMonitoring();
+  regEditItem(secId, it.id);   // straight into the edit modal, like the matrix
 }
 function deleteRegItem(secId, id){
   if(_blockIfReadOnly()) return;
   const s = _regSection(secId); if(!s) return;
-  s.items = (s.items||[]).filter(r => r.id !== id);
+  const r = (s.items||[]).find(x => x.id === id);
+  if(r && (r.item||'').trim() && !confirm('Delete "'+r.item+'" from the register?')) return;
+  s.items = (s.items||[]).filter(x => x.id !== id);
   saveData(); renderMonitoring();
+}
+// One edit modal for a statutory item - the table rows open this on click
+// (same pattern as the training matrix cells).
+function regEditItem(secId, id){
+  if(_roLocked()) return;
+  const sec=_regSection(secId); if(!sec) return;
+  const r=(sec.items||[]).find(x=>x.id===id); if(!r) return;
+  const old=document.getElementById('regEditOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='regEditOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:28px 12px;overflow:auto;';
+  const inPlan=_regItemInPlan(r.id);
+  const inp='width:100%;padding:8px;border:1px solid var(--border,#ccc);border-radius:8px;margin-top:3px;background:var(--surface,#fff);color:inherit;font-size:13px;';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+    <div style="font-weight:700;margin-bottom:10px;">Edit statutory item <span style="font-weight:400;color:var(--text-muted);font-size:12px;">${esc(sec.name||'')}</span></div>
+    <label style="font-size:12px;font-weight:600;">Statutory item</label><input id="_reI" style="${inp}" value="${esc(r.item||'')}">
+    <div style="display:flex;gap:8px;margin-top:10px;"><div style="flex:1;"><label style="font-size:12px;font-weight:600;">Area / asset</label><input id="_reA" style="${inp}" value="${esc(r.area||'')}" placeholder="e.g. Workshop - Ramp 3"></div>
+      <div style="flex:1;"><label style="font-size:12px;font-weight:600;">Frequency</label><select id="_reF" style="${inp}">${REG_FREQ.map(f=>`<option value="${f}"${f===(r.frequency||'')?' selected':''}>${f||'- Select -'}</option>`).join('')}</select></div></div>
+    <div style="display:flex;gap:8px;margin-top:10px;"><div style="flex:1;"><label style="font-size:12px;font-weight:600;">Date carried out</label><input id="_reLD" type="date" style="${inp}" value="${r.resultDate||''}"></div>
+      <div style="flex:1;"><label style="font-size:12px;font-weight:600;">Next due <button type="button" class="btn btn-ghost btn-xs no-print" style="padding:0 5px;font-size:10px;" title="Set from date carried out + frequency" id="_reRC">↻ from freq</button></label><input id="_reND" type="date" style="${inp}" value="${r.dueDate||''}"></div></div>
+    <div style="display:flex;gap:8px;margin-top:10px;"><div style="flex:1;"><label style="font-size:12px;font-weight:600;">Result</label><select id="_reR" style="${inp}"><option value="">- Select -</option>${['Pass','Fail'].map(o=>`<option${o===r.result?' selected':''}>${o}</option>`).join('')}</select></div>
+      <div style="flex:1;"><label style="font-size:12px;font-weight:600;">Certificate reference</label><input id="_reC" style="${inp}" value="${esc(r.certRef||'')}" placeholder="Cert / report no."></div></div>
+    <label style="font-size:12px;font-weight:600;display:block;margin-top:10px;">Notes</label><input id="_reN" style="${inp}" value="${esc(r.notes||'')}">
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:16px;align-items:center;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button type="button" id="_reDel" class="btn btn-ghost btn-sm" style="color:#DC2626;">Delete</button>
+        ${inPlan?'<span style="font-size:11.5px;font-weight:700;color:var(--success);">✓ In the plan</span>':'<button type="button" id="_reRaise" class="btn btn-outline btn-sm">↗ Raise into the plan</button>'}
+      </div>
+      <div style="display:flex;gap:8px;"><button type="button" id="_reCancel" class="btn btn-ghost btn-sm">Cancel</button><button type="button" id="_reSave" class="btn btn-primary btn-sm">Save</button></div>
+    </div></div>`;
+  document.body.appendChild(ov); const close=()=>ov.remove();
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  ov.querySelector('#_reCancel').onclick=close;
+  ov.querySelector('#_reRC').onclick=()=>{ const nd=_regNextDue(ov.querySelector('#_reLD').value, ov.querySelector('#_reF').value); if(nd) ov.querySelector('#_reND').value=nd; else showToast('Set both a date carried out and a frequency first','info'); };
+  ov.querySelector('#_reDel').onclick=()=>{ close(); deleteRegItem(secId,id); };
+  const raiseBtn=ov.querySelector('#_reRaise'); if(raiseBtn) raiseBtn.onclick=()=>{ close(); raiseRegItemAction(secId,id); };
+  ov.querySelector('#_reSave').onclick=()=>{
+    r.item=ov.querySelector('#_reI').value.trim(); r.area=ov.querySelector('#_reA').value.trim(); r.frequency=ov.querySelector('#_reF').value;
+    r.resultDate=ov.querySelector('#_reLD').value; r.dueDate=ov.querySelector('#_reND').value; r.result=ov.querySelector('#_reR').value;
+    r.certRef=ov.querySelector('#_reC').value.trim(); r.notes=ov.querySelector('#_reN').value.trim();
+    saveData(); renderMonitoring(); close();
+  };
 }
 function updateRegField(secId, id, field, value){
   if(_roLocked()) return;
@@ -19857,7 +19902,7 @@ function statutoryUploadXlsx(){
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
     try{
       const buf=await f.arrayBuffer();
-      const res=await _tApiRaw('/api/statutory/parse', buf);
+      const res=await _xlsxParseRetry('/api/statutory/parse', buf);
       if(!res.ok){ const e=await res.json().catch(()=>({})); alert(e.error==='no_items_found'?'No register rows found - the sheet needs an "Item" (or Equipment/Description) column.':'Could not read that spreadsheet: '+(e.error||('HTTP '+res.status))); return; }
       const parsed=await res.json();
       const cur=_regSections().reduce((n,s)=>n+((s.items||[]).length),0);
@@ -20776,7 +20821,7 @@ function _tGroupTable(group,label){
       if(rc.rag==='none') return `<td style="text-align:center;color:var(--text-muted);${ro?'':'cursor:pointer;'}"${ro?'':` data-pid="${esc(p.id)}" data-course="${esc(c)}" onclick="trainingEditCellEl(this)"`} title="Add">-</td>`;
       const fg=(rc.rag==='na')?'#374151':'#fff';
       return `<td style="text-align:center;padding:4px;${ro?'':'cursor:pointer;'}"${ro?'':` data-pid="${esc(p.id)}" data-course="${esc(c)}" onclick="trainingEditCellEl(this)"`}><span title="${esc(c)} - ${esc(rc.title)}" style="display:inline-block;min-width:52px;padding:2px 6px;border-radius:5px;font-size:10.5px;font-weight:600;color:${fg};background:${_TRAGC[rc.rag]};">${esc(rc.label)}</span></td>`; }).join('')}
-    ${ro?'':`<td style="white-space:nowrap;"><button class="btn btn-ghost btn-xs no-print" title="Move to Left (offboard)" onclick="trainingOffboard('${esc(p.id)}')">→ Left</button></td>`}
+    ${ro?'':`<td style="white-space:nowrap;"><button class="btn btn-ghost btn-xs no-print" title="Move to Left (offboard) - kept and archived" onclick="trainingOffboard('${esc(p.id)}')">→ Left</button><button class="btn btn-ghost btn-xs no-print" title="Delete permanently" onclick="trainingDeletePerson('${esc(p.id)}')">${_ic('trash',13)}</button></td>`}
   </tr>`).join('');
   return `<div style="margin-top:14px;"><div style="font-weight:700;font-size:13px;margin-bottom:6px;">${esc(label)} <span style="font-weight:400;color:var(--text-muted);">(${people.length})</span></div>
     <div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div></div>`;
@@ -20814,6 +20859,7 @@ function _trainingMatrixHTML(){
     <button class="btn btn-ghost btn-sm no-print" onclick="downloadTrainingTemplate()">⭳ Template</button>
     <button class="btn btn-ghost btn-sm no-print" onclick="trainingAddPerson()">＋ Add person</button>
     <button class="btn btn-ghost btn-sm no-print" onclick="raiseTrainingRenewals()"${due?'':' disabled'}>Raise renewal actions${due?(' ('+due+')'):''}</button>
+    <button class="btn btn-ghost btn-sm no-print" style="color:#DC2626;" title="Remove every person, record and the stored spreadsheet" onclick="trainingDeleteAll()">${_ic('trash',13)} Delete all</button>
     <span style="font-size:11.5px;color:var(--text-muted);">The client's spreadsheet stays the source of truth - import overwrites, export writes their exact file back.</span>
   </div>`;
   return `<div class="card">
@@ -20822,6 +20868,18 @@ function _trainingMatrixHTML(){
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:2px;">Dates traffic-light by expiry (<span style="color:${_TRAGC.red};font-weight:700;">expired</span> · <span style="color:${_TRAGC.amber};font-weight:700;">≤60 days</span> · <span style="color:${_TRAGC.green};font-weight:700;">in date</span>); other entries show as written. ${ro?'':'Click any cell to update it.'} Expired / expiring raise actions in the plan.</div>
       ${staffTbl}${garageTbl}${leftHTML}${toolbar}
     </div></div>`;
+}
+// Parse with a second chance: if the server cannot find the table, ask the
+// consultant which row the column headings are on and retry with it (the
+// server also auto-detects the header row in the top 15 rows by itself).
+async function _xlsxParseRetry(path, buf){
+  let res=await _tApiRaw(path, buf);
+  if(res.status===422){
+    const t=prompt('Could not find the table automatically.\n\nWhich row are the column headings on? Count from the very top of the sheet (e.g. 3). Cancel to give up.','');
+    const n=parseInt(t,10);
+    if(n>=1) res=await _tApiRaw(path+'?headerRow='+n, buf);
+  }
+  return res;
 }
 async function _tApiRaw(path, body, extraHeaders){
   const tid=Auth.activeTenantId(); const sep=path.includes('?')?'&':'?';
@@ -20834,7 +20892,7 @@ function trainingUploadXlsx(){
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
     try{
       const buf=await f.arrayBuffer();
-      const res=await _tApiRaw('/api/training/parse', buf);
+      const res=await _xlsxParseRetry('/api/training/parse', buf);
       if(!res.ok){ const e=await res.json().catch(()=>({})); alert('Could not read that spreadsheet: '+(e.error||('HTTP '+res.status))); return; }
       const parsed=await res.json();
       const cur=_trainingData().people||[];
@@ -20888,23 +20946,59 @@ function trainingEditCell(pid, course){
 }
 function trainingAddPerson(){
   if(_roLocked()) return;
-  const ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99999;display:flex;align-items:center;justify-content:center;';
-  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:380px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+  const ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:26px 12px;overflow:auto;';
+  // The person joins the matrix AS IT IS: every existing column for the
+  // chosen group gets its own input, so a new row never appears half-empty
+  // next to the imported ones.
+  const colInputs=(g)=>{ const cs=_tCoursesFor(g);
+    if(!cs.length) return '<div style="font-size:11.5px;color:var(--text-muted);">No columns yet for this group - they appear once a spreadsheet is loaded.</div>';
+    return cs.map(c=>`<div style="display:flex;gap:8px;align-items:center;margin-top:6px;"><label style="flex:0 0 44%;font-size:11.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(c)}">${esc(c)}</label><input data-course="${esc(c)}" placeholder="date (dd/mm/yyyy) or text" style="flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:7px;font-size:12px;"></div>`).join(''); };
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:460px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
     <div style="font-weight:700;margin-bottom:12px;">Add person</div>
     <div style="display:flex;gap:8px;"><div style="flex:1;"><label style="font-size:12px;font-weight:600;">First name</label><input id="_tpF" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"></div><div style="flex:1;"><label style="font-size:12px;font-weight:600;">Surname</label><input id="_tpL" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"></div></div>
     <div style="display:flex;gap:8px;margin-top:10px;"><div style="flex:1;"><label style="font-size:12px;font-weight:600;">Badge</label><input id="_tpB" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"></div><div style="flex:1;"><label style="font-size:12px;font-weight:600;">Job</label><input id="_tpJ" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"></div></div>
     <label style="font-size:12px;font-weight:600;display:block;margin-top:10px;">Group</label>
     <select id="_tpG" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"><option value="staff">Staff</option><option value="garage">Garage staff</option></select>
+    <div style="font-size:12px;font-weight:600;margin-top:12px;">The matrix columns <span style="font-weight:400;color:var(--text-muted);">(fill any that apply - dates traffic-light, anything else shows as written)</span></div>
+    <div id="_tpCols" style="max-height:260px;overflow:auto;padding-right:4px;">${colInputs('staff')}</div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;"><button type="button" id="_tpCancel" class="btn btn-ghost btn-sm">Cancel</button><button type="button" id="_tpSave" class="btn btn-primary btn-sm">Add</button></div>
   </div>`;
   document.body.appendChild(ov); const close=()=>ov.remove();
   ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
   ov.querySelector('#_tpCancel').onclick=close;
+  ov.querySelector('#_tpG').onchange=()=>{ ov.querySelector('#_tpCols').innerHTML=colInputs(ov.querySelector('#_tpG').value); };
   ov.querySelector('#_tpSave').onclick=()=>{ const f=ov.querySelector('#_tpF').value.trim(), l=ov.querySelector('#_tpL').value.trim();
     if(!f&&!l){ alert('Enter a name'); return; }
-    _trainingData().people.push({ id:_reqUid('trp'), sheet:null, row:null, group:ov.querySelector('#_tpG').value, status:'active', lastName:l, firstName:f, badge:ov.querySelector('#_tpB').value.trim(), job:ov.querySelector('#_tpJ').value.trim(), cells:{} });
+    const cells={};
+    ov.querySelectorAll('#_tpCols input[data-course]').forEach(inp=>{ const v=inp.value.trim(); const c=inp.dataset.course; if(!v) return;
+      const iso=_csvDate(v); cells[c]= /^\d{4}-\d{2}-\d{2}$/.test(iso) ? {type:'date',v:iso} : {type:'text',v:v}; });
+    // Name-ish columns map from the name fields when left blank, so the row
+    // lines up with imported people whose names live in those columns.
+    ov.querySelectorAll('#_tpCols input[data-course]').forEach(inp=>{ const c=inp.dataset.course; if(cells[c]) return;
+      if(/^first\s*name$/i.test(c) && f) cells[c]={type:'text',v:f};
+      if(/^(surname|last\s*name)$/i.test(c) && l) cells[c]={type:'text',v:l}; });
+    _trainingData().people.push({ id:_reqUid('trp'), sheet:null, row:null, group:ov.querySelector('#_tpG').value, status:'active', lastName:l, firstName:f, badge:ov.querySelector('#_tpB').value.trim(), job:ov.querySelector('#_tpJ').value.trim(), cells });
     saveData(); renderMonitoring(); close(); showToast('✓ Added '+(f+' '+l).trim(),'success');
   };
+}
+function trainingDeletePerson(pid){
+  if(_blockIfReadOnly()) return; const d=_trainingData(); const p=(d.people||[]).find(x=>x.id===pid); if(!p) return;
+  if(!confirm('Permanently delete '+((p.firstName+' '+p.lastName).trim()||'this person')+' and all their training records? To keep the history, use "→ Left" instead.')) return;
+  d.people=d.people.filter(x=>x.id!==pid); saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
+}
+async function trainingDeleteAll(){
+  if(_blockIfReadOnly()) return;
+  if(!confirm('Delete ALL training data - every person, every record, and the stored spreadsheet? This cannot be undone.')) return;
+  S.trainingData={people:[],sheets:[],filename:''}; S.training=[];
+  if(_tOnline()){ try{ await fetch('/api/training/workbook?tenantId='+encodeURIComponent(Auth.activeTenantId()),{method:'DELETE',credentials:'include'}); }catch(e){} }
+  saveData(); renderMonitoring(); showToast('Training data deleted','info');
+}
+async function statutoryDeleteAll(){
+  if(_blockIfReadOnly()) return;
+  if(!confirm('Delete ALL statutory inspection data - every section, every item, and the stored spreadsheet? This cannot be undone.')) return;
+  S.monitoring.regSections=[]; S.monitoring.regSeeded=true;
+  if(_tOnline()){ try{ await fetch('/api/statutory/workbook?tenantId='+encodeURIComponent(Auth.activeTenantId()),{method:'DELETE',credentials:'include'}); }catch(e){} }
+  saveData(); renderMonitoring(); showToast('Statutory data deleted','info');
 }
 function trainingOffboard(pid){
   if(_roLocked()) return; const p=(_trainingData().people||[]).find(x=>x.id===pid); if(!p) return;
@@ -21079,41 +21173,28 @@ function renderMonitoring(){
   const regSecs = _regSections();
   const _RRAGC={red:'#DC2626',amber:'#F59E0B',green:'#16A34A',grey:'#9CA3AF'};
   const _rfmt=(s)=>{ try{ return s? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}):''; }catch(e){ return ''; } };
-  const itemCard = (secId, r) => {
+  // One compact row per item - the whole register reads like the training
+  // matrix. Click a row to edit everything in one modal (regEditItem).
+  const itemRow = (secId, r) => {
     const g=_regRag(r.dueDate); const gl={red:'Overdue',amber:'Due soon',green:'In date',grey:'No due date'}[g];
-    const inPlan=_regItemInPlan(r.id); const canRecalc=r.resultDate&&r.frequency;
-    return `<div style="border:1.5px solid var(--border);border-left:5px solid ${_RRAGC[g]};border-radius:8px;padding:12px;margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:700;color:#fff;background:${_RRAGC[g]};">${gl}${r.dueDate?(' · '+_rfmt(r.dueDate)):''}</span>
-          <span class="badge ${r.result==='Pass'?'badge-success':r.result==='Fail'?'badge-danger':'badge-muted'}" id="regresult-${r.id}" style="${r.result?'':'display:none;'}">${r.result||''}</span>
-        </div>
-        ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete item" onclick="deleteRegItem('${secId}','${r.id}')">${_ic('trash',14)}</button>`}
-      </div>
-      <div class="field-grid cols-1" style="margin-bottom:8px;">
-        <div class="field-group"><label class="field-label">Statutory item</label><input type="text"${dis} value="${esc(r.item)}" oninput="updateRegField('${secId}','${r.id}','item',this.value)"></div>
-      </div>
-      <div class="field-grid" style="margin-bottom:8px;">
-        <div class="field-group"><label class="field-label">Area / asset</label><input type="text"${dis} value="${esc(r.area||'')}" placeholder="e.g. Workshop - Ramp 3" oninput="updateRegField('${secId}','${r.id}','area',this.value)"></div>
-        <div class="field-group"><label class="field-label">Frequency</label><select${dis} onchange="_regDateChange('${secId}','${r.id}','frequency',this.value)">${REG_FREQ.map(f=>`<option value="${f}"${f===(r.frequency||'')?' selected':''}>${f||'- Select -'}</option>`).join('')}</select></div>
-      </div>
-      <div class="field-grid" style="margin-bottom:8px;">
-        <div class="field-group"><label class="field-label">Date carried out</label><input type="date"${dis} value="${r.resultDate||''}" onchange="_regDateChange('${secId}','${r.id}','resultDate',this.value)"></div>
-        <div class="field-group"><label class="field-label">Next due${canRecalc&&!ro?` <button class="btn btn-ghost btn-xs no-print" style="padding:0 5px;font-size:10px;" title="Set from date carried out + frequency" onclick="regRecalcDue('${secId}','${r.id}')">↻ from freq</button>`:''}</label><input type="date"${dis} value="${r.dueDate||''}" onchange="_regDateChange('${secId}','${r.id}','dueDate',this.value)"></div>
-      </div>
-      <div class="field-grid" style="margin-bottom:8px;">
-        <div class="field-group"><label class="field-label">Result</label><select${dis} onchange="updateRegField('${secId}','${r.id}','result',this.value)"><option value="">- Select -</option>${['Pass','Fail'].map(o=>`<option${o===r.result?' selected':''}>${o}</option>`).join('')}</select></div>
-        <div class="field-group"><label class="field-label">Certificate reference</label><input type="text"${dis} value="${esc(r.certRef||'')}" placeholder="Cert / report no." oninput="updateRegField('${secId}','${r.id}','certRef',this.value)"></div>
-      </div>
-      <div class="field-grid cols-1">
-        <div class="field-group"><label class="field-label">Notes</label><input type="text"${dis} value="${esc(r.notes||'')}" oninput="updateRegField('${secId}','${r.id}','notes',this.value)"></div>
-      </div>
-      ${(!ro && (g==='red'||g==='amber')) ? `<div style="margin-top:8px;">${inPlan?`<span style="font-size:11.5px;font-weight:700;color:var(--success);">✓ In the execution plan</span>`:`<button class="btn btn-outline btn-xs no-print" onclick="raiseRegItemAction('${secId}','${r.id}')">＋ Raise into the plan</button>`}</div>`:''}
-    </div>`;
+    const inPlan=_regItemInPlan(r.id);
+    const td=(v)=>`<td style="padding:5px 6px;color:${v?'inherit':'var(--text-muted)'};">${esc(v||'-')}</td>`;
+    return `<tr${ro?'':` style="cursor:pointer;" title="Click to edit" onclick="regEditItem('${secId}','${r.id}')"`}>
+      <td style="padding:5px 8px;font-weight:600;">${esc(r.item||'(unnamed)')}${r.notes?` <span title="${esc(r.notes)}" style="color:var(--text-muted);font-weight:400;">✎</span>`:''}</td>
+      ${td(r.area)}${td(r.frequency)}
+      <td style="padding:5px 6px;text-align:center;white-space:nowrap;">${r.resultDate?_rfmt(r.resultDate):'-'}</td>
+      <td style="padding:5px 6px;text-align:center;"><span title="${gl}" style="display:inline-block;min-width:58px;padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:600;color:#fff;background:${_RRAGC[g]};">${r.dueDate?_rfmt(r.dueDate):gl}</span></td>
+      <td style="padding:5px 6px;text-align:center;">${r.result?`<span class="badge ${r.result==='Pass'?'badge-success':'badge-danger'}">${esc(r.result)}</span>`:'-'}</td>
+      ${td(r.certRef)}
+      ${ro?'':`<td style="white-space:nowrap;text-align:right;" onclick="event.stopPropagation();">${(g==='red'||g==='amber')?(inPlan?'<span style="font-size:10.5px;font-weight:700;color:var(--success);">✓ in plan</span> ':`<button class="btn btn-ghost btn-xs no-print" title="Raise into the plan" onclick="raiseRegItemAction('${secId}','${r.id}')">↗ plan</button>`):''}<button class="btn btn-ghost btn-xs no-print" title="Delete item" onclick="deleteRegItem('${secId}','${r.id}')">${_ic('trash',13)}</button></td>`}
+    </tr>`;
   };
   const sectionBlock = (s) => {
     const items = s.items || [];
-    const itemsHtml = items.length ? items.map(r => itemCard(s.id, r)).join('') : `<div class="ck-pending" style="padding:4px 0;">No statutory items in this section yet.</div>`;
+    const head=`<tr><th style="text-align:left;padding:6px 8px;">Item</th><th style="text-align:left;padding:6px;">Area</th><th style="text-align:left;padding:6px;">Frequency</th><th style="padding:6px;text-align:center;">Last done</th><th style="padding:6px;text-align:center;">Next due</th><th style="padding:6px;text-align:center;">Result</th><th style="text-align:left;padding:6px;">Cert ref</th>${ro?'':'<th></th>'}</tr>`;
+    const itemsHtml = items.length
+      ? `<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);font-size:10.5px;">${head}</thead><tbody>${items.map(r => itemRow(s.id, r)).join('')}</tbody></table></div>`
+      : `<div class="ck-pending" style="padding:4px 0;">No statutory items in this section yet.</div>`;
     return `<div style="border:1.5px solid var(--border);border-radius:10px;padding:14px 14px 12px;margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;">
         <input type="text"${dis} value="${esc(s.name)}" placeholder="Section name - e.g. Lifting equipment, Electrical, Gas, Fire" oninput="updateRegSectionName('${s.id}',this.value)" style="flex:1;font-weight:700;font-size:14px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">
@@ -21143,6 +21224,7 @@ function renderMonitoring(){
           <button class="btn btn-ghost btn-sm no-print" onclick="downloadStatutoryTemplate()">⭳ Template</button>
           ${(function(){ const n=_statDueCount(); return `<button class="btn btn-ghost btn-sm no-print" onclick="raiseStatutoryDue()"${n?'':' disabled'}>Raise due actions${n?(' ('+n+')'):''}</button>`; })()}
           ${(function(){ const g=(typeof _covGaps==='function')?_covGaps().length:0; return `<button class="btn btn-ghost btn-sm no-print" onclick="runCoverageCheck()" title="Compare what the discovery answers imply against the statutory tracker and training matrix - gaps become actions, never rows">🛡 Coverage check${g?(' ('+g+')'):''}</button>`; })()}
+          <button class="btn btn-ghost btn-sm no-print" style="color:#DC2626;" title="Remove every section, item and the stored spreadsheet" onclick="statutoryDeleteAll()">${_ic('trash',13)} Delete all</button>
           <span style="font-size:11.5px;color:var(--text-muted);">The client's spreadsheet stays the source of truth - import overwrites, export writes their exact file back.</span>
         </div>`}
       </div>

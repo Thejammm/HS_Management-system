@@ -13,7 +13,7 @@
 const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { parse, build } = require('../lib/training-xlsx');
+const { parse, build, buildFresh } = require('../lib/training-xlsx');
 
 const router = express.Router();
 const rawBody = express.raw({ type: () => true, limit: '25mb' });
@@ -29,7 +29,8 @@ router.post('/parse', requireAuth, rawBody, async (req, res) => {
   if(!_resolveTenant(req)) return res.status(400).json({ error: 'tenant_required' });
   if(!req.body || !req.body.length) return res.status(400).json({ error: 'no_file' });
   try {
-    const model = await parse(req.body);
+    const headerRow = parseInt((req.query && req.query.headerRow) || '', 10) || 0;   // 'where the table starts' override
+    const model = await parse(req.body, headerRow ? { headerRow } : {});
     if(!model.people.length) return res.status(422).json({ error: 'no_people_found' });
     res.json(model);
   } catch(err){
@@ -80,9 +81,12 @@ router.post('/export', requireAuth, rawBody, async (req, res) => {
   try { state = JSON.parse(req.body.toString('utf8')).state; } catch(e){ return res.status(400).json({ error: 'bad_state' }); }
   try {
     const r = await pool.query(`SELECT filename, data FROM training_workbook WHERE tenant_id = $1`, [tenantId]);
-    if(!r.rows.length) return res.status(404).json({ error: 'no_template' });
-    const buf = await build(Buffer.from(r.rows[0].data, 'base64'), state);
-    const base = String(r.rows[0].filename || 'Training Matrix.xlsx').replace(/\.xlsx?$/i, '');
+    // No stored workbook (the data came in by paste or was typed in): build a
+    // fresh workbook straight from the app's model instead of failing.
+    const buf = r.rows.length
+      ? await build(Buffer.from(r.rows[0].data, 'base64'), state)
+      : await buildFresh(state);
+    const base = String((r.rows[0] && r.rows[0].filename) || 'Training Matrix.xlsx').replace(/\.xlsx?$/i, '');
     const rev = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${base} (rev ${rev}).xlsx"`);
@@ -91,6 +95,14 @@ router.post('/export', requireAuth, rawBody, async (req, res) => {
     console.error('training/export error:', err.message);
     res.status(500).json({ error: 'server_error' });
   }
+});
+
+// Remove the stored workbook (used by 'delete all training data').
+router.delete('/workbook', requireAuth, async (req, res) => {
+  const tenantId = _resolveTenant(req);
+  if(!tenantId) return res.status(400).json({ error: 'tenant_required' });
+  try { await pool.query('DELETE FROM training_workbook WHERE tenant_id = $1', [tenantId]); res.json({ ok: true }); }
+  catch(err){ console.error('training/delete error:', err.message); res.status(500).json({ error: 'server_error' }); }
 });
 
 module.exports = router;

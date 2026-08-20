@@ -73,7 +73,9 @@ test('paginateRows: first page short, continuations larger, empty safe', () => {
 // progress) + register + interpretation + maturity/sign-off = 7 pages.
 test('empty profile renders a valid report that says so', () => {
   const r = buildReport(fixture('empty'), 'board-report', OPTS);
-  assert.equal(r.pages.length, 7);
+  // 8, not 7: the fixture's two unscored risks now reach the attention page.
+  // An unrated risk used to show as Uncontrolled and never need attention.
+  assert.equal(r.pages.length, 8);
   const html = reportHTML(r);
   assert.match(html, /not yet complete enough/i);
   assert.doesNotMatch(html, /No have no/);
@@ -290,15 +292,19 @@ test('H&S control maturity grades every level and catches both breach kinds', ()
   ] };
   const D = deriveBoard(state, { today: '2026-08-18' });
   assert.equal(D.holdS.total, 5);
-  assert.equal(D.holdS.held, 2);        // 4 Assured: h1 delivered+signed off, h2 accepted
+  // h2 is a CRITICAL risk run on acceptance alone. It used to count as
+  // 4 Assured and as needing attention first at the same time, so the cockpit
+  // could read "all risks assured" beside "1 needs attention first".
+  // Acceptance earns Assured only where accepting is a defensible answer.
+  assert.equal(D.holdS.held, 1);        // 4 Assured: h1 only, delivered + signed off
   assert.equal(D.holdS.working, 1);     // h3
-  assert.equal(D.holdS.slipping, 1);    // h4
+  assert.equal(D.holdS.slipping, 2);    // h4 overdue, h2 accepted-but-critical
   assert.equal(D.holdS.notheld, 1);     // h5
   const kinds = D.holdS.breaches.map(b => b.breach).join(' | ');
-  assert.match(kinds, /run on acceptance alone/);   // h2: high band held by acceptance only
+  assert.match(kinds, /run on acceptance alone/);   // h2: named before the generic state, so the precise reason survives
   assert.match(kinds, /is vulnerable/i);           // h4: high band at 2 Vulnerable
   assert.equal(D.holdS.breaches.length, 2);         // h5 is Low — no Medium/High rule engaged
-  assert.match(D.holdS.verdict, /2 of 5 risks assured/);
+  assert.match(D.holdS.verdict, /1 of 5 risks assured/);
   // Plan delivery: closed = every action complete; accepted is a caveat.
   assert.equal(D.planDone, 1);                      // h1 (all actions Complete)
   assert.equal(D.planAccepted, 1);                  // h2 (all actions Accepted)

@@ -15298,7 +15298,15 @@ function _riskHold(r){
   if(plan.k==='none' && sc.rating && controls) reasons.push('no plan and not accepted');
   if(!sc.rating || !controls || plan.k==='none')
     return Object.assign({}, HOLD_STATES.notheld, { reasons: reasons.length?reasons:['no plan and not accepted'] });
-  if(plan.k==='accepted') return Object.assign({}, HOLD_STATES.held, { reasons:['formally accepted with the current controls'], accepted:true });
+  if(plan.k==='accepted'){
+    // Acceptance earns Assured only where accepting is a defensible answer.
+    // A High or Critical risk run on acceptance alone is NOT assured: it used
+    // to count as Assured and as needing attention first simultaneously.
+    if(sc.priority==='Critical' || sc.priority==='High'){
+      return Object.assign({}, HOLD_STATES.slipping, { reasons:['formally accepted, but acceptance alone is not a defensible answer for a '+String(sc.priority).toLowerCase()+' risk'], accepted:true });
+    }
+    return Object.assign({}, HOLD_STATES.held, { reasons:['formally accepted with the current controls'], accepted:true });
+  }
   if(plan.k==='managed' && r.reviewed) return Object.assign({}, HOLD_STATES.held, { reasons:['plan delivered and signed off'] });
   const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due));
   const open=acts.filter(a=>{ const st=_actionStatus(a); return st!=='Complete'&&st!=='Accepted'; });
@@ -15319,9 +15327,15 @@ function _riskHold(r){
 // never assured on acceptance alone); Medium must not be Uncontrolled; Low is
 // never a breach. Returns the breach description, or null when compliant.
 function _holdBreach(band, hold){
+  // An unrated risk has no band, so nothing here used to match it: it showed as
+  // 1 Uncontrolled and yet never needed attention first, and sorted below every
+  // scored risk. A response cannot be judged proportionate to a risk nobody has
+  // sized, so say so rather than letting it sit quietly.
+  if(!band) return hold.k==='notheld' ? 'not yet scored, so the response cannot be judged' : null;
   if(band==='Critical'||band==='High'){
+    // Named before the generic states, so the specific reason survives.
+    if(hold.accepted) return band+' risk is run on acceptance alone';
     if(hold.k==='slipping'||hold.k==='notheld') return band+' risk is '+hold.label.toLowerCase();
-    if(hold.k==='held'&&hold.accepted) return band+' risk is run on acceptance alone';
   } else if(band==='Medium'){
     if(hold.k==='notheld') return 'Medium risk is '+hold.label.toLowerCase();
   }
@@ -15798,7 +15812,10 @@ function _saveRescore(rid){
     if(!Array.isArray(r.scoreHistory)) r.scoreHistory=[];
     r.scoreHistory.push({ at:new Date().toISOString().slice(0,10), l:old.l, s:old.s, note:'before plan delivery' });
   }
+  const _wasFatal=_riskSif(r);
   r.likelihood=String(L); r.severity=String(Sv);
+  // Pin it rather than let it lapse. An explicit "not fatal" decision stands.
+  if(_wasFatal && r.sif!==false && !_riskSif(r)) r.sif=true;
   _stamp(r,'updated'); if(ov) ov.remove();
   saveData(); _keepScroll(renderRiskProfile);
   showToast(old.rating===(L*Sv)?'Score confirmed at '+(L*Sv):'✓ Re-scored - was '+old.rating+', now '+(L*Sv)+'. The journey shows the improvement.','success');
@@ -15891,6 +15908,11 @@ function deleteRiskAction(rid, aid){
   if(_st==='Complete'||_st==='Accepted'){ showToast('Completed work stays on the record - reopen the action first if it genuinely needs removing.','info'); return; }
   _markActionDeleted(a); _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
   if(typeof _refreshActionViews==='function') _refreshActionViews();
+  // Deleting the last open action leaves the risk with a delivered plan, which
+  // is the moment the score is meant to move. The prompt used to be reachable
+  // only by opening and dismissing the evidence dialog, so this route reached
+  // "managed" with the old score still on the risk and nothing in its history.
+  _maybeRescore(rid);
 }
 function updateRiskAction(rid, aid, field, value){
   if(_roLocked()) return;

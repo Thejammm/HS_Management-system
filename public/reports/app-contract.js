@@ -227,7 +227,15 @@ export function holdOf(r, opts = {}) {
   if (plan === 'none' && rated && controls) reasons.push('no plan and not accepted');
   if (!rated || !controls || plan === 'none')
     return Object.assign({}, HOLD_STATES.notheld, { reasons: reasons.length ? reasons : ['no plan and not accepted'] });
-  if (plan === 'accepted') return Object.assign({}, HOLD_STATES.held, { reasons: ['formally accepted with the current controls'], accepted: true });
+  if (plan === 'accepted') {
+    // A High or Critical risk run on acceptance alone is NOT assured: it used
+    // to count as Assured and as needing attention first at the same time.
+    const band = opts.band || null;
+    if (band === 'Critical' || band === 'High') {
+      return Object.assign({}, HOLD_STATES.slipping, { reasons: ['formally accepted, but acceptance alone is not a defensible answer for a ' + String(band).toLowerCase() + ' risk'], accepted: true });
+    }
+    return Object.assign({}, HOLD_STATES.held, { reasons: ['formally accepted with the current controls'], accepted: true });
+  }
   if (plan === 'managed' && r.reviewed) return Object.assign({}, HOLD_STATES.held, { reasons: ['plan delivered and signed off'] });
   const acts = ((r.actions) || []).filter(a => a && !a.deleted && (a.desc || a.owner || a.due));
   const open = acts.filter(a => { const st = actionStatusOf(a); return st !== 'Complete' && st !== 'Accepted'; });
@@ -244,9 +252,12 @@ export function holdOf(r, opts = {}) {
   return Object.assign({}, HOLD_STATES.working, { reasons: [open.length + ' action' + (open.length !== 1 ? 's' : '') + ' on time'] });
 }
 export function holdBreachOf(band, hold) {
+  // An unrated risk has no band, so nothing here used to match it: 1
+  // Uncontrolled on screen, yet never needing attention first.
+  if (!band) return hold.k === 'notheld' ? 'not yet scored, so the response cannot be judged' : null;
   if (band === 'Critical' || band === 'High') {
+    if (hold.accepted) return band + ' risk is run on acceptance alone';
     if (hold.k === 'slipping' || hold.k === 'notheld') return band + ' risk is ' + hold.label.toLowerCase();
-    if (hold.k === 'held' && hold.accepted) return band + ' risk is run on acceptance alone';
   } else if (band === 'Medium') {
     if (hold.k === 'notheld') return 'Medium risk is ' + hold.label.toLowerCase();
   }
@@ -272,7 +283,7 @@ export function holdSummaryOf(state, tierOfRisk, opts = {}) {
   const ratingOf = opts.ratingOf || (() => 0);
   const rows = risks.map(r => {
     const band = tierOfRisk(r);
-    const hold = holdOf(r, opts);
+    const hold = holdOf(r, Object.assign({}, opts, { band }));
     return { id: r.id, name: String(r.activity || r.hazard || 'Unnamed risk'), band, rating: ratingOf(r) || null, hold, breach: holdBreachOf(band, hold) };
   });
   const count = k => rows.filter(x => x.hold.k === k).length;

@@ -2376,9 +2376,14 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .logo-mark{width:40px;height:40px;background:none;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .logo-mark svg{width:100%;height:100%;display:block;}
 .header-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.01em;}
-.header-sub{font-size:12px;color:var(--text-muted);}
-.header-right{display:flex;align-items:center;gap:8px;}
-.save-indicator{font-size:11px;color:var(--text-muted);white-space:nowrap;}
+.header-sub{font-size:12px;color:var(--text-muted);display:block;max-width:clamp(140px,18vw,260px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.header-right{display:flex;align-items:center;gap:8px;min-width:0;}
+.save-indicator{font-size:11px;color:var(--text-muted);white-space:nowrap;min-width:0;max-width:190px;overflow:hidden;text-overflow:ellipsis;}
+/* Anything in the header that carries a name, a status line or a runtime
+   chip is capped and ellipsised - the full text stays on the tooltip. */
+.hdr-chip{white-space:nowrap;min-width:0;max-width:170px;overflow:hidden;text-overflow:ellipsis;}
+#userIndicator{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#userIndicator>span{overflow:hidden;text-overflow:ellipsis;}
 /* Tablets (iPad portrait/landscape): the toolbar wraps instead of clipping,
    utility buttons drop to icon-only (full label stays as the tooltip), and
    the selects stop hogging the row. The sticky offsets below follow the real
@@ -2391,7 +2396,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   #consultantClientSelect{max-width:150px;}
   #viewModeSelect{max-width:132px;}
   #consultantClientSelect,#viewModeSelect{font-size:12px;}
-  .save-indicator{display:none;}
+  .save-indicator,.hdr-chip{display:none;}
 }
 @media(max-width:560px){
   .header-sub{display:none !important;}
@@ -3359,9 +3364,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </details>
 
-      <!-- 2 · Management maturity assessment -->
+      <!-- 2 · Consultant judgement (was: management maturity assessment) -->
       <details class="coll wf-sec" id="wfMaturity">
-        <summary><h3>Consultant judgement - the six HSG65 areas</h3><span class="coll-meta">Weak · Adequate · Strong, in words</span></summary>
+        <summary><h3>Consultant judgement - the six HSG65 areas</h3><span class="coll-meta">Weak &middot; Adequate &middot; Strong - replaces the old maturity score</span></summary>
         <div class="coll-body"><div id="riskMaturity"></div></div>
       </details>
     </div>
@@ -5305,6 +5310,7 @@ function updateHeaderTitle() {
   const icon = activeClientConfig().icon || '';
   const label = name ? (icon ? `${icon} ${name}` : name) : '';
   sub.textContent = label;
+  sub.title = label;            // capped to one line in CSS - hover reads the rest
   sub.style.display = label ? '' : 'none';
 }
 
@@ -8584,11 +8590,12 @@ function _renderPeerChip(){
   if(!chip){
     chip = document.createElement('span');
     chip.id = 'peerChip';
-    chip.style.cssText = 'font-size:11.5px;color:#B45309;background:#D977061a;border:1px solid #D9770655;border-radius:10px;padding:2px 9px;margin-left:8px;white-space:nowrap;';
+    chip.className = 'no-print hdr-chip';
+    chip.style.cssText = 'font-size:11.5px;color:#B45309;background:#D977061a;border:1px solid #D9770655;border-radius:10px;padding:2px 9px;white-space:nowrap;';
     chip.title = 'Someone else saved this company in the last few minutes. The screen picks up their changes automatically; if you both edit the same thing, the later save wins and the earlier one is offered back as a draft.';
     anchor.parentNode.insertBefore(chip, anchor.nextSibling);
   }
-  chip.textContent = '✎ another user is editing';
+  chip.textContent = '✎ in use';   // the full explanation is on the tooltip above
 }
 // ── New-version watch: kills the stale-tab problem. A long-lived tab keeps
 //    running the JS it booted with; deploys land server-side unseen. Compare
@@ -8608,13 +8615,14 @@ function _showUpdateChip(){
   if(document.getElementById('updChip')) return;
   const chip = document.createElement('button');
   chip.id = 'updChip';
-  chip.style.cssText = 'font-size:11.5px;font-weight:700;color:#fff;background:var(--accent,#2563EB);border:0;border-radius:10px;padding:3px 11px;margin-left:8px;cursor:pointer;white-space:nowrap;';
-  chip.textContent = '↻ Update available - reload';
+  chip.className = 'no-print hdr-chip';
+  chip.style.cssText = 'font-size:11.5px;font-weight:700;color:#fff;background:var(--accent,#2563EB);border:0;border-radius:10px;padding:3px 11px;cursor:pointer;white-space:nowrap;';
+  chip.textContent = '↻ Update';   // the full explanation is on the tooltip below
   chip.title = 'A newer version of Compass has been published. Reload to pick it up - your work is saved automatically.';
   chip.onclick = () => location.reload();
   const anchor = document.getElementById('saveIndicator');
   if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(chip, anchor.nextSibling);
-  else document.body.appendChild(chip);
+  // no anchor: skip it rather than dropping a stray button at the end of the page
 }
 setInterval(_checkAppVersion, 120000);
 _checkAppVersion();
@@ -8673,7 +8681,7 @@ function saveData(){
     try{
       localStorage.setItem('ahs:workplace-inspection:v3',JSON.stringify(payload));
       const el=document.getElementById('saveIndicator');
-      if(el) el.textContent='Saved '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      if(el){ el.textContent='Saved '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); el.title=''; el.style.color=''; }   // clear any earlier alarm state
     }catch(e){if(!_quotaWarn){_quotaWarn=true;showToast('Local storage full','error');}}
   }
   // If signed in, ALSO sync to server (best-effort, async). A failed server
@@ -8694,7 +8702,7 @@ function saveData(){
         _ownLastUpd = res.updatedAt || _ownLastUpd;
         if(inClient){ _consultantLastUpd = res.updatedAt || _consultantLastUpd; _setFreshLabel(); }
         const elC=document.getElementById('saveIndicator');
-        if(elC){ elC.textContent='↻ Reloaded - someone else had just saved'; elC.style.color='var(--danger)'; }
+        if(elC){ elC.textContent='↻ Reloaded'; elC.style.color='var(--danger)'; elC.title='Someone else had just saved, so their version is now on screen.'; }
         _notePeerActivity();
         _showConflictRecovery();
         return;
@@ -8707,11 +8715,14 @@ function saveData(){
       }
       const el=document.getElementById('saveIndicator');
       if(res){
-        const where = inClient ? ('Saved to '+ (_consultantView?.name||'client')) : 'Saved to server';
-        if(el){ el.textContent=where+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); el.style.color=''; }
+        // The client is already named in the header and the consultant bar;
+        // repeating it here made this nowrap span 431px wide and shoved the
+        // toolbar off the screen. Name stays on the tooltip.
+        const where = inClient ? 'Saved to client' : 'Saved to server';
+        if(el){ el.textContent=where+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); el.style.color=''; el.title='Saved to '+(_consultantView?.name||'your workspace'); }
         _serverSaveWarned = false;
       } else {
-        if(el){ el.textContent='⚠ Not saved to server - changes are on this device only'; el.style.color='var(--danger)'; }
+        if(el){ el.textContent='⚠ Not saved to server'; el.style.color='var(--danger)'; el.title='Your changes are on this device only and may revert on refresh.'; }
         if(!_serverSaveWarned){
           _serverSaveWarned = true;
           showToast('⚠ Could not save to the server - your changes are on this device only and may revert on refresh.','error');
@@ -13355,6 +13366,7 @@ function _setLiveLabel(ts){
   if(!el) return;
   const t = ts ? new Date(ts) : new Date();
   el.textContent = 'Live · updated ' + t.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  el.title = ''; el.style.color = '';   // clear any earlier alarm state
 }
 
 async function _pollOwnState(){

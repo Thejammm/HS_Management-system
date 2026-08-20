@@ -182,7 +182,7 @@ test('hidden sections drop their pages; locked sections always print', () => {
   const state = fixture('typical');
   state.reportPrefs = { 'board-report': { hidden: {
     reactive: true, active: true, training: true, workers: true, statutory: true,
-    wins: true, sinceLast: true, register: true, interpretation: true,
+    wins: true, sinceLast: true, topFive: true, register: true, interpretation: true,
     position: true, maturity: true,   // locked — must be ignored
   } } };
   const r = buildReport(state, 'board-report', OPTS);

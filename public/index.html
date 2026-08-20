@@ -14413,7 +14413,7 @@ function _execActions(){
     completedDate:a.completedDate||'', completedBy:a.completedBy||'',
     acceptDate:a.acceptDate||'', acceptedBy:a.acceptedBy||'',
     resolvedDate:(a.completedDate||a.acceptDate||''), resolvedBy:(a.completedBy||a.acceptedBy||''),
-    raisedAt:(a.createdAt?a.createdAt.slice(0,10):''), raisedBy:a.createdBy||'' }); };
+    raisedAt:(a.createdAt?a.createdAt.slice(0,10):''), raisedBy:a.createdBy||'', top5:(a.top5||'') }); };
   _allRiskActions().forEach(x=>{ if(x.a.hideFromPlan) return; if(!(x.a.desc||x.a.owner||x.a.due)) return;
     norm('Risk profile', x.r.activity||x.r.hazard||'Risk', {t:'risk', a:x.r.id, b:x.a.id}, x.a); });
   (typeof _allMgmtActions==='function'?_allMgmtActions():[]).forEach(x=>{ if(x.act&&x.act.hideFromPlan) return;
@@ -14424,6 +14424,44 @@ function _execActions(){
     norm(src, a.sourceLabel||(rk?(rk.activity||rk.hazard):''), {t:'free', a:a.id}, a); });
   return out;
 }
+// ── Top 5 for the month: the consultant's own pick from the plan. The value
+//    stored is the MONTH it was picked for, so history reads itself. ──
+const TOP5_MAX = 5;
+function _top5Month(){ return new Date().toISOString().slice(0,7); }
+function _top5PrevMonth(m){ const d=new Date((m||_top5Month())+'-01T12:00:00'); d.setMonth(d.getMonth()-1); return d.toISOString().slice(0,7); }
+function _top5MonthLabel(m){ try{ return new Date(m+'-01T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }catch(e){ return m; } }
+function _top5List(month){ month=month||_top5Month(); return _execActions().filter(a=>a.top5===month); }
+function toggleTop5(refStr){
+  if(_blockIfReadOnly()) return;
+  let ref; try{ ref=JSON.parse(decodeURIComponent(refStr)); }catch(e){ return; }
+  const o=_execOrigin(ref); if(!o) return;
+  const month=_top5Month();
+  if(o.top5===month){ o.top5=''; }
+  else {
+    if(_top5List(month).length>=TOP5_MAX){ showToast('Five are already marked for '+_top5MonthLabel(month)+' - untick one first','info'); return; }
+    o.top5=month;
+  }
+  if(typeof _stamp==='function') _stamp(o,'updated');
+  saveData(); _refreshActionViews();
+}
+// The month's five, shown on the plan itself: what is marked, and how last
+// month's five actually went. Plain counts - no scoring.
+function _top5BannerHTML(){
+  const m=_top5Month(), five=_top5List(m), prevM=_top5PrevMonth(m), prev=_top5List(prevM);
+  const done=prev.filter(function(a){ return a.status==='Complete'||a.status==='Accepted'; }).length;
+  const names=five.map(function(a){ return esc(String(a.desc||'(no description)').slice(0,42)); }).join(' &middot; ');
+  const mid = five.length
+    ? (five.length+' of 5 marked: '+names)
+    : '0 of 5 marked - tick the five you agreed at the meeting';
+  const last = prev.length
+    ? '<span style="font-size:12px;color:var(--text-muted);margin-left:auto;">Last month: '+done+' of '+prev.length+' delivered</span>'
+    : '';
+  return '<div class="no-print" style="border:1.5px solid #B4530955;background:#B4530910;border-radius:9px;padding:10px 14px;margin-bottom:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">'
+    + '<span style="font-weight:700;color:#B45309;">Top 5 for '+_top5MonthLabel(m)+'</span>'
+    + '<span style="font-size:12.5px;color:var(--text-muted);">'+mid+'</span>'
+    + last + '</div>';
+}
+
 function _execOpenCount(){ return _execActions().filter(x=>x.status!=='Complete' && x.status!=='Accepted').length; }
 function _execOrigin(ref){
   if(!ref) return null;
@@ -14733,6 +14771,7 @@ function renderExecPlan(){
         </div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
+        ${dis?'':`<label title="Mark this as one of the five priorities for ${_top5MonthLabel(_top5Month())} - they lead the board report and get checked off next month" style="font-size:10.5px;color:${a.top5===_top5Month()?'#B45309':'var(--text-muted)'};white-space:nowrap;font-weight:${a.top5===_top5Month()?'700':'400'};cursor:pointer;">Top 5<br><input type="checkbox" ${a.top5===_top5Month()?'checked':''} onchange="toggleTop5('${rk}')" style="width:18px;height:18px;cursor:pointer;accent-color:#B45309;margin-top:4px;"></label>`}
         <label style="font-size:10.5px;color:var(--text-muted);white-space:nowrap;">Target date<br><input type="date"${dis} value="${a.due||''}" onchange="updateExecAction('${rk}','due',this.value)"></label>
         <select${dis} onchange="updateExecAction('${rk}','status',this.value)" style="font-size:12.5px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select>
         ${(closed && !dis && _isConsultantish())?`<button type="button" class="no-print" onclick="deleteExecAction('${rk}')" title="Remove this completed action - step 1 of 2: it moves to your consultant-only Deleted actions area; 'Delete from app' there removes it permanently" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:26px;height:26px;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;flex:0 0 auto;">✕</button>`:''}
@@ -14753,6 +14792,7 @@ function renderExecPlan(){
     : `<div class="ck-pending" style="padding:8px 0;">Nothing overdue or due this month.</div>`;
   root.innerHTML = `
     <div class="rep-hero"><h2>Client execution plan</h2><p>Everything you need to do - from your risk profile, management system, assurance and accreditation. Set a target date and mark progress. Traffic lights: <span style="color:${RAG_COLOR.red};font-weight:700;">overdue</span> &middot; <span style="color:${RAG_COLOR.amber};font-weight:700;">this month</span> &middot; <span style="color:${RAG_COLOR.green};font-weight:700;">on track</span>.</p></div>
+    ${_top5BannerHTML()}
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">
       ${tile(open.length,'Open','#30415f','epYearCard')}
       ${tile(overdue.length,'Overdue', overdue.length?RAG_COLOR.red:'#30415f','epMonthCard')}

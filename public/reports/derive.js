@@ -7,8 +7,8 @@
 // from the app itself) and scripts/check-app-report-consistency.mjs diffs the
 // two implementations on a seeded edge-case state - run it before deploying
 // anything that touches either side.
-import { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf } from './app-contract.js';
-export { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf };
+import { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf, top5Of, top5MonthOf, top5PrevMonthOf } from './app-contract.js';
+export { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf, top5Of, top5MonthOf, top5PrevMonthOf };
 
 // ── Tier banding ──
 // The app's bands are tenant-tunable (state.riskConfig.bands). The report must
@@ -183,6 +183,13 @@ export function deriveBoardExtras(state, opts = {}) {
   });
   wins.sort((a, b) => String(b.when).localeCompare(String(a.when)));
 
+  // The consultant's five priorities for this month, and how last month's
+  // five actually went - the loop the client feels.
+  const t5Month = top5MonthOf(today);
+  const t5Prev = top5PrevMonthOf(t5Month);
+  const top5 = top5Of(s, t5Month);
+  const top5Last = top5Of(s, t5Prev);
+
   // Closing the loop - movement since the audit baseline (if snapshots exist).
   const snaps = Array.isArray(s.auditSnapshots) ? s.auditSnapshots : [];
   const baseline = snaps.length ? snaps[0] : null;
@@ -195,6 +202,7 @@ export function deriveBoardExtras(state, opts = {}) {
     brTotal: br.length, brRecent, brFb,
     statTotal: statItems.length, statOverdue, statDueSoon,
     wins, baseline, periodFrom: p90,
+    top5, top5Last, t5Month, t5Prev,
   };
 }
 

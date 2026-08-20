@@ -20,6 +20,7 @@ export const BOARD_SECTIONS = [
   { id: 'statutory',      label: 'Checks required by law', hsg: 'Statutory checks (e.g. lifting equipment)' },
   { id: 'wins',           label: 'Successes this period', hsg: 'Celebrate and promote successes' },
   { id: 'sinceLast',      label: 'Movement since the baseline', hsg: 'Closing the loop' },
+  { id: 'topFive',        label: 'Top 5 priorities for next month', hsg: 'What we agreed to do next' },
   { id: 'register',       label: 'Fatal & major-harm register', hsg: 'Risk assessments' },
   { id: 'interpretation', label: 'The picture explained (matrix, risk bands, control ladder)' },
   { id: 'maturity',       label: 'H&S control maturity, consultant judgement, directors’ duty, sign-off', locked: true },
@@ -221,6 +222,28 @@ export function buildBoardReport(state, opts = {}) {
           rows: X.wins.slice(0, 10).map(w => [ String(w.desc).slice(0, 80) + (w.accepted ? ' (risk accepted)' : ''), String(w.source || '-').slice(0, 40), w.owner || '-', fmtD(w.when) ]),
           footnote: (X.wins.length > 10 ? ('Showing the latest 10 of ' + X.wins.length + ' closed this period. ') : '') + 'Every source counts here - risk actions, management-system actions and the plan itself. Delivered work stays on the plan as evidence, and a review is also the moment to give credit for what was closed off.' }
       : { type: 'textBlock', title: 'Successes this period', body: 'Nothing was delivered in the period. If work is being done but not being closed off on the plan, the record undersells the business.' });
+  }
+  if (!hide.topFive) {
+    const t5 = X.top5 || [], last = X.top5Last || [];
+    const mLabel = (m) => { try { return new Date(m + '-01T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); } catch (e) { return m; } };
+    const closed = (a) => a.status === 'Complete' || a.status === 'Accepted';
+    // How last month's five actually went - the half the client feels.
+    if (last.length) {
+      const doneN = last.filter(closed).length;
+      progBlocks.push({ type: 'dataTable', title: 'Last month\'s five: ' + doneN + ' of ' + last.length + ' delivered',
+        cols: [ { header: 'Agreed for ' + mLabel(X.t5Prev), w: '46%' }, { header: 'Owner', w: '18%' }, { header: 'By', w: '16%' }, { header: 'Outcome', w: '20%' } ],
+        rows: last.map(a => [ String(a.desc).slice(0, 80), a.owner || 'no owner', a.due ? fmtD(a.due) : 'no date',
+          closed(a) ? (a.status === 'Accepted' ? 'Risk accepted' : ('Delivered' + (a.resolvedDate ? (' ' + fmtD(a.resolvedDate)) : ''))) : (a.due && a.due < (opts.today || new Date().toISOString().slice(0, 10)) ? 'Overdue' : 'Still open') ]),
+        footnote: doneN === last.length ? 'Every priority agreed last month was closed out.' : 'Anything not closed stays on the plan and is considered again for this month.' });
+    }
+    // The five for next month.
+    progBlocks.push(t5.length
+      ? { type: 'dataTable', title: 'Top 5 priorities for ' + mLabel(X.t5Month),
+          cols: [ { header: 'What we will do', w: '46%' }, { header: 'From', w: '18%' }, { header: 'Owner', w: '18%' }, { header: 'By', w: '18%' } ],
+          rows: t5.map(a => [ String(a.desc).slice(0, 80), String(a.sourceLabel || a.source || '-').slice(0, 34), a.owner || 'to be named', a.due ? fmtD(a.due) : 'to be dated' ]),
+          footnote: 'Chosen by the consultant from the full execution plan after this month\'s review, on what removes the most risk soonest. Each one is owned and dated in Compass, and its progress is visible to the client on the execution plan. Next month\'s report opens with what happened to these five.' }
+      : { type: 'textBlock', title: 'Top 5 priorities for ' + mLabel(X.t5Month),
+          body: 'Not yet agreed. The consultant reviews the execution plan after the monthly meeting and marks the five actions that remove the most risk soonest; they are listed here, owned and dated, and checked off in next month\'s report.' });
   }
   if (!hide.sinceLast && X.baseline && X.baseline.metrics) {
     const b = X.baseline.metrics; const mv = (a, c) => (a == null || c == null) ? '-' : (c > a ? ('up ' + (c - a)) : c < a ? ('down ' + (a - c)) : 'no change');

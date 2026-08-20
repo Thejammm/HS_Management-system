@@ -347,3 +347,45 @@ export function trainingRowsOf(state) {
   });
   return out;
 }
+
+// ── Top 5 for the month - verbatim port of the app's _top5List over the
+//    same three action sources the execution plan aggregates (risk actions,
+//    management-system item actions, the free plan), with the same
+//    exclusions (deleted, hideFromPlan, blank stubs). The value stored on an
+//    action is the MONTH it was picked for, so history reads itself. ──
+export function top5MonthOf(today) {
+  return String(today || new Date().toISOString().slice(0, 10)).slice(0, 7);
+}
+export function top5PrevMonthOf(month) {
+  const d = new Date((month || top5MonthOf()) + '-01T12:00:00');
+  d.setMonth(d.getMonth() - 1);
+  return d.toISOString().slice(0, 10).slice(0, 7);
+}
+export function top5Of(state, month) {
+  const s = state || {};
+  const out = [];
+  const take = (a, source, sourceLabel) => {
+    if (!a || a.deleted || a.hideFromPlan) return;
+    if (!(a.desc || a.owner || a.due)) return;
+    if ((a.top5 || '') !== month) return;
+    out.push({
+      desc: String(a.desc || '(no description)'),
+      owner: String(a.owner || ''),
+      due: String(a.due || ''),
+      status: actionStatusOf(a),
+      resolvedDate: String(a.completedDate || a.acceptDate || ''),
+      source, sourceLabel: String(sourceLabel || ''),
+    });
+  };
+  (Array.isArray(s.riskProfile) ? s.riskProfile : []).forEach(r =>
+    ((r.actions) || []).forEach(a => take(a, 'Risk profile', r.activity || r.hazard || 'Risk')));
+  (Array.isArray(s.requirements) ? s.requirements : []).forEach(sec =>
+    (Array.isArray(sec.items) ? sec.items : []).forEach(it => {
+      const acts = Array.isArray(it.actions) ? it.actions
+        : ((it.action && String(it.action).trim()) ? [{ desc: String(it.action).trim(), owner: it.actionOwner || '', due: it.dueDate || '', status: it.actionStatus || 'Not started', top5: it.top5 || '' }] : []);
+      acts.forEach(a => take(a, 'Management system', sec.heading || ''));
+    }));
+  (Array.isArray(s.actionPlan) ? s.actionPlan : []).forEach(a =>
+    take(a, String(a.source || 'Added directly'), a.sourceLabel || ''));
+  return out;
+}

@@ -22,7 +22,10 @@ router.post('/parse', requireAuth, rawBody, async (req, res) => {
   if(!req.body || !req.body.length) return res.status(400).json({ error: 'no_file' });
   try {
     const headerRow = parseInt((req.query && req.query.headerRow) || '', 10) || 0;   // 'where the table starts' override
-    const model = await parse(req.body, headerRow ? { headerRow } : {});
+    let mapping = null;   // DRM-style explicit column mapping from the in-app wizard
+    try { if(req.query && req.query.mapping) mapping = JSON.parse(String(req.query.mapping)); } catch(e){ return res.status(400).json({ error: 'bad_mapping' }); }
+    const opts = Object.assign({}, headerRow ? { headerRow } : {}, mapping ? { fixed: mapping.fixed || null, skip: mapping.skip || [] } : {});
+    const model = await parse(req.body, opts);
     if(!model.items.length) return res.status(422).json({ error: 'no_items_found' });
     res.json(model);
   } catch(err){

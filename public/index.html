@@ -19965,9 +19965,7 @@ function statutoryUploadXlsx(){
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
     try{
       const buf=await f.arrayBuffer();
-      const res=await _xlsxParseRetry('/api/statutory/parse', buf);
-      if(!res.ok){ const e=await res.json().catch(()=>({})); alert(e.error==='no_items_found'?'No register rows found - the sheet needs an "Item" (or Equipment/Description) column.':'Could not read that spreadsheet: '+(e.error||('HTTP '+res.status))); return; }
-      await _statutoryApplyParsed(await res.json(), f.name, buf);
+      await _xlsxParseOrWizard('statutory', f.name, buf, (parsed)=>_statutoryApplyParsed(parsed, f.name, buf));
     }catch(e){ console.error('statutory import',e); alert('Import failed: '+e.message); }
   };
   inp.click();
@@ -20936,17 +20934,115 @@ function _trainingMatrixHTML(){
       ${staffTbl}${garageTbl}${leftHTML}${toolbar}
     </div></div>`;
 }
-// Parse with a second chance: if the server cannot find the table, ask the
-// consultant which row the column headings are on and retry with it (the
-// server also auto-detects the header row in the top 15 rows by itself).
-async function _xlsxParseRetry(path, buf){
-  let res=await _tApiRaw(path, buf);
-  if(res.status===422){
-    const t=prompt('Could not find the table automatically.\n\nWhich row are the column headings on? Count from the very top of the sheet (e.g. 3). Cancel to give up.','');
-    const n=parseInt(t,10);
-    if(n>=1) res=await _tApiRaw(path+'?headerRow='+n, buf);
-  }
-  return res;
+// ── DRM-style import wizard (copied from the DRM app's importer): step 1
+//    click the headings row in a live preview of the sheet; step 2 map every
+//    column to a field - auto-guessed, Skip-able, with sample data - then
+//    import with the EXPLICIT mapping. Any heading works; the server aliases
+//    are only the first guess. Choices are remembered per client. ──
+const _XLSX_FIELDS = {
+  training: [
+    { k:'course', label:'Course column (dates traffic-light)' },
+    { k:'last',   label:'Surname',                 guess:/^(last\s*name|surname|lastname)$/i },
+    { k:'first',  label:'First name',              guess:/^(first\s*name|forename|firstname)$/i },
+    { k:'full',   label:'Full name (one column)',  guess:/^(name|employee|staff|person|full\s*name)$/i },
+    { k:'badge',  label:'Badge / number',          guess:/^badge/i },
+    { k:'job',    label:'Job / role',              guess:/^(job|role|position)$/i },
+    { k:'skip',   label:'Skip this column' },
+  ],
+  statutory: [
+    { k:'item',      label:'Statutory item',  guess:/^(item|statutory item|inspection|description|equipment|plant|asset|name)$/i },
+    { k:'area',      label:'Area / asset',    guess:/^(area|location|site|where)/i },
+    { k:'frequency', label:'Frequency',       guess:/^(freq|interval|how often|cycle)/i },
+    { k:'lastDone',  label:'Last done',       guess:/^(last|date carried out|completed|done)/i },
+    { k:'nextDue',   label:'Next due',        guess:/^(next|due|renewal|expiry)/i },
+    { k:'result',    label:'Result',          guess:/^(result|outcome|pass|status)/i },
+    { k:'certRef',   label:'Certificate ref', guess:/^(cert|report|ref)/i },
+    { k:'notes',     label:'Notes',           guess:/^(note|comment|remark)/i },
+    { k:'skip',      label:'Skip this column' },
+  ],
+};
+function _xlsxMapWizard(kind, peek, fname, buf, onMapping){
+  const sh=(peek.sheets||[])[0]||{name:'',rows:[]};
+  const fields=_XLSX_FIELDS[kind];
+  const old=document.getElementById('xlsxMapOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='xlsxMapOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;';
+  document.body.appendChild(ov);
+  const close=()=>ov.remove();
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  const guessFor=(heading)=>{ const h=String(heading||'').trim(); if(!h) return 'skip';
+    for(const f of fields){ if(f.guess && f.guess.test(h)) return f.k; }
+    return kind==='training' ? 'course' : 'skip'; };
+  const memAll=(S.importProfiles=S.importProfiles||{}); const mem=(memAll['xlsx_'+kind]=memAll['xlsx_'+kind]||{});
+  const step1=()=>{
+    const rows=(sh.rows||[]).map((r,i)=>`<tr data-row="${i+1}" style="cursor:pointer;"><td style="padding:4px 8px;color:var(--text-muted);font-weight:700;border-bottom:1px solid var(--border);">${i+1}</td>${r.map(c=>`<td style="padding:4px 8px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;">${esc(c)}</td>`).join('')}</tr>`).join('');
+    ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:860px;width:96%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+      <div style="font-weight:700;margin-bottom:4px;">Import - ${esc(fname)} <span style="font-weight:400;color:var(--text-muted);font-size:12px;">step 1 of 2</span></div>
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">Click the row that holds the <b>column headings</b>${(peek.sheets||[]).length>1?` (showing "${esc(sh.name)}" - every sheet is read with the same layout)`:''}.</div>
+      <div style="overflow:auto;max-height:340px;border:1px solid var(--border);border-radius:8px;"><table style="border-collapse:collapse;font-size:11.5px;min-width:100%;"><tbody>${rows||'<tr><td style="padding:8px;">The sheet looks empty.</td></tr>'}</tbody></table></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;"><button class="btn btn-ghost btn-sm" id="_mwCancel">Cancel</button></div>
+    </div>`;
+    ov.querySelector('#_mwCancel').onclick=close;
+    ov.querySelectorAll('tr[data-row]').forEach(tr=>{
+      tr.onmouseenter=()=>{ tr.style.background='var(--muted-bg)'; }; tr.onmouseleave=()=>{ tr.style.background=''; };
+      tr.onclick=()=>step2(parseInt(tr.dataset.row,10));
+    });
+  };
+  const step2=(headerRow)=>{
+    const headings=(sh.rows||[])[headerRow-1]||[];
+    const dataRows=(sh.rows||[]).slice(headerRow, headerRow+5);
+    const rowsHtml=headings.map((h,idx)=>{
+      const preset=mem[String(h||'').trim().toLowerCase()]||guessFor(h);
+      const opts=fields.map(f=>`<option value="${f.k}"${f.k===preset?' selected':''}>${esc(f.label)}</option>`).join('');
+      return `<tr><td style="padding:5px 8px;font-weight:600;border-bottom:1px solid var(--border);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(h)}">${esc(h||'(blank)')}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid var(--border);"><select data-col="${idx+1}" style="width:100%;padding:5px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface,#fff);color:inherit;font-size:12px;">${opts}</select></td>
+        <td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text-muted);font-size:11px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(dataRows.map(r=>r[idx]).filter(v=>v!==''&&v!=null).slice(0,3).join(' · '))}</td></tr>`;
+    }).join('');
+    ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:720px;width:96%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+      <div style="font-weight:700;margin-bottom:4px;">Map the columns <span style="font-weight:400;color:var(--text-muted);font-size:12px;">step 2 of 2 - headings on row ${headerRow}</span></div>
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">Say what each column is${kind==='training'?' - anything left as a course column shows on the matrix (dates traffic-light, text shows as written)':' - the register needs at least the Statutory item column'}. Your choices are remembered for this client.</div>
+      <div style="overflow:auto;max-height:360px;border:1px solid var(--border);border-radius:8px;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead><tr style="color:var(--text-muted);text-transform:uppercase;font-size:10px;letter-spacing:.04em;"><th style="text-align:left;padding:6px 8px;">Their column</th><th style="text-align:left;padding:6px 8px;">Reads as</th><th style="text-align:left;padding:6px 8px;">Sample data</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>
+      <div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px;"><button class="btn btn-ghost btn-sm" id="_mwBack">← Back</button><div style="display:flex;gap:8px;"><button class="btn btn-ghost btn-sm" id="_mwCancel2">Cancel</button><button class="btn btn-primary btn-sm" id="_mwGo">Import</button></div></div>
+    </div>`;
+    ov.querySelector('#_mwBack').onclick=step1;
+    ov.querySelector('#_mwCancel2').onclick=close;
+    ov.querySelector('#_mwGo').onclick=()=>{
+      const fixed={}, skip=[];
+      ov.querySelectorAll('select[data-col]').forEach(sel=>{
+        const c=parseInt(sel.dataset.col,10), v=sel.value;
+        const heading=String(headings[c-1]||'').trim().toLowerCase(); if(heading) mem[heading]=v;
+        if(v==='skip') skip.push(c);
+        else if(v!=='course'){ if(fixed[v]==null) fixed[v]=c; }
+      });
+      if(kind==='training' && fixed.last==null && fixed.first==null && fixed.full==null){ alert('Map at least one name column (Surname, First name or Full name).'); return; }
+      if(kind==='statutory' && fixed.item==null){ alert('Map the Statutory item column.'); return; }
+      scheduleAutoSave();
+      close();
+      onMapping({ headerRow, fixed, skip });
+    };
+  };
+  step1();
+}
+// Open the wizard for a picked file and run the mapped parse + apply.
+async function _xlsxOpenWizard(kind, fname, buf, applyFn){
+  const pk=await _tApiRaw('/api/'+kind+'/peek', buf);
+  if(!pk.ok){ alert('Could not read that file.'); return; }
+  _xlsxMapWizard(kind, await pk.json(), fname, buf, async(mapping)=>{
+    try{
+      const q='headerRow='+mapping.headerRow+'&mapping='+encodeURIComponent(JSON.stringify({fixed:mapping.fixed, skip:mapping.skip}));
+      const res=await _tApiRaw('/api/'+kind+'/parse?'+q, buf);
+      if(!res.ok){ const e=await res.json().catch(()=>({})); alert('That mapping did not produce any rows ('+(e.error||('HTTP '+res.status))+').\n\nCheck the headings row and the name/item column, then try again.'); return; }
+      await applyFn(await res.json());
+    }catch(e){ alert('Import failed: '+e.message); }
+  });
+}
+// Plain upload: try the automatic read first; anything the server cannot
+// make sense of drops straight into the mapping wizard - it always works.
+async function _xlsxParseOrWizard(kind, fname, buf, applyFn){
+  const res=await _tApiRaw('/api/'+kind+'/parse', buf);
+  if(res.ok){ await applyFn(await res.json()); return; }
+  if(res.status!==422){ const e=await res.json().catch(()=>({})); alert('Could not read that spreadsheet: '+(e.error||('HTTP '+res.status))); return; }
+  await _xlsxOpenWizard(kind, fname, buf, applyFn);
 }
 async function _tApiRaw(path, body, extraHeaders){
   const tid=Auth.activeTenantId(); const sep=path.includes('?')?'&':'?';
@@ -20972,15 +21068,13 @@ function trainingUploadXlsx(){
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
     try{
       const buf=await f.arrayBuffer();
-      const res=await _xlsxParseRetry('/api/training/parse', buf);
-      if(!res.ok){ const e=await res.json().catch(()=>({})); alert('Could not read that spreadsheet: '+(e.error||('HTTP '+res.status))); return; }
-      await _trainingApplyParsed(await res.json(), f.name, buf);
+      await _xlsxParseOrWizard('training', f.name, buf, (parsed)=>_trainingApplyParsed(parsed, f.name, buf));
     }catch(e){ console.error('training import',e); alert('Import failed: '+e.message); }
   };
   inp.click();
 }
 // ── Map & import: pick the file, SEE the top rows, click the headings row ──
-function _xlsxPeekModal(peek, fname, onPick){
+function _xlsxPeekModal_dead(peek, fname, onPick){   // superseded by _xlsxMapWizard
   const sh=(peek.sheets||[])[0]||{name:'',rows:[]};
   const ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:26px 12px;overflow:auto;';
   const rows=(sh.rows||[]).map((r,i)=>`<tr data-row="${i+1}" style="cursor:pointer;"><td style="padding:4px 8px;color:var(--text-muted);font-weight:700;border-bottom:1px solid var(--border);">${i+1}</td>${r.map(c=>`<td style="padding:4px 8px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;">${esc(c)}</td>`).join('')}</tr>`).join('');
@@ -21006,17 +21100,8 @@ function xlsxMappedImport(kind){
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
     try{
       const buf=await f.arrayBuffer();
-      const pk=await _tApiRaw('/api/'+kind+'/peek', buf);
-      if(!pk.ok){ alert('Could not read that file.'); return; }
-      _xlsxPeekModal(await pk.json(), f.name, async(headerRow)=>{
-        try{
-          const res=await _tApiRaw('/api/'+kind+'/parse?headerRow='+headerRow, buf);
-          if(!res.ok){ const e=await res.json().catch(()=>({})); alert('Row '+headerRow+' did not work as the headings row: '+(e.error||('HTTP '+res.status))+'\n\nTry again and pick the row with the column names on it.'); return; }
-          const parsed=await res.json();
-          if(kind==='training') await _trainingApplyParsed(parsed, f.name, buf);
-          else await _statutoryApplyParsed(parsed, f.name, buf);
-        }catch(e){ alert('Import failed: '+e.message); }
-      });
+      const applyFn=(parsed)=> kind==='training' ? _trainingApplyParsed(parsed, f.name, buf) : _statutoryApplyParsed(parsed, f.name, buf);
+      await _xlsxOpenWizard(kind, f.name, buf, applyFn);
     }catch(e){ alert('Import failed: '+e.message); }
   };
   inp.click();

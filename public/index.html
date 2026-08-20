@@ -19071,6 +19071,9 @@ function approveReqItem(sid, iid){
   _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements); showToast('✓ Approved as compliant - criteria recorded','success');
 }
 // Duties implied by the client's risk profile (from each risk's linked citation).
+function _riskDismissed(){ if(!S.reqDerivedDismissed || typeof S.reqDerivedDismissed!=='object') S.reqDerivedDismissed={}; return S.reqDerivedDismissed; }
+function dismissRiskDerived(duty){ if(_blockIfReadOnly()) return; _riskDismissed()[String(duty||'').trim().toLowerCase()]=true; saveData(); _keepScroll(renderRequirements); }
+function restoreRiskDerivedDismissed(){ if(_blockIfReadOnly()) return; S.reqDerivedDismissed={}; saveData(); _keepScroll(renderRequirements); }
 function _riskDerivedDuties(){
   const map={};
   (S.riskProfile||[]).forEach(r=>{ (r.linked||[]).forEach(l=>{ const raw=(l.ref||'').replace(/^Key duty:\s*/i,''); raw.split(';').forEach(part=>{ const d=part.trim(); if(d && d.length>3){ (map[d]=map[d]||new Set()).add(r.activity||r.hazard||'Risk'); } }); }); });
@@ -19165,14 +19168,26 @@ function _legalRegisterHTML(ro){
     </div></div>`;
 }
 function _riskDerivedHTML(ro){
-  const duties=_riskDerivedDuties(); if(!duties.length) return '';
-  const sec=(S.requirements||[]).find(s=>s.legal); const inReg=new Set(); if(sec)(sec.items||[]).forEach(it=>{ if(it.citation) inReg.add(it.citation.trim().toLowerCase()); });
+  const all=_riskDerivedDuties(); if(!all.length) return '';
+  const dism=_riskDismissed();
+  const duties=all.filter(d=>!dism[String(d.duty||'').trim().toLowerCase()]);
+  const nDism=all.length-duties.length;
+  // In-register match: the legal section's citations AND every section's
+  // requirement/citation text - a duty already covered above never shows as
+  // missing just because the wording came from a different route in.
+  const norm=(x)=>String(x||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/s+/g,' ').trim();
+  const regTexts=[];
+  (S.requirements||[]).forEach(sx=>{ if(sx.citation) regTexts.push(norm(sx.citation)); if(sx.heading) regTexts.push(norm(sx.heading)); (sx.items||[]).forEach(it=>{ if(it.citation) regTexts.push(norm(it.citation)); if(it.requirement) regTexts.push(norm(it.requirement)); }); });
+  const inRegister=(duty)=>{ const nd=norm(duty); if(!nd) return false; return regTexts.some(t=>t===nd || (nd.length>12 && t.indexOf(nd)>-1) || (t.length>12 && nd.indexOf(t)>-1)); };
+  const inReg={ has:(k)=>inRegister(k) };
+  if(!duties.length && !nDism) return '';
   const rows=duties.map(d=>{ const added=inReg.has(d.duty.toLowerCase()); return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <div style="flex:1;min-width:180px;"><div style="font-weight:600;font-size:13px;">${esc(d.duty)}</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">From: ${esc(d.risks.slice(0,4).join(', '))}${d.risks.length>4?' …':''}</div></div>
       ${added?(ro?`<span style="font-size:11.5px;color:var(--success);font-weight:600;">✓ In the register</span>`:`<button class="btn btn-ghost btn-xs no-print" style="color:var(--success);font-weight:600;" title="In the register - click to take it back out" onclick="removeRiskDerivedItem('${(d.duty||'').replace(/'/g,"\\'")}')">✓ In the register ✕</button>`):(ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="addRiskDerivedItem('${(d.duty||'').replace(/'/g,"\\'")}')">＋ Add to register</button>`)}
+      ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Not needed for this client - remove the suggestion (it can be restored)" onclick="dismissRiskDerived('${(d.duty||'').replace(/'/g,"\'")}')">✕ Dismiss</button>`}
     </div>`; }).join('');
   return `<div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> From your risk profile</h3><span class="badge badge-muted">${duties.length}</span></div>
-    <div class="card-body"><div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">Regulations implied by the risks in this client's profile. Add the ones that need arrangements to the register above to review and track them.</div>${rows}</div></div>`;
+    <div class="card-body"><div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">Regulations implied by the risks in this client's profile. Add the ones that need arrangements to the register above to review and track them - or dismiss what this client does not need.</div>${rows||'<div class="ck-pending" style="padding:4px 0;">Every suggestion is added or dismissed.</div>'}${nDism?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:6px;">${nDism} dismissed suggestion${nDism!==1?'s':''} hidden${ro?'':` · <button class="ck-link" style="display:inline;padding:0;" onclick="restoreRiskDerivedDismissed()">Restore them</button>`}</div>`:''}</div></div>`;
 }
 // Overall assessment stats across all duty lines. Used by the dashboard + report.
 function _reqStats(){

@@ -7,6 +7,7 @@ const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { parse, build, buildFresh } = require('../lib/statutory-xlsx');
+const { peek: xlsxPeek } = require('../lib/training-xlsx');   // generic sheet preview
 
 const router = express.Router();
 const rawBody = express.raw({ type: () => true, limit: '25mb' });
@@ -90,6 +91,14 @@ router.delete('/workbook', requireAuth, async (req, res) => {
   if(!tenantId) return res.status(400).json({ error: 'tenant_required' });
   try { await pool.query('DELETE FROM statutory_workbook WHERE tenant_id = $1', [tenantId]); res.json({ ok: true }); }
   catch(err){ console.error('statutory/delete error:', err.message); res.status(500).json({ error: 'server_error' }); }
+});
+
+// First rows of each sheet, as strings - the Map & import preview.
+router.post('/peek', requireAuth, rawBody, async (req, res) => {
+  if(!_resolveTenant(req)) return res.status(400).json({ error: 'tenant_required' });
+  if(!req.body || !req.body.length) return res.status(400).json({ error: 'no_file' });
+  try { res.json(await xlsxPeek(req.body)); }
+  catch(err){ console.error('statutory/peek error:', err.message); res.status(422).json({ error: 'could_not_read_workbook' }); }
 });
 
 module.exports = router;

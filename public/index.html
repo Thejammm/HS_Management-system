@@ -19615,10 +19615,6 @@ const MONITORING_FAMILIES = [
     {key:'firstAid',   label:'First aid administered', type:'number'},
     {key:'lostTime',   label:'Lost time injuries', type:'number'},
     {key:'riddors',    label:'RIDDORs reported', type:'number'} ] },
-  { name:'Training', metrics:[
-    {key:'trainingDue',    label:'Training due', type:'number'},
-    {key:'trainingDone',   label:'Training undertaken', type:'number'},
-    {key:'totalEmployees', label:'Total employees', type:'number'} ] },
   { name:'Inspections and audits', metrics:[
     {key:'inspectionsCarried', label:'H&S inspections carried out', type:'number', auto:true},
     {key:'scoreNonCompliant',  label:'Non-compliant (under 85)', type:'number', auto:true},
@@ -19904,21 +19900,23 @@ function statutoryUploadXlsx(){
       const buf=await f.arrayBuffer();
       const res=await _xlsxParseRetry('/api/statutory/parse', buf);
       if(!res.ok){ const e=await res.json().catch(()=>({})); alert(e.error==='no_items_found'?'No register rows found - the sheet needs an "Item" (or Equipment/Description) column.':'Could not read that spreadsheet: '+(e.error||('HTTP '+res.status))); return; }
-      const parsed=await res.json();
-      const cur=_regSections().reduce((n,s)=>n+((s.items||[]).length),0);
-      if(!confirm(`Import "${f.name}"?\n\nThis REPLACES the whole regulatory tracker from the spreadsheet:\n  • ${parsed.items.length} items across ${parsed.sheets.length} sheet${parsed.sheets.length!==1?'s':''} (each sheet becomes a section)\n  • the ${cur} item${cur!==1?'s':''} currently here will be replaced\n\nThe spreadsheet becomes the source of truth.`)) return;
-      const sres=await _tApiRaw('/api/statutory/store', buf, {'X-Filename':f.name});
-      if(!sres.ok){ showToast('Imported, but could not save the template for export','warn'); }
-      const bySheet={};
-      parsed.items.forEach(it=>{ (bySheet[it.sheet]=bySheet[it.sheet]||[]).push(it); });
-      S.monitoring.regSections=Object.keys(bySheet).map(name=>({ id:_reqUid('regsec'), name,
-        items:bySheet[name].map(it=>({ id:_reqUid('reg'), sheet:it.sheet, row:it.row, item:it.item, area:it.area, frequency:it.frequency, resultDate:it.resultDate, dueDate:it.dueDate, result:it.result, certRef:it.certRef, notes:it.notes })) }));
-      S.monitoring.regSeeded=true; S.monitoring.statFile=f.name;
-      saveData(); renderMonitoring();
-      showToast('✓ Imported '+parsed.items.length+' statutory items from '+f.name,'success');
+      await _statutoryApplyParsed(await res.json(), f.name, buf);
     }catch(e){ console.error('statutory import',e); alert('Import failed: '+e.message); }
   };
   inp.click();
+}
+async function _statutoryApplyParsed(parsed, fname, buf){
+  const cur=_regSections().reduce((n,s)=>n+((s.items||[]).length),0);
+  if(!confirm(`Import "${fname}"?\n\nThis REPLACES the whole regulatory tracker from the spreadsheet:\n  • ${parsed.items.length} items across ${parsed.sheets.length} sheet${parsed.sheets.length!==1?'s':''} (each sheet becomes a section)\n  • the ${cur} item${cur!==1?'s':''} currently here will be replaced\n\nThe spreadsheet becomes the source of truth.`)) return;
+  const sres=await _tApiRaw('/api/statutory/store', buf, {'X-Filename':fname});
+  if(!sres.ok){ showToast('Imported, but could not save the template for export','warn'); }
+  const bySheet={};
+  parsed.items.forEach(it=>{ (bySheet[it.sheet]=bySheet[it.sheet]||[]).push(it); });
+  S.monitoring.regSections=Object.keys(bySheet).map(name=>({ id:_reqUid('regsec'), name,
+    items:bySheet[name].map(it=>({ id:_reqUid('reg'), sheet:it.sheet, row:it.row, item:it.item, area:it.area, frequency:it.frequency, resultDate:it.resultDate, dueDate:it.dueDate, result:it.result, certRef:it.certRef, notes:it.notes })) }));
+  S.monitoring.regSeeded=true; S.monitoring.statFile=fname;
+  saveData(); renderMonitoring();
+  showToast('✓ Imported '+parsed.items.length+' statutory items from '+fname,'success');
 }
 async function statutoryExportXlsx(){
   if(!_tOnline()){ alert('Sign in first to export the spreadsheet.'); return; }
@@ -20824,7 +20822,7 @@ function _tGroupTable(group,label){
     ${ro?'':`<td style="white-space:nowrap;"><button class="btn btn-ghost btn-xs no-print" title="Move to Left (offboard) - kept and archived" onclick="trainingOffboard('${esc(p.id)}')">→ Left</button><button class="btn btn-ghost btn-xs no-print" title="Delete permanently" onclick="trainingDeletePerson('${esc(p.id)}')">${_ic('trash',13)}</button></td>`}
   </tr>`).join('');
   return `<div style="margin-top:14px;"><div style="font-weight:700;font-size:13px;margin-bottom:6px;">${esc(label)} <span style="font-weight:400;color:var(--text-muted);">(${people.length})</span></div>
-    <div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div></div>`;
+    <div style="overflow-x:auto;" data-keepscroll="trn-${group}"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div></div>`;
 }
 function _trainingMatrixHTML(){
   const d=_trainingData(), ro=_roLocked();
@@ -20835,6 +20833,7 @@ function _trainingMatrixHTML(){
   // it was the duplication (Simon, 2026-08-19).
   const waysIn = ro?'':`<button class="btn btn-primary btn-sm no-print" onclick="trainingUploadXlsx()"${impAttr}>⭱ Upload spreadsheet (.xlsx)</button>
     <button class="btn btn-ghost btn-sm no-print" onclick="openImportWizard('training')">⎘ Paste from Excel</button>
+    <button class="btn btn-ghost btn-sm no-print" title="Pick the file, see the first rows, click the row your column headings are on" onclick="xlsxMappedImport('training')"${impAttr}>⚙ Map &amp; import</button>
     <button class="btn btn-ghost btn-sm no-print" onclick="downloadTrainingTemplate()">⭳ Template</button>`;
   if(!(d.people||[]).length){
     return `<div class="card">
@@ -20856,6 +20855,7 @@ function _trainingMatrixHTML(){
     <button class="btn btn-outline btn-sm no-print" onclick="trainingUploadXlsx()"${impAttr}>⭱ Import / update (overwrite)</button>
     <button class="btn btn-outline btn-sm no-print" onclick="trainingExportXlsx()"${impAttr}>⭳ Export spreadsheet</button>
     <button class="btn btn-ghost btn-sm no-print" onclick="openImportWizard('training')">⎘ Paste from Excel</button>
+    <button class="btn btn-ghost btn-sm no-print" title="Pick the file, see the first rows, click the row your column headings are on" onclick="xlsxMappedImport('training')"${impAttr}>⚙ Map &amp; import</button>
     <button class="btn btn-ghost btn-sm no-print" onclick="downloadTrainingTemplate()">⭳ Template</button>
     <button class="btn btn-ghost btn-sm no-print" onclick="trainingAddPerson()">＋ Add person</button>
     <button class="btn btn-ghost btn-sm no-print" onclick="raiseTrainingRenewals()"${due?'':' disabled'}>Raise renewal actions${due?(' ('+due+')'):''}</button>
@@ -20885,6 +20885,19 @@ async function _tApiRaw(path, body, extraHeaders){
   const tid=Auth.activeTenantId(); const sep=path.includes('?')?'&':'?';
   return fetch(path+sep+'tenantId='+encodeURIComponent(tid), { method:'POST', credentials:'include', headers:{ 'Content-Type':'application/octet-stream', ...(extraHeaders||{}) }, body });
 }
+async function _trainingApplyParsed(parsed, fname, buf){
+  const cur=_trainingData().people||[];
+  const keyf=p=>(p.group||'')+'|'+(p.lastName||'').toLowerCase()+'|'+(p.firstName||'').toLowerCase();
+  const curSet=new Set(cur.map(keyf)), newSet=new Set(parsed.people.map(keyf));
+  const adding=parsed.people.filter(p=>!curSet.has(keyf(p))).length;
+  const removing=cur.filter(p=>!newSet.has(keyf(p))).length;
+  if(!confirm(`Import "${fname}"?\n\nThis REPLACES the whole training matrix from the spreadsheet:\n  • ${parsed.people.length} people in the sheet\n  • ${adding} added, ${removing} removed vs what is here now\n\nThe spreadsheet becomes the source of truth.`)) return;
+  const sres=await _tApiRaw('/api/training/store', buf, {'X-Filename':fname});
+  if(!sres.ok){ showToast('Imported, but could not save the template for export','warn'); }
+  S.trainingData={ sheets:parsed.sheets, people:parsed.people, filename:fname };
+  saveData(); renderMonitoring();
+  showToast('✓ Imported '+parsed.people.length+' people from '+fname,'success');
+}
 function trainingUploadXlsx(){
   if(_roLocked()) return;
   if(!_tOnline()){ alert('Sign in first - the spreadsheet round-trip runs on the server.'); return; }
@@ -20894,19 +20907,50 @@ function trainingUploadXlsx(){
       const buf=await f.arrayBuffer();
       const res=await _xlsxParseRetry('/api/training/parse', buf);
       if(!res.ok){ const e=await res.json().catch(()=>({})); alert('Could not read that spreadsheet: '+(e.error||('HTTP '+res.status))); return; }
-      const parsed=await res.json();
-      const cur=_trainingData().people||[];
-      const keyf=p=>(p.group||'')+'|'+(p.lastName||'').toLowerCase()+'|'+(p.firstName||'').toLowerCase();
-      const curSet=new Set(cur.map(keyf)), newSet=new Set(parsed.people.map(keyf));
-      const adding=parsed.people.filter(p=>!curSet.has(keyf(p))).length;
-      const removing=cur.filter(p=>!newSet.has(keyf(p))).length;
-      if(!confirm(`Import "${f.name}"?\n\nThis REPLACES the whole training matrix from the spreadsheet:\n  • ${parsed.people.length} people in the sheet\n  • ${adding} added, ${removing} removed vs what is here now\n\nThe spreadsheet becomes the source of truth.`)) return;
-      const sres=await _tApiRaw('/api/training/store', buf, {'X-Filename':f.name});
-      if(!sres.ok){ showToast('Imported, but could not save the template for export','warn'); }
-      S.trainingData={ sheets:parsed.sheets, people:parsed.people, filename:f.name };
-      saveData(); renderMonitoring();
-      showToast('✓ Imported '+parsed.people.length+' people from '+f.name,'success');
+      await _trainingApplyParsed(await res.json(), f.name, buf);
     }catch(e){ console.error('training import',e); alert('Import failed: '+e.message); }
+  };
+  inp.click();
+}
+// ── Map & import: pick the file, SEE the top rows, click the headings row ──
+function _xlsxPeekModal(peek, fname, onPick){
+  const sh=(peek.sheets||[])[0]||{name:'',rows:[]};
+  const ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:26px 12px;overflow:auto;';
+  const rows=(sh.rows||[]).map((r,i)=>`<tr data-row="${i+1}" style="cursor:pointer;"><td style="padding:4px 8px;color:var(--text-muted);font-weight:700;border-bottom:1px solid var(--border);">${i+1}</td>${r.map(c=>`<td style="padding:4px 8px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;">${esc(c)}</td>`).join('')}</tr>`).join('');
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:840px;width:96%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+    <div style="font-weight:700;margin-bottom:4px;">Map the spreadsheet - ${esc(fname)}</div>
+    <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">Click the row that holds the <b>column headings</b>${(peek.sheets||[]).length>1?` (showing the first sheet, "${esc(sh.name)}" - every sheet is read with the same headings row)`:''}. Everything below it is read as data.</div>
+    <div style="overflow:auto;max-height:340px;border:1px solid var(--border);border-radius:8px;"><table style="border-collapse:collapse;font-size:11.5px;min-width:100%;"><tbody>${rows||'<tr><td style="padding:8px;">The sheet looks empty.</td></tr>'}</tbody></table></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;"><button class="btn btn-ghost btn-sm" id="_pkCancel">Cancel</button></div>
+  </div>`;
+  document.body.appendChild(ov); const close=()=>ov.remove();
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  ov.querySelector('#_pkCancel').onclick=close;
+  ov.querySelectorAll('tr[data-row]').forEach(tr=>{
+    tr.onmouseenter=()=>{ tr.style.background='var(--muted-bg)'; };
+    tr.onmouseleave=()=>{ tr.style.background=''; };
+    tr.onclick=()=>{ const n=parseInt(tr.dataset.row,10); close(); onPick(n); };
+  });
+}
+function xlsxMappedImport(kind){
+  if(kind==='statutory' ? _blockIfReadOnly() : _roLocked()) return;
+  if(!_tOnline()){ alert('Sign in first - the spreadsheet round-trip runs on the server.'); return; }
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx';
+  inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
+    try{
+      const buf=await f.arrayBuffer();
+      const pk=await _tApiRaw('/api/'+kind+'/peek', buf);
+      if(!pk.ok){ alert('Could not read that file.'); return; }
+      _xlsxPeekModal(await pk.json(), f.name, async(headerRow)=>{
+        try{
+          const res=await _tApiRaw('/api/'+kind+'/parse?headerRow='+headerRow, buf);
+          if(!res.ok){ const e=await res.json().catch(()=>({})); alert('Row '+headerRow+' did not work as the headings row: '+(e.error||('HTTP '+res.status))+'\n\nTry again and pick the row with the column names on it.'); return; }
+          const parsed=await res.json();
+          if(kind==='training') await _trainingApplyParsed(parsed, f.name, buf);
+          else await _statutoryApplyParsed(parsed, f.name, buf);
+        }catch(e){ alert('Import failed: '+e.message); }
+      });
+    }catch(e){ alert('Import failed: '+e.message); }
   };
   inp.click();
 }
@@ -21124,6 +21168,12 @@ function _renderIncidents(){
 function renderMonitoring(){
   const cont = document.getElementById('monitoringContainer');
   if(!cont) return;
+  // Sticky scroll (Simon): the big matrix/register tables rebuild on every
+  // change. Remember each tagged scroller's position and the page's, and put
+  // them back after the rebuild - a delete or edit never throws you back to
+  // the top-left again.
+  const _scKeep={}; document.querySelectorAll('[data-keepscroll]').forEach(el=>{ if(el.scrollLeft||el.scrollTop) _scKeep[el.getAttribute('data-keepscroll')]={l:el.scrollLeft,t:el.scrollTop}; });
+  const _scWinY=window.scrollY;
   _renderIncidents();
   const ro = _roLocked();
   const monthEl = document.getElementById('monMonth');
@@ -21193,7 +21243,7 @@ function renderMonitoring(){
     const items = s.items || [];
     const head=`<tr><th style="text-align:left;padding:6px 8px;">Item</th><th style="text-align:left;padding:6px;">Area</th><th style="text-align:left;padding:6px;">Frequency</th><th style="padding:6px;text-align:center;">Last done</th><th style="padding:6px;text-align:center;">Next due</th><th style="padding:6px;text-align:center;">Result</th><th style="text-align:left;padding:6px;">Cert ref</th>${ro?'':'<th></th>'}</tr>`;
     const itemsHtml = items.length
-      ? `<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);font-size:10.5px;">${head}</thead><tbody>${items.map(r => itemRow(s.id, r)).join('')}</tbody></table></div>`
+      ? `<div style="overflow-x:auto;" data-keepscroll="reg-${s.id}"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);font-size:10.5px;">${head}</thead><tbody>${items.map(r => itemRow(s.id, r)).join('')}</tbody></table></div>`
       : `<div class="ck-pending" style="padding:4px 0;">No statutory items in this section yet.</div>`;
     return `<div style="border:1.5px solid var(--border);border-radius:10px;padding:14px 14px 12px;margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;">
@@ -21221,6 +21271,7 @@ function renderMonitoring(){
           <button class="btn btn-outline btn-sm no-print" onclick="statutoryUploadXlsx()"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⭱ Import / update (overwrite)</button>
           <button class="btn btn-outline btn-sm no-print" onclick="statutoryExportXlsx()"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⭳ Export spreadsheet</button>
           <button class="btn btn-ghost btn-sm no-print" onclick="openImportWizard('statutory')">⎘ Paste from Excel</button>
+          <button class="btn btn-ghost btn-sm no-print" title="Pick the file, see the first rows, click the row your column headings are on" onclick="xlsxMappedImport('statutory')"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⚙ Map &amp; import</button>
           <button class="btn btn-ghost btn-sm no-print" onclick="downloadStatutoryTemplate()">⭳ Template</button>
           ${(function(){ const n=_statDueCount(); return `<button class="btn btn-ghost btn-sm no-print" onclick="raiseStatutoryDue()"${n?'':' disabled'}>Raise due actions${n?(' ('+n+')'):''}</button>`; })()}
           ${(function(){ const g=(typeof _covGaps==='function')?_covGaps().length:0; return `<button class="btn btn-ghost btn-sm no-print" onclick="runCoverageCheck()" title="Compare what the discovery answers imply against the statutory tracker and training matrix - gaps become actions, never rows">🛡 Coverage check${g?(' ('+g+')'):''}</button>`; })()}
@@ -21252,6 +21303,8 @@ function renderMonitoring(){
     note.textContent = cur + done;
   }
   _renderAssurance();   // leading & lagging indicators live here now (moved from the Risk profile tab)
+  document.querySelectorAll('[data-keepscroll]').forEach(el=>{ const s=_scKeep[el.getAttribute('data-keepscroll')]; if(s){ el.scrollLeft=s.l; el.scrollTop=s.t; } });
+  window.scrollTo(0,_scWinY);
 }
 
 function saveMonthlyFigures(){

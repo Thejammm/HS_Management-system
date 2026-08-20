@@ -13961,6 +13961,11 @@ function renderReports(){
   const accMeta = _accCount ? (_accCount+' accepted risk'+(_accCount!==1?'s':'')) : 'None accepted yet';
   const svg = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   const reports = [
+    { title:'Company Profile', accent:'#475569', tint:'#EDF1F5', fn:'downloadCompanyProfile()',
+      meta:(function(){ const c=S.company||{}; const bits=[]; if(c.legalName||c.tradingName) bits.push('Identity set'); const pn=(c.personnel||[]).length; if(pn) bits.push(pn+' key people'); const sn=(c.siteList||[]).length; if(sn) bits.push(sn+' site'+(sn!==1?'s':'')); return bits.length?bits.join(' · '):'Complete Company setup first'; })(),
+      icon:svg('<path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/>'),
+      desc:'The company at a glance - identity, scale, key people, sites, insurance cover and the organisation chart. Filled in on the Company setup tab; this prints it as a controlled document.',
+      tags:['Identity','Key people','Hand-over'] },
     { title:'Health & Safety Policy', accent:'#0E8F7E', tint:'#E4F3F0', fn:'downloadPolicyPDF()',
       meta:(S.policyDoc&&S.policyDoc.signedDate)?('Signed '+fmtDate(S.policyDoc.signedDate)):'Not yet signed',
       icon:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M9 11h6"/>'),

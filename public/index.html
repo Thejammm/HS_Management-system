@@ -5347,7 +5347,12 @@ function updateHeaderTitle() {
   // Name the client in context: a consultant dialled in, or the signed-in client
   // themselves. Sourced from served config, not a hardcoded constant. textContent
   // keeps it safe even though the name/icon are user-entered.
-  const name = activeClientName();
+  // Fall back to the name the company profile mirrors into branding. Without
+  // it, a consultant working in their own workspace saw no client named at all
+  // even with the company set up, because activeClientName() only knows about
+  // a dial-in or a signed-in client user. The dial-in name still wins, because
+  // it is the authority on WHICH client is open.
+  const name = activeClientName() || ((typeof S!=='undefined' && S && S.branding && S.branding.name) || '');
   const icon = activeClientConfig().icon || '';
   const label = name ? (icon ? `${icon} ${name}` : name) : '';
   sub.textContent = label;
@@ -13944,8 +13949,12 @@ function _cockpitClientName(){
 
 // Accreditation readiness tally (for the cockpit card + the CAS tab summary).
 function _casStats(){
-  const sel = document.getElementById('casSchemeFilter');
-  const scheme = (sel && CAS_SCHEMES.find(s=>s.id===sel.value)) || CAS_SCHEMES[0];
+  // NOT from the Accreditation tab's dropdown. This tally feeds the cockpit
+  // card, and reading a control on another tab meant the cockpit's headline
+  // number changed depending on what that dropdown happened to be set to -
+  // and read differently again before that tab had ever been opened. The
+  // readiness of a client is a property of their record, not of a filter.
+  const scheme = CAS_SCHEMES[0];
   const sections = CAS_FRAMEWORK.sections.filter(s => !scheme.sections || scheme.sections.includes(s.id));
   let inScope=0, ready=0, partial=0, gap=0, na=0, propOptional=0, assessed=0;
   sections.forEach(s => s.questions.forEach(q => {
@@ -16571,6 +16580,12 @@ function _apGaps(){
 function addGapToPlan(srcKey){
   if(_blockIfReadOnly()) return;
   const g=_apGapCache[srcKey]; if(!g) return;
+  // The mirror of the guard in raiseReqGapAction: an action raised on the item
+  // itself already puts this gap on the execution plan, so adding it again here
+  // would list the same work twice.
+  const _dupOpen=(S.actionPlan||[]).concat((function(){ const out=[]; (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>(it.actions||[]).forEach(a=>out.push(a)))); return out; })())
+    .some(a=>a && !a.deleted && a.desc===(g.desc||'') && _actionStatus(a)!=='Complete' && _actionStatus(a)!=='Accepted');
+  if(_dupOpen){ if(typeof showToast==='function') showToast('That gap is already on the execution plan','info'); return; }
   const it={ id:'ap_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), desc:g.desc||'', owner:'', due:g.due||'', priority:g.priority||'', status:'Not started', riskId:'', docId:'', note:g.note||'', completedDate:'', srcKey:srcKey };
   _stamp(it,'created'); _apList().push(it); saveData(); renderActionPlanTab();
   if(typeof showToast==='function') showToast('✓ Added to the action plan','success');
@@ -17816,7 +17831,12 @@ function _docClientCode(){
 function _autoDocRef(code, version){
   const dc=_docControlState();
   const pfx = (dc.defaults.refPrefix && dc.defaults.refPrefix.trim()) ? dc.defaults.refPrefix.trim() : ('AHS-'+_docClientCode());
-  return pfx+'-'+code+'-v'+String(version||'1.0');
+  // No version in the reference. A controlled document's reference identifies
+  // the document; the version says which issue of it you are holding, and the
+  // masthead already prints that separately - so a report read "v1.0 -
+  // AHS-RP-v1.0". Worse, bumping the version minted a NEW reference, which is
+  // precisely what a document reference is supposed not to do.
+  return pfx+'-'+code;
 }
 // Resolve the controlled-document record to stamp on a report: the report's own
 // fields, falling back to org defaults, with auto reference / issue date / next
@@ -19549,8 +19569,14 @@ function raiseReqGapAction(sid, iid){
   const s=(S.requirements||[]).find(x=>x.id===sid); const it=s&&(s.items||[]).find(i=>i.id===iid); if(!it) return;
   const meta=_legalMeta(it.legalKey); const title=meta?meta.title:(it.requirement||'Requirement');
   const open=_critList(it).map((c,i)=>({c,i})).filter(x=>_critState(it,x.i)==='');
-  const dup=(it.actions||[]).some(a=>!a.deleted && a.desc===title && _actionStatus(a)!=='Complete' && _actionStatus(a)!=='Accepted');
-  if(dup){ showToast('An open action for this gap already exists','info'); return; }
+  const _open=a=>a && !a.deleted && a.desc===title && _actionStatus(a)!=='Complete' && _actionStatus(a)!=='Accepted';
+  // Two routes reach the same gap: this one, which stores the action on the
+  // item, and "Add to the action plan" on the plan tab, which creates a
+  // free-form S.actionPlan row. The dedupe only knew about its own store, so
+  // using both put the same piece of work on the execution plan twice, under
+  // the same title, with two owners and two due dates to chase.
+  const dup=(it.actions||[]).some(_open) || (S.actionPlan||[]).some(_open);
+  if(dup){ showToast('An open action for this gap already exists on the execution plan','info'); return; }
   const act=_reqAddAction(it, title);
   act.detail=open.map(x=>x.c);
   if(open.length) _logAdd(act,'comment','To resolve:\n'+open.map(x=>'• '+x.c).join('\n'));
@@ -19658,7 +19684,7 @@ function _legalCardHTML(sec, it, emp, ro){
 function _legalRegisterHTML(ro){
   const sec=(S.requirements||[]).find(s=>s.legal); if(!sec) return '';
   const items=sec.items||[]; const emp=_empCount();
-  const inPlace=items.filter(it=>it.reviewed||(it.present==='Yes'&&it.adequate==='Yes')).length;
+  const inPlace=items.filter(_reqItemMet).length;
   const pct=items.length?Math.round(inPlace/items.length*100):0;
   const cards=items.length?items.map(it=>_legalCardHTML(sec,it,emp,ro)).join(''):'<div class="ck-pending" style="padding:6px 0;">No legal items - use “Restore legal essentials”.</div>';
   const empNote=emp==null?`<span style="color:#92400E;">Set the employee count in <button class="ck-link" style="display:inline;padding:0;" onclick="switchTab('company')">Company setup</button> to tailor the 5-employee thresholds.</span>`:`Based on ${emp} employee${emp!==1?'s':''}.`;
@@ -19678,7 +19704,11 @@ function _riskDerivedHTML(ro){
   // In-register match: the legal section's citations AND every section's
   // requirement/citation text - a duty already covered above never shows as
   // missing just because the wording came from a different route in.
-  const norm=(x)=>String(x||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/s+/g,' ').trim();
+  // /\s+/ not /s+/. As written it deleted the letter "s" instead of collapsing
+  // runs of spaces, so "risks" and "risk" both normalised to "ri k" and
+  // "MHSWR 1999 reg. 13" never matched the register's "MHSWR 1999 reg 13" -
+  // duties already in the register were offered again as suggestions.
+  const norm=(x)=>String(x||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
   const regTexts=[];
   (S.requirements||[]).forEach(sx=>{ if(sx.citation) regTexts.push(norm(sx.citation)); if(sx.heading) regTexts.push(norm(sx.heading)); (sx.items||[]).forEach(it=>{ if(it.citation) regTexts.push(norm(it.citation)); if(it.requirement) regTexts.push(norm(it.requirement)); }); });
   const inRegister=(duty)=>{ const nd=norm(duty); if(!nd) return false; return regTexts.some(t=>t===nd || (nd.length>12 && t.indexOf(nd)>-1) || (t.length>12 && nd.indexOf(t)>-1)); };
@@ -19687,7 +19717,7 @@ function _riskDerivedHTML(ro){
   const rows=duties.map(d=>{ const added=inReg.has(d.duty.toLowerCase()); return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <div style="flex:1;min-width:180px;"><div style="font-weight:600;font-size:13px;">${esc(d.duty)}</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">From: ${esc(d.risks.slice(0,4).join(', '))}${d.risks.length>4?' …':''}</div></div>
       ${added?(ro?`<span style="font-size:11.5px;color:var(--success);font-weight:600;">✓ In the register</span>`:`<button class="btn btn-ghost btn-xs no-print" style="color:var(--success);font-weight:600;" title="In the register - click to take it back out" onclick="removeRiskDerivedItem('${(d.duty||'').replace(/'/g,"\\'")}')">✓ In the register ✕</button>`):(ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="addRiskDerivedItem('${(d.duty||'').replace(/'/g,"\\'")}')">＋ Add to register</button>`)}
-      ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Not needed for this client - remove the suggestion (it can be restored)" onclick="dismissRiskDerived('${(d.duty||'').replace(/'/g,"\'")}')">✕ Dismiss</button>`}
+      ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Not needed for this client - remove the suggestion (it can be restored)" onclick="dismissRiskDerived('${(d.duty||'').replace(/'/g,"\\'")}')">✕ Dismiss</button>`}
     </div>`; }).join('');
   return `<div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> From your risk profile</h3><span class="badge badge-muted">${duties.length}</span></div>
     <div class="card-body"><div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">Regulations implied by the risks in this client's profile. Add the ones that need arrangements to the register above to review and track them - or dismiss what this client does not need.</div>${rows||'<div class="ck-pending" style="padding:4px 0;">Every suggestion is added or dismissed.</div>'}${nDism?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:6px;">${nDism} dismissed suggestion${nDism!==1?'s':''} hidden${ro?'':` · <button class="ck-link" style="display:inline;padding:0;" onclick="restoreRiskDerivedDismissed()">Restore them</button>`}</div>`:''}</div></div>`;
@@ -19700,7 +19730,7 @@ function _reqStats(){
     total++;
     const st = _reqItemStatus(it);
     if(st){ assessed++; if(st.label==='Met') met++; else if(st.label==='Not in place') notInPlace++; else gap++; }
-    if(it.dueDate && it.dueDate < today && !(it.present==='Yes' && it.adequate==='Yes')) overdue++;
+    if(it.dueDate && it.dueDate < today && !_reqItemMet(it)) overdue++;
   }));
   const compliance = assessed ? Math.round(met/assessed*100) : null;
   return { met, gap, notInPlace, assessed, total, overdue, compliance };
@@ -19713,9 +19743,24 @@ function updateReqStage(id, value){
 // Stage focus filter ('' = all)
 let _reqStageFilter = '';
 function setReqStageFilter(stage){ _reqStageFilter = (_reqStageFilter===stage) ? '' : stage; renderRequirements(); }
+// Is this requirement met? ONE definition. There were six hand-rolled copies of
+// this test and they did not agree: the tab counted "Approve as compliant"
+// (it.reviewed) as in place, while the cockpit, the gap counter, the overdue
+// counter and the PDF all ignored it. An item you had approved therefore read
+// as met in one place and as a gap in three others.
+// On the legal-essentials cards, approving IS the completion route - those
+// cards carry no Adequate control at all - so ignoring the tick meant a gap you
+// could not close from the screen that showed it.
+function _reqItemMet(it){
+  if(!it) return false;
+  if(it.reviewed) return true;
+  return it.present==='Yes' && it.adequate==='Yes';
+}
+// Has anyone judged this item at all? (Approving counts as judging it.)
+function _reqItemAssessed(it){ return !!(it && (it.present || it.adequate || it.reviewed)); }
 function _reqItemStatus(it){
-  if(!it.present && !it.adequate) return null;
-  if(it.present==='Yes' && it.adequate==='Yes') return {label:'Met', cls:'badge-success'};
+  if(!_reqItemAssessed(it)) return null;
+  if(_reqItemMet(it)) return {label:'Met', cls:'badge-success'};
   if(it.present==='No') return {label:'Not in place', cls:'badge-danger'};
   return {label:'Gap', cls:'badge-warning'};
 }
@@ -19723,7 +19768,7 @@ function _reqItemStatus(it){
 function _reqGaps(){
   let gaps=0, assessed=0;
   (S.requirements||[]).forEach(sec => (sec.items||[]).forEach(it => {
-    if(it.present || it.adequate){ assessed++; if(!(it.present==='Yes' && it.adequate==='Yes')) gaps++; }
+    if(_reqItemAssessed(it)){ assessed++; if(!_reqItemMet(it)) gaps++; }
   }));
   return { gaps, assessed };
 }
@@ -23340,7 +23385,7 @@ function buildFeedbackReportPDF(){
   const K=_mkPdf('Consultant Review & Feedback', client, d, 'Progress, priorities and the consultant’s feedback for this client.');
   const { doc, ML, RM, st, A } = K;
   // Lead with an overall verdict, like the other reports
-  const _gapsN=(function(){ let n=0; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if((it.present||it.adequate)&&!(it.present==='Yes'&&it.adequate==='Yes')) n++; })); return n; })();
+  const _gapsN=(function(){ let n=0; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if(_reqItemAssessed(it)&&!_reqItemMet(it)) n++; })); return n; })();
   const _openN=(S.actions||[]).filter(x=>!x.resolved).length;
   const _vRgb=(sc.overdueA||_gapsN>3)?RED:((_openN||_gapsN)?AMBER:GREEN);
   const _vTxt='Compliance '+(sc.compliance==null?'not yet measured':sc.compliance+'%')+', '+_openN+' open action'+(_openN!==1?'s':'')+(sc.overdueA?(' ('+sc.overdueA+' overdue)'):'')+' and '+_gapsN+' management-system gap'+(_gapsN!==1?'s':'')+' for this client.';
@@ -23372,7 +23417,7 @@ function buildFeedbackReportPDF(){
   } else K.text('No critical or high risks recorded.', 9.5, {color:GREY});
   // Management system gaps (table)
   K.section('Management system gaps', AMBER);
-  const gapRows=[]; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ _reqMigrateActions(it); if((it.present||it.adequate)&&!(it.present==='Yes'&&it.adequate==='Yes')) gapRows.push([{text:(it.requirement||'requirement'), bold:true},{text:s.heading||'-', color:GREY},{text:((it.actions||[]).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted).map(a=>a.desc).join('; '))||'-', color:GREY}]); }));
+  const gapRows=[]; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ _reqMigrateActions(it); if(_reqItemAssessed(it)&&!_reqItemMet(it)) gapRows.push([{text:(it.requirement||'requirement'), bold:true},{text:s.heading||'-', color:GREY},{text:((it.actions||[]).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted).map(a=>a.desc).join('; '))||'-', color:GREY}]); }));
   if(gapRows.length){ K.table([{header:'REQUIREMENT',w:78},{header:'DUTY AREA',w:52},{header:'ACTION',w:48}], gapRows, {headFill:AMBER, headText:[255,255,255]}); }
   else K.text('No management system gaps recorded.', 9.5, {color:GREY});
   // Monitoring picture (tiles)

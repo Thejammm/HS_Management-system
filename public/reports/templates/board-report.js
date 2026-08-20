@@ -1,6 +1,6 @@
 // Board report template - Signal (data-forward) and Brief (editorial) formats.
 // Both build the SAME content; format changes the skin class only.
-import { deriveBoard, deriveBoardExtras, noneOrCount, countPhrase, hasHave, TIER_COLOURS, HOLD_STATES, HOLD_ORDER, docFor } from '../derive.js';
+import { deriveBoard, deriveBoardExtras, noneOrCount, countPhrase, hasHave, TIER_COLOURS, HOLD_STATES, HOLD_ORDER, docFor, producerOf } from '../derive.js';
 import { esc, tierWord, planBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
 
@@ -360,7 +360,7 @@ export function buildBoardReport(state, opts = {}) {
   pages.push(page4);
 
   return {
-    meta: { title: 'Health & Safety Board Report', org, ref, format, period },
+    meta: { title: 'Health & Safety Board Report', org, ref, producer: producerOf(state), format, period },
     pages,
   };
 }

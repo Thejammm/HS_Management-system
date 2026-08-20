@@ -47,6 +47,13 @@ export function residualOf(risk) {
   const l = int(risk && risk.likelihood), s = int(risk && risk.severity);
   return (l && s) ? { l, s, score: l * s } : null;
 }
+// The practice that produced the report, from the branding settings - the same
+// field the app's own PDF footer reads, so paper and screen name it alike.
+export function producerOf(state) {
+  const b = (state && state.branding) || {};
+  const n = String(b.producer == null ? '' : b.producer).trim();
+  return n || 'AHS Compliance Consulting';
+}
 export function targetOf(risk) {
   const l = int(risk && risk.targetL), s = int(risk && risk.targetS);
   return (l && s) ? { l, s, score: l * s } : null;

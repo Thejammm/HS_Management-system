@@ -3,7 +3,7 @@
 import { deriveBoard, countPhrase, TIER_COLOURS, docFor } from '../derive.js';
 import { tierWord, dualBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
-import { residualOf, targetOf, tierFor, bandsFrom } from '../derive.js';
+import { residualOf, targetOf, tierFor, bandsFrom, producerOf } from '../derive.js';
 
 export function buildRiskAssessment(state, opts = {}) {
   const D = deriveBoard(state, opts);
@@ -77,5 +77,5 @@ export function buildRiskAssessment(state, opts = {}) {
     })),
   ];
 
-  return { meta: { title: 'Risk Assessment', org, ref, format }, pages };
+  return { meta: { title: 'Risk Assessment', org, ref, producer: producerOf(state), format }, pages };
 }

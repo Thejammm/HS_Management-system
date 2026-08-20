@@ -75,6 +75,23 @@ for (const name of NAMES) {
     bad.forEach(b => fails.push(id + ' [' + name.length + ' chars] ' + b));
   }
 }
+// The footer practice name is a branding setting, not fixed text.
+for (const [producer, expect] of [['Archer Compliance Partners', 'Archer Compliance Partners'], ['', 'AHS Compliance Consulting']]) {
+  const state = fixture('typical');
+  state.branding = Object.assign({}, state.branding, { producer });
+  for (const id of ids) {
+    const html = reportHTML(buildReport(state, id, OPTS));
+    await page.setContent('<style>' + css + '</style>' + html, { waitUntil: 'load' });
+    const bad = await page.evaluate((expect) => {
+      const out = [];
+      document.querySelectorAll('.r-pagefoot .r-foot-brand').forEach((el, i) => {
+        if (el.textContent.trim() !== expect) out.push('footer ' + i + ': expected "' + expect + '", got "' + el.textContent.trim() + '"');
+      });
+      return out;
+    }, expect);
+    bad.forEach(x => fails.push(id + ' [producer "' + producer + '"] ' + x));
+  }
+}
 await browser.close();
 
 if (fails.length) {

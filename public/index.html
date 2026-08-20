@@ -4158,6 +4158,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                 <label class="field-label">Email</label>
                 <input type="text" id="brandEmail" placeholder="e.g. info@ahscompliance.co.uk" oninput="updateBrandPreview()">
               </div>
+              <div class="field-group">
+                <label class="field-label">Your practice name <span class="fl-hint" title="Printed with the mark in the footer of every page of every report, as the practice that produced it. This is YOUR name, not the client's - the client's name is the Company Name above, which heads each report. It carries across to every client you add.">(?)</span></label>
+                <input type="text" id="brandProducer" placeholder="e.g. AHS Compliance Consulting" oninput="updateBrandPreview()">
+              </div>
+              <div class="field-group">
+                <label class="field-label">Your practice descriptor <span class="fl-hint" title="The short line printed after your practice name in the report footer. Leave it blank to print the name on its own.">(?)</span></label>
+                <input type="text" id="brandProducerLine" placeholder="e.g. Health, safety &amp; environmental advisers" oninput="updateBrandPreview()">
+              </div>
             </div>
           </div>
 
@@ -5187,6 +5195,8 @@ let S = {
   activeClient: null,   // stores selected client id - saved with the file
   branding:    {
     name:      'AHS Compliance Consulting',
+    producer:     'AHS Compliance Consulting',                 // printed in every report footer
+    producerLine: 'Health, safety & environmental advisers',
     tagline:   'Health & Safety Consultancy',
     website:   '',
     phone:     '',
@@ -8253,6 +8263,8 @@ function populateBrandingForm(){
   const sv=(id,v)=>{const el=document.getElementById(id);if(el&&v!==undefined)el.value=v;};
   sv('brandName',    b.name);
   sv('brandTagline', b.tagline);
+  sv('brandProducer',     b.producer     !== undefined ? b.producer     : 'AHS Compliance Consulting');
+  sv('brandProducerLine', b.producerLine !== undefined ? b.producerLine : 'Health, safety & environmental advisers');
   sv('brandWebsite', b.website);
   sv('brandPhone',   b.phone);
   sv('brandEmail',   b.email);
@@ -8297,6 +8309,8 @@ function flushBranding(){
 
   const name      = readText('brandName');
   const tagline   = readText('brandTagline');
+  const producer     = readText('brandProducer');
+  const producerLine = readText('brandProducerLine');
   const website   = readText('brandWebsite');
   const phone     = readText('brandPhone');
   const email     = readText('brandEmail');
@@ -8306,6 +8320,10 @@ function flushBranding(){
 
   if(name      !== undefined) S.branding.name      = name      || S.branding.name      || '';
   if(tagline   !== undefined) S.branding.tagline   = tagline   || S.branding.tagline   || '';
+  // The practice name always falls back to something: a blank one would leave a
+  // report with no producer named on it at all.
+  if(producer     !== undefined) S.branding.producer     = producer || S.branding.producer || 'AHS Compliance Consulting';
+  if(producerLine !== undefined) S.branding.producerLine = producerLine;   // typed-empty is valid
   if(website   !== undefined) S.branding.website   = website;     // typed-empty is valid
   if(phone     !== undefined) S.branding.phone     = phone;
   if(email     !== undefined) S.branding.email     = email;
@@ -12887,7 +12905,7 @@ function resetAppData(){
     audit:       {},
     templates:   [],
     activeClient: null,
-    branding:    { name:'AHS Compliance Consulting', tagline:'Health & Safety Consultancy', website:'', phone:'', email:'', primary:'#757575', accent:'#4BBFD6', textColor:'#3a3a3a', logoB64:'', logoName:'' }
+    branding:    { name:'AHS Compliance Consulting', producer:'AHS Compliance Consulting', producerLine:'Health, safety & environmental advisers', tagline:'Health & Safety Consultancy', website:'', phone:'', email:'', primary:'#757575', accent:'#4BBFD6', textColor:'#3a3a3a', logoB64:'', logoName:'' }
   };
 
   // ── Explicitly clear all known form fields ──
@@ -13417,6 +13435,8 @@ function _emptyConsultantState(){
 function _newClientBranding(){
   const b=(typeof S!=='undefined' && S && S.branding) ? S.branding : {};
   return { name:'', tagline:b.tagline||'', website:b.website||'', phone:b.phone||'', email:b.email||'',
+           producer:b.producer||'AHS Compliance Consulting',
+           producerLine:(b.producerLine!==undefined?b.producerLine:'Health, safety & environmental advisers'),
            primary:b.primary||'#757575', accent:b.accent||'#4BBFD6', textColor:b.textColor||'#3a3a3a',
            logoB64:b.logoB64||'', logoPdfB64:b.logoPdfB64||'', logoFormat:b.logoFormat||'', logoW:b.logoW||0, logoH:b.logoH||0 };
 }
@@ -17685,14 +17705,25 @@ function _pdfBrandFooter(doc, ML, RM){
     doc.setLineWidth(0.5); doc.setDrawColor(75,191,214);
     doc.circle(ML+2.7, 290.1, 2.7, 'S'); doc.circle(ML+2.7, 290.1, 1.5, 'S');
     doc.setDrawColor(150,154,160); doc.line(ML+2.7, 290.1, ML+5.1, 288.0); doc.setLineWidth(0.2);
+    // Name and descriptor come from the branding settings, so a change of
+    // trading name follows through to every report without a code change.
+    const _br=(typeof S!=='undefined' && S && S.branding) ? S.branding : {};
+    const _pn=_pdfAscii(String(_br.producer||'AHS Compliance Consulting').trim()||'AHS Compliance Consulting');
+    const _pd=_pdfAscii(String(_br.producerLine!==undefined?_br.producerLine:'Health, safety & environmental advisers').trim());
+    const _pageLbl='Page '+i+' of '+pages;
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+    const _limit=RM-doc.getTextWidth(_pageLbl)-6;
     let x=ML+7;
-    doc.setFont('helvetica','bold');   doc.setFontSize(8.5); doc.setTextColor(30,58,95);
-    doc.text('AHS Compliance Consulting', x, 291); x+=doc.getTextWidth('AHS Compliance Consulting');
+    doc.setTextColor(30,58,95);
+    x+=_pdfFitText(doc, _pn, x, _limit-x, 291, 8.5, 6.5, true, false);
+    // The descriptor and the app line are dropped rather than allowed to run
+    // into the page number - the practice name is what must always survive.
     doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(150,150,150);
-    doc.text('  ·  Health, safety & environmental advisers', x, 291); x+=doc.getTextWidth('  ·  Health, safety & environmental advisers');
+    if(_pd){ const _d='  ·  '+_pd; if(x+doc.getTextWidth(_d)<_limit){ doc.text(_d, x, 291); x+=doc.getTextWidth(_d); } }
     // The app's own line, discreet, after the practice it is produced for.
     doc.setFont('helvetica','italic');
-    doc.text('  ·  AHS Compass, Guiding you to Safety', x, 291);
+    const _app='  ·  AHS Compass, Guiding you to Safety';
+    if(x+doc.getTextWidth(_app)<_limit) doc.text(_app, x, 291);
     doc.setFont('helvetica','normal');
     doc.setFontSize(7.5); doc.setTextColor(150,150,150);
     doc.text('Page '+i+' of '+pages,RM,291,{align:'right'});

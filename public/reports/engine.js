@@ -22,7 +22,7 @@ export function reportHTML(report) {
   const n = pages.length;
   const pageHtml = pages.map((p, i) => {
     const blocks = (p.blocks || []).map(renderBlock).join('\n');
-    const foot = pageFooter({ ref: report.meta && report.meta.ref, page: i + 1, pages: n });
+    const foot = pageFooter({ ref: report.meta && report.meta.ref, producer: report.meta && report.meta.producer, page: i + 1, pages: n });
     return `<section class="r-page${p.cover ? ' r-page-cover' : ''}" data-label="${(p.label || '').replace(/"/g, '')}">
       <div class="r-page-body">${blocks}</div>${foot}</section>`;
   }).join('\n');

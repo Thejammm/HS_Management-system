@@ -17494,6 +17494,25 @@ function _docFor(key){
 
 // WinAnsi-safe ASCII fallback (Helvetica subset lacks arrows/curly quotes/dashes).
 function _pdfAscii(t){ return String(t).replace(/→/g,'>').replace(/×/g,'x').replace(/—/g,'-').replace(/–/g,'-').replace(/·/g,'-').replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/…/g,'...'); }
+// Right-aligned masthead text that can never run into what sits to its left.
+// Shrinks a little first (a slightly smaller name still reads as the name),
+// then truncates with an ellipsis. Without this a long company name printed
+// straight over the practice name, on every report.
+function _pdfFitRight(doc, txt, rightX, leftLimit, y, size, minSize, bold){
+  const t=String(txt==null?'':txt); if(!t.trim()) return;
+  doc.setFont('helvetica', bold?'bold':'normal');
+  let fsz=size; doc.setFontSize(fsz);
+  const avail=Math.max(14, rightX-leftLimit);
+  const floor=Math.max(5.5, (minSize==null?size-1.5:minSize));
+  while(fsz>floor && doc.getTextWidth(t)>avail){ fsz=Math.round((fsz-0.25)*100)/100; doc.setFontSize(fsz); }
+  let out=t;
+  if(doc.getTextWidth(out)>avail){
+    while(out.length>1 && doc.getTextWidth(out+'...')>avail) out=out.slice(0,-1);
+    out=out.replace(/[\s,;:_.-]+$/,'')+'...';
+  }
+  doc.text(out, rightX, y, {align:'right'});
+  doc.setFontSize(size);
+}
 // Report masthead: logo mark + practice name + client/date meta + rule + big title. Returns the y to continue from. Page 1 only.
 function _pdfMasthead(doc, ML, RM, title, subtitle, client, d){
   const A=_pdfAscii, NAVY=[30,58,95], MUT=[102,112,128];
@@ -17503,18 +17522,22 @@ function _pdfMasthead(doc, ML, RM, title, subtitle, client, d){
   doc.circle(ML+4.5, 16, 4.4, 'S'); doc.circle(ML+4.5, 16, 2.5, 'S');
   doc.setDrawColor(150,154,160); doc.line(ML+4.5, 16, ML+8.4, 12.6); doc.setLineWidth(0.2);
   doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('AHS Compliance Consulting', ML+12.5, 16);
+  const _pRight = ML+12.5 + doc.getTextWidth('AHS Compliance Consulting');   // measured at the size it was drawn
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(MUT[0],MUT[1],MUT[2]); doc.text('Health, safety & environmental advisers', ML+12.5, 20);
-  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(40,48,60); doc.text(A(client), RM, 14, {align:'right'});
+  const _aRight = ML+12.5 + doc.getTextWidth('Health, safety & environmental advisers');
+  // The client name sits one line above the practice name and the document
+  // control lines sit alongside the strapline, so each is held clear of it.
+  doc.setTextColor(40,48,60); _pdfFitRight(doc, A(client), RM, _pRight+5, 14, 9, 7, true);
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(MUT[0],MUT[1],MUT[2]);
   const _mFmt=(s)=>{ try{ const dt = s ? new Date(String(s)+(String(s).length===10?'T12:00:00':'')) : new Date(); return isNaN(dt)?'' : dt.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return ''; } };
   if(d&&d._omit){
     // Document control omitted for this report - show only the date.
-    doc.text(A(_mFmt(null)), RM, 18, {align:'right'});
+    _pdfFitRight(doc, A(_mFmt(null)), RM, _aRight+5, 18, 7.5, 6.5, false);
   } else {
     const _mVer=String((d&&d.version)||'1.0');
-    doc.text(A('Issued '+_mFmt(d&&d.issued)+'  -  v'+_mVer+((d&&d.ref)?('  -  '+d.ref):'')), RM, 18, {align:'right'});
+    _pdfFitRight(doc, A('Issued '+_mFmt(d&&d.issued)+'  -  v'+_mVer+((d&&d.ref)?('  -  '+d.ref):'')), RM, _aRight+5, 18, 7.5, 6.5, false);
     const _mBy=[]; if(d&&d.author) _mBy.push('Prepared by '+d.author); if(d&&d.approverName) _mBy.push('Approved by '+d.approverName+(d.approverRole?(' ('+d.approverRole+')'):''));
-    if(_mBy.length) doc.text(A(_mBy.join('  -  ')), RM, 21.8, {align:'right'});
+    if(_mBy.length) _pdfFitRight(doc, A(_mBy.join('  -  ')), RM, _aRight+5, 21.8, 7.5, 6.5, false);
   }
   doc.setDrawColor(NAVY[0],NAVY[1],NAVY[2]); doc.setLineWidth(0.6); doc.line(ML,25,RM,25); doc.setLineWidth(0.2);
   doc.setFont('helvetica','bold'); doc.setFontSize(19); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]);

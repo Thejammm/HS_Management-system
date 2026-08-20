@@ -17314,7 +17314,9 @@ function _renderMaturityAssessment(dis){
     const cur=j[d.id]||{};
     const lv=JUDGEMENT_LEVELS.find(x=>x.k===cur.level);
     const chip=lv?`<span style="font-size:12.5px;color:${lv.colour};font-weight:700;">${lv.label}</span>`:'<span style="font-size:11px;color:var(--text-muted);">not judged</span>';
-    const raiseBtn = dis ? '' : `<button class="btn btn-outline btn-xs no-print" style="margin-left:auto;" title="Raise an improvement action for this area onto the client execution plan" onclick="openMaturityAction('${d.id}')">↗ Raise action</button>`;
+    const raiseBtn = dis ? '' : (_judgeActionOpen(d.id)
+      ? `<button class="btn btn-ghost btn-xs no-print" style="margin-left:auto;color:var(--success);font-weight:700;" title="An action for this area is open on the client execution plan - click to open the plan" onclick="switchTab('execplan')">✓ In the execution plan</button>`
+      : `<button class="btn btn-outline btn-xs no-print" style="margin-left:auto;" title="Raise an improvement action for this area onto the client execution plan" onclick="openMaturityAction('${d.id}')">↗ Raise action</button>`);
     const head=`<div class="prof-domain-head"><span class="pdh-badge" style="background:${d.badge};">${idx+1}</span><h4>${idx+1}. ${esc(d.name)}</h4>${chip}${raiseBtn}</div>`;
     const btns=JUDGEMENT_LEVELS.map(x=>`<button class="jl-btn${cur.level===x.k?' on':''}"${dis} style="${cur.level===x.k?('background:'+x.colour+';'):''}" onclick="setJudgement('${d.id}','${x.k}')">${x.label}</button>`).join(' ');
     const body=`<div style="padding:10px 2px 16px;">
@@ -17329,6 +17331,17 @@ function _renderMaturityAssessment(dis){
 // ── Raise a maturity-improvement action (modal, same overlay pattern as the
 //    rest of the app). Pre-filled from the domain's weakest scored items so
 //    the action says WHAT to improve, not just "improve leadership". ──
+function _judgeActionOpen(domId){
+  const d=_maturityDomains().find(x=>x.id===domId);
+  return (S.actionPlan||[]).some(function(a){
+    if(!a || a.deleted) return false;
+    const st=(typeof _actionStatus==='function')?_actionStatus(a):(a.status||'Not started');
+    if(st==='Complete'||st==='Accepted') return false;
+    if(a.judgeKey==='judge|'+domId) return true;
+    // actions raised before the key existed
+    return a.source==='Maturity' && !!d && a.sourceLabel===d.name;
+  });
+}
 function openMaturityAction(domId){
   if(_blockIfReadOnly()) return;
   const d=_maturityDomains().find(x=>x.id===domId); if(!d) return;
@@ -17366,11 +17379,12 @@ function confirmMaturityAction(domId){
     due:String((document.getElementById('maDue')||{}).value||''),
     status:'Not started',
     priority:String((document.getElementById('maPriority')||{}).value||'Medium'),
-    source:'Maturity', sourceLabel:d.name };
+    source:'Maturity', sourceLabel:d.name, judgeKey:'judge|'+domId };
   if(typeof _stamp==='function') _stamp(it,'created');
   S.actionPlan.push(it);
   saveData(); _refreshActionViews();
   const ov=document.getElementById('matActionOv'); if(ov) ov.remove();
+  try{ if(typeof _keepScroll==='function' && typeof renderRiskReview==='function') _keepScroll(renderRiskReview); }catch(e){}
   showToast('✓ Added to the execution plan - set or adjust the target date there','success');
 }
 

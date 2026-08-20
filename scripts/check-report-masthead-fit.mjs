@@ -13,7 +13,15 @@ import { REPORTS, buildReport } from '../public/reports/templates/index.js';
 const here = path.dirname(url.fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
 const fixture = n => JSON.parse(fs.readFileSync(path.join(root, 'public', 'reports', 'fixtures', n + '.json'), 'utf8'));
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+import { createRequire } from 'node:module';
+const CHROME = (() => {
+  // Discover a browser rather than assuming one Windows path, so this check
+  // runs on someone else's machine - and in CI - not only on mine.
+  const need = createRequire(import.meta.url);
+  const found = need('../lib/chromium.js').findChromium();
+  if (!found) { console.error('X No Chromium found. Set PUPPETEER_EXECUTABLE_PATH or CHROMIUM_PATH.'); process.exit(2); }
+  return found;
+})();
 const NAMES = [
   'Short Ltd',
   'Easy Travel Service (Passenger Transport and Garage Services) Limited',

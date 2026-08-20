@@ -14,6 +14,17 @@
 import path from 'node:path';
 import url from 'node:url';
 import { createRequire } from 'node:module';
+
+// Discover a browser rather than assuming one Windows path, so this check runs
+// on someone else's machine - and in CI - not only on mine. Without it, the
+// script that guards "a report may never count differently from a screen" was
+// unrunnable anywhere but this laptop.
+const CHROME = (() => {
+  const need = createRequire(import.meta.url);
+  const found = need('../lib/chromium.js').findChromium();
+  if (!found) { console.error('X No Chromium found. Set PUPPETEER_EXECUTABLE_PATH or CHROMIUM_PATH.'); process.exit(2); }
+  return found;
+})();
 const require = createRequire(import.meta.url);
 const here = path.dirname(url.fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
@@ -63,7 +74,7 @@ const STATE = {
 };
 
 const browser = await puppeteer.launch({
-  executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  executablePath: CHROME,
   args: ['--headless=new', '--allow-file-access-from-files', '--disable-gpu'],
 });
 const page = await browser.newPage();

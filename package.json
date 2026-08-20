@@ -7,8 +7,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --env-file=.env server.js",
-    "test": "node --test test/reports.test.mjs",
-    "check:consistency": "node scripts/check-app-report-consistency.mjs"
+    "test": "node --test test/reports.test.mjs && npm run check",
+    "check:consistency": "node scripts/check-app-report-consistency.mjs",
+    "check:masthead": "node scripts/check-report-masthead-fit.mjs",
+    "check": "npm run check:consistency && npm run check:masthead"
   },
   "engines": {
     "node": ">=18"

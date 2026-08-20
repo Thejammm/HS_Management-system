@@ -23,7 +23,6 @@ function mkRisk(i, opts = {}) {
     controls: opts.noControls ? '' : 'Documented control set ' + (i + 1),
     controlLevel: opts.noControls ? '' : LEVELS[i % LEVELS.length],
     sif: sev === 5 ? 'yes' : '',
-    inherentL: String(Math.min(5, lik + 1)), inherentS: String(sev),
     likelihood: opts.unrated ? '' : String(lik),
     severity: opts.unrated ? '' : String(sev),
     duty: i % 3 === 0 ? 'HSWA 1974; MHSWR 1999' : 'MHSWR 1999',

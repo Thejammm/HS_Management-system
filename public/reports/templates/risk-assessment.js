@@ -3,7 +3,7 @@
 import { deriveBoard, countPhrase, TIER_COLOURS, docFor } from '../derive.js';
 import { tierWord, dualBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
-import { residualOf, inherentOf, tierFor, bandsFrom } from '../derive.js';
+import { residualOf, targetOf, tierFor, bandsFrom } from '../derive.js';
 
 export function buildRiskAssessment(state, opts = {}) {
   const D = deriveBoard(state, opts);
@@ -19,11 +19,11 @@ export function buildRiskAssessment(state, opts = {}) {
   const mast = { type: 'masthead', org, refCode: ref, issued: dc.omit ? today : fmtDC(dc.issued), review: dc.omit ? '' : fmtDC(dc.nextReview) };
 
   const rows = (Array.isArray(state.riskProfile) ? state.riskProfile : []).map(r => {
-    const res = residualOf(r), inh = inherentOf(r);
+    const res = residualOf(r), tgt = targetOf(r);
     return {
       name: String(r.activity || r.hazard || 'Unnamed risk'),
       hazard: String(r.hazard || ''),
-      inherent: inh, residual: res,
+      residual: res, projected: tgt,
       tier: res ? tierFor(res.score, bands) : null,
       controls: String(r.controls || '').slice(0, 140),
     };
@@ -32,13 +32,13 @@ export function buildRiskAssessment(state, opts = {}) {
   const cols = [
     { header: 'Activity', w: '22%' },
     { header: 'Hazard', w: '18%' },
-    { header: 'Score - was → now (of 25)', w: '22%' },
+    { header: 'Score - now → after controls (of 25)', w: '22%' },
     { header: 'Band', w: '10%' },
     { header: 'Controls', w: '28%' },
   ];
   const rowFor = r => ([
     r.name, r.hazard,
-    { html: dualBar({ inherent: r.inherent, residual: r.residual, tier: r.tier }) },
+    { html: dualBar({ residual: r.residual, projected: r.projected, tier: r.tier }) },
     { html: tierWord(r.tier) },
     r.controls,
   ]);

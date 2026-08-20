@@ -71,16 +71,16 @@ export function dataTable({ title, cols, rows, footnote }) {
     (footnote ? `<div class="r-footnote">${esc(footnote)}</div>` : '');
 }
 
-// Was → now, two thin bars in line: what the score was before controls
-// (hatched) above what it is with controls in place (solid, band colour),
-// numbers alongside. Replaced the single overlaid ghost bar, which read
-// as one confusing bar rather than a change.
-export function dualBar({ inherent, residual, tier }) {
+// Now → after, two thin bars in line: the risk as it stands today (solid,
+// band colour) above where it is projected to sit once the planned controls
+// are actioned (hatched, because it has not been earned yet). Numbers
+// alongside. A projection is a plan, so it never renders as solid.
+export function dualBar({ residual, projected, tier }) {
   const colour = tier ? (TIER_COLOURS[tier] || '#b7b7ba') : '#b7b7ba';
   const w = s => Math.max(3, Math.min(100, ((s && s.score) || 0) / 25 * 100));
   return `<span class="r-wasnow">
-    <span class="r-wn-row"><i class="r-wn-lab">was</i><i class="r-wn-track">${inherent ? `<i class="r-wn-fill r-wn-ghost" style="width:${w(inherent)}%"></i>` : ''}</i><b class="r-wn-val">${inherent ? inherent.score : '-'}</b></span>
     <span class="r-wn-row"><i class="r-wn-lab">now</i><i class="r-wn-track">${residual ? `<i class="r-wn-fill" style="width:${w(residual)}%;background:${colour}"></i>` : ''}</i><b class="r-wn-val">${residual ? residual.score : '-'}</b></span>
+    <span class="r-wn-row"><i class="r-wn-lab">after</i><i class="r-wn-track">${projected ? `<i class="r-wn-fill r-wn-ghost" style="width:${w(projected)}%"></i>` : ''}</i><b class="r-wn-val">${projected ? projected.score : '-'}</b></span>
   </span>`;
 }
 

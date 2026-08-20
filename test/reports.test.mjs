@@ -44,13 +44,13 @@ test('zero-safe copy reads correctly at 0, 1 and n', () => {
 
 test('matrix counts come from residual likelihood × severity only', () => {
   const D = deriveBoard({ riskProfile: [
-    { likelihood: '3', severity: '4', inherentL: '5', inherentS: '5' },
+    { likelihood: '3', severity: '4', targetL: '5', targetS: '5' },
     { likelihood: '3', severity: '4' },
     { likelihood: '1', severity: '1' },
   ] });
   assert.equal(D.matrix['3|4'], 2);
   assert.equal(D.matrix['1|1'], 1);
-  assert.equal(D.matrix['5|5'], undefined);    // inherent never lands in the matrix
+  assert.equal(D.matrix['5|5'], undefined);    // the projection never lands in the matrix
 });
 
 test('residualOf rejects malformed scores', () => {

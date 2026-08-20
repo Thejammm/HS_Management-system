@@ -10273,10 +10273,18 @@ function migrateLoadedState(){
     // priority is now computed from likelihood × severity; drop the stored legacy value
     delete r.priority; delete r.risk; delete r.injury; delete r.impact; delete r.mitigation;
     // HSG65 upgrade - default the new fields non-destructively.
-    if(r.inherentL === undefined) r.inherentL = '';
-    if(r.inherentS === undefined) r.inherentS = '';
     if(r.targetL   === undefined) r.targetL   = '';
     if(r.targetS   === undefined) r.targetS   = '';
+    // The retired "inherent" severity used to count towards fatal potential.
+    // Where it was the ONLY reason a risk counted as able to kill or maim,
+    // keep that flag as an explicit override rather than letting a safety
+    // signal vanish with the field. It shows on the card and can be unticked.
+    // The old values are left in place, unread, in case they are ever wanted.
+    if(r.sif !== true && r.sif !== false){
+      const _inhS = parseInt(r.inherentS,10)||0;
+      const _live = Math.max(parseInt(r.severity,10)||0, parseInt(r.targetS,10)||0);
+      if(_inhS >= 4 && _live < 4) r.sif = true;
+    }
     if(!r.impacts || typeof r.impacts !== 'object') r.impacts = {};
     if(!r.impactNotes || typeof r.impactNotes !== 'object') r.impactNotes = {};
     if(!Array.isArray(r.actions)){
@@ -14252,10 +14260,16 @@ const _HTYPE_ENERGY = { 'Chemical':['chemical'], 'Biological':['biological'], 'E
 function _energyCoverage(){ const c={}; ENERGY_SOURCES.forEach(e=>c[e.k]=0); (S.riskProfile||[]).forEach(r=>(r.energy||[]).forEach(k=>{ if(c[k]!==undefined) c[k]++; })); return c; }
 
 // ── SIF: serious-injury / fatality potential, INDEPENDENT of likelihood (the key SIF idea) ──
+// Worst credible severity: the risk's own, its projection, and - for records
+// created before the "inherent" box was retired - the severity stored then.
+// A retired box must never quietly unflag a risk somebody judged able to kill;
+// the flag on the card overrides this either way.
+function _worstSeverity(r){
+  return Math.max(parseInt(r&&r.severity,10)||0, parseInt(r&&r.targetS,10)||0, parseInt(r&&r.inherentS,10)||0);
+}
 function _riskSif(r){
   if(r && (r.sif===true || r.sif===false)) return r.sif;   // explicit override
-  const s=Math.max(parseInt(r&&r.inherentS,10)||0, parseInt(r&&r.severity,10)||0, parseInt(r&&r.targetS,10)||0);
-  return s>=4;   // credible worst-case severity 4-5 = could kill or seriously injure
+  return _worstSeverity(r)>=4;   // worst credible severity 4-5 = could kill or seriously injure
 }
 
 // ── Energy-based control hierarchy: remove → prevent → protect → stop-work ──
@@ -14318,19 +14332,11 @@ function _scorePair(l, s){
   const rating = l*s;
   return { rating, priority:_bandFor(rating), l, s };
 }
-// _riskScore = CURRENT / residual rating (existing likelihood × severity). Unchanged signature.
+// _riskScore = the risk's rating, and the only rating the app reads: the
+// first box on the card ("Inherent"), stored as likelihood × severity. There
+// is no separate post-control score - the second box is the projection.
 function _riskScore(r){    return _scorePair(r && r.likelihood, r && r.severity); }
-function _riskInherent(r){ return _scorePair(r && r.inherentL,  r && r.inherentS); }
 function _riskTarget(r){   return _scorePair(r && r.targetL,    r && r.targetS); }
-// Control effectiveness = how far existing controls pull inherent down to current.
-function _controlEffectiveness(r){
-  const inh=_riskInherent(r), cur=_riskScore(r);
-  if(!inh.rating || !cur.rating) return null;
-  const drop=inh.rating-cur.rating, pct=drop/inh.rating;
-  const band = pct>=0.5 ? 'Strong' : pct>=0.25 ? 'Adequate' : 'Weak';
-  const colour = band==='Strong' ? '#16A34A' : band==='Adequate' ? '#F59E0B' : '#DC2626';
-  return { drop, pct, band, colour };
-}
 function _riskPrioBadge(priority, rating){
   const c = _RISK_PRIO_COLOR[priority] || _RISK_PRIO_COLOR[''];
   const label = priority ? (priority + (rating ? (' · ' + rating) : '')) : 'Not rated';
@@ -14882,7 +14888,7 @@ function addRiskEntry(){
   const entry = { id:'risk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
     category:'', area:'', pdca:'', energy:[], sif:'', controlLevel:'', reviewed:false, activity:'', hazard:'', personsAtRisk:[], harm:'', businessImpact:'',
     impacts:{}, impactNotes:{}, controls:'',
-    inherentL:'', inherentS:'', likelihood:'', severity:'', targetL:'', targetS:'',
+    likelihood:'', severity:'', targetL:'', targetS:'',
     trend:'', actions:[], linked:[], furtherActions:'' };
   _stamp(entry, 'created');
   S.riskProfile.push(entry);
@@ -15286,7 +15292,7 @@ function _riskPanelHTML(o){
 // ══════════════════════════════════════════════════════════════
 var _journeyFilter='all';
 function _journeyMilestones(r){
-  const sc=_riskScore(r), inh=_riskInherent(r);
+  const sc=_riskScore(r);
   const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due));
   const closed=acts.filter(a=>{ const st=_actionStatus(a); return st==='Complete'||st==='Accepted'; });
   const plan=_riskPlanState(r);
@@ -15301,7 +15307,7 @@ function _journeyMilestones(r){
   const _tgt=_riskTarget(r);
   const _hist=Array.isArray(r.scoreHistory)?r.scoreHistory:[];
   m.push({ done:!!sc.rating&&impactsRated, label:'Assessed', when:'',
-    text: sc.rating ? ('Inherent '+(inh.rating||'-')+' → now '+sc.rating+' ('+sc.priority+')'+((_tgt.rating&&plan.k!=='managed'&&plan.k!=='accepted')?(' · projected '+_tgt.rating+' after the plan'):'')+(r.businessImpact?('. '+r.businessImpact):'')) : 'Not yet rated - score likelihood × severity and the business impacts' });
+    text: sc.rating ? ('Rated '+sc.rating+' ('+sc.priority+')'+((_tgt.rating&&plan.k!=='managed'&&plan.k!=='accepted')?(' · projected '+_tgt.rating+' after the plan'):'')+(r.businessImpact?('. '+r.businessImpact):'')) : 'Not yet rated - score likelihood × severity and the business impacts' });
   m.push({ done:acts.length>0, label:'Action planned', when:'',
     text: acts.length ? (acts.length+' action'+(acts.length!==1?'s':'')+': '+acts.map(a=>(a.desc||'(action)').slice(0,60)+(a.owner?(' - '+a.owner+(a.due?(', due '+a.due):'')):'')).join('; ')) : 'No owned, dated actions yet' });
   m.push({ done:acts.length>0&&closed.length===acts.length, label:'Delivered', when:'',
@@ -15515,18 +15521,16 @@ function _riskPlanState(r){
   return { k:'managed', label:'✓ Plan delivered', colour:'#16A34A', title:'Every action is closed. Tick "reviewed and completed" on the risk to sign it off as managed.' };
 }
 function _riskFlowHTML(r){
-  const inh=_riskInherent(r), cur=_riskScore(r), tgt=_riskTarget(r);
+  const cur=_riskScore(r), tgt=_riskTarget(r);
   const part=(sc,lab)=>{ if(!sc.rating) return `<span style="color:var(--text-muted);font-weight:400;">${lab} -</span>`;
     const c=_RISK_PRIO_COLOR[sc.priority]; return `<span title="${lab}: ${sc.l} × ${sc.s}">${lab} <strong style="color:${c};">${sc.rating}</strong></span>`; };
-  const eff=_controlEffectiveness(r);
-  const effHtml = eff ? `<span class="eff-badge" style="background:${eff.colour}1a;color:${eff.colour};">Controls: ${eff.band}</span>` : '';
   const plan=_riskPlanState(r);
   const planHtml=`<span class="eff-badge" style="background:${plan.colour}1a;color:${plan.colour};" title="${esc(plan.title)}">${plan.label}</span>`;
   // Where the score is heading once the plan lands (hidden once managed - it has landed).
   const projHtml=(tgt.rating && plan.k!=='managed' && plan.k!=='accepted')
     ? `<span class="rf-arrow">→</span><span title="Projected once the action plan is delivered: ${tgt.l} × ${tgt.s}" style="color:var(--text-muted);font-weight:400;">projected <strong style="color:${_RISK_PRIO_COLOR[tgt.priority]};">${tgt.rating}</strong></span>`
     : '';
-  return part(inh,'Inherent') + `<span class="rf-arrow">→</span>` + part(cur,'Now') + `<span class="rf-arrow">→</span>` + planHtml + projHtml + effHtml;
+  return part(cur,'Inherent') + `<span class="rf-arrow">→</span>` + planHtml + projHtml;
 }
 // Every re-score is kept - the profile shows where the business WAS as well
 // as where it is now. Entries are pushed by the plan-delivered re-score.
@@ -16068,7 +16072,6 @@ function insertLibraryRisk(key, quiet){
   const entry={ id:'risk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), libKey:t.key,
     category:_ht, area:_libArea(t.key), pdca:'', energy:(_HTYPE_ENERGY[_ht]||[]).slice(), sif:'', controlLevel:'', reviewed:false, activity:t.activity, hazard:t.hazard, personsAtRisk:(t.persons||[]).slice(),
     harm:t.harm, businessImpact:'', impacts:Object.assign({}, (typeof _LIB_IMPACTS!=='undefined'&&_LIB_IMPACTS[t.key])||{}), impactNotes:{}, controls:t.controls,
-    inherentL:t.inh?String(t.inh[0]):'', inherentS:t.inh?String(t.inh[1]):'',
     likelihood:String(t.l), severity:String(t.s), targetL:'', targetS:'', trend:t.trend,
     actions: t.action?[{ id:'act_'+Math.random().toString(36).slice(2,9), desc:t.action, owner:'', due:'', status:'Not started', priority:_bandFor(t.l*t.s) }]:[],
     linked: t.duty?[{ id:'lnk_'+Math.random().toString(36).slice(2,9), ref:'Key duty: '+t.duty, url:'' }]:[],
@@ -17178,13 +17181,12 @@ function _profRiskPriority(rk){
   const priority = Math.round(rk.ceiling * (5-mv) * (rk.ceiling/5));
   return { priority, band:_bandFor(priority), exposure:rk.ceiling, maturity:mv, matRounded:Math.round(mv) };
 }
-// Editable significant-risk records built from the generated risks (inherent from the ceiling).
+// Editable significant-risk records built from the generated risks (severity seeded from the ceiling).
 function _profSignificantRisks(){
   const gen=_profGenerate(); const ov=_profState().significantRisks;
   return gen.risks.filter(rk=>ov[rk.id]?ov[rk.id].dismissed!==true:true).map(rk=>{
     const o=ov[rk.id]||{};
     return { id:rk.id, hazard:rk.hazard, category:rk.category, persons:rk.persons||[], harm:rk.harm, legal:rk.legal, rule:rk.rule, ceiling:rk.ceiling, controls:rk.controls,
-      inherentL:o.inherentL||'4', inherentS:String(rk.ceiling),
       likelihood:o.likelihood||'', severity:o.severity||String(rk.ceiling),
       targetL:o.targetL||'', targetS:o.targetS||'', trend:o.trend||'', notes:o.notes||'', pr:_profRiskPriority(rk) };
   });
@@ -17398,7 +17400,7 @@ function _reportData(){
   const sif=risks.filter(r=>_riskSif(r));
   const sifUncontrolled=sif.filter(r=>_riskControlStatus(r)==='None');
   const sifNoOwner=sif.filter(r=>!_riskOwner(r));
-  const maxSev=Math.max(0,...risks.map(r=>Math.max(parseInt(r.inherentS,10)||0, parseInt(r.severity,10)||0)));
+  const maxSev=Math.max(0,...risks.map(_worstSeverity));
   const acts=_allRiskActions();
   const actOverdue=acts.filter(x=>x.status==='Overdue').length;
   const actNoOwner=acts.filter(x=>!(x.a.owner&&x.a.owner.trim())).length;
@@ -17750,18 +17752,18 @@ function buildBoardReport(){
 
   // Page 2 - what can kill someone here
   doc.addPage(); st.y=K.TOP;
-  K.section('Inherent fatal or major-harm activities, and their residual risk', [71,85,105]);
+  K.section('Activities that could kill or cause major harm, and how they are rated', [71,85,105]);
   if(data.sif.length){
     const stRank={None:0,Partial:1,'In place':2};
     const list=data.sif.slice().sort((a,b)=>stRank[_riskControlStatus(a)]-stRank[_riskControlStatus(b)]);
     const ratingCell=(sc)=> sc.rating ? {text: sc.rating+' '+(sc.priority||''), bold:true, color:_RISK_PRIO_RGB[sc.priority]||[110,110,110]} : {text:'-', color:[150,150,150]};
     K.table(
-      [{header:'Activity / risk',w:64},{header:'Inherent',w:24},{header:'Residual',w:24},{header:'Control',w:32},{header:'Owner',w:28}],
+      [{header:'Activity / risk',w:64},{header:'Rating',w:24},{header:'Projected',w:24},{header:'Control',w:32},{header:'Owner',w:28}],
       list.map(r=>{ const cs=_riskControlStatus(r), owner=_riskOwner(r); const csCol=cs==='None'?RED:cs==='Partial'?AMBER:GREEN;
-        return [ {text:r.activity||r.hazard||'Unnamed risk', bold:true}, ratingCell(_riskInherent(r)), ratingCell(_riskScore(r)), {pill:cs, pillColor:csCol}, owner?{text:owner}:{pill:'Unassigned', pillColor:RED} ]; }),
+        return [ {text:r.activity||r.hazard||'Unnamed risk', bold:true}, ratingCell(_riskScore(r)), ratingCell(_riskTarget(r)), {pill:cs, pillColor:csCol}, owner?{text:owner}:{pill:'Unassigned', pillColor:RED} ]; }),
       {headFill:NAVY, headText:[255,255,255]}
     );
-    K.text('Inherent = the risk before controls (the worst-case reason it matters, and the basis for deciding whether the activity is worth doing). Residual = the risk with the controls now in place. Controls do not lower the severity of the worst case; they lower its likelihood, which is where the residual reduction comes from.', 8, {color:[120,120,120], gap:2});
+    K.text('Rating = the risk as it stands today, on the controls actually in place. Projected = where it is expected to sit once the planned controls are actioned. Both numbers can move: likelihood falls when the event is made less likely, and severity falls when the worst credible outcome is itself made less severe - less energy, a barrier, fewer people exposed, or a different method. A projection is a plan, not an achievement: the maturity level shows whether the work has actually been delivered.', 8, {color:[120,120,120], gap:2});
     K.whatBlocks(
       {title:'What this means', bullets:[
         (nUnc||'No')+' fatal-potential risk'+(nUnc===1?'':'s')+' '+(nUnc===1?'has':'have')+' no completed controls in place.',
@@ -18179,7 +18181,8 @@ function renderRiskProfile(){
   const ratingBox = (r,title,cls,lf,sf) => `<div class="rt-box ${cls}"><div class="rt-title">${title}</div><div class="rt-selects">${rsel(r.id,lf,r[lf],'L')}${rsel(r.id,sf,r[sf],'S')}</div></div>`;
 
   const pdcaHint = `<span class="fl-hint" title="Plan-Do-Check-Act - where this risk sits in the manage-for-H&S cycle. Leave blank to derive it from the controls and actions you record.">(?)</span>`;
-  const projHint = `<span class="fl-hint" title="Where the score is heading once the action plan is delivered - your judgement at planning time. When the last action closes, the app asks you to re-score the risk (pre-filled with this projection) and keeps the old score in the history, so the profile always shows where the business IS and where it is GOING.">(?)</span>`;
+  const rateHint = `<span class="fl-hint" title="Both numbers can be reduced, and both should be. Likelihood falls when you make the event less likely: guarding, planned maintenance, permits, supervision, competence. Severity falls too - it is not fixed, whatever you may have been told. Reduce the energy, the height, the pressure or the quantity; put distance, a barrier or an interlock between the person and the harm; cut how many people are exposed; or change the method so the worst credible outcome is a lesser injury. Only where a control genuinely does nothing to the worst case do you move likelihood alone and leave severity where it is.">(?)</span>`;
+  const projHint = `<span class="fl-hint" title="Where the score is heading once the action plan is delivered - your judgement at planning time. When the last action closes, the app asks you to re-score the risk (pre-filled with this projection) and keeps the old score in the history, so the profile always shows where the business IS and where it is GOING. Score it as it will be once every action is actioned - likelihood and severity both.">(?)</span>`;
   cont.innerHTML = `<div class="no-print" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
       <button class="btn btn-ghost btn-xs" onclick="_expandAllRisks(true)">Expand all</button>
       <button class="btn btn-ghost btn-xs" onclick="_expandAllRisks(false)">Collapse all</button>
@@ -18246,11 +18249,10 @@ function renderRiskProfile(){
           ${fg('Impact summary <span class="fl-hint" title="Written for you from the ratings above in plain standard wording. Type your own to override it; clear the box to go back to the automatic wording.">(?)</span>', `<input type="text"${dis} id="rbi-${r.id}" value="${esc(r.businessImpact)}" placeholder="Rates itself from the impact scores above" oninput="updateRiskField('${r.id}','businessImpact',this.value)">`)}
         </div>
         <div class="risk-rating-row" style="flex-direction:column;align-items:stretch;gap:10px;">
-          <label class="field-label" style="margin:0;">Risk rating - Likelihood (L) × Severity (S), each 1-5</label>
+          <label class="field-label" style="margin:0;">Risk rating - Likelihood (L) × Severity (S), each 1-5 ${rateHint}</label>
           <div class="rating-trio">
-            ${ratingBox(r,'Inherent (pre-control)','','inherentL','inherentS')}
-            ${ratingBox(r,'Now (with current controls)','rt-current','likelihood','severity')}
-            ${ratingBox(r,'Projected (after the plan) '+projHint,'','targetL','targetS')}
+            ${ratingBox(r,'Inherent','rt-current','likelihood','severity')}
+            ${ratingBox(r,'Projected (after controls are actioned) '+projHint,'','targetL','targetS')}
             <div class="rt-box"><div class="rt-title">Risk trend ${trendHint}</div><div class="rt-selects">${sel(r.id,'trend',r.trend,RISK_TREND)}</div></div>
           </div>
           <div class="risk-flow" id="rflow-${r.id}">${_riskFlowHTML(r)}</div>
@@ -18518,9 +18520,9 @@ function buildRiskProfileReportPDF(){
       field('Business impact', imp || r.businessImpact);
       field('Existing controls', r.controls);
       field('Best control level', _controlLevelLabel(r.controlLevel));
-      const inh=_riskInherent(r), eff=_controlEffectiveness(r), plan=_riskPlanState(r), tgtP=_riskTarget(r);
+      const plan=_riskPlanState(r), tgtP=_riskTarget(r);
       const fmtR=(s)=> s.rating ? (s.l+'x'+s.s+'='+s.rating+' ('+s.priority+')') : '-';
-      field('Risk rating', 'Inherent '+fmtR(inh)+'  >  Now '+fmtR(sc)+((tgtP.rating&&plan.k!=='managed')?('  >  Projected '+fmtR(tgtP)):'')+'  >  '+plan.label.replace('✓ ','')+(eff?('     Controls: '+eff.band):''));
+      field('Risk rating', 'Inherent '+fmtR(sc)+((tgtP.rating&&plan.k!=='managed')?('  >  Projected '+fmtR(tgtP)):'')+'  >  '+plan.label.replace('✓ ',''));
       if(Array.isArray(r.scoreHistory)&&r.scoreHistory.length) field('Score history', r.scoreHistory.map(e=>(e.l*e.s)+' ('+e.l+'x'+e.s+') '+(e.note||'')+' '+fd(e.at)).join('  >  ')+'  >  now '+(sc.rating||'-'));
       field('Risk trend', r.trend);
       const actLines=(r.actions||[]).filter(a=>a.desc||a.owner||a.due).map((a,i)=>(a.desc||'(action)')+'  ['+_actionStatus(a)+(a.owner?(' · '+a.owner):'')+(a.due?(' · due '+fd(a.due)):'')+(a.priority?(' · '+a.priority):'')+']');

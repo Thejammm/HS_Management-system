@@ -7,8 +7,8 @@
 // from the app itself) and scripts/check-app-report-consistency.mjs diffs the
 // two implementations on a seeded edge-case state - run it before deploying
 // anything that touches either side.
-import { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf, top5Of, top5MonthOf, top5PrevMonthOf } from './app-contract.js';
-export { sifOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf, top5Of, top5MonthOf, top5PrevMonthOf };
+import { sifOf, worstSeverityOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf, top5Of, top5MonthOf, top5PrevMonthOf } from './app-contract.js';
+export { sifOf, worstSeverityOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf, top5Of, top5MonthOf, top5PrevMonthOf };
 
 // ── Tier banding ──
 // The app's bands are tenant-tunable (state.riskConfig.bands). The report must
@@ -45,10 +45,6 @@ const int = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >
 
 export function residualOf(risk) {
   const l = int(risk && risk.likelihood), s = int(risk && risk.severity);
-  return (l && s) ? { l, s, score: l * s } : null;
-}
-export function inherentOf(risk) {
-  const l = int(risk && risk.inherentL), s = int(risk && risk.inherentS);
   return (l && s) ? { l, s, score: l * s } : null;
 }
 export function targetOf(risk) {
@@ -212,7 +208,7 @@ export function deriveBoard(state, opts = {}) {
   const risks = Array.isArray(s.riskProfile) ? s.riskProfile : [];
   const co = s.company || {};
 
-  const scored = risks.map(r => ({ r, res: residualOf(r), inh: inherentOf(r) }));
+  const scored = risks.map(r => ({ r, res: residualOf(r) }));
   const rated = scored.filter(x => x.res);
   const unrated = scored.length - rated.length;
 
@@ -224,7 +220,7 @@ export function deriveBoard(state, opts = {}) {
   rated.forEach(x => { const t = tierFor(x.res.score, bands); if (t) byTier[t]++; });
 
   // Fatal potential: the app's _riskSif via the contract - explicit boolean
-  // override wins, else credible worst case (inherent, residual OR target
+  // override wins, else credible worst case (the risk's own OR its projected
   // severity) of 4-5. The old "severity 5 only" version disagreed with the
   // cockpit by exactly the class of risk Simon caught (a severity-4 SIF).
   const isFatal = x => sifOf(x.r);
@@ -269,15 +265,16 @@ export function deriveBoard(state, opts = {}) {
   const protectDown = hierarchy.filter(h => h.key !== 'remove' && h.key !== 'prevent')
     .reduce((a, h) => a + h.n, 0);
 
-  // Register rows: fatal/major-harm activities (worst-case severity >= 4).
+  // Register rows: the fatal/major-harm activities - the SAME test the app
+  // and the fatal count use, not a second severity rule alongside it.
   const registerRows = scored
-    .filter(x => { const sev = Math.max((x.inh && x.inh.s) || 0, (x.res && x.res.s) || 0); return sev >= 4; })
+    .filter(x => sifOf(x.r))
     .sort((a, b) => ((b.res && b.res.score) || 0) - ((a.res && a.res.score) || 0))
     .map(x => {
       const racts = ((x.r.actions) || []).filter(a => a && !a.deleted && (a.desc || a.owner || a.due));
       return {
         name: String(x.r.activity || x.r.hazard || 'Unnamed risk'),
-        inherent: x.inh, residual: x.res, target: targetOf(x.r),
+        residual: x.res, target: targetOf(x.r),
         tier: x.res ? tierFor(x.res.score, bands) : null,
         targetTier: (function(){ const t = targetOf(x.r); return t ? tierFor(t.score, bands) : null; })(),
         control: controlState(x.r),
@@ -289,7 +286,7 @@ export function deriveBoard(state, opts = {}) {
     });
 
   // Highest credible harm from the severity ladder.
-  const maxSev = Math.max(0, ...scored.map(x => Math.max((x.inh && x.inh.s) || 0, (x.res && x.res.s) || 0)));
+  const maxSev = Math.max(0, ...scored.map(x => worstSeverityOf(x.r)));
 
   // Legal citations, deduped, from duty fields the profile carries.
   const duties = [...new Set(risks.map(r => String(r.duty || '').trim()).filter(Boolean)

@@ -141,13 +141,17 @@ export const MATURITY_DOMAINS = [
 ];
 
 // ── Fatal potential (SIF) - verbatim port of the app's _riskSif ──
-// Explicit boolean override wins; otherwise the credible worst case across
-// inherent, residual and target severity: 4-5 = could kill or seriously
-// injure. NOT "severity 5 only".
+// Explicit boolean override wins; otherwise the worst credible severity:
+// 4-5 = could kill or seriously injure. NOT "severity 5 only".
+// Verbatim port of the app's _worstSeverity: the risk's own severity, its
+// projection, and - for records created before the "inherent" box was retired
+// - the severity stored then. New risks never write that field.
+export function worstSeverityOf(r) {
+  return Math.max(parseInt(r && r.severity, 10) || 0, parseInt(r && r.targetS, 10) || 0, parseInt(r && r.inherentS, 10) || 0);
+}
 export function sifOf(r) {
   if (r && (r.sif === true || r.sif === false)) return r.sif;
-  const s = Math.max(parseInt(r && r.inherentS, 10) || 0, parseInt(r && r.severity, 10) || 0, parseInt(r && r.targetS, 10) || 0);
-  return s >= 4;
+  return worstSeverityOf(r) >= 4;
 }
 
 // ── Control status - verbatim port of the app's _riskControlStatus ──

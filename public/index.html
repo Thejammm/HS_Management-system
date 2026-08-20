@@ -13983,6 +13983,11 @@ function renderReports(){
       icon:svg('<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>'),
       desc:'The delivered-work history - actions completed, grouped by month, for the period you pick on the Action Plan tab (month / quarter / year / all).',
       tags:['History','By period','Record'] },
+    { title:'Monthly Assurance Report', accent:'#B45309', tint:'#FDF3E7', fn:'openMonthlyAssurancePicker()',
+      meta:(function(){ const ms=Object.keys((S.monitoring&&S.monitoring.months)||{}).filter(k=>S.monitoring.months[k]&&S.monitoring.months[k].enteredAt); return ms.length?(ms.length+' month'+(ms.length!==1?'s':'')+' saved'):'No months saved yet'; })(),
+      icon:svg('<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>'),
+      desc:'The month\'s assurance record to print and store: accidents, incidents and near misses, inspections and audits, and safety positives - plus that month\'s incident register and assurance visits. Pull back any of the last 12 saved months. Statutory inspections and the training matrix are not repeated here - they save as that month\'s spreadsheet.',
+      tags:['Monthly','Store','12-month recall'] },
     { title:'Management System', accent:'#16A34A', tint:'#E7F6EE', fn:'downloadManagementSystemReport()', meta:mgmtMeta,
       icon:svg('<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>'),
       desc:'How the organisation meets its HSG65 duties, reported by exception - only what needs action, never empty scaffolding.',
@@ -17327,6 +17332,7 @@ const REPORT_DOCS = [
   { key:'raRegister',       title:'Risk Assessment Register',     code:'RAR' },
   { key:'riskAcceptance',   title:'Risk Acceptance Register',     code:'RAC' },
   { key:'audit',            title:'Health & Safety Audit',        code:'AUD' },
+  { key:'assuranceMonthly', title:'Monthly Assurance Report',     code:'MAR' },
   { key:'siteInspections',  title:'Process Assurance',            code:'SIT' },
   { key:'feedback',         title:'Consultant Review & Feedback', code:'CR'  },
   { key:'cas',              title:'CAS Submission Pack',           code:'CAS' },
@@ -17903,6 +17909,61 @@ function buildCompletedActionsReportPDF(){
   doc.save('completed-actions-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
 }
 
+function openMonthlyAssurancePicker(){
+  const saved=Object.keys((S.monitoring&&S.monitoring.months)||{}).filter(k=>S.monitoring.months[k]&&S.monitoring.months[k].enteredAt).sort().reverse();
+  const cur=new Date().toISOString().slice(0,7);
+  const opts=[...new Set([cur,...saved])].slice(0,12);
+  const lbl=k=>{ try{ return new Date(k+'-01T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }catch(e){ return k; } };
+  const ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99999;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:360px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+    <div style="font-weight:700;margin-bottom:4px;">Monthly assurance report</div>
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">Pick the month to print. Saved months can be pulled back at any time - the list holds the last 12.</div>
+    <select id="_marMonth" style="width:100%;padding:8px;border:1px solid var(--border,#ccc);border-radius:8px;background:var(--surface,#fff);color:inherit;">${opts.map(k=>`<option value="${k}">${lbl(k)}${k===cur?' (current)':''}${(k===cur&&!saved.includes(k))?' - not saved yet':''}</option>`).join('')}</select>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;"><button class="btn btn-ghost btn-sm" id="_marCancel">Cancel</button><button class="btn btn-primary btn-sm" id="_marGo">Create the report</button></div>
+  </div>`;
+  document.body.appendChild(ov); const close=()=>ov.remove();
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  ov.querySelector('#_marCancel').onclick=close;
+  ov.querySelector('#_marGo').onclick=()=>{ const m=ov.querySelector('#_marMonth').value; close(); downloadMonthlyAssuranceReport(m); };
+}
+function downloadMonthlyAssuranceReport(month){
+  month=month||_curMonMonth();
+  const client=(_consultantView&&_consultantView.name)||_cockpitClientName();
+  const d=_docFor('assuranceMonthly');
+  const monthLabel=(function(){ try{ return new Date(month+'-01T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }catch(e){ return month; } })();
+  const md=((S.monitoring&&S.monitoring.months)||{})[month]||{};
+  const auto=_monAutoScores(month);
+  const K=_mkPdf('Monthly Assurance Report', client, d, monthLabel+' - accidents, incidents and near misses; inspections and audits; safety positives.');
+  const NAVY=[30,58,95], GREY=[110,110,110];
+  K.text(md.enteredAt?('Figures saved '+fmtDate(md.enteredAt)+'.'):'Figures not yet saved for this month - showing what is entered now. Save the month on the Assurance records tab to fix the record.', 9, {color:GREY, gap:2});
+  // The three families, exactly as the UI collects them (auto figures come
+  // from the linked inspections for THAT month).
+  MONITORING_FAMILIES.forEach(fam=>{
+    K.section(fam.name, NAVY);
+    K.table([{header:'MEASURE',w:66},{header:'THIS MONTH',w:88}],
+      fam.metrics.map(m=>{ const v=m.auto?auto[m.key]:md[m.key]; const shown=(v==null||v==='')?'-':String(v);
+        return [m.label, {text:shown+(m.auto?'   (from your inspections)':''), bold:!!m.auto}]; }));
+  });
+  const inc=(S.incidents||[]).filter(i=>String(i.date||'').slice(0,7)===month).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  K.section('Incident register - '+monthLabel, [185,28,28]);
+  if(inc.length){
+    K.table([{header:'DATE',w:20},{header:'TYPE',w:28},{header:'WHAT HAPPENED',w:64},{header:'STATUS',w:22}],
+      inc.map(i=>[fmtDate(i.date), i.type||'-', i.what||'-', {text:i.status||'Closed', color:i.status==='Open'?[180,110,10]:[22,120,60], bold:true}]));
+    const open=inc.filter(i=>i.status==='Open').length;
+    if(open) K.text(open+' investigation'+(open!==1?'s':'')+' still open at the time of printing.', 8.5, {color:GREY});
+  } else K.text('No accidents, incidents or near misses recorded this month.', 9.5, {color:GREY});
+  const visits=(S.siteInspections||[]).filter(v=>String(v.actual||'').slice(0,7)===month);
+  K.section('Process assurance visits - '+monthLabel, [14,165,233]);
+  if(visits.length){
+    K.table([{header:'DATE',w:22},{header:'KIND',w:34},{header:'SITE',w:44},{header:'OUTCOME',w:34}],
+      visits.map(v=>[fmtDate(v.actual), v.kind||'-', v.site||'-', v.outcome||'-']));
+  } else K.text('No completed visits recorded this month.', 9.5, {color:GREY});
+  K.st.y+=2;
+  K.text('Statutory inspections and the training matrix are managed and saved as their own monthly spreadsheets - they are deliberately not repeated in this report.', 8.5, {color:GREY});
+  _pdfFooter(K, d, 'Monthly Assurance Report');
+  K.doc.save('assurance-report-'+month+'-'+String(client).replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+  showToast('✓ Monthly assurance report created','success');
+}
 function _profBoardReport_dead(){
   try{
     const { jsPDF } = window.jspdf; const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
@@ -21098,8 +21159,10 @@ function updateIncident(id,f,v){ if(_roLocked()) return; const it=_incidents().f
 function deleteIncident(id){
   if(_blockIfReadOnly()) return;
   const it=_incidents().find(x=>x.id===id); if(!it) return;
-  if(it.raised){ showToast('This incident has raised actions - it stays on the record. Close it instead.','info'); return; }
-  if(!confirm('Delete this incident record?')) return;
+  const msg = it.raised
+    ? 'This incident raised actions into the execution plan - those actions stay on the plan. Delete the incident record itself?'
+    : 'Delete this incident record?';
+  if(!confirm(msg)) return;
   S.incidents=_incidents().filter(x=>x.id!==id); saveData(); _renderIncidents();
 }
 function raiseIncidentAction(id){

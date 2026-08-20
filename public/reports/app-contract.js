@@ -287,7 +287,7 @@ export const REPORT_DOC_CODES = {
   actionPlan: 'AP', executionPlan: 'EP', completedActions: 'CA', actionArchive: 'AA',
   managementSystem: 'MS', raRegister: 'RAR', riskAcceptance: 'RAC', audit: 'AUD',
   siteInspections: 'SIT', feedback: 'CR', cas: 'CAS', acp: 'ACP', policy: 'POL',
-  incidents: 'INC', consultation: 'CCR', trainingMatrix: 'TCR',
+  incidents: 'INC', consultation: 'CCR', trainingMatrix: 'TCR', assuranceMonthly: 'MAR',
 };
 export function docFor(state, key, opts = {}) {
   const s = state || {};

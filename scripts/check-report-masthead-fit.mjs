@@ -56,6 +56,20 @@ for (const name of NAMES) {
       document.querySelectorAll('.r-cover-org').forEach((c, i) => {
         if (c.scrollWidth > c.clientWidth + 1) out.push('cover org ' + i + ': clipped by ' + (c.scrollWidth - c.clientWidth) + 'px');
       });
+      // The practice identity belongs in the running footer of every page and
+      // nowhere in the masthead.
+      const pages = document.querySelectorAll('.r-page').length;
+      const brand = document.querySelectorAll('.r-pagefoot .r-foot-brand');
+      if (brand.length !== pages) out.push('practice name in the footer of only ' + brand.length + ' of ' + pages + ' pages');
+      brand.forEach((el, i) => {
+        if (!/AHS Compliance Consulting/.test(el.textContent)) out.push('footer brand ' + i + ': name missing');
+        if (!el.querySelector('svg')) out.push('footer brand ' + i + ': mark missing');
+        const r = el.getBoundingClientRect();
+        if (r.width < 40 || r.height < 4) out.push('footer brand ' + i + ': not rendered (' + Math.round(r.width) + 'x' + Math.round(r.height) + ')');
+      });
+      document.querySelectorAll('.r-masthead').forEach((m, i) => {
+        if (/AHS Compliance Consulting/.test(m.textContent)) out.push('masthead ' + i + ': still carries the practice name');
+      });
       return out;
     });
     bad.forEach(b => fails.push(id + ' [' + name.length + ' chars] ' + b));

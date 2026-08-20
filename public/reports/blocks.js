@@ -213,8 +213,16 @@ export function soWhat({ text }) {
   return `<div class="r-sowhat">${esc(text)}</div>`;
 }
 
+// The practice mark: concentric rings and a needle, drawn in the current text
+// colour so it reads on the dark cover as well as on a white page.
+const PRACTICE_MARK = '<svg class="r-foot-mark" viewBox="0 0 20 20" width="11" height="11" aria-hidden="true">'
+  + '<circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/>'
+  + '<circle cx="10" cy="10" r="4.2" fill="none" stroke="currentColor" stroke-width="1.6"/>'
+  + '<line x1="10" y1="10" x2="16" y2="4.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+
 export function pageFooter({ ref, page, pages }) {
   return `<footer class="r-pagefoot">
+    <span class="r-foot-brand">${PRACTICE_MARK}AHS Compliance Consulting</span>
     <span>${esc(ref || '')}</span>
     <span>Uncontrolled when printed</span>
     <span>Page ${page} of ${pages}</span>

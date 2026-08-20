@@ -14931,6 +14931,26 @@ function completeActionWithNote(refStr){
 // consultant's view, where the consultant alone can restore it (with a note)
 // or remove it from the app for good. ────────────────────────────────────────
 function _roleLabel(r){ return r==='consultant'?'consultant':(r==='client_user'?'client':(r||'user')); }
+// Retire the actions raised from a source record that has just been removed.
+// They carry regKey / trainingKey / covKey naming where they came from, and
+// nothing used to clear them: delete a statutory item or a person and their
+// renewal action stayed on the execution plan for ever, pointing at a record
+// that no longer exists and that nobody could open to close it out.
+// Tombstoned rather than erased, so it leaves the plan and the badge but is
+// still there under Deleted actions to restore if the removal was a mistake.
+function _retireActionsFor(field, key){
+  let n=0;
+  (S.actionPlan||[]).forEach(function(a){
+    if(!a || a.deleted || a[field]!==key) return;
+    const st=(typeof _actionStatus==='function')?_actionStatus(a):(a.status||'Not started');
+    if(st==='Complete'||st==='Accepted') return;   // finished work stays as a record
+    _markActionDeleted(a); n++;
+  });
+  if(n && typeof showToast==='function'){
+    showToast(n+' action'+(n!==1?'s':'')+' raised from it retired - restore from Deleted actions if that was wrong','info');
+  }
+  return n;
+}
 function _markActionDeleted(o){
   if(!o) return;
   o.deleted=true;
@@ -20332,6 +20352,7 @@ function deleteRegItem(secId, id){
   const r = (s.items||[]).find(x => x.id === id);
   if(r && (r.item||'').trim() && !confirm('Delete "'+r.item+'" from the register?')) return;
   s.items = (s.items||[]).filter(x => x.id !== id);
+  _retireActionsFor('regKey', 'reg|'+id);
   saveData(); renderMonitoring();
 }
 // One edit modal for a statutory item - the table rows open this on click
@@ -21796,7 +21817,11 @@ function trainingAddPerson(){
 function trainingDeletePerson(pid){
   if(_blockIfReadOnly()) return; const d=_trainingData(); const p=(d.people||[]).find(x=>x.id===pid); if(!p) return;
   if(!confirm('Permanently delete '+((p.firstName+' '+p.lastName).trim()||'this person')+' and all their training records? To keep the history, use "→ Left" instead.')) return;
-  d.people=d.people.filter(x=>x.id!==pid); saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
+  const _gone=(d.people||[]).find(x=>x.id===pid);
+  d.people=d.people.filter(x=>x.id!==pid);
+  // Their renewal actions go with them - one per course they carried.
+  if(_gone) (S.actionPlan||[]).slice().forEach(function(a){ if(a && a.trainingPersonId===pid) _retireActionsFor('trainingKey', a.trainingKey); });
+  saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
 }
 async function trainingDeleteAll(){
   if(_blockIfReadOnly()) return;
@@ -24423,6 +24448,43 @@ function importData(){
     inp.click();
   }catch(e){ console.error('Import failed',e); if(typeof showToast==='function') showToast('Import failed - see console','error'); }
 }
+// An import REPLACES a whole section - that is deliberate, and it is the exact
+// inverse of exportClient, which is what makes export/tinker/re-import work as
+// a way back. What it did not do was say how big the thing being replaced was.
+// Two sections carry a lot of work INSIDE them that a partial import file will
+// not: requirements holds every criterion tick, approval and raised action; cas
+// holds every criterion status and evidence link. Replacing them from a file
+// that merely mentions the section throws all of that away silently.
+function _importHeld(k){
+  try{
+    if(k==='requirements'){
+      var items=0, ticks=0, acts=0, approved=0;
+      (S.requirements||[]).forEach(function(sec){ (sec.items||[]).forEach(function(it){
+        items++;
+        if(it.reviewed) approved++;
+        var cs=it.critState||it.criteriaState||{}; ticks+=Object.keys(cs).length;
+        acts+=((it.actions||[]).filter(function(a){ return a && !a.deleted; })).length;
+      }); });
+      if(!items) return '';
+      var bits=[items+' item'+(items!==1?'s':'')];
+      if(ticks) bits.push(ticks+' criteria tick'+(ticks!==1?'s':''));
+      if(approved) bits.push(approved+' approved');
+      if(acts) bits.push(acts+' raised action'+(acts!==1?'s':''));
+      return bits.join(', ');
+    }
+    if(k==='cas'){
+      var st=((S.cas||{}).status)||{}, ev=((S.cas||{}).evidence)||{};
+      var n=Object.keys(st).length, e=Object.keys(ev).length;
+      if(!n && !e) return '';
+      var b2=[]; if(n) b2.push(n+' criterion status'+(n!==1?'es':''));
+      if(e) b2.push(e+' evidence link'+(e!==1?'s':''));
+      return b2.join(', ');
+    }
+    var v=S[k];
+    if(Array.isArray(v)) return v.length ? (v.length+' record'+(v.length!==1?'s':'')) : '';
+    return '';
+  }catch(e){ return ''; }
+}
 function _applyImport(obj){
   if(!obj || typeof obj!=='object'){ if(typeof showToast==='function') showToast('Nothing to import','error'); return; }
   // Full-backup format -> restore local storage keys (offline restore).
@@ -24438,7 +24500,12 @@ function _applyImport(obj){
   if(!present.length && !hasBrand){ if(typeof showToast==='function') showToast('No recognised client data in that file','error'); return; }
   var who=(obj.company&&(obj.company.legalName||obj.company.tradingName))||'this client';
   var label=present.slice(); if(hasBrand) label.push('company name');
-  if(!confirm('Import data for "'+who+'" into the client you are working on?\n\nThis REPLACES these sections for the current client: '+label.join(', ')+'.\n\nMake sure you have dialled in to the right client first.')) return;
+  // Say what is being thrown away, not merely which sections are touched.
+  var heldBits=[]; present.forEach(function(k){ var h=_importHeld(k); if(h) heldBits.push('  ' + k + ': ' + h); });
+  // Say what is being thrown away, not merely which sections are touched.
+  var heldBits=[]; present.forEach(function(k){ var h=_importHeld(k); if(h) heldBits.push('  ' + k + ': ' + h); });
+  var heldNote = heldBits.length ? ('\n\nWhat this client holds in those sections now, and will lose:\n'+heldBits.join('\n')) : '';
+  if(!confirm('Import data for "'+who+'" into the client you are working on?\n\nThis REPLACES these sections for the current client: '+label.join(', ')+'.'+heldNote+'\n\nMake sure you have dialled in to the right client first.')) return;
   _IMPORT_KEYS.forEach(function(k){ if(obj[k]!==undefined) S[k]=obj[k]; });
   if(hasBrand){ S.branding=S.branding||{}; S.branding.name=obj.branding_name; }
   try{ if(typeof migrateLoadedState==='function') migrateLoadedState(); }catch(e){}

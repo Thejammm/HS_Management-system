@@ -21220,7 +21220,52 @@ function _trainingData(){
     S.trainingData={ people, sheets:[], filename:'' };
   }
   (S.trainingData.people||[]).forEach(p=>{ if(!p.id) p.id=_reqUid('trp'); if(!p.cells) p.cells={}; if(!p.group) p.group='staff'; if(!p.status) p.status='active'; });
+  _tReKeyImportedPeople();
   return S.trainingData;
+}
+// ── Training identity ──
+// A person imported from the client's spreadsheet used to be identified by the
+// sheet name and the ROW NUMBER. Inserting one row above someone re-keyed
+// everyone below them, so the renewal actions already raised against those
+// people stopped matching: the next import raised duplicates and left the
+// originals open against nobody. The importer now keys on badge, then name, and
+// only falls back to position for a row with neither.
+//
+// This is the app's half. It mirrors lib/training-xlsx.js stableId - if that
+// changes, this must change with it - and re-keys people already in the record
+// while their OLD ids still resolve, carrying their raised actions across. It
+// runs on every load and does nothing once the ids already match.
+function _tStableId(p){
+  const clean=(v)=>String(v==null?'':v).trim().toLowerCase().replace(/\s+/g,' ');
+  const badge=clean(p&&p.badge);
+  if(badge) return 'trn_b_'+badge.replace(/[^0-9a-z]+/g,'');
+  const name=(clean(p&&p.lastName)+'_'+clean(p&&p.firstName)).replace(/^_+|_+$/g,'');
+  if(name) return 'trn_n_'+name.replace(/[^0-9a-z_]+/g,'_');
+  return '';   // nothing durable to key on - leave the positional id alone
+}
+function _tReKeyImportedPeople(){
+  const ppl=(S.trainingData&&S.trainingData.people)||[];
+  if(!ppl.length) return;
+  const remap={}, taken={};
+  ppl.forEach(p=>{ if(p&&p.id) taken[p.id]=1; });
+  ppl.forEach(p=>{
+    if(!p || !p.sheet) return;              // added in the app: already stable
+    const nid=_tStableId(p);
+    if(!nid || nid===p.id) return;
+    // Two unbadged people can share a name; keep them apart the same way the
+    // importer does, with a counter rather than a row number.
+    let use=nid, n=1;
+    while(taken[use]) use=nid+'_'+(++n);
+    remap[p.id]=use; taken[use]=1; delete taken[p.id]; p.id=use;
+  });
+  if(!Object.keys(remap).length) return;
+  (S.actionPlan||[]).forEach(a=>{
+    if(!a || !a.trainingPersonId) return;
+    const nid=remap[a.trainingPersonId];
+    if(!nid) return;
+    a.trainingPersonId=nid;
+    if(a.trainingCourse) a.trainingKey='train|'+nid+'|'+a.trainingCourse;
+  });
 }
 // ONE flat reader over the v2 store (legacy S.training auto-migrates inside
 // _trainingData): active people only, one row per recorded course; only date
@@ -21239,10 +21284,18 @@ function _tOnline(){ try{ return !!(Auth.isSignedIn() && Auth.activeTenantId());
 function _tFmt(iso){ try{ return iso? new Date(String(iso)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}):''; }catch(e){ return ''; } }
 function _tCoursesFor(group){
   const d=_trainingData();
-  const sheet=(d.sheets||[]).find(s=>s.group===group && s.status==='active');
-  if(sheet && sheet.courses && sheet.courses.length) return sheet.courses.map(c=>c.name);
-  const set=[]; (d.people||[]).filter(p=>p.group===group).forEach(p=>Object.keys(p.cells||{}).forEach(c=>{ if(!set.includes(c)) set.push(c); }));
-  return set;
+  // Every active sheet in the group, in sheet order - not just the first one.
+  // Taking the first sheet's columns hid any course a second sheet added: the
+  // dates were imported and sat in the record, they simply never appeared on
+  // the matrix, so nobody could see the gap or raise the renewal.
+  const out=[];
+  (d.sheets||[]).filter(s=>s.group===group && s.status==='active').forEach(s=>{
+    (s.courses||[]).forEach(c=>{ if(c && c.name && out.indexOf(c.name)<0) out.push(c.name); });
+  });
+  // Then anything a person carries that no sheet declared - typed in the app,
+  // or left over from an earlier import with different columns.
+  (d.people||[]).filter(p=>p.group===group).forEach(p=>Object.keys(p.cells||{}).forEach(c=>{ if(out.indexOf(c)<0) out.push(c); }));
+  return out;
 }
 const _TRAGC={red:'#DC2626',amber:'#F59E0B',green:'#16A34A',grey:'#9CA3AF',blue:'#2563EB',na:'#D1D5DB',none:'transparent'};
 function _tRagCell(cell){

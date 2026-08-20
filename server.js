@@ -26,8 +26,15 @@ app.set('trust proxy', 1);
 // ── Middleware ────────────────────────────────────────────────
 app.use(cookieParser());
 
-// JSON body parsing (state route overrides with a larger limit)
-app.use(express.json({ limit: '1mb' }));
+// JSON body parsing. A route CANNOT override this by mounting its own parser:
+// express.json marks req._body on the first successful parse and every later
+// parser short-circuits on it, so a global parser silently caps the routes that
+// think they raised the limit. The two routes that carry a whole client record
+// are therefore skipped here and parse themselves (50mb and 25mb respectively).
+// Without this, any client record over 1mb failed to save with an HTML 413 that
+// the app could not even read as JSON.
+const _ownsItsBody = (p) => p === '/api/state' || p === '/api/offline/state';
+app.use((req, res, next) => _ownsItsBody(req.path) ? next() : express.json({ limit: '1mb' })(req, res, next));
 
 // ── Health check ──────────────────────────────────────────────
 //   /healthz returns 200 if both the process AND the DB are reachable.

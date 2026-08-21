@@ -14089,12 +14089,12 @@ const COCKPIT_WIDGETS = {
       const nSif=x.RD.sif.length, nUnc=x.RD.sifUncontrolled.length;
       const resHigh=x.RD.sif.filter(r=>{const p=_riskScore(r).priority;return p==='Critical'||p==='High';}).length;
       const sifCol=nUnc?'var(--danger)':(resHigh?'var(--warning)':'var(--text-muted)');
-      const sifNote=nSif===0?'':(nUnc?(' · '+nUnc+' uncontrolled'):(resHigh?(' · '+resHigh+' high residual'):' · all controlled'));
+      const sifNote=nSif===0?'':(nUnc?(' · '+nUnc+' uncontrolled'):(resHigh?(' · '+resHigh+' High or above'):' · all controlled'));
       const listSrc=(nSif?x.RD.sif:x.highRisk).slice(0,3);
       return _ckMod('Risk priorities', x.risks.length ? `
-        <div class="ck-row"><span>Critical and high (residual)</span><span style="color:${x.highRisk.length?'var(--danger)':'inherit'};font-weight:600;">${x.highRisk.length}</span></div>
+        <div class="ck-row"><span>Critical and high</span><span style="color:${x.highRisk.length?'var(--danger)':'inherit'};font-weight:600;">${x.highRisk.length}</span></div>
         <div class="ck-row"><span>Fatal-potential (inherent)</span><span style="color:${sifCol};font-weight:600;">${nSif}${sifNote}</span></div>
-        <div class="ck-row"><span>Medium (residual)</span><span style="font-weight:600;">${x.modRisk.length}</span></div>
+        <div class="ck-row"><span>Medium</span><span style="font-weight:600;">${x.modRisk.length}</span></div>
         ${listSrc.map(r=>{ const res=_riskScore(r); return `<div onclick="_gotoRisk('${r.id}')" title="Open this risk" style="cursor:pointer;font-size:13px;color:var(--text-muted);display:flex;justify-content:space-between;gap:8px;padding:2px 0;"><span>${esc(r.activity||r.hazard||'Unnamed risk')} ↗</span><span style="opacity:.75;white-space:nowrap;">${res.priority?('residual '+res.priority):_riskControlStatus(r)}</span></div>`; }).join('')}
         <button class="ck-link" onclick="switchTab('risk')">Open risk profile</button>`
       : _ckPend('No risks recorded yet.') + `<button class="ck-link" onclick="switchTab('risk')">Set up risk profile</button>`);
@@ -14658,7 +14658,8 @@ function _bandRangeText(){
   return `Low 1-${b.med-1} · Medium ${b.med}-${b.high-1} · High ${b.high}-${b.crit-1} · Critical ${b.crit}-25`;
 }
 
-// ── Three ratings: inherent / current(residual) / target (spec #2) ──
+// ── Two ratings: the risk as it stands, and the projection after the plan.
+//    (There was a third, 'inherent', retired when the middle box went.) ──
 function _scorePair(l, s){
   l = parseInt(l,10)||0; s = parseInt(s,10)||0;
   if(!l || !s) return { rating:null, priority:'', l, s };
@@ -14768,7 +14769,10 @@ function toggleTop5(refStr){
   const month=_top5Month();
   if(o.top5===month){ o.top5=''; }
   else {
-    if(_top5List(month).length>=TOP5_MAX){ showToast('Five are already marked for '+_top5MonthLabel(month)+' - untick one first','info'); return; }
+    // The box has already ticked itself - the browser does that before we get
+    // here. Refusing the sixth without repainting leaves six ticks on screen
+    // against five on the list, so the screen would contradict the state.
+    if(_top5List(month).length>=TOP5_MAX){ showToast('Five are already marked for '+_top5MonthLabel(month)+' - untick one first','info'); _refreshActionViews(); return; }
     o.top5=month;
   }
   if(typeof _stamp==='function') _stamp(o,'updated');
@@ -15343,7 +15347,7 @@ function gotoSifRisks(){
   switchTab('risk');
   _rpStatJump('sif');   // opens the risks section with the fatal-potential filter on
 }
-// Jump from the cockpit to just the High and Critical (residual) risks.
+// Jump from the cockpit to just the High and Critical risks.
 function gotoHighCritRisks(){
   _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:true };
   switchTab('risk');
@@ -18144,24 +18148,24 @@ function buildBoardReport(){
   let verdict;
   if(nFatal===0) verdict='No activities with the inherent potential to kill or seriously injure are currently recorded. Confirm the profile is complete before relying on this.';
   else {
-    verdict=nFatal+' activit'+(nFatal===1?'y has':'ies have')+' the inherent potential to cause fatal or major harm in the worst case. That is the starting point before controls, not the day-to-day risk. ';
+    verdict=nFatal+' activit'+(nFatal===1?'y has':'ies have')+' the inherent potential to cause fatal or major harm. ';
     if(nUnc>0) verdict+=nUnc+' of '+(nUnc===1?'them has':'them have')+' no control recorded yet and '+(nUnc===1?'is':'are')+' the priority. ';
     else verdict+='Controls are recorded against all of them. ';
-    verdict+='With those controls in place the residual risk is '+(sifResHigh?(sifResHigh+' still High or above'):'Medium or lower on all of them')+'.';
+    verdict+=(sifResHigh?(sifResHigh+' of them '+(sifResHigh===1?'is':'are')+' rated High or above on the inherent score, so the projected ratings on the plan are what the board is being asked to buy.'):'None of them is rated above Medium on the inherent score.');
   }
   K.verdictBox(verdict, nUnc>0 ? RED : (sifResHigh>0 ? AMBER : GREEN));
 
   // 2. Numbers + written board summary (side by side)
   K.section('The numbers that matter', NAVY);
   K.heroSplit(
-    [ {num:data.highestHarm.split(' /')[0], label:'Highest credible harm', color:data.maxSev>=4?RED:GREY, sub:'Worst-case, before controls'},
+    [ {num:data.highestHarm.split(' /')[0], label:'Highest credible harm', color:data.maxSev>=4?RED:GREY, sub:'Worst credible outcome'},
       {num:String(data.sif.length), label:'Fatal-potential risks', color:data.sifUncontrolled.length?RED:(data.sif.length?AMBER:NAVY), sub:'Inherent worst case'},
       {num:String(data.sifUncontrolled.length), label:'Of those, uncontrolled', color:data.sifUncontrolled.length?RED:NAVY, sub:'No completed control'},
       {num:data.execOverdue+' / '+data.execTotal, label:'Actions overdue', color:data.execOverdue?AMBER:NAVY, sub:'Across the whole plan'},
       {num:data.completeness+'%', label:'Assessment completeness', color:data.completeness<100?AMBER:GREEN, sub:'Profile built to date'},
       {num:(function(){const H=_holdSummary();return H.total?(H.held+' / '+H.total):'-';})(), label:'Risks assured', color:(function(){const H=_holdSummary();return !H.total?GREY:(H.breaches.length?RED:(H.held===H.total?GREEN:AMBER));})(), sub:'graded on facts'} ],
     { title:'Board summary',
-      paras:['Significant risks scored against the HSG65 framework, both before controls (inherent) and after (residual). '+(nFatal?(nFatal+(nFatal===1?' activity carries':' activities carry')+' inherent fatal or major potential; with the controls in place '+(sifResHigh?(sifResHigh+' remain High or above'):'all sit at Medium or lower')+'. '):'')+'The profile is '+data.completeness+'% complete, so these figures firm up as the rest is scored.'],
+      paras:['Significant risks scored against the HSG65 framework: the inherent rating of each activity, and where it is projected to sit once the planned controls are actioned. '+(nFatal?(nFatal+(nFatal===1?' activity carries':' activities carry')+' inherent fatal or major potential; '+(sifResHigh?(sifResHigh+(sifResHigh===1?' is':' are')+' rated High or above'):'none is rated above Medium')+'. '):'')+'The profile is '+data.completeness+'% complete, so these figures firm up as the rest is scored.'],
       subhead:'What the board must decide',
       bullets:decisions.slice(0,3).map(dz=>dz[0]),
       caption:'Reserved space - your written commentary and recommendations sit here on every report.' }
@@ -18386,7 +18390,10 @@ function buildExecPlanReportPDF(){
   const dueThis=open.filter(a=>_actionMonthKey(a.due)===thisKey && a.rag!=='red');
   const done=acts.filter(a=>a.status==='Complete');
   const monthName=(k)=>{ if(!k) return 'No target date'; const p=k.split('-'); return new Date(+p[0],+p[1]-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); };
-  K.verdictBox(open.length? (open.length+' action'+(open.length!==1?'s':'')+' to do'+(overdue.length?('  -  '+overdue.length+' overdue'):'')+(dueThis.length?('  -  '+dueThis.length+' due this month'):'')) : 'No open actions - the plan is clear.', overdue.length?RED:dueThis.length?AMBER:GREEN);
+  // Green means the plan is clear. Work in hand and on time is navy - it is not
+  // a problem, but it is not "nothing to do" either, and one colour cannot mean
+  // both without the banner losing its meaning.
+  K.verdictBox(open.length? (open.length+' action'+(open.length!==1?'s':'')+' to do'+(overdue.length?('  -  '+overdue.length+' overdue'):'')+(dueThis.length?('  -  '+dueThis.length+' due this month'):'')) : 'No open actions - the plan is clear.', overdue.length?RED:dueThis.length?AMBER:(open.length?NAVY:GREEN));
   K.section('At a glance', NAVY);
   K.tiles([{num:open.length,label:'Open',color:NAVY,sub:'To do'},{num:overdue.length,label:'Overdue',color:overdue.length?RED:NAVY,sub:'Past target'},{num:dueThis.length,label:'Due this month',color:dueThis.length?AMBER:NAVY,sub:'Focus'},{num:done.length,label:'Complete',color:done.length?GREEN:NAVY,sub:'Delivered'}]);
   const byMonth={}; open.forEach(a=>{ const k=_actionMonthKey(a.due); (byMonth[k]=byMonth[k]||[]).push(a); });

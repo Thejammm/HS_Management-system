@@ -345,7 +345,10 @@ export function docFor(state, key, opts = {}) {
   const clientName = opts.clientName || (s.branding && s.branding.name) || 'Your organisation';
   const clientCode = (String(clientName).replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase()) || 'AHS';
   const pfx = (def.refPrefix && String(def.refPrefix).trim()) ? String(def.refPrefix).trim() : ('AHS-' + clientCode);
-  const ref = (d.ref && String(d.ref).trim()) || (pfx + '-' + code + '-v' + String(version));
+  // Mirrors _autoDocRef: the version is printed as its own field, so the
+  // reference itself does not carry it (a ref that moves every revision is
+  // not a reference).
+  const ref = (d.ref && String(d.ref).trim()) || (pfx + '-' + code);
   return { ref, version, author, approverName, approverRole, issued, nextReview, omit: !!d.omit };
 }
 

@@ -123,7 +123,7 @@ test('docFor resolves the register row with org-default fallbacks', () => {
   assert.equal(b.author, 'Simon Archer');                 // org default fills the blank
   assert.equal(b.approverName, 'J Board');
   assert.equal(b.version, '2.1');
-  assert.equal(b.ref, 'AHS-EASY-BR-v2.1');                // auto ref: prefix + client code + doc code + version
+  assert.equal(b.ref, 'AHS-EASY-BR');                     // auto ref: prefix + client code + doc code, no version
   assert.equal(b.issued, '2026-08-18');                   // defaults to generation day
   assert.equal(b.nextReview, '2027-02-18');               // issued + reviewMonths
   const r = docFor(state, 'riskProfile', { today: '2026-08-18', clientName: 'Tenant Co' });
@@ -141,13 +141,14 @@ test('board and risk-assessment print the document-control details', () => {
   assert.match(html, /Simon Archer/);                      // prepared-by on the sign-off grid
   assert.match(html, /J Board/);                           // approver
   assert.match(html, /Managing Director/);
-  assert.match(html, /-BR-v3\.0/);                         // controlled reference in the masthead
+  assert.match(html, /-BR[^-]/);                           // controlled reference in the masthead
+  assert.doesNotMatch(html, /-BR-v3\.0/);                  // the version is its own field, not baked into the ref
   assert.match(html, /Version 3\.0/);
   assert.match(html, /next review/i);
   const ra = reportHTML(buildReport(state, 'risk-assessment', OPTS));
   assert.match(ra, /prepared by Simon Archer/);
   assert.match(ra, /approved by J Board, Managing Director/);
-  assert.match(ra, /-RP-v1\.0/);
+  assert.match(ra, /-RP[^-]/);
 });
 
 test('training rows come from the v2 people store, legacy migrates identically', () => {

@@ -71,7 +71,7 @@ export function dataTable({ title, cols, rows, footnote }) {
     (footnote ? `<div class="r-footnote">${esc(footnote)}</div>` : '');
 }
 
-// Now → after, two thin bars in line: the risk as it stands today (solid,
+// Inherent → projected, two thin bars in line: the risk as it stands (solid,
 // band colour) above where it is projected to sit once the planned controls
 // are actioned (hatched, because it has not been earned yet). Numbers
 // alongside. A projection is a plan, so it never renders as solid.
@@ -79,23 +79,23 @@ export function dualBar({ residual, projected, tier }) {
   const colour = tier ? (TIER_COLOURS[tier] || '#b7b7ba') : '#b7b7ba';
   const w = s => Math.max(3, Math.min(100, ((s && s.score) || 0) / 25 * 100));
   return `<span class="r-wasnow">
-    <span class="r-wn-row"><i class="r-wn-lab">now</i><i class="r-wn-track">${residual ? `<i class="r-wn-fill" style="width:${w(residual)}%;background:${colour}"></i>` : ''}</i><b class="r-wn-val">${residual ? residual.score : '-'}</b></span>
-    <span class="r-wn-row"><i class="r-wn-lab">after</i><i class="r-wn-track">${projected ? `<i class="r-wn-fill r-wn-ghost" style="width:${w(projected)}%"></i>` : ''}</i><b class="r-wn-val">${projected ? projected.score : '-'}</b></span>
+    <span class="r-wn-row"><i class="r-wn-lab">inherent</i><i class="r-wn-track">${residual ? `<i class="r-wn-fill" style="width:${w(residual)}%;background:${colour}"></i>` : ''}</i><b class="r-wn-val">${residual ? residual.score : '-'}</b></span>
+    <span class="r-wn-row"><i class="r-wn-lab">projected</i><i class="r-wn-track">${projected ? `<i class="r-wn-fill r-wn-ghost" style="width:${w(projected)}%"></i>` : ''}</i><b class="r-wn-val">${projected ? projected.score : '-'}</b></span>
   </span>`;
 }
 
 // The board register's score cell, matching the app's own strip
-// (now → plan → projected): the score as it stands, the score the plan is
+// (inherent → projected): the score as it stands, the score the plan is
 // working towards, and how much of the plan is delivered. Forward-looking on
 // Simon's instruction - the board wants "how are we doing", not history.
 export function planBar({ residual, target, tier, targetTier, actsTotal, actsClosed }) {
   const w = s => Math.max(3, Math.min(100, ((s && s.score) || 0) / 25 * 100));
   const nowColour = tier ? (TIER_COLOURS[tier] || '#b7b7ba') : '#b7b7ba';
   const tgtColour = targetTier ? (TIER_COLOURS[targetTier] || '#b7b7ba') : '#b7b7ba';
-  const nowRow = `<span class="r-wn-row"><i class="r-wn-lab">now</i><i class="r-wn-track">${residual ? `<i class="r-wn-fill" style="width:${w(residual)}%;background:${nowColour}"></i>` : ''}</i><b class="r-wn-val">${residual ? residual.score : '-'}</b></span>`;
+  const nowRow = `<span class="r-wn-row"><i class="r-wn-lab">inherent</i><i class="r-wn-track">${residual ? `<i class="r-wn-fill" style="width:${w(residual)}%;background:${nowColour}"></i>` : ''}</i><b class="r-wn-val">${residual ? residual.score : '-'}</b></span>`;
   const planRow = target
-    ? `<span class="r-wn-row"><i class="r-wn-lab">plan</i><i class="r-wn-track"><i class="r-wn-fill r-wn-plan" style="width:${w(target)}%;background:${tgtColour}"></i></i><b class="r-wn-val">${target.score}</b></span>`
-    : `<span class="r-wn-row"><i class="r-wn-lab">plan</i><i class="r-wn-none">no target score set</i></span>`;
+    ? `<span class="r-wn-row"><i class="r-wn-lab">projected</i><i class="r-wn-track"><i class="r-wn-fill r-wn-plan" style="width:${w(target)}%;background:${tgtColour}"></i></i><b class="r-wn-val">${target.score}</b></span>`
+    : `<span class="r-wn-row"><i class="r-wn-lab">projected</i><i class="r-wn-none">no target score set</i></span>`;
   const prog = actsTotal
     ? `<span class="r-wn-prog">${actsClosed} of ${actsTotal} action${actsTotal !== 1 ? 's' : ''} done</span>`
     : `<span class="r-wn-prog r-wn-prog-none">no actions planned yet</span>`;

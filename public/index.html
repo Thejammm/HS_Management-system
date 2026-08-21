@@ -16427,8 +16427,19 @@ function _renderScoringKey(){
     <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('settings',17)} Scoring key <span style="font-weight:400;font-size:12px;color:var(--text-muted);">Likelihood × Severity, 1-5 each · ${esc(_bandRangeText())}</span></summary>
     <div class="sc-body">
       <div class="scorekey-grid">
-        <div><div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Likelihood (1-5)</div>${cfg.like.map((t,i)=>line('likelihood',i,t)).join('')}</div>
-        <div><div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Severity (1-5)</div>${cfg.sev.map((t,i)=>line('severity',i,t)).join('')}</div>
+        <div><div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Likelihood (1-5) <span class="fl-hint" title="How likely the harmful event is. Moves when a control stops the event happening: segregation, guarding, planned maintenance, permits, supervision, competence.">(?)</span></div>${cfg.like.map((t,i)=>line('likelihood',i,t)).join('')}</div>
+        <div><div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Severity (1-5) <span class="fl-hint" title="How bad the harm would credibly be, and this number is NOT fixed. It moves whenever a control limits the extent of harm: lower speed, lower height, less energy or quantity, fall-arrest, containment, impact protection, fewer people exposed.">(?)</span></div>${cfg.sev.map((t,i)=>line('severity',i,t)).join('')}</div>
+      </div>
+      <div style="margin-top:16px;padding:13px 15px;border:1px solid var(--success-brd);border-left:3px solid var(--success);border-radius:10px;background:var(--success-bg);">
+        <div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:9px;text-transform:uppercase;letter-spacing:.03em;">Worked example - severity is not fixed</div>
+        <div style="font-size:12.5px;line-height:1.7;color:var(--text);">
+          <div style="margin-bottom:8px;">The inherent severity of a hazard may not change, but the <strong>credible consequence can</strong> - wherever the control genuinely limits the extent of harm. Score what the control actually does.</div>
+          <div><strong>Vehicle strikes a pedestrian in the yard.</strong> Start at L4 &times; S5 = 20, Critical.</div>
+          <div style="margin-top:5px;">&bull; <strong>Segregate the walkway.</strong> A strike becomes far less likely, but a strike is still a strike. <strong>L4 &rarr; L2, S stays 5</strong> = 10.</div>
+          <div style="margin-top:4px;">&bull; <strong>Add a 5 mph yard limit.</strong> Now the worst credible outcome changes as well - at 5 mph you get bruising, not a fatality. <strong>S5 &rarr; S3</strong> = 6.</div>
+          <div style="margin-top:9px;">Same logic elsewhere: a guardrail cuts how likely the fall is, a <strong>fall-arrest system cuts what the fall does to you</strong>. A seat belt does not stop the collision, it changes the injury. So do containment, blast walls, fire-resisting construction, suppression and impact protection.</div>
+          <div style="margin-top:9px;">The discipline: a <strong>hard hat does not turn a fall from a scaffold from S5 into S2</strong>. Where the control does nothing to the worst credible outcome, move likelihood only and leave severity where it is - and say why in the notes when you do move it.</div>
+        </div>
       </div>
       <div style="font-weight:700;font-size:12px;color:var(--text-muted);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.03em;">Band thresholds (rating = L × S)</div>
       <div class="band-line"><span style="width:70px;color:#16A34A;font-weight:700;">Low</span><span>1 to ${b.med-1}</span></div>
@@ -18657,7 +18668,11 @@ function renderRiskProfile(){
   const hazHint   = `<span class="fl-hint" title="A hazard is the SOURCE of harm (e.g. a forklift truck, a fragile roof). The risk is the likelihood that hazard causes harm, and how serious it would be.">(?)</span>`;
   const trendHint = `<span class="fl-hint" title="Indicates whether the level of risk is changing over time.">(?)</span>`;
 
-  const rsel = (id,f,v,first) => `<select${dis} title="${first==='L'?'Likelihood':'Severity'} 1-5" onchange="updateRiskRating('${id}','${f}',this.value)"><option value="">${first}</option>${[1,2,3,4,5].map(n=>`<option value="${n}"${String(v||'')===String(n)?' selected':''}>${n}</option>`).join('')}</select>`;
+  // One-liners on the L and S boxes. SEV_TIP is deliberately blunt: the most
+  // common scoring error is treating severity as fixed and only ever moving L.
+  const LIKE_TIP = 'Likelihood 1-5 - how likely the harmful event is. Moves when a control stops the event happening: segregation, guarding, planned maintenance, permits, supervision, competence.';
+  const SEV_TIP  = 'Severity 1-5 - how bad it would credibly be, and this number is NOT fixed. It moves whenever a control limits the extent of harm: lower speed, lower height, less energy or quantity, fall-arrest, containment, impact protection, fewer people exposed.';
+  const rsel = (id,f,v,first) => `<select${dis} title="${first==='L'?LIKE_TIP:SEV_TIP}" onchange="updateRiskRating('${id}','${f}',this.value)"><option value="">${first}</option>${[1,2,3,4,5].map(n=>`<option value="${n}"${String(v||'')===String(n)?' selected':''}>${n}</option>`).join('')}</select>`;
   const ratingBox = (r,title,cls,lf,sf) => `<div class="rt-box ${cls}"><div class="rt-title">${title}</div><div class="rt-selects">${rsel(r.id,lf,r[lf],'L')}${rsel(r.id,sf,r[sf],'S')}</div></div>`;
 
   const pdcaHint = `<span class="fl-hint" title="Plan-Do-Check-Act - where this risk sits in the manage-for-H&S cycle. Leave blank to derive it from the controls and actions you record.">(?)</span>`;
@@ -19076,6 +19091,7 @@ function buildRiskProfileReportPDF(){
     doc.setFont('helvetica','normal'); doc.setFontSize(8.8); doc.setTextColor(75,75,75); arr.forEach((t,i)=>doc.text((i+1)+'   '+t, x, yy+5.2+i*4.4)); };
   skCol('Likelihood', cfg.like, C.key, ML); skCol('Severity', cfg.sev, C.key, ML+92);
   y += 5.2+5*4.4+2;
+  text('Severity is not fixed. A control that only makes the event less likely moves likelihood alone (segregation, guarding, permits, supervision). A control that limits the extent of harm moves severity as well (speed limits, fall-arrest, containment, impact protection, fire-resisting construction, suppression). Where a control does nothing to the worst credible outcome, likelihood alone is reduced.', 8.5, false, [120,120,120]);
   text('Hazard model: a hazard is an energy source; harm occurs on the unplanned release of, or contact with, that energy (energy-damage model - Haddon; HSE). SIF (serious injury / fatality) potential is flagged independently of likelihood.', 8.5, false, [120,120,120]);
 
   // ── Per-page footer ──

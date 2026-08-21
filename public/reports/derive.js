@@ -43,6 +43,37 @@ export const TIER_ORDER = ['Critical', 'High', 'Medium', 'Low'];
 // ── Scores ──
 const int = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 1 && n <= 5 ? n : null; };
 
+// The six HSG65 areas and the five business-impact dimensions, as the app
+// names them (MATURITY_ORDER and RISK_IMPACT_DIMS). Fixed lists on both sides.
+const HSG65_AREAS = ['leadership', 'contractor', 'ohealth', 'opcontrol', 'assurance', 'resilience'];
+const IMPACT_DIMS = ['people', 'financial', 'legal', 'reputational', 'operational'];
+
+// Mirrors the app's _complScored / _complTally: ten yes/no checks, counted.
+// Each returns true when the check is CLEAR. Keep the order and the wording of
+// the checks in step with the app, or the drill-down and the paper diverge.
+export function completenessOf(s, risks, openActs) {
+  const co = s.company || {};
+  const filled = k => !!(co[k] && String(co[k]).trim());
+  const judged = ((s.profiler || {}).judgement) || {};
+  const as = s.riskAssurance || {};
+  let reqPend = 0;
+  (Array.isArray(s.requirements) ? s.requirements : []).forEach(sec =>
+    (sec.items || []).forEach(it => { if (!it.reviewed) reqPend++; }));
+  const checks = [
+    filled('legalName') && filled('employees') && filled('elciInsurer'),
+    !risks.some(r => !(parseInt(r.likelihood, 10) && parseInt(r.severity, 10))),
+    !risks.some(r => !r.reviewed),
+    !risks.some(r => !r.controlLevel),
+    !risks.some(r => !IMPACT_DIMS.some(k => parseInt((r.impacts || {})[k], 10) > 0)),
+    !HSG65_AREAS.some(id => !((judged[id] || {}).level)),
+    !openActs.some(a => !(a.owner && String(a.owner).trim())),
+    !openActs.some(a => !a.due),
+    reqPend === 0,
+    ['leading', 'lagging', 'assurance'].some(k => Array.isArray(as[k]) && as[k].length),
+  ];
+  return { clear: checks.filter(Boolean).length, total: checks.length };
+}
+
 export function residualOf(risk) {
   const l = int(risk && risk.likelihood), s = int(risk && risk.severity);
   return (l && s) ? { l, s, score: l * s } : null;
@@ -246,7 +277,9 @@ export function deriveBoard(state, opts = {}) {
   // (risk-profile actions + management-system item actions + plan-added) -
   // the board pack may never disagree with the plan (UAT finding #9).
   const acts = [];
-  const pushAct = a => { if (a && !a.deleted && (a.desc || a.owner || a.due)) acts.push(a); };
+  // hideFromPlan matches _execActions: an action the consultant has taken off
+  // the plan is off it on paper too, or the two counts drift apart.
+  const pushAct = a => { if (a && !a.deleted && !a.hideFromPlan && (a.desc || a.owner || a.due)) acts.push(a); };
   risks.forEach(r => ((r.actions) || []).forEach(pushAct));
   (Array.isArray(s.requirements) ? s.requirements : []).forEach(sec => (sec.items || []).forEach(it => (it.actions || []).forEach(pushAct)));
   (Array.isArray(s.actionPlan) ? s.actionPlan : []).forEach(pushAct);
@@ -326,15 +359,12 @@ export function deriveBoard(state, opts = {}) {
     holdS, meanScore, profileTier, hierarchy, hierTotal, protectDown,
     registerRows, maxSev, highestHarm: HARM_LADDER[maxSev] || '-',
     duties, headline, standfirst,
-    // Assessment completeness, the app's own formula: rated risks +
-    // monitoring populated, over risks + 1 (the 0-5 domain scoring is gone).
-    completeness: (function () {
-      const as = s.riskAssurance || {};
-      const monPop = ['leading', 'lagging', 'assurance'].some(k => Array.isArray(as[k]) && as[k].length) ? 1 : 0;
-      const tot = risks.length + 1;
-      const filled = rated.length + monPop;
-      return tot ? Math.round(filled / tot * 100) : 0;
-    })(),
+    // Assessment completeness - the app's _complScored, check for check and in
+    // the same order. Ten plain yes/no questions about data that is either
+    // recorded or not, counted rather than averaged, so the figure is a tally
+    // of facts and not a grade. Every one reads the saved state only, which is
+    // what lets paper and screen produce the same answer.
+    complete: completenessOf(s, risks, openActs),
     company: co, empty: !rated.length,
   };
 }

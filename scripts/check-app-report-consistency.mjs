@@ -91,7 +91,7 @@ const app = await page.evaluate((STATE) => {
   return {
     sif: RD.sif.length,
     sifUncontrolled: RD.sifUncontrolled.length,
-    completeness: RD.completeness,
+    complete: RD.complete,
     matJudged: RD.matJudged,
     byBand: _riskProfileLevel(),
     meanScore: M.meanScore == null ? null : +M.meanScore.toFixed(6),
@@ -131,7 +131,8 @@ const diffs = [];
 const eq = (label, a, b) => { const ja = JSON.stringify(a), jb = JSON.stringify(b); if (ja !== jb) diffs.push(label + ': app=' + ja + ' report=' + jb); };
 eq('fatal-potential count', app.sif, D.fatal);
 eq('fatal-potential uncontrolled', app.sifUncontrolled, D.fatalUncontrolled);
-eq('assessment completeness %', app.completeness, D.completeness);
+eq('assessment checks clear', app.complete.clear, D.complete.clear);
+eq('assessment checks total', app.complete.total, D.complete.total);
 eq('high band', app.byBand.high, D.byTier.High);
 eq('critical band', app.byBand.crit, D.byTier.Critical);
 eq('medium band', app.byBand.med, D.byTier.Medium);

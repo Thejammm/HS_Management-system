@@ -3638,6 +3638,37 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
     </div>
     <div id="documentsContainer"></div>
+
+    <!-- Risk assessment register (moved here from Assurance records so staff
+         logins can read it - the Documents tab is in the employee view) -->
+    <div class="card no-print" style="margin:26px 0 16px;" id="raRegTools">
+      <div class="card-band"><h3><span class="dot">●</span> Risk assessment register</h3>
+        <span class="badge badge-muted" id="raRegBadge"></span>
+      </div>
+      <div class="card-body">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
+          A register of this client's risk assessments and RAMS, with where each PDF lives. The client's folder stays the master: drag the folder (or its files) below and the register indexes itself from the file names and dates - drag it again any time to refresh. Nothing is uploaded; the app records names, paths and dates only.
+        </div>
+        <div id="raDropZone" class="no-print" ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--muted-bg)';" ondragleave="this.style.borderColor='var(--border)';this.style.background='transparent';" ondrop="raHandleDrop(event)"
+             style="border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;margin-bottom:12px;cursor:pointer;" onclick="document.getElementById('raFilePick').click()">
+          <div style="font-weight:700;font-size:14px;">Drag the client's risk assessment folder (or files) here</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">…or click to choose files · re-dragging refreshes the index · PDF, Word and Excel files are read; other files are skipped</div>
+          <div id="raSyncNote" style="font-size:11.5px;color:var(--text-muted);margin-top:6px;"></div>
+        </div>
+        <input type="file" id="raFilePick" multiple style="display:none;" onchange="raHandleFilePick(this)">
+        <input type="file" id="raFolderPick" webkitdirectory style="display:none;" onchange="raHandleFilePick(this)">
+        <div class="field-group no-print" style="margin-bottom:12px;">
+          <label class="field-label">Folder path on the client's system <span class="fl-hint" title="Browsers cannot read a dropped file's full location, so paste the folder's path once (e.g. S:\H&S\Risk Assessments). Each indexed file's location becomes this path + the file name. Pasted quotes are stripped.">(?)</span></label>
+          <input type="text" id="raFolderPath" placeholder="e.g. S:\H&S\Risk Assessments  (paste once - used to build each file's location)" onchange="updateRaFolderPath(this.value)">
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-primary no-print" onclick="addRaRegEntry()">＋ Add risk assessment</button>
+          <button class="btn btn-ghost no-print" onclick="document.getElementById('raFolderPick').click()" title="Pick the whole folder instead of dragging">Index a folder…</button>
+          <button class="btn btn-ghost no-print" onclick="switchTab('reports')" title="Print the register as a PDF">Print register (Reports tab) →</button>
+        </div>
+      </div>
+    </div>
+    <div id="raRegisterContainer"></div>
   </div>
 
   <!-- ══════════════════════════════════════
@@ -3754,36 +3785,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="monitoringContainer"></div>
     <div id="riskAssurance"></div>
     <div id="incidentPanel"></div>
-
-    <!-- Risk assessment register -->
-    <div class="card no-print" style="margin:26px 0 16px;">
-      <div class="card-band"><h3><span class="dot">●</span> Risk assessment register</h3>
-        <span class="badge badge-muted" id="raRegBadge"></span>
-      </div>
-      <div class="card-body">
-        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
-          A register of this client's risk assessments and RAMS, with where each PDF lives. The client's folder stays the master: drag the folder (or its files) below and the register indexes itself from the file names and dates - drag it again any time to refresh. Nothing is uploaded; the app records names, paths and dates only.
-        </div>
-        <div id="raDropZone" class="no-print" ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--muted-bg)';" ondragleave="this.style.borderColor='var(--border)';this.style.background='transparent';" ondrop="raHandleDrop(event)"
-             style="border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;margin-bottom:12px;cursor:pointer;" onclick="document.getElementById('raFilePick').click()">
-          <div style="font-weight:700;font-size:14px;">Drag the client's risk assessment folder (or files) here</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">…or click to choose files · re-dragging refreshes the index · PDF, Word and Excel files are read; other files are skipped</div>
-          <div id="raSyncNote" style="font-size:11.5px;color:var(--text-muted);margin-top:6px;"></div>
-        </div>
-        <input type="file" id="raFilePick" multiple style="display:none;" onchange="raHandleFilePick(this)">
-        <input type="file" id="raFolderPick" webkitdirectory style="display:none;" onchange="raHandleFilePick(this)">
-        <div class="field-group no-print" style="margin-bottom:12px;">
-          <label class="field-label">Folder path on the client's system <span class="fl-hint" title="Browsers cannot read a dropped file's full location, so paste the folder's path once (e.g. S:\H&S\Risk Assessments). Each indexed file's location becomes this path + the file name. Pasted quotes are stripped.">(?)</span></label>
-          <input type="text" id="raFolderPath" placeholder="e.g. S:\H&S\Risk Assessments  (paste once - used to build each file's location)" onchange="updateRaFolderPath(this.value)">
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-          <button class="btn btn-primary no-print" onclick="addRaRegEntry()">＋ Add risk assessment</button>
-          <button class="btn btn-ghost no-print" onclick="document.getElementById('raFolderPick').click()" title="Pick the whole folder instead of dragging">Index a folder…</button>
-          <button class="btn btn-ghost no-print" onclick="switchTab('reports')" title="Print the register as a PDF">Print register (Reports tab) →</button>
-        </div>
-      </div>
-    </div>
-    <div id="raRegisterContainer"></div>
+    <!-- The Risk assessment register lived here; it now sits at the bottom of
+         the Documents tab, where employee logins can read it too. -->
   </div>
 
   <!-- ══════════════════════════════════════
@@ -5449,11 +5452,11 @@ function switchTab(id) {
   if(id==='requirements'){ renderRequirements(); }
   if(id==='actionplan'){ renderActionPlanTab(); }
   if(id==='execplan'){ renderExecPlan(); }
-  if(id==='monitoring'){ renderMonitoring(); renderRaRegister(); }
+  if(id==='monitoring'){ renderMonitoring(); }
   if(id==='links')    { renderAppLinks(); }
   if(id==='siteinsp') { renderSiteInsp(); }
   if(id==='review')   { renderReview(); }
-  if(id==='documents'){ renderDocuments(); }
+  if(id==='documents'){ renderDocuments(); renderRaRegister(); }
   if(id==='cpd')      { renderCPD(); }
   if(id==='toolbox')  { renderToolbox(); }
   if(id==='signoff')  { renderPolicySignoff(); }
@@ -13566,6 +13569,7 @@ function applyViewMode(){
   document.body.classList.toggle('inspector-mode', insp);
   try{ if(typeof renderApprovedPartner==='function') renderApprovedPartner(); }catch(e){}   // consultant-only block follows the view
   try{ if(typeof renderAppLinks==='function') renderAppLinks(); }catch(e){}                 // link-management controls follow the view too
+  try{ if(typeof renderRaRegister==='function') renderRaRegister(); }catch(e){}             // RA register locks down in the employee view
 }
 
 // Consultant dial-in is READ-WRITE: when Simon picks a client to work on, his
@@ -21189,12 +21193,22 @@ function renderRaRegister(){
   const cont = document.getElementById('raRegisterContainer');
   if(!cont) return;
   const list = _raRegState();
+  // Employee view: the register reads like a library - the indexing chrome is
+  // the consultant's and the client's, so it hides, the fields lock, and a
+  // plain header explains how to open each file.
+  const emp = (typeof _empView==='function') && _empView();
+  const tools = document.getElementById('raRegTools');
+  if(tools) tools.style.display = emp ? 'none' : '';
   const badge = document.getElementById('raRegBadge');
   if(badge){
     const overdue = list.filter(e=>_raRegStatus(e).key==='overdue').length;
     badge.textContent = list.length ? (list.length + (list.length===1?' assessment':' assessments') + (overdue?(' · '+overdue+' review overdue'):'')) : '';
   }
-  const ro = _roLocked();
+  const ro = _roLocked() || emp;
+  const empHead = emp ? `<div class="card" style="margin:26px 0 12px;">
+      <div class="card-band"><h3><span class="dot">●</span> Risk assessment register</h3><span class="badge badge-muted">${list.length?(list.length+(list.length===1?' assessment':' assessments')):''}</span></div>
+      <div class="card-body" style="font-size:12.5px;color:var(--text-muted);line-height:1.5;">The company's risk assessments and where each one lives. Click <b>Open</b> to view a linked file, or <b>Copy</b> and paste the location into File Explorer to open it on your system.</div>
+    </div>` : '';
   // Folder-index panel state (path box + last-sync note live outside this container)
   const fldEl=document.getElementById('raFolderPath');
   if(fldEl && document.activeElement!==fldEl) fldEl.value=_raFolderState().path||'';
@@ -21202,10 +21216,12 @@ function renderRaRegister(){
   if(noteEl){ const fs=_raFolderState(); const idx=list.filter(e=>e.indexed).length; const miss=list.filter(e=>e.missing).length;
     noteEl.textContent = fs.lastSync ? ('Last indexed '+fs.lastSync+' · '+idx+' file'+(idx!==1?'s':'')+' on the register'+(miss?(' · ⚠ '+miss+' no longer seen'):'')) : ''; }
   if(!list.length){
-    cont.innerHTML = '<div class="rar-grid"><div class="rar-empty">No risk assessments recorded yet. Drag the client\'s RA folder into the box above and the register builds itself - or add one by hand.</div></div>';
+    cont.innerHTML = empHead + '<div class="rar-grid"><div class="rar-empty">' + (emp
+      ? 'No risk assessments on the register yet.'
+      : 'No risk assessments recorded yet. Drag the client\'s RA folder into the box above and the register builds itself - or add one by hand.') + '</div></div>';
     return;
   }
-  cont.innerHTML = '<div class="rar-grid">' + list.map(e=>{
+  cont.innerHTML = empHead + '<div class="rar-grid">' + list.map(e=>{
     const st = _raRegStatus(e);
     const loc = (e.location||'').trim();
     const locCtrl = loc

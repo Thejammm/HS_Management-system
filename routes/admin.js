@@ -36,6 +36,12 @@ function _cleanConfig(input){
     const allowed = ['garage','construction'];
     out.packs = [...new Set(src.packs.map(x => String(x)).filter(x => allowed.includes(x)))];
   }
+  // Subscription: which AHS apps show on this tenant's Quick links tab.
+  // Keys of the front-end MY_APPS catalogue; empty = none ticked.
+  if(Array.isArray(src.apps)){
+    const allowedApps = ['rams','siteinsp','inspections','drm','insight','loler','pdsitetools'];
+    out.apps = [...new Set(src.apps.map(x => String(x)).filter(x => allowedApps.includes(x)))];
+  }
   if(src.branding && typeof src.branding === 'object' && !Array.isArray(src.branding)){
     const b = {};
     ['primary','accent','textColor'].forEach(k => {

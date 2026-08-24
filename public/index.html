@@ -17406,7 +17406,7 @@ function backupRiskData(){
 //  one output. Additive: does not touch the existing risk register.
 // ══════════════════════════════════════════════════════════════
 const PROF_LIBRARY = {
-  version: '2026.07-p2',
+  version: '2026.08-p3',
   domains: [
     // ── Exposure domains (1-7): fact-gathering, no scoring ──
     { id:'business', n:1, name:'Business Profile', type:'exposure', badge:'#2563EB',
@@ -17464,7 +17464,9 @@ const PROF_LIBRARY = {
         { id:'o_infection', q:'Are staff exposed to infection, blood or bodily fluids?', help:'Biological agents (COSHH).' },
         { id:'o_medicines', q:'Do staff handle or administer medicines?', help:'Hazardous and cytotoxic drugs.' },
         { id:'o_medrad',    q:'Do you use medical imaging, X-ray or lasers?', help:'Ionising / optical radiation.' },
-        { id:'o_pool',      q:'Do you operate a swimming pool, spa or leisure water?', help:'Drowning and pool chemicals.' }
+        { id:'o_pool',      q:'Do you operate a swimming pool, spa or leisure water?', help:'Drowning and pool chemicals.' },
+        { id:'o_scafferect',q:'Do you erect, alter or dismantle scaffolding or temporary structures for others?', help:'Scaffolding as a service - trained scaffolders, SG4 fall protection, TG20 or bespoke design, handover and 7-day inspections.' },
+        { id:'o_roadside',  q:'Do people work on or next to live roads, footways or public highways?', help:'Verge and street work, deliveries in the road, scaffolds and hoardings on the footway - traffic management and highway licences.' }
       ]},
     { id:'premises', n:3, name:'Premises Profile', type:'exposure', badge:'#0891B2',
       items:[
@@ -17784,13 +17786,32 @@ const PROF_RULES = [
   { id:'infection', when:'o_infection', ceiling:4, controls:'ohealth', legal:'COSHH 2002 (biological agents)', requires:['Infection prevention and control procedures','Immunisation programme','PPE and sharps/spillage procedures'], risks:[{ hazard:'Exposure to infection, blood or bodily fluids', category:'Biological', persons:['Employees'], harm:'Bloodborne or infectious disease' }] },
   { id:'medicines', when:'o_medicines', ceiling:3, controls:'ohealth', legal:'HSWA 1974; COSHH 2002', requires:['Safe handling and storage of medicines','Controls for cytotoxic or hazardous drugs','Spillage and exposure procedure'], risks:[{ hazard:'Exposure to hazardous or cytotoxic medicines', category:'Chemical / Hazardous substances', persons:['Employees'], harm:'Chemical or cytotoxic exposure' }] },
   { id:'medrad', when:'o_medrad', ceiling:4, controls:'ohealth', legal:'Ionising Radiations Regulations 2017', requires:['Radiation protection adviser and local rules','Dose monitoring','Controlled areas and shielding'], risks:[{ hazard:'Exposure to ionising or optical radiation', category:'Health (occupational)', persons:['Employees'], harm:'Radiation dose; tissue or long-term harm' }] },
-  { id:'pool', when:'o_pool', ceiling:4, controls:'opcontrol', legal:'HSG179 (swimming pools); COSHH 2002', requires:['Pool safety operating procedures (NOP and EAP)','Competent supervision or lifeguarding','Water treatment and pool-chemical controls'], risks:[{ hazard:'Drowning or pool-chemical incident', category:'Physical', persons:['Employees','Members of the Public'], harm:'Drowning or chemical injury at a pool' }] }
+  { id:'pool', when:'o_pool', ceiling:4, controls:'opcontrol', legal:'HSG179 (swimming pools); COSHH 2002', requires:['Pool safety operating procedures (NOP and EAP)','Competent supervision or lifeguarding','Water treatment and pool-chemical controls'], risks:[{ hazard:'Drowning or pool-chemical incident', category:'Physical', persons:['Employees','Members of the Public'], harm:'Drowning or chemical injury at a pool' }] },
+  { id:'scafferect', when:'o_scafferect', ceiling:5, controls:'opcontrol', legal:'Work at Height Regulations 2005; NASC SG4 and TG20 industry guidance', requires:[
+      'Scaffolds erected, altered and dismantled only by trained scaffolders (CISRS or equivalent), with competence records held',
+      'Standard configurations built to a TG20 compliance sheet; anything outside it under a bespoke temporary-works design',
+      'Fall protection during erection and dismantling to NASC SG4 (scaffolders\' safe zones, advanced guardrails or harnesses)',
+      'Handover certificates issued, and scaffolds inspected every 7 days and after alteration or adverse weather, with records kept',
+      'Public protection where scaffolds stand on or over footways - fans, netting, lighting and licence conditions'
+    ], risks:[
+      { hazard:'Fall during scaffold erection, alteration or dismantling', category:'Work at height', persons:['Employees'], harm:'Fall from height causing major injury or fatality' },
+      { hazard:'Scaffold collapse or falling components', category:'Work at height', persons:['Employees','Members of the Public'], harm:'Structural collapse or falling tubes and boards striking workers or the public' }
+    ]},
+  { id:'roadside', when:'o_roadside', ceiling:5, controls:'opcontrol', legal:'HSWA 1974 s.3; Safety at Street Works and Road Works Code of Practice', requires:[
+      'Traffic management planned before work starts on or next to a live carriageway or footway - signing, lighting and guarding to the Safety at Street Works code (Chapter 8 for temporary traffic management)',
+      'Highway permissions in place where the highway is occupied - scaffold, hoarding, skip or street-works licences from the highway authority',
+      'High-visibility clothing worn and safe pedestrian routes maintained past the works',
+      'Vehicles and plant positioned to protect the work area, with reversing controlled'
+    ], risks:[
+      { hazard:'Worker struck by passing traffic', category:'Physical', persons:['Employees','Members of the Public'], harm:'Struck by a moving vehicle causing major injury or fatality' }
+    ]}
 ];
 
 function _profState(){
   if(!S.profiler||typeof S.profiler!=='object') S.profiler={};
   const p=S.profiler;
   if(typeof p.exposure!=='object'||!p.exposure) p.exposure={};
+  if(typeof p.sectors!=='object'||!p.sectors) p.sectors={};
   if(typeof p.maturity!=='object'||!p.maturity) p.maturity={};
   if(typeof p.incidents!=='object'||!p.incidents) p.incidents={};
   if(typeof p.reqReview!=='object'||!p.reqReview) p.reqReview={};
@@ -19442,11 +19463,125 @@ function downloadRiskProfileReport(){
 //  S.profiler.exposure, which the rules engine already consumes.
 // ══════════════════════════════════════════════════════════════
 function _discDomains(){ return (typeof PROF_LIBRARY!=='undefined')?PROF_LIBRARY.domains.filter(d=>d.type==='exposure'):[]; }
+// ── Sector gate: the wizard fits itself to what the business does. The first
+//    page asks which sectors apply; only the questions that fit are then asked.
+//    One question bank, nothing renumbered: a question with no sector tags is
+//    universal and always asked, an ANSWERED question is always shown wherever
+//    it came from, and with no sectors ticked every question shows (exactly
+//    the old behaviour, so existing clients are unaffected).
+const SECTOR_DEFS=[
+  { k:'construction', label:'Construction or building trades',           hint:'Site work, installation, refurbishment, scaffolding' },
+  { k:'design',       label:'Design, surveying or consultancy',          hint:'Architecture, retrofit surveys, engineering, CDM roles' },
+  { k:'manufacture',  label:'Manufacturing or fabrication',              hint:'Workshops, machining, sheet metal, assembly' },
+  { k:'motor',        label:'Vehicle repair or maintenance',             hint:'Garage, MOT, tyres, bodywork' },
+  { k:'transportsvc', label:'Transport, passenger or delivery services', hint:'Taxis, assisted travel, haulage, couriers' },
+  { k:'land',         label:'Landscaping, grounds or agriculture',       hint:'Gardens, grounds care, tree work, farming' },
+  { k:'office',       label:'Office or professional services',           hint:'Desk-based work, IT, administration' },
+  { k:'care',         label:'Care, health or education',                 hint:'Support services, clinical work, work with children or adults at risk' },
+  { k:'hospitality',  label:'Retail, food or hospitality',               hint:'Shops, kitchens, customer premises' },
+  { k:'warehouse',    label:'Warehousing, storage or logistics',         hint:'Racking, forklifts, loading' },
+  { k:'property',     label:'Property or facilities management',         hint:'Landlord duties, maintenance, managing premises or contractors for others' },
+  { k:'leisure',      label:'Events, leisure or sport',                  hint:'Venues, activities, public events' }
+];
+// Question → the sectors it belongs to. Unlisted = universal, always asked.
+// Premises, Workforce and Change questions are deliberately universal - they
+// apply to any employer and those lists are short.
+const DISC_SECTOR_MAP={
+  b_survey_pre2000:['design','construction','property'],
+  b_dutyholder:['design','construction'],
+  b_design:['design','construction'],
+  b_domestic:['construction','design','land','care','property','transportsvc','motor'],
+  b_manufacture:['manufacture'],
+  b_warehouse:['warehouse','manufacture'],
+  b_retail:['hospitality','motor'],
+  b_food:['hospitality','care','leisure'],
+  b_care:['care'],
+  b_passengers:['transportsvc','care'],
+  b_atrisk:['care','transportsvc','leisure'],
+  b_events:['leisure'],
+  o_height:['construction','design','land','property','manufacture','warehouse'],
+  o_confined:['construction','design','manufacture','property','land'],
+  o_livesites:['construction','design'],
+  o_outdoor:['construction','land','leisure'],
+  o_hotwork:['construction','manufacture','motor'],
+  o_dust:['construction','manufacture','motor','land'],
+  o_noise:['construction','manufacture','motor','land','leisure'],
+  o_vibration:['construction','manufacture','motor','land'],
+  o_excavation:['construction','land'],
+  o_demolition:['construction'],
+  o_flammables:['construction','manufacture','motor','land','hospitality','warehouse'],
+  o_elecwork:['construction','manufacture','property'],
+  o_water:['construction','land','leisure'],
+  o_transport:['manufacture','warehouse','construction','motor','land','transportsvc'],
+  o_violence:['hospitality','care','transportsvc','leisure'],
+  o_nightshift:['manufacture','transportsvc','care','warehouse','hospitality','leisure'],
+  o_cash:['hospitality','transportsvc','leisure'],
+  o_livestock:['land'],
+  o_atv:['land'],
+  o_grain:['land'],
+  o_agrichem:['land'],
+  o_hgv:['transportsvc','construction','warehouse'],
+  o_loading:['transportsvc','warehouse','manufacture','construction','land'],
+  o_deliveries:['transportsvc','hospitality','warehouse','manufacture'],
+  o_coldstore:['warehouse','hospitality','manufacture'],
+  o_movepeople:['care'],
+  o_vehmaint:['motor','transportsvc'],
+  o_wastegen:['construction','manufacture','motor','land','hospitality','care','property'],
+  o_infection:['care'],
+  o_medicines:['care'],
+  o_medrad:['care'],
+  o_pool:['leisure','care','property'],
+  o_scafferect:['construction'],
+  o_roadside:['construction','land','transportsvc','property'],
+  a_workequip:['construction','manufacture','motor','land','property','warehouse','hospitality','leisure','care','transportsvc'],
+  a_lifting:['construction','manufacture','motor','warehouse','land','transportsvc','property','care'],
+  a_pressure:['manufacture','motor','construction','care','leisure'],
+  a_ladders:['construction','design','land','property','manufacture','warehouse','hospitality','leisure'],
+  a_forklift:['manufacture','warehouse','construction','land','motor'],
+  a_plant:['construction','land'],
+  a_scaffold:['construction'],
+  a_lev:['manufacture','motor','construction'],
+  d_cdm_pd:['design','construction'],
+  d_bsa_pd:['design','construction'],
+  d_pc:['construction','design'],
+  d_client:['design','construction','property'],
+  d_landlordgas:['property'],
+  d_waste:['construction','manufacture','motor','land','property'],
+  d_food:['hospitality','care','leisure']
+};
+function _discSectors(){ return _profState().sectors; }   // self-healed in _profState like the other sub-objects
+function _discSectorKeys(){ const s=_discSectors(); return SECTOR_DEFS.map(d=>d.k).filter(k=>s[k]===true); }
+// Visible = universal, OR matches a ticked sector, OR already answered (an
+// answer is never hidden), OR no sectors ticked at all (the old behaviour).
+function _discVisible(id){
+  const tags=DISC_SECTOR_MAP[id];
+  if(!tags) return true;
+  const on=_discSectorKeys();
+  if(!on.length) return true;
+  const ex=_profState().exposure||{};
+  if(ex[id]===true||ex[id]===false) return true;
+  return tags.some(t=>on.indexOf(t)>=0);
+}
+function _discToggleSector(k){
+  if(_roLocked()) return;
+  const s=_discSectors();
+  if(s[k]===true) delete s[k]; else s[k]=true;
+  _stamp(S.profiler,'updated'); saveData();
+  _discDraw();
+}
 function _discStats(){
-  const ex=_profState().exposure||{}; let total=0, answered=0, yes=0;
-  _discDomains().forEach(d=>d.items.forEach(it=>{ total++; if(ex[it.id]===true){answered++;yes++;} else if(ex[it.id]===false){answered++;} }));
+  // total = the questions that FIT this business (sector gate); bank = the
+  // whole question bank. Answers to questions outside the ticked sectors are
+  // never lost - an answered question always counts as visible.
+  const ex=_profState().exposure||{}; let total=0, answered=0, yes=0, bank=0;
+  _discDomains().forEach(d=>d.items.forEach(it=>{
+    bank++;
+    if(!_discVisible(it.id)) return;
+    total++;
+    if(ex[it.id]===true){answered++;yes++;} else if(ex[it.id]===false){answered++;}
+  }));
   let fired=0; try{ fired=_profGenerate().firedRules.length; }catch(e){}
-  return {total, answered, yes, fired};
+  return {total, answered, yes, fired, bank};
 }
 // ── Discovery → risk profile mapping (HSG65: discovery captures the exposure
 //    facts; the profile is the strategic judgement built on them). Every yes
@@ -19478,6 +19613,7 @@ const DISC_PROFILE_MAP={
     o_grain:['confined','ohexposure'], o_agrichem:['ohexposure'], o_hgv:['roadrisk'], o_loading:['transport'],
     o_deliveries:['roadrisk'], o_coldstore:['outdoor'], o_movepeople:['peoplecare'], o_infection:['biological'],
     o_medicines:['peoplecare'], o_medrad:['workequip'], o_pool:['legionella','publicsafety'],
+    o_scafferect:['workatheight','hrconstruction'], o_roadside:['publicsafety','roadrisk'],
     p_office:['dseoffice'], p_home:['dseoffice','loneworking'], p_clientsites:['contractor'],
     p_derelict:['asbestos','loneworking'], p_publicaccess:['publicsafety'], p_water_sys:['legionella'],
     p_gas:['premises'], p_plant:['workequip'], p_multi:['premises'], p_landlord:['dutyholder'],
@@ -19560,7 +19696,7 @@ function renderDiscoveryPanel(){
   el.innerHTML=`<details class="coll" data-keep="rpDiscovery" style="margin-bottom:16px;">
     <summary><h3>Start here - the discovery questions</h3><span class="badge badge-muted">${st.answered}/${st.total} answered${st.fired?(' · '+st.fired+' rules fired'):''}${sugN?(' · '+sugN+' themes suggested'):''}</span></summary>
     <div class="coll-body" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-      <div style="font-size:12.5px;color:var(--text-muted);max-width:640px;">The sit-down intake: ${st.total} yes/no questions across 7 profiles (business, operations, premises, workforce, plant &amp; equipment, dutyholder, change). Answers drive the generated requirements, significant risks, the maturity heat-map - and suggest the risk-profile themes below.</div>
+      <div style="font-size:12.5px;color:var(--text-muted);max-width:640px;">The sit-down intake. Tick what the business does on the wizard's first page and it only asks the questions that fit - <b>${st.total}</b> of ${st.bank} fit now${(function(){ const on=_discSectorKeys(); if(!on.length) return ' (no sectors ticked yet, so every question shows)'; const lbl=SECTOR_DEFS.filter(s=>on.indexOf(s.k)>=0).map(s=>s.label.split(' or ')[0].split(',')[0]); return ' for '+esc(lbl.join(' · ')); })()}. Yes answers set out what the business must run and suggest the matching risk-profile themes below.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
       ${ro?'':`<button class="btn btn-primary no-print" onclick="openDiscoveryWizard()">${started?'✎ Review / update answers':'▶ Run discovery'}</button>`}
       ${(!ro && started)?`<button class="btn btn-outline no-print" onclick="buildProfileFromDiscovery()"${sugN?'':' disabled title="Profile already covers the current answers"'}>⚙ Build profile from discovery${sugN?(' ('+sugN+')'):''}</button>`:''}
@@ -19594,7 +19730,20 @@ function _discRequirementsHTML(){
     </div></details>`;
 }
 let _discIdx=0;
-function openDiscoveryWizard(){ if(_roLocked()) return; _discIdx=0; _discDraw(); }
+let _discShowAll=false;   // per-open override: also show the questions outside the ticked sectors
+function openDiscoveryWizard(){ if(_roLocked()) return; _discIdx=0; _discShowAll=false; _discDraw(); }
+function _discToggleShowAll(){ _discShowAll=!_discShowAll; _discDraw(); }
+// The wizard's pages: the sector gate first, then each exposure domain that
+// still has questions to show for the ticked sectors. A domain whose questions
+// are all filtered out is skipped entirely.
+function _discPages(){
+  const doms=_discDomains().map(d=>({
+    d,
+    items: d.items.filter(it=>_discShowAll||_discVisible(it.id)),
+    hidden: d.items.filter(it=>!_discVisible(it.id)).length
+  }));
+  return [{sector:true}].concat(doms.filter(x=>x.items.length));
+}
 // Row styling - unanswered questions carry a neat amber outline so the eye
 // finds what's left; it clears the moment an answer lands (targeted update).
 function _discRowCss(answered){
@@ -19639,9 +19788,9 @@ function _discClose(final){
   }
 }
 function _discDraw(){
-  const doms=_discDomains(); if(!doms.length) return;
-  _discIdx=Math.max(0,Math.min(doms.length-1,_discIdx));
-  const d=doms[_discIdx]; const ex=_profState().exposure; const st=_discStats();
+  const pages=_discPages(); if(pages.length<2) return;
+  _discIdx=Math.max(0,Math.min(pages.length-1,_discIdx));
+  const page=pages[_discIdx]; const ex=_profState().exposure; const st=_discStats();
   let ov=document.getElementById('discOverlay');
   if(!ov){ ov=document.createElement('div'); ov.id='discOverlay';
     ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
@@ -19654,17 +19803,39 @@ function _discDraw(){
       <div id="discbtns_${it.id}" style="display:flex;gap:6px;flex:0 0 auto;">${_discBtns(it, v)}</div>
     </div>`;
   };
+  let title, sub, body;
+  if(page.sector){
+    const on=_discSectorKeys().length;
+    const secBtn=s=>{ const sOn=_discSectors()[s.k]===true;
+      return `<button type="button" onclick="_discToggleSector('${s.k}')" style="text-align:left;padding:11px 14px;border-radius:10px;border:1.5px solid ${sOn?'var(--accent)':'var(--border)'};background:${sOn?'var(--accent-light)':'transparent'};cursor:pointer;color:var(--text);">
+        <div style="font-size:13px;font-weight:700;${sOn?'color:var(--accent-dark);':''}">${sOn?'✓ ':''}${esc(s.label)}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${esc(s.hint)}</div>
+      </button>`; };
+    title='What does the business do?';
+    sub=`Tick everything that applies - the wizard then only asks the questions that fit. <b>${st.total}</b> of ${st.bank} questions currently fit${on?'':' (nothing ticked = every question is asked)'}.`;
+    body=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:9px;padding:10px 0;">${SECTOR_DEFS.map(secBtn).join('')}</div>`;
+  } else {
+    const d=page.d;
+    title=esc(d.name);
+    sub=`Page ${_discIdx+1} of ${pages.length} · <span id="discProg">${st.answered}/${st.total} answered</span> · leave blank if not yet known`;
+    const hiddenNote = page.hidden
+      ? `<div style="font-size:11.5px;color:var(--text-muted);padding:8px 2px 4px;">${_discShowAll
+          ? `Showing every question, including ${page.hidden} outside the ticked sectors - <a href="#" onclick="_discToggleShowAll();return false;">show only what fits</a>`
+          : `${page.hidden} question${page.hidden!==1?'s':''} hidden as not fitting the ticked sectors - <a href="#" onclick="_discToggleShowAll();return false;">show ${page.hidden!==1?'them':'it'}</a>`}</div>`
+      : '';
+    body=page.items.map(qRow).join('')+hiddenNote;
+  }
   ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 18px 60px rgba(0,0,0,.35);">
     <div style="padding:16px 20px;border-bottom:1.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-      <div><div style="font-weight:800;font-size:15px;">Discovery - ${esc(d.name)}</div>
-      <div style="font-size:11.5px;color:var(--text-muted);">Profile ${_discIdx+1} of ${doms.length} · <span id="discProg">${st.answered}/${st.total} answered</span> · leave blank if not yet known</div></div>
+      <div><div style="font-weight:800;font-size:15px;">Discovery - ${title}</div>
+      <div style="font-size:11.5px;color:var(--text-muted);">${sub}</div></div>
       <button class="btn btn-ghost btn-sm" onclick="_discClose(false)">✕ Close</button>
     </div>
-    <div style="padding:6px 20px;overflow-y:auto;flex:1;">${d.items.map(qRow).join('')}</div>
+    <div style="padding:6px 20px;overflow-y:auto;flex:1;">${body}</div>
     <div style="padding:12px 20px;border-top:1.5px solid var(--border);display:flex;justify-content:space-between;gap:8px;">
       <button class="btn btn-ghost btn-sm" ${_discIdx===0?'disabled':''} onclick="_discIdx--; _discDraw();">← Back</button>
-      ${_discIdx<doms.length-1
-        ? `<button class="btn btn-primary btn-sm" onclick="_discIdx++; _discDraw();">Next profile →</button>`
+      ${_discIdx<pages.length-1
+        ? `<button class="btn btn-primary btn-sm" onclick="_discIdx++; _discDraw();">${page.sector?'Start the questions →':'Next profile →'}</button>`
         : `<button class="btn btn-primary btn-sm" onclick="_discClose(true)">✓ Finish discovery</button>`}
     </div></div>`;
 }

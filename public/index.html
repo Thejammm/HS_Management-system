@@ -3423,7 +3423,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
       <!-- 2 · Consultant judgement (was: management maturity assessment) -->
       <details class="coll wf-sec" id="wfMaturity">
-        <summary><h3>Consultant judgement - the six HSG65 areas</h3><span class="coll-meta">Weak &middot; Adequate &middot; Strong - replaces the old maturity score</span></summary>
+        <summary><h3>Consultant judgement - the six HSG65 areas</h3><span class="coll-meta">Weak &middot; Developing &middot; Adequate &middot; Strong - replaces the old maturity score</span></summary>
         <div class="coll-body"><div id="riskMaturity"></div></div>
       </details>
     </div>
@@ -16862,7 +16862,12 @@ function _apGaps(){
   // Judgement gaps: any HSG65 area the consultant has judged Weak.
   if(typeof _maturityDomains==='function'){
     _maturityDomains().forEach(d=>{
-      if(((_judgeState()[d.id]||{}).level)==='weak'){ gaps.push({ srcKey:'mat:'+d.id, desc:'Strengthen '+d.name+((_judgeState()[d.id]||{}).note?(' - '+(_judgeState()[d.id]||{}).note):''), due:'', priority:'Medium', context:'Judged Weak: '+d.name, note:'Consultant judgement: Weak' }); }
+      // Anything below the Adequate bar earns an action; Weak outranks Developing.
+      const _jl=((_judgeState()[d.id]||{}).level)||'';
+      if(JUDGE_BELOW_BAR.includes(_jl)){
+        const _word=_jl.charAt(0).toUpperCase()+_jl.slice(1);
+        gaps.push({ srcKey:'mat:'+d.id, desc:'Strengthen '+d.name+((_judgeState()[d.id]||{}).note?(' - '+(_judgeState()[d.id]||{}).note):''), due:'', priority:(_jl==='weak'?'High':'Medium'), context:'Judged '+_word+': '+d.name, note:'Consultant judgement: '+_word });
+      }
     });
   }
   _apGapCache={}; gaps.forEach(g=>_apGapCache[g.srcKey]=g);
@@ -17958,12 +17963,20 @@ function _reviewHeatHTML(){
 //    Strong + a one-line reason). Replaces the 0-5 maturity scoring: your
 //    professional reading feeds the audit narrative and the review, and is
 //    never turned into a number or compared arithmetically with anything.
-const JUDGE_RGB={ weak:[220,38,38], adequate:[245,158,11], strong:[22,163,74] };
+// Four levels, deliberately with no middle box. Three options let everything
+// drift to the comfortable centre, which produced pages of "Adequate" that
+// raised no actions. Four forces a call: below the line (Weak, Developing) or
+// above it (Adequate, Strong). Colours follow the risk bands so the ramp reads
+// the same as everything else in the app.
+const JUDGE_RGB={ weak:[220,38,38], developing:[234,88,12], adequate:[245,158,11], strong:[22,163,74] };
 const JUDGEMENT_LEVELS=[
-  { k:'weak',     label:'Weak',     colour:'#DC2626' },
-  { k:'adequate', label:'Adequate', colour:'#F59E0B' },
-  { k:'strong',   label:'Strong',   colour:'#16A34A' },
+  { k:'weak',       label:'Weak',       colour:'#DC2626' },
+  { k:'developing', label:'Developing', colour:'#EA580C' },
+  { k:'adequate',   label:'Adequate',   colour:'#F59E0B' },
+  { k:'strong',     label:'Strong',     colour:'#16A34A' },
 ];
+// Anything below Adequate is a gap that earns an action on the execution plan.
+const JUDGE_BELOW_BAR=['weak','developing'];
 // What each word MEANS in each of the six areas, in one line. Shown on the
 // button as a tooltip before you choose and under the buttons once you have,
 // so the same word means the same thing on every client and at every review.
@@ -17972,31 +17985,37 @@ const JUDGEMENT_LEVELS=[
 const JUDGE_DESCRIPTORS={
   leadership:{
     weak:'No formal process and no real grip on who is accountable. The policy is missing, out of date or unread.',
+    developing:'A policy and some named responsibilities exist, but they are out of date or have never been communicated, and accountability lands on whoever is nearest the problem.',
     adequate:'The policy is current and responsibilities are named, and workers are consulted, but leadership reacts to events rather than driving the agenda.',
     strong:'Leaders are visibly accountable, the policy is live and communicated, workers are consulted routinely and stop-work authority is real.'
   },
   contractor:{
     weak:'Contractors are engaged on trust. No competence checks, no risk information exchanged and no supervision on site.',
+    developing:'Contractors are asked for paperwork but nobody checks it properly, and what happens once they are on site is left to them.',
     adequate:'Contractors are checked before engagement and given the risk information, but supervision and monitoring on site are patchy.',
     strong:'Contractors are selected on evidenced competence, risk information flows both ways, and their work is supervised and reviewed on site.'
   },
   ohealth:{
     weak:'Health risk is not managed. No surveillance where exposure is foreseeable, and ill health only surfaces when somebody goes off sick.',
+    developing:'The exposures are recognised and something has been arranged, but there is no programme, no records of who is covered and no follow-up.',
     adequate:'Surveillance is arranged for the obvious exposures and stress is acknowledged, but there is no programme and results are not followed up.',
     strong:'Exposures are identified and under surveillance, results drive action, and mental health and fatigue are managed openly.'
   },
   opcontrol:{
     weak:'Risk assessments are generic, missing or unread. Work is planned by habit and training is not evidenced.',
+    developing:'Assessments exist but are generic or out of date, and training happens without the records to prove who has had it.',
     adequate:'Assessments and method statements cover the significant risks and people are trained, but they are not always used on site or kept current.',
     strong:'Assessments are suitable and specific, safe systems are briefed and followed, competence is verified and equipment is inspected on schedule.'
   },
   assurance:{
     weak:'Nobody checks. No inspections, no audit, nothing measured, and incidents are recorded rather than investigated.',
+    developing:'Checks happen when somebody remembers. Nothing is scheduled, recorded consistently or brought back to management.',
     adequate:'Inspections happen and incidents are recorded, but there is no audit cycle and findings rarely close the loop.',
     strong:'Inspections and audits run to a schedule, leading and lagging measures are tracked, and incidents produce learning that changes what is done.'
   },
   resilience:{
     weak:'No plan for the things that stop the business. Continuity, data protection and insurance cover are unconsidered or unchecked.',
+    developing:'Insurance is held but the cover has never been matched to the work, and there is no plan for losing premises, key people or data.',
     adequate:'Insurance is in place and there is an outline plan for disruption, but it is untested and data protection is informal.',
     strong:'Continuity and emergency plans are documented and tested, data is protected, and cover is matched to the work actually carried out.'
   }
@@ -18017,7 +18036,7 @@ function setJudgementNote(domId, note){
 }
 function _renderMaturityAssessment(dis){
   const doms=_maturityDomains(); const j=_judgeState();
-  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Your professional judgement of the six HSG65 areas - <b>words, not scores</b>. Mark each Weak, Adequate or Strong with a one-line reason; the app spells out what that word means in this area. <b>Adequate has a bar</b>: it is in place, written down, and you have seen the evidence. A business that is part-way there is Weak. This feeds your audit narrative and review; it is never turned into a number. The measured position lives above: H&S Control Maturity, graded on recorded facts.</div>`;
+  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Your professional judgement of the six HSG65 areas - <b>words, not scores</b>. Mark each Weak, Developing, Adequate or Strong with a one-line reason; the app spells out what that word means in this area. <b>Adequate has a bar</b>: it is in place, written down, and you have seen the evidence. A business on its way there is <b>Developing</b>, not Adequate. There is no middle box on purpose, so each area gets a decision: below the line or above it. Weak and Developing both raise an action on the execution plan. This feeds your audit narrative and review; it is never turned into a number. The measured position lives above: H&S Control Maturity, graded on recorded facts.</div>`;
   return note + doms.map((d,idx)=>{
     const cur=j[d.id]||{};
     const lv=JUDGEMENT_LEVELS.find(x=>x.k===cur.level);

@@ -17964,6 +17964,44 @@ const JUDGEMENT_LEVELS=[
   { k:'adequate', label:'Adequate', colour:'#F59E0B' },
   { k:'strong',   label:'Strong',   colour:'#16A34A' },
 ];
+// What each word MEANS in each of the six areas, in one line. Shown on the
+// button as a tooltip before you choose and under the buttons once you have,
+// so the same word means the same thing on every client and at every review.
+// Adequate carries a deliberate bar: in place, written down and evidenced. A
+// business that is "getting there" is Weak, not Adequate.
+const JUDGE_DESCRIPTORS={
+  leadership:{
+    weak:'No formal process and no real grip on who is accountable. The policy is missing, out of date or unread.',
+    adequate:'The policy is current and responsibilities are named, and workers are consulted, but leadership reacts to events rather than driving the agenda.',
+    strong:'Leaders are visibly accountable, the policy is live and communicated, workers are consulted routinely and stop-work authority is real.'
+  },
+  contractor:{
+    weak:'Contractors are engaged on trust. No competence checks, no risk information exchanged and no supervision on site.',
+    adequate:'Contractors are checked before engagement and given the risk information, but supervision and monitoring on site are patchy.',
+    strong:'Contractors are selected on evidenced competence, risk information flows both ways, and their work is supervised and reviewed on site.'
+  },
+  ohealth:{
+    weak:'Health risk is not managed. No surveillance where exposure is foreseeable, and ill health only surfaces when somebody goes off sick.',
+    adequate:'Surveillance is arranged for the obvious exposures and stress is acknowledged, but there is no programme and results are not followed up.',
+    strong:'Exposures are identified and under surveillance, results drive action, and mental health and fatigue are managed openly.'
+  },
+  opcontrol:{
+    weak:'Risk assessments are generic, missing or unread. Work is planned by habit and training is not evidenced.',
+    adequate:'Assessments and method statements cover the significant risks and people are trained, but they are not always used on site or kept current.',
+    strong:'Assessments are suitable and specific, safe systems are briefed and followed, competence is verified and equipment is inspected on schedule.'
+  },
+  assurance:{
+    weak:'Nobody checks. No inspections, no audit, nothing measured, and incidents are recorded rather than investigated.',
+    adequate:'Inspections happen and incidents are recorded, but there is no audit cycle and findings rarely close the loop.',
+    strong:'Inspections and audits run to a schedule, leading and lagging measures are tracked, and incidents produce learning that changes what is done.'
+  },
+  resilience:{
+    weak:'No plan for the things that stop the business. Continuity, data protection and insurance cover are unconsidered or unchecked.',
+    adequate:'Insurance is in place and there is an outline plan for disruption, but it is untested and data protection is informal.',
+    strong:'Continuity and emergency plans are documented and tested, data is protected, and cover is matched to the work actually carried out.'
+  }
+};
+function _judgeDescriptor(domId, level){ return ((JUDGE_DESCRIPTORS[domId]||{})[level])||''; }
 function _judgeState(){ if(!S.profiler||typeof S.profiler!=='object') S.profiler={maturity:{},exposure:{}}; if(!S.profiler.judgement||typeof S.profiler.judgement!=='object') S.profiler.judgement={}; return S.profiler.judgement; }
 function setJudgement(domId, level){
   if(_roLocked()) return;
@@ -17979,7 +18017,7 @@ function setJudgementNote(domId, note){
 }
 function _renderMaturityAssessment(dis){
   const doms=_maturityDomains(); const j=_judgeState();
-  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Your professional judgement of the six HSG65 areas - <b>words, not scores</b>. Mark each Weak, Adequate or Strong with a one-line reason. This feeds your audit narrative and review; it is never turned into a number. The measured position lives above: H&S Control Maturity, graded on recorded facts.</div>`;
+  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Your professional judgement of the six HSG65 areas - <b>words, not scores</b>. Mark each Weak, Adequate or Strong with a one-line reason; the app spells out what that word means in this area. <b>Adequate has a bar</b>: it is in place, written down, and you have seen the evidence. A business that is part-way there is Weak. This feeds your audit narrative and review; it is never turned into a number. The measured position lives above: H&S Control Maturity, graded on recorded facts.</div>`;
   return note + doms.map((d,idx)=>{
     const cur=j[d.id]||{};
     const lv=JUDGEMENT_LEVELS.find(x=>x.k===cur.level);
@@ -17988,9 +18026,20 @@ function _renderMaturityAssessment(dis){
       ? `<button class="btn btn-ghost btn-xs no-print" style="margin-left:auto;color:var(--success);font-weight:700;" title="An action for this area is open on the client execution plan - click to open the plan" onclick="switchTab('execplan')">✓ In the execution plan</button>`
       : `<button class="btn btn-outline btn-xs no-print" style="margin-left:auto;" title="Raise an improvement action for this area onto the client execution plan" onclick="openMaturityAction('${d.id}')">↗ Raise action</button>`);
     const head=`<div class="prof-domain-head"><span class="pdh-badge" style="background:${d.badge};">${idx+1}</span><h4>${idx+1}. ${esc(d.name)}</h4>${chip}${raiseBtn}</div>`;
-    const btns=JUDGEMENT_LEVELS.map(x=>`<button class="jl-btn${cur.level===x.k?' on':''}"${dis} style="${cur.level===x.k?('background:'+x.colour+';'):''}" onclick="setJudgement('${d.id}','${x.k}')">${x.label}</button>`).join(' ');
+    const btns=JUDGEMENT_LEVELS.map(x=>{
+      const dsc=_judgeDescriptor(d.id,x.k);
+      return `<button class="jl-btn${cur.level===x.k?' on':''}"${dis}${dsc?` title="${esc(x.label)} in this area: ${esc(dsc)}"`:''} style="${cur.level===x.k?('background:'+x.colour+';'):''}" onclick="setJudgement('${d.id}','${x.k}')">${x.label}</button>`;
+    }).join(' ');
+    // The chosen word, spelled out for this area - so Weak means the same
+    // thing on every client and at every review, and the client can see the
+    // bar they are being measured against.
+    const dscNow=cur.level?_judgeDescriptor(d.id,cur.level):'';
+    const dscLine=dscNow
+      ? `<div class="jl-desc" data-dom="${d.id}" style="margin-top:9px;padding:8px 11px;border-left:3px solid ${lv?lv.colour:'var(--border)'};background:${lv?lv.colour+'0f':'var(--muted-bg)'};border-radius:0 7px 7px 0;font-size:12.5px;line-height:1.5;color:var(--text);"><b style="color:${lv?lv.colour:'inherit'};">${esc(lv?lv.label:'')}:</b> ${esc(dscNow)}</div>`
+      : '';
     const body=`<div style="padding:10px 2px 16px;">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${btns}</div>
+      ${dscLine}
       <input type="text"${dis} value="${esc(cur.note||'')}" placeholder="One line on why - what you saw, what convinced you" oninput="setJudgementNote('${d.id}',this.value)" style="width:100%;margin-top:8px;font-size:12.5px;">
       ${cur.at?`<div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">judged ${esc(fmtDate(cur.at))}${cur.by?(' by '+esc(cur.by)):''}</div>`:''}
     </div>`;

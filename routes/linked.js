@@ -26,7 +26,7 @@ router.get('/inspections', requireAuth, async (req, res) => {
     return res.status(503).json({ ok: false, error: 'link_not_configured' });
   }
 
-  const tenantId = req.user.role === 'client_user'
+  const tenantId = req.user.role !== 'consultant'
     ? (req.user.tenantId || '')
     : String(req.query?.tenantId || '').trim();
   if(!tenantId) return res.status(400).json({ ok: false, error: 'tenant_required' });

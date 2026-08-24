@@ -66,7 +66,7 @@ async function withPage(fn){
 
 // GET /api/reports/pdf?tenantId=x&report=board-report[&format=signal]
 router.get('/pdf', requireAuth, async (req, res) => {
-  const tenantId = req.user.role === 'client_user'
+  const tenantId = req.user.role !== 'consultant'
     ? (req.user.tenantId || '')
     : String(req.query?.tenantId || '').trim();
   if(!tenantId) return res.status(400).json({ error: 'tenant_required' });

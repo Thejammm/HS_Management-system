@@ -13,7 +13,7 @@ const router = express.Router();
 const rawBody = express.raw({ type: () => true, limit: '25mb' });
 
 function _resolveTenant(req){
-  if(req.user.role === 'client_user') return req.user.tenantId || null;
+  if(req.user.role !== 'consultant') return req.user.tenantId || null;
   return (req.query?.tenantId || '').toString() || null;
 }
 

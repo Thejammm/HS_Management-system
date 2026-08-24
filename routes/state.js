@@ -17,10 +17,10 @@ const { keepPrevious: _keepPrevious } = require('../lib/state-history');
 
 
 // Resolve which tenant the request is acting on.
-// - client_user: always their own tenant_id, ignores query.
+// - client_user / employee: always their own tenant_id, ignores query.
 // - consultant: must pass ?tenantId=... (or it'd be ambiguous).
 function _resolveTenant(req){
-  if(req.user.role === 'client_user'){
+  if(req.user.role !== 'consultant'){
     return req.user.tenantId || null;
   }
   // consultant
@@ -78,7 +78,7 @@ router.post('/', requireAuth, express.json({ limit: '50mb' }), async (req, res) 
     if(!t.rows.length){
       return res.status(404).json({ error: 'tenant_not_found' });
     }
-    if(req.user.role === 'client_user' && req.user.tenantId !== tenantId){
+    if(req.user.role !== 'consultant' && req.user.tenantId !== tenantId){
       return res.status(403).json({ error: 'forbidden' });
     }
   } catch(err){
@@ -149,7 +149,7 @@ router.post('/', requireAuth, express.json({ limit: '50mb' }), async (req, res) 
 router.get('/history', requireAuth, async (req, res) => {
   const tenantId = _resolveTenant(req);
   if(!tenantId) return res.status(400).json({ error: 'tenant_required' });
-  if(req.user.role === 'client_user' && req.user.tenantId !== tenantId){
+  if(req.user.role !== 'consultant' && req.user.tenantId !== tenantId){
     return res.status(403).json({ error: 'forbidden' });
   }
   try {
@@ -173,7 +173,7 @@ router.get('/history', requireAuth, async (req, res) => {
 router.post('/history/:id/restore', requireAuth, async (req, res) => {
   const tenantId = _resolveTenant(req);
   if(!tenantId) return res.status(400).json({ error: 'tenant_required' });
-  if(req.user.role === 'client_user' && req.user.tenantId !== tenantId){
+  if(req.user.role !== 'consultant' && req.user.tenantId !== tenantId){
     return res.status(403).json({ error: 'forbidden' });
   }
   const id = String(req.params.id || '').replace(/[^0-9]/g, '');

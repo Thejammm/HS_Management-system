@@ -19,18 +19,28 @@ CREATE TABLE IF NOT EXISTS tenants (
 ALTER TABLE tenants ADD COLUMN IF NOT EXISTS config JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 -- Users: anyone who can log in.
--- role = 'consultant' → can see/manage all tenants (Archer staff)
--- role = 'client_user' → scoped to one tenant
+-- role = 'consultant'  → can see/manage all tenants (Archer staff)
+-- role = 'client_user' → scoped to one tenant (client management)
+-- role = 'employee'    → scoped to one tenant (client staff; restricted tabs)
 CREATE TABLE IF NOT EXISTS users (
   id            TEXT PRIMARY KEY,
   email         TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   tenant_id     TEXT REFERENCES tenants(id) ON DELETE SET NULL,
-  role          TEXT NOT NULL CHECK (role IN ('consultant', 'client_user')),
+  role          TEXT NOT NULL CHECK (role IN ('consultant', 'client_user', 'employee')),
   display_name  TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_login_at TIMESTAMPTZ
 );
+
+-- 2026-08-24: third role 'employee'. The CREATE above only shapes fresh
+-- databases; the deployed table keeps its original CHECK, so swap it
+-- idempotently on every boot (drop-if-exists then add is safe to re-run).
+DO $$ BEGIN
+  ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+  ALTER TABLE users ADD CONSTRAINT users_role_check
+    CHECK (role IN ('consultant', 'client_user', 'employee'));
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_users_email  ON users (LOWER(email));
 CREATE INDEX IF NOT EXISTS idx_users_tenant ON users (tenant_id);

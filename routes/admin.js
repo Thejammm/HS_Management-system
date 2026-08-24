@@ -177,7 +177,7 @@ router.get('/users', async (req, res) => {
 });
 
 // POST /api/admin/users
-//   body: { email, password, role: 'consultant'|'client_user', tenantId?, displayName? }
+//   body: { email, password, role: 'consultant'|'client_user'|'employee', tenantId?, displayName? }
 router.post('/users', async (req, res) => {
   const email       = String(req.body?.email||'').trim().toLowerCase();
   const password    = String(req.body?.password||'');
@@ -191,10 +191,10 @@ router.post('/users', async (req, res) => {
   if(!password || password.length < 8){
     return res.status(400).json({ error: 'password_min_8' });
   }
-  if(!['consultant','client_user'].includes(role)){
+  if(!['consultant','client_user','employee'].includes(role)){
     return res.status(400).json({ error: 'invalid_role' });
   }
-  if(role === 'client_user' && !tenantId){
+  if(role !== 'consultant' && !tenantId){
     return res.status(400).json({ error: 'tenant_required_for_client_user' });
   }
 
@@ -315,11 +315,11 @@ router.patch('/users/:id', async (req, res) => {
     if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
       return res.status(400).json({ error: 'valid_email_required' });
     }
-    if(!['consultant','client_user'].includes(role)){
+    if(!['consultant','client_user','employee'].includes(role)){
       return res.status(400).json({ error: 'invalid_role' });
     }
     if(role === 'consultant'){ tenantId = null; }
-    if(role === 'client_user' && !tenantId){
+    if(role !== 'consultant' && !tenantId){
       return res.status(400).json({ error: 'tenant_required_for_client_user' });
     }
     // Don't let the signed-in consultant demote themselves out of admin access

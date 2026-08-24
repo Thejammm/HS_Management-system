@@ -18,9 +18,9 @@ const { parse, build, buildFresh, peek: xlsxPeek } = require('../lib/training-xl
 const router = express.Router();
 const rawBody = express.raw({ type: () => true, limit: '25mb' });
 
-// Same tenant rule as /api/state: client_user → own tenant; consultant → ?tenantId=.
+// Same tenant rule as /api/state: client_user/employee → own tenant; consultant → ?tenantId=.
 function _resolveTenant(req){
-  if(req.user.role === 'client_user') return req.user.tenantId || null;
+  if(req.user.role !== 'consultant') return req.user.tenantId || null;
   return (req.query?.tenantId || '').toString() || null;
 }
 

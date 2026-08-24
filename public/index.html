@@ -3012,7 +3012,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <select id="viewModeSelect" onchange="setViewMode(this.value)">
           <option value="consultant">View: Consultant</option>
           <option value="management">View: Client</option>
-          <option value="inspector">View: Employee</option>
+          <option value="employee">View: Employee</option>
         </select>
       </span>
       <!-- Sign-in / Sign-out button -->
@@ -4462,13 +4462,13 @@ function esc(v){
 function activeClientConfig(){
   if (typeof _consultantView !== 'undefined' && _consultantView) return _consultantView.config || {};
   const u = (typeof Auth !== 'undefined' && Auth.user) ? Auth.user() : null;
-  if (u && u.role === 'client_user') return u.config || {};
+  if (u && (u.role === 'client_user' || u.role === 'employee')) return u.config || {};
   return {};
 }
 function activeClientName(){
   if (typeof _consultantView !== 'undefined' && _consultantView) return _consultantView.name || '';
   const u = (typeof Auth !== 'undefined' && Auth.user) ? Auth.user() : null;
-  if (u && u.role === 'client_user') return u.tenantName || '';
+  if (u && (u.role === 'client_user' || u.role === 'employee')) return u.tenantName || '';
   return '';
 }
 
@@ -4602,7 +4602,7 @@ function showSetupTab() {
   const selector = document.getElementById('clientSelector');
   const content  = document.getElementById('consultantContent');
   // The Checklist builder is unlocked for the management / client view. The
-  // inspector view never reaches this tab (it is not in INSPECTOR_TABS), so the
+  // the employee view never reaches this tab (it is not in EMPLOYEE_TABS), so the
   // old passphrase gate is no longer needed: show the builder directly.
   if (selector) selector.style.display = 'none';
   if (content)  content.style.display  = 'block';
@@ -5433,6 +5433,8 @@ function toggleSidebar(force){
   if(bd) bd.classList.toggle('open', open);
 }
 function switchTab(id) {
+  // The employee view never leaves its own tabs, whatever link was clicked.
+  if(typeof _empView==='function' && _empView() && typeof EMPLOYEE_TABS!=='undefined' && !EMPLOYEE_TABS.includes(id)) return;
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
@@ -8879,7 +8881,7 @@ async function loadFromServerAndRender(){
     try{ localStorage.setItem('ahs:workplace-inspection:v3', JSON.stringify({meta:{version:3,savedAt:new Date().toISOString()},S})); }catch(e){}
     _rerenderEverything();
     showToast('✓ Loaded from server','info');
-    if(Auth.user()?.role === 'client_user') _startOwnPoll();   // keep this device fresh
+    if(['client_user','employee'].includes(Auth.user()?.role)) _startOwnPoll();   // keep this device fresh
     return true;
   }
   // Consultants have no tenant of their own - they dial in to clients via the
@@ -8917,7 +8919,7 @@ async function loadFromServerAndRender(){
 // seed from the hardcoded CLIENTS constant.
 function _applyClientConfigDefaults(){
   const u = (typeof Auth !== 'undefined' && Auth.user) ? Auth.user() : null;
-  if(!u || u.role !== 'client_user') return;
+  if(!u || !['client_user','employee'].includes(u.role)) return;
   const cfg = u.config || {};
   if(cfg.branding){
     if(!S.branding) S.branding = {};
@@ -9202,9 +9204,10 @@ function _updateAuthIndicator(){
   // Refresh dashboard visibility
   renderManagerDashboard();
   // Role drives the view: a client_user is locked to the Client view (all of
-  // their company's pages except Admin); the consultant defaults to the full
-  // consultant view.
-  _viewMode = (Auth.user()?.role === 'client_user') ? 'management' : 'consultant';
+  // their company's pages except Admin), an employee to the Employee view
+  // (delivery tabs only); the consultant defaults to the full consultant view.
+  const _r = Auth.user()?.role;
+  _viewMode = _r === 'client_user' ? 'management' : _r === 'employee' ? 'employee' : 'consultant';
   applyViewMode();
 }
 
@@ -9356,6 +9359,8 @@ function renderAdminUsers(users, tenants){
           const tName = u.tenant_id ? (tenantById[u.tenant_id]?.name || u.tenant_id) : '-';
           const roleLabel = u.role === 'consultant'
             ? `<span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:600;background:var(--accent-light);color:var(--accent-dark);">Consultant</span>`
+            : u.role === 'employee'
+            ? `<span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:600;background:#D977061a;color:#B45309;">Employee</span>`
             : `<span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:600;background:var(--muted-bg);color:var(--text-muted);">Client user</span>`;
           const active = u.is_active !== false;
           const safeEmail = u.email.replace(/'/g,"\\'");
@@ -9430,8 +9435,9 @@ function openEditUserModal(userId){
        </div>
        <div class="field-group">
          <label class="field-label">Role</label>
-         <select id="mEditRole" onchange="document.getElementById('mEditTenantGroup').style.display=this.value==='client_user'?'flex':'none';">
-           <option value="client_user" ${!isConsultant?'selected':''}>Client user (logs into one tenant)</option>
+         <select id="mEditRole" onchange="document.getElementById('mEditTenantGroup').style.display=this.value==='consultant'?'none':'flex';">
+           <option value="client_user" ${u.role==='client_user'?'selected':''}>Client user (management - logs into one tenant)</option>
+           <option value="employee" ${u.role==='employee'?'selected':''}>Employee (staff - restricted tabs, one tenant)</option>
            <option value="consultant" ${isConsultant?'selected':''}>Consultant (sees all tenants)</option>
          </select>
        </div>
@@ -9461,9 +9467,9 @@ async function submitEditUser(userId){
   const tenantId    = document.getElementById('mEditTenant')?.value || null;
   const password    = document.getElementById('mEditPwd')?.value || '';
   if(!email){ showToast('Email required','error'); return; }
-  if(role === 'client_user' && !tenantId){ showToast('Client users must be assigned to a tenant','error'); return; }
+  if(role !== 'consultant' && !tenantId){ showToast('Client and employee logins must be assigned to a tenant','error'); return; }
   if(password && password.length < 8){ showToast('Password must be at least 8 chars','error'); return; }
-  const body = { email, displayName, role, tenantId: role==='client_user'?tenantId:null };
+  const body = { email, displayName, role, tenantId: role==='consultant'?null:tenantId };
   if(password) body.password = password;
   try {
     const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
@@ -9513,14 +9519,6 @@ function openAddTenantModal(){
            <label class="field-label">Tenant ID (optional, auto-generated from name)</label>
            <input type="text" id="mTenantId" placeholder="e.g. acme-engineering" pattern="[a-z0-9-]+" autocomplete="off">
            <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Lowercase letters, numbers, dashes only. Cannot be changed later.</div>
-         </div>
-         <div class="field-group" style="margin-top:10px;">
-           <label class="field-label">Inspection packs - what kind of site is this? (optional)</label>
-           <div style="display:flex;gap:18px;align-items:center;margin-top:4px;">
-             <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="mPackGarage"> Garage / workshop</label>
-             <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="mPackConstruction"> Construction</label>
-           </div>
-           <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Filters the inspection types this client sees (forms like Near Miss always show). Leave both unticked to show everything - you can change it later in Edit config.</div>
          </div>
        </div>
 
@@ -9596,20 +9594,8 @@ async function submitAddTenant(){
     return;
   }
 
-  // 1b. Inspection packs chosen at creation (UAT #5) - same config the
-  // Edit-config dialog manages; skipped entirely when neither is ticked.
-  const _packs=[];
-  if(document.getElementById('mPackGarage')?.checked)       _packs.push('garage');
-  if(document.getElementById('mPackConstruction')?.checked) _packs.push('construction');
-  if(_packs.length){
-    try{
-      await fetch(`/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
-        method:'PATCH', credentials:'include',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ config:{ packs:_packs } })
-      });
-    }catch(e){ console.warn('pack config save failed (set it later via Edit config)', e); }
-  }
+  // (Inspection packs are no longer chosen at creation - set them later in
+  //  the tenant's Edit config dialog if this client needs the filter.)
 
   // 2. No login requested: the client is ready and you reach it from your
   //    client list (dial in). No per-client login is needed for you.
@@ -9732,10 +9718,12 @@ async function openAddUserModal(){
        </div>
        <div class="field-group">
          <label class="field-label">Role</label>
-         <select id="mUserRole" onchange="document.getElementById('mUserTenantGroup').style.display=this.value==='client_user'?'flex':'none';">
-           <option value="client_user" selected>Client user (logs into one tenant)</option>
+         <select id="mUserRole" onchange="document.getElementById('mUserTenantGroup').style.display=this.value==='consultant'?'none':'flex';">
+           <option value="client_user" selected>Client user (management - logs into one tenant)</option>
+           <option value="employee">Employee (staff - restricted tabs, one tenant)</option>
            <option value="consultant">Consultant (sees all tenants)</option>
          </select>
+         <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">An employee sees only: Sign-off register, Documents, CPD library, Toolbox talks, Risk pathway (view), Reports and Quick links.</div>
        </div>
        <div class="field-group" id="mUserTenantGroup">
          <label class="field-label">Tenant</label>
@@ -9780,13 +9768,13 @@ async function submitAddUser(){
   const password    = document.getElementById('mUserPassword')?.value;
   if(!email)            { showToast('Email required','error'); return; }
   if(!password || password.length < 8){ showToast('Password must be at least 8 chars','error'); return; }
-  if(role === 'client_user' && !tenantId){ showToast('Client users must be assigned to a tenant','error'); return; }
+  if(role !== 'consultant' && !tenantId){ showToast('Client and employee logins must be assigned to a tenant','error'); return; }
 
   try {
     const res = await fetch('/api/admin/users', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, role, tenantId: role==='client_user'?tenantId:null, displayName })
+      body: JSON.stringify({ email, password, role, tenantId: role==='consultant'?null:tenantId, displayName })
     });
     const body = await res.json();
     if(!res.ok){
@@ -10098,6 +10086,13 @@ function openEditTenantConfig(tenantId){
          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Which inspection packs this client sees on the Inspection tab. Leave both unticked to show everything.</div>
        </div>
        <div class="field-group">
+         <label class="field-label">Apps in this client's package (Quick links)</label>
+         <div style="display:flex;gap:6px 14px;flex-wrap:wrap;">
+           ${MY_APPS.map(a=>`<label style="font-size:13px;display:flex;align-items:center;gap:6px;" title="${esc(a.blurb||'')}"><input type="checkbox" class="cfgApp" value="${esc(a.k)}" ${(cfg.apps||[]).includes(a.k)?'checked':''}> ${esc(a.label)}</label>`).join('')}
+         </div>
+         <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">The subscription: ticked apps appear on the client's Quick links tab (for their logins and the employee view). Untick to take an app away.</div>
+       </div>
+       <div class="field-group">
          <label class="field-label">Branding</label>
          <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
            <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">Primary <input type="color" id="cfgPrimary" value="${esc(primary)}"></label>
@@ -10116,12 +10111,14 @@ async function saveTenantConfig(tenantId){
   const packs = [];
   if(document.getElementById('cfgPackGarage')?.checked)       packs.push('garage');
   if(document.getElementById('cfgPackConstruction')?.checked) packs.push('construction');
+  const apps = [...document.querySelectorAll('.cfgApp:checked')].map(cb=>cb.value);
   const config = {
     icon:        val('cfgIcon'),
     location:    val('cfgLocation'),
     inspType:    val('cfgInspType'),
     notifyEmail: val('cfgNotifyEmail'),
     packs:       packs,
+    apps:        apps,
     branding: {
       primary:   val('cfgPrimary'),
       accent:    val('cfgAccent'),
@@ -13500,21 +13497,26 @@ let _consultantTenants = [];    // cached tenant list for the picker
 // A logged-in client_user is locked to the Client view; the consultant defaults
 // to consultant view and can preview the other tiers with the header switch.
 let _viewMode = 'consultant';
-// Inspections are DONE in the standalone Inspection app now; Compass views
-// the synced results. The inspector view is therefore the two viewers.
-const INSPECTOR_TABS = ['actions','monthly'];
-const VIEW_MODES = ['consultant','management','inspector'];
-function _canSwitchView(){ return (Auth.user()?.role) !== 'client_user'; }
-function setViewMode(mode){ _viewMode = VIEW_MODES.includes(mode) ? mode : 'management'; applyViewMode(); }
+// The employee view is a member of staff's login: the delivery tabs they use
+// (sign things, read documents, do CPD and talks), the risk pathway to READ,
+// reports to print, and their quick links. Nothing else.
+const EMPLOYEE_TABS = ['signoff','documents','cpd','toolbox','journey','reports','links'];
+const VIEW_MODES = ['consultant','management','employee'];
+function _canSwitchView(){ const r=(Auth.user()?.role); return !r || r === 'consultant'; }
+function _empView(){ return _viewMode === 'employee'; }
+function setViewMode(mode){
+  if(mode==='inspector') mode='employee';   // old name, kept so nothing stored breaks
+  _viewMode = VIEW_MODES.includes(mode) ? mode : 'management'; applyViewMode();
+}
 function applyViewMode(){
   const mode = _viewMode;
-  const insp = mode === 'inspector';
+  const insp = mode === 'employee';
   const isConsultant = (Auth.user()?.role) === 'consultant';
   document.querySelectorAll('.tab-btn').forEach(b=>{
     const t=b.getAttribute('data-tab');
     // Base visibility by tier.
     let show;
-    if(insp)                    show = INSPECTOR_TABS.includes(t);
+    if(insp)                    show = EMPLOYEE_TABS.includes(t);
     else if(mode==='management') show = (t!=='admin');   // owner sees all but Admin
     else                         show = true;            // consultant sees all
     // Admin (and any data-consultant tab) is reserved for the consultant role.
@@ -13535,23 +13537,32 @@ function applyViewMode(){
     ['actions','monthly'].forEach(t=>{ const b=document.querySelector('.tab-btn[data-tab="'+t+'"]'); if(b) b.style.display='none'; });
   }
   const _ln=document.getElementById('navLinkedNote'); if(_ln) _ln.style.display=_linkedShow?'':'none';
+  // A phase group with every button hidden is an empty box - hide the group.
+  // (Runs after the linked-app buttons above are resolved.)
+  document.querySelectorAll('.nav-phase').forEach(g=>{
+    const any=[...g.querySelectorAll('.tab-btn')].some(b=>b.style.display!=='none');
+    g.style.display = any ? '' : 'none';
+  });
   const active = document.querySelector('.tab-btn.active');
-  if(insp && active && !INSPECTOR_TABS.includes(active.getAttribute('data-tab'))){ switchTab('actions'); }
+  if(insp && active && !EMPLOYEE_TABS.includes(active.getAttribute('data-tab'))){ switchTab('signoff'); }
   if(mode==='management' && active && active.getAttribute('data-tab')==='admin'){ switchTab('cockpit'); }
   if(active){
     const _at=active.getAttribute('data-tab');
-    // Settings is consultant furniture, so the client and inspector views are
+    // Settings is consultant furniture, so the client and employee views are
     // sent away from it - but NOT the signed-out offline copy, which is the
     // consultant's own. Testing "not a consultant" would have evicted that too.
-    const _hideSetup = insp || (Auth.user()?.role) === 'client_user';
-    if(_at==='inspection' || (_at==='setup' && _hideSetup) || (!_linkedShow && (_at==='actions'||_at==='monthly'))) switchTab('cockpit');
+    const _hideSetup = insp || ((Auth.user()?.role||'consultant') !== 'consultant');
+    if(_at==='inspection' || (_at==='setup' && _hideSetup) || (!_linkedShow && (_at==='actions'||_at==='monthly'))) switchTab(insp?'signoff':'cockpit');
   }
   if(insp){ const cp=document.getElementById('consultantPicker'); if(cp) cp.classList.remove('on'); }
   const ib=document.getElementById('inspectorBar'); if(ib) ib.classList.toggle('on', insp && _canSwitchView());
   const vw=document.getElementById('viewModeWrap'); if(vw) vw.classList.toggle('on', _canSwitchView());
   const sel=document.getElementById('viewModeSelect'); if(sel) sel.value=_viewMode;
-  // Inspector view: hide management-only header actions (Reset clears all data).
-  const rb=document.getElementById('resetBtn'); if(rb) rb.style.display = (insp || (Auth.user()?.role === 'client_user')) ? 'none' : '';
+  // Employee view and client logins: hide the data-management header actions
+  // (Reset clears everything; Backup / Export / Import move whole records).
+  const _nonConsultant = ((Auth.user()?.role||'consultant') !== 'consultant');
+  const rb=document.getElementById('resetBtn'); if(rb) rb.style.display = (insp || _nonConsultant) ? 'none' : '';
+  ['backupBtn','exportClientBtn','importBtn'].forEach(id=>{ const b=document.getElementById(id); if(b) b.style.display = insp ? 'none' : ''; });
   document.body.classList.toggle('inspector-mode', insp);
   try{ if(typeof renderApprovedPartner==='function') renderApprovedPartner(); }catch(e){}   // consultant-only block follows the view
   try{ if(typeof renderAppLinks==='function') renderAppLinks(); }catch(e){}                 // link-management controls follow the view too
@@ -15891,7 +15902,7 @@ function renderRiskJourney(){
       </summary>
       <div style="padding:6px 18px 12px;">
         ${steps}
-        <button class="btn btn-outline btn-xs no-print" onclick="_journeyOpenRisk('${r.id}')">Open in risk profile →</button>
+        ${_empView()?'':`<button class="btn btn-outline btn-xs no-print" onclick="_journeyOpenRisk('${r.id}')">Open in risk profile →</button>`}
       </div>
     </details>`;
   };
@@ -21393,40 +21404,44 @@ function _canEditLinks(){
   const u=(typeof Auth!=='undefined'&&Auth.user)?Auth.user():null; return !u || u.role==='consultant';
 }
 const _QL_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
-// Simon's app catalogue - the sellable AHS apps, ticked per client to match
-// what they have purchased. Ticking adds the link the client sees; unticking
-// takes it away again. Excludes wageex (private) and this app itself.
-// More apps land here as they go live.
+// Simon's app catalogue - the sellable AHS apps. Which of them a client sees
+// on Quick links is a SUBSCRIPTION decision, set per tenant in Admin (the
+// client's Config dialog) and stored in tenants.config.apps as the keys below.
+// Excludes wageex (private) and this app itself. More apps land here as they
+// go live.
 const MY_APPS=[
-  { label:'Risk Assessments (RAMS)',        url:'https://oprams.archerhs.co.uk',        blurb:'Build and issue RAMS' },
-  { label:'Site Safety Inspection',         url:'https://siteinspection.archerhs.co.uk', blurb:'Consultant site inspection reports' },
-  { label:'Workplace Inspection',           url:'https://inspections.archerhs.co.uk',    blurb:'Workshop / workplace inspections' },
-  { label:'Design Risk (CDM)',              url:'https://drm.archerhs.co.uk',            blurb:'CDM design risk register' },
-  { label:'InSight (CDM / Building Regs)',  url:'https://insight.archerhs.co.uk',        blurb:'Dutyholder compliance platform' },
-  { label:'Tail Lift Inspections',          url:'https://egsloler.archerhs.co.uk',       blurb:'LOLER 6-monthly + daily pre-use checks' },
-  { label:'PD Site Tools',                  url:'https://pdsitetools.archerhs.co.uk',    blurb:'PD walkround / inspection reports' }
+  { k:'rams',        label:'Risk Assessments (RAMS)',        url:'https://oprams.archerhs.co.uk',        blurb:'Build and issue RAMS' },
+  { k:'siteinsp',    label:'Site Safety Inspection',         url:'https://siteinspection.archerhs.co.uk', blurb:'Consultant site inspection reports' },
+  { k:'inspections', label:'Workplace Inspection',           url:'https://inspections.archerhs.co.uk',    blurb:'Workshop / workplace inspections' },
+  { k:'drm',         label:'Design Risk (CDM)',              url:'https://drm.archerhs.co.uk',            blurb:'CDM design risk register' },
+  { k:'insight',     label:'InSight (CDM / Building Regs)',  url:'https://insight.archerhs.co.uk',        blurb:'Dutyholder compliance platform' },
+  { k:'loler',       label:'Tail Lift Inspections',          url:'https://egsloler.archerhs.co.uk',       blurb:'LOLER 6-monthly + daily pre-use checks' },
+  { k:'pdsitetools', label:'PD Site Tools',                  url:'https://pdsitetools.archerhs.co.uk',    blurb:'PD walkround / inspection reports' }
 ];
 function _qlNormUrl(u){ return String(u||'').replace(/^https?:\/\//i,'').replace(/\/+$/,'').toLowerCase(); }
-function toggleCatalogueApp(idx, on){
-  if(!_canEditLinks()) return;
-  const a=MY_APPS[idx]; if(!a) return;
-  const list=_appLinksState();
-  if(on){
-    if(list.some(l=>_qlNormUrl(l.url)===_qlNormUrl(a.url))){ return; }
-    list.push({ id:'ql_'+Math.random().toString(36).slice(2,9), label:a.label, url:a.url, qr:'', catalogue:true });
-    saveData(); renderAppLinks(); showToast('✓ '+a.label+' added to this client','success');
-  } else {
-    const hit=list.find(l=>_qlNormUrl(l.url)===_qlNormUrl(a.url));
-    if(!hit) return;
-    S.appLinks=list.filter(l=>l!==hit);
-    saveData(); renderAppLinks(); showToast(a.label+' removed from this client','info');
-  }
+// The catalogue apps this client is subscribed to, from tenant config.
+function _subscribedApps(){
+  const cfg=activeClientConfig();
+  const keys=(cfg && Array.isArray(cfg.apps)) ? cfg.apps : [];
+  return MY_APPS.filter(a=>keys.includes(a.k));
 }
 
 function renderAppLinks(){
   const cont=document.getElementById('appLinksContainer'); if(!cont) return;
-  const list=_appLinksState(); const canEdit=_canEditLinks();
-  if(!list.length && !canEdit){ cont.innerHTML=''; return; }
+  const canEdit=_canEditLinks();
+  // Two sources, one grid: the subscription apps from the tenant's config
+  // (set in Admin - the client's Config dialog), plus any custom links added
+  // for this client. A custom link that duplicates a subscribed app's URL is
+  // not shown twice.
+  const subs=_subscribedApps();
+  const subUrls=new Set(subs.map(a=>_qlNormUrl(a.url)));
+  const list=_appLinksState().filter(l=>!subUrls.has(_qlNormUrl(l.url)));
+  const total=subs.length+list.length;
+  if(!total && !canEdit){ cont.innerHTML=''; return; }
+  const subCards=subs.map(a=>`<div class="ql-card">
+      <div class="ql-top"><div class="ql-badge">${_QL_ICON}</div><div style="min-width:0;"><div class="ql-name">${esc(a.label)}</div><div class="ql-url">${esc(a.url.replace(/^https?:\/\//,''))}</div></div></div>
+      <a class="ql-open" href="${esc(a.url)}" target="_blank" rel="noopener">Open &#8599;</a>
+    </div>`).join('');
   const cards=list.map(l=>{
     const badge = l.qr ? `<div class="ql-badge"><img src="${esc(l.qr)}" alt=""></div>` : `<div class="ql-badge">${_QL_ICON}</div>`;
     const qrBig = l.qr ? `<div class="ql-qr" onclick="openLinkQr('${l.id}')" title="Tap to enlarge for scanning"><img src="${esc(l.qr)}" alt="QR code"></div>` : '';
@@ -21438,22 +21453,13 @@ function renderAppLinks(){
     </div>`;
   }).join('');
   const addTile = canEdit ? `<button class="ql-add no-print" onclick="openAppLinkModal()"><div class="ql-plus">+</div><div style="font-weight:700;">Add link</div><div style="font-size:11.5px;text-align:center;">Any other link, with an optional QR</div></button>` : '';
-  const linkedUrls = new Set(list.map(l=>_qlNormUrl(l.url)));
-  const presetStrip = canEdit ? `<div class="no-print" style="margin-bottom:16px;padding:12px 14px;border:1px dashed var(--border);border-radius:9px;">
-      <div style="font-size:12.5px;font-weight:700;margin-bottom:3px;">This client's apps <span style="font-weight:400;color:var(--text-muted);">- tick what they have purchased; ticked apps appear as links below for them to use</span></div>
-      <div style="display:flex;gap:6px 14px;flex-wrap:wrap;margin-top:8px;">
-      ${MY_APPS.map((a,i)=>{ const on=linkedUrls.has(_qlNormUrl(a.url));
-        return `<label style="display:inline-flex;align-items:center;gap:7px;font-size:12.5px;border:1px solid ${on?'var(--success)':'var(--border)'};border-radius:7px;padding:6px 10px;cursor:pointer;${on?'background:#16A34A0d;':''}" title="${esc(a.blurb||'')}">
-          <input type="checkbox" ${on?'checked':''} onchange="toggleCatalogueApp(${i},this.checked)"> ${esc(a.label)}
-        </label>`; }).join('')}
-      </div>
-    </div>` : '';
+  const subNote = canEdit ? `<div class="no-print" style="margin-bottom:14px;padding:10px 13px;border:1px dashed var(--border);border-radius:9px;font-size:12.5px;color:var(--text-muted);">Which of your apps this client sees here is their <b>subscription</b> - set it in <a href="#" onclick="switchTab('admin');return false;">Admin</a> → the client's Config dialog. ${subs.length?subs.length+' app'+(subs.length!==1?'s':'')+' in their package.':'No apps ticked for this client yet.'}</div>` : '';
   cont.innerHTML = `<div class="card" style="margin:26px 0 16px;">
-    <div class="card-band"><h3><span class="dot">●</span> Quick links</h3><span class="badge badge-muted">${list.length||''}</span></div>
+    <div class="card-band"><h3><span class="dot">●</span> Quick links</h3><span class="badge badge-muted">${total||''}</span></div>
     <div class="card-body">
-      <div class="no-print" style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;">Jump straight to the client's other apps - their risk assessment tool, portals, anything in their package. ${canEdit?'Quick-add one of your apps below, or add any link and upload a QR code the client can scan on their phone.':'Tap Open to launch, or scan a QR code with your phone.'}</div>
-      ${presetStrip}
-      <div class="ql-grid">${cards}${addTile}</div>
+      <div class="no-print" style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;">Jump straight to the client's other apps - their risk assessment tool, portals, anything in their package. ${canEdit?'Add any extra link below with an optional QR code the client can scan on their phone.':'Tap Open to launch, or scan a QR code with your phone.'}</div>
+      ${subNote}
+      <div class="ql-grid">${subCards}${cards}${addTile}</div>
     </div>
   </div>${_linkedAppsCardHTML(canEdit)}`;
 }

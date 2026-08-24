@@ -3312,6 +3312,47 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     @media(max-width:720px){.risk-card .rc-title{white-space:normal;}}
     .risk-card[open]>summary{border-bottom:1px solid var(--border);}
     .risk-card .card-body{padding-top:14px;}
+    /* ── Risk profile split view: compact list on the left, the selected risk on the right ── */
+    .rp-split{display:grid;grid-template-columns:320px minmax(0,1fr);gap:14px;align-items:start;}
+    .rp-list{position:sticky;top:calc(var(--hdr-h,60px) + 56px);max-height:calc(100vh - var(--hdr-h,60px) - 74px);overflow:auto;display:flex;flex-direction:column;gap:7px;padding-right:2px;min-width:0;}
+    .rp-row{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:10px;padding:9px 11px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:9px;box-shadow:var(--shadow);text-align:left;width:100%;font-family:inherit;color:var(--text);transition:border-color .12s,background .12s;}
+    .rp-row:hover{border-color:var(--accent);}
+    .rp-row.on{border-color:var(--accent);background:var(--accent-light);}
+    .rp-row .rp-t{display:block;font-weight:700;font-size:12.8px;line-height:1.35;overflow-wrap:anywhere;}
+    .rp-row .rp-m{display:block;font-size:11px;color:var(--text-muted);margin-top:2px;}
+    .rp-detail{position:sticky;top:calc(var(--hdr-h,60px) + 56px);max-height:calc(100vh - var(--hdr-h,60px) - 74px);background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+    .rp-head{padding:14px 16px 0;border-bottom:1px solid var(--border);flex:0 0 auto;}
+    .rp-tabs{display:flex;gap:2px;overflow-x:auto;margin-top:9px;}
+    .rp-tabs button{border:none;background:none;border-bottom:2.5px solid transparent;padding:9px 12px;font-family:'Inter',sans-serif;font-size:12.8px;font-weight:600;color:var(--text-muted);cursor:pointer;white-space:nowrap;}
+    .rp-tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:700;}
+    .rp-body{overflow-y:auto;padding:15px 16px 18px;flex:1 1 auto;}
+    .rp-flash{animation:rcFlash 1.6s ease-out;}
+    /* Summary tab (the read-first digest) */
+    .rp-digest .dg-flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:11px 13px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);}
+    .dg-narr{font-size:13.5px;line-height:1.65;margin:13px 0 0;}
+    .dg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin:13px 0;}
+    .dg-cell{border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:0;}
+    .dg-cell h5{margin:0 0 7px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);}
+    .dg-cell p{margin:0;font-size:12.5px;line-height:1.5;}
+    .dg-acts{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:0 0 13px;}
+    .dg-acts .dg-ah{padding:8px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);background:var(--muted-bg);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+    .dg-act{display:flex;align-items:center;gap:9px;padding:7px 12px;border-top:1px solid var(--border);font-size:12.5px;}
+    .dg-act .dot{width:8px;height:8px;border-radius:99px;flex:0 0 auto;}
+    .dg-act .who{margin-left:auto;color:var(--text-muted);font-size:11.5px;white-space:nowrap;}
+    .dg-due{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--muted-bg);color:var(--text-muted);white-space:nowrap;}
+    .dg-chip{display:inline-flex;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--muted-bg);color:var(--text-muted);max-width:100%;overflow-wrap:anywhere;}
+    @media(max-width:900px){
+      .rp-split{grid-template-columns:1fr;}
+      .rp-list{position:static;max-height:280px;}
+      .rp-detail{position:static;max-height:none;}
+      .rp-body{overflow:visible;}
+    }
+    @media print{
+      .rp-list, .rp-tabs{display:none;}
+      .rp-split{display:block;}
+      .rp-detail{position:static;max-height:none;overflow:visible;}
+      .rp-body{overflow:visible;}
+    }
   </style>
   <!-- ══════════════════════════════════════
        TAB - COMPANY SETUP (per-client company profile)
@@ -15287,7 +15328,7 @@ function addRiskEntry(){
     trend:'', actions:[], linked:[], furtherActions:'' };
   _stamp(entry, 'created');
   S.riskProfile.push(entry);
-  _openRiskCards = new Set([entry.id]);   // open the new card (and close others) so it can be filled in
+  _riskSel = entry.id; _riskSelTab = 'identify';   // select the new risk, straight onto the first editing tab
   saveData();
   renderRiskProfile();
 }
@@ -15296,6 +15337,7 @@ function deleteRiskEntry(id){
   if(_blockIfReadOnly()) return;
   if(!confirm('Delete this risk entry?')) return;
   S.riskProfile = (S.riskProfile||[]).filter(r => r.id !== id);
+  if(_riskSel === id) _riskSel = null;   // the render picks the first visible row
   saveData();
   renderRiskProfile();
 }
@@ -15314,11 +15356,15 @@ function updateRiskField(id, field, value){
     if(rate) rate.innerHTML = _riskRatingText(r);
     const b = document.getElementById('rprio-'+id);
     if(b) b.innerHTML = _riskPrioBadge(sc.priority, sc.rating);
+    const lb = document.getElementById('rlprio-'+id);   // split-view list row badge
+    if(lb) lb.innerHTML = _riskPrioBadge(sc.priority, sc.rating);
     _renderRiskDashboard();
   }
   if(field === 'activity'){
     const t = document.getElementById('ract-'+id);
     if(t) t.textContent = value || 'New risk';
+    const lt = document.getElementById('rlt-'+id);      // split-view list row title
+    if(lt) lt.textContent = value || (r.hazard || 'New risk');
   }
   // Hazard type / area / PDCA change the summary chips + colour band - re-render to refresh them.
   if(field === 'category' || field === 'area' || field === 'pdca'){ _keepScroll(renderRiskProfile); return; }
@@ -15443,23 +15489,23 @@ function _renderUnits(){
 }
 
 let _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };
-// Which risk cards are expanded (collapsed by default so the list stays scannable).
-let _openRiskCards = new Set();
-function _setRiskOpen(id, open){
-  if(open){
-    // Single-open: opening one risk card collapses the others (no full re-render, keeps it snappy)
-    _openRiskCards = new Set([id]);
-    var cont=document.getElementById('riskContainer');
-    if(cont) cont.querySelectorAll('details.risk-card[open]').forEach(function(el){ if(el.getAttribute('data-rid')!==id) el.open=false; });
-  } else { _openRiskCards.delete(id); }
+// ── Split view state: which risk is selected in the register, and which
+//    detail tab is showing. The register renders as a compact list on the
+//    left with the selected risk in a tabbed panel on the right, so opening
+//    a risk never grows the page. ──
+let _riskSel = null;          // selected risk id (null = pick the first visible row)
+let _riskSelTab = 'summary';  // active tab in the right-hand panel
+function _selectRisk(id){
+  if(_riskSel === id) return;
+  _riskSel = id;
+  _keepScroll(renderRiskProfile);
+  // On a phone the panel sits below the list - bring it into view on selection.
+  if(window.matchMedia && window.matchMedia('(max-width:900px)').matches){
+    const pan=document.getElementById('rpDetail');
+    if(pan) pan.scrollIntoView({behavior:'smooth',block:'start'});
+  }
 }
-function _expandAllRisks(open){ _openRiskCards = open ? new Set((S.riskProfile||[]).map(r=>r.id)) : new Set(); renderRiskProfile(); }
-// Collapse a single risk card from its own footer and scroll its header into view.
-function _collapseRiskCard(ev, id){
-  const det = ev.target.closest('details.risk-card');
-  _openRiskCards.delete(id);
-  if(det){ det.open=false; det.scrollIntoView({block:'nearest'}); }
-}
+function _riskDetailTab(tab){ if(_riskSelTab===tab) return; _riskSelTab=tab; _keepScroll(renderRiskProfile); }
 function setRiskFilter(f, v){ _riskFilter[f] = v; renderRiskProfile(); }
 function clearRiskFilters(){ _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' }; renderRiskProfile(); }
 // Jump from the cockpit to just the fatal-potential (SIF) risks.
@@ -15479,21 +15525,19 @@ function gotoOpenActions(){
   const cb=document.getElementById('showResolved'); if(cb) cb.checked=false;
   switchTab('actions');
 }
-// Jump from a summary row (risk review tab) to the actual risk in the register, open it and flag it.
+// Jump from a summary row (risk review tab) to the actual risk: select it in the
+// split view, clearing any filters that would hide it, and flash the panel.
 function _gotoRisk(id){
-  _openRiskCards.add(id);
+  _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };
+  _riskSel = id; _riskSelTab = 'summary';
   switchTab('risk');
   setTimeout(()=>{
-    const t=document.getElementById('ract-'+id);
-    const card=t?t.closest('.risk-card'):null;
-    if(card){
-      // Open every collapsible ancestor (the numbered register section) so the
-      // card is actually visible before we scroll to it.
-      let p=card.parentElement;
-      while(p){ if(p.tagName==='DETAILS' && !p.open) p.open=true; p=p.parentElement; }
-      if(!card.open) card.open=true;
-      card.scrollIntoView({behavior:'smooth',block:'center'});
-      card.classList.add('rc-flash'); setTimeout(()=>card.classList.remove('rc-flash'),1700);
+    const sec=document.getElementById('wfRegister'); if(sec && !sec.open) sec.open=true;
+    renderRiskProfile();
+    const pan=document.getElementById('rpDetail');
+    if(pan){
+      pan.scrollIntoView({behavior:'smooth',block:'start'});
+      pan.classList.add('rp-flash'); setTimeout(()=>pan.classList.remove('rp-flash'),1700);
     }
   },80);
 }
@@ -15810,11 +15854,7 @@ function _journeyMilestones(r){
       : (plan.k==='managed'?'Plan delivered - tick "reviewed and completed" on the risk to sign it off':(plan.k==='none'?'No actions planned - plan the work, or formally accept the risk with a reason':'The plan is still being delivered')) });
   return m;
 }
-function _journeyOpenRisk(id){
-  try{ if(typeof _openRiskCards!=='undefined') _openRiskCards.add(id); }catch(e){}
-  switchTab('risk');
-  setTimeout(()=>{ const el=document.querySelector('.risk-card[data-rid="'+id+'"]'); if(el){ el.open=true; el.scrollIntoView({behavior:'smooth',block:'start'}); } },350);
-}
+function _journeyOpenRisk(id){ _gotoRisk(id); }   // same jump as the review tab - one derivation
 function setJourneyFilter(v){ _journeyFilter=v; renderRiskJourney(); }
 function renderRiskJourney(){
   const el=document.getElementById('journeyRoot'); if(!el) return;
@@ -16167,6 +16207,7 @@ function updateRiskRating(id, field, value){
   const sc=_riskScore(r);
   const rate=document.getElementById('rrate-'+id); if(rate) rate.innerHTML=_riskRatingText(r);
   const b=document.getElementById('rprio-'+id); if(b) b.innerHTML=_riskPrioBadge(sc.priority, sc.rating);
+  const lb=document.getElementById('rlprio-'+id); if(lb) lb.innerHTML=_riskPrioBadge(sc.priority, sc.rating);
   _renderRiskDashboard(); _renderActionPlan();
 }
 
@@ -18784,6 +18825,68 @@ function _riskDisplayOrder(){
     return d !== 0 ? d : ((_riskScore(b).rating||0) - (_riskScore(a).rating||0));
   });
 }
+
+// ── Split-view detail tabs. Summary reads the risk back as a one-screen
+//    report; the other four are the same editing fields as before, grouped
+//    so no tab is more than about a screen tall. ──
+const RP_TABS = [['summary','Summary'],['identify','Identify'],['people','People & impact'],['rating','Controls & rating'],['actions','Actions & evidence']];
+let _riskSelKey = '';   // last rendered "risk|tab" - same view keeps its panel scroll across re-renders
+// Provenance badge (suggested by discovery / discovery withdrawn) - shown on the
+// Summary tab and beside the reviewed tick, one derivation for both.
+function _rpProvenanceBadge(r){
+  if(typeof _discIsOrphan==='function' && _discIsOrphan(r)) return '<span class="badge" style="background:#FEF3C7;color:#B45309;font-weight:700;" title="The discovery answers that suggested this theme have been withdrawn - remove it or keep it as your own judgement">⚠ discovery no longer supports this</span>';
+  if(!r.reviewed && r.suggestedBy==='discovery') return '<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;">suggested by discovery</span>';
+  return '';
+}
+// The Summary tab: presentation only - every fact on it is edited on the other tabs.
+function _rpDigestHTML(r){
+  const filled = !!((r.activity||r.hazard) || (r.harm&&String(r.harm).trim()) || (r.controls&&String(r.controls).trim()) || _riskScore(r).rating);
+  if(!filled) return `<div class="empty" style="padding:26px 10px;"><h4>Nothing recorded on this risk yet</h4><p>Work through the Identify, People &amp; impact, Controls &amp; rating and Actions &amp; evidence tabs - this page then reads the risk back as a one-screen summary.</p></div>`;
+  const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due));
+  const openActs=acts.filter(a=>{ const st=_actionStatus(a); return st!=='Complete'&&st!=='Accepted'; });
+  const trendC = r.trend==='Increasing' ? '#DC2626' : r.trend==='Reducing' ? '#16A34A' : 'var(--text-muted)';
+  const cl=_controlLevelLabel(r.controlLevel);
+  const narr=[];
+  if(r.hazard) narr.push('<b>'+esc(r.hazard)+'.</b>');
+  if(r.harm&&String(r.harm).trim()){ const h=esc(String(r.harm).trim()); narr.push(h+(/[.!?]$/.test(h)?'':'.')); }
+  if(r.controls&&String(r.controls).trim()){ const c=esc(String(r.controls).trim()); narr.push('<b>Managed by:</b> '+c+(/[.!?]$/.test(c)?'':'.')); }
+  if(cl) narr.push('<b>Strongest control in place:</b> '+esc(cl)+'.');
+  const personsTxt=(r.personsAtRisk||[]).length ? r.personsAtRisk.map(p=>'<span class="dg-chip">'+esc(p)+'</span>').join('') : '<span style="color:var(--text-muted);font-size:12px;">Not recorded yet</span>';
+  const whereBits=[];
+  if(r.area) whereBits.push('<span class="dg-chip">'+esc(r.area)+'</span>');
+  const ul=_riskUnitLabel(r); if(ul) whereBits.push('<span class="dg-chip">'+esc(ul)+'</span>');
+  const imMax=_impactMax(r);
+  const imTxt=(r.businessImpact&&String(r.businessImpact).trim()) ? esc(r.businessImpact) : (_impactSummaryText(r) ? esc(_impactSummaryText(r)) : '<span style="color:var(--text-muted);">Not rated yet</span>');
+  const actRows=acts.map(a=>{
+    const st=_actionStatus(a);
+    const done=(st==='Complete'||st==='Accepted');
+    const c = st==='Complete'?'#16A34A': st==='Accepted'?'#6B7280': st==='Overdue'?'#DC2626':'#F59E0B';
+    return `<div class="dg-act"><span class="dot" style="background:${c};" title="${st}"></span><span style="min-width:0;${done?'color:var(--text-muted);':''}">${esc(a.desc||'(no description yet)')}</span><span class="who">${esc(a.owner||'')}</span><span class="dg-due">${done?st:(a.due?fmtDate(a.due):'no date')}</span></div>`;
+  }).join('');
+  const links=(r.linked||[]).filter(l=>(l.ref||l.url));
+  const prov=_rpProvenanceBadge(r);
+  const updLine=_attrLine(r,'updated');
+  return `<div class="rp-digest">
+    <div class="dg-flow">${_riskFlowHTML(r)}${r.trend?`<span class="dg-chip" style="margin-left:auto;color:${trendC};">Trend: ${esc(r.trend)}</span>`:''}</div>
+    ${_scoreHistoryHTML(r)}
+    ${narr.length?`<p class="dg-narr">${narr.join(' ')}</p>`:''}
+    <div class="dg-grid">
+      <div class="dg-cell"><h5>Who is at risk</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${personsTxt}</div></div>
+      <div class="dg-cell"><h5>Where</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${whereBits.join('')||'<span style="color:var(--text-muted);font-size:12px;">Organisation-wide</span>'}</div></div>
+      <div class="dg-cell"><h5>Business impact${imMax?` <span class="dg-chip">worst ${imMax} / 5</span>`:''}</h5><p>${imTxt}</p></div>
+    </div>
+    <div class="dg-acts">
+      <div class="dg-ah"><span>Action plan</span><span>${acts.length?(openActs.length? openActs.length+' open · '+acts.length+' total' : 'all closed · '+acts.length+' total'):''}</span></div>
+      ${actRows || `<div class="dg-act" style="color:var(--text-muted);">No actions recorded yet - add them on the Actions &amp; evidence tab.</div>`}
+    </div>
+    <div class="dg-cell" style="margin-bottom:13px;"><h5>Evidence behind this</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${links.length?links.map(l=>`<span class="dg-chip" title="${esc(l.url||'')}">📄 ${esc(l.ref||l.url)}</span>`).join(''):'<span style="color:var(--text-muted);font-size:12px;">No linked assessments recorded.</span>'}</div></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);">
+      ${r.reviewed?'<span style="color:#16A34A;font-weight:700;">✓ Reviewed and complete</span>':'<span>Not yet marked reviewed - the tick is on the Actions &amp; evidence tab</span>'}
+      ${prov}
+      ${updLine?`<span style="margin-left:auto;">Updated ${updLine}</span>`:''}
+    </div>
+  </div>`;
+}
 function renderRiskProfile(){
   const cont = document.getElementById('riskContainer');
   if(!cont) return;
@@ -18847,34 +18950,43 @@ function renderRiskProfile(){
   const pdcaHint = `<span class="fl-hint" title="Plan-Do-Check-Act - where this risk sits in the manage-for-H&S cycle. Leave blank to derive it from the controls and actions you record.">(?)</span>`;
   const rateHint = `<span class="fl-hint" title="Both numbers can be reduced, and both should be. Likelihood falls when you make the event less likely: guarding, planned maintenance, permits, supervision, competence. Severity falls too - it is not fixed, whatever you may have been told. Reduce the energy, the height, the pressure or the quantity; put distance, a barrier or an interlock between the person and the harm; cut how many people are exposed; or change the method so the worst credible outcome is a lesser injury. Only where a control genuinely does nothing to the worst case do you move likelihood alone and leave severity where it is.">(?)</span>`;
   const projHint = `<span class="fl-hint" title="Where the score is heading once the action plan is delivered - your judgement at planning time. When the last action closes, the app asks you to re-score the risk (pre-filled with this projection) and keeps the old score in the history, so the profile always shows where the business IS and where it is GOING. Score it as it will be once every action is actioned - likelihood and severity both.">(?)</span>`;
-  cont.innerHTML = `<div class="no-print" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
-      <button class="btn btn-ghost btn-xs" onclick="_expandAllRisks(true)">Expand all</button>
-      <button class="btn btn-ghost btn-xs" onclick="_expandAllRisks(false)">Collapse all</button>
-      <span style="font-size:12px;color:var(--text-muted);">${rows.length} risk${rows.length!==1?'s':''} · click a row to open it</span>
-    </div>` + rows.map(r => {
-    const sc = _riskScore(r);
-    const htC = HAZARD_TYPE_COLOR[r.category] || '#9CA3AF';
-    const pdca = _riskPdca(r), pdcaC = RISK_PDCA_COLOR[pdca];
-    return `
-    <details class="card risk-card" data-rid="${r.id}"${_openRiskCards.has(r.id)?' open':''} ontoggle="_setRiskOpen('${r.id}',this.open)" style="border-left-color:${htC};">
-      <summary>
-        <span class="rc-left">
-          <span class="rc-title" id="ract-${r.id}" title="${esc(r.activity||r.hazard||'New risk')}">${r.activity ? esc(r.activity) : (r.hazard?esc(r.hazard):'New risk')}</span>
-          <span class="rc-meta">
-            ${r.category?`<span class="rc-chip" style="background:${htC}1a;color:${htC};">${esc(r.category)}</span>`:''}
-            ${r.area?`<span class="rc-chip" style="background:var(--muted-bg);color:var(--text-muted);">${esc(r.area)}</span>`:''}
-            ${r.libKey?`<span class="rc-chip" style="background:var(--muted-bg);color:var(--text-muted);font-weight:400;">library</span>`:''}
-            ${_riskSif(r)?`<span class="rc-chip" style="background:#DC26261a;color:#DC2626;" title="Serious injury or fatality potential">⚠ SIF</span>`:''}
-            ${r.reviewed?`<span class="rc-chip" style="background:#16A34A1a;color:#16A34A;" title="You have marked this risk complete">✓</span>`:''}
-          </span>
-        </span>
-        <span class="rc-end">
-          <span class="rc-chip" style="background:${pdcaC}1a;color:${pdcaC};" title="Manage cycle stage (PDCA)">${pdca}</span>
-          <span id="rprio-${r.id}">${_riskPrioBadge(sc.priority, sc.rating)}</span>
-          ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete this risk" onclick="event.preventDefault();event.stopPropagation();deleteRiskEntry('${r.id}')">${_ic('trash',14)}</button>`}
-        </span>
-      </summary>
-      <div class="card-body">
+  // ── Split view: compact list on the left, the selected risk on the right.
+  //    Opening a risk never grows the page - the panel has its own tabs and
+  //    its own scrollbar, so the list never moves under the reader. ──
+  if(!rows.some(r => r.id === _riskSel)) _riskSel = rows[0].id;
+  const selR = rows.find(r => r.id === _riskSel);
+  const selHtC = HAZARD_TYPE_COLOR[selR.category] || '#9CA3AF';
+  const selPdca = _riskPdca(selR), selPdcaC = RISK_PDCA_COLOR[selPdca];
+  const selSc = _riskScore(selR);
+
+  // Keep both panes' scroll positions across a re-render of the SAME view;
+  // a genuine selection or tab change starts the panel back at the top.
+  const _viewKey = _riskSel + '|' + _riskSelTab;
+  const _lp0 = document.getElementById('rpList'), _bp0 = document.getElementById('rpBody');
+  const _listTop = _lp0 ? _lp0.scrollTop : 0;
+  const _bodyTop = (_bp0 && _riskSelKey === _viewKey) ? _bp0.scrollTop : 0;
+
+  const listRows = rows.map(r => {
+    const sc = _riskScore(r), htC = HAZARD_TYPE_COLOR[r.category] || '#9CA3AF';
+    const bits = [r.category ? esc(r.category) : 'No hazard type yet'];
+    if(_riskSif(r)) bits.push('<span style="color:#DC2626;font-weight:700;">⚠ SIF</span>');
+    if(r.reviewed) bits.push('<span style="color:#16A34A;font-weight:700;">✓ reviewed</span>');
+    return `<button type="button" class="rp-row${r.id===_riskSel?' on':''}" data-rid="${r.id}" role="option" aria-selected="${r.id===_riskSel?'true':'false'}" onclick="_selectRisk('${r.id}')" style="border-left-color:${htC};">
+      <span style="min-width:0;flex:1 1 auto;">
+        <span class="rp-t" id="rlt-${r.id}">${r.activity ? esc(r.activity) : (r.hazard?esc(r.hazard):'New risk')}</span>
+        <span class="rp-m">${bits.join(' · ')}</span>
+      </span>
+      <span id="rlprio-${r.id}" style="flex:0 0 auto;">${_riskPrioBadge(sc.priority, sc.rating)}</span>
+    </button>`;
+  }).join('');
+
+  const tabBtns = RP_TABS.map(t => `<button type="button" role="tab" aria-selected="${_riskSelTab===t[0]?'true':'false'}" class="${_riskSelTab===t[0]?'on':''}" onclick="_riskDetailTab('${t[0]}')">${t[1]}</button>`).join('');
+
+  // The four editing tabs reuse the exact field blocks the old long card had,
+  // grouped so no tab is more than about a screen tall.
+  const tabBody = (r) => {
+    if(_riskSelTab==='summary') return _rpDigestHTML(r);
+    if(_riskSelTab==='identify') return `
         <div class="field-grid" style="margin-bottom:12px;">
           ${fg('Hazard type', sel(r.id,'category',r.category,_catOpts(r.category)))}
           ${fg('Business area', sel(r.id,'area',r.area,RISK_AREAS))}
@@ -18888,12 +19000,13 @@ function renderRiskProfile(){
           <label class="field-label">Hazard source(s) - energy or human factors <span class="fl-hint" title="A hazard is usually an energy source: harm happens when energy is released or contacted (energy-damage model - Haddon; HSE). Tick the energies this activity carries. For a non-physical hazard (stress, violence, fatigue) tick Psychosocial. Leave blank if none apply.">(?)</span></label>
           <div class="chip-wrap" id="renergy-${r.id}">${ENERGY_SOURCES.map(e=>`<button type="button" class="chip${(r.energy||[]).includes(e.k)?' on':''}"${dis} title="${esc(e.def)}" onclick="toggleEnergy('${r.id}','${e.k}')">${e.label}</button>`).join('')}</div>
         </div>
-        <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 13px;border:1px solid ${_riskSif(r)?'#DC2626':'var(--border)'};border-radius:10px;background:${_riskSif(r)?'#DC26260d':'transparent'};">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 13px;border:1px solid ${_riskSif(r)?'#DC2626':'var(--border)'};border-radius:10px;background:${_riskSif(r)?'#DC26260d':'transparent'};">
           <label style="font-size:13.5px;font-weight:700;color:${_riskSif(r)?'#DC2626':'var(--text)'};display:flex;align-items:center;gap:9px;cursor:pointer;">
             <input type="checkbox"${dis} ${_riskSif(r)?'checked':''} onchange="setSif('${r.id}',this.checked)"> ⚠ Serious injury or fatality (SIF) potential
           </label>
           <span style="font-size:11px;color:var(--text-muted);flex:1;min-width:180px;">Could this credibly kill or seriously injure someone? Judge on worst-case severity, not likelihood.${(r.sif===''||r.sif===undefined)?' Auto-set from severity - tick to fix it.':''}</span>
-        </div>
+        </div>`;
+    if(_riskSelTab==='people') return `
         <div class="field-grid cols-1" style="margin-bottom:12px;">
           ${fg('Persons at risk', `<div class="chip-wrap" id="rpers-${r.id}">${persons(r)}</div>`)}
         </div>
@@ -18903,17 +19016,18 @@ function renderRiskProfile(){
         <div class="field-grid cols-1" style="margin-bottom:12px;">
           ${fg('Potential harm / consequences', ta(r.id,'harm',r.harm,'e.g. Fatality, major injury, occupational ill health, stress-related illness'))}
         </div>
-        <div class="field-grid cols-1" style="margin-bottom:12px;">
-          ${fg('Existing controls', ta(r.id,'controls',r.controls,'Current control measures already in place'))}
-        </div>
-        <div class="field-grid" style="margin-bottom:12px;">
-          ${fg('Best control level '+`<span class="fl-hint" title="The strongest control in place, best to weakest (a general hierarchy that fits any hazard): Eliminate the hazard → Prevent the harm by an engineering / physical control (e.g. edge protection to prevent a fall, a guard, isolation) → Protect the person with PPE, procedure or training → Stop work if it cannot be made safe. A 'Protect' answer means you are relying on PPE or procedure.">(?)</span>`, `<select${dis} onchange="updateRiskField('${r.id}','controlLevel',this.value)"><option value="">- Select -</option>${CONTROL_LEVELS.map(c=>`<option value="${c.k}"${r.controlLevel===c.k?' selected':''}>${c.label}</option>`).join('')}</select>`)}
-        </div>
         <div style="margin-bottom:14px;">
           <label class="field-label">Business impact <span class="fl-hint" title="Rate the credible worst-case impact on each dimension, 1 (negligible) to 5 (severe).">(?)</span></label>
           ${_impactRowsHTML(r,dis)}
           <div class="impact-chips" style="margin-top:9px;" id="rimp-${r.id}">${_impactChipsHTML(r)}</div>
           ${fg('Impact summary <span class="fl-hint" title="Written for you from the ratings above in plain standard wording. Type your own to override it; clear the box to go back to the automatic wording.">(?)</span>', `<input type="text"${dis} id="rbi-${r.id}" value="${esc(r.businessImpact)}" placeholder="Rates itself from the impact scores above" oninput="updateRiskField('${r.id}','businessImpact',this.value)">`)}
+        </div>`;
+    if(_riskSelTab==='rating') return `
+        <div class="field-grid cols-1" style="margin-bottom:12px;">
+          ${fg('Existing controls', ta(r.id,'controls',r.controls,'Current control measures already in place'))}
+        </div>
+        <div class="field-grid" style="margin-bottom:12px;">
+          ${fg('Best control level '+`<span class="fl-hint" title="The strongest control in place, best to weakest (a general hierarchy that fits any hazard): Eliminate the hazard → Prevent the harm by an engineering / physical control (e.g. edge protection to prevent a fall, a guard, isolation) → Protect the person with PPE, procedure or training → Stop work if it cannot be made safe. A 'Protect' answer means you are relying on PPE or procedure.">(?)</span>`, `<select${dis} onchange="updateRiskField('${r.id}','controlLevel',this.value)"><option value="">- Select -</option>${CONTROL_LEVELS.map(c=>`<option value="${c.k}"${r.controlLevel===c.k?' selected':''}>${c.label}</option>`).join('')}</select>`)}
         </div>
         <div class="risk-rating-row" style="flex-direction:column;align-items:stretch;gap:10px;">
           <label class="field-label" style="margin:0;">Risk rating - Likelihood (L) × Severity (S), each 1-5 ${rateHint}</label>
@@ -18925,8 +19039,10 @@ function renderRiskProfile(){
           <div class="risk-flow" id="rflow-${r.id}">${_riskFlowHTML(r)}</div>
           <div class="risk-rating-readout" id="rrate-${r.id}">${_riskRatingText(r)}</div>
           ${_scoreHistoryHTML(r)}
-        </div>
-        <div style="margin:14px 0;">
+        </div>`;
+    const prov=_rpProvenanceBadge(r);
+    return `
+        <div style="margin:0 0 14px;">
           <label class="field-label">Action plan <span class="fl-hint" title="Prioritised, owned and dated actions. This is where residual risk is dealt with: once the plan is delivered, the risk does not disappear - the completed plan and its evidence become the way the company manages this risk.">(?)</span></label>
           ${_riskActionsHTML(r,dis)}
         </div>
@@ -18935,15 +19051,43 @@ function renderRiskProfile(){
           ${_riskLinksHTML(r,dis)}
         </div>
         <label style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:16px;padding:11px 14px;border:1px solid ${r.reviewed?'#16A34A':'var(--border)'};border-radius:10px;background:${r.reviewed?'#16A34A0d':'transparent'};color:${r.reviewed?'#15803D':'var(--text)'};">
-          ${(typeof _discIsOrphan==='function'&&_discIsOrphan(r))?'<span class="badge" style="background:#FEF3C7;color:#B45309;font-weight:700;margin-right:8px;" title="The discovery answers that suggested this theme have been withdrawn - remove it or keep it as your own judgement">⚠ discovery no longer supports this</span>':((!r.reviewed&&r.suggestedBy==='discovery')?'<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;margin-right:8px;">suggested by discovery</span>':'')}<input type="checkbox"${dis} ${r.reviewed?'checked':''} onchange="setReviewed('${r.id}',this.checked)"> ✓ I have reviewed and completed this risk
+          ${prov?prov+' ':''}<input type="checkbox"${dis} ${r.reviewed?'checked':''} onchange="setReviewed('${r.id}',this.checked)"> ✓ I have reviewed and completed this risk
         </label>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;">
-          <button class="btn btn-ghost btn-xs no-print" title="Collapse this risk and move on" onclick="_collapseRiskCard(event,'${r.id}')" style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted);"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg> Collapse</button>
-          ${_attrFooter(r)}
+        ${_attrFooter(r)}`;
+  };
+
+  const filteredNote = rows.length < all.length
+    ? `<div class="no-print" style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Showing ${rows.length} of ${all.length} risks - <a href="#" onclick="clearRiskFilters();return false;">clear the filters</a> · select a risk to view and edit it</div>`
+    : `<div class="no-print" style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">${rows.length} risk${rows.length!==1?'s':''} · select one to view and edit it - the panel does the scrolling, not the page</div>`;
+
+  cont.innerHTML = filteredNote + `<div class="rp-split">
+    <div class="rp-list" id="rpList" role="listbox" aria-label="Risks in the profile">${listRows}</div>
+    <div class="rp-detail" id="rpDetail" style="border-left-color:${selHtC};">
+      <div class="rp-head">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+          <span class="rc-title" id="ract-${selR.id}" style="white-space:normal;font-size:16px;line-height:1.35;">${selR.activity ? esc(selR.activity) : (selR.hazard?esc(selR.hazard):'New risk')}</span>
+          <span style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
+            <span id="rprio-${selR.id}">${_riskPrioBadge(selSc.priority, selSc.rating)}</span>
+            ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete this risk" onclick="deleteRiskEntry('${selR.id}')">${_ic('trash',14)}</button>`}
+          </span>
         </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;align-items:center;">
+          ${selR.category?`<span class="rc-chip" style="background:${selHtC}1a;color:${selHtC};">${esc(selR.category)}</span>`:''}
+          ${selR.area?`<span class="rc-chip" style="background:var(--muted-bg);color:var(--text-muted);">${esc(selR.area)}</span>`:''}
+          ${selR.libKey?`<span class="rc-chip" style="background:var(--muted-bg);color:var(--text-muted);font-weight:400;">library</span>`:''}
+          ${_riskSif(selR)?`<span class="rc-chip" style="background:#DC26261a;color:#DC2626;" title="Serious injury or fatality potential">⚠ SIF</span>`:''}
+          ${selR.reviewed?`<span class="rc-chip" style="background:#16A34A1a;color:#16A34A;" title="You have marked this risk complete">✓ reviewed</span>`:''}
+          <span class="rc-chip" style="background:${selPdcaC}1a;color:${selPdcaC};" title="Manage cycle stage (PDCA)">${selPdca}</span>
+        </div>
+        <div class="rp-tabs no-print" role="tablist">${tabBtns}</div>
       </div>
-    </details>`;
-  }).join('');
+      <div class="rp-body" id="rpBody">${tabBody(selR)}</div>
+    </div>
+  </div>`;
+
+  const _lp1 = document.getElementById('rpList'); if(_lp1) _lp1.scrollTop = _listTop;
+  const _bp1 = document.getElementById('rpBody'); if(_bp1) _bp1.scrollTop = _bodyTop;
+  _riskSelKey = _viewKey;
 
   _renderActionPlan();
   _renderAssurance();

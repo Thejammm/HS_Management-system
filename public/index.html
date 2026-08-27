@@ -2790,6 +2790,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ep-grid td.ep-act{white-space:nowrap;overflow:visible;}
 .ep-grid td.ep-act > *{margin-right:4px;vertical-align:middle;}
 .ep-grid .badge{max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;}
+/* A raise button that has done its job: green, ticked, still clickable
+   where raising again makes sense. */
+.btn-raised{border-color:#16A34A!important;color:#15803d!important;background:#16A34A14!important;}
 .cas-xf-btn{border:1px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:4px;padding:1px 4px 0;cursor:pointer;vertical-align:-1px;margin-left:3px;}
 .cas-xf-btn:hover{color:var(--accent);border-color:var(--accent);}
 .cas-xf-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
@@ -15414,7 +15417,18 @@ function deleteArchivedItem(archId){
   if(typeof showToast==='function') showToast('Archived action deleted','info');
 }
 // Raise a new action from Assurance / Accreditation (or anywhere) into the plan.
-function raiseExecAction(source, label){
+// Confirm a free-add button visually for a moment - these have no source
+// record to carry a lasting marker.
+function _raiseFlash(btnId){
+  if(!btnId) return;
+  setTimeout(()=>{
+    const b=document.getElementById(btnId); if(!b) return;
+    b.classList.add('btn-raised');
+    const old=b.textContent; b.textContent='✓ '+old.replace(/^＋ /,'');
+    setTimeout(()=>{ const b2=document.getElementById(btnId); if(b2){ b2.classList.remove('btn-raised'); b2.textContent=old; } }, 2600);
+  }, 30);
+}
+function raiseExecAction(source, label, btnId){
   if(_blockIfReadOnly()) return;
   const desc = (typeof prompt==='function') ? prompt('What action needs doing? (You can set the target date in the execution plan.)', '') : '';
   if(desc===null) return;                 // cancelled
@@ -15425,6 +15439,7 @@ function raiseExecAction(source, label){
   S.actionPlan.push(it);
   saveData(); _refreshActionViews();
   if(typeof showToast==='function') showToast('✓ Action added to the execution plan - set its target date there','success');
+  _raiseFlash(btnId);
 }
 // Sidebar "markers": open-action count on the Action plan + Execution plan tabs.
 function updateActionBadges(){
@@ -20679,6 +20694,7 @@ function raiseReqGapAction(sid, iid){
   const act=_reqAddAction(it, title);
   act.detail=open.map(x=>x.c);
   if(open.length) _logAdd(act,'comment','To resolve:\n'+open.map(x=>'• '+x.c).join('\n'));
+  it.raised=(it.raised||0)+1;
   _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
   try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
   showToast('✓ "'+title+'" raised - open ▸ Activity on the execution plan to see what needs doing','success',);
@@ -20750,7 +20766,7 @@ function _legalCardHTML(sec, it, emp, ro){
       <button class="btn btn-ghost btn-xs" onclick="addReqCriterion('${sec.id}','${it.id}')">＋ Add criterion</button>
       <button class="btn btn-ghost btn-xs" title="Undo the last criteria change (this session)" onclick="undoCritChange('${sec.id}','${it.id}')">↶ Undo</button>
       ${bespoke?`<button class="btn btn-ghost btn-xs" title="Replace the bespoke lines with the library original" onclick="recallReqCriteria('${sec.id}','${it.id}')">↺ Recall original</button><span class="badge badge-muted" style="font-size:9.5px;">bespoke</span>`:''}
-      ${!approved?`<button class="btn btn-outline btn-xs" style="margin-left:auto;color:var(--warning);border-color:var(--warning);" title="The item name becomes the action${cc.open?(' and the '+cc.open+' open criteria its detail'):''} - lands on the execution plan" onclick="raiseReqGapAction('${sec.id}','${it.id}')">Raise the gap as an action ↗</button>`:''}
+      ${!approved?`<button class="btn btn-outline btn-xs${it.raised?' btn-raised':''}" style="margin-left:auto;${it.raised?'':'color:var(--warning);border-color:var(--warning);'}" title="The item name becomes the action${cc.open?(' and the '+cc.open+' open criteria its detail'):''} - lands on the execution plan" onclick="raiseReqGapAction('${sec.id}','${it.id}')">${it.raised?'✓ Raised - raise again ↗':'Raise the gap as an action ↗'}</button>`:''}
     </div>`;
   const ss='font-size:12px;padding:4px 7px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;';
   return `<div style="border:1px solid var(--border);border-left:4px solid ${border};border-radius:9px;padding:14px 16px;margin-bottom:10px;">
@@ -20775,7 +20791,7 @@ function _legalCardHTML(sec, it, emp, ro){
     </div>
     ${ro?(it.reviewNote?`<div style="margin-top:8px;font-size:12.5px;"><span style="color:var(--text-muted);font-weight:600;">Review notes:</span> ${esc(it.reviewNote)}</div>`:''):`<div style="margin-top:8px;"><textarea rows="2" placeholder="Review notes / comments - what you found on reviewing this…" oninput="updateReqField('${sec.id}','${it.id}','reviewNote',this.value)" style="width:100%;box-sizing:border-box;font-size:12.5px;padding:8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${esc(it.reviewNote||'')}</textarea></div>`}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;">
-      ${ro?'':(approved?`<span style="font-size:11.5px;color:var(--success);font-weight:700;">✓ Reviewed &amp; approved${it.reviewedBy?(' · '+esc(it.reviewedBy)):''}</span> <button class="btn btn-ghost btn-xs no-print" onclick="toggleReqReviewed('${sec.id}','${it.id}')">Undo</button>`:`<button class="btn btn-primary btn-xs no-print" onclick="approveReqItem('${sec.id}','${it.id}')">✓ Approve as compliant</button><button class="btn btn-outline btn-xs no-print" style="color:var(--warning);border-color:var(--warning);" title="Not compliant yet? This item becomes the action${cc.open?(' - the '+cc.open+' unticked criteria go with it as the to-do list'):''}, revealed under ▸ Activity on the execution plan" onclick="raiseReqGapAction('${sec.id}','${it.id}')">Raise the gap as an action ↗</button>`)}
+      ${ro?'':(approved?`<span style="font-size:11.5px;color:var(--success);font-weight:700;">✓ Reviewed &amp; approved${it.reviewedBy?(' · '+esc(it.reviewedBy)):''}</span> <button class="btn btn-ghost btn-xs no-print" onclick="toggleReqReviewed('${sec.id}','${it.id}')">Undo</button>`:`<button class="btn btn-primary btn-xs no-print" onclick="approveReqItem('${sec.id}','${it.id}')">✓ Approve as compliant</button><button class="btn btn-outline btn-xs no-print${it.raised?' btn-raised':''}" style="${it.raised?'':'color:var(--warning);border-color:var(--warning);'}" title="Not compliant yet? This item becomes the action${cc.open?(' - the '+cc.open+' unticked criteria go with it as the to-do list'):''}, revealed under ▸ Activity on the execution plan" onclick="raiseReqGapAction('${sec.id}','${it.id}')">${it.raised?'✓ Raised - raise again ↗':'Raise the gap as an action ↗'}</button>`)}
     </div>
     ${_mgmtActionsListHTML(sec, it, ro)}
   </div>`;
@@ -20974,6 +20990,7 @@ function raiseReqAction(sectionId, itemId){
   const desc = (typeof prompt==='function') ? prompt('What action is needed? (It appears in the execution / action plan.)', '') : '';
   if(desc===null || !String(desc).trim()) return;
   _reqAddAction(it, String(desc).trim());
+  it.raised=(it.raised||0)+1;
   _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
   try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
   if(typeof showToast==='function') showToast('✓ Action added to the plan - set a target date','success');
@@ -20991,7 +21008,7 @@ function _mgmtActionsListHTML(sec, it, ro){
       ${ro?`<span class="badge badge-muted" style="font-size:10.5px;">${stt}</span>`:`<select onchange="updateExecAction('${ref}','status',this.value)" style="${ss}">${['Not started','In progress','Complete','Accepted'].map(o=>`<option${o===(act.status||'Not started')?' selected':''}>${o}</option>`).join('')}</select><button class="btn btn-ghost btn-xs no-print" onclick="deleteExecAction('${ref}')" title="Remove">${_ic('trash',12)}</button>`}
     </div>`; }).join('');
   return `${acts.length?`<div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);margin-bottom:4px;">Actions from this review</div>${rows}</div>`:''}
-    ${ro?'':`<button class="btn btn-outline btn-xs no-print" style="margin-top:8px;" onclick="raiseReqAction('${sec.id}','${it.id}')">＋ Add action</button>`}`;
+    ${ro?'':`<button class="btn btn-outline btn-xs no-print${it.raised?' btn-raised':''}" style="margin-top:8px;" onclick="raiseReqAction('${sec.id}','${it.id}')" title="${it.raised?('Raised '+it.raised+' time'+(it.raised!==1?'s':'')+' - add another'):''}">${it.raised?'✓ Added - add another':'＋ Add action'}</button>`}`;
 }
 
 function _renderReqDashboard(){
@@ -21183,7 +21200,7 @@ function renderRequirements(){
             <span class="badge ${stt?stt.cls:'badge-muted'}" id="reqstatus-${it.id}" style="${stt?'':'display:none;'}">${stt?stt.label:''}</span>
             ${it.reviewed
               ? `<span class="badge badge-success">✓ Compliant${it.reviewedDate?(' &middot; reviewed '+fmtDate(it.reviewedDate)):''}${it.reviewedBy?(' by '+esc(it.reviewedBy)):''}</span>${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Undo the compliance sign-off" onclick="toggleReqReviewed('${sec.id}','${it.id}')">Undo</button>`}`
-              : (ro?'':`<button class="btn btn-outline btn-xs no-print" title="Record that you have reviewed this requirement and it is compliant" onclick="toggleReqReviewed('${sec.id}','${it.id}')">✓ Mark reviewed &amp; compliant</button><button class="btn btn-outline btn-xs no-print" style="color:var(--warning);border-color:var(--warning);" title="Not compliant yet? The requirement becomes the action - lands on the execution plan" onclick="raiseReqGapAction('${sec.id}','${it.id}')">Raise the gap as an action ↗</button>`)}
+              : (ro?'':`<button class="btn btn-outline btn-xs no-print" title="Record that you have reviewed this requirement and it is compliant" onclick="toggleReqReviewed('${sec.id}','${it.id}')">✓ Mark reviewed &amp; compliant</button><button class="btn btn-outline btn-xs no-print${it.raised?' btn-raised':''}" style="${it.raised?'':'color:var(--warning);border-color:var(--warning);'}" title="Not compliant yet? The requirement becomes the action - lands on the execution plan" onclick="raiseReqGapAction('${sec.id}','${it.id}')">${it.raised?'✓ Raised - raise again ↗':'Raise the gap as an action ↗'}</button>`)}
           </div>
           ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete this line" onclick="deleteReqLine('${sec.id}','${it.id}')">${_ic('trash',14)}</button>`}
         </div>
@@ -21551,7 +21568,7 @@ function raiseStatutoryDue(){
     if(typeof _stamp==='function') _stamp(it,'created'); S.actionPlan.push(it); n++;
   }));
   saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
-  showToast('✓ Raised '+n+' statutory action'+(n!==1?'s':'')+' into the plan','success');
+  showToast(n?('✓ Raised '+n+' statutory action'+(n!==1?'s':'')+' into the plan'):'Everything due is already on the plan - nothing new to raise', n?'success':'info');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -22484,7 +22501,7 @@ function _trainingMatrixHTML_legacyDead(){   // shadowed by the v2 renderer belo
     <div class="card-body">
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Expiry traffic lights: <span style="color:${RAGC.red};font-weight:700;">expired</span> · <span style="color:${RAGC.amber};font-weight:700;">expiring ≤60 days</span> · <span style="color:${RAGC.green};font-weight:700;">in date</span>. Expired / expiring courses raise an action in the execution plan.</div>
       <div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div>
-      ${ro?'':`<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${(function(){ const n=_trainingDueCount(); return `<button class="btn btn-outline btn-sm no-print" onclick="raiseTrainingRenewals()"${n?'':' disabled'}>＋ Raise renewal actions${n?(' ('+n+')'):''}</button><span style="font-size:11.5px;color:var(--text-muted);">Adds expired/expiring courses to the execution plan - on demand, deduped.</span>`; })()}</div>
+      ${ro?'':`<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${(function(){ const n=_trainingDueCount(); const tOnPlan=(S.actionPlan||[]).some(a=>a.trainingKey&&a.status!=='Complete'&&a.status!=='Accepted'); if(!n&&tOnPlan) return `<button class="btn btn-outline btn-sm no-print btn-raised" disabled title="Every current renewal is already on the execution plan">✓ Renewals on the plan</button>`; return `<button class="btn btn-outline btn-sm no-print" onclick="raiseTrainingRenewals()"${n?'':' disabled'}>＋ Raise renewal actions${n?(' ('+n+')'):''}</button><span style="font-size:11.5px;color:var(--text-muted);">Adds expired/expiring courses to the execution plan - on demand, deduped.</span>`; })()}</div>
       <button class="btn btn-ghost btn-xs no-print" style="margin-top:10px;" onclick="if(confirm('Clear all training records? (This does not remove any actions already raised.)')){S.training=[];delete S.trainingData;saveData();renderMonitoring();}">Clear training data</button>`}
     </div>
   </div>`;
@@ -22646,7 +22663,7 @@ function _trainingMatrixHTML(){
     <button class="btn btn-ghost btn-sm no-print" title="Pick the file, see the first rows, click the row your column headings are on" onclick="xlsxMappedImport('training')"${impAttr}>⚙ Map &amp; import</button>
     <button class="btn btn-ghost btn-sm no-print" onclick="downloadTrainingTemplate()">⭳ Template</button>
     <button class="btn btn-ghost btn-sm no-print" onclick="trainingAddPerson()">＋ Add person</button>
-    <button class="btn btn-ghost btn-sm no-print" onclick="raiseTrainingRenewals()"${due?'':' disabled'}>Raise renewal actions${due?(' ('+due+')'):''}</button>
+    ${(function(){ const tOnPlan=(S.actionPlan||[]).some(x=>x.trainingKey&&x.status!=='Complete'&&x.status!=='Accepted'); if(!due&&tOnPlan) return '<button class="btn btn-ghost btn-sm no-print btn-raised" disabled title="Every current renewal is already on the execution plan">✓ Renewals on the plan</button>'; return `<button class="btn btn-ghost btn-sm no-print" onclick="raiseTrainingRenewals()"${due?'':' disabled'}>Raise renewal actions${due?(' ('+due+')'):''}</button>`; })()}
     <button class="btn btn-ghost btn-sm no-print" style="color:#DC2626;" title="Remove every person, record and the stored spreadsheet" onclick="trainingDeleteAll()">${_ic('trash',13)} Delete all</button>
     <span style="font-size:11.5px;color:var(--text-muted);">The client's spreadsheet stays the source of truth - import overwrites, export writes their exact file back.</span>
   </div>`;
@@ -23031,7 +23048,7 @@ function _renderIncidents(){
         <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:8px;">
           ${rid?`<div class="field-group"><label class="field-label">RIDDOR reported on</label><input type="date"${dis} value="${esc(it.riddorDate||'')}" onchange="updateIncident('${it.id}','riddorDate',this.value)"></div>`:''}
           <div class="field-group"><label class="field-label">Status</label><select${dis} onchange="updateIncident('${it.id}','status',this.value)"><option${it.status==='Open'?' selected':''}>Open</option><option${it.status==='Closed'?' selected':''}>Closed</option></select></div>
-          ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="raiseIncidentAction('${it.id}')">↗ Raise preventive action</button>`}
+          ${ro?'':`<button class="btn btn-outline btn-xs no-print${it.raised?' btn-raised':''}" onclick="raiseIncidentAction('${it.id}')" title="${it.raised?('Raised '+it.raised+' time'+(it.raised!==1?'s':'')):''}">${it.raised?'✓ Raised - raise another':'↗ Raise preventive action'}</button>`}
           ${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="deleteIncident('${it.id}')">${_ic('trash',13)}</button>`}
         </div>
       </div>
@@ -23201,7 +23218,7 @@ function _renderDecisions(){
         </div>
         <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:8px;">
           <div class="field-group"><label class="field-label">Status</label><select${dis} onchange="updateDecision('${d.id}','status',this.value)">${DECISION_STATES.map(x=>`<option${x.k===(d.status||'Agreed')?' selected':''} title="${esc(x.desc)}">${x.k}</option>`).join('')}</select></div>
-          ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="raiseDecisionAction('${d.id}')" title="Put this decision on the client execution plan as a tracked action">↗ Raise as an action</button>`}
+          ${ro?'':`<button class="btn btn-outline btn-xs no-print${d.raised?' btn-raised':''}" onclick="raiseDecisionAction('${d.id}')" title="${d.raised?('Raised '+d.raised+' time'+(d.raised!==1?'s':'')+' - click to raise again'):'Put this decision on the client execution plan as a tracked action'}">${d.raised?'✓ On the plan':'↗ Raise as an action'}</button>`}
           ${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="deleteDecision('${d.id}')">${_ic('trash',13)}</button>`}
         </div>
         ${_attrFooter(d)}
@@ -23433,7 +23450,7 @@ function _renderSupply(){
         ${evRows||'<div style="font-size:12px;color:var(--text-muted);padding:4px 0;">Nothing logged yet.</div>'}
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
           ${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="addSupplyEvent('${p.id}')">＋ Log an event</button>`}
-          ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="raiseSupplyAction('${p.id}')" title="Put the outstanding checks on the client execution plan">↗ Chase what is outstanding</button>`}
+          ${ro?'':`<button class="btn btn-outline btn-xs no-print${p.raised?' btn-raised':''}" onclick="raiseSupplyAction('${p.id}')" title="${p.raised?('Raised '+p.raised+' time'+(p.raised!==1?'s':'')+' - click to chase anything still outstanding'):'Put the outstanding checks on the client execution plan'}">${p.raised?'✓ On the plan - chase again':'↗ Chase what is outstanding'}</button>`}
           ${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="deleteSupplyPartner('${p.id}')">${_ic('trash',13)}</button>`}
         </div>
         ${_attrFooter(p)}
@@ -23613,7 +23630,7 @@ function _renderOh(){
         ${oc.act?`<div class="field-group" style="margin-top:8px;"><label class="field-label">What the business must do <span class="fl-hint" title="The adjustment, restriction or referral the outcome requires. Record what the business has to act on - never the clinical detail, which stays with the provider.">(?)</span></label>
           <textarea${dis} rows="2" style="width:100%;" placeholder="e.g. Rotate off vibrating tools; review in 3 months" oninput="updateOh('${r.id}','restrictions',this.value)">${esc(r.restrictions||'')}</textarea></div>`:''}
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-          ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="raiseOhAction('${r.id}')" title="Book the surveillance, or act on the outcome">↗ Raise an action</button>`}
+          ${ro?'':`<button class="btn btn-outline btn-xs no-print${r.raised?' btn-raised':''}" onclick="raiseOhAction('${r.id}')" title="${r.raised?('Raised '+r.raised+' time'+(r.raised!==1?'s':'')+' - click to raise again if more is needed'):'Book the surveillance, or act on the outcome'}">${r.raised?'✓ Raised - raise again':'↗ Raise an action'}</button>`}
           ${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="deleteOhRecord('${r.id}')">${_ic('trash',13)}</button>`}
         </div>
         ${_attrFooter(r)}
@@ -23889,7 +23906,7 @@ function _renderBs(){
         ${evRows||'<div style="font-size:12px;color:var(--text-muted);padding:4px 0;">Nothing logged yet.</div>'}
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
           ${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="addBsEvent('${b.id}')">＋ Log an event</button>`}
-          ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="raiseBsAction('${b.id}')" title="Put the outstanding duties on the client execution plan">↗ Chase what is outstanding</button>`}
+          ${ro?'':`<button class="btn btn-outline btn-xs no-print${b.raised?' btn-raised':''}" onclick="raiseBsAction('${b.id}')" title="${b.raised?('Raised '+b.raised+' time'+(b.raised!==1?'s':'')+' - click to chase anything still outstanding'):'Put the outstanding duties on the client execution plan'}">${b.raised?'✓ On the plan - chase again':'↗ Chase what is outstanding'}</button>`}
         </div>` : (sc.k==='no' ? `
         <div style="margin-top:12px;padding:10px 13px;border-left:3px solid #16A34A;background:#16A34A0d;border-radius:0 7px 7px 0;font-size:12px;line-height:1.55;">
           <b>No gateway duties apply to this job.</b> The ordinary Building Regulations and CDM 2015 still do. Keep the record so the board can see the test was applied and what the answer was.</div>` : `
@@ -24059,7 +24076,9 @@ function renderMonitoring(){
           <button class="btn btn-ghost btn-sm no-print" onclick="openImportWizard('statutory')">⎘ Paste from Excel</button>
           <button class="btn btn-ghost btn-sm no-print" title="Pick the file, see the first rows, click the row your column headings are on" onclick="xlsxMappedImport('statutory')"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⚙ Map &amp; import</button>
           <button class="btn btn-ghost btn-sm no-print" onclick="downloadStatutoryTemplate()">⭳ Template</button>
-          ${(function(){ const n=_statDueCount(); return `<button class="btn btn-ghost btn-sm no-print" onclick="raiseStatutoryDue()"${n?'':' disabled'}>Raise due actions${n?(' ('+n+')'):''}</button>`; })()}
+          ${(function(){ const n=_statDueCount(); const onPlan=(S.actionPlan||[]).some(a=>a.regKey&&a.status!=='Complete'&&a.status!=='Accepted');
+            if(!n&&onPlan) return `<button class="btn btn-ghost btn-sm no-print btn-raised" disabled title="Everything due is already on the execution plan">✓ Due items on the plan</button>`;
+            return `<button class="btn btn-ghost btn-sm no-print" onclick="raiseStatutoryDue()"${n?'':' disabled'}>Raise due actions${n?(' ('+n+')'):''}</button>`; })()}
           ${(function(){ const g=(typeof _covGaps==='function')?_covGaps().length:0; return `<button class="btn btn-ghost btn-sm no-print" onclick="runCoverageCheck()" title="Compare what the discovery answers imply against the statutory tracker and training matrix - gaps become actions, never rows">🛡 Coverage check${g?(' ('+g+')'):''}</button>`; })()}
           <button class="btn btn-ghost btn-sm no-print" style="color:#DC2626;" title="Remove every section, item and the stored spreadsheet" onclick="statutoryDeleteAll()">${_ic('trash',13)} Delete all</button>
           <span style="font-size:11.5px;color:var(--text-muted);">The client's spreadsheet stays the source of truth - import overwrites, export writes their exact file back.</span>
@@ -24069,7 +24088,7 @@ function renderMonitoring(){
     + _trainingMatrixHTML()
     + (ro?'':`<div class="card"><div class="card-body" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;">
         <div style="font-size:13px;color:var(--text-muted);">Spotted something in assurance that needs doing (a failed inspection, an overdue statutory item, a gap)? Raise it into the client's execution plan.</div>
-        <button class="btn btn-outline btn-sm no-print" onclick="raiseExecAction('Assurance','Assurance record')">＋ Raise action into the plan</button>
+        <button id="raiseExecAssurBtn" class="btn btn-outline btn-sm no-print" onclick="raiseExecAction('Assurance','Assurance record','raiseExecAssurBtn')">＋ Raise action into the plan</button>
       </div></div>`);
 
   // Save row: hide the save action when a consultant is viewing read-only;
@@ -25289,8 +25308,9 @@ function renderCAS(){
                     ? `<span style="font-size:11px;color:var(--success);font-weight:600;" title="The duty still exists - the ${esc(reason.label)} certificate stands as the evidence for it, so the assessor checks the certificate instead of this item.">✓ Covered by certificate (Q${reason.q})</span>`
                     : `<span style="font-size:11px;color:var(--text-muted);" title="Gate Q${reason.q} (${esc(reason.label)}) answered so this work does not apply to this business.">Not in scope (Q${reason.q})</span>`)
                 : '<span style="font-size:11px;color:var(--text-muted);">Not in scope</span>';
+              const qOnPlan = (S.actionPlan||[]).some(a=>(a.desc||'').indexOf('Accreditation Q'+q.q+':')===0 && a.status!=='Complete' && a.status!=='Accepted');
               const raiseBtn = (inScope && !_roLocked() && st!=='ready' && st!=='na')
-                ? `<button class="btn btn-ghost btn-xs no-print" style="font-size:10.5px;" title="Put this criterion on the client execution plan as an action to close" onclick="_casRaiseGap('${encodeURIComponent(q.q)}','${encodeURIComponent(q.req)}')">→</button>`
+                ? `<button class="btn btn-ghost btn-xs no-print${qOnPlan?' btn-raised':''}" style="font-size:10.5px;" title="${qOnPlan?'Already on the execution plan':'Put this criterion on the client execution plan as an action to close'}" onclick="_casRaiseGap('${encodeURIComponent(q.q)}','${encodeURIComponent(q.req)}')">${qOnPlan?'✓':'→'}</button>`
                 : '';
               const badges=(_casFlagBadges(q.flags)+(_casProportionateOptional(q)?' <span class="badge badge-muted" style="font-size:10px;" title="Proportionate - a statement or N/A is acceptable for a small company">Proportionate</span>':'')).trim();
               return `<tr style="border-top:1px solid var(--border);background:${i%2?'transparent':'var(--muted-bg)'};${inScope?'':'opacity:.55;'}">
@@ -25309,7 +25329,7 @@ function renderCAS(){
   }).join('')
   + (_roLocked()?'':`<div class="card"><div class="card-body" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;">
       <div style="font-size:13px;color:var(--text-muted);">Found an accreditation gap to close (evidence to gather, a criterion to meet)? Raise it into the client's execution plan.</div>
-      <button class="btn btn-outline btn-sm no-print" onclick="raiseExecAction('Accreditation','Accreditation gap')">＋ Raise action into the plan</button>
+      <button id="raiseExecCasBtn" class="btn btn-outline btn-sm no-print" onclick="raiseExecAction('Accreditation','Accreditation gap','raiseExecCasBtn')">＋ Raise action into the plan</button>
     </div></div>`);
   if(typeof renderApprovedPartner==='function') renderApprovedPartner();
 }

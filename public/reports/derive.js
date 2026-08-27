@@ -207,7 +207,7 @@ export function deriveBoardExtras(state, opts = {}) {
     acts.forEach(a => {
       if (!a || a.deleted || a.hideFromPlan) return;
       if (!(a.desc && String(a.desc).trim())) return;
-      if (a.status === 'Complete' || a.status === 'Accepted') winPush(a, String(sec.heading || 'Management system'));
+      if (a.status === 'Complete' || a.status === 'Accepted') winPush(a, String(sec.heading || 'Legal duties'));
     });
   }));
   (Array.isArray(s.actionPlan) ? s.actionPlan : []).forEach(a => {

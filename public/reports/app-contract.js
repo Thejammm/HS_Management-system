@@ -417,7 +417,7 @@ export function top5Of(state, month) {
     (Array.isArray(sec.items) ? sec.items : []).forEach(it => {
       const acts = Array.isArray(it.actions) ? it.actions
         : ((it.action && String(it.action).trim()) ? [{ desc: String(it.action).trim(), owner: it.actionOwner || '', due: it.dueDate || '', status: it.actionStatus || 'Not started', top5: it.top5 || '' }] : []);
-      acts.forEach(a => take(a, 'Management system', sec.heading || ''));
+      acts.forEach(a => take(a, 'Legal duties', sec.heading || ''));
     }));
   (Array.isArray(s.actionPlan) ? s.actionPlan : []).forEach(a =>
     take(a, String(a.source || 'Added directly'), a.sourceLabel || ''));

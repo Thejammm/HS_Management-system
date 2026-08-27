@@ -7725,11 +7725,11 @@ function renderAuditProgress(){
     ['Overdue actions', m=>fmt(m.overdueActions), true],
     ['Actions delivered', m=>fmt(m.delivered), false],
     ['Training expired', m=>fmt(m.trainingExpired), true],
-    ['Management system gaps', m=>fmt(m.mgmtGaps), true],
+    ['Legal duty gaps', m=>fmt(m.mgmtGaps), true],
     ['Briefings recorded', m=>fmt(m.briefings), false],
     ['Accreditation ready %', m=>m.casReady==null?'-':m.casReady+'%', false],
   ];
-  const rawOf=(m,label)=>{ const map={'Risks assured':m.held,'Need attention first':m.ruleBreaches,'Managed':m.working,'Vulnerable':m.slipping,'Uncontrolled':m.notHeld,'Risks profiled':m.risks,'High + critical risks':m.highCrit,'Open actions':m.openActions,'Overdue actions':m.overdueActions,'Actions delivered':m.delivered,'Training expired':m.trainingExpired,'Management system gaps':m.mgmtGaps,'Briefings recorded':m.briefings,'Accreditation ready %':m.casReady}; return map[label]; };
+  const rawOf=(m,label)=>{ const map={'Risks assured':m.held,'Need attention first':m.ruleBreaches,'Managed':m.working,'Vulnerable':m.slipping,'Uncontrolled':m.notHeld,'Risks profiled':m.risks,'High + critical risks':m.highCrit,'Open actions':m.openActions,'Overdue actions':m.overdueActions,'Actions delivered':m.delivered,'Training expired':m.trainingExpired,'Legal duty gaps':m.mgmtGaps,'Briefings recorded':m.briefings,'Accreditation ready %':m.casReady}; return map[label]; };
   const table = base ? `<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12.5px;min-width:100%;">
       <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;border-bottom:1.5px solid var(--border);">
         <th style="padding:6px 8px;">Measure</th><th style="padding:6px 8px;">Baseline<br><span style="font-weight:400;">${fmtDate(base.date)}</span></th>
@@ -7776,7 +7776,7 @@ const AUDIT_AREAS=[
   { id:'ar_consult', name:'Consultation & communication', live:m=>m.briefings?(m.briefings+' briefings recorded'):'no briefings recorded yet' },
   { id:'ar_monitor', name:'Monitoring & assurance', live:m=>((S.riskAssurance&&['leading','lagging','assurance'].reduce((n,k)=>n+((S.riskAssurance[k]||[]).length),0))||0)+' indicators defined' },
   { id:'ar_incidents', name:'Incidents & investigations', live:m=>m.incidents?(m.incidents+' recorded'):'none recorded' },
-  { id:'ar_mgmt', name:'Management system (HSG65 duties)', live:m=>m.mgmtAssessed?(m.mgmtAssessed+' assessed · '+m.mgmtGaps+' gaps'):'not yet assessed' },
+  { id:'ar_mgmt', name:'Legal duties (HSG65)', live:m=>m.mgmtAssessed?(m.mgmtAssessed+' assessed · '+m.mgmtGaps+' gaps'):'not yet assessed' },
   { id:'ar_docs', name:'Documents & policy', live:m=>m.documents+' documents · policy '+(m.policySigned?'signed':'NOT signed') },
   { id:'ar_cas', name:'Accreditation readiness', live:m=>m.casReady==null?'not yet assessed':(m.casReady+'% ready') },
 ];
@@ -10013,7 +10013,7 @@ async function deleteTenant(tenantId){
     lead: 'This removes the client from the server for good.',
     bodyHTML: '<div style="font-size:12.5px;color:var(--text);line-height:1.6;">It takes with it:'
       + '<ul style="margin:8px 0 0 18px;padding:0;line-height:1.7;">'
-      + '<li>everything recorded for them - risks, actions, management system, assurance</li>'
+      + '<li>everything recorded for them - risks, actions, legal duties, assurance</li>'
       + '<li>their restore points, which hang off the client and go with it</li>'
       + (userCount > 0 ? ('<li>' + userCount + ' login' + (userCount>1?'s':'') + '</li>') : '')
       + '</ul></div>'
@@ -13204,7 +13204,7 @@ function _resetTally(){
   const add=(c,one,many)=>{ if(c) out.push(c+' '+(c===1?one:(many||one+'s'))); };
   add(n(S.riskProfile),'risk');
   add(n(S.actionPlan),'action on the execution plan','actions on the execution plan');
-  add(reqs,'management system item');
+  add(reqs,'legal duty item');
   add(n(S.incidents),'incident');
   add(n(S.inspections),'inspection');
   add(n(S.documents),'document link');
@@ -14184,8 +14184,8 @@ const COCKPIT_WIDGETS = {
   cardMgmtSystem: { id:'cardMgmtSystem', label:'Legal duties', group:'Card', render:x=>_ckMod('Legal duties', x.reqG.assessed ? `
         <div class="ck-row"><span>Gaps</span><span style="color:${x.reqG.gaps?'var(--warning)':'var(--success)'};font-weight:600;">${x.reqG.gaps}</span></div>
         <div class="ck-row"><span>Assessed</span><span style="font-weight:600;">${x.reqG.assessed}</span></div>
-        <button class="ck-link" onclick="switchTab('requirements')">Open management system</button>`
-      : _ckPend('Not assessed yet.') + `<button class="ck-link" onclick="switchTab('requirements')">Open management system</button>`) },
+        <button class="ck-link" onclick="switchTab('requirements')">Open legal duties</button>`
+      : _ckPend('Not assessed yet.') + `<button class="ck-link" onclick="switchTab('requirements')">Open legal duties</button>`) },
   cardMonitoring: { id:'cardMonitoring', label:'Monitoring', group:'Card', render:x=>_ckMod('Monitoring', x.monHas ? `
         <div class="ck-row"><span>Near misses (${x.monLabel})</span><span style="font-weight:600;">${x.monData.nearMisses??'-'}</span></div>
         <div class="ck-row"><span>RIDDORs</span><span style="color:${(+x.monData.riddors)?'var(--danger)':'inherit'};font-weight:600;">${x.monData.riddors??'-'}</span></div>
@@ -14209,7 +14209,7 @@ const COCKPIT_WIDGETS = {
         <div class="ck-pending">${x.docCount?('document'+(x.docCount!==1?'s':'')+' in the register'):'No documents yet.'}</div>
         <button class="ck-link" onclick="switchTab('documents')">Open documents</button>`) },
   cardReports:    { id:'cardReports', label:'Reports', group:'Card', render:x=>_ckMod('Reports', `
-        <div class="ck-pending">Client-ready PDFs: board report, risk profile, action plan and management system.</div>
+        <div class="ck-pending">Client-ready PDFs: board report, risk profile, action plan and legal duties.</div>
         <button class="ck-link" onclick="switchTab('reports')">Open Reports →</button>`) },
   // Dials & gauges - richer visuals, OFF by default (enable per client in the customiser).
   gaugeCompleteness:{ id:'gaugeCompleteness', label:'Completeness gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Assessment completeness', `${_gaugeSVG(x.RD.complete.total?Math.round(x.RD.complete.clear/x.RD.complete.total*100):0, {text:x.RD.complete.clear+'/'+x.RD.complete.total})}<div class="ck-pending" style="text-align:center;margin-top:2px;">checks clear</div><button class="ck-link" onclick="openCompletenessModal()" style="align-self:center;">What's left →</button>`) },
@@ -14217,7 +14217,7 @@ const COCKPIT_WIDGETS = {
   gaugeMaturity:    { id:'gaugeMaturity', label:'Risks assured (gauge)', group:'Gauge', defaultOff:true, render:x=>{ const H=_holdSummary(); const pct=H.total?Math.round(H.held/H.total*100):0; const gcol=H.breaches.length?'#DC2626':(H.total&&H.held===H.total?'#16A34A':(H.total?'#F59E0B':'#9CA3AF')); return _ckMod('Risks assured', `${_gaugeSVG(pct,{text:H.total?(H.held+'/'+H.total):'--',color:gcol})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${H.breaches.length?(H.breaches.length+' need'+(H.breaches.length!==1?'':'s')+' attention first'):'nothing needs attention'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
   tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(100 - x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><div style="text-align:center;font-size:10.5px;color:var(--text-muted);line-height:1.45;margin-top:2px;">Lower is better. The score is how much of the register sits in the higher bands - each risk counts by band (Critical 3, High 2, Medium 1, Low a half) against the worst case of 100.</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Open the risks behind this score</button>`) },
   gaugeAccreditation:{ id:'gaugeAccreditation', label:'Accreditation gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Accreditation readiness', `${_gaugeSVG(x.cas.pctReady==null?0:x.cas.pctReady,{text:x.cas.pctReady==null?'--':x.cas.pctReady+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">criteria ready</div><button class="ck-link" onclick="switchTab('cas')" style="align-self:center;">Open accreditation</button>`) },
-  gaugeMgmtCompliance:{ id:'gaugeMgmtCompliance', label:'Mgmt-system compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Management-system compliance', `${_gaugeSVG(x.reqStats.compliance==null?0:x.reqStats.compliance,{text:x.reqStats.compliance==null?'--':x.reqStats.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">requirements met</div><button class="ck-link" onclick="switchTab('requirements')" style="align-self:center;">Open management system</button>`) },
+  gaugeMgmtCompliance:{ id:'gaugeMgmtCompliance', label:'Legal duties compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Legal duties compliance', `${_gaugeSVG(x.reqStats.compliance==null?0:x.reqStats.compliance,{text:x.reqStats.compliance==null?'--':x.reqStats.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">requirements met</div><button class="ck-link" onclick="switchTab('requirements')" style="align-self:center;">Open legal duties</button>`) },
   gaugeSifControl:  { id:'gaugeSifControl', label:'Fatal-risk control gauge', group:'Gauge', defaultOff:true, render:x=>{ const t=x.RD.sif.length, pct=t?Math.round((t-x.RD.sifUncontrolled.length)/t*100):0; return _ckMod('Fatal-risk control', `${_gaugeSVG(pct,{text:t?pct+'%':'n/a'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${t?('of '+t+' fatal-potential controlled'):'no fatal-potential risks'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
   // Moved up from the Risk profile tab (they were text lists there): the
   // category split as a pie and the emerging-risk count as a gauge.
@@ -14324,10 +14324,6 @@ function resetCockpitLayout(){ if(S.config) delete S.config.cockpit; saveData();
 
 // ── Phase 3: report sections that a client's config can switch off (curated, not reordered) ──
 const REPORT_SECTIONS = [
-  { id:'board.riskVsMaturity', report:'Board report',      label:'Risk exposure vs maturity' },
-  { id:'board.distribution',   report:'Board report',      label:'Where the risks sit (bands)' },
-  { id:'board.maturity',       report:'Board report',      label:'Consultant judgement (six HSG65 areas)' },
-  { id:'board.legal',          report:'Board report',      label:'Legal exposure' },
   { id:'risk.riskVsMaturity',  report:'Risk profile',      label:'Risk exposure vs maturity' },
   { id:'risk.matrix',          report:'Risk profile',      label:'Risk distribution matrix' },
   { id:'risk.maturity',        report:'Risk profile',      label:'Consultant judgement (six HSG65 areas)' },
@@ -14335,23 +14331,42 @@ const REPORT_SECTIONS = [
   { id:'risk.controls',        report:'Risk profile',      label:'Controls by level' },
   { id:'risk.energy',          report:'Risk profile',      label:'Energy coverage' },
   { id:'action.summary',       report:'Action plan',       label:'At-a-glance summary tiles' },
-  { id:'mgmt.summary',         report:'Management system', label:'Compliance at-a-glance tiles' },
-  { id:'mgmt.completeness',    report:'Management system', label:'Data completeness note' },
+  { id:'mgmt.summary',         report:'Legal duties', label:'Compliance at-a-glance tiles' },
+  { id:'mgmt.completeness',    report:'Legal duties', label:'Data completeness note' },
 ];
-const REPORT_SECTION_ORDER = ['Board report','Risk profile','Action plan','Management system'];
+const REPORT_SECTION_ORDER = ['Risk profile','Action plan','Legal duties'];
 function _reportSectionOn(id){ return !(S.config && S.config.reportSections && S.config.reportSections[id]===false); }
 function setReportSection(id, on){ if(!S.config) S.config={}; if(!S.config.reportSections) S.config.reportSections={}; if(on) delete S.config.reportSections[id]; else S.config.reportSections[id]=false; saveData(); try{ renderReports(); }catch(e){} }
 // ── Reports customiser: lives on the Reports tab (moved from the cockpit
 //    cog). One registry (REPORT_SECTIONS) drives it; as each report's bespoke
 //    section list is agreed it is added to the registry and appears here.
 let _reportEditorOpen = false;
-function toggleReportEditor(){ _reportEditorOpen = !_reportEditorOpen; renderReports(); }
+let _boardSecsCache = null;   // the board report's REAL section list, from the server template
+function toggleReportEditor(){
+  _reportEditorOpen = !_reportEditorOpen;
+  if(_reportEditorOpen && !_boardSecsCache){
+    import('/reports/templates/index.js')
+      .then(t=>{ _boardSecsCache = t.BOARD_SECTIONS || []; renderReports(); })
+      .catch(()=>{ _boardSecsCache = 'unavailable'; renderReports(); });
+  }
+  renderReports();
+}
+// Board section toggles write the same per-client store the report reads
+// (reportPrefs), then refresh the panel so the box reflects what was saved.
+function _repSetBoardSection(id, hide){ setBoardSection(id, hide); try{ renderReports(); }catch(e){} }
+function _reportEditorBoardHTML(){
+  const head='<div class="ckb-group"><div class="ckb-gh">Board report</div>';
+  if(_boardSecsCache==='unavailable') return head+'<div class="ckb-row"><span style="font-size:12px;color:var(--text-muted);">The board report\u2019s section list loads from the server - open this panel while online to edit it.</span></div></div>';
+  if(!Array.isArray(_boardSecsCache)) return head+'<div class="ckb-row"><span style="font-size:12px;color:var(--text-muted);">Loading the board report\u2019s sections\u2026</span></div></div>';
+  const p=(S.reportPrefs&&S.reportPrefs['board-report'])||{}; const hidden=p.hidden||{};
+  return head+_boardSecsCache.map(s=>`<div class="ckb-row"><label class="ckb-tog" style="${s.locked?'opacity:.65;cursor:default;':''}"><input type="checkbox" ${hidden[s.id]?'':'checked'} ${s.locked?'disabled':''} onchange="_repSetBoardSection('${s.id}',!this.checked)"><span>${esc(s.label)}${s.locked?' <span style="font-size:10px;color:var(--text-muted);">(always included)</span>':''}</span></label></div>`).join('')+'</div>';
+}
 function _reportEditorHTML(){
-  const rsec=REPORT_SECTION_ORDER.map(rep=>{ const items=REPORT_SECTIONS.filter(s=>s.report===rep); if(!items.length) return '';
+  const rsec=_reportEditorBoardHTML()+REPORT_SECTION_ORDER.map(rep=>{ const items=REPORT_SECTIONS.filter(s=>s.report===rep); if(!items.length) return '';
     return `<div class="ckb-group"><div class="ckb-gh">${esc(rep)}</div>`+items.map(s=>`<div class="ckb-row"><label class="ckb-tog"><input type="checkbox" ${_reportSectionOn(s.id)?'checked':''} onchange="setReportSection('${s.id}',this.checked)"><span>${esc(s.label)}</span></label></div>`).join('')+`</div>`; }).join('');
   return `<div class="ckb-panel no-print">
       <div class="ckb-head"><h3>Customise reports</h3><button class="btn btn-ghost btn-sm" onclick="toggleReportEditor()">Done</button></div>
-      <p class="ckb-note">Untick a section and it is left out of that report's PDF for this client - saved per client. Core sections (the verdict, the numbers, what can kill, sign-off) always print. The Board report also has its own Choose sections picker on its card.</p>
+      <p class="ckb-note">Untick a section and it is left out of that report's PDF for this client - saved per client. Sections marked always included are the report's core and cannot be switched off.</p>
       <div class="ckb-cols">${rsec}</div>
       <p class="ckb-note" style="margin-top:10px;">Bespoke section lists for the other reports are added one report at a time - as each is agreed it appears here.</p>
     </div>`;
@@ -14460,8 +14475,7 @@ function renderReports(){
     { title:'Board Report', accent:'#DC2626', tint:'#FCE9E9', fn:'openBoardReportPrint()', meta:riskMeta,
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
       desc:'For the leadership meeting, defaulted to what HSG65 says a review draws on: the position and decisions, incidents and investigations, active monitoring, training, worker-raised issues, statutory checks, successes and movement since the baseline.',
-      tags:['Directors','HSG65 review','Sign-off'],
-      extra:`<button class="btn btn-ghost btn-xs no-print" style="margin-top:6px;" title="Choose which sections this client's board report includes - defaults follow HSG65's review list; saved per client" onclick="openBoardSections()">⚙ Choose sections</button>` },
+      tags:['Directors','HSG65 review','Sign-off'] },
     { title:'Business Status Report', accent:'#991B1B', tint:'#F9E8E8', fn:'downloadBusinessStatusReport()',
       meta:(function(){ try{ const b=_bsrData(); return b.counts.red+' red · '+b.counts.amber+' amber · '+b.counts.green+' green'; }catch(e){ return 'One-page RAG position'; } })(),
       icon:svg('<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>'),
@@ -14473,7 +14487,7 @@ function renderReports(){
       tags:['Technical','Matrix + score','Full register'] },
     { title:'Client Execution Plan', accent:'#0EA5E9', tint:'#E4F4FC', fn:'downloadExecPlanReport()', meta:(_execOpenCount()+' open action'+(_execOpenCount()!==1?'s':'')),
       icon:svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
-      desc:'A point-in-time snapshot for the client: every action to do, grouped by month and traffic-lit - from risk profile, management system, assurance and accreditation.',
+      desc:'A point-in-time snapshot for the client: every action to do, grouped by month and traffic-lit - from risk profile, legal duties, assurance and accreditation.',
       tags:['Client','By month','RAG'] },
     { title:'Completed Actions', accent:'#16A34A', tint:'#E7F6EE', fn:'downloadCompletedActionsReport()', meta:(_execActions().filter(a=>a.status==='Complete').length+' completed'),
       icon:svg('<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>'),
@@ -14489,7 +14503,7 @@ function renderReports(){
       icon:svg('<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>'),
       desc:'This month\'s CPD record: what is in the library, what was issued this month, and when the prompt went out to the staff. Print it monthly and keep it as the competence-development evidence.',
       tags:['Monthly','CPD','Evidence'] },
-    { title:'Management System', accent:'#16A34A', tint:'#E7F6EE', fn:'downloadManagementSystemReport()', meta:mgmtMeta,
+    { title:'Legal Duties', accent:'#16A34A', tint:'#E7F6EE', fn:'downloadManagementSystemReport()', meta:mgmtMeta,
       icon:svg('<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>'),
       desc:'How the organisation meets its HSG65 duties, reported by exception - only what needs action, never empty scaffolding.',
       tags:['HSG65','By exception'] },
@@ -14544,7 +14558,7 @@ function renderReports(){
   cont.innerHTML = `
     <div class="rep-hero">
       <h2>Reports</h2>
-      <p>Generate client-ready PDFs from this client's risk profile and management system. Each one reads live from the data you have entered.</p>
+      <p>Generate client-ready PDFs from this client's risk profile and legal duties. Each one reads live from the data you have entered.</p>
     </div>
     ${custBar}
     ${_docControlRegisterHTML()}
@@ -14856,7 +14870,7 @@ function _execActions(){
   _allRiskActions().forEach(x=>{ if(x.a.hideFromPlan) return; if(!(x.a.desc||x.a.owner||x.a.due)) return;
     norm('Risk profile', x.r.activity||x.r.hazard||'Risk', {t:'risk', a:x.r.id, b:x.a.id}, x.a); });
   (typeof _allMgmtActions==='function'?_allMgmtActions():[]).forEach(x=>{ if(x.act&&x.act.hideFromPlan) return;
-    norm('Management system', x.source||'', {t:'mgmt', a:x.secId, b:x.itemId, c:x.actId}, x.act); });
+    norm('Legal duties', x.source||'', {t:'mgmt', a:x.secId, b:x.itemId, c:x.actId}, x.act); });
   (S.actionPlan||[]).forEach(a=>{ if(a.deleted) return; if(a.hideFromPlan) return; if(!(a.desc||a.owner||a.due)) return;
     const rk=(S.riskProfile||[]).find(r=>r.id===a.riskId);
     const src=a.source || (rk?'Risk profile':'Added directly');
@@ -15100,7 +15114,7 @@ function deleteExecAction(refStr){
 function _deletedActions(){
   const out=[];
   (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>{ if(a.deleted) out.push({ ref:{t:'risk',a:r.id,b:a.id}, a, source:(r.activity||r.hazard||'Risk profile') }); }));
-  (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if(typeof _reqMigrateActions==='function') _reqMigrateActions(it); (it.actions||[]).forEach(a=>{ if(a.deleted) out.push({ ref:{t:'mgmt',a:s.id,b:it.id,c:a.id}, a, source:(s.heading||'Management system') }); }); }));
+  (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if(typeof _reqMigrateActions==='function') _reqMigrateActions(it); (it.actions||[]).forEach(a=>{ if(a.deleted) out.push({ ref:{t:'mgmt',a:s.id,b:it.id,c:a.id}, a, source:(s.heading||'Legal duties') }); }); }));
   (S.actionPlan||[]).forEach(a=>{ if(a.deleted) out.push({ ref:{t:'free',a:a.id}, a, source:(a.source||'Added directly') }); });
   return out;
 }
@@ -15253,7 +15267,7 @@ function renderExecPlan(){
     ? `${overdue.map(row).join('')}${dueThis.map(row).join('')}`
     : `<div class="ck-pending" style="padding:8px 0;">Nothing overdue or due this month.</div>`;
   root.innerHTML = `
-    <div class="rep-hero"><h2>Client execution plan</h2><p>Everything you need to do - from your risk profile, management system, assurance and accreditation. Set a target date and mark progress. Traffic lights: <span style="color:${RAG_COLOR.red};font-weight:700;">overdue</span> &middot; <span style="color:${RAG_COLOR.amber};font-weight:700;">this month</span> &middot; <span style="color:${RAG_COLOR.green};font-weight:700;">on track</span>.</p></div>
+    <div class="rep-hero"><h2>Client execution plan</h2><p>Everything you need to do - from your risk profile, legal duties, assurance and accreditation. Set a target date and mark progress. Traffic lights: <span style="color:${RAG_COLOR.red};font-weight:700;">overdue</span> &middot; <span style="color:${RAG_COLOR.amber};font-weight:700;">this month</span> &middot; <span style="color:${RAG_COLOR.green};font-weight:700;">on track</span>.</p></div>
     ${_top5BannerHTML()}
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">
       ${tile(open.length,'Open','#30415f','epYearCard')}
@@ -15283,7 +15297,7 @@ function renderExecPlan(){
     <div class="card" id="epYearCard">
       <div class="card-band"><h3><span class="dot">&#9679;</span> The full year - everything on your plan</h3></div>
       <div class="card-body">
-        ${open.length ? monthKeys.map(k=>`<div style="margin-bottom:14px;"><div style="font-weight:700;font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;border-bottom:1.5px solid var(--border);padding-bottom:4px;">${monthName(k)} <span style="font-weight:600;">(${byMonth[k].length})</span></div>${byMonth[k].map(row).join('')}</div>`).join('') : `<div class="ck-pending" style="padding:8px 0;">No open actions yet. As actions are identified in your risk profile, management system, assurance and accreditation, they appear here to plan.</div>`}
+        ${open.length ? monthKeys.map(k=>`<div style="margin-bottom:14px;"><div style="font-weight:700;font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;border-bottom:1.5px solid var(--border);padding-bottom:4px;">${monthName(k)} <span style="font-weight:600;">(${byMonth[k].length})</span></div>${byMonth[k].map(row).join('')}</div>`).join('') : `<div class="ck-pending" style="padding:8px 0;">No open actions yet. As actions are identified in your risk profile, legal duties, assurance and accreditation, they appear here to plan.</div>`}
       </div>
     </div>
     ${delivered.length?`<div class="card" id="epDeliveredCard" style="margin-top:18px;border-left:3px solid ${RAG_COLOR.green};">
@@ -16881,7 +16895,7 @@ function _apGaps(){
     if(st && st.label!=='Met' && !it.actions.some(a=>a.desc&&String(a.desc).trim()&&!a.deleted)){
       const what=(it.requirement&&it.requirement.trim())||(sec.heading||'Requirement');
       gaps.push({ srcKey:'req:'+it.id, desc:what, due:it.dueDate||'', priority: st.label==='Not in place'?'High':'Medium',
-        context:(sec.heading||'Management system')+' ('+st.label+')', note:'From the management system: '+(sec.heading||'')+(it.requirement?(': '+it.requirement):'') });
+        context:(sec.heading||'Legal duties')+' ('+st.label+')', note:'From the Legal duties assessment: '+(sec.heading||'')+(it.requirement?(': '+it.requirement):'') });
     }
   }));
   // Judgement gaps: any HSG65 area the consultant has judged Weak.
@@ -16919,7 +16933,7 @@ function _acceptedActions(){
   const out=[];
   (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>{ if(a.status==='Accepted' && !a.hideFromPlan) out.push({ kind:'risk', id:a.id, riskId:r.id, ref:a, desc:a.desc, source:(r.activity||r.hazard||'From a risk') }); }));
   (_apList()||[]).forEach(a=>{ if(a.status==='Accepted') out.push({ kind:'free', id:a.id, riskId:'', ref:a, desc:a.desc, source:'Added directly' }); });
-  (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{ _reqMigrateActions(it); (it.actions||[]).forEach(a=>{ if(a.status==='Accepted' && !a.hideFromPlan) out.push({ kind:'mgmt', id:a.id, riskId:sec.id, ref:a, desc:a.desc, source:(sec.heading||'Management system') }); }); }));
+  (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{ _reqMigrateActions(it); (it.actions||[]).forEach(a=>{ if(a.status==='Accepted' && !a.hideFromPlan) out.push({ kind:'mgmt', id:a.id, riskId:sec.id, ref:a, desc:a.desc, source:(sec.heading||'Legal duties') }); }); }));
   return out;
 }
 function updateAcceptField(kind, id, riskId, field, value){
@@ -16977,7 +16991,7 @@ function _allMgmtActions(){
     const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
     const prBase = st && st.label==='Not in place' ? 'High' : (st && st.label==='Gap' ? 'Medium' : '');
     (it.actions||[]).forEach(act=>{ if(act.deleted) return; if(!act.desc || !String(act.desc).trim()) return;
-      out.push({ secId:sec.id, itemId:it.id, actId:act.id, act, desc:act.desc, owner:act.owner||'', due:act.due||'', priority:act.priority||prBase, status:_actionStatus({status:act.status, due:act.due}), source:(sec.legal?'Legal essentials':(sec.heading||'Management system')) });
+      out.push({ secId:sec.id, itemId:it.id, actId:act.id, act, desc:act.desc, owner:act.owner||'', due:act.due||'', priority:act.priority||prBase, status:_actionStatus({status:act.status, due:act.due}), source:(sec.legal?'Legal essentials':(sec.heading||'Legal duties')) });
     });
   }));
   return out;
@@ -16996,7 +17010,7 @@ function dismissMgmtActionFromPlan(secId, itemId){
   const sec=(S.requirements||[]).find(x=>x.id===secId); if(!sec) return;
   const it=(sec.items||[]).find(x=>x.id===itemId); if(!it) return;
   it.hideFromPlan=true; _stamp(it,'updated'); saveData(); _keepScroll(renderActionPlanTab);
-  if(typeof showToast==='function') showToast('Removed from the action plan (still on the management system)','info');
+  if(typeof showToast==='function') showToast('Removed from the action plan (still on the Legal duties tab)','info');
 }
 function restoreMgmtActionToPlan(secId, itemId){
   if(_blockIfReadOnly()) return;
@@ -17044,16 +17058,16 @@ function renderActionPlanTab(){
   const mgmtRows=mgmtSorted.map(x=>{ const ov=x.status==='Overdue';
     return `<tr>
       <td>${esc(x.desc||'(no description)')}</td>
-      <td><button class="btn btn-ghost btn-xs no-print" onclick="_apGotoMgmt('${x.itemId}')" title="Open in the management system">${esc((x.source||'Duty').slice(0,40))} ↗</button></td>
+      <td><button class="btn btn-ghost btn-xs no-print" onclick="_apGotoMgmt('${x.itemId}')" title="Open in Legal duties">${esc((x.source||'Duty').slice(0,40))} ↗</button></td>
       <td>${esc(x.owner||'-')}</td>
       <td style="${ov?'color:#DC2626;font-weight:600;':''}">${x.due?fmtDate(x.due):'-'}</td>
       <td><span style="color:${prColor(x.priority)};font-weight:700;">${esc(x.priority||'-')}</span></td>
       <td><select${dis} onchange="updateExecAction('${encodeURIComponent(JSON.stringify({t:'mgmt',a:x.secId,b:x.itemId,c:x.actId}))}','status',this.value)">${_AP_STATUSES.map(s=>`<option${s===(x.act.status||'Not started')?' selected':''}>${s}</option>`).join('')}</select>${ov?' <span class="badge" style="border-color:#DC2626;color:#DC2626;">Overdue</span>':''}</td>
-      ${ro?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs no-print" title="Remove from this plan (added by mistake). It stays on the management system." onclick="deleteExecAction('${encodeURIComponent(JSON.stringify({t:'mgmt',a:x.secId,b:x.itemId,c:x.actId}))}')">✕</button></td>`}
+      ${ro?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs no-print" title="Remove from this plan (added by mistake). It stays on the Legal duties tab." onclick="deleteExecAction('${encodeURIComponent(JSON.stringify({t:'mgmt',a:x.secId,b:x.itemId,c:x.actId}))}')">✕</button></td>`}
     </tr>`;
   }).join('');
-  const mgmtCard = mgmtActs.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Actions from the management system</h3><span class="badge badge-muted">${mgmtActs.length}</span></div>
-    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">These come from the action recorded on each management-system requirement line. Update status here as you work through them; edit the detail on the management system. Use ✕ to remove one added by mistake (it stays there).</div>
+  const mgmtCard = mgmtActs.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Actions from the legal duties</h3><span class="badge badge-muted">${mgmtActs.length}</span></div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">These come from the action recorded on each legal-duties requirement line. Update status here as you work through them; edit the detail on the Legal duties tab. Use ✕ to remove one added by mistake (it stays there).</div>
     <div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Action</th><th>Duty</th><th>Owner</th><th>Target</th><th>Priority</th><th>Status</th>${ro?'':'<th></th>'}</tr></thead><tbody>${mgmtRows}</tbody></table></div></div></div>` : '';
   // Combined "removed from this plan" list (risk + management system), recoverable.
   const hiddenAll = hiddenActs.map(x=>({kind:'risk', a:x.r.id, b:x.a.id, desc:x.a.desc, src:(x.r.activity||x.r.hazard||'Risk')}))
@@ -17063,7 +17077,7 @@ function renderActionPlanTab(){
   // Open gaps from the management system + maturity, offered as one-click actions.
   const gaps=_apGaps();
   const gapCard = gaps.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Suggested from gaps</h3><span class="badge badge-muted">${gaps.length}</span></div>
-    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Gaps found in the management system and the H&S control maturity. Add any to the plan to track and close it.</div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Gaps found in the Legal duties assessment and the H&S control maturity. Add any to the plan to track and close it.</div>
     ${gaps.map(g=>`<div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border);padding:8px 0;">
       <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${esc(g.desc)}</div><div style="font-size:11px;color:var(--text-muted);">${esc(g.context)}${g.due?(' · due '+fmtDate(g.due)):''}</div></div>
       ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="addGapToPlan('${g.srcKey}')">＋ Add</button>`}</div>`).join('')}
@@ -18224,7 +18238,7 @@ const REPORT_DOCS = [
   { key:'executionPlan',    title:'Client Execution Plan',        code:'EP'  },
   { key:'completedActions', title:'Completed Actions',            code:'CA'  },
   { key:'actionArchive',    title:'Action Archive',               code:'AA'  },
-  { key:'managementSystem', title:'Management System Assessment', code:'MS'  },
+  { key:'managementSystem', title:'Legal Duties Assessment', code:'MS'  },
   { key:'raRegister',       title:'Risk Assessment Register',     code:'RAR' },
   { key:'riskAcceptance',   title:'Risk Acceptance Register',     code:'RAC' },
   { key:'audit',            title:'Health & Safety Audit',        code:'AUD' },
@@ -18777,7 +18791,7 @@ function buildExecPlanReportPDF(){
   const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
   const d=_docFor('executionPlan');
   const RED=[220,38,38], AMBER=[245,158,11], GREEN=[22,163,74], GREY=[120,120,120], NAVY=[30,58,95];
-  const K=_mkPdf('Client Execution Plan', client, d, 'Everything to do, by when - from the risk profile, management system, assurance and accreditation. A point-in-time snapshot.');
+  const K=_mkPdf('Client Execution Plan', client, d, 'Everything to do, by when - from the risk profile, legal duties, assurance and accreditation. A point-in-time snapshot.');
   const { doc } = K;
   const fd=(s)=> s ? new Date(String(s)+(String(s).length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'no date';
   const ragCol=(r)=>r==='red'?RED:r==='amber'?AMBER:r==='grey'?GREY:GREEN;
@@ -18796,7 +18810,7 @@ function buildExecPlanReportPDF(){
   K.tiles([{num:open.length,label:'Open',color:NAVY,sub:'To do'},{num:overdue.length,label:'Overdue',color:overdue.length?RED:NAVY,sub:'Past target'},{num:dueThis.length,label:'Due this month',color:dueThis.length?AMBER:NAVY,sub:'Focus'},{num:done.length,label:'Complete',color:done.length?GREEN:NAVY,sub:'Delivered'}]);
   const byMonth={}; open.forEach(a=>{ const k=_actionMonthKey(a.due); (byMonth[k]=byMonth[k]||[]).push(a); });
   const keys=Object.keys(byMonth).filter(k=>k).sort(); if(byMonth['']) keys.push('');
-  if(!open.length){ K.section('Plan', NAVY); K.text('No open actions. Actions raised in the risk profile, management system, assurance and accreditation will appear here.', 10, {color:GREY}); }
+  if(!open.length){ K.section('Plan', NAVY); K.text('No open actions. Actions raised in the risk profile, legal duties, assurance and accreditation will appear here.', 10, {color:GREY}); }
   keys.forEach(k=>{
     K.section(monthName(k)+'  ('+byMonth[k].length+')', NAVY);
     K.table(
@@ -18836,7 +18850,7 @@ function buildCompletedActionsReportPDF(){
   const NAVY=[30,58,95], GREEN=[22,163,74], GREY=[120,120,120];
   const period=_apHistoryPeriod;
   const periodLabel={month:'this month',quarter:'this quarter',year:'this year',all:'all time'}[period]||'all time';
-  const K=_mkPdf('Completed Actions', client, d, 'The record of actions resolved - completed or risk-accepted ('+periodLabel+') - from the risk profile, management system, assurance and accreditation.');
+  const K=_mkPdf('Completed Actions', client, d, 'The record of actions resolved - completed or risk-accepted ('+periodLabel+') - from the risk profile, legal duties, assurance and accreditation.');
   const { doc } = K;
   const fd=(s)=> s ? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '-';
   const done=_completedActions(period);
@@ -20551,7 +20565,7 @@ function updateReqField(sectionId, itemId, field, value){
     window._reqDocT[itemId]=setTimeout(()=>{
       if((it.docPath||'').trim()){
         const meta=(typeof _legalMeta==='function')?_legalMeta(it.legalKey):null;
-        try{ _docUpsertFromApp((meta?meta.title:(it.requirement||'')).slice(0,80), it.docPath, 'management system evidence'); renderDocSummary(); }catch(e){}
+        try{ _docUpsertFromApp((meta?meta.title:(it.requirement||'')).slice(0,80), it.docPath, 'legal duties evidence'); renderDocSummary(); }catch(e){}
       }
     },1200);
   }
@@ -20762,7 +20776,7 @@ function renderRequirements(){
   const _filt=document.getElementById('reqFilters'); if(_filt) _filt.innerHTML='';
 
   if(!secs.length){
-    cont.innerHTML = `<div class="card"><div class="card-body"><div class="empty"><div class="empty-icon" style="color:var(--text-muted);">${_ic('checklist',38)}</div><h4>No management system set up</h4><p>${ro?'This client has no management system assessment yet.':'Duty headings will appear here.'}</p></div></div></div>`;
+    cont.innerHTML = `<div class="card"><div class="card-body"><div class="empty"><div class="empty-icon" style="color:var(--text-muted);">${_ic('checklist',38)}</div><h4>No legal duties set up</h4><p>${ro?'This client has no legal duties assessment yet.':'Duty headings will appear here.'}</p></div></div></div>`;
     return;
   }
   const dis = ro ? ' disabled' : '';
@@ -20859,7 +20873,7 @@ function buildManagementSystemReportPDF(){
   const client = (_consultantView&&_consultantView.name) || (S.branding&&S.branding.name) || 'Client';
   const d = _docFor('managementSystem');
   const stt = _reqStats();
-  const K=_mkPdf('Management System Assessment', client, d, 'How the organisation meets its duties under the HSG65 framework - by exception.');
+  const K=_mkPdf('Legal Duties Assessment', client, d, 'How the organisation meets its duties under the HSG65 framework - by exception.');
   const { doc, ML, RM, st, A } = K;
   const RED=[197,32,32], AMBER=[180,110,10], NAVY=[30,58,95], GREEN=[22,120,60];
   const msComplete = stt.total ? Math.round(stt.assessed/stt.total*100) : 0;
@@ -20868,11 +20882,11 @@ function buildManagementSystemReportPDF(){
   // E8 - nothing assessed → a single honest cover page, not eight empty sections.
   if(!stt.assessed){
     K.section('Not yet assessed', AMBER);
-    K.text('The management-system assessment has been set up ('+(stt.total||secs.length||0)+' duty heading'+(((stt.total||secs.length)||0)!==1?'s':'')+') but no requirement lines have been assessed yet.', 10.5, {color:[45,45,45]});
+    K.text('The legal duties assessment has been set up ('+(stt.total||secs.length||0)+' duty heading'+(((stt.total||secs.length)||0)!==1?'s':'')+') but no requirement lines have been assessed yet.', 10.5, {color:[45,45,45]});
     K.text('This cover page is issued in place of a full report so the document does not present empty sections as findings. Assess the requirement lines (present / adequate / action needed) and re-issue.', 9.5, {color:[110,110,110], gap:2});
     if(secs.length){ K.section('Duty headings set up', NAVY); REQ_STAGES.forEach(stage=>{ const grp=secs.filter(s=>s.stage===stage); if(!grp.length) return; K.text(stage, 10, {bold:true, color:NAVY}); grp.forEach(s=>K.text('- '+(s.heading||'(untitled duty)'), 9.5)); }); }
     footer();
-    doc.save('management-system-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf'); return;
+    doc.save('legal-duties-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf'); return;
   }
 
   // Verdict box (lead with the finding, not the method)
@@ -20924,14 +20938,14 @@ function buildManagementSystemReportPDF(){
   if(msComplete<100 && _reportSectionOn('mgmt.completeness')){ K.section('Data completeness', AMBER); K.text(msComplete+'% of duty lines assessed', 13, {bold:true, color:AMBER}); K.text('- '+(stt.total-stt.assessed)+' requirement line(s) not yet assessed', 9.5, {color:[110,110,110]}); }
 
   footer();
-  doc.save('management-system-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+  doc.save('legal-duties-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
 }
 
 function downloadManagementSystemReport(){
   // Report generation is allowed in read-only (consultant) view - it only reads data.
-  if(!(S.requirements||[]).length){ showToast('Set up the management system first','info'); return; }
-  try { buildManagementSystemReportPDF(); showToast('✓ Management system report created','success'); }
-  catch(e){ console.error('Management system report failed:',e); showToast('Could not build the PDF - see console','error'); }
+  if(!(S.requirements||[]).length){ showToast('Set up the legal duties first','info'); return; }
+  try { buildManagementSystemReportPDF(); showToast('✓ Legal duties report created','success'); }
+  catch(e){ console.error('Legal duties report failed:',e); showToast('Could not build the PDF - see console','error'); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -22902,7 +22916,7 @@ function suggestDocumentsFromApp(){
   if((S.policySignoff&&(S.policySignoff.policies||[]).length)) add('Policy sign-off register','sign-off tab');
   if((S.siteInspections||[]).length) add('Process assurance register','process assurance');
   if((S.riskProfile||[]).some(r=>(r.actions||[]).some(a=>a.status==='Accepted'))) add('Risk acceptance register','risk profile');
-  if((S.requirements||[]).length) add('Management system assessment','management system');
+  if((S.requirements||[]).length) add('Legal duties assessment','legal duties');
   const added=(S.documents||[]).length-before;
   saveData(); renderDocuments();
   showToast(added?('✓ '+added+' document'+(added!==1?'s':'')+' added from the app - fill in where each one lives and its review date'):'Nothing new to add - everything the app knows about is already listed','success');
@@ -23999,7 +24013,7 @@ function renderReview(){
           ${stat('Open actions', sc.openA, sc.overdueA+' overdue', sc.overdueA?'var(--danger)':'var(--text)')}
           ${stat('Avg resolve', sc.avgResolveDays==null?'-':sc.avgResolveDays+'d', 'days to close')}
           ${stat('High and critical risks', sc.highRisk, sc.totalRisks+' total', sc.highRisk?'var(--danger)':'var(--text)')}
-          ${stat('Management system gaps', sc.reqGaps, sc.reqAssessed+' assessed', sc.reqGaps?'var(--warning)':'var(--text)')}
+          ${stat('Legal duty gaps', sc.reqGaps, sc.reqAssessed+' assessed', sc.reqGaps?'var(--warning)':'var(--text)')}
         </div>
         <div style="font-size:12px;color:var(--text-muted);margin-top:10px;">Inspections per month:  ${sc.trend.map(t=>t.label+' '+t.count).join('  ·  ')}</div>
       </div>
@@ -24054,7 +24068,7 @@ function _suggestReviewSuggestionsText(){
   if(!pd.signedDate) out.push('Get the health and safety policy statement signed and dated by the person at the top - it is not complete until then.');
   const exp=(typeof _trainingDueCount==='function')?_trainingDueCount():0;
   if(exp) out.push('Book the '+exp+' expired or expiring training renewal'+(exp!==1?'s':'')+' (raise them onto the plan from the training matrix).');
-  if(sc.reqGaps) out.push('Work through the '+sc.reqGaps+' management system gap'+(sc.reqGaps!==1?'s':'')+' - each has a dated action in the plan.');
+  if(sc.reqGaps) out.push('Work through the '+sc.reqGaps+' legal duty gap'+(sc.reqGaps!==1?'s':'')+' - each has a dated action in the plan.');
   const br=((S.consultation&&S.consultation.briefings)||[]);
   if(!br.length) out.push('Start recording the daily starts and toolbox talks on the sign-off tab - the two-way record is the evidence HSG65 looks for.');
   if(!out.length) out.push('Keep the current rhythm: monthly figures saved, actions closed on time and the review cycle running. Nothing is flagging as a gap this month.');
@@ -24108,7 +24122,7 @@ function buildFeedbackReportPDF(){
   const _gapsN=(function(){ let n=0; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if(_reqItemAssessed(it)&&!_reqItemMet(it)) n++; })); return n; })();
   const _openN=(S.actions||[]).filter(x=>!x.resolved).length;
   const _vRgb=(sc.overdueA||_gapsN>3)?RED:((_openN||_gapsN)?AMBER:GREEN);
-  const _vTxt='Compliance '+(sc.compliance==null?'not yet measured':sc.compliance+'%')+', '+_openN+' open action'+(_openN!==1?'s':'')+(sc.overdueA?(' ('+sc.overdueA+' overdue)'):'')+' and '+_gapsN+' management-system gap'+(_gapsN!==1?'s':'')+' for this client.';
+  const _vTxt='Compliance '+(sc.compliance==null?'not yet measured':sc.compliance+'%')+', '+_openN+' open action'+(_openN!==1?'s':'')+(sc.overdueA?(' ('+sc.overdueA+' overdue)'):'')+' and '+_gapsN+' legal duty gap'+(_gapsN!==1?'s':'')+' for this client.';
   K.verdictBox(_vTxt, _vRgb);
   // Progress at a glance (tiles)
   K.section('Progress at a glance', NAVY);
@@ -24136,10 +24150,10 @@ function buildFeedbackReportPDF(){
       {headFill:NAVY, headText:[255,255,255]});
   } else K.text('No critical or high risks recorded.', 9.5, {color:GREY});
   // Management system gaps (table)
-  K.section('Management system gaps', AMBER);
+  K.section('Legal duty gaps', AMBER);
   const gapRows=[]; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ _reqMigrateActions(it); if(_reqItemAssessed(it)&&!_reqItemMet(it)) gapRows.push([{text:(it.requirement||'requirement'), bold:true},{text:s.heading||'-', color:GREY},{text:((it.actions||[]).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted).map(a=>a.desc).join('; '))||'-', color:GREY}]); }));
   if(gapRows.length){ K.table([{header:'REQUIREMENT',w:78},{header:'DUTY AREA',w:52},{header:'ACTION',w:48}], gapRows, {headFill:AMBER, headText:[255,255,255]}); }
-  else K.text('No management system gaps recorded.', 9.5, {color:GREY});
+  else K.text('No legal duty gaps recorded.', 9.5, {color:GREY});
   // Monitoring picture (tiles)
   K.section('Monitoring picture (this month)', NAVY);
   const m=new Date().toISOString().slice(0,7); const md=(S.monitoring&&S.monitoring.months&&S.monitoring.months[m])||{}; const a2=_monAutoScores(m);
@@ -24194,7 +24208,7 @@ function buildReviewReportPDF(){
   K.section('Quality & management position (Check)', NAVY);
   K.kv('Quality rating', _lr?(_lr.score+' / 5'+(_lr.note?(' - '+_lr.note):'')):'not rated');
   if(sc.compliance!=null) K.kv('Inspection compliance', sc.compliance+'%');
-  if(sc.reqAssessed!=null) K.kv('Management system', (sc.reqGaps||0)+' gaps of '+(sc.reqAssessed||0)+' assessed');
+  if(sc.reqAssessed!=null) K.kv('Legal duties', (sc.reqGaps||0)+' gaps of '+(sc.reqAssessed||0)+' assessed');
   if(sc.highRisk!=null) K.kv('High/critical risks', sc.highRisk+' of '+(sc.totalRisks||0));
   if(rev.feedback) K.kv('Feedback', rev.feedback);
   if(rev.suggestions) K.kv('Suggestions', rev.suggestions);

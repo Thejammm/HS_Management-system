@@ -23,6 +23,7 @@ export const BOARD_SECTIONS = [
   { id: 'cdm',            label: 'CDM assurance - design reviews & CDM audits', hsg: 'Active monitoring · construction dutyholders' },
   { id: 'environmental',  label: 'Environmental events', hsg: 'Environmental incidents & investigations' },
   { id: 'decisions',      label: 'Management decisions - have the last meeting’s been actioned?', hsg: 'Closing the loop - decisions of the review' },
+  { id: 'supply',         label: 'Subcontractor and supply chain performance', hsg: 'Competence of others working under your control' },
   { id: 'wins',           label: 'Successes this period', hsg: 'Celebrate and promote successes' },
   { id: 'sinceLast',      label: 'Movement since the baseline', hsg: 'Closing the loop' },
   { id: 'topFive',        label: 'Top 5 priorities for next month', hsg: 'What we agreed to do next' },
@@ -190,6 +191,35 @@ export function buildBoardReport(state, opts = {}) {
     recent: decAll.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, 8),
   };
   dec.pct = dec.decided ? Math.round(dec.delivered / dec.decided * 100) : null;
+  // Supply chain: dates decide everything, so nothing is stored as a score.
+  const supAll = Array.isArray(state.supplyChain) ? state.supplyChain : [];
+  const expiredOn = d => !!d && d < todayIso;
+  const soonIso = (function () { const s = new Date(todayIso + 'T12:00:00'); s.setDate(s.getDate() + 60); return s.toISOString().slice(0, 10); })();
+  const gapsOf = p => {
+    const g = [];
+    if (!p.elciExpiry) g.push('EL insurance not recorded'); else if (expiredOn(p.elciExpiry)) g.push('EL insurance expired');
+    if (!p.pliExpiry) g.push('PL insurance not recorded'); else if (expiredOn(p.pliExpiry)) g.push('PL insurance expired');
+    if (!p.policy) g.push('H&S policy not seen');
+    if (!p.rams) g.push('RAMS not reviewed');
+    if (!p.competence) g.push('competence not evidenced');
+    if (!p.refs) g.push('references not taken');
+    if (expiredOn(p.reviewDate)) g.push('review overdue');
+    return g;
+  };
+  const cut90 = (function () { const c = new Date(todayIso + 'T12:00:00'); c.setDate(c.getDate() - 90); return c.toISOString().slice(0, 10); })();
+  const supEvents = [];
+  supAll.forEach(p => (Array.isArray(p.events) ? p.events : []).forEach(e => { if ((e.date || '') >= cut90) supEvents.push({ p, e }); }));
+  const sup = {
+    total: supAll.length,
+    approved: supAll.filter(p => p.status === 'Approved').length,
+    suspended: supAll.filter(p => p.status === 'Suspended').length,
+    insExpired: supAll.filter(p => expiredOn(p.elciExpiry) || expiredOn(p.pliExpiry)).length,
+    insSoon: supAll.filter(p => (p.elciExpiry && !expiredOn(p.elciExpiry) && p.elciExpiry <= soonIso) || (p.pliExpiry && !expiredOn(p.pliExpiry) && p.pliExpiry <= soonIso)).length,
+    incomplete: supAll.filter(p => gapsOf(p).length).length,
+    concerns: supEvents.filter(x => ['Concern raised', 'Non-conformance', 'Incident'].includes(x.e.kind)),
+    good: supEvents.filter(x => x.e.kind === 'Good performance').length,
+    gapsOf,
+  };
   const envAll = (Array.isArray(state.incidents) ? state.incidents : []).filter(i => i && i.type === 'Environmental');
   const env = { total: envAll.length, open: envAll.filter(i => i.status === 'Open').length,
     latest: envAll.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, 5) };
@@ -316,6 +346,28 @@ export function buildBoardReport(state, opts = {}) {
     if (env.latest.length) oversightBlocks.push({ type: 'dataTable',
       cols: [ { header: 'Date', w: '14%' }, { header: 'What happened', w: '52%' }, { header: 'Where', w: '18%' }, { header: 'Status', w: '16%' } ],
       rows: env.latest.map(i => [ fmtD(i.date), String(i.what || '(not recorded)').slice(0, 100), i.where || '-', (i.status === 'Open' ? 'Open - under investigation' : (i.status || 'Closed')) ]) });
+  }
+  if (!hide.supply) {
+    if (!sup.total) {
+      oversightBlocks.push({ type: 'textBlock', title: 'Subcontractor and supply chain performance', body: 'No subcontractors, sub-consultants or suppliers are on the register. Where others work under the organisation’s control, the checks made before engaging them - insurance, policy, method statements and competence - are the evidence that the duty to manage them is being discharged.' });
+    } else {
+      oversightBlocks.push({ type: 'kpiStrip', tiles: [
+        { value: String(sup.total), label: 'On the register', note: sup.approved + ' approved' },
+        { value: String(sup.insExpired), label: 'Insurance expired', tone: sup.insExpired ? 'bad' : 'ok', note: sup.insSoon ? (sup.insSoon + ' expiring soon') : undefined },
+        { value: String(sup.incomplete), label: 'Checks outstanding', tone: sup.incomplete ? 'warn' : 'ok' },
+        { value: String(sup.concerns.length), label: 'Concerns in 90 days', tone: sup.concerns.length ? 'warn' : 'ok', note: sup.good ? (sup.good + ' logged as good') : undefined },
+      ] });
+      const bad = supAll.filter(p => sup.gapsOf(p).length).slice(0, 6);
+      if (bad.length) oversightBlocks.push({ type: 'dataTable',
+        cols: [ { header: 'Partner', w: '26%' }, { header: 'Type', w: '16%' }, { header: 'Status', w: '14%' }, { header: 'What is outstanding', w: '44%' } ],
+        rows: bad.map(p => [ p.name || '(unnamed)', p.type || '-', p.status || '-',
+          { text: sup.gapsOf(p).join('; '), color: sup.gapsOf(p).some(g => g.indexOf('expired') >= 0) ? [197,32,32] : [110,110,110] } ]),
+        footnote: (sup.incomplete > 6 ? ('Showing 6 of ' + sup.incomplete + ' with something outstanding. ') : '')
+          + 'A partner with expired insurance should not be working under the organisation’s control until it is renewed.' });
+      if (sup.concerns.length) oversightBlocks.push({ type: 'dataTable', title: 'Performance concerns in the period',
+        cols: [ { header: 'Date', w: '13%' }, { header: 'Partner', w: '24%' }, { header: 'What happened', w: '45%' }, { header: 'Type', w: '18%' } ],
+        rows: sup.concerns.slice(0, 6).map(x => [ fmtD(x.e.date), x.p.name || '(unnamed)', String(x.e.note || '(not recorded)').slice(0, 100), x.e.kind ]) });
+    }
   }
   const oversightPage = oversightBlocks.length ? { label: 'CDM & environment', section: 'oversight', blocks: [
       mast,

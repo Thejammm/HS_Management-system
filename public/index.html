@@ -3799,6 +3799,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="riskAssurance"></div>
     <div id="incidentPanel"></div>
     <div id="decisionPanel"></div>
+    <div id="supplyPanel"></div>
     <!-- The Risk assessment register lived here; it now sits at the bottom of
          the Documents tab, where employee logins can read it too. -->
   </div>
@@ -10575,6 +10576,7 @@ function migrateLoadedState(){
   if(!S.policyDoc || typeof S.policyDoc !== 'object') S.policyDoc = { statement:'', signedBy:'', signedRole:'', signedDate:'', reviewDate:'' };
   if(!Array.isArray(S.incidents)) S.incidents = [];   // incident register: records + investigations, deliberately outside the KPI figures
   if(!Array.isArray(S.decisions)) S.decisions = [];   // management decisions: what leadership decided, and what came of it
+  if(!Array.isArray(S.supplyChain)) S.supplyChain = [];   // supply chain: partners, their checks and how they have performed
   if(!S.consultation || typeof S.consultation !== 'object') S.consultation = { briefings:[] };   // two-way communication record (sign-off tab)
   if(!Array.isArray(S.consultation.briefings)) S.consultation.briefings = [];
   // Regulatory tracker is now organised into named sections, each holding statutory
@@ -13836,7 +13838,7 @@ function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null;
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),
     draft:{typeId:'garage_inspection',results:{},notes:{},actionDetails:{},rectifyDetails:{},formData:{},periodFrom:'',periodTo:'',manager:'',location:'',ref:'',freq:'weekly',generalNotes:'',title:'',inspType:''},
-    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], consultation:{briefings:[]}, decisions:[], activeClient:null, branding:_newClientBranding() };
+    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], consultation:{briefings:[]}, decisions:[], supplyChain:[], activeClient:null, branding:_newClientBranding() };
 }
 // The practice's look carries to a new client; the client's NAME never does.
 function _newClientBranding(){
@@ -14189,6 +14191,15 @@ const COCKPIT_WIDGETS = {
   riskVsMaturity: { id:'riskVsMaturity', label:'Risk profile & H&S control maturity', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="full">${_riskPanelHTML({heading:true})}</div></div>` },
   riskMatrixOnly:   { id:'riskMatrixOnly', label:'Risk matrix (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="matrix">${_riskPanelHTML({heading:true,only:'matrix'})}</div></div>` },
   riskMaturityOnly: { id:'riskMaturityOnly', label:'H&S control maturity (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="maturity">${_riskPanelHTML({heading:true,only:'maturity'})}</div></div>` },
+  cardSupply:     { id:'cardSupply', label:'Supply chain', group:'Card', defaultOff:true, render:x=>{
+      const st=(typeof _supplyStats==='function')?_supplyStats():{total:0};
+      if(!st.total) return _ckMod('Supply chain', _ckPend('No partners on the register yet.')+'<button class="ck-link" onclick="switchTab(\'monitoring\')">Open the register</button>');
+      return _ckMod('Supply chain', `
+        <div class="ck-row"><span>On the register</span><span style="font-weight:600;">${st.total}${st.approved?(' · '+st.approved+' approved'):''}</span></div>
+        <div class="ck-row"><span>Insurance expired</span><span style="color:${st.insExpired?'var(--danger)':'inherit'};font-weight:600;">${st.insExpired}${st.insSoon?(' · '+st.insSoon+' expiring'):''}</span></div>
+        <div class="ck-row"><span>Checks outstanding</span><span style="color:${st.incomplete?'var(--warning)':'inherit'};font-weight:600;">${st.incomplete}</span></div>
+        <button class="ck-link" onclick="switchTab('monitoring')">Open the register</button>`);
+    } },
   cardDecisions:  { id:'cardDecisions', label:'Management decisions', group:'Card', defaultOff:true, render:x=>{
       const st=(typeof _decisionStats==='function')?_decisionStats():{total:0};
       if(!st.total) return _ckMod('Management decisions', _ckPend('No decisions recorded yet.')+'<button class="ck-link" onclick="switchTab(\'monitoring\')">Open the register</button>');
@@ -23090,6 +23101,231 @@ function _renderDecisions(){
   _detailsApply(el,_keep);
 }
 
+
+// ══════════════════════════════════════════════════════════════
+//  SUPPLY CHAIN - who works for the client, what was checked before they
+//  were let on, and how they have actually performed since.
+//  Deliberately generic: the party is a TYPE, so a contractor's
+//  subcontractor, an architect's sub-consultant, a labour supplier and a
+//  plant hire company are one record and the reporting engine reads them
+//  all as supply-chain partners.
+//  Facts in, metrics out: the record holds dates and events - approved on,
+//  insurance expiry, review due, what happened on site. Nothing stores a
+//  score or a percentage, so "3 of 11 approved" and "2 insurances expired"
+//  are always calculated from the dates as they stand today.
+// ══════════════════════════════════════════════════════════════
+const SUPPLY_TYPES=['Subcontractor','Labour supplier','Consultant','Designer','Supplier','Plant hire','Other'];
+const SUPPLY_STATES=[
+  { k:'Approved',     colour:'#16A34A', desc:'Checked and on the approved list' },
+  { k:'Provisional',  colour:'#D97706', desc:'Working, with checks still outstanding' },
+  { k:'Under review', colour:'#2563EB', desc:'Performance being looked at' },
+  { k:'Suspended',    colour:'#DC2626', desc:'Not to be engaged until resolved' },
+  { k:'Not approved', colour:'#6B7280', desc:'Assessed and turned down, or no longer used' }
+];
+// What has to be seen before a partner is let on. Tick = evidence held.
+const SUPPLY_CHECKS=[
+  { k:'policy',     label:'H&S policy seen' },
+  { k:'rams',       label:'RAMS reviewed' },
+  { k:'competence', label:'Training / competence records seen' },
+  { k:'refs',       label:'References taken' }
+];
+const SUPPLY_EVENTS=['Good performance','Concern raised','Non-conformance','Incident','Audit / inspection','Review meeting'];
+function _supply(){ if(!Array.isArray(S.supplyChain)) S.supplyChain=[]; return S.supplyChain; }
+function _supplyState(p){ return SUPPLY_STATES.find(x=>x.k===(p&&p.status)) || SUPPLY_STATES[1]; }
+// A date is expired if it has passed, due if it falls inside 60 days.
+function _supplyDateFlag(d){
+  if(!d) return { k:'none', label:'not recorded', colour:'#6B7280' };
+  const today=new Date().toISOString().slice(0,10);
+  if(d<today) return { k:'expired', label:'expired', colour:'#DC2626' };
+  const soon=new Date(); soon.setDate(soon.getDate()+60);
+  if(d<=soon.toISOString().slice(0,10)) return { k:'soon', label:'expires soon', colour:'#D97706' };
+  return { k:'ok', label:'in date', colour:'#16A34A' };
+}
+// Everything a partner is missing right now, in words - the list that decides
+// whether they should be on site at all.
+function _supplyGaps(p){
+  const g=[];
+  ['elci','pli'].forEach(k=>{ const f=_supplyDateFlag(p[k+'Expiry']);
+    const nm=(k==='elci')?'Employers’ liability':'Public liability';
+    if(f.k==='none') g.push(nm+' insurance not recorded');
+    else if(f.k==='expired') g.push(nm+' insurance expired '+fmtDate(p[k+'Expiry'])); });
+  SUPPLY_CHECKS.forEach(c=>{ if(!p[c.k]) g.push(c.label.replace(' seen','').replace(' reviewed','')+' not evidenced'); });
+  const rv=_supplyDateFlag(p.reviewDate);
+  if(rv.k==='expired') g.push('review overdue');
+  return g;
+}
+function _supplyEvents(p){ return Array.isArray(p&&p.events)?p.events:[]; }
+// The tally every consumer reads - one derivation, never stored.
+function _supplyStats(){
+  const l=_supply();
+  const insExpired=l.filter(p=>_supplyDateFlag(p.elciExpiry).k==='expired'||_supplyDateFlag(p.pliExpiry).k==='expired').length;
+  const insSoon=l.filter(p=>_supplyDateFlag(p.elciExpiry).k==='soon'||_supplyDateFlag(p.pliExpiry).k==='soon').length;
+  const cut=new Date(); cut.setDate(cut.getDate()-90); const cutIso=cut.toISOString().slice(0,10);
+  let concerns=0, good=0;
+  l.forEach(p=>_supplyEvents(p).forEach(e=>{ if((e.date||'')<cutIso) return;
+    if(e.kind==='Good performance') good++;
+    else if(e.kind==='Concern raised'||e.kind==='Non-conformance'||e.kind==='Incident') concerns++; }));
+  return { total:l.length,
+    approved:l.filter(p=>p.status==='Approved').length,
+    provisional:l.filter(p=>p.status==='Provisional').length,
+    suspended:l.filter(p=>p.status==='Suspended').length,
+    insExpired, insSoon,
+    reviewOverdue:l.filter(p=>_supplyDateFlag(p.reviewDate).k==='expired').length,
+    incomplete:l.filter(p=>_supplyGaps(p).length>0).length,
+    concerns, good };
+}
+function addSupplyPartner(){
+  if(_blockIfReadOnly()) return;
+  const p={ id:'sup_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    name:'', type:'Subcontractor', trade:'', status:'Provisional',
+    assessedDate:new Date().toISOString().slice(0,10), assessedBy:(typeof _actor==='function'?(_actor().name||''):''),
+    elciInsurer:'', elciExpiry:'', pliInsurer:'', pliExpiry:'',
+    accreditation:'', accredExpiry:'', reviewDate:'',
+    policy:false, rams:false, competence:false, refs:false,
+    notes:'', events:[], raised:0 };
+  _stamp(p,'created');
+  _supply().unshift(p); saveData();
+  _openSupply.add(p.id); _renderSupply();
+}
+function updateSupply(id,f,v){
+  if(_roLocked()) return;
+  const p=_supply().find(x=>x.id===id); if(!p) return;
+  p[f]=v; _stamp(p,'updated');
+  if(f==='status'||f==='type'||f.indexOf('Expiry')>=0||f==='reviewDate'){ saveData(); _renderSupply(); }
+  else scheduleAutoSave();
+}
+function toggleSupplyCheck(id,k){
+  if(_roLocked()) return;
+  const p=_supply().find(x=>x.id===id); if(!p) return;
+  p[k]=!p[k]; _stamp(p,'updated'); saveData(); _renderSupply();
+}
+function deleteSupplyPartner(id){
+  if(_blockIfReadOnly()) return;
+  const p=_supply().find(x=>x.id===id); if(!p) return;
+  if(!confirm('Remove "'+(p.name||'this partner')+'" from the supply chain register?'+(p.raised?'\n\nAny actions raised from it stay on the plan.':''))) return;
+  S.supplyChain=_supply().filter(x=>x.id!==id); saveData(); _renderSupply();
+}
+function addSupplyEvent(id){
+  if(_blockIfReadOnly()) return;
+  const p=_supply().find(x=>x.id===id); if(!p) return;
+  if(!Array.isArray(p.events)) p.events=[];
+  p.events.unshift({ id:'se_'+Date.now().toString(36)+Math.random().toString(36).slice(2,4),
+    date:new Date().toISOString().slice(0,10), kind:'Concern raised', where:'', note:'' });
+  _stamp(p,'updated'); saveData(); _renderSupply();
+}
+function updateSupplyEvent(pid,eid,f,v){
+  if(_roLocked()) return;
+  const p=_supply().find(x=>x.id===pid); if(!p) return;
+  const e=_supplyEvents(p).find(x=>x.id===eid); if(!e) return;
+  e[f]=v; _stamp(p,'updated');
+  if(f==='kind'||f==='date'){ saveData(); _renderSupply(); } else scheduleAutoSave();
+}
+function deleteSupplyEvent(pid,eid){
+  if(_blockIfReadOnly()) return;
+  const p=_supply().find(x=>x.id===pid); if(!p) return;
+  p.events=_supplyEvents(p).filter(x=>x.id!==eid); _stamp(p,'updated'); saveData(); _renderSupply();
+}
+// Chase what is missing - the same explicit route to the plan the other
+// collectors use, so nothing lands there without being asked for.
+function raiseSupplyAction(id){
+  if(_blockIfReadOnly()) return;
+  const p=_supply().find(x=>x.id===id); if(!p) return;
+  const gaps=_supplyGaps(p);
+  if(!gaps.length){ showToast('Nothing outstanding on this partner - their checks are complete and in date.','info'); return; }
+  if(!String(p.name||'').trim()){ showToast('Name the partner first','info'); return; }
+  const ap={ id:'ap_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    desc:'Supply chain - '+p.name+': '+gaps.slice(0,3).join('; ')+(gaps.length>3?('; and '+(gaps.length-3)+' more'):''),
+    owner:'', due:'', priority:(gaps.some(g=>g.indexOf('expired')>=0)?'High':'Medium'), status:'Not started',
+    riskId:'', docId:'', note:'From the supply chain register: '+(p.type||'partner')+(p.trade?(' ('+p.trade+')'):'')+'. Checks outstanding before this partner should be engaged.', completedDate:'' };
+  _stamp(ap,'created'); _apList().push(ap);
+  p.raised=(p.raised||0)+1;
+  saveData(); _renderSupply();
+  showToast('✓ Action raised into the plan - set the owner and target date on the Client execution plan.','success');
+}
+var _openSupply=new Set();
+function _renderSupply(){
+  const el=document.getElementById('supplyPanel'); if(!el) return;
+  const ro=_roLocked(); const dis=ro?' disabled':'';
+  const list=_supply(); const st=_supplyStats();
+  const _keep=_detailsSnapshot(el);
+  const dateField=(p,f,label,hint)=>{ const fl=_supplyDateFlag(p[f]);
+    return `<div class="field-group"><label class="field-label">${esc(label)}${hint?` <span class="fl-hint" title="${esc(hint)}">(?)</span>`:''}</label>
+      <input type="date"${dis} value="${esc(p[f]||'')}" onchange="updateSupply('${p.id}','${f}',this.value)">
+      <div style="font-size:10.5px;font-weight:700;color:${fl.colour};margin-top:3px;">${esc(fl.label)}</div></div>`; };
+  const rows=list.map(p=>{
+    const open=_openSupply.has(p.id);
+    const s=_supplyState(p); const gaps=_supplyGaps(p);
+    const evs=_supplyEvents(p);
+    const chip=(t,bg)=>`<span class="rc-chip" style="background:${bg}1a;color:${bg};">${esc(t)}</span>`;
+    const insWorst=[_supplyDateFlag(p.elciExpiry),_supplyDateFlag(p.pliExpiry)]
+      .sort((a,b)=>({expired:0,none:1,soon:2,ok:3}[a.k]-{expired:0,none:1,soon:2,ok:3}[b.k]))[0];
+    const evRows=evs.map(e=>`<div style="display:grid;grid-template-columns:130px 170px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-top:1px dashed var(--border);">
+        <input type="date"${dis} value="${esc(e.date||'')}" onchange="updateSupplyEvent('${p.id}','${e.id}','date',this.value)">
+        <select${dis} onchange="updateSupplyEvent('${p.id}','${e.id}','kind',this.value)">${SUPPLY_EVENTS.map(k=>`<option${k===e.kind?' selected':''}>${k}</option>`).join('')}</select>
+        <input type="text"${dis} value="${esc(e.note||'')}" placeholder="What happened, and where" oninput="updateSupplyEvent('${p.id}','${e.id}','note',this.value)">
+        ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Remove" onclick="deleteSupplyEvent('${p.id}','${e.id}')">${_ic('trash',13)}</button>`}
+      </div>`).join('');
+    return `<details class="card" ${open?'open ':''}style="border-left:4px solid ${gaps.length?(insWorst.k==='expired'?'#DC2626':'#D97706'):s.colour};margin-bottom:8px;" ontoggle="this.open?_openSupply.add('${p.id}'):_openSupply.delete('${p.id}')">
+      <summary style="padding:10px 14px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;cursor:pointer;">
+        <span style="font-weight:700;font-size:13px;">${esc(p.name||'(unnamed partner)')}</span>
+        ${chip(p.type||'Partner','#475569')}
+        ${p.trade?`<span style="font-size:12px;color:var(--text-muted);">${esc(p.trade)}</span>`:''}
+        <span style="flex:1;"></span>
+        ${gaps.length?chip(gaps.length+' outstanding','#D97706'):chip('checks complete','#16A34A')}
+        ${insWorst.k==='expired'?chip('insurance expired','#DC2626'):(insWorst.k==='soon'?chip('insurance expiring','#D97706'):'')}
+        ${evs.length?chip(evs.length+' event'+(evs.length!==1?'s':''),'#2563EB'):''}
+        ${chip(p.status||'Provisional', s.colour)}
+      </summary>
+      <div style="padding:4px 16px 14px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px;">
+          <div class="field-group"><label class="field-label">Name</label><input type="text"${dis} value="${esc(p.name||'')}" placeholder="Company name" oninput="updateSupply('${p.id}','name',this.value)"></div>
+          <div class="field-group"><label class="field-label">Type</label><select${dis} onchange="updateSupply('${p.id}','type',this.value)">${SUPPLY_TYPES.map(t=>`<option${t===p.type?' selected':''}>${t}</option>`).join('')}</select></div>
+          <div class="field-group"><label class="field-label">Trade / what they do</label><input type="text"${dis} value="${esc(p.trade||'')}" placeholder="e.g. Groundworks, structural design" oninput="updateSupply('${p.id}','trade',this.value)"></div>
+          <div class="field-group"><label class="field-label">Status</label><select${dis} onchange="updateSupply('${p.id}','status',this.value)">${SUPPLY_STATES.map(x=>`<option${x.k===(p.status||'Provisional')?' selected':''} title="${esc(x.desc)}">${x.k}</option>`).join('')}</select></div>
+        </div>
+        <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 6px;">Insurance and accreditation</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px;">
+          <div class="field-group"><label class="field-label">Employers&rsquo; liability insurer</label><input type="text"${dis} value="${esc(p.elciInsurer||'')}" oninput="updateSupply('${p.id}','elciInsurer',this.value)"></div>
+          ${dateField(p,'elciExpiry','EL expiry','An expired employers’ liability policy is the single most common reason a subcontractor should not be on site.')}
+          <div class="field-group"><label class="field-label">Public liability insurer</label><input type="text"${dis} value="${esc(p.pliInsurer||'')}" oninput="updateSupply('${p.id}','pliInsurer',this.value)"></div>
+          ${dateField(p,'pliExpiry','PL expiry')}
+          <div class="field-group"><label class="field-label">Accreditation</label><input type="text"${dis} value="${esc(p.accreditation||'')}" placeholder="e.g. SSIP, CHAS, CAS" oninput="updateSupply('${p.id}','accreditation',this.value)"></div>
+          ${dateField(p,'accredExpiry','Accreditation expiry')}
+        </div>
+        <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 6px;">Checked before engagement</div>
+        <div class="chip-wrap">${SUPPLY_CHECKS.map(c=>`<button type="button" class="chip${p[c.k]?' on':''}"${dis} onclick="toggleSupplyCheck('${p.id}','${c.k}')">${p[c.k]?'✓ ':''}${esc(c.label)}</button>`).join('')}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px;margin-top:10px;">
+          ${dateField(p,'reviewDate','Next review due')}
+          <div class="field-group"><label class="field-label">Assessed by</label><input type="text"${dis} value="${esc(p.assessedBy||'')}" oninput="updateSupply('${p.id}','assessedBy',this.value)"></div>
+          <div class="field-group"><label class="field-label">Assessed on</label><input type="date"${dis} value="${esc(p.assessedDate||'')}" onchange="updateSupply('${p.id}','assessedDate',this.value)"></div>
+        </div>
+        ${gaps.length?`<div style="margin-top:10px;padding:8px 12px;border-left:3px solid #D97706;background:#D977060d;border-radius:0 7px 7px 0;font-size:12px;line-height:1.5;"><b>Outstanding:</b> ${esc(gaps.join('; '))}.</div>`:''}
+        <div class="field-group" style="margin-top:10px;"><label class="field-label">Notes</label><textarea${dis} rows="2" style="width:100%;" oninput="updateSupply('${p.id}','notes',this.value)">${esc(p.notes||'')}</textarea></div>
+        <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 4px;">How they have performed</div>
+        <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:4px;">Log what actually happened - good and bad. These are the facts a performance review reads; nothing here is scored.</div>
+        ${evRows||'<div style="font-size:12px;color:var(--text-muted);padding:4px 0;">Nothing logged yet.</div>'}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+          ${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="addSupplyEvent('${p.id}')">＋ Log an event</button>`}
+          ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="raiseSupplyAction('${p.id}')" title="Put the outstanding checks on the client execution plan">↗ Chase what is outstanding</button>`}
+          ${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="deleteSupplyPartner('${p.id}')">${_ic('trash',13)}</button>`}
+        </div>
+        ${_attrFooter(p)}
+      </div>
+    </details>`;
+  }).join('');
+  const meta = st.total
+    ? (st.total+' on the register · '+st.approved+' approved'+(st.insExpired?(' · '+st.insExpired+' insurance expired'):'')+(st.incomplete?(' · '+st.incomplete+' with checks outstanding'):''))
+    : 'none recorded';
+  el.innerHTML=`<details class="coll" data-keep="monSupply" style="margin:26px 0 16px;">
+    <summary><h3>Supply chain &amp; subcontractor performance</h3><span class="badge badge-muted">${esc(meta)}</span></summary>
+    <div class="coll-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Who works for this client, what was checked before they were let on, and how they have actually performed since. One record whether they are a subcontractor, a sub-consultant, a labour supplier or plant hire. Insurance and accreditation dates flag themselves as they approach - an expired employers&rsquo; liability policy is the single most common reason a partner should not be on site.</div>
+      ${ro?'':`<button class="btn btn-primary btn-sm no-print" style="margin-bottom:12px;" onclick="addSupplyPartner()">＋ Add a partner</button>`}
+      ${rows||''}
+    </div></details>`;
+  _detailsApply(el,_keep);
+}
+
 function renderMonitoring(){
   const cont = document.getElementById('monitoringContainer');
   if(!cont) return;
@@ -23101,6 +23337,7 @@ function renderMonitoring(){
   const _scWinY=window.scrollY;
   _renderIncidents();
   _renderDecisions();
+  _renderSupply();
   const ro = _roLocked();
   const monthEl = document.getElementById('monMonth');
   if(monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0,7);
@@ -23338,6 +23575,7 @@ function suggestDocumentsFromApp(){
   if((S.policySignoff&&(S.policySignoff.policies||[]).length)) add('Policy sign-off register','sign-off tab');
   if((S.siteInspections||[]).length) add('Process assurance register','process assurance');
   if((S.decisions||[]).length) add('Management decisions register','management decisions');
+  if((S.supplyChain||[]).length) add('Supply chain register','supply chain');
   if((S.riskProfile||[]).some(r=>(r.actions||[]).some(a=>a.status==='Accepted'))) add('Risk acceptance register','risk profile');
   if((S.requirements||[]).length) add('Legal duties assessment','legal duties');
   const added=(S.documents||[]).length-before;
@@ -26532,7 +26770,7 @@ function exportEverything(){
 var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
-  'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions'];
+  'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

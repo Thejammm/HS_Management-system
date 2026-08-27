@@ -19949,7 +19949,8 @@ function _buildDiscoveryQuestionnairePDFLegacy(){
     if(a.length) asking.push({dm, rows:a});
   });
 
-  K.text('How this works: your consultant has answered what could be established from the records and the visit. The rest only you can answer. Mark Yes or No against each remaining question, add a note where it helps, and send the completed pages back - every answer shapes the risk profile and the plan that follow, and a question left blank is simply asked at the next visit.', 9.5, {color:GREY, gap:3});
+  K.text('How this works: your consultant has answered what could be established from the records and the visit. The rest only you can answer. Mark Yes or No against each remaining question, add a note where it helps, and send the completed pages back - every answer shapes the risk profile and the plan that follow, and a question left blank is simply asked at the next visit.', 9.5, {color:GREY, gap:2});
+  K.text('Answers need evidence: where you mark Yes, your consultant will usually ask to see what sits behind it - a certificate, a record, a policy. Note where it lives; if it does not exist yet, say so - that becomes part of the plan, never a black mark.', 9, {bold:true, color:AMBER, gap:3});
   K.tiles([
     {num:st.answered, label:'Already established', color:GREEN, sub:'answered for you'},
     {num:st.total-st.answered, label:'We need from you', color:(st.total-st.answered)?AMBER:GREEN, sub:'mark Yes or No'},
@@ -20043,6 +20044,7 @@ async function buildDiscoveryQuestionnairePDF(){
   page.drawText('DISCOVERY QUESTIONNAIRE',{x:ML,y:y-20,size:21,font:bold,color:NAVY}); y-=30;
   text('What we already know about the business, and what we need you to tell us.',10.5,{color:GREY,gap:6});
   text('How this works: your consultant has answered what could be established from the records and the visit. The rest only you can answer - and you can do it right here in this PDF: click Yes or No against each question, type anything useful in the notes box, then SAVE the file and email it back. Every answer shapes the risk profile and the plan that follow; a question left blank is simply asked at the next visit.',9,{color:GREY,gap:5});
+  text('One thing to know now: answers need evidence. Where you answer Yes, your consultant will usually ask to see what sits behind it - a certificate, a record, a policy, a photo. If you know where it lives, say so in the notes box. If it does not exist yet, say that too - it simply becomes part of the plan, never a black mark.',9,{bold:true,color:AMBER,gap:5});
   text(st.answered+' already established   -   '+(st.total-st.answered)+' for you to answer   -   '+st.total+' questions fit the business (of '+st.bank+' in the bank)',9,{bold:true,color:NAVY,gap:8});
 
   if(known.length){
@@ -20066,7 +20068,7 @@ async function buildDiscoveryQuestionnairePDF(){
 
   sectionHead('Part 2 - what we need you to tell us');
   if(asking.length){
-    text('Click one circle per question - Yes or No. The notes box takes anything worth adding: names, numbers, where things are kept.',8,{color:GREY,gap:5});
+    text('Click one circle per question - Yes or No. The notes box takes anything worth adding - and if a Yes has paperwork behind it, name it there: the document, where it is kept, who holds it.',8,{color:GREY,gap:5});
     const QW=306, X_YES=ML+318, X_NO=ML+352, X_NOTE=ML+386, NW=MR-(ML+386);
     asking.forEach(g=>{
       ensure(40);

@@ -58,13 +58,37 @@ export function decisionsPanel({ title, items }) {
   return framedPanel(title || 'Decisions required', inner, 'r-frame-decisions');
 }
 
-// cols: [{header, w?, align?}], rows: [[cell html-safe strings or {html}]]
+// A cell is a plain string, or an object in one of two shapes:
+//   {html}                     - trusted markup, inserted as-is
+//   {text, color:[r,g,b], bold} - escaped text, styled
+// The styled shape is the one the report sections reach for when a value has
+// to carry a verdict as well as a number - an overdue date in red, a missing
+// dutyholder in red, a RIDDOR report date in green. It was being dropped on
+// the floor and printing "[object Object]" in the finished PDF, so it is
+// handled here rather than at each of the call sites.
+export function cellHTML(cell) {
+  if (cell && typeof cell === 'object' && 'html' in cell) return cell.html;
+  if (cell && typeof cell === 'object' && 'text' in cell) {
+    const st = [];
+    const col = cell.color || cell.colour;
+    if (Array.isArray(col) && col.length === 3 && col.every(n => typeof n === 'number' && isFinite(n))) {
+      st.push('color:rgb(' + col.map(n => Math.max(0, Math.min(255, Math.round(n)))).join(',') + ')');
+    } else if (typeof col === 'string' && col) {
+      st.push('color:' + esc(col));
+    }
+    if (cell.bold) st.push('font-weight:700');
+    const inner = esc(cell.text);
+    return st.length ? `<span style="${st.join(';')}">${inner}</span>` : inner;
+  }
+  return esc(cell);
+}
+
+// cols: [{header, w?, align?}], rows: [[cell]] - see cellHTML for cell shapes
 export function dataTable({ title, cols, rows, footnote }) {
   const head = '<tr>' + cols.map(c => `<th${c.align ? ` class="r-al-${c.align}"` : ''}${c.w ? ` style="width:${c.w}"` : ''}>${esc(c.header)}</th>`).join('') + '</tr>';
   const body = rows.map(r => '<tr>' + r.map((cell, i) => {
     const c = cols[i] || {};
-    const html = (cell && typeof cell === 'object' && 'html' in cell) ? cell.html : esc(cell);
-    return `<td${c.align ? ` class="r-al-${c.align}"` : ''}>${html}</td>`;
+    return `<td${c.align ? ` class="r-al-${c.align}"` : ''}>${cellHTML(cell)}</td>`;
   }).join('') + '</tr>').join('');
   return (title ? `<div class="r-block-title">${esc(title)}</div>` : '') +
     `<table class="r-table"><thead>${head}</thead><tbody>${body}</tbody></table>` +

@@ -3801,6 +3801,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="decisionPanel"></div>
     <div id="supplyPanel"></div>
     <div id="ohPanel"></div>
+    <div id="bsPanel"></div>
     <!-- The Risk assessment register lived here; it now sits at the bottom of
          the Documents tab, where employee logins can read it too. -->
   </div>
@@ -10579,6 +10580,7 @@ function migrateLoadedState(){
   if(!Array.isArray(S.decisions)) S.decisions = [];   // management decisions: what leadership decided, and what came of it
   if(!Array.isArray(S.supplyChain)) S.supplyChain = [];   // supply chain: partners, their checks and how they have performed
   if(!Array.isArray(S.healthSurveillance)) S.healthSurveillance = [];   // health surveillance: who, which exposure, when due (outcomes only, never clinical detail)
+  if(!Array.isArray(S.buildingSafety)) S.buildingSafety = [];   // building safety: each building put through the higher-risk test, and the answer
   if(!S.consultation || typeof S.consultation !== 'object') S.consultation = { briefings:[] };   // two-way communication record (sign-off tab)
   if(!Array.isArray(S.consultation.briefings)) S.consultation.briefings = [];
   // Regulatory tracker is now organised into named sections, each holding statutory
@@ -13840,7 +13842,7 @@ function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null;
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),
     draft:{typeId:'garage_inspection',results:{},notes:{},actionDetails:{},rectifyDetails:{},formData:{},periodFrom:'',periodTo:'',manager:'',location:'',ref:'',freq:'weekly',generalNotes:'',title:'',inspType:''},
-    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], consultation:{briefings:[]}, decisions:[], supplyChain:[], healthSurveillance:[], activeClient:null, branding:_newClientBranding() };
+    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], consultation:{briefings:[]}, decisions:[], supplyChain:[], healthSurveillance:[], buildingSafety:[], activeClient:null, branding:_newClientBranding() };
 }
 // The practice's look carries to a new client; the client's NAME never does.
 function _newClientBranding(){
@@ -14193,6 +14195,21 @@ const COCKPIT_WIDGETS = {
   riskVsMaturity: { id:'riskVsMaturity', label:'Risk profile & H&S control maturity', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="full">${_riskPanelHTML({heading:true})}</div></div>` },
   riskMatrixOnly:   { id:'riskMatrixOnly', label:'Risk matrix (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="matrix">${_riskPanelHTML({heading:true,only:'matrix'})}</div></div>` },
   riskMaturityOnly: { id:'riskMaturityOnly', label:'H&S control maturity (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="maturity">${_riskPanelHTML({heading:true,only:'maturity'})}</div></div>` },
+  cardBuildSafety: { id:'cardBuildSafety', label:'Building safety', group:'Card', defaultOff:true, render:x=>{
+      const st=(typeof _bsStats==='function')?_bsStats():{total:0};
+      if(!st.total) return _ckMod('Building safety', _ckPend('No building has been through the higher-risk test.')+'<button class="ck-link" onclick="switchTab(\'monitoring\')">Open the register</button>');
+      if(!st.inScope) return _ckMod('Building safety', `
+        <div class="ck-row"><span>Assessed</span><span style="font-weight:600;">${st.total} building${st.total!==1?'s':''}</span></div>
+        <div class="ck-row"><span>Higher-risk</span><span style="color:var(--success);font-weight:600;">none in scope</span></div>
+        ${st.unknown?`<div class="ck-row"><span>Not yet tested</span><span style="color:var(--warning);font-weight:600;">${st.unknown}</span></div>`:''}
+        <button class="ck-link" onclick="switchTab('monitoring')">Open the register</button>`);
+      return _ckMod('Building safety', `
+        <div class="ck-row"><span>Higher-risk buildings</span><span style="font-weight:600;">${st.inScope} of ${st.total}</span></div>
+        <div class="ck-row"><span>Duties outstanding</span><span style="color:${st.gaps?'var(--danger)':'inherit'};font-weight:600;">${st.gaps}</span></div>
+        ${st.awaiting?`<div class="ck-row"><span>Awaiting a gateway</span><span style="color:var(--warning);font-weight:600;">${st.awaiting}</span></div>`:''}
+        ${st.mors?`<div class="ck-row"><span>Occurrence reports</span><span style="font-weight:600;">${st.mors}</span></div>`:''}
+        <button class="ck-link" onclick="switchTab('monitoring')">Open the register</button>`);
+    } },
   cardHealthSurv: { id:'cardHealthSurv', label:'Health surveillance', group:'Card', defaultOff:true, render:x=>{
       const st=(typeof _ohStats==='function')?_ohStats():{total:0};
       if(!st.total) return _ckMod('Health surveillance', _ckPend('Nobody is on the register yet.')+'<button class="ck-link" onclick="switchTab(\'monitoring\')">Open the register</button>');
@@ -23524,6 +23541,313 @@ function _renderOh(){
   _detailsApply(el,_keep);
 }
 
+// ══════════════════════════════════════════════════════════════
+//  BUILDING SAFETY - higher-risk buildings, the gateways and the
+//  dutyholder duties that come with them.
+//  The Building Safety Act 2022 changed who is accountable for a building
+//  and when they have to prove it. Most work most clients do is NOT in
+//  scope, and that is the point of this register: the board needs to see
+//  that the test was applied to each job and what the answer was, because
+//  "we did not think it applied" is not a defence if it did.
+//  Facts in, metrics out: the record holds the physical facts of the
+//  building - height, storeys, what is in it - and the SCOPE ANSWER IS
+//  DERIVED from them. Nobody ticks "this is an HRB"; the building either
+//  meets the threshold or it does not, and it re-derives every time the
+//  facts are edited.
+// ══════════════════════════════════════════════════════════════
+// Who the client is on this job. The Building Safety Act dutyholder roles
+// deliberately mirror CDM, which is why a client already doing CDM properly
+// is most of the way there.
+const BS_DUTIES=[
+  { k:'Client',              desc:'Commissioning the work - carries the duty to make suitable arrangements' },
+  { k:'Principal Designer',  desc:'Planning, managing and monitoring the design' },
+  { k:'Principal Contractor', desc:'Planning, managing and monitoring the building work' },
+  { k:'Designer',            desc:'Designing part of the work under someone else’s principal designer' },
+  { k:'Contractor',          desc:'Carrying out part of the work under someone else’s principal contractor' },
+  { k:'Accountable Person',  desc:'Responsible for a building already occupied' },
+  { k:'No dutyholder role',  desc:'Supplying or advising only, with no appointment under the Act' }
+];
+// The three control points. Gateway 1 sits with planning; gateways 2 and 3
+// are the ones that stop a job dead if they are not passed.
+const BS_STAGES=[
+  { k:'Design',                colour:'#2563EB' },
+  { k:'Gateway 2 submitted',   colour:'#D97706' },
+  { k:'Gateway 2 approved',    colour:'#16A34A' },
+  { k:'In construction',       colour:'#2563EB' },
+  { k:'Gateway 3 submitted',   colour:'#D97706' },
+  { k:'Completed / occupied',  colour:'#16A34A' },
+  { k:'Not started',           colour:'#6B7280' }
+];
+// The physical facts that decide scope. Ticks, not judgements.
+const BS_TRIGGERS=[
+  { k:'height18',  label:'18 metres or more in height' },
+  { k:'storeys7',  label:'7 storeys or more' },
+  { k:'units2',    label:'Contains 2 or more residential units' },
+  { k:'careHome',  label:'Is a care home' },
+  { k:'hospital',  label:'Is a hospital' }
+];
+// What an in-scope job has to be able to evidence.
+const BS_CHECKS=[
+  { k:'goldenThread', label:'Golden thread of information in place', hint:'The building information kept accurate, accessible and handed on. Not a folder of PDFs at the end - a live record.' },
+  { k:'competence',   label:'Competence of the dutyholder assessed and declared', hint:'Under the Building Safety Act every dutyholder must be able to demonstrate the skills, knowledge, experience and behaviours for the role they have accepted.' },
+  { k:'changeCtrl',   label:'Change control procedure in place', hint:'Changes during construction have to be recorded, and the significant ones notified rather than simply built.' },
+  { k:'morRoute',     label:'Mandatory occurrence reporting route in place', hint:'Everyone on site needs a known route to report a safety occurrence, and the dutyholder has to report it onward.' },
+  { k:'handover',     label:'Fire safety information handed to the responsible person', hint:'The information the person running the finished building needs to keep it safe. Due at completion.' }
+];
+const BS_EVENTS=['Mandatory occurrence report','Notifiable change','Design review','Information handover','Regulator correspondence','Concern raised'];
+function _bsJobs(){ if(!Array.isArray(S.buildingSafety)) S.buildingSafety=[]; return S.buildingSafety; }
+function _bsStage(b){ return BS_STAGES.find(x=>x.k===(b&&b.stage)) || BS_STAGES[6]; }
+// THE SCOPE TEST, derived - never stored.
+// Height OR storeys puts a building over the threshold; what is inside it
+// decides which part of the regime catches it. Residential units bring the
+// whole regime including occupation; care homes and hospitals are caught
+// while the building is being designed and built.
+function _bsInScope(b){
+  if(!b) return { k:'unknown', label:'not assessed', colour:'#6B7280', why:'The height and use have not been recorded, so the test has not been applied.' };
+  const anyFact = BS_TRIGGERS.some(t=>b[t.k]);
+  if(!anyFact && !b.scopeChecked) return { k:'unknown', label:'not assessed', colour:'#6B7280', why:'The height and use have not been recorded, so the test has not been applied.' };
+  const tall = !!(b.height18 || b.storeys7);
+  const how  = b.height18 ? (b.storeys7 ? '18m or more and 7 storeys or more' : '18m or more') : (b.storeys7 ? '7 storeys or more' : '');
+  if(tall && b.units2) return { k:'yes', label:'higher-risk building', colour:'#DC2626',
+    why:'It is '+how+' and contains at least 2 residential units, so it is a higher-risk building through design, construction and occupation.' };
+  if(tall && (b.careHome || b.hospital)) return { k:'yes', label:'higher-risk building (design & construction)', colour:'#DC2626',
+    why:'It is '+how+' and is a '+(b.careHome?'care home':'hospital')+', so it is a higher-risk building for the design and construction stages.' };
+  if(tall) return { k:'no', label:'not in scope', colour:'#16A34A',
+    why:'It is '+how+', but it does not contain 2 or more residential units and is not a care home or hospital, so the higher-risk building regime does not catch it.' };
+  return { k:'no', label:'not in scope', colour:'#16A34A',
+    why:'It is under both thresholds - less than 18 metres and fewer than 7 storeys - so the higher-risk building regime does not apply.' };
+}
+function _bsEvents(b){ return Array.isArray(b&&b.events)?b.events:[]; }
+// How long a gateway has been sitting with the regulator, as a fact.
+// No statutory clock is asserted here - the determination period varies with
+// the work, so the register reports the wait and leaves the judgement to the
+// person reading it.
+function _bsWaiting(b){
+  const pairs=[['g3Sub','g3Dec','Gateway 3'],['g2Sub','g2Dec','Gateway 2']];
+  for(const [s,d,nm] of pairs){
+    if(b[s] && !b[d]){
+      const days=Math.round((Date.now()-new Date(b[s]+'T12:00:00').getTime())/86400000);
+      return { gate:nm, since:b[s], days:days<0?0:days, weeks:Math.floor((days<0?0:days)/7) };
+    }
+  }
+  return null;
+}
+// What an in-scope job cannot yet evidence, in words.
+function _bsGaps(b){
+  const sc=_bsInScope(b); const g=[];
+  if(sc.k==='unknown'){ g.push('the scope test has not been applied'); return g; }
+  if(sc.k!=='yes') return g;
+  if(!b.duty || b.duty==='No dutyholder role') g.push('no dutyholder role recorded');
+  BS_CHECKS.forEach(c=>{
+    if(c.k==='handover' && b.stage!=='Completed / occupied') return;   // not due until completion
+    if(!b[c.k]) g.push(c.label.charAt(0).toLowerCase()+c.label.slice(1)+' - not evidenced');
+  });
+  return g;
+}
+// The tally every consumer reads - one derivation, never stored.
+function _bsStats(){
+  const l=_bsJobs();
+  const scoped=l.map(b=>({ b, sc:_bsInScope(b) }));
+  const inScope=scoped.filter(x=>x.sc.k==='yes').map(x=>x.b);
+  let mors=0, changes=0, concerns=0;
+  l.forEach(b=>_bsEvents(b).forEach(e=>{
+    if(e.kind==='Mandatory occurrence report') mors++;
+    else if(e.kind==='Notifiable change') changes++;
+    else if(e.kind==='Concern raised') concerns++; }));
+  return { total:l.length,
+    inScope:inScope.length,
+    notInScope:scoped.filter(x=>x.sc.k==='no').length,
+    unknown:scoped.filter(x=>x.sc.k==='unknown').length,
+    awaiting:inScope.filter(b=>_bsWaiting(b)).length,
+    gaps:inScope.filter(b=>_bsGaps(b).length).length,
+    mors, changes, concerns, list:inScope };
+}
+function addBsJob(){
+  if(_blockIfReadOnly()) return;
+  const b={ id:'bs_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    name:'', client:'', address:'', duty:'', stage:'Not started',
+    height18:false, storeys7:false, units2:false, careHome:false, hospital:false, scopeChecked:false,
+    storeys:'', heightM:'', units:'',
+    g1Date:'', g2Sub:'', g2Dec:'', g3Sub:'', g3Dec:'',
+    goldenThread:false, competence:false, changeCtrl:false, morRoute:false, handover:false,
+    assessedBy:(typeof _actor==='function'?(_actor().name||''):''), assessedDate:new Date().toISOString().slice(0,10),
+    notes:'', events:[], raised:0 };
+  _stamp(b,'created');
+  _bsJobs().unshift(b); saveData();
+  _openBs.add(b.id); _renderBs();
+}
+function updateBsJob(id,f,v){
+  if(_roLocked()) return;
+  const b=_bsJobs().find(x=>x.id===id); if(!b) return;
+  b[f]=v; _stamp(b,'updated');
+  if(f==='stage'||f==='duty'||f.indexOf('g2')===0||f.indexOf('g3')===0){ saveData(); _renderBs(); }
+  else scheduleAutoSave();
+}
+// Ticking any physical fact means the test has been applied, even if the
+// answer comes back "not in scope" - which is the answer most of the time.
+function toggleBsTrigger(id,k){
+  if(_roLocked()) return;
+  const b=_bsJobs().find(x=>x.id===id); if(!b) return;
+  b[k]=!b[k]; b.scopeChecked=true; _stamp(b,'updated'); saveData(); _renderBs();
+}
+function markBsScopeChecked(id){
+  if(_roLocked()) return;
+  const b=_bsJobs().find(x=>x.id===id); if(!b) return;
+  b.scopeChecked=true; _stamp(b,'updated'); saveData(); _renderBs();
+}
+function toggleBsCheck(id,k){
+  if(_roLocked()) return;
+  const b=_bsJobs().find(x=>x.id===id); if(!b) return;
+  b[k]=!b[k]; _stamp(b,'updated'); saveData(); _renderBs();
+}
+function deleteBsJob(id){
+  if(_blockIfReadOnly()) return;
+  const b=_bsJobs().find(x=>x.id===id); if(!b) return;
+  if(!confirm('Remove "'+(b.name||'this building')+'" from the building safety register?'+(b.raised?'\n\nAny actions raised from it stay on the plan.':''))) return;
+  S.buildingSafety=_bsJobs().filter(x=>x.id!==id); saveData(); _renderBs();
+}
+function addBsEvent(id){
+  if(_blockIfReadOnly()) return;
+  const b=_bsJobs().find(x=>x.id===id); if(!b) return;
+  if(!Array.isArray(b.events)) b.events=[];
+  b.events.unshift({ id:'bse_'+Date.now().toString(36)+Math.random().toString(36).slice(2,4),
+    date:new Date().toISOString().slice(0,10), kind:'Design review', note:'' });
+  _stamp(b,'updated'); saveData(); _renderBs();
+}
+function updateBsEvent(bid,eid,f,v){
+  if(_roLocked()) return;
+  const b=_bsJobs().find(x=>x.id===bid); if(!b) return;
+  const e=_bsEvents(b).find(x=>x.id===eid); if(!e) return;
+  e[f]=v; _stamp(b,'updated');
+  if(f==='kind'||f==='date'){ saveData(); _renderBs(); } else scheduleAutoSave();
+}
+function deleteBsEvent(bid,eid){
+  if(_blockIfReadOnly()) return;
+  const b=_bsJobs().find(x=>x.id===bid); if(!b) return;
+  b.events=_bsEvents(b).filter(x=>x.id!==eid); _stamp(b,'updated'); saveData(); _renderBs();
+}
+// Chase what an in-scope job cannot evidence. The golden thread and the
+// reporting route are the two that stop a gateway, so they carry High.
+function raiseBsAction(id){
+  if(_blockIfReadOnly()) return;
+  const b=_bsJobs().find(x=>x.id===id); if(!b) return;
+  const sc=_bsInScope(b); const gaps=_bsGaps(b);
+  if(sc.k==='no'){ showToast('This building is not in scope - there are no gateway duties to chase.','info'); return; }
+  if(!gaps.length){ showToast('Nothing outstanding on this building - the duties are evidenced.','info'); return; }
+  if(!String(b.name||'').trim()){ showToast('Name the building first','info'); return; }
+  const heavy=gaps.some(g=>g.indexOf('golden thread')>=0 || g.indexOf('occurrence reporting')>=0 || g.indexOf('scope test')>=0);
+  const ap={ id:'ap_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    desc:'Building safety - '+b.name+': '+gaps.slice(0,3).join('; ')+(gaps.length>3?('; and '+(gaps.length-3)+' more'):''),
+    owner:'', due:'', priority:heavy?'High':'Medium', status:'Not started',
+    riskId:'', docId:'', note:'From the building safety register. '+sc.why+(b.duty?(' The organisation is '+b.duty+' on this job.'):'')+' Building Safety Act 2022 duties.', completedDate:'' };
+  _stamp(ap,'created'); _apList().push(ap);
+  b.raised=(b.raised||0)+1;
+  saveData(); _renderBs();
+  showToast('✓ Action raised into the plan - set the owner and target date on the Client execution plan.','success');
+}
+var _openBs=new Set();
+function _renderBs(){
+  const el=document.getElementById('bsPanel'); if(!el) return;
+  const ro=_roLocked(); const dis=ro?' disabled':'';
+  const list=_bsJobs(); const st=_bsStats();
+  const _keep=_detailsSnapshot(el);
+  const rows=list.map(b=>{
+    const open=_openBs.has(b.id);
+    const sc=_bsInScope(b); const gaps=_bsGaps(b); const evs=_bsEvents(b);
+    const wait=_bsWaiting(b); const stg=_bsStage(b);
+    const chip=(t,bg)=>`<span class="rc-chip" style="background:${bg}1a;color:${bg};">${esc(t)}</span>`;
+    const dateF=(f,label,hint)=>`<div class="field-group"><label class="field-label">${esc(label)}${hint?` <span class="fl-hint" title="${esc(hint)}">(?)</span>`:''}</label>
+      <input type="date"${dis} value="${esc(b[f]||'')}" onchange="updateBsJob('${b.id}','${f}',this.value)"></div>`;
+    const evRows=evs.map(e=>`<div style="display:grid;grid-template-columns:130px 190px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-top:1px dashed var(--border);">
+        <input type="date"${dis} value="${esc(e.date||'')}" onchange="updateBsEvent('${b.id}','${e.id}','date',this.value)">
+        <select${dis} onchange="updateBsEvent('${b.id}','${e.id}','kind',this.value)">${BS_EVENTS.map(k=>`<option${k===e.kind?' selected':''}>${k}</option>`).join('')}</select>
+        <input type="text"${dis} value="${esc(e.note||'')}" placeholder="What it was, and what came of it" oninput="updateBsEvent('${b.id}','${e.id}','note',this.value)">
+        ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Remove" onclick="deleteBsEvent('${b.id}','${e.id}')">${_ic('trash',13)}</button>`}
+      </div>`).join('');
+    // Everything past the scope test only matters if the answer was yes.
+    const dutyBlock = sc.k==='yes' ? `
+        <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 6px;">Role and stage</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px;">
+          <div class="field-group"><label class="field-label">Dutyholder role held</label><select${dis} onchange="updateBsJob('${b.id}','duty',this.value)">
+            <option value=""${b.duty?'':' selected'}>- choose -</option>
+            ${BS_DUTIES.map(d=>`<option${d.k===b.duty?' selected':''} title="${esc(d.desc)}">${d.k}</option>`).join('')}</select></div>
+          <div class="field-group"><label class="field-label">Stage</label><select${dis} onchange="updateBsJob('${b.id}','stage',this.value)">${BS_STAGES.map(s=>`<option${s.k===(b.stage||'Not started')?' selected':''}>${s.k}</option>`).join('')}</select></div>
+        </div>
+        <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 6px;">Gateways</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px;">
+          ${dateF('g1Date','Gateway 1 (planning)','The fire statement stage, handled through the planning application.')}
+          ${dateF('g2Sub','Gateway 2 submitted','Building work on a higher-risk building must not start until the regulator has approved it.')}
+          ${dateF('g2Dec','Gateway 2 decision')}
+          ${dateF('g3Sub','Gateway 3 submitted','The completion stage. The building cannot be occupied until it is passed.')}
+          ${dateF('g3Dec','Gateway 3 decision')}
+        </div>
+        ${wait?`<div style="margin-top:8px;padding:8px 12px;border-left:3px solid #D97706;background:#D977060d;border-radius:0 7px 7px 0;font-size:12px;line-height:1.5;"><b>${esc(wait.gate)}</b> has been with the regulator since ${esc(fmtDate(wait.since))} - ${wait.weeks} week${wait.weeks!==1?'s':''}. Work that needs this decision cannot proceed on the assumption it will be granted.</div>`:''}
+        <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 6px;">What can be evidenced</div>
+        <div class="chip-wrap">${BS_CHECKS.map(c=>`<button type="button" class="chip${b[c.k]?' on':''}"${dis} title="${esc(c.hint)}" onclick="toggleBsCheck('${b.id}','${c.k}')">${b[c.k]?'✓ ':''}${esc(c.label)}</button>`).join('')}</div>
+        ${gaps.length?`<div style="margin-top:10px;padding:8px 12px;border-left:3px solid #DC2626;background:#DC26260d;border-radius:0 7px 7px 0;font-size:12px;line-height:1.5;"><b>Outstanding:</b> ${esc(gaps.join('; '))}.</div>`:''}
+        <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 4px;">What has happened on this building</div>
+        <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:4px;">Occurrence reports, notifiable changes, design reviews and anything the regulator has said. These are the facts a gateway submission has to stand on.</div>
+        ${evRows||'<div style="font-size:12px;color:var(--text-muted);padding:4px 0;">Nothing logged yet.</div>'}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+          ${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="addBsEvent('${b.id}')">＋ Log an event</button>`}
+          ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="raiseBsAction('${b.id}')" title="Put the outstanding duties on the client execution plan">↗ Chase what is outstanding</button>`}
+        </div>` : (sc.k==='no' ? `
+        <div style="margin-top:12px;padding:10px 13px;border-left:3px solid #16A34A;background:#16A34A0d;border-radius:0 7px 7px 0;font-size:12px;line-height:1.55;">
+          <b>No gateway duties apply to this job.</b> The ordinary Building Regulations and CDM 2015 still do. Keep the record so the board can see the test was applied and what the answer was.</div>` : `
+        <div style="margin-top:12px;padding:10px 13px;border-left:3px solid #D97706;background:#D977060d;border-radius:0 7px 7px 0;font-size:12px;line-height:1.55;">
+          <b>The test has not been applied yet.</b> Tick whichever facts are true above. If none of them are, say so - a building that is under every threshold is a valid and useful answer.
+          ${ro?'':`<div style="margin-top:8px;"><button class="btn btn-outline btn-xs no-print" onclick="markBsScopeChecked('${b.id}')">None of these apply - record the test as done</button></div>`}</div>`);
+    return `<details class="card" ${open?'open ':''}style="border-left:4px solid ${sc.k==='yes'?(gaps.length?'#DC2626':'#D97706'):sc.colour};margin-bottom:8px;" ontoggle="this.open?_openBs.add('${b.id}'):_openBs.delete('${b.id}')">
+      <summary style="padding:10px 14px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;cursor:pointer;">
+        <span style="font-weight:700;font-size:13px;">${esc(b.name||'(unnamed building)')}</span>
+        ${b.client?`<span style="font-size:12px;color:var(--text-muted);">${esc(b.client)}</span>`:''}
+        <span style="flex:1;"></span>
+        ${chip(sc.label, sc.colour)}
+        ${sc.k==='yes'&&b.duty?chip(b.duty,'#475569'):''}
+        ${sc.k==='yes'?chip(b.stage||'Not started', stg.colour):''}
+        ${wait?chip('awaiting '+wait.gate,'#D97706'):''}
+        ${gaps.length?chip(gaps.length+' outstanding','#DC2626'):''}
+      </summary>
+      <div style="padding:4px 16px 14px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px;">
+          <div class="field-group"><label class="field-label">Building / project</label><input type="text"${dis} value="${esc(b.name||'')}" placeholder="What it is called" oninput="updateBsJob('${b.id}','name',this.value)"></div>
+          <div class="field-group"><label class="field-label">Client / owner</label><input type="text"${dis} value="${esc(b.client||'')}" oninput="updateBsJob('${b.id}','client',this.value)"></div>
+          <div class="field-group"><label class="field-label">Address</label><input type="text"${dis} value="${esc(b.address||'')}" oninput="updateBsJob('${b.id}','address',this.value)"></div>
+        </div>
+        <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 4px;">Is it a higher-risk building?</div>
+        <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:6px;">Tick the facts. The answer works itself out - nobody decides it.</div>
+        <div class="chip-wrap">${BS_TRIGGERS.map(t=>`<button type="button" class="chip${b[t.k]?' on':''}"${dis} onclick="toggleBsTrigger('${b.id}','${t.k}')">${b[t.k]?'✓ ':''}${esc(t.label)}</button>`).join('')}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px;margin-top:10px;">
+          <div class="field-group"><label class="field-label">Height (m)</label><input type="text"${dis} value="${esc(b.heightM||'')}" placeholder="optional" oninput="updateBsJob('${b.id}','heightM',this.value)"></div>
+          <div class="field-group"><label class="field-label">Storeys</label><input type="text"${dis} value="${esc(b.storeys||'')}" placeholder="optional" oninput="updateBsJob('${b.id}','storeys',this.value)"></div>
+          <div class="field-group"><label class="field-label">Residential units</label><input type="text"${dis} value="${esc(b.units||'')}" placeholder="optional" oninput="updateBsJob('${b.id}','units',this.value)"></div>
+        </div>
+        <div style="margin-top:10px;padding:9px 13px;border-radius:8px;background:${sc.colour}12;border:1px solid ${sc.colour}33;font-size:12.5px;line-height:1.55;">
+          <b style="color:${sc.colour};">${esc(sc.label.charAt(0).toUpperCase()+sc.label.slice(1))}.</b> ${esc(sc.why)}</div>
+        ${dutyBlock}
+        <div class="field-group" style="margin-top:12px;"><label class="field-label">Notes</label><textarea${dis} rows="2" style="width:100%;" oninput="updateBsJob('${b.id}','notes',this.value)">${esc(b.notes||'')}</textarea></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px;margin-top:4px;">
+          <div class="field-group"><label class="field-label">Assessed by</label><input type="text"${dis} value="${esc(b.assessedBy||'')}" oninput="updateBsJob('${b.id}','assessedBy',this.value)"></div>
+          <div class="field-group"><label class="field-label">Assessed on</label><input type="date"${dis} value="${esc(b.assessedDate||'')}" onchange="updateBsJob('${b.id}','assessedDate',this.value)"></div>
+        </div>
+        ${ro?'':`<div style="margin-top:8px;"><button class="btn btn-ghost btn-xs no-print" onclick="deleteBsJob('${b.id}')">${_ic('trash',13)}</button></div>`}
+        ${_attrFooter(b)}
+      </div>
+    </details>`;
+  }).join('');
+  const meta = st.total
+    ? (st.total+' assessed'+(st.inScope?(' · '+st.inScope+' higher-risk'):' · none in scope')+(st.unknown?(' · '+st.unknown+' not tested'):'')+(st.gaps?(' · '+st.gaps+' with duties outstanding'):''))
+    : 'none recorded';
+  el.innerHTML=`<details class="coll" data-keep="monBs" style="margin:26px 0 16px;">
+    <summary><h3>Building safety &amp; higher-risk buildings</h3><span class="badge badge-muted">${esc(meta)}</span></summary>
+    <div class="coll-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Every building or project put through the higher-risk test, and the answer it gave. Most work will not be in scope, and recording that is the point - the board needs to see the test was applied, because not having thought about it is no defence if the building turns out to be caught. Where a job is in scope, this holds the dutyholder role, the gateway dates and what the organisation can actually evidence under the Building Safety Act 2022.</div>
+      ${ro?'':`<button class="btn btn-primary btn-sm no-print" style="margin-bottom:12px;" onclick="addBsJob()">＋ Add a building or project</button>`}
+      ${rows||''}
+    </div></details>`;
+  _detailsApply(el,_keep);
+}
+
 function renderMonitoring(){
   const cont = document.getElementById('monitoringContainer');
   if(!cont) return;
@@ -23537,6 +23861,7 @@ function renderMonitoring(){
   _renderDecisions();
   _renderSupply();
   _renderOh();
+  _renderBs();
   const ro = _roLocked();
   const monthEl = document.getElementById('monMonth');
   if(monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0,7);
@@ -23776,6 +24101,7 @@ function suggestDocumentsFromApp(){
   if((S.decisions||[]).length) add('Management decisions register','management decisions');
   if((S.supplyChain||[]).length) add('Supply chain register','supply chain');
   if((S.healthSurveillance||[]).length) add('Health surveillance register','health surveillance');
+  if((S.buildingSafety||[]).length) add('Building safety register','building safety');
   if((S.riskProfile||[]).some(r=>(r.actions||[]).some(a=>a.status==='Accepted'))) add('Risk acceptance register','risk profile');
   if((S.requirements||[]).length) add('Legal duties assessment','legal duties');
   const added=(S.documents||[]).length-before;
@@ -26970,7 +27296,7 @@ function exportEverything(){
 var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
-  'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance'];
+  'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance','buildingSafety'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

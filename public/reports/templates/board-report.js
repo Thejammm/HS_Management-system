@@ -26,6 +26,7 @@ export const BOARD_SECTIONS = [
   { id: 'legal',          label: 'Legal compliance - duties assessed, met and not in place', hsg: 'Compliance with legal requirements' },
   { id: 'accreditation',  label: 'Accreditation readiness (Common Assessment Standard)', hsg: 'Assurance against external standards' },
   { id: 'cdm',            label: 'CDM assurance - design reviews & CDM audits', hsg: 'Active monitoring · construction dutyholders' },
+  { id: 'bsafety',        label: 'Building safety - higher-risk buildings & gateways', hsg: 'Building Safety Act 2022 dutyholding' },
   { id: 'environmental',  label: 'Environmental events', hsg: 'Environmental incidents & investigations' },
   { id: 'decisions',      label: 'Management decisions - have the last meeting’s been actioned?', hsg: 'Closing the loop - decisions of the review' },
   { id: 'supply',         label: 'Subcontractor and supply chain performance', hsg: 'Competence of others working under your control' },
@@ -217,6 +218,54 @@ export function buildBoardReport(state, opts = {}) {
     if (!p.refs) g.push('references not taken');
     if (expiredOn(p.reviewDate)) g.push('review overdue');
     return g;
+  };
+  // Building safety. The higher-risk test is DERIVED from the physical facts,
+  // exactly as the app derives it - nobody stores the answer, so the report
+  // and the register can never drift apart.
+  const bsAll = Array.isArray(state.buildingSafety) ? state.buildingSafety : [];
+  const bsScope = b => {
+    const anyFact = ['height18', 'storeys7', 'units2', 'careHome', 'hospital'].some(k => b[k]);
+    if (!anyFact && !b.scopeChecked) return 'unknown';
+    const tall = !!(b.height18 || b.storeys7);
+    if (tall && b.units2) return 'yes';
+    if (tall && (b.careHome || b.hospital)) return 'yes';
+    return 'no';
+  };
+  const bsGapsOf = b => {
+    const g = [];
+    if (bsScope(b) !== 'yes') return g;
+    if (!b.duty || b.duty === 'No dutyholder role') g.push('no dutyholder role recorded');
+    if (!b.goldenThread) g.push('golden thread not in place');
+    if (!b.competence) g.push('competence not declared');
+    if (!b.changeCtrl) g.push('no change control');
+    if (!b.morRoute) g.push('no occurrence reporting route');
+    if (b.stage === 'Completed / occupied' && !b.handover) g.push('fire safety information not handed over');
+    return g;
+  };
+  const bsWaitOf = b => {
+    const pairs = [['g3Sub', 'g3Dec', 'Gateway 3'], ['g2Sub', 'g2Dec', 'Gateway 2']];
+    for (const [s, d, nm] of pairs) {
+      if (b[s] && !b[d]) {
+        const days = Math.round((new Date(todayIso + 'T12:00:00').getTime() - new Date(b[s] + 'T12:00:00').getTime()) / 86400000);
+        return { gate: nm, since: b[s], weeks: Math.floor((days < 0 ? 0 : days) / 7) };
+      }
+    }
+    return null;
+  };
+  const bsEv = [];
+  bsAll.forEach(b => (Array.isArray(b.events) ? b.events : []).forEach(e => bsEv.push({ b, e })));
+  const bsIn = bsAll.filter(b => bsScope(b) === 'yes');
+  const bs = {
+    total: bsAll.length,
+    inScope: bsIn.length,
+    list: bsIn,
+    notInScope: bsAll.filter(b => bsScope(b) === 'no').length,
+    unknown: bsAll.filter(b => bsScope(b) === 'unknown').length,
+    awaiting: bsIn.filter(b => bsWaitOf(b)).length,
+    gaps: bsIn.filter(b => bsGapsOf(b).length).length,
+    mors: bsEv.filter(x => x.e.kind === 'Mandatory occurrence report'),
+    changes: bsEv.filter(x => x.e.kind === 'Notifiable change').length,
+    gapsOf: bsGapsOf, waitOf: bsWaitOf, scopeOf: bsScope,
   };
   const cut90 = (function () { const c = new Date(todayIso + 'T12:00:00'); c.setDate(c.getDate() - 90); return c.toISOString().slice(0, 10); })();
   const supEvents = [];
@@ -438,6 +487,42 @@ export function buildBoardReport(state, opts = {}) {
       rows: cdm.latest.map(v => [ v.kind, v.site || '-', fmtD(v.actual), v.by || '-', v.outcome || '-' ]),
       footnote: 'The latest completed CDM oversight, from the Process assurance register.' });
   }
+  if (!hide.bsafety) {
+    if (!bs.total) {
+      // Nothing tested at all. That is a gap in itself, not a clean sheet.
+      oversightBlocks.push({ type: 'textBlock', title: 'Building safety - higher-risk buildings', body:
+        'No building or project has been put through the higher-risk test. The Building Safety Act 2022 applies to buildings of 18 metres or more, or 7 storeys or more, containing at least 2 residential units - and to tall care homes and hospitals while they are being designed and built. Where the business designs, builds or manages buildings, each job should be tested and the answer recorded, because not having considered it is no defence if a building turns out to be caught.' });
+    } else if (!bs.inScope) {
+      // The common case, and a genuine assurance statement: the test was
+      // applied and came back negative. That is worth printing plainly.
+      oversightBlocks.push({ type: 'textBlock', title: 'Building safety - higher-risk buildings', body:
+        countPhrase(bs.total, 'building or project has', 'buildings or projects have') + ' been put through the higher-risk test and '
+        + (bs.total === 1 ? 'it does not meet' : 'none of them meet') + ' the threshold. No gateway duties, golden thread duties or occurrence reporting duties under the Building Safety Act 2022 apply to the work in this period. The ordinary Building Regulations and CDM 2015 duties are unaffected and are reported separately.'
+        + (bs.unknown ? (' ' + countPhrase(bs.unknown, 'record has', 'records have') + ' not yet been tested.') : '') });
+    } else {
+      oversightBlocks.push({ type: 'kpiStrip', tiles: [
+        { value: String(bs.inScope), label: 'Higher-risk buildings', note: bs.total > bs.inScope ? ('of ' + bs.total + ' tested') : undefined },
+        { value: String(bs.gaps), label: 'With duties outstanding', tone: bs.gaps ? 'bad' : 'ok' },
+        { value: String(bs.awaiting), label: 'Awaiting a gateway', tone: bs.awaiting ? 'warn' : 'ok' },
+        { value: String(bs.mors.length), label: 'Occurrence reports', tone: bs.mors.length ? 'warn' : 'ok', note: bs.changes ? (bs.changes + ' notifiable change' + (bs.changes === 1 ? '' : 's')) : undefined },
+      ] });
+      oversightBlocks.push({ type: 'dataTable', title: 'Higher-risk buildings and the role held',
+        cols: [ { header: 'Building', w: '24%' }, { header: 'Role held', w: '19%' }, { header: 'Stage', w: '19%' }, { header: 'Outstanding', w: '38%' } ],
+        rows: bs.list.slice(0, 8).map(b => {
+          const g = bs.gapsOf(b); const w = bs.waitOf(b);
+          return [ b.name || '(unnamed)',
+            { text: b.duty || 'not recorded', color: b.duty ? [70, 70, 70] : [197, 32, 32] },
+            (b.stage || 'not started') + (w ? (' \u00b7 ' + w.weeks + 'w') : ''),
+            { text: g.length ? g.join('; ') : 'nothing outstanding', color: g.length ? [197, 32, 32] : [22, 128, 60] } ];
+        }),
+        footnote: (bs.inScope > 8 ? ('Showing 8 of ' + bs.inScope + '. ') : '')
+          + 'Building work on a higher-risk building must not start until Gateway 2 is approved, and it must not be occupied until Gateway 3 is passed. A stage shown with a week count is sitting with the regulator awaiting that decision.' });
+      if (bs.mors.length) oversightBlocks.push({ type: 'dataTable', title: 'Mandatory occurrence reports',
+        cols: [ { header: 'Date', w: '14%' }, { header: 'Building', w: '26%' }, { header: 'What was reported', w: '60%' } ],
+        rows: bs.mors.slice(0, 6).map(x => [ fmtD(x.e.date), x.b.name || '(unnamed)', String(x.e.note || '(not recorded)').slice(0, 110) ]),
+        footnote: 'A safety occurrence on a higher-risk building has to be reported to the regulator. These are the reports made in the period.' });
+    }
+  }
   if (!hide.environmental) {
     oversightBlocks.push({ type: 'textBlock', title: 'Environmental events', body:
       env.total
@@ -472,10 +557,11 @@ export function buildBoardReport(state, opts = {}) {
   const oversightPage = oversightBlocks.length ? { label: 'CDM & environment', section: 'oversight', blocks: [
       mast,
       { type: 'titleBlock', kicker: 'Leadership review · construction dutyholding and environmental performance',
-        headline: cdm.overdue ? (countPhrase(cdm.overdue, 'CDM oversight activity is', 'CDM oversight activities are') + ' overdue.')
+        headline: (!hide.bsafety && bs.gaps) ? (countPhrase(bs.gaps, 'higher-risk building has', 'higher-risk buildings have') + ' duties outstanding.')
+          : cdm.overdue ? (countPhrase(cdm.overdue, 'CDM oversight activity is', 'CDM oversight activities are') + ' overdue.')
           : env.open ? (countPhrase(env.open, 'environmental investigation is', 'environmental investigations are') + ' open.')
           : 'CDM oversight and environmental events.',
-        standfirst: 'The construction side of the duty - design reviews and CDM audits happening to plan - and any environmental events with their investigations.' },
+        standfirst: 'The construction side of the duty - design reviews and CDM audits happening to plan, whether any building is caught by the Building Safety Act, and any environmental events with their investigations.' },
       ...oversightBlocks,
     ] } : null;
 

@@ -14503,6 +14503,11 @@ function renderReports(){
       icon:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/>'),
       desc:'Read-and-understood sheets - one per employee, listing the policies and procedures they sign against. Staff and policy lists live on the Sign-off tab.',
       tags:['Sign-off','Per employee','Evidence'] },
+    { title:'Discovery Questionnaire', accent:'#2563EB', tint:'#E7EEFB', fn:'downloadDiscoveryQuestionnaire()',
+      meta:(function(){ try{ const st=_discStats(); return st.answered+' of '+st.total+' answered - '+(st.total-st.answered)+' for the client'; }catch(e){ return 'Run discovery first'; } })(),
+      icon:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h3"/>'),
+      desc:'The send-to-the-client gap report: what discovery has already established, and the questions only the client can answer - tick boxes and a notes line on each, ready to complete and send back.',
+      tags:['New client','Fill and return'] },
     { title:'Action Plan', accent:'#B45309', tint:'#FDF3E7', fn:'downloadActionPlanReport()',
       meta:(_execOpenCount()+' open action'+(_execOpenCount()!==1?'s':'')),
       icon:svg('<path d="M11 12H3"/><path d="M16 6H3"/><path d="M16 18H3"/><path d="m19 10-4 4 4 4"/>'),
@@ -18523,6 +18528,7 @@ function _reportData(){
 // ══════════════════════════════════════════════════════════════
 const REPORT_DOCS = [
   { key:'companyProfile',   title:'Company Profile',              code:'CP'  },
+  { key:'discovery',        title:'Discovery Questionnaire',      code:'DQ'  },
   { key:'policySignoff',    title:'Policy Acknowledgement',       code:'PSO' },
   { key:'boardReport',      title:'Board Report',                 code:'BR'  },
   { key:'bizStatus',        title:'Business Status Report',       code:'BSR' },
@@ -19882,6 +19888,76 @@ function downloadRiskProfileReport(){
   catch(e){ console.error('Risk profile report failed:',e); showToast('Could not build the PDF - see console','error'); }
 }
 
+// ── Discovery questionnaire (item 8) - the send-to-the-client gap report.
+//  Two halves: what the consultant has already established (with the answer
+//  recorded against each question), and what only the client can say - laid
+//  out with tick boxes and a notes line so it can be completed by hand or in
+//  any PDF annotator and sent straight back. Respects the sector gate: it
+//  only asks the questions that fit the business.
+function buildDiscoveryQuestionnairePDF(){
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+  const d=_docFor('discovery');
+  const NAVY=[30,58,95], GREY=[110,110,110], GREEN=[22,120,60], AMBER=[180,110,10];
+  const K=_mkPdf('Discovery Questionnaire', client, d, 'What we already know about the business, and what we need you to tell us.');
+  const ex=_profState().exposure||{};
+  const st=_discStats();
+  const doms=_discDomains();
+  const known=[], asking=[];
+  doms.forEach(dm=>{
+    const k=[], a=[];
+    dm.items.forEach(it=>{
+      if(!_discVisible(it.id)) return;
+      if(ex[it.id]===true) k.push({it, ans:'Yes'});
+      else if(ex[it.id]===false) k.push({it, ans:'No'});
+      else a.push(it);
+    });
+    if(k.length) known.push({dm, rows:k});
+    if(a.length) asking.push({dm, rows:a});
+  });
+
+  K.text('How this works: your consultant has answered what could be established from the records and the visit. The rest only you can answer. Mark Yes or No against each remaining question, add a note where it helps, and send the completed pages back - every answer shapes the risk profile and the plan that follow, and a question left blank is simply asked at the next visit.', 9.5, {color:GREY, gap:3});
+  K.tiles([
+    {num:st.answered, label:'Already established', color:GREEN, sub:'answered for you'},
+    {num:st.total-st.answered, label:'We need from you', color:(st.total-st.answered)?AMBER:GREEN, sub:'mark Yes or No'},
+    {num:st.total, label:'Questions that fit', color:NAVY, sub:'of '+st.bank+' in the bank'}
+  ]);
+
+  if(known.length){
+    K.section('Part 1 - what we already know', NAVY);
+    K.text('Recorded with the business during discovery. If anything here is wrong or has changed, strike it through and correct it - do not leave it standing.', 8.5, {color:GREY, gap:2});
+    known.forEach(g=>{
+      K.text(g.dm.name, 10, {bold:true, color:NAVY, gap:1});
+      K.table(
+        [{header:'QUESTION',w:158},{header:'ANSWER',w:16}],
+        g.rows.map(r=>[ r.it.q, {text:r.ans, bold:true, color:(r.ans==='Yes'?GREEN:GREY)} ]),
+        {fs:8}
+      );
+    });
+  }
+
+  if(asking.length){
+    K.section('Part 2 - what we need you to tell us', NAVY);
+    K.text('Tick one box per question. The grey line under each is for anything worth adding - names, numbers, where things are kept.', 8.5, {color:GREY, gap:2});
+    asking.forEach(g=>{
+      K.text(g.dm.name, 10, {bold:true, color:NAVY, gap:1});
+      K.table(
+        [{header:'QUESTION',w:140},{header:'YES',w:12},{header:'NO',w:12},{header:'NOTES',w:32}],
+        g.rows.map(it=>[ it.q + (it.help?('\n'+it.help):''), {tick:true}, {tick:true}, '' ]),
+        {fs:8}
+      );
+    });
+  } else {
+    K.section('Part 2 - what we need you to tell us', NAVY);
+    K.text('Nothing - every question that fits the business has been answered. This document stands as the record of what discovery established.', 9.5, {color:GREEN});
+  }
+  K.text('Thank you. Send the completed pages back to your consultant - the answers go straight into your risk profile and the plan that follows from it.', 9, {color:GREY, gap:2});
+  const safe=client.replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+  K.doc.save('discovery-questionnaire-'+safe+'.pdf');
+}
+function downloadDiscoveryQuestionnaire(){
+  try{ buildDiscoveryQuestionnairePDF(); showToast('✓ Discovery questionnaire created - send it to the client','success'); }
+  catch(e){ console.error('Discovery questionnaire failed:',e); showToast('Could not build the PDF - see console','error'); }
+}
 // ── Risk profile review: overall score + risks by hazard type + PDCA + maturity ──
 // ══════════════════════════════════════════════════════════════
 //  DISCOVERY QUESTIONNAIRE (UAT #1) - the sit-with-the-client intake.
@@ -20125,6 +20201,7 @@ function renderDiscoveryPanel(){
       <div style="font-size:12.5px;color:var(--text-muted);max-width:640px;">The sit-down intake. Tick what the business does on the wizard's first page and it only asks the questions that fit - <b>${st.total}</b> of ${st.bank} fit now${(function(){ const on=_discSectorKeys(); if(!on.length) return ' (no sectors ticked yet, so every question shows)'; const lbl=SECTOR_DEFS.filter(s=>on.indexOf(s.k)>=0).map(s=>s.label.split(' or ')[0].split(',')[0]); return ' for '+esc(lbl.join(' · ')); })()}. Yes answers set out what the business must run and suggest the matching risk-profile themes below.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
       ${ro?'':`<button class="btn btn-primary no-print" onclick="openDiscoveryWizard()">${started?'✎ Review / update answers':'▶ Run discovery'}</button>`}
+      <button class="btn btn-outline no-print" onclick="downloadDiscoveryQuestionnaire()" title="A PDF for the client: what is already established, and the questions only they can answer - with tick boxes to complete and send back">⤓ Client questionnaire</button>
       ${(!ro && started)?`<button class="btn btn-outline no-print" onclick="buildProfileFromDiscovery()"${sugN?'':' disabled title="Profile already covers the current answers"'}>⚙ Build profile from discovery${sugN?(' ('+sugN+')'):''}</button>`:''}
       ${(!ro && orphN)?`<button class="btn btn-outline no-print" style="border-color:#D97706;color:#B45309;" onclick="reviewDiscoveryOrphans()" title="Themes whose supporting discovery answers have been withdrawn">⚠ Answers changed (${orphN})</button>`:''}
       </div>

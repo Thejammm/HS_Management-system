@@ -20069,7 +20069,7 @@ async function buildDiscoveryQuestionnairePDF(){
 
   sectionHead('Part 2 - what we need you to tell us');
   if(asking.length){
-    text('Click one circle per question - Yes or No. The notes box takes anything worth adding - and if a Yes has paperwork behind it, name it there: the document, where it is kept, who holds it.',8,{color:GREY,gap:5});
+    text('Tick Yes or No against each question - made a mistake? Click the tick again and it clears. The notes box takes anything worth adding - and if a Yes has paperwork behind it, name it there: the document, where it is kept, who holds it.',8,{color:GREY,gap:5});
     const QW=306, X_YES=ML+318, X_NO=ML+352, X_NOTE=ML+386, NW=MR-(ML+386);
     asking.forEach(g=>{
       ensure(40);
@@ -20087,9 +20087,12 @@ async function buildDiscoveryQuestionnairePDF(){
         qLines.forEach((ln,i)=>{ page.drawText(ln,{x:ML,y:y-8.2-i*10.6,size:8.2,font,color:INK}); });
         hLines.forEach((ln,i)=>{ page.drawText(ln,{x:ML,y:y-8.2-qLines.length*10.6-i*8.8,size:7,font,color:GREY}); });
         const cy=y-14;
-        const rg=form.createRadioGroup('q_'+it.id);
-        rg.addOptionToPage('yes',page,{x:X_YES,y:cy,width:12,height:12,borderColor:GREY,borderWidth:1});
-        rg.addOptionToPage('no', page,{x:X_NO, y:cy,width:12,height:12,borderColor:GREY,borderWidth:1});
+        // Tick boxes, not radios: a radio can be changed but never cleared,
+        // and a mistake must be removable. A second click unticks.
+        const cbY=form.createCheckBox('q_'+it.id+'_yes');
+        cbY.addToPage(page,{x:X_YES,y:cy,width:12,height:12,borderColor:GREY,borderWidth:1});
+        const cbN=form.createCheckBox('q_'+it.id+'_no');
+        cbN.addToPage(page,{x:X_NO,y:cy,width:12,height:12,borderColor:GREY,borderWidth:1});
         const tf=form.createTextField('q_'+it.id+'_note');
         tf.addToPage(page,{x:X_NOTE,y:cy-3,width:NW,height:17,borderColor:HAIR,borderWidth:0.8});
         tf.setFontSize(8);
@@ -20160,7 +20163,11 @@ async function _discImportFile(file){
     const form=doc.getForm();
     const p=_profState();
     const validIds=new Set(); _discDomains().forEach(d=>d.items.forEach(it=>validIds.add(it.id)));
-    let yes=0,no=0,skipped=0,notes=0;
+    let yes=0,no=0,skipped=0,notes=0,conflicts=0;
+    // Two passes: gather every field first (the yes and no boxes of one
+    // question must be judged TOGETHER), then resolve. The older radio-style
+    // questionnaire still imports through the same map.
+    const picks={};
     form.getFields().forEach(f=>{
       const nm=f.getName(); let m;
       if(nm==='q__general'){
@@ -20169,21 +20176,38 @@ async function _discImportFile(file){
       } else if((m=nm.match(/^q_(.+)_note$/)) && validIds.has(m[1])){
         let t=''; try{ t=f.getText?(f.getText()||''):''; }catch(e){}
         if(String(t).trim()){ p.discNotes[m[1]]=String(t).trim(); notes++; }
+      } else if((m=nm.match(/^q_(.+)_yes$/)) && validIds.has(m[1])){
+        let c=false; try{ c=f.isChecked?f.isChecked():false; }catch(e){}
+        (picks[m[1]]=picks[m[1]]||{}).yes=c;
+      } else if((m=nm.match(/^q_(.+)_no$/)) && validIds.has(m[1])){
+        let c=false; try{ c=f.isChecked?f.isChecked():false; }catch(e){}
+        (picks[m[1]]=picks[m[1]]||{}).no=c;
       } else if((m=nm.match(/^q_(.+)$/)) && validIds.has(m[1])){
         let sel=null; try{ sel=f.getSelected?f.getSelected():null; }catch(e){}
-        if(sel!=='yes'&&sel!=='no') return;
-        if(p.exposure[m[1]]===true||p.exposure[m[1]]===false){ skipped++; return; }
-        p.exposure[m[1]]=(sel==='yes'); if(sel==='yes') yes++; else no++;
+        if(sel==='yes'||sel==='no') (picks[m[1]]=picks[m[1]]||{}).radio=sel;
       }
     });
+    Object.keys(picks).forEach(id=>{
+      const pk=picks[id];
+      if(pk.yes&&pk.no){ conflicts++; return; }   // both ticked - never guess an answer
+      let ans=null;
+      if(pk.yes) ans=true; else if(pk.no) ans=false;
+      else if(pk.radio) ans=(pk.radio==='yes');
+      if(ans===null) return;
+      if(p.exposure[id]===true||p.exposure[id]===false){ skipped++; return; }
+      p.exposure[id]=ans; if(ans) yes++; else no++;
+    });
     if(!(yes+no+notes)){
-      showToast(skipped?('Nothing new to import - the '+skipped+' answered field'+(skipped!==1?'s':'')+' in the PDF were already answered in the app'):'No form answers found in this PDF - is it the fillable questionnaire?','info',6000);
+      showToast(conflicts?('Nothing imported - '+conflicts+' question'+(conflicts!==1?'s have':' has')+' both Yes and No ticked, so they are left to ask on the visit')
+        :skipped?('Nothing new to import - the '+skipped+' answered field'+(skipped!==1?'s':'')+' in the PDF were already answered in the app')
+        :'No form answers found in this PDF - is it the fillable questionnaire?','info',7000);
       return;
     }
     _stamp(S.profiler,'updated'); saveData();
     if(typeof renderRiskProfile==='function') _keepScroll(renderRiskProfile);
     showToast('✓ Imported '+(yes+no)+' answer'+((yes+no)!==1?'s':'')+' ('+yes+' yes, '+no+' no)'
       +(notes?(' and '+notes+' note'+(notes!==1?'s':'')):'')
+      +(conflicts?(' - '+conflicts+' had both boxes ticked and '+(conflicts!==1?'were':'was')+' left to ask on the visit'):'')
       +(skipped?(' - '+skipped+' already answered in the app and kept as they were'):''),'success',8000);
   }catch(e){ console.error('Questionnaire import failed:',e); showToast('Could not read that PDF - see console','error'); }
 }

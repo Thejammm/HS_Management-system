@@ -14508,6 +14508,11 @@ function renderReports(){
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
       desc:'For the leadership meeting, defaulted to what HSG65 says a review draws on: the position and decisions, incidents and investigations, active monitoring, training, worker-raised issues, statutory checks, successes and movement since the baseline.',
       tags:['Directors','HSG65 review','Sign-off'] },
+    { title:'Management Decisions', accent:'#475569', tint:'#EDF1F5', fn:'downloadDecisionsReport()',
+      meta:(function(){ try{ const s=_decisionStats(); return s.total?(s.total+' recorded · '+s.open+' open'+(s.pctDelivered!=null?(' · '+s.pctDelivered+'% delivered'):'')):'Nothing recorded yet'; }catch(e){ return 'The post-meeting note'; } })(),
+      icon:svg('<path d="M9 12h6"/><path d="M9 16h6"/><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>'),
+      desc:'The note that circulates after the meeting: what was decided and why, who owns it and by when, what is still carried forward from earlier meetings, and what has been delivered. The middle step of the cycle - board report in, decisions out.',
+      tags:['After the meeting','Circulate','Closes the loop'] },
     { title:'Business Status Report', accent:'#991B1B', tint:'#F9E8E8', fn:'downloadBusinessStatusReport()',
       meta:(function(){ try{ const b=_bsrData(); return b.counts.red+' red · '+b.counts.amber+' amber · '+b.counts.green+' green'; }catch(e){ return 'One-page RAG position'; } })(),
       icon:svg('<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>'),
@@ -18461,6 +18466,7 @@ const REPORT_DOCS = [
   { key:'policySignoff',    title:'Policy Acknowledgement',       code:'PSO' },
   { key:'boardReport',      title:'Board Report',                 code:'BR'  },
   { key:'bizStatus',        title:'Business Status Report',       code:'BSR' },
+  { key:'decisions',        title:'Management Decisions',         code:'MD'  },
   { key:'riskProfile',      title:'Risk Profile',                 code:'RP'  },
   { key:'actionPlan',       title:'Action Plan',                  code:'AP'  },
   { key:'executionPlan',    title:'Client Execution Plan',        code:'EP'  },
@@ -22936,6 +22942,54 @@ function _decisionStats(){
   return { total:l.length, open:l.filter(_decisionOpen).length, overdue:l.filter(_decisionOverdue).length,
     delivered:closed, decided, pctDelivered: decided ? Math.round(closed/decided*100) : null };
 }
+
+// ── The meeting cycle ─────────────────────────────────────────────
+// Board report produced → taken to the meeting → decisions recorded here →
+// this register issued as the decisions report → next board report asks
+// whether those decisions happened. Each decision belongs to the meeting it
+// was taken at (its date + forum), which is what lets the next report ask
+// the question rather than just listing everything again.
+function _decMeetings(){
+  const map={};
+  _decisions().forEach(d=>{ const k=(d.date||'')+'|'+(d.forum||'Meeting'); (map[k]=map[k]||[]).push(d); });
+  return Object.keys(map).sort((a,b)=>b.localeCompare(a)).map(k=>({
+    key:k, date:k.split('|')[0], forum:k.split('|')[1], items:map[k]
+  }));
+}
+function _decLatestMeeting(){ const m=_decMeetings(); return m.length?m[0]:null; }
+// Still owed to the business from any earlier meeting - the question the next
+// board report opens with.
+function _decCarriedForward(exceptKey){
+  return _decisions().filter(d=>_decisionOpen(d) && ((d.date||'')+'|'+(d.forum||'Meeting'))!==exceptKey)
+    .sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999')));
+}
+// ── Pull this month's Top 5 straight off the execution plan ───────
+// The five the consultant already marked as this month's priorities are
+// usually exactly what the meeting signs off, so they come across in one
+// click - pre-filled, still fully editable, and never duplicated (each
+// decision remembers the action it came from).
+function pullTop5Decisions(){
+  if(_blockIfReadOnly()) return;
+  const month=(typeof _top5Month==='function')?_top5Month():'';
+  const five=(typeof _top5List==='function')?_top5List(month):[];
+  if(!five.length){ showToast('No Top 5 marked for '+((typeof _top5MonthLabel==='function')?_top5MonthLabel(month):'this month')+' - mark them on the client execution plan first.','info'); return; }
+  const have=new Set(_decisions().map(d=>d.fromRef).filter(Boolean));
+  const today=new Date().toISOString().slice(0,10);
+  let added=0;
+  five.forEach(a=>{
+    const key=(function(){ try{ return JSON.stringify(a.ref); }catch(e){ return ''; } })();
+    if(key && have.has(key)) return;             // already brought across
+    const d={ id:'dec_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+      date:today, forum:'Board meeting', decision:String(a.desc||'').slice(0,180),
+      why:'Agreed as one of the five priorities for '+((typeof _top5MonthLabel==='function')?_top5MonthLabel(month):month)+(a.sourceLabel?(' - from '+a.sourceLabel):''),
+      owner:a.owner||'', due:a.due||'', status:'Agreed', outcome:'', raised:1, fromRef:key };
+    _stamp(d,'created'); _decisions().unshift(d); added++;
+  });
+  if(!added){ showToast('This month’s Top 5 are already on the decisions register.','info'); return; }
+  saveData(); _renderDecisions();
+  showToast('✓ Brought '+added+' of the Top 5 across - edit the wording and the reasoning to match what the meeting actually agreed.','success');
+}
+
 function addDecision(){
   if(_blockIfReadOnly()) return;
   const d={ id:'dec_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
@@ -23022,8 +23076,15 @@ function _renderDecisions(){
   el.innerHTML=`<details class="coll" data-keep="monDecisions" style="margin:26px 0 16px;">
     <summary><h3>Management decisions</h3><span class="badge badge-muted">${esc(meta)}</span></summary>
     <div class="coll-body">
-      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">What leadership actually decided, and what came of it. The board report recommends decisions from the data; this is the record of the ones taken - with the reasoning, an owner and a date. It is what closes the loop: next period's report reads this to say what happened to what was agreed. Recording a decision does not create work until you raise it as an action.</div>
-      ${ro?'':`<button class="btn btn-primary btn-sm no-print" style="margin-bottom:12px;" onclick="addDecision()">＋ Record a decision</button>`}
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:6px;">What leadership actually decided, and what came of it - with the reasoning, an owner and a date. Recording a decision does not create work until you raise it as an action.</div>
+      <div style="font-size:11.5px;color:var(--text-muted);line-height:1.6;margin-bottom:12px;padding:8px 12px;border-left:3px solid var(--accent);background:var(--accent-light);border-radius:0 7px 7px 0;">
+        <b>The meeting cycle.</b> Board report produced <span style="color:var(--accent);">→</span> taken to the meeting <span style="color:var(--accent);">→</span> decisions recorded here <span style="color:var(--accent);">→</span> the decisions report circulated <span style="color:var(--accent);">→</span> the next board report opens by asking whether they happened.
+      </div>
+      ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="btn btn-primary btn-sm no-print" onclick="addDecision()">＋ Record a decision</button>
+        <button class="btn btn-outline btn-sm no-print" onclick="pullTop5Decisions()" title="Bring this month's five priorities across from the client execution plan as decisions - pre-filled and still editable">↙ Bring in this month's Top 5</button>
+        ${list.length?`<button class="btn btn-ghost btn-sm no-print" onclick="downloadDecisionsReport()" title="The note that circulates after the meeting">⭳ Decisions report (PDF)</button>`:''}
+      </div>`}
       ${rows||''}
     </div></details>`;
   _detailsApply(el,_keep);
@@ -24682,6 +24743,83 @@ function buildAuditReportPDF(){
   st.y+=6; K.ensure(24); doc.setDrawColor(180,185,192); doc.line(ML,st.y+14,ML+80,st.y+14); doc.setFontSize(8.5); doc.setTextColor(120,120,120); doc.text('Signature', ML, st.y+19); doc.line(ML+95,st.y+14,ML+95+60,st.y+14); doc.text('Date', ML+95, st.y+19);
   _pdfFooter(K, d, 'H&S Audit');
   doc.save('hs-audit-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+}
+
+
+// ── Management Decisions report ───────────────────────────────────
+// The document that circulates AFTER the meeting: what was decided, why,
+// who owns it and by when - plus anything still owed from earlier meetings.
+// It is the middle step of the cycle: board report in, decisions out.
+function buildDecisionsReportPDF(){
+  const list=_decisions();
+  const client=(typeof _consultantView!=='undefined'&&_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||activeClientName()||'Client';
+  const d=_docFor('decisions');
+  const meeting=_decLatestMeeting();
+  const meetLabel=meeting?((meeting.forum||'Meeting')+' - '+fmtDate(meeting.date)):'';
+  const K=_mkPdf('Management Decisions', client, d, meeting?('Decisions of the '+String(meeting.forum||'meeting').toLowerCase()+' on '+fmtDate(meeting.date)):'The decisions register');
+  const NAVY=[30,58,95], GREY=[110,116,126], AMBER=[180,110,10], GREEN=[22,120,60], RED=[197,32,32];
+  const st=_decisionStats();
+  const today=new Date().toISOString().slice(0,10);
+  if(!list.length){
+    K.section('No decisions recorded', NAVY);
+    K.text('Nothing has been recorded on the decisions register yet. Record what the meeting agreed - the decision, the reasoning, an owner and a date - and this report becomes the note that circulates afterwards.', 10.5, {color:[45,45,45]});
+    _pdfBrandFooter(K.doc, K.ML, K.RM);
+    K.doc.save('management-decisions-'+String(client).replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+    return;
+  }
+  K.tiles([
+    { num:st.total,   label:'Decisions recorded', color:NAVY },
+    { num:st.open,    label:'Still open',         color:st.open?AMBER:GREEN },
+    { num:st.overdue, label:'Past their date',    color:st.overdue?RED:GREEN },
+    { num:st.pctDelivered==null?'-':(st.pctDelivered+'%'), label:'Delivered', color:st.pctDelivered===100?GREEN:NAVY, sub:st.delivered+' of '+st.decided }
+  ], {cols:4});
+
+  // This meeting's decisions - the reason the note is being circulated.
+  if(meeting){
+    K.section('Decisions taken at this meeting', NAVY, 30);
+    K.text(meetLabel+'. Each decision below is now owned and dated; the owner is asked to confirm progress before the next meeting.', 9, {color:GREY, gap:2});
+    K.table(
+      [{header:'DECISION',w:42},{header:'WHY',w:32},{header:'OWNER',w:14},{header:'BY WHEN',w:12}],
+      meeting.items.map(x=>[{text:x.decision||'(not recorded)',bold:true}, {text:x.why||'-',color:GREY}, x.owner||'not named', {text:x.due?fmtDate(x.due):'no date',bold:!!x.due}]),
+      {headFill:NAVY, headText:[255,255,255], fs:8.5}
+    );
+  }
+  // Anything still owed from before - the standing question at the next meeting.
+  const cf=_decCarriedForward(meeting?meeting.key:'');
+  if(cf.length){
+    K.section('Carried forward from earlier meetings', AMBER, 30);
+    K.text('Still open. The next board report opens by asking whether these have happened.', 9, {color:GREY, gap:2});
+    K.table(
+      [{header:'DECIDED',w:12},{header:'DECISION',w:44},{header:'WHERE',w:16},{header:'OWNER',w:14},{header:'BY WHEN',w:14}],
+      cf.map(x=>[fmtDate(x.date), {text:x.decision||'(not recorded)',bold:true}, x.forum||'-', x.owner||'not named',
+        {text:x.due?fmtDate(x.due):'no date', bold:true, color:(x.due&&x.due<today)?RED:[55,55,55]}]),
+      {headFill:AMBER, headText:[255,255,255], fs:8.5}
+    );
+  }
+  // What has actually been closed off - the credit half.
+  const done=list.filter(x=>x.status==='Delivered').sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,10);
+  if(done.length){
+    K.section('Delivered', GREEN, 26);
+    K.table(
+      [{header:'DECIDED',w:12},{header:'DECISION',w:48},{header:'OWNER',w:14},{header:'WHAT HAPPENED',w:26}],
+      done.map(x=>[fmtDate(x.date), x.decision||'(not recorded)', x.owner||'-', {text:x.outcome||'delivered',color:GREY}]),
+      {headFill:GREEN, headText:[255,255,255], fs:8.5}
+    );
+  }
+  const dropped=list.filter(x=>x.status==='Superseded'||x.status==='Not pursued');
+  if(dropped.length){
+    K.section('Not pursued or superseded', [107,114,128], 24);
+    dropped.forEach(x=>K.text('• '+(x.decision||'(not recorded)')+' - '+(x.status||'')+(x.outcome?(': '+x.outcome):(x.why?(' ('+x.why+')'):'')), 9, {color:GREY}));
+    K.text('Recorded rather than deleted: a decision consciously dropped, with the reason, is part of the audit trail.', 8.5, {color:GREY, gap:2});
+  }
+  K.section('How this fits the cycle', NAVY, 24);
+  K.text('The board report sets out the position and recommends what needs deciding. The meeting decides. This note records those decisions and circulates them. The next board report opens by asking what happened to them. Anything on this note that needs tracking week to week is also raised onto the client execution plan.', 9, {color:GREY});
+  _pdfBrandFooter(K.doc, K.ML, K.RM);
+  K.doc.save('management-decisions-'+String(client).replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+}
+function downloadDecisionsReport(){
+  try{ buildDecisionsReportPDF(); showToast('✓ Management decisions report created','success'); }
+  catch(e){ console.error('Decisions report failed:',e); showToast('Could not build the PDF - see console','error'); }
 }
 
 function downloadRaRegisterReport(){ try{ buildRaRegisterReportPDF(); showToast('✓ Risk assessment register created','success'); }catch(e){ console.error('RA register report failed',e); showToast('Could not build the register - see console','error'); } }

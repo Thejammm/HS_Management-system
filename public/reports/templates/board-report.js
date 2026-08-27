@@ -22,7 +22,7 @@ export const BOARD_SECTIONS = [
   { id: 'accreditation',  label: 'Accreditation readiness (Common Assessment Standard)', hsg: 'Assurance against external standards' },
   { id: 'cdm',            label: 'CDM assurance - design reviews & CDM audits', hsg: 'Active monitoring · construction dutyholders' },
   { id: 'environmental',  label: 'Environmental events', hsg: 'Environmental incidents & investigations' },
-  { id: 'decisions',      label: 'Management decisions taken, and what came of them', hsg: 'Closing the loop - decisions of the review' },
+  { id: 'decisions',      label: 'Management decisions - have the last meeting’s been actioned?', hsg: 'Closing the loop - decisions of the review' },
   { id: 'wins',           label: 'Successes this period', hsg: 'Celebrate and promote successes' },
   { id: 'sinceLast',      label: 'Movement since the baseline', hsg: 'Closing the loop' },
   { id: 'topFive',        label: 'Top 5 priorities for next month', hsg: 'What we agreed to do next' },
@@ -372,17 +372,28 @@ export function buildBoardReport(state, opts = {}) {
       footnote: 'Baseline = the first audit snapshot (“where they started”). The consultant records a snapshot at each audit visit.' });
   }
   if (!hide.decisions) {
-    progBlocks.push(dec.total
-      ? { type: 'dataTable', title: 'Decisions taken' + (dec.pct != null ? (' - ' + dec.delivered + ' of ' + dec.decided + ' delivered') : ''),
-          cols: [ { header: 'Decided', w: '12%' }, { header: 'Decision', w: '38%' }, { header: 'Where', w: '15%' }, { header: 'Owner', w: '13%' }, { header: 'By', w: '10%' }, { header: 'Outcome', w: '12%' } ],
-          rows: dec.recent.map(d => [ fmtD(d.date), String(d.decision || '(not recorded)').slice(0, 110), d.forum || '-', d.owner || 'no owner',
-            d.due ? fmtD(d.due) : '-',
-            { text: d.status || 'Agreed', bold: true,
-              color: d.status === 'Delivered' ? [22,120,60] : (decOpenOf(d) && d.due && d.due < todayIso) ? [197,32,32] : [110,110,110] } ]),
-          footnote: (decAll.length > 8 ? ('Showing the latest 8 of ' + decAll.length + ' recorded. ') : '')
-            + 'What leadership actually decided, from the decisions register. '
-            + (dec.overdue ? (dec.overdue + ' decision' + (dec.overdue !== 1 ? 's are' : ' is') + ' past the date it was given.') : 'Nothing decided is past its date.') }
-      : { type: 'textBlock', title: 'Management decisions', body: 'No decisions are recorded for this period. The decisions this report recommends are only worth making if what was agreed is written down - the register on the assurance tab is what next period reads to say whether it happened.' });
+    // The standing question this report opens the loop with: what was decided
+    // last time, and has it happened? Open decisions are the ask; delivered
+    // ones are the credit. Both come from the decisions register.
+    const decOpen = decAll.filter(decOpenOf).sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
+    const decDone = decAll.filter(d => d.status === 'Delivered').sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    if (!decAll.length) {
+      progBlocks.push({ type: 'textBlock', title: 'Management decisions', body: 'No decisions are recorded. The decisions this report recommends are only worth making if what was agreed is written down - the register is what the next report reads to say whether it happened.' });
+    } else {
+      progBlocks.push(decOpen.length
+        ? { type: 'dataTable', title: 'Decisions still open - has this happened?',
+            cols: [ { header: 'Decided', w: '12%' }, { header: 'Decision', w: '40%' }, { header: 'Where', w: '16%' }, { header: 'Owner', w: '16%' }, { header: 'By when', w: '16%' } ],
+            rows: decOpen.map(d => [ fmtD(d.date), String(d.decision || '(not recorded)').slice(0, 110), d.forum || '-', d.owner || 'no owner',
+              { text: d.due ? fmtD(d.due) : 'no date', bold: true, color: (d.due && d.due < todayIso) ? [197,32,32] : [110,110,110] } ]),
+            footnote: 'Each of these was agreed at an earlier meeting and is still open. The first item of business is to confirm whether it has happened, and to re-date or drop it if not.'
+              + (dec.overdue ? (' ' + dec.overdue + ' ' + (dec.overdue !== 1 ? 'are' : 'is') + ' past the date given.') : '') }
+        : { type: 'textBlock', title: 'Decisions still open', body: 'Nothing agreed at an earlier meeting is still outstanding - every decision taken has been delivered, superseded or consciously dropped.' });
+      if (decDone.length) progBlocks.push({ type: 'dataTable',
+        title: 'Decisions delivered' + (dec.pct != null ? (' - ' + dec.delivered + ' of ' + dec.decided + ' carried out') : ''),
+        cols: [ { header: 'Decided', w: '13%' }, { header: 'Decision', w: '45%' }, { header: 'Owner', w: '16%' }, { header: 'What happened', w: '26%' } ],
+        rows: decDone.slice(0, 6).map(d => [ fmtD(d.date), String(d.decision || '(not recorded)').slice(0, 110), d.owner || '-', String(d.outcome || 'delivered').slice(0, 80) ]),
+        footnote: (decDone.length > 6 ? ('Showing the latest 6 of ' + decDone.length + ' delivered. ') : '') + 'Decisions the business carried out. Superseded and not-pursued decisions are recorded on the register but are not counted as delivered.' });
+    }
   }
   const progressPage = progBlocks.length ? {
     label: 'Progress', section: 'progress', blocks: [

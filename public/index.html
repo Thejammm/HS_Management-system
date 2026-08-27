@@ -3728,6 +3728,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="card-band"><h3><span class="dot">●</span> Accreditation readiness</h3>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           <select id="casSchemeFilter" class="ms-stage-select no-print" onchange="renderCAS()" title="Scheme view"></select>
+          <button class="btn btn-outline btn-sm no-print" onclick="casExportXlsx()" title="Every CAS question - the Building Safety Act section included - with your current position, the evidence each answer needs, and two columns for the client to fill in">⭳ Question set (Excel)</button>
           <button class="btn btn-primary btn-sm no-print" onclick="downloadCasSubmissionPack()">📄 Submission pack</button>
         </div>
       </div>
@@ -25388,6 +25389,41 @@ function openCasXFPop(ev, col){
     () => { _casXF[col] = []; renderCAS(); });
 }
 function applyCasXF(col){ _xfDoApply(); }
+// ── CAS question-set Excel export - every question in the standard, the
+//  BSA section included, with the client's current position and two columns
+//  for them to answer in. The server builds the workbook (exceljs).
+function _casExportRows(){
+  const rows=[];
+  CAS_FRAMEWORK.sections.forEach(s=>s.questions.forEach(q=>{
+    const inScope=_casRowInScope(q.q);
+    const reason=inScope?null:_casScopeReason(q.q);
+    const st=(S.cas?.status?.[q.q]||{}).v;
+    const meta=_CAS_STATUS.find(x=>x.v===st);
+    const flags=[];
+    if(q.flags.gate)flags.push('GATE');
+    if(q.flags.timeCritical)flags.push('Time-critical');
+    if(q.flags.advisory)flags.push('Advisory');
+    if(q.flags.micro)flags.push('Micro N/A');
+    if(_casProportionateOptional(q))flags.push('Proportionate');
+    rows.push({ section:s.id+'. '+s.name, q:q.q, req:q.req, flags:flags.join(', '),
+      docType:_casDocType(q),
+      scope:inScope?'In scope':(reason?(reason.kind==='cert'?('Covered by certificate (Q'+reason.q+')'):('Not in scope (Q'+reason.q+')')):'Not in scope'),
+      status:meta?meta.label:'Unassessed',
+      evidence:_casLinkedDocs(q.q).map(d=>d.name||'doc').join('; ') });
+  }));
+  return rows;
+}
+async function casExportXlsx(){
+  if(!_tOnline()){ alert('Sign in first to export the question set.'); return; }
+  try{
+    const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+    const res=await _tApiRaw('/api/cas/export', JSON.stringify({ client, rows:_casExportRows() }));
+    if(!res.ok){ const e=await res.json().catch(()=>({})); alert('Export failed: '+(e.error||('HTTP '+res.status))); return; }
+    const blob=await res.blob(); const cd=res.headers.get('content-disposition')||''; const m=/filename="([^"]+)"/.exec(cd); const name=m?m[1]:'CAS question set.xlsx';
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+    showToast('✓ Exported '+name,'success');
+  }catch(e){ console.error('cas export',e); alert('Export failed: '+e.message); }
+}
 function renderCAS(){
   _renderMemberships();
   const sel = document.getElementById('casSchemeFilter');

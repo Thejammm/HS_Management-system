@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --env-file=.env server.js",
-    "test": "node --test test/reports.test.mjs && npm run check",
+    "test": "node --test test/reports.test.mjs test/cas-export.test.mjs && npm run check",
     "check:consistency": "node scripts/check-app-report-consistency.mjs",
     "check:masthead": "node scripts/check-report-masthead-fit.mjs",
     "check": "npm run check:consistency && npm run check:masthead && npm run check:overflow",

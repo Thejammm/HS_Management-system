@@ -17334,7 +17334,10 @@ function _renderAssurance(){
 const SITEINSP_OUTCOMES = ['Not yet known','Satisfactory','Actions raised','Unsatisfactory','Not done'];
 // What kind of oversight the record is - site visits plus the CDM-side
 // supervision (architectural reviews, CDM audits) the tracker now covers.
-const SITEINSP_KINDS = ['Site inspection','Architectural review','CDM audit','Management audit','Other review'];
+// Generic assurance-activity types: a contractor books Site inspections, an
+// architect books Design reviews - the engine treats every kind the same
+// (planned / actual / by / outcome), so reporting reads them all as assurance.
+const SITEINSP_KINDS = ['Site inspection','Design review','Architectural review','CDM audit','Management audit','Behavioural observation','Compliance review','Other review'];
 function _siteInspState(){ if(!Array.isArray(S.siteInspections)) S.siteInspections=[]; return S.siteInspections; }
 function _siteInspStatus(r){
   const today=new Date().toISOString().slice(0,10);

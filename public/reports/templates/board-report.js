@@ -13,8 +13,13 @@ import { paginateRows } from '../engine.js';
 // state.reportPrefs['board-report'].hidden (locked sections always print).
 export const BOARD_SECTIONS = [
   { id: 'position',       label: 'Position & decisions (headline, KPIs, decisions required)', locked: true },
-  { id: 'reactive',       label: 'Accidents, incidents & near misses', hsg: 'Reactive monitoring · incident data · investigation reports' },
-  { id: 'active',         label: 'Active monitoring - inspections, audits & figures', hsg: 'Active monitoring · inspection reports' },
+  { id: 'accidents',      label: 'Accidents and incidents', hsg: 'Reactive monitoring · incident data' },
+  { id: 'nearmiss',       label: 'Near misses', hsg: 'Reactive monitoring · leading indicator' },
+  { id: 'riddor',         label: 'RIDDOR reportable events', hsg: 'Statutory reporting' },
+  { id: 'inspections',    label: 'Inspection performance', hsg: 'Active monitoring · inspection reports' },
+  { id: 'audits',         label: 'Audit performance', hsg: 'Active monitoring · audit of the system' },
+  { id: 'outstanding',    label: 'Outstanding actions', hsg: 'What is owed and by when' },
+  { id: 'highrisk',       label: 'High-risk actions', hsg: 'Actions on the Critical and High risks' },
   { id: 'training',       label: 'Training record', hsg: 'Training record' },
   { id: 'workers',        label: 'Issues raised by workers', hsg: 'Worker consultation & involvement' },
   { id: 'statutory',      label: 'Checks required by law', hsg: 'Statutory checks (e.g. lifting equipment)' },
@@ -32,11 +37,17 @@ export const BOARD_SECTIONS = [
   { id: 'interpretation', label: 'The picture explained (matrix, risk bands, control ladder)' },
   { id: 'maturity',       label: 'H&S control maturity, consultant judgement, directors’ duty, sign-off', locked: true },
 ];
+// Sections that used to be one. A client who switched the bundled section off
+// keeps that choice across the split rather than having three new sections
+// appear in their next report unannounced.
+const LEGACY_SPLIT = { reactive: ['accidents', 'nearmiss', 'riddor'], active: ['inspections', 'audits'] };
 export function boardHidden(state) {
   const p = state && state.reportPrefs && state.reportPrefs['board-report'];
   const h = (p && p.hidden && typeof p.hidden === 'object') ? p.hidden : {};
+  const inherited = {};
+  Object.keys(LEGACY_SPLIT).forEach(old => { if (h[old]) LEGACY_SPLIT[old].forEach(id => { inherited[id] = true; }); });
   const out = {};
-  BOARD_SECTIONS.forEach(s => { out[s.id] = !s.locked && !!h[s.id]; });
+  BOARD_SECTIONS.forEach(s => { out[s.id] = !s.locked && (!!h[s.id] || (h[s.id] === undefined && !!inherited[s.id])); });
   return out;
 }
 
@@ -242,33 +253,72 @@ export function buildBoardReport(state, opts = {}) {
   const env = { total: envAll.length, open: envAll.filter(i => i.status === 'Open').length,
     latest: envAll.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, 5) };
 
+  // Reactive monitoring, split three ways so each can be switched off on its
+  // own. Environmental and ill-health events have their own sections, so they
+  // are not repeated here - nothing is counted twice.
+  const ACCIDENT_TYPES = ['Injury', 'First aid', 'Property damage'];
+  const incAcc = X.incRecent.filter(i => ACCIDENT_TYPES.includes(i.type));
+  const incNear = X.incRecent.filter(i => i.type === 'Near miss');
+  const incRid = (Array.isArray(state.incidents) ? state.incidents : []).filter(i => i && i.type === 'RIDDOR reportable')
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const incTable = (rows, note) => ({ type: 'dataTable',
+    cols: [ { header: 'Date', w: '12%' }, { header: 'Type', w: '15%' }, { header: 'What happened', w: '49%' }, { header: 'Status', w: '24%' } ],
+    rows: rows.slice(0, 6).map(i => [ fmtD(i.date), i.type || '-', String(i.what || '(not recorded)').slice(0, 110), (i.status === 'Open' ? 'Open - under investigation' : (i.status || 'Closed')) ]),
+    footnote: (rows.length > 6 ? ('Showing the latest 6 of ' + rows.length + '. ') : '') + note });
+
   const monBlocks = [];
-  if (!hide.reactive) {
+  if (!hide.accidents) {
     monBlocks.push({ type: 'kpiStrip', tiles: [
-      { value: String(X.incRecent.length), label: 'Events in 90 days', tone: X.incRecent.length ? 'warn' : 'ok' },
+      { value: String(incAcc.length), label: 'Accidents in 90 days', tone: incAcc.length ? 'warn' : 'ok' },
       { value: String(X.incOpen), label: 'Investigations open', tone: X.incOpen ? 'warn' : 'ok' },
-      { value: String(X.incRiddor), label: 'RIDDOR reportable', note: 'all time', tone: X.incRiddor ? 'bad' : 'ok' },
       { value: String(X.incNoCause), label: 'No cause recorded', note: 'of this period’s events', tone: X.incNoCause ? 'warn' : 'ok' },
     ] });
-    monBlocks.push(X.incRecent.length
-      ? { type: 'dataTable',
-          cols: [ { header: 'Date', w: '12%' }, { header: 'Type', w: '15%' }, { header: 'What happened', w: '49%' }, { header: 'Status', w: '24%' } ],
-          rows: X.incRecent.slice(0, 6).map(i => [ fmtD(i.date), i.type || '-', String(i.what || '(not recorded)').slice(0, 110), (i.status === 'Open' ? 'Open - under investigation' : (i.status || 'Closed')) ]),
-          footnote: X.incRecent.length > 6 ? ('Showing the latest 6 of ' + X.incRecent.length + ' events this period; the full record is the incident register.') : 'Full detail and investigations live on the incident register.' }
-      : { type: 'textBlock', title: 'Reactive monitoring', body: 'No accidents, incidents or near misses were recorded in the period. Confirm that reflects reality rather than under-reporting - a healthy system still records near misses.' });
+    monBlocks.push(incAcc.length
+      ? incTable(incAcc, 'Full detail and investigations live on the incident register.')
+      : { type: 'textBlock', title: 'Accidents and incidents', body: 'No accidents, first aid cases or damage events were recorded in the period.' });
   }
-  if (!hide.active) {
-    monBlocks.push({ type: 'textBlock', title: 'Active monitoring - checking before things go wrong', body:
-      noneOrCount(X.siteDone, 'process-assurance visit (site inspections, architectural reviews, CDM audits) has been completed', 'process-assurance visits (site inspections, architectural reviews, CDM audits) have been completed') + '. '
+  if (!hide.nearmiss) {
+    monBlocks.push(incNear.length
+      ? incTable(incNear, 'Near misses are a leading indicator: they are the warnings that arrive before an injury does.')
+      : { type: 'textBlock', title: 'Near misses', body: 'No near misses were recorded in the period. Confirm that reflects reality rather than under-reporting - a healthy system records more near misses than injuries, not fewer.' });
+  }
+  if (!hide.riddor) {
+    monBlocks.push(incRid.length
+      ? { type: 'dataTable', title: 'RIDDOR reportable events',
+          cols: [ { header: 'Date', w: '13%' }, { header: 'What happened', w: '52%' }, { header: 'Reported', w: '17%' }, { header: 'Status', w: '18%' } ],
+          rows: incRid.slice(0, 6).map(i => [ fmtD(i.date), String(i.what || '(not recorded)').slice(0, 110),
+            { text: i.riddorDate ? fmtD(i.riddorDate) : 'not recorded', bold: true, color: i.riddorDate ? [22,120,60] : [197,32,32] },
+            (i.status === 'Open' ? 'Open - under investigation' : (i.status || 'Closed')) ]),
+          footnote: 'Reportable under RIDDOR 2013. The report date is the evidence the duty was discharged - an event without one needs checking.' }
+      : { type: 'textBlock', title: 'RIDDOR reportable events', body: 'Nothing reportable under RIDDOR 2013 is recorded. Where a reportable event does occur the duty sits with the responsible person, and the date it was reported belongs on the incident register.' });
+  }
+  // Active monitoring, split between checking the work and auditing the system.
+  const AUDIT_KINDS = ['Audit', 'Management audit', 'Management review', 'Compliance review'];
+  const siteAll = Array.isArray(state.siteInspections) ? state.siteInspections : [];
+  const audits = siteAll.filter(v => AUDIT_KINDS.includes(v.kind));
+  const audDone = audits.filter(v => v.actual && v.outcome !== 'Not done').length;
+  const audOverdue = audits.filter(v => !v.actual && v.planned && v.planned < todayIso && v.outcome !== 'Not done').length;
+  if (!hide.inspections) {
+    monBlocks.push({ type: 'textBlock', title: 'Inspection performance', body:
+      noneOrCount(X.siteDone, 'process-assurance visit has been completed', 'process-assurance visits have been completed') + '. '
       + noneOrCount(X.siteOverdue, 'planned visit is overdue', 'planned visits are overdue') + '. '
       + (X.inspTotal ? countPhrase(X.inspTotal, 'workplace inspection is', 'workplace inspections are') + ' on file from the linked inspection app. ' : '')
       + (X.monthsSaved.length ? 'Monthly performance figures are saved for ' + countPhrase(X.monthsSaved.length, 'month', 'months') + ' (latest ' + X.monthsSaved[X.monthsSaved.length - 1] + ').' : 'No monthly performance figures have been saved yet.') });
   }
-  const monitoringPage = (monBlocks.length && !(hide.reactive && hide.active)) ? {
+  if (!hide.audits) {
+    monBlocks.push({ type: 'textBlock', title: 'Audit performance', body:
+      audits.length
+        ? (countPhrase(audits.length, 'audit or management review is', 'audits or management reviews are') + ' planned; '
+           + noneOrCount(audDone, 'has been completed', 'have been completed', 'none') + '. '
+           + noneOrCount(audOverdue, 'is overdue', 'are overdue', 'None') + '. '
+           + 'Inspection checks the work; audit checks whether the system that governs the work is being followed.')
+        : 'No audits or management reviews are planned. Inspection checks the work; audit checks whether the system that governs the work is being followed, and the two are not interchangeable.' });
+  }
+  const monitoringPage = monBlocks.length ? {
     label: 'This period', section: 'monitoring', blocks: [
       mast,
       { type: 'titleBlock', kicker: 'Leadership review · what went wrong, and the checking that finds trouble early',
-        headline: X.incRecent.length ? (countPhrase(X.incRecent.length, 'event', 'events') + ' in 90 days; ' + noneOrCount(X.incOpen, 'investigation open', 'investigations open', 'no') + '.') : 'A quiet period - no recorded events in 90 days.',
+        headline: X.incRecent.length ? (countPhrase(incAcc.length, 'accident', 'accidents') + ' and ' + countPhrase(incNear.length, 'near miss', 'near misses') + ' in 90 days; ' + noneOrCount(X.incOpen, 'investigation open', 'investigations open', 'no') + '.') : 'A quiet period - no recorded events in 90 days.',
         standfirst: 'What went wrong (reactive) and what checking happened before anything went wrong (active). Both halves matter: a quiet incident record is only good news if the active checks are happening.' },
       ...monBlocks, hsgFoot,
     ],
@@ -430,6 +480,36 @@ export function buildBoardReport(state, opts = {}) {
     ] } : null;
 
   const progBlocks = [];
+  // Actions, split the way Simon reads them: everything owed, and the ones
+  // sitting on the biggest risks.
+  const actRow = x => [ String(x.a.desc || '(no description)').slice(0, 90), x.parent || x.source,
+    x.a.owner || 'no owner',
+    { text: x.a.due ? fmtD(x.a.due) : 'no date', bold: true, color: (x.a.due && x.a.due < todayIso) ? [197,32,32] : (x.a.due ? [110,110,110] : [180,110,10]) } ];
+  const actCols = [ { header: 'Action', w: '42%' }, { header: 'From', w: '24%' }, { header: 'Owner', w: '17%' }, { header: 'By when', w: '17%' } ];
+  const openRows = D.openActRows || [];
+  if (!hide.outstanding) {
+    progBlocks.push(openRows.length
+      ? { type: 'dataTable', title: 'Outstanding actions - ' + openRows.length + ' open' + (D.overdue ? (', ' + D.overdue + ' overdue') : ''),
+          cols: actCols, rows: openRows.slice(0, 10).map(actRow),
+          footnote: (openRows.length > 10 ? ('Showing the 10 most pressing of ' + openRows.length + '. ') : '')
+            + 'Overdue first, then by date. '
+            + (D.noOwner ? (D.noOwner + ' ' + (D.noOwner === 1 ? 'has' : 'have') + ' nobody named; ') : '')
+            + (D.noDate ? (D.noDate + ' ' + (D.noDate === 1 ? 'has' : 'have') + ' no target date; ') : '')
+            + 'the full plan is the client execution plan.' }
+      : { type: 'textBlock', title: 'Outstanding actions', body: 'Nothing is open on the plan. Every action raised has been completed or formally accepted.' });
+  }
+  if (!hide.highrisk) {
+    const hi = openRows.filter(x => x.tier === 'Critical' || x.tier === 'High');
+    progBlocks.push(hi.length
+      ? { type: 'dataTable', title: 'High-risk actions - open on Critical and High risks',
+          cols: [ { header: 'Action', w: '38%' }, { header: 'Risk', w: '24%' }, { header: 'Band', w: '10%' }, { header: 'Owner', w: '14%' }, { header: 'By when', w: '14%' } ],
+          rows: hi.slice(0, 8).map(x => [ String(x.a.desc || '(no description)').slice(0, 80), x.parent || '-',
+            { text: x.tier, bold: true, color: x.tier === 'Critical' ? [197,32,32] : [234,88,12] },
+            x.a.owner || 'no owner',
+            { text: x.a.due ? fmtD(x.a.due) : 'no date', bold: true, color: (x.a.due && x.a.due < todayIso) ? [197,32,32] : [110,110,110] } ]),
+          footnote: (hi.length > 8 ? ('Showing 8 of ' + hi.length + '. ') : '') + 'These carry the most risk of anything on the plan; they are the ones to ask about first.' }
+      : { type: 'textBlock', title: 'High-risk actions', body: openRows.length ? 'No open action sits on a Critical or High risk - the work outstanding is on the lower-rated risks.' : 'Nothing is open on the plan.' });
+  }
   if (!hide.wins) {
     progBlocks.push(X.wins.length
       ? { type: 'dataTable',

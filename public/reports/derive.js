@@ -279,10 +279,15 @@ export function deriveBoard(state, opts = {}) {
   const acts = [];
   // hideFromPlan matches _execActions: an action the consultant has taken off
   // the plan is off it on paper too, or the two counts drift apart.
+  // actRows carries the same actions WITH their parent, so a section can name
+  // what an action belongs to and pick out the ones on the biggest risks.
+  const actRows = [];
   const pushAct = a => { if (a && !a.deleted && !a.hideFromPlan && (a.desc || a.owner || a.due)) acts.push(a); };
-  risks.forEach(r => ((r.actions) || []).forEach(pushAct));
-  (Array.isArray(s.requirements) ? s.requirements : []).forEach(sec => (sec.items || []).forEach(it => (it.actions || []).forEach(pushAct)));
-  (Array.isArray(s.actionPlan) ? s.actionPlan : []).forEach(pushAct);
+  const pushRow = (a, source, parent, tier) => { if (a && !a.deleted && !a.hideFromPlan && (a.desc || a.owner || a.due)) actRows.push({ a, source, parent: parent || '', tier: tier || null }); };
+  risks.forEach(r => { const res = residualOf(r); const tier = res ? tierFor(res.score, bands) : null;
+    ((r.actions) || []).forEach(a => { pushAct(a); pushRow(a, 'Risk profile', r.activity || r.hazard || 'Risk', tier); }); });
+  (Array.isArray(s.requirements) ? s.requirements : []).forEach(sec => (sec.items || []).forEach(it => (it.actions || []).forEach(a => { pushAct(a); pushRow(a, 'Legal duties', sec.heading || 'Legal duty', null); })));
+  (Array.isArray(s.actionPlan) ? s.actionPlan : []).forEach(a => { pushAct(a); pushRow(a, 'Plan', '', null); });
   const today = (opts.today || new Date().toISOString().slice(0, 10));
   const openActs = acts.filter(a => a.status !== 'Complete' && a.status !== 'Accepted');
   const overdue = openActs.filter(a => a.due && a.due < today);
@@ -356,6 +361,13 @@ export function deriveBoard(state, opts = {}) {
     fatal: fatal.length, fatalUncontrolled: fatalUncontrolled.length,
     highPlus, planDone, planAccepted, openActions: openActs.length, overdue: overdue.length,
     noOwner: noOwner.length, noDate: noDate.length,
+    // Open actions as rows, overdue first then by date - the outstanding and
+    // high-risk sections read these rather than counting again.
+    openActRows: actRows.filter(x => x.a.status !== 'Complete' && x.a.status !== 'Accepted')
+      .sort((x, y) => {
+        const ox = (x.a.due && x.a.due < today) ? 0 : 1, oy = (y.a.due && y.a.due < today) ? 0 : 1;
+        return ox - oy || String(x.a.due || '9999').localeCompare(String(y.a.due || '9999'));
+      }),
     holdS, meanScore, profileTier, hierarchy, hierTotal, protectDown,
     registerRows, maxSev, highestHarm: HARM_LADDER[maxSev] || '-',
     duties, headline, standfirst,

@@ -14138,12 +14138,18 @@ function _cockpitContext(){
 
 // The registry. group = which zone/container the widget belongs in.
 const COCKPIT_WIDGETS = {
-  kpiFatal:       { id:'kpiFatal', label:'Fatal-potential (inherent)', group:'KPI', render:x=>{
+  kpiFatal:       { id:'kpiFatal', label:'Could kill or seriously injure', group:'KPI', render:x=>{
       const nSif=x.RD.sif.length, nUnc=x.RD.sifUncontrolled.length;
       const resHigh=x.RD.sif.filter(r=>{const p=_riskScore(r).priority;return p==='Critical'||p==='High';}).length;
       const col=nUnc?'var(--danger)':(resHigh?'var(--warning)':(nSif?'var(--success)':''));
       const sub=nSif===0?'none recorded':(nUnc?(nUnc+' uncontrolled - priority'):(resHigh?(resHigh+' still high after controls'):'all controlled to lower residual'));
-      return _ckKpi('Fatal-potential (inherent)', nSif, sub, col, 'risk', nSif?'gotoSifRisks()':'');
+      return _ckKpi('Could kill or seriously injure', nSif, sub, col, 'risk', nSif?'gotoSifRisks()':'');
+    } },
+  kpiCritical:    { id:'kpiCritical', label:'Business-critical (operational)', group:'KPI', render:x=>{
+      const n=(x.RD.bizCrit||[]).length, nUnc=(x.RD.bizCritUncontrolled||[]).length, nOps=x.RD.opsCount||0;
+      const col=nUnc?'var(--danger)':(n?'var(--warning)':'');
+      const sub=!nOps?'no operational risks recorded':(n===0?'none flagged business-critical':(nUnc?(nUnc+' with no response recorded'):'all have a response recorded'));
+      return _ckKpi('Business-critical', n, sub, col, 'risk', n?"_rpStatJump('bizcrit')":'');
     } },
   kpiHighCrit:    { id:'kpiHighCrit', label:'High and critical risks', group:'KPI', render:x=>_ckKpi('High and critical risks', x.highRisk.length, x.risks.length+' in the profile', x.highRisk.length?'var(--danger)':'', 'risk', x.highRisk.length?'gotoHighCritRisks()':'') },
   kpiOpenActions: { id:'kpiOpenActions', label:'Open actions', group:'KPI', render:x=>{
@@ -14183,7 +14189,8 @@ const COCKPIT_WIDGETS = {
       const listSrc=(nSif?x.RD.sif:x.highRisk).slice(0,3);
       return _ckMod('Risk priorities', x.risks.length ? `
         <div class="ck-row"><span>Critical and high</span><span style="color:${x.highRisk.length?'var(--danger)':'inherit'};font-weight:600;">${x.highRisk.length}</span></div>
-        <div class="ck-row"><span>Fatal-potential (inherent)</span><span style="color:${sifCol};font-weight:600;">${nSif}${sifNote}</span></div>
+        <div class="ck-row"><span>Could kill or seriously injure</span><span style="color:${sifCol};font-weight:600;">${nSif}${sifNote}</span></div>
+        ${(x.RD.opsCount||0)?`<div class="ck-row"><span>Business-critical (operational)</span><span style="color:${(x.RD.bizCritUncontrolled||[]).length?'var(--danger)':((x.RD.bizCrit||[]).length?'var(--warning)':'var(--text-muted)')};font-weight:600;">${(x.RD.bizCrit||[]).length}${(x.RD.bizCritUncontrolled||[]).length?(' · '+(x.RD.bizCritUncontrolled||[]).length+' with no response'):''}</span></div>`:''}
         <div class="ck-row"><span>Medium</span><span style="font-weight:600;">${x.modRisk.length}</span></div>
         ${listSrc.map(r=>{ const res=_riskScore(r); return `<div onclick="_gotoRisk('${r.id}')" title="Open this risk" style="cursor:pointer;font-size:13px;color:var(--text-muted);display:flex;justify-content:space-between;gap:8px;padding:2px 0;"><span>${esc(r.activity||r.hazard||'Unnamed risk')} ↗</span><span style="opacity:.75;white-space:nowrap;">${res.priority?('residual '+res.priority):_riskControlStatus(r)}</span></div>`; }).join('')}
         <button class="ck-link" onclick="switchTab('risk')">Open risk profile</button>`
@@ -15651,7 +15658,7 @@ function _renderUnits(){
     + '</div></div>';
 }
 
-let _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };
+let _riskFilter = { category:'', priority:'', trend:'', sif:false, bizcrit:false, highcrit:false, unit:'' };
 // ── Split view state: which risk is selected in the register, and which
 //    detail tab is showing. The register renders as a compact list on the
 //    left with the selected risk in a tabbed panel on the right, so opening
@@ -15670,7 +15677,7 @@ function _selectRisk(id){
 }
 function _riskDetailTab(tab){ if(_riskSelTab===tab) return; _riskSelTab=tab; _keepScroll(renderRiskProfile); }
 function setRiskFilter(f, v){ _riskFilter[f] = v; renderRiskProfile(); }
-function clearRiskFilters(){ _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' }; renderRiskProfile(); }
+function clearRiskFilters(){ _riskFilter = { category:'', priority:'', trend:'', sif:false, bizcrit:false, highcrit:false, unit:'' }; renderRiskProfile(); }
 // Jump from the cockpit to just the fatal-potential (SIF) risks.
 function gotoSifRisks(){
   switchTab('risk');
@@ -16214,6 +16221,7 @@ function _renderRiskDashboard(){
     .map(c=>`<li><span>${esc(c)}</span><span style="font-weight:700;">${byCat[c]}</span></li>`).join('')
     || '<li style="color:var(--text-muted);list-style:none;">No categories yet.</li>';
   const sifCount = risks.filter(r=>_riskSif(r)).length;
+  const _bizCritCount = ()=>risks.filter(r=>(typeof _riskCritical==='function')&&_riskCritical(r)).length;
   // Each tile is a link: it opens the risks section filtered to what the
   // number counts, so the user can always see what is behind a figure.
   // (The combined risk/maturity panel and the category + emerging views now
@@ -16224,7 +16232,8 @@ function _renderRiskDashboard(){
   el.innerHTML = `
     <div class="rp-stats">
       ${card(rated.length,'Total significant risks','','all')}
-      ${card(sifCount,'SIF potential (can kill/maim)', sifCount?'#DC2626':'','sif')}
+      ${card(sifCount,'Could kill or seriously injure', sifCount?'#DC2626':'','sif')}
+      ${_bizCritCount()?card(_bizCritCount(),'Business-critical (operational)', '#7C3AED','bizcrit'):''}
       ${card(crit,'Critical risks', crit?_RISK_PRIO_COLOR.Critical:'','critical')}
       ${card(high,'High risks', high?_RISK_PRIO_COLOR.High:'','high')}
       ${card(emergingList.length,'Emerging risks (increasing)', emergingList.length?_RISK_PRIO_COLOR.High:'','emerging')}
@@ -16238,6 +16247,7 @@ function _rpStatJump(kind){
   if(kind==='overdue'){ switchTab('execplan'); return; }
   _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };
   if(kind==='sif') _riskFilter.sif=true;
+  if(kind==='bizcrit') _riskFilter.bizcrit=true;
   if(kind==='critical') _riskFilter.priority='Critical';
   if(kind==='high') _riskFilter.priority='High';
   if(kind==='emerging') _riskFilter.trend='Increasing';
@@ -16258,9 +16268,10 @@ function _renderRiskFilters(show){
       <select onchange="setRiskFilter('priority',this.value)">${opt(_riskFilter.priority,['Critical','High','Medium','Low'])}</select>
       <select onchange="setRiskFilter('trend',this.value)">${opt(_riskFilter.trend,RISK_TREND)}</select>
       ${_units().length?`<select onchange="setRiskFilter('unit',this.value)" title="Show the risk picture for one business unit. Organisation-wide risks always show."><option value="">All units</option>${_units().map(u=>`<option value="${esc(u.id)}"${_riskFilter.unit===u.id?' selected':''}>${esc(u.name)}</option>`).join('')}</select>`:''}
-      <button class="btn btn-xs ${_riskFilter.sif?'btn-primary':'btn-ghost'}" onclick="setRiskFilter('sif', ${_riskFilter.sif?'false':'true'})" title="Show only fatal-potential (SIF) risks">Fatal-potential only</button>
+      <button class="btn btn-xs ${_riskFilter.sif?'btn-primary':'btn-ghost'}" onclick="setRiskFilter('sif', ${_riskFilter.sif?'false':'true'})" title="Show only the health and safety risks that could kill or seriously injure">Could kill or injure</button>
+      ${(S.riskProfile||[]).some(r=>(typeof _riskCritical==='function')&&_riskCritical(r))?`<button class="btn btn-xs ${_riskFilter.bizcrit?'btn-primary':'btn-ghost'}" onclick="setRiskFilter('bizcrit', ${_riskFilter.bizcrit?'false':'true'})" title="Show only the operational risks flagged business-critical">Business-critical only</button>`:''}
       <button class="btn btn-xs ${_riskFilter.highcrit?'btn-primary':'btn-ghost'}" onclick="setRiskFilter('highcrit', ${_riskFilter.highcrit?'false':'true'})" title="Show only High and Critical residual risks">High + critical only</button>
-      ${(_riskFilter.category||_riskFilter.priority||_riskFilter.trend||_riskFilter.sif||_riskFilter.highcrit||_riskFilter.unit)?`<button class="btn btn-ghost btn-xs" onclick="clearRiskFilters()">Clear filters</button>`:''}
+      ${(_riskFilter.category||_riskFilter.priority||_riskFilter.trend||_riskFilter.sif||_riskFilter.bizcrit||_riskFilter.highcrit||_riskFilter.unit)?`<button class="btn btn-ghost btn-xs" onclick="clearRiskFilters()">Clear filters</button>`:''}
     </div>`;
 }
 
@@ -18304,6 +18315,11 @@ function _reportData(){
   const byCategory={}; risks.forEach(r=>{const c=r.category||'Uncategorised'; byCategory[c]=(byCategory[c]||0)+1;});
   const sif=risks.filter(r=>_riskSif(r));
   const sifUncontrolled=sif.filter(r=>_riskControlStatus(r)==='None');
+  // The operational twin, counted separately and never mixed into the injury
+  // figures: risks written as operational and flagged business-critical.
+  const bizCrit=risks.filter(r=>(typeof _riskCritical==='function') && _riskCritical(r));
+  const bizCritUncontrolled=bizCrit.filter(r=>_riskControlStatus(r)==='None');
+  const opsCount=risks.filter(r=>(typeof _riskMode==='function') && _riskMode(r)==='ops').length;
   const sifNoOwner=sif.filter(r=>!_riskOwner(r));
   const maxSev=Math.max(0,...risks.filter(r=>(typeof _riskMode!=='function'||_riskMode(r)==='hs')).map(_worstSeverity));   // injury ladder: H&S risks only
   const acts=_allRiskActions();
@@ -18330,6 +18346,7 @@ function _reportData(){
   let execTotal=0, execOverdue=0;
   try{ const ex=(typeof _execActions==='function')?_execActions():[]; execTotal=ex.length; execOverdue=ex.filter(a=>a.rag==='red').length; }catch(e){}
   return { risks, scored, rated, unrated, byBand, byCategory, sif, sifUncontrolled, sifNoOwner,
+    bizCrit, bizCritUncontrolled, opsCount,
     highestHarm:_HARM_LADDER[maxSev]||'-', maxSev, acts, actOverdue, actNoOwner, actNoDate,
     execTotal, execOverdue,
     energyCov, energyMissing, clDist, matDoms, matJudged, monPop, complete, gaps };
@@ -19180,6 +19197,7 @@ function renderRiskProfile(){
     if(_riskFilter.priority && sc.priority !== _riskFilter.priority) return false;
     if(_riskFilter.trend && r.trend !== _riskFilter.trend) return false;
     if(_riskFilter.sif && !_riskSif(r)) return false;
+    if(_riskFilter.bizcrit && !((typeof _riskCritical==='function') && _riskCritical(r))) return false;
     if(_riskFilter.highcrit && !(sc.priority==='High'||sc.priority==='Critical')) return false;
     if(_riskFilter.unit){ const u=_riskUnits(r); if(u.length && !u.includes(_riskFilter.unit)) return false; }
     return true;

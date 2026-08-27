@@ -3798,6 +3798,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="monitoringContainer"></div>
     <div id="riskAssurance"></div>
     <div id="incidentPanel"></div>
+    <div id="decisionPanel"></div>
     <!-- The Risk assessment register lived here; it now sits at the bottom of
          the Documents tab, where employee logins can read it too. -->
   </div>
@@ -10573,6 +10574,7 @@ function migrateLoadedState(){
   if(!Array.isArray(S.training)) S.training = [];   // training-matrix records (one per person-per-course)
   if(!S.policyDoc || typeof S.policyDoc !== 'object') S.policyDoc = { statement:'', signedBy:'', signedRole:'', signedDate:'', reviewDate:'' };
   if(!Array.isArray(S.incidents)) S.incidents = [];   // incident register: records + investigations, deliberately outside the KPI figures
+  if(!Array.isArray(S.decisions)) S.decisions = [];   // management decisions: what leadership decided, and what came of it
   if(!S.consultation || typeof S.consultation !== 'object') S.consultation = { briefings:[] };   // two-way communication record (sign-off tab)
   if(!Array.isArray(S.consultation.briefings)) S.consultation.briefings = [];
   // Regulatory tracker is now organised into named sections, each holding statutory
@@ -13834,7 +13836,7 @@ function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null;
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),
     draft:{typeId:'garage_inspection',results:{},notes:{},actionDetails:{},rectifyDetails:{},formData:{},periodFrom:'',periodTo:'',manager:'',location:'',ref:'',freq:'weekly',generalNotes:'',title:'',inspType:''},
-    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], consultation:{briefings:[]}, activeClient:null, branding:_newClientBranding() };
+    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], consultation:{briefings:[]}, decisions:[], activeClient:null, branding:_newClientBranding() };
 }
 // The practice's look carries to a new client; the client's NAME never does.
 function _newClientBranding(){
@@ -14187,6 +14189,15 @@ const COCKPIT_WIDGETS = {
   riskVsMaturity: { id:'riskVsMaturity', label:'Risk profile & H&S control maturity', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="full">${_riskPanelHTML({heading:true})}</div></div>` },
   riskMatrixOnly:   { id:'riskMatrixOnly', label:'Risk matrix (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="matrix">${_riskPanelHTML({heading:true,only:'matrix'})}</div></div>` },
   riskMaturityOnly: { id:'riskMaturityOnly', label:'H&S control maturity (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="maturity">${_riskPanelHTML({heading:true,only:'maturity'})}</div></div>` },
+  cardDecisions:  { id:'cardDecisions', label:'Management decisions', group:'Card', defaultOff:true, render:x=>{
+      const st=(typeof _decisionStats==='function')?_decisionStats():{total:0};
+      if(!st.total) return _ckMod('Management decisions', _ckPend('No decisions recorded yet.')+'<button class="ck-link" onclick="switchTab(\'monitoring\')">Open the register</button>');
+      return _ckMod('Management decisions', `
+        <div class="ck-row"><span>Recorded</span><span style="font-weight:600;">${st.total}</span></div>
+        <div class="ck-row"><span>Still open</span><span style="color:${st.open?'var(--warning)':'inherit'};font-weight:600;">${st.open}${st.overdue?(' · '+st.overdue+' overdue'):''}</span></div>
+        <div class="ck-row"><span>Delivered</span><span style="color:${st.pctDelivered===100?'var(--success)':'inherit'};font-weight:600;">${st.delivered}${st.pctDelivered!=null?(' · '+st.pctDelivered+'%'):''}</span></div>
+        <button class="ck-link" onclick="switchTab('monitoring')">Open the register</button>`);
+    } },
   cardRiskPriorities:{ id:'cardRiskPriorities', label:'Risk priorities', group:'Card', render:x=>{
       const nSif=x.RD.sif.length, nUnc=x.RD.sifUncontrolled.length;
       const resHigh=x.RD.sif.filter(r=>{const p=_riskScore(r).priority;return p==='Critical'||p==='High';}).length;
@@ -22891,6 +22902,133 @@ function _renderIncidents(){
     </div></details>`;
   _detailsApply(el,_keep);
 }
+
+// ══════════════════════════════════════════════════════════════
+//  MANAGEMENT DECISIONS - the raw record of what leadership actually
+//  decided. The board report already WRITES recommended decisions from the
+//  data; nothing recorded what was decided in the room, so the loop HSG65
+//  asks for ("what did we agree, and what happened to it") could never be
+//  closed from the system. Facts in, metrics out: each decision is one
+//  record with a date, a forum, an owner and an outcome - no stored
+//  percentage, so "8 of 10 delivered" is always calculated.
+//  Deliberately generic: the forum is a type, so a board meeting, a
+//  management review, a site meeting and a client meeting are all the same
+//  record and the reporting engine reads them all as decisions.
+// ══════════════════════════════════════════════════════════════
+const DECISION_FORUMS=['Board meeting','Management review','Leadership meeting','Site meeting','Client meeting','Consultant review','Ad hoc'];
+const DECISION_STATES=[
+  { k:'Agreed',      colour:'#D97706', desc:'Decided, not started yet' },
+  { k:'In progress', colour:'#2563EB', desc:'Being carried out' },
+  { k:'Delivered',   colour:'#16A34A', desc:'Done, with the outcome recorded' },
+  { k:'Superseded',  colour:'#6B7280', desc:'Overtaken by a later decision' },
+  { k:'Not pursued', colour:'#6B7280', desc:'Consciously dropped, with the reason recorded' }
+];
+function _decisions(){ if(!Array.isArray(S.decisions)) S.decisions=[]; return S.decisions; }
+function _decisionState(d){ return DECISION_STATES.find(x=>x.k===(d&&d.status)) || DECISION_STATES[0]; }
+// Open = still owed to the business. Overdue = open and past its date.
+function _decisionOpen(d){ return d && (d.status==='Agreed' || d.status==='In progress'); }
+function _decisionOverdue(d){ return _decisionOpen(d) && !!d.due && d.due < new Date().toISOString().slice(0,10); }
+// The tally every consumer reads - one derivation, never stored.
+function _decisionStats(){
+  const l=_decisions();
+  const closed=l.filter(d=>d.status==='Delivered').length;
+  const decided=l.filter(d=>d.status!=='Superseded' && d.status!=='Not pursued').length;
+  return { total:l.length, open:l.filter(_decisionOpen).length, overdue:l.filter(_decisionOverdue).length,
+    delivered:closed, decided, pctDelivered: decided ? Math.round(closed/decided*100) : null };
+}
+function addDecision(){
+  if(_blockIfReadOnly()) return;
+  const d={ id:'dec_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    date:new Date().toISOString().slice(0,10), forum:'Board meeting', decision:'', why:'',
+    owner:'', due:'', status:'Agreed', outcome:'', raised:0 };
+  _stamp(d,'created');
+  _decisions().unshift(d); saveData();
+  _openDecisions.add(d.id); _renderDecisions();
+}
+function updateDecision(id,f,v){
+  if(_roLocked()) return;
+  const d=_decisions().find(x=>x.id===id); if(!d) return;
+  d[f]=v; _stamp(d,'updated');
+  if(f==='status'||f==='date'||f==='forum'||f==='due'){ saveData(); _renderDecisions(); }
+  else scheduleAutoSave();
+}
+function deleteDecision(id){
+  if(_blockIfReadOnly()) return;
+  const d=_decisions().find(x=>x.id===id); if(!d) return;
+  const msg = d.raised
+    ? 'This decision raised actions into the execution plan - those actions stay on the plan. Delete the decision record itself?'
+    : 'Delete this decision record?';
+  if(!confirm(msg)) return;
+  S.decisions=_decisions().filter(x=>x.id!==id); saveData(); _renderDecisions();
+}
+// A decision becomes work the same way an incident does - explicitly, so the
+// plan never fills up with things nobody asked to track.
+function raiseDecisionAction(id){
+  if(_blockIfReadOnly()) return;
+  const d=_decisions().find(x=>x.id===id); if(!d) return;
+  if(!String(d.decision||'').trim()){ showToast('Write the decision first','info'); return; }
+  const ap={ id:'ap_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    desc:String(d.decision).slice(0,140), owner:d.owner||'', due:d.due||'', priority:'', status:'Not started',
+    riskId:'', docId:'', note:'Decided at the '+(d.forum||'meeting').toLowerCase()+' on '+fmtDate(d.date)+(d.why?(': '+String(d.why).slice(0,140)):''), completedDate:'' };
+  _stamp(ap,'created'); _apList().push(ap);
+  d.raised=(d.raised||0)+1;
+  saveData(); _renderDecisions();
+  showToast('✓ Action raised into the plan - it now tracks on the Client execution plan.','success');
+}
+var _openDecisions=new Set();
+function _renderDecisions(){
+  const el=document.getElementById('decisionPanel'); if(!el) return;
+  const ro=_roLocked(); const dis=ro?' disabled':'';
+  const list=_decisions(); const st=_decisionStats();
+  const _keep=_detailsSnapshot(el);
+  const rows=list.map(d=>{
+    const open=_openDecisions.has(d.id);
+    const s=_decisionState(d); const late=_decisionOverdue(d);
+    const chip=(t,bg)=>`<span class="rc-chip" style="background:${bg}1a;color:${bg};">${esc(t)}</span>`;
+    return `<details class="card" ${open?'open ':''}style="border-left:4px solid ${late?'#DC2626':s.colour};margin-bottom:8px;" ontoggle="this.open?_openDecisions.add('${d.id}'):_openDecisions.delete('${d.id}')">
+      <summary style="padding:10px 14px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;cursor:pointer;">
+        <span style="font-weight:700;font-size:13px;">${fmtDate(d.date)}</span>
+        ${chip(d.forum||'Meeting','#475569')}
+        <span style="flex:1;min-width:160px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(d.decision||'(decision not written yet)')}</span>
+        ${d.owner?`<span style="font-size:11.5px;color:var(--text-muted);">${esc(d.owner)}</span>`:''}
+        ${late?chip('overdue','#DC2626'):''}
+        ${d.raised?chip(d.raised+' action'+(d.raised!==1?'s':''),'#2563EB'):''}
+        ${chip(d.status||'Agreed', s.colour)}
+      </summary>
+      <div style="padding:4px 16px 14px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px;">
+          <div class="field-group"><label class="field-label">Date decided</label><input type="date"${dis} value="${esc(d.date||'')}" onchange="updateDecision('${d.id}','date',this.value)"></div>
+          <div class="field-group"><label class="field-label">Where it was decided</label><select${dis} onchange="updateDecision('${d.id}','forum',this.value)">${DECISION_FORUMS.map(f=>`<option${f===d.forum?' selected':''}>${f}</option>`).join('')}</select></div>
+          <div class="field-group"><label class="field-label">Owner</label><input type="text"${dis} value="${esc(d.owner||'')}" placeholder="Who is accountable" oninput="updateDecision('${d.id}','owner',this.value)"></div>
+          <div class="field-group"><label class="field-label">By when</label><input type="date"${dis} value="${esc(d.due||'')}" onchange="updateDecision('${d.id}','due',this.value)"></div>
+        </div>
+        <div class="field-group" style="margin-top:8px;"><label class="field-label">The decision</label><textarea${dis} rows="2" style="width:100%;" placeholder="What was decided, in the words the meeting would recognise" oninput="updateDecision('${d.id}','decision',this.value)">${esc(d.decision||'')}</textarea></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px;margin-top:8px;">
+          <div class="field-group"><label class="field-label">Why <span class="fl-hint" title="The reasoning on the day. This is what makes a decision defensible a year later, and it is the first thing an investigator or an auditor asks for.">(?)</span></label><textarea${dis} rows="2" style="width:100%;" placeholder="What the decision was based on" oninput="updateDecision('${d.id}','why',this.value)">${esc(d.why||'')}</textarea></div>
+          <div class="field-group"><label class="field-label">What happened <span class="fl-hint" title="Filled in when the decision is delivered or dropped - the outcome closes the loop and is what next month's report reads.">(?)</span></label><textarea${dis} rows="2" style="width:100%;" placeholder="The outcome, once there is one" oninput="updateDecision('${d.id}','outcome',this.value)">${esc(d.outcome||'')}</textarea></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:8px;">
+          <div class="field-group"><label class="field-label">Status</label><select${dis} onchange="updateDecision('${d.id}','status',this.value)">${DECISION_STATES.map(x=>`<option${x.k===(d.status||'Agreed')?' selected':''} title="${esc(x.desc)}">${x.k}</option>`).join('')}</select></div>
+          ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="raiseDecisionAction('${d.id}')" title="Put this decision on the client execution plan as a tracked action">↗ Raise as an action</button>`}
+          ${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="deleteDecision('${d.id}')">${_ic('trash',13)}</button>`}
+        </div>
+        ${_attrFooter(d)}
+      </div>
+    </details>`;
+  }).join('');
+  const meta = st.total
+    ? (st.total+' recorded'+(st.open?(' · '+st.open+' open'):'')+(st.overdue?(' · '+st.overdue+' overdue'):'')+(st.pctDelivered!=null?(' · '+st.pctDelivered+'% delivered'):''))
+    : 'none recorded';
+  el.innerHTML=`<details class="coll" data-keep="monDecisions" style="margin:26px 0 16px;">
+    <summary><h3>Management decisions</h3><span class="badge badge-muted">${esc(meta)}</span></summary>
+    <div class="coll-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">What leadership actually decided, and what came of it. The board report recommends decisions from the data; this is the record of the ones taken - with the reasoning, an owner and a date. It is what closes the loop: next period's report reads this to say what happened to what was agreed. Recording a decision does not create work until you raise it as an action.</div>
+      ${ro?'':`<button class="btn btn-primary btn-sm no-print" style="margin-bottom:12px;" onclick="addDecision()">＋ Record a decision</button>`}
+      ${rows||''}
+    </div></details>`;
+  _detailsApply(el,_keep);
+}
+
 function renderMonitoring(){
   const cont = document.getElementById('monitoringContainer');
   if(!cont) return;
@@ -22901,6 +23039,7 @@ function renderMonitoring(){
   const _scKeep={}; document.querySelectorAll('[data-keepscroll]').forEach(el=>{ if(el.scrollLeft||el.scrollTop) _scKeep[el.getAttribute('data-keepscroll')]={l:el.scrollLeft,t:el.scrollTop}; });
   const _scWinY=window.scrollY;
   _renderIncidents();
+  _renderDecisions();
   const ro = _roLocked();
   const monthEl = document.getElementById('monMonth');
   if(monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0,7);
@@ -23137,6 +23276,7 @@ function suggestDocumentsFromApp(){
   if(((S.consultation&&S.consultation.briefings)||[]).length) add('Consultation & briefings record','sign-off tab');
   if((S.policySignoff&&(S.policySignoff.policies||[]).length)) add('Policy sign-off register','sign-off tab');
   if((S.siteInspections||[]).length) add('Process assurance register','process assurance');
+  if((S.decisions||[]).length) add('Management decisions register','management decisions');
   if((S.riskProfile||[]).some(r=>(r.actions||[]).some(a=>a.status==='Accepted'))) add('Risk acceptance register','risk profile');
   if((S.requirements||[]).length) add('Legal duties assessment','legal duties');
   const added=(S.documents||[]).length-before;
@@ -26254,7 +26394,7 @@ function exportEverything(){
 var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
-  'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units'];
+  'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

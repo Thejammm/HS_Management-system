@@ -22,6 +22,7 @@ export const BOARD_SECTIONS = [
   { id: 'accreditation',  label: 'Accreditation readiness (Common Assessment Standard)', hsg: 'Assurance against external standards' },
   { id: 'cdm',            label: 'CDM assurance - design reviews & CDM audits', hsg: 'Active monitoring · construction dutyholders' },
   { id: 'environmental',  label: 'Environmental events', hsg: 'Environmental incidents & investigations' },
+  { id: 'decisions',      label: 'Management decisions taken, and what came of them', hsg: 'Closing the loop - decisions of the review' },
   { id: 'wins',           label: 'Successes this period', hsg: 'Celebrate and promote successes' },
   { id: 'sinceLast',      label: 'Movement since the baseline', hsg: 'Closing the loop' },
   { id: 'topFive',        label: 'Top 5 priorities for next month', hsg: 'What we agreed to do next' },
@@ -178,6 +179,17 @@ export function buildBoardReport(state, opts = {}) {
     latest: cdmAll.filter(v => v.actual).sort((a, b) => String(b.actual).localeCompare(String(a.actual))).slice(0, 6),
   };
 
+  const decAll = Array.isArray(state.decisions) ? state.decisions.slice() : [];
+  const decOpenOf = d => d && (d.status === 'Agreed' || d.status === 'In progress');
+  const dec = {
+    total: decAll.length,
+    open: decAll.filter(decOpenOf).length,
+    overdue: decAll.filter(d => decOpenOf(d) && d.due && d.due < todayIso).length,
+    delivered: decAll.filter(d => d.status === 'Delivered').length,
+    decided: decAll.filter(d => d.status !== 'Superseded' && d.status !== 'Not pursued').length,
+    recent: decAll.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, 8),
+  };
+  dec.pct = dec.decided ? Math.round(dec.delivered / dec.decided * 100) : null;
   const envAll = (Array.isArray(state.incidents) ? state.incidents : []).filter(i => i && i.type === 'Environmental');
   const env = { total: envAll.length, open: envAll.filter(i => i.status === 'Open').length,
     latest: envAll.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, 5) };
@@ -358,6 +370,19 @@ export function buildBoardReport(state, opts = {}) {
         [ 'Overdue actions', String(b.overdueActions ?? '-'), String(D.overdue), mv(b.overdueActions, D.overdue) ],
       ],
       footnote: 'Baseline = the first audit snapshot (“where they started”). The consultant records a snapshot at each audit visit.' });
+  }
+  if (!hide.decisions) {
+    progBlocks.push(dec.total
+      ? { type: 'dataTable', title: 'Decisions taken' + (dec.pct != null ? (' - ' + dec.delivered + ' of ' + dec.decided + ' delivered') : ''),
+          cols: [ { header: 'Decided', w: '12%' }, { header: 'Decision', w: '38%' }, { header: 'Where', w: '15%' }, { header: 'Owner', w: '13%' }, { header: 'By', w: '10%' }, { header: 'Outcome', w: '12%' } ],
+          rows: dec.recent.map(d => [ fmtD(d.date), String(d.decision || '(not recorded)').slice(0, 110), d.forum || '-', d.owner || 'no owner',
+            d.due ? fmtD(d.due) : '-',
+            { text: d.status || 'Agreed', bold: true,
+              color: d.status === 'Delivered' ? [22,120,60] : (decOpenOf(d) && d.due && d.due < todayIso) ? [197,32,32] : [110,110,110] } ]),
+          footnote: (decAll.length > 8 ? ('Showing the latest 8 of ' + decAll.length + ' recorded. ') : '')
+            + 'What leadership actually decided, from the decisions register. '
+            + (dec.overdue ? (dec.overdue + ' decision' + (dec.overdue !== 1 ? 's are' : ' is') + ' past the date it was given.') : 'Nothing decided is past its date.') }
+      : { type: 'textBlock', title: 'Management decisions', body: 'No decisions are recorded for this period. The decisions this report recommends are only worth making if what was agreed is written down - the register on the assurance tab is what next period reads to say whether it happened.' });
   }
   const progressPage = progBlocks.length ? {
     label: 'Progress', section: 'progress', blocks: [

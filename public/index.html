@@ -14340,7 +14340,22 @@ const REPORT_SECTIONS = [
 ];
 const REPORT_SECTION_ORDER = ['Board report','Risk profile','Action plan','Management system'];
 function _reportSectionOn(id){ return !(S.config && S.config.reportSections && S.config.reportSections[id]===false); }
-function setReportSection(id, on){ if(!S.config) S.config={}; if(!S.config.reportSections) S.config.reportSections={}; if(on) delete S.config.reportSections[id]; else S.config.reportSections[id]=false; saveData(); renderCockpit(); }
+function setReportSection(id, on){ if(!S.config) S.config={}; if(!S.config.reportSections) S.config.reportSections={}; if(on) delete S.config.reportSections[id]; else S.config.reportSections[id]=false; saveData(); try{ renderReports(); }catch(e){} }
+// ── Reports customiser: lives on the Reports tab (moved from the cockpit
+//    cog). One registry (REPORT_SECTIONS) drives it; as each report's bespoke
+//    section list is agreed it is added to the registry and appears here.
+let _reportEditorOpen = false;
+function toggleReportEditor(){ _reportEditorOpen = !_reportEditorOpen; renderReports(); }
+function _reportEditorHTML(){
+  const rsec=REPORT_SECTION_ORDER.map(rep=>{ const items=REPORT_SECTIONS.filter(s=>s.report===rep); if(!items.length) return '';
+    return `<div class="ckb-group"><div class="ckb-gh">${esc(rep)}</div>`+items.map(s=>`<div class="ckb-row"><label class="ckb-tog"><input type="checkbox" ${_reportSectionOn(s.id)?'checked':''} onchange="setReportSection('${s.id}',this.checked)"><span>${esc(s.label)}</span></label></div>`).join('')+`</div>`; }).join('');
+  return `<div class="ckb-panel no-print">
+      <div class="ckb-head"><h3>Customise reports</h3><button class="btn btn-ghost btn-sm" onclick="toggleReportEditor()">Done</button></div>
+      <p class="ckb-note">Untick a section and it is left out of that report's PDF for this client - saved per client. Core sections (the verdict, the numbers, what can kill, sign-off) always print. The Board report also has its own Choose sections picker on its card.</p>
+      <div class="ckb-cols">${rsec}</div>
+      <p class="ckb-note" style="margin-top:10px;">Bespoke section lists for the other reports are added one report at a time - as each is agreed it appears here.</p>
+    </div>`;
+}
 
 // The builder panel: cockpit widgets (toggle + reorder) and report sections (toggle).
 function _cockpitEditorHTML(){
@@ -14352,14 +14367,11 @@ function _cockpitEditorHTML(){
     </div>`; };
   const groups=_CK_ZONE_ORDER.map(g=>{ const ids=order.filter(id=>COCKPIT_WIDGETS[id] && COCKPIT_WIDGETS[id].group===g);
     return ids.length ? `<div class="ckb-group"><div class="ckb-gh">${esc(_CK_GROUP_LABEL[g])}</div>${ids.map(row).join('')}</div>` : ''; }).join('');
-  const rsec=REPORT_SECTION_ORDER.map(rep=>{ const items=REPORT_SECTIONS.filter(s=>s.report===rep); if(!items.length) return '';
-    return `<div class="ckb-sub">${esc(rep)}</div>`+items.map(s=>`<div class="ckb-row"><label class="ckb-tog"><input type="checkbox" ${_reportSectionOn(s.id)?'checked':''} onchange="setReportSection('${s.id}',this.checked)"><span>${esc(s.label)}</span></label></div>`).join(''); }).join('');
   return `<div class="ckb-panel no-print">
       <div class="ckb-head"><h3>Customise cockpit</h3><button class="btn btn-ghost btn-sm" onclick="toggleCockpitEditor()">Done</button></div>
-      <p class="ckb-note">Tick to show a widget on this client's cockpit; use the arrows to reorder within each group. This is saved per client.</p>
+      <p class="ckb-note">Tick to show a widget on this client's cockpit; use the arrows to reorder within each group. This is saved per client. The report sections now have their own ⚙ customiser on the Reports tab.</p>
       <div class="ckb-cols">
         <div>${groups}</div>
-        <div class="ckb-group"><div class="ckb-gh">Optional report sections</div>${rsec}<p class="ckb-note" style="margin:8px 2px 0;">Switch off sections a client does not need in their PDF reports.</p></div>
       </div>
       <div class="ckb-foot"><button class="btn btn-outline btn-sm" onclick="resetCockpitLayout()">Reset to default</button></div>
     </div>`;
@@ -14522,14 +14534,22 @@ function renderReports(){
       <button class="btn rep-btn" onclick="${r.fn}">${dl} Download PDF</button>
       ${r.extra||''}
     </div>`;
+  const _canCust = _canCustomiseCockpit() && !(typeof _empView==='function' && _empView());
+  const custBar = _canCust ? `
+    <div class="no-print" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+      <span style="font-size:12.5px;color:var(--text-muted);max-width:640px;">Make the reports bespoke to this client: switch sections on or off per report below - the choice is saved per client and applies to every PDF downloaded here.</span>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto;flex:0 0 auto;" onclick="toggleReportEditor()">${_reportEditorOpen?'Close customiser':'⚙ Customise reports'}</button>
+    </div>
+    ${_reportEditorOpen?_reportEditorHTML():''}` : '';
   cont.innerHTML = `
     <div class="rep-hero">
       <h2>Reports</h2>
       <p>Generate client-ready PDFs from this client's risk profile and management system. Each one reads live from the data you have entered.</p>
     </div>
+    ${custBar}
     ${_docControlRegisterHTML()}
     <div class="rep-grid">${reports.map(card).join('')}</div>
-    <p class="rep-foot">Tip: tailor which sections appear in each report per client from the <button class="ck-link" style="display:inline;" onclick="switchTab('cockpit')">cockpit customiser</button>.</p>`;
+    ${_canCust?`<p class="rep-foot">Tip: the ⚙ Customise reports button above tailors which sections appear in each report for this client.</p>`:''}`;
 }
 
 // Document Control register - the ISO master list of controlled documents. One

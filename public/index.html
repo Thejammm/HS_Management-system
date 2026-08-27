@@ -3322,6 +3322,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rp-row .rp-m{display:block;font-size:11px;color:var(--text-muted);margin-top:2px;}
     .rp-detail{position:sticky;top:calc(var(--hdr-h,60px) + 56px);max-height:calc(100vh - var(--hdr-h,60px) - 74px);background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;min-width:0;}
     .rp-head{padding:14px 16px 0;border-bottom:1px solid var(--border);flex:0 0 auto;}
+    .cat-wrap{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+    .cat-chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border:1.5px solid var(--border);border-radius:99px;background:transparent;}
+    .cat-chip button{border:none;background:transparent;color:inherit;font-size:13px;line-height:1;cursor:pointer;padding:0 0 0 2px;opacity:.6;}
+    .cat-chip button:hover{opacity:1;}
+    .cat-add{border:1.5px dashed var(--border);background:transparent;color:var(--text-muted);font-family:'Inter',sans-serif;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:99px;cursor:pointer;}
+    .cat-add:hover{border-color:var(--accent);color:var(--accent);}
     .rp-modesw{display:inline-flex;gap:2px;background:var(--muted-bg);border:1px solid var(--border);border-radius:7px;padding:2px;}
     .rp-modebtn{border:none;background:transparent;color:var(--text-muted);font-family:'Inter',sans-serif;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:5px;cursor:pointer;white-space:nowrap;}
     .rp-modebtn.on{color:#fff;}
@@ -14242,12 +14248,12 @@ const COCKPIT_WIDGETS = {
       if(!total) return `<div class="ckx-panel"><h4>Risks by category</h4><div class="ck-pending">No risks in the profile yet.</div></div>`;
       let a0=-Math.PI/2, segs='';
       cats.forEach(c=>{ const frac=byCat[c]/total, a1=a0+frac*2*Math.PI, large=frac>0.5?1:0;
-        const col=(typeof HAZARD_TYPE_COLOR!=='undefined'&&HAZARD_TYPE_COLOR[c])||'#9CA3AF';
+        const col=_catColour(c);
         const x0=60+48*Math.cos(a0), y0=60+48*Math.sin(a0), x1=60+48*Math.cos(a1), y1=60+48*Math.sin(a1);
         segs += frac>=0.999 ? `<circle cx="60" cy="60" r="48" fill="${col}"/>`
           : `<path d="M60 60 L${x0.toFixed(1)} ${y0.toFixed(1)} A48 48 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${col}"/>`;
         a0=a1; });
-      const legend=cats.map(c=>{ const col=(typeof HAZARD_TYPE_COLOR!=='undefined'&&HAZARD_TYPE_COLOR[c])||'#9CA3AF';
+      const legend=cats.map(c=>{ const col=_catColour(c);
         return `<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:3px;background:${col};display:inline-block;flex:0 0 auto;"></span>${esc(c)}&nbsp;<b>${byCat[c]}</b></span>`; }).join('');
       return `<div class="ckx-panel"><h4>Risks by category</h4>
         <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
@@ -14877,7 +14883,67 @@ function _riskCfg(){
 }
 function _riskLikeOpts(){ return _riskCfg().like.map((t,i)=>({v:String(i+1), label:(i+1)+' '+t})); }
 function _riskSevOpts(){  return _riskCfg().sev.map((t,i)=>({v:String(i+1), label:(i+1)+' '+t})); }
-function _catOpts(cur){ const l = RISK_CATEGORIES.slice(); if(cur && !l.includes(cur)) l.push(cur); return l; }
+// ── Risk categories: configured per client, per mode ──────────────
+// A category is only a label with a colour. The scoring, the bands, the hold
+// states and every report work the same whatever it is called, so the list is
+// the client's to set: a contractor keeps Physical and Fire, an architect adds
+// Design coordination, an operational profile uses business categories. The
+// H&S defaults are the HSG65 hazard types; stored values outside the list are
+// always preserved so nothing a client already recorded can be orphaned.
+const RISK_CATEGORY_DEFAULTS = {
+  hs: HAZARD_TYPES.slice(),
+  ops:['Strategic','Commercial / contractual','Financial','Operational delivery','People / resourcing','Supply chain','Technology / information','Compliance / regulatory','Reputational','Business continuity']
+};
+function _riskCats(mode){
+  const m=(mode==='ops')?'ops':'hs';
+  const c=(S.riskConfig && S.riskConfig.categories && Array.isArray(S.riskConfig.categories[m])) ? S.riskConfig.categories[m].filter(x=>String(x||'').trim()) : null;
+  return (c && c.length) ? c.slice() : RISK_CATEGORY_DEFAULTS[m].slice();
+}
+// Colour for a category: the fixed hazard-type palette where it applies, and a
+// stable derived hue for anything the client has added, so a custom category
+// still reads as itself everywhere it appears.
+function _catColour(cat){
+  if(!cat) return '#9CA3AF';
+  if(typeof HAZARD_TYPE_COLOR!=='undefined' && HAZARD_TYPE_COLOR[cat]) return HAZARD_TYPE_COLOR[cat];
+  let n=0; const s=String(cat);
+  for(let i=0;i<s.length;i++) n=(n*31+s.charCodeAt(i))>>>0;
+  const hues=[210,268,158,26,340,190,44,300,120,14];
+  return 'hsl('+hues[n%hues.length]+',58%,45%)';
+}
+function _catOpts(cur, r){
+  const l=_riskCats(typeof _riskMode==='function'?_riskMode(r):'hs');
+  if(cur && !l.includes(cur)) l.push(cur);   // never orphan a recorded value
+  return l;
+}
+function _setRiskCats(mode, list){
+  if(_roLocked()) return;
+  if(!S.riskConfig || typeof S.riskConfig!=='object') S.riskConfig={};
+  if(!S.riskConfig.categories || typeof S.riskConfig.categories!=='object') S.riskConfig.categories={};
+  S.riskConfig.categories[(mode==='ops')?'ops':'hs']=list;
+  saveData(); _keepScroll(renderRiskProfile);
+}
+function addRiskCategory(mode){
+  if(_blockIfReadOnly()) return;
+  const name=prompt('Add a '+(mode==='ops'?'operational':'health and safety')+' risk category:','');
+  if(name===null) return;
+  const v=String(name).trim(); if(!v) return;
+  const l=_riskCats(mode);
+  if(l.some(x=>x.toLowerCase()===v.toLowerCase())){ showToast('That category is already on the list','info'); return; }
+  _setRiskCats(mode, l.concat([v]));
+  showToast('✓ Added "'+v+'"','success');
+}
+function deleteRiskCategory(mode, name){
+  if(_blockIfReadOnly()) return;
+  const used=(S.riskProfile||[]).filter(r=>r.category===name).length;
+  if(used){ showToast('"'+name+'" is on '+used+' risk'+(used!==1?'s':'')+' - change those first, or keep it.','info'); return; }
+  if(!confirm('Remove "'+name+'" from the '+(mode==='ops'?'operational':'health and safety')+' category list?')) return;
+  _setRiskCats(mode, _riskCats(mode).filter(x=>x!==name));
+}
+function resetRiskCategories(mode){
+  if(_blockIfReadOnly()) return;
+  if(!confirm('Put the '+(mode==='ops'?'operational':'health and safety')+' categories back to the standard list?')) return;
+  _setRiskCats(mode, RISK_CATEGORY_DEFAULTS[(mode==='ops')?'ops':'hs'].slice());
+}
 function _bandFor(rating){
   if(!rating) return '';
   const b = _riskCfg().bands;
@@ -16040,7 +16106,7 @@ function renderRiskJourney(){
   const fbtn=(v,lab)=>`<button class="btn ${_journeyFilter===v?'btn-primary':'btn-outline'} btn-xs" onclick="setJourneyFilter('${v}')">${lab}</button>`;
   const card=(x)=>{
     const r=x.r; const doneN=x.m.filter(s=>s.done).length;
-    const htC=HAZARD_TYPE_COLOR[r.category]||'#9CA3AF';
+    const htC=_catColour(r.category);
     const steps=x.m.map((s,i)=>`
       <div style="display:flex;gap:12px;">
         <div style="display:flex;flex-direction:column;align-items:center;">
@@ -16781,6 +16847,26 @@ function resetScoreKey(){
   S.riskConfig={ likelihood:RISK_LIKELIHOOD_DEF.slice(), severity:RISK_SEVERITY_DEF.slice(), bands:Object.assign({},RISK_BANDS_DEF) };
   saveData(); renderRiskProfile();
 }
+// The client's own category lists, health & safety and operational, edited
+// here beside the scoring key - the two things that make the register speak
+// the client's language rather than the app's.
+function _catEditorHTML(){
+  const dis=_roLocked();
+  const block=(mode,title,note)=>{
+    const l=_riskCats(mode);
+    const chips=l.map(c=>`<span class="cat-chip" style="border-color:${_catColour(c)};color:${_catColour(c)};">${esc(c)}${dis?'':`<button type="button" title="Remove" onclick="deleteRiskCategory('${mode}','${String(c).replace(/'/g,"\\'")}')">×</button>`}</span>`).join('');
+    return `<div style="margin-bottom:12px;">
+      <div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em;">${esc(title)} <span class="fl-hint" title="${esc(note)}">(?)</span></div>
+      <div class="cat-wrap">${chips}${dis?'':`<button type="button" class="cat-add" onclick="addRiskCategory('${mode}')">＋ Add</button>`}</div>
+      ${dis?'':`<button class="btn btn-ghost btn-xs no-print" style="margin-top:5px;" onclick="resetRiskCategories('${mode}')">Reset to the standard list</button>`}
+    </div>`;
+  };
+  return `<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">The categories this client's risks are filed under. They are labels only - the scoring, the bands and every report work the same whatever you call them - so set them to match the business. A category already in use cannot be removed.</div>
+    ${block('hs','Health & safety categories','The default list is the HSG65 hazard types. Add your own - a client who surveys buildings might add Asbestos; a landscaper might add Grounds machinery.')}
+    ${block('ops','Operational categories','Used by any risk switched to Operational. Business risk categories rather than hazard types - strategic, commercial, supply chain and so on.')}
+  </div>`;
+}
 function _renderScoringKey(){
   const el=document.getElementById('riskScoreKey'); if(!el) return;
   const cfg=_riskCfg(); const dis=_roLocked()?' disabled':'';
@@ -16792,6 +16878,7 @@ function _renderScoringKey(){
   el.innerHTML = `<details class="rp-subcard"${_skOpen?' open':''}>
     <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('settings',17)} Scoring key <span style="font-weight:400;font-size:12px;color:var(--text-muted);">Likelihood × Severity, 1-5 each · ${esc(_bandRangeText())}</span></summary>
     <div class="sc-body">
+      ${_catEditorHTML()}
       <div class="scorekey-grid">
         <div><div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Likelihood (1-5) <span class="fl-hint" title="How likely the harmful event is. Moves when a control stops the event happening: segregation, guarding, planned maintenance, permits, supervision, competence.">(?)</span></div>${cfg.like.map((t,i)=>line('likelihood',i,t)).join('')}</div>
         <div><div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Severity (1-5) <span class="fl-hint" title="How bad the harm would credibly be, and this number is NOT fixed. It moves whenever a control limits the extent of harm: lower speed, lower height, less energy or quantity, fall-arrest, containment, impact protection, fewer people exposed.">(?)</span></div>${cfg.sev.map((t,i)=>line('severity',i,t)).join('')}</div>
@@ -17475,7 +17562,7 @@ const SITEINSP_OUTCOMES = ['Not yet known','Satisfactory','Actions raised','Unsa
 // Generic assurance-activity types: a contractor books Site inspections, an
 // architect books Design reviews - the engine treats every kind the same
 // (planned / actual / by / outcome), so reporting reads them all as assurance.
-const SITEINSP_KINDS = ['Site inspection','Design review','Architectural review','CDM audit','Management audit','Behavioural observation','Compliance review','Other review'];
+const SITEINSP_KINDS = ['Site inspection','Site visit','Design review','Architectural review','Audit','CDM audit','Management audit','Management review','Behavioural observation','Compliance review','Other review'];
 function _siteInspState(){ if(!Array.isArray(S.siteInspections)) S.siteInspections=[]; return S.siteInspections; }
 function _siteInspStatus(r){
   const today=new Date().toISOString().slice(0,10);
@@ -19234,7 +19321,7 @@ function renderRiskProfile(){
   //    its own scrollbar, so the list never moves under the reader. ──
   if(!rows.some(r => r.id === _riskSel)) _riskSel = rows[0].id;
   const selR = rows.find(r => r.id === _riskSel);
-  const selHtC = HAZARD_TYPE_COLOR[selR.category] || '#9CA3AF';
+  const selHtC = _catColour(selR.category);
   const selPdca = _riskPdca(selR), selPdcaC = RISK_PDCA_COLOR[selPdca];
   const selSc = _riskScore(selR);
 
@@ -19246,7 +19333,7 @@ function renderRiskProfile(){
   const _bodyTop = (_bp0 && _riskSelKey === _viewKey) ? _bp0.scrollTop : 0;
 
   const listRows = rows.map(r => {
-    const sc = _riskScore(r), htC = HAZARD_TYPE_COLOR[r.category] || '#9CA3AF';
+    const sc = _riskScore(r), htC = _catColour(r.category);
     const bits = [r.category ? esc(r.category) : 'No hazard type yet'];
     if(_riskMode(r)==='ops') bits.push('<span style="color:#7C3AED;font-weight:700;">Operational</span>');
     if(_riskFlagOn(r)) bits.push('<span style="color:#DC2626;font-weight:700;">'+esc(_rt(r,'flagChip'))+'</span>');
@@ -19268,7 +19355,7 @@ function renderRiskProfile(){
     if(_riskSelTab==='summary') return _rpDigestHTML(r);
     if(_riskSelTab==='identify') return `
         <div class="field-grid" style="margin-bottom:12px;">
-          ${fg(_rt(r,'category'), sel(r.id,'category',r.category,_catOpts(r.category)))}
+          ${fg(_rt(r,'category'), sel(r.id,'category',r.category,_catOpts(r.category, r)))}
           ${fg('Business area', sel(r.id,'area',r.area,RISK_AREAS))}
           ${fg('PDCA stage '+pdcaHint, `<select${dis} onchange="updateRiskField('${r.id}','pdca',this.value)"><option value="">-</option>${RISK_PDCA.map(p=>`<option value="${p}"${r.pdca===p?' selected':''}>${p}</option>`).join('')}</select>`)}
         </div>
@@ -20147,9 +20234,9 @@ function renderRiskReview(){
   } else {
     const byType={}; risks.forEach(r=>{ const t=r.category||'(untyped)'; (byType[t]=byType[t]||[]).push(r); });
     const typeOrder=HAZARD_TYPES.filter(t=>byType[t]).concat(Object.keys(byType).filter(t=>!HAZARD_TYPES.includes(t)));
-    const tiles=typeOrder.map(t=>{ const c=HAZARD_TYPE_COLOR[t]||'#9CA3AF'; return `<div class="rr-typetile" style="border-top-color:${c};"><div class="rt-n" style="color:${c};">${byType[t].length}</div><div class="rt-l">${esc(t)}</div></div>`; }).join('');
+    const tiles=typeOrder.map(t=>{ const c=_catColour(t); return `<div class="rr-typetile" style="border-top-color:${c};"><div class="rt-n" style="color:${c};">${byType[t].length}</div><div class="rt-l">${esc(t)}</div></div>`; }).join('');
     const groups=typeOrder.map(t=>{
-      const c=HAZARD_TYPE_COLOR[t]||'#9CA3AF';
+      const c=_catColour(t);
       const list=byType[t].slice().sort((a,b)=>(_riskScore(b).rating||0)-(_riskScore(a).rating||0));
       const rows=list.map(r=>{
         const sc=_riskScore(r); const pc=_RISK_PRIO_COLOR[sc.priority]||'#9CA3AF';

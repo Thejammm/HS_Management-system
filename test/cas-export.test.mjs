@@ -20,15 +20,17 @@ test('the workbook keeps the triage shape and its promises', async () => {
   assert.ok(ws, 'question-set sheet missing');
   assert.ok(wb.getWorksheet('Read me'), 'read-me sheet missing');
   assert.equal(ws.rowCount, rows.length + 1);
-  // nine columns, no more - the 13-column wall must not come back
-  assert.equal(ws.columnCount, 9, 'column creep: ' + ws.columnCount);
-  // client and trade lead every row so collated workbooks filter by who and what
-  assert.equal(String(ws.getRow(2).getCell('A').value), 'Hartley Construction Ltd');
-  assert.equal(String(ws.getRow(2).getCell('B').value), 'Construction; Scaffolding');
-  // one status the reader parses at a glance - out-of-scope says so THERE
+  // the TRIAGE layout is the contract - exact headers, no client/trade data columns
+  const heads = ws.getRow(1).values.slice(1).map(String);
+  assert.deepEqual(heads, ['Section','Q','Question (our summary)','Evidence you will be asked for','Applies to this business','Who answers','Status in Compass','Your answer','Where the evidence lives / notes']);
+  assert.ok(!heads.includes('Client') && !heads.includes('Trade'), 'client/trade data columns must not return');
+  // the two working filters: who answers, and applies-to-business
+  assert.equal(String(ws.getRow(2).getCell('F').value), 'Consultant');   // Ready = held this side
+  assert.equal(String(ws.getRow(3).getCell('F').value), 'Client');       // Gap, in scope = needs them
+  assert.equal(String(ws.getRow(4).getCell('F').value), 'n/a');          // out of scope
+  assert.equal(String(ws.getRow(4).getCell('E').value), 'Not in scope (Q23)');
   assert.equal(String(ws.getRow(2).getCell('G').value), 'Ready');
   assert.equal(String(ws.getRow(3).getCell('G').value), 'Gap');
-  assert.equal(String(ws.getRow(4).getCell('G').value), 'Not in scope (Q23)');
   // the filter spans the DATA - the header-only filter bug must never return
   const af = typeof ws.autoFilter === 'string' ? ws.autoFilter : JSON.stringify(ws.autoFilter);
   assert.ok(af.includes(String(rows.length + 1)), 'autoFilter does not reach the last data row: ' + af);

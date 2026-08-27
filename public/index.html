@@ -3322,6 +3322,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rp-row .rp-m{display:block;font-size:11px;color:var(--text-muted);margin-top:2px;}
     .rp-detail{position:sticky;top:calc(var(--hdr-h,60px) + 56px);max-height:calc(100vh - var(--hdr-h,60px) - 74px);background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;min-width:0;}
     .rp-head{padding:14px 16px 0;border-bottom:1px solid var(--border);flex:0 0 auto;}
+    .rp-name{border:none;background:transparent;font-family:'Inter',sans-serif;font-weight:700;font-size:16px;line-height:1.35;color:var(--text);width:100%;min-width:0;padding:0 0 2px;border-bottom:2px solid transparent;border-radius:0;}
+    .rp-name::placeholder{color:var(--text-muted);font-weight:600;}
+    .rp-name:hover{border-bottom-color:var(--border);}
+    .rp-name:focus{outline:none;border-bottom-color:var(--accent);}
     .rp-tabs{display:flex;gap:2px;overflow-x:auto;margin-top:9px;}
     .rp-tabs button{border:none;background:none;border-bottom:2.5px solid transparent;padding:9px 12px;font-family:'Inter',sans-serif;font-size:12.8px;font-weight:600;color:var(--text-muted);cursor:pointer;white-space:nowrap;}
     .rp-tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:700;}
@@ -15383,8 +15387,11 @@ function addRiskEntry(){
   _stamp(entry, 'created');
   S.riskProfile.push(entry);
   _riskSel = entry.id; _riskSelTab = 'identify';   // select the new risk, straight onto the first editing tab
+  _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };   // a filter must never hide the risk just added
   saveData();
   renderRiskProfile();
+  const _nrInp=document.getElementById('ract-'+entry.id); if(_nrInp && _nrInp.tagName==='INPUT') _nrInp.focus();
+  if(window.matchMedia && window.matchMedia('(max-width:900px)').matches){ const pan=document.getElementById('rpDetail'); if(pan) pan.scrollIntoView({behavior:'smooth',block:'start'}); }
 }
 
 function deleteRiskEntry(id){
@@ -15415,8 +15422,13 @@ function updateRiskField(id, field, value){
     _renderRiskDashboard();
   }
   if(field === 'activity'){
+    // Three surfaces show the name: the panel-title input, the Identify tab's
+    // Activity field and the list row. Whichever one is being typed in, the
+    // other two follow live (never touching the one that has focus).
     const t = document.getElementById('ract-'+id);
-    if(t) t.textContent = value || 'New risk';
+    if(t){ if(t.tagName==='INPUT'){ if(document.activeElement!==t) t.value = value; } else { t.textContent = value || 'New risk'; } }
+    const f = document.getElementById('ractf-'+id);
+    if(f && document.activeElement!==f) f.value = value;
     const lt = document.getElementById('rlt-'+id);      // split-view list row title
     if(lt) lt.textContent = value || (r.hazard || 'New risk');
   }
@@ -16766,7 +16778,11 @@ function insertLibraryRisk(key, quiet){
   _stamp(entry,'created');
   if(!Array.isArray(S.riskProfile)) S.riskProfile=[];
   S.riskProfile.push(entry);
-  if(!quiet){ saveData(); renderRiskProfile(); showToast('✓ Added "'+t.activity+'" - review and agree the suggested rating','success'); }
+  if(!quiet){
+    _riskSel = entry.id; _riskSelTab = 'summary';   // show what was just added, ready to review
+    _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };
+    saveData(); renderRiskProfile(); showToast('✓ Added "'+t.activity+'" - review and agree the suggested rating','success');
+  }
   return entry;
 }
 function _renderHazardLibrary(){
@@ -19140,7 +19156,7 @@ function renderRiskProfile(){
           ${fg('PDCA stage '+pdcaHint, `<select${dis} onchange="updateRiskField('${r.id}','pdca',this.value)"><option value="">-</option>${RISK_PDCA.map(p=>`<option value="${p}"${r.pdca===p?' selected':''}>${p}</option>`).join('')}</select>`)}
         </div>
         <div class="field-grid" style="margin-bottom:12px;">
-          ${fg('Activity / process', txt(r.id,'activity',r.activity,'e.g. Site surveys, driving for work, work at height'))}
+          ${fg('Activity / process', `<input type="text"${dis} id="ractf-${r.id}" value="${esc(r.activity)}" placeholder="e.g. Site surveys, driving for work, work at height" oninput="updateRiskField('${r.id}','activity',this.value)">`)}
           ${fg('Hazard '+hazHint, txt(r.id,'hazard',r.hazard,'The source of harm, e.g. fragile roof, asbestos, moving vehicles'))}
         </div>
         <div style="margin-bottom:12px;">
@@ -19212,7 +19228,7 @@ function renderRiskProfile(){
     <div class="rp-detail" id="rpDetail" style="border-left-color:${selHtC};">
       <div class="rp-head">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
-          <span class="rc-title" id="ract-${selR.id}" style="white-space:normal;font-size:16px;line-height:1.35;">${selR.activity ? esc(selR.activity) : (selR.hazard?esc(selR.hazard):'New risk')}</span>
+          <input class="rp-name" id="ract-${selR.id}" value="${esc(selR.activity||'')}" placeholder="${selR.hazard?esc(selR.hazard):'Name this risk - e.g. Driving for work'}"${ro?' disabled':''} oninput="updateRiskField('${selR.id}','activity',this.value)" title="The risk's name. Typing here and the Activity / process field on the Identify tab are the same thing.">
           <span style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
             <span id="rprio-${selR.id}">${_riskPrioBadge(selSc.priority, selSc.rating)}</span>
             ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete this risk" onclick="deleteRiskEntry('${selR.id}')">${_ic('trash',14)}</button>`}

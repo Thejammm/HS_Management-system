@@ -1,4 +1,4 @@
-// The CAS question-set workbook - run with: npm test
+// The CAS question-set workbook (triage shape) - run with: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -12,36 +12,34 @@ const rows = [
   { section: '7. Building Safety Act', q: '151', req: 'Higher-Risk Building golden thread', flags: '', docType: 'Statement / declaration', scope: 'Not in scope (Q23)', status: 'Unassessed', evidence: '' },
 ];
 
-test('the workbook round-trips with every structural promise kept', async () => {
+test('the workbook keeps the triage shape and its promises', async () => {
   const buf = await buildCasWorkbook({ client: 'Hartley Construction Ltd', trade: 'Construction; Scaffolding', rows });
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf);
   const ws = wb.getWorksheet('CAS question set');
   assert.ok(ws, 'question-set sheet missing');
-  assert.ok(wb.getWorksheet('How to use'), 'how-to-use sheet missing');
+  assert.ok(wb.getWorksheet('Read me'), 'read-me sheet missing');
   assert.equal(ws.rowCount, rows.length + 1);
+  // nine columns, no more - the 13-column wall must not come back
+  assert.equal(ws.columnCount, 9, 'column creep: ' + ws.columnCount);
   // client and trade lead every row so collated workbooks filter by who and what
   assert.equal(String(ws.getRow(2).getCell('A').value), 'Hartley Construction Ltd');
   assert.equal(String(ws.getRow(2).getCell('B').value), 'Construction; Scaffolding');
-  // needs-your-answer derives: in scope + not Ready = Yes
-  assert.equal(String(ws.getRow(2).getCell('J').value), 'No');   // Ready
-  assert.equal(String(ws.getRow(3).getCell('J').value), 'Yes');  // Gap, in scope
-  assert.equal(String(ws.getRow(4).getCell('J').value), 'No');   // out of scope
+  // one status the reader parses at a glance - out-of-scope says so THERE
+  assert.equal(String(ws.getRow(2).getCell('G').value), 'Ready');
+  assert.equal(String(ws.getRow(3).getCell('G').value), 'Gap');
+  assert.equal(String(ws.getRow(4).getCell('G').value), 'Not in scope (Q23)');
   // the filter spans the DATA - the header-only filter bug must never return
-  assert.equal(typeof ws.autoFilter === 'string' ? ws.autoFilter : (ws.autoFilter && ws.autoFilter.to ? 'obj' : ''),
-    typeof ws.autoFilter === 'string' ? 'A1:M' + (rows.length + 1) : 'obj');
   const af = typeof ws.autoFilter === 'string' ? ws.autoFilter : JSON.stringify(ws.autoFilter);
   assert.ok(af.includes(String(rows.length + 1)), 'autoFilter does not reach the last data row: ' + af);
-  // BSA rows are present and named
+  // BSA rows present; evidence expectation carries the doc type
   const texts = [];
   ws.eachRow(r => texts.push(r.values.map(v => String(v == null ? '' : v)).join('|')));
   assert.ok(texts.some(t => t.includes('Building Safety Act') && t.includes('135')), 'BSA row missing');
-  assert.ok(texts.some(t => t.includes('Not in scope (Q23)')), 'scope reason missing');
-  // the client answer dropdown exists on a data row
-  const dv = ws.getRow(2).getCell('L').dataValidation;
-  assert.ok(dv && dv.type === 'list' && String(dv.formulae[0]).includes('We have this'), 'answer dropdown missing');
-  // evidence expectation column carries the doc type
   assert.ok(texts.some(t => t.includes('Statement / declaration')), 'evidence-expected column missing');
+  // the client answer dropdown on a data row
+  const dv = ws.getRow(2).getCell('H').dataValidation;
+  assert.ok(dv && dv.type === 'list' && String(dv.formulae[0]).includes('We have this'), 'answer dropdown missing');
 });
 
 test('an empty payload is refused, not shipped hollow', async () => {

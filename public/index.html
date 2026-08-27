@@ -2785,6 +2785,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .cas-stwrap{display:flex;align-items:center;gap:2px;flex-wrap:nowrap;}
 .cas-stwrap > div{display:flex!important;gap:2px!important;flex-wrap:nowrap!important;}
 .cas-stwrap .btn{padding:2px 5px!important;font-size:10px!important;white-space:nowrap;flex:0 0 auto;margin:0!important;}
+/* The execution plan wears the same grid. */
+.ep-grid td{vertical-align:middle;}
+.ep-grid td.ep-act{white-space:nowrap;overflow:visible;}
+.ep-grid td.ep-act > *{margin-right:4px;vertical-align:middle;}
+.ep-grid .badge{max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;}
 .cas-xf-btn{border:1px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:4px;padding:1px 4px 0;cursor:pointer;vertical-align:-1px;margin-left:3px;}
 .cas-xf-btn:hover{color:var(--accent);border-color:var(--accent);}
 .cas-xf-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
@@ -15435,6 +15440,41 @@ function _refreshActionViews(){
 // The Client execution plan tab - RAG-coded, this-month focus + full year.
 var _execRowOpen={};
 function toggleExecRow(rk){ _execRowOpen[rk]=!_execRowOpen[rk]; renderExecPlan(); }
+// ── AutoFilter for the plan - same engine, same conventions as the CAS tab.
+//    View state only, never saved. ──
+var _epXF = { src: [], own: [], pri: [], sts: [] };
+function _epXFActive(){ return !!(_epXF.src.length || _epXF.own.length || _epXF.pri.length || _epXF.sts.length); }
+function clearEpXF(){ _epXF = { src: [], own: [], pri: [], sts: [] }; _closeCasXFPop(); renderExecPlan(); }
+function _epVal(a, col){
+  if(col === 'src') return a.source || '(no source)';
+  if(col === 'own') return a.owner || '(no owner)';
+  if(col === 'pri') return a.priority || '(no priority)';
+  return a.raw || 'Not started';
+}
+function _epXFPass(a){
+  if(_epXF.src.length && !_epXF.src.includes(_epVal(a, 'src'))) return false;
+  if(_epXF.own.length && !_epXF.own.includes(_epVal(a, 'own'))) return false;
+  if(_epXF.pri.length && !_epXF.pri.includes(_epVal(a, 'pri'))) return false;
+  if(_epXF.sts.length && !_epXF.sts.includes(_epVal(a, 'sts'))) return false;
+  return true;
+}
+function _epXFTh(label, col){
+  const on = _epXF[col] && _epXF[col].length;
+  return esc(label) + ` <button type="button" class="cas-xf-btn${on ? ' on' : ''}" title="Filter this column${on ? ' - filter on' : ''}" onclick="openEpXFPop(event,'${col}')"><svg viewBox="0 0 24 24" width="11" height="11" fill="\${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5 22 3"/></svg></button>`;
+}
+function openEpXFPop(ev, col){
+  const counts = {};
+  _execActions().forEach(a => { const v = _epVal(a, col); counts[v] = (counts[v] || 0) + 1; });
+  const PRI = ['Critical', 'High', 'Medium', 'Low', '(no priority)'];
+  const STS = ['Not started', 'In progress', 'Complete', 'Accepted'];
+  const order = col === 'pri' ? PRI.filter(v => counts[v] != null)
+    : col === 'sts' ? STS.filter(v => counts[v] != null)
+    : Object.keys(counts).sort((a, b) => a.localeCompare(b));
+  openXFPop(ev, order, counts, _epXF[col],
+    list => { _epXF[col] = list; renderExecPlan(); },
+    () => { _epXF[col] = []; renderExecPlan(); });
+}
+
 function renderExecPlan(){
   const root=document.getElementById('execPlanRoot'); if(!root) return;
   updateActionBadges();
@@ -15454,42 +15494,50 @@ function renderExecPlan(){
   const evChip=(a)=>{ if(!(a.ref&&a.ref.t==='risk'&&typeof _actionEvidence==='function')) return '';
     const r=(S.riskProfile||[]).find(x=>x.id===a.ref.a); const ev=r?_actionEvidence(r,a.ref.b):[];
     return ev.length?`<button type="button" class="no-print" title="Linked evidence:\n${esc(ev.map(l=>'· '+(l.ref||l.url||'')).join('\n'))}\n\nClick to open this risk and its evidence" style="background:none;border:none;cursor:pointer;padding:0;color:#16A34A;font-weight:700;font-size:12px;" onclick="_gotoRisk('${a.ref.a}')">📎 ${ev.length}</button>`:''; };
-  const row=(a)=>{ const c=RAG_COLOR[a.rag]||RAG_COLOR.grey; const rk=ref(a); const open=_execRowOpen[rk]; const lc=_logCount(a);
+  // One grid row per action - the CAS discipline: everything on one line,
+  // only the action text wraps. The activity log opens as a full-width row.
+  const trow=(a)=>{ const c=RAG_COLOR[a.rag]||RAG_COLOR.grey; const rk=ref(a); const opn=_execRowOpen[rk]; const lc=_logCount(a);
     const closed=(a.status==='Complete'||a.status==='Accepted');
-    return `<div style="border:1.5px solid var(--border);border-left:5px solid ${c};border-radius:9px;padding:12px 14px;margin-bottom:10px;">
-      <div style="display:flex;gap:12px;align-items:flex-start;">
-      <span title="${a.rag==='red'?'Overdue':a.rag==='amber'?'Due this month / needs a date':a.rag==='grey'?'Risk accepted':'On track'}" style="width:12px;height:12px;border-radius:50%;background:${c};flex:0 0 auto;margin-top:4px;">${closed&&a.status==='Complete'?'':''}</span>
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:14px;margin-bottom:5px;line-height:1.35;">${esc(a.desc||'(no description yet - add it in the source section)')}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12px;color:var(--text-muted);">
-          <span class="badge badge-muted">${esc(a.source)}</span>${a.sourceLabel?`<span>${esc(a.sourceLabel)}</span>`:''}${a.owner?`<span>&middot; ${esc(a.owner)}</span>`:''}${a.priority?`<span>&middot; ${esc(a.priority)} priority</span>`:''}
-          ${closed?`<span style="color:#16A34A;font-weight:600;">&middot; ${a.status==='Accepted'?'risk accepted':'completed'}${a.resolvedDate?(' '+fmtDate(a.resolvedDate)):''}${a.resolvedBy?(' by '+esc(a.resolvedBy)):''}</span>${evChip(a)}`:''}
-          <button type="button" class="no-print" onclick="toggleExecRow('${rk}')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:12px;font-weight:600;padding:0;">${open?'▾ Hide activity':'▸ Activity'+(lc?(' 💬 '+lc):'')}</button>
-        </div>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
-        ${dis?'':`<label title="Mark this as one of the five priorities for ${_top5MonthLabel(_top5Month())} - they lead the board report and get checked off next month" style="font-size:10.5px;color:${a.top5===_top5Month()?'#B45309':'var(--text-muted)'};white-space:nowrap;font-weight:${a.top5===_top5Month()?'700':'400'};cursor:pointer;">Top 5<br><input type="checkbox" ${a.top5===_top5Month()?'checked':''} onchange="toggleTop5('${rk}')" style="width:18px;height:18px;cursor:pointer;accent-color:#B45309;margin-top:4px;"></label>`}
-        <label style="font-size:10.5px;color:var(--text-muted);white-space:nowrap;">Target date<br><input type="date"${dis} value="${a.due||''}" onchange="updateExecAction('${rk}','due',this.value)"></label>
-        <select${dis} onchange="updateExecAction('${rk}','status',this.value)" style="font-size:12.5px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select>
-        ${(closed && !dis && _isConsultantish())?`<button type="button" class="no-print" onclick="deleteExecAction('${rk}')" title="Remove this completed action - step 1 of 2: it moves to your consultant-only Deleted actions area; 'Delete from app' there removes it permanently" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:26px;height:26px;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;flex:0 0 auto;">✕</button>`:''}
-      </div>
-      </div>
-      ${open?`<div style="margin-left:24px;">${_actionLogPanelHTML(a)}</div>`:''}
-    </div>`;
+    const resTip=closed?((a.status==='Accepted'?'Risk accepted':'Completed')+(a.resolvedDate?(' '+fmtDate(a.resolvedDate)):'')+(a.resolvedBy?(' by '+a.resolvedBy):'')):'';
+    return `<tr style="border-top:1px solid var(--border);">
+      <td><span title="${a.rag==='red'?'Overdue':a.rag==='amber'?'Due this month / needs a date':a.rag==='grey'?'Risk accepted':'On track'}" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c};vertical-align:middle;"></span></td>
+      <td class="cas-req" style="font-weight:600;">${esc(a.desc||'(no description yet - add it in the source section)')}</td>
+      <td title="${esc(a.source)}${a.sourceLabel?(' · '+esc(a.sourceLabel)):''}"><span class="badge badge-muted">${esc(a.source)}</span></td>
+      <td title="${esc(a.owner||'')}">${esc(a.owner||'-')}</td>
+      <td>${esc(a.priority||'-')}</td>
+      <td style="text-align:center;">${dis?(a.top5===_top5Month()?'★':''):`<input type="checkbox" title="Mark this as one of the five priorities for ${_top5MonthLabel(_top5Month())} - they lead the board report and get checked off next month" ${a.top5===_top5Month()?'checked':''} onchange="toggleTop5('${rk}')" style="width:16px;height:16px;cursor:pointer;accent-color:#B45309;vertical-align:middle;">`}</td>
+      <td><input type="date"${dis} value="${a.due||''}" onchange="updateExecAction('${rk}','due',this.value)" style="width:100%;font-size:12px;padding:3px 4px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;"></td>
+      <td title="${esc(resTip)}"><select${dis} onchange="updateExecAction('${rk}','status',this.value)" style="width:100%;font-size:12px;padding:4px 3px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select></td>
+      <td class="ep-act">
+        <button type="button" class="no-print" onclick="toggleExecRow('${rk}')" title="${opn?'Hide the activity log':'Activity log and notes'+(lc?(' ('+lc+')'):'')}" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:12px;font-weight:700;padding:0 2px;">${opn?'▾':'▸'}${lc?lc:''}</button>${closed?evChip(a):''}${(closed && !dis && _isConsultantish())?`<button type="button" class="no-print" onclick="deleteExecAction('${rk}')" title="Remove this completed action - step 1 of 2: it moves to your consultant-only Deleted actions area; 'Delete from app' there removes it permanently" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:20px;height:20px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;">✕</button>`:''}
+      </td>
+    </tr>${opn?`<tr><td></td><td colspan="8" style="white-space:normal;overflow:visible;">${resTip?`<div style="font-size:12px;color:#16A34A;font-weight:600;margin:2px 0 5px;">${esc(resTip)}</div>`:''}${_actionLogPanelHTML(a)}</td></tr>`:''}`;
   };
+  // The same colgroup on every list, so every column lines up everywhere.
+  const epTable=(list)=>list.length?`<div style="overflow-x:auto;"><table class="cas-grid ep-grid">
+    <colgroup><col style="width:3.5%;"><col style="width:33%;"><col style="width:10.5%;"><col style="width:9%;"><col style="width:9%;"><col style="width:5.5%;"><col style="width:12%;"><col style="width:11%;"><col style="width:6.5%;"></colgroup>
+    <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;"><th></th><th>Action</th><th>${_epXFTh('Source','src')}</th><th>${_epXFTh('Owner','own')}</th><th>${_epXFTh('Priority','pri')}</th><th>Top 5</th><th>Target date</th><th>${_epXFTh('Status','sts')}</th><th></th></tr></thead>
+    <tbody>${list.map(trow).join('')}</tbody></table></div>`:'';
+  const fOverdue=overdue.filter(_epXFPass), fDueThis=dueThis.filter(_epXFPass);
+  const fDelivered=delivered.filter(_epXFPass);
   const byMonth={};
-  open.forEach(a=>{ const k=_actionMonthKey(a.due); (byMonth[k]=byMonth[k]||[]).push(a); });
+  open.filter(_epXFPass).forEach(a=>{ const k=_actionMonthKey(a.due); (byMonth[k]=byMonth[k]||[]).push(a); });
   const monthKeys=Object.keys(byMonth).filter(k=>k).sort();
   if(byMonth['']) monthKeys.push('');   // undated last
   // Every number is a link to the list it counts (house rule: a figure always
   // opens the place it is built from).
   const tile=(num,label,color,target)=>`<button type="button" class="ep-tile" onclick="_epJump('${target}')" title="See the actions behind this number" style="flex:1;min-width:110px;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center;background:var(--surface);cursor:pointer;font-family:inherit;"><div style="font-size:26px;font-weight:800;color:${color};line-height:1;">${num}</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">${label}</div></button>`;
-  const focus = (overdue.length||dueThis.length)
-    ? `${overdue.map(row).join('')}${dueThis.map(row).join('')}`
-    : `<div class="ck-pending" style="padding:8px 0;">Nothing overdue or due this month.</div>`;
+  const focus = (fOverdue.length||fDueThis.length)
+    ? epTable(fOverdue.concat(fDueThis))
+    : `<div class="ck-pending" style="padding:8px 0;">Nothing overdue or due this month${_epXFActive()&&(overdue.length||dueThis.length)?' matches the filters':''}.</div>`;
   root.innerHTML = `
     <div class="rep-hero"><h2>Client execution plan</h2><p>Everything you need to do - from your risk profile, legal duties, assurance and accreditation. Set a target date and mark progress. Traffic lights: <span style="color:${RAG_COLOR.red};font-weight:700;">overdue</span> &middot; <span style="color:${RAG_COLOR.amber};font-weight:700;">this month</span> &middot; <span style="color:${RAG_COLOR.green};font-weight:700;">on track</span>.</p></div>
     ${_top5BannerHTML()}
+    ${_epXFActive()?`<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:8px 13px;border:1.5px solid var(--accent);border-radius:9px;background:var(--accent-light);font-size:12.5px;">
+        <b>Column filters on.</b> The tiles keep the full counts; the lists below are filtered.
+        <span style="flex:1;"></span>
+        <button class="btn btn-outline btn-xs" onclick="clearEpXF()">✕ Clear all filters</button>
+      </div>`:''}
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">
       ${tile(open.length,'Open','#30415f','epYearCard')}
       ${tile(overdue.length,'Overdue', overdue.length?RAG_COLOR.red:'#30415f','epMonthCard')}
@@ -15518,14 +15566,14 @@ function renderExecPlan(){
     <div class="card" id="epYearCard">
       <div class="card-band"><h3><span class="dot">&#9679;</span> The full year - everything on your plan</h3></div>
       <div class="card-body">
-        ${open.length ? monthKeys.map(k=>`<div style="margin-bottom:14px;"><div style="font-weight:700;font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;border-bottom:1.5px solid var(--border);padding-bottom:4px;">${monthName(k)} <span style="font-weight:600;">(${byMonth[k].length})</span></div>${byMonth[k].map(row).join('')}</div>`).join('') : `<div class="ck-pending" style="padding:8px 0;">No open actions yet. As actions are identified in your risk profile, legal duties, assurance and accreditation, they appear here to plan.</div>`}
+        ${monthKeys.length ? monthKeys.map(k=>`<div style="margin-bottom:14px;"><div style="font-weight:700;font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;border-bottom:1.5px solid var(--border);padding-bottom:4px;">${monthName(k)} <span style="font-weight:600;">(${byMonth[k].length})</span></div>${epTable(byMonth[k])}</div>`).join('') : `<div class="ck-pending" style="padding:8px 0;">${open.length&&_epXFActive()?'Nothing on the plan matches the filters.':'No open actions yet. As actions are identified in your risk profile, legal duties, assurance and accreditation, they appear here to plan.'}</div>`}
       </div>
     </div>
     ${delivered.length?`<div class="card" id="epDeliveredCard" style="margin-top:18px;border-left:3px solid ${RAG_COLOR.green};">
       <div class="card-band"><h3><span class="dot" style="color:${RAG_COLOR.green};">●</span> Delivered - completed &amp; accepted</h3><span class="badge badge-muted">${delivered.length}</span></div>
       <div class="card-body">
         <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">The work the business has closed off - something to be proud of, and the evidence behind the way each risk is now managed. Nothing here is ever deleted.</div>
-        ${delivered.slice().sort((a,b)=>String(b.resolvedDate||'').localeCompare(String(a.resolvedDate||''))).map(row).join('')}
+        ${fDelivered.length?epTable(fDelivered.slice().sort((a,b)=>String(b.resolvedDate||'').localeCompare(String(a.resolvedDate||'')))):`<div class="ck-pending" style="padding:4px 0;">Nothing delivered matches the filters.</div>`}
       </div>
     </div>`:''}
     ${_deletedActionsHTML()}`;
@@ -25010,23 +25058,17 @@ function _casXFTh(label, col){
   const on = _casXF[col] && _casXF[col].length;
   return esc(label) + ` <button type="button" class="cas-xf-btn${on ? ' on' : ''}" title="Filter this column${on ? ' - filter on' : ''}" onclick="openCasXFPop(event,'${col}')"><svg viewBox="0 0 24 24" width="11" height="11" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5 22 3"/></svg></button>`;
 }
-function _closeCasXFPop(){ const p = document.getElementById('casXFPop'); if(p) p.remove(); document.removeEventListener('mousedown', _casXFOutside, true); }
+function _closeCasXFPop(){ const p = document.getElementById('casXFPop'); if(p) p.remove(); document.removeEventListener('mousedown', _casXFOutside, true); _xfApply = null; }
 function _casXFOutside(e){ const p = document.getElementById('casXFPop'); if(p && !p.contains(e.target)) _closeCasXFPop(); }
-function openCasXFPop(ev, col){
+// ONE popover engine for every AutoFilter in the app (CAS tab, execution
+// plan). The caller hands in the ordered values, their counts and the current
+// selection; the engine hands back the ticked list. Everything ticked (or
+// nothing) = no filter, the AutoFilter convention.
+var _xfApply = null;
+function openXFPop(ev, order, counts, cur, onApply, onClear){
   ev.stopPropagation();
   _closeCasXFPop();
-  // Distinct values with counts, from every in-scheme row.
-  const counts = {};
-  const selEl = document.getElementById('casSchemeFilter');
-  const scheme = CAS_SCHEMES.find(s=>s.id===(selEl && selEl.value)) || CAS_SCHEMES[0];
-  CAS_FRAMEWORK.sections.filter(s => !scheme.sections || scheme.sections.includes(s.id)).forEach(s => s.questions.forEach(q => {
-    const vals = col === 'flags' ? _casRowFlagVals(q) : col === 'docs' ? [_casDocType(q)] : [_casRowStatusVal(q)];
-    vals.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
-  }));
-  const order = col === 'sts'
-    ? ['Ready', 'Partial', 'Gap', 'N/A', 'Unassessed', 'Covered by certificate', 'Not in scope'].filter(v => counts[v] != null)
-    : Object.keys(counts).sort((a, b) => a.localeCompare(b));
-  const cur = _casXF[col];
+  _xfApply = { onApply, onClear };
   const allTicked = !cur.length;
   const rows = order.map(v => `<label class="cas-xf-row"><input type="checkbox" data-xfv="${esc(v)}" ${allTicked || cur.includes(v) ? 'checked' : ''}> <span style="flex:1;">${esc(v)}</span><span class="cas-xf-n">${counts[v]}</span></label>`).join('');
   const pop = document.createElement('div');
@@ -25034,8 +25076,8 @@ function openCasXFPop(ev, col){
   pop.innerHTML = `<label class="cas-xf-row" style="border-bottom:1px solid var(--border);margin-bottom:3px;padding-bottom:6px;"><input type="checkbox" id="casXFAll" ${allTicked ? 'checked' : ''}> <b style="flex:1;">(Select all)</b></label>
     <div style="max-height:260px;overflow:auto;">${rows}</div>
     <div style="display:flex;gap:6px;margin-top:8px;">
-      <button class="btn btn-primary btn-xs" style="flex:1;" onclick="applyCasXF('${col}')">Apply</button>
-      <button class="btn btn-outline btn-xs" onclick="_casXF['${col}']=[];_closeCasXFPop();renderCAS();">Clear</button>
+      <button class="btn btn-primary btn-xs" style="flex:1;" onclick="_xfDoApply()">Apply</button>
+      <button class="btn btn-outline btn-xs" onclick="_xfDoClear()">Clear</button>
       <button class="btn btn-ghost btn-xs" onclick="_closeCasXFPop()">✕</button>
     </div>`;
   document.body.appendChild(pop);
@@ -25047,14 +25089,31 @@ function openCasXFPop(ev, col){
   pop.querySelectorAll('input[data-xfv]').forEach(c => c.addEventListener('change', () => { if(!c.checked) all.checked = false; }));
   setTimeout(() => document.addEventListener('mousedown', _casXFOutside, true), 0);
 }
-function applyCasXF(col){
-  const pop = document.getElementById('casXFPop'); if(!pop) return;
+function _xfDoApply(){
+  const pop = document.getElementById('casXFPop'); if(!pop || !_xfApply) return;
   const boxes = [...pop.querySelectorAll('input[data-xfv]')];
   const ticked = boxes.filter(c => c.checked).map(c => c.getAttribute('data-xfv'));
-  // Everything ticked (or nothing) = no filter, the AutoFilter convention.
-  _casXF[col] = (ticked.length === 0 || ticked.length === boxes.length) ? [] : ticked;
-  _closeCasXFPop(); renderCAS();
+  const list = (ticked.length === 0 || ticked.length === boxes.length) ? [] : ticked;
+  const fn = _xfApply.onApply;
+  _closeCasXFPop(); fn(list);
 }
+function _xfDoClear(){ const fn = _xfApply && _xfApply.onClear; _closeCasXFPop(); if(fn) fn(); }
+function openCasXFPop(ev, col){
+  const counts = {};
+  const selEl = document.getElementById('casSchemeFilter');
+  const scheme = CAS_SCHEMES.find(s=>s.id===(selEl && selEl.value)) || CAS_SCHEMES[0];
+  CAS_FRAMEWORK.sections.filter(s => !scheme.sections || scheme.sections.includes(s.id)).forEach(s => s.questions.forEach(q => {
+    const vals = col === 'flags' ? _casRowFlagVals(q) : col === 'docs' ? [_casDocType(q)] : [_casRowStatusVal(q)];
+    vals.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+  }));
+  const order = col === 'sts'
+    ? ['Ready', 'Partial', 'Gap', 'N/A', 'Unassessed', 'Covered by certificate', 'Not in scope'].filter(v => counts[v] != null)
+    : Object.keys(counts).sort((a, b) => a.localeCompare(b));
+  openXFPop(ev, order, counts, _casXF[col],
+    list => { _casXF[col] = list; renderCAS(); },
+    () => { _casXF[col] = []; renderCAS(); });
+}
+function applyCasXF(col){ _xfDoApply(); }
 function renderCAS(){
   _renderMemberships();
   const sel = document.getElementById('casSchemeFilter');

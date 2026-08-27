@@ -11,7 +11,7 @@ import { tierFor, bandsFrom, noneOrCount, countPhrase, isAre, hasHave, deriveBoa
 import { reportHTML, paginateRows } from '../public/reports/engine.js';
 import { matrix5x5 } from '../public/reports/blocks.js';
 import { docFor, trainingRowsOf } from '../public/reports/app-contract.js';
-import { REPORTS, buildReport, getReportFormat, setReportFormat } from '../public/reports/templates/index.js';
+import { REPORTS, BOARD_SECTIONS, buildReport, getReportFormat, setReportFormat } from '../public/reports/templates/index.js';
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
 const fixDir = path.join(here, '..', 'public', 'reports', 'fixtures');
@@ -73,21 +73,25 @@ test('paginateRows: first page short, continuations larger, empty safe', () => {
 // progress) + register + interpretation + maturity/sign-off = 7 pages.
 test('empty profile renders a valid report that says so', () => {
   const r = buildReport(fixture('empty'), 'board-report', OPTS);
-  // 8, not 7: the fixture's two unscored risks now reach the attention page.
-  // An unrated risk used to show as Uncontrolled and never need attention.
-  assert.equal(r.pages.length, 8);
+  // A deliberate tripwire: adding a board section changes this. If that was
+  // intended, update the number - it is here so page growth is never silent.
+  assert.equal(r.pages.length, 10);
   const html = reportHTML(r);
   assert.match(html, /not yet complete enough/i);
   assert.doesNotMatch(html, /No have no/);
   assert.doesNotMatch(html, /NaN|undefined/);
 });
 
-test('typical profile: eight pages (attention page prints), headline states the finding', () => {
+test('typical profile paginates, and the last footer agrees with the total', () => {
   const r = buildReport(fixture('typical'), 'board-report', OPTS);
-  assert.equal(r.pages.length, 8);   // 7 + the needs-attention page (3 breaches)
+  assert.equal(r.pages.length, 10);   // tripwire - see the note above
   const html = reportHTML(r);
   assert.match(html, /can still kill or maim/i);
-  assert.match(html, /Page 8 of 8/);
+  // The invariant that actually matters, derived so it cannot go stale: the
+  // final footer must name the true page count.
+  const n = r.pages.length;
+  assert.match(html, new RegExp('Page ' + n + ' of ' + n));
+  assert.doesNotMatch(html, new RegExp('Page ' + (n + 1) + ' of'));
   assert.doesNotMatch(html, /No have no/);
 });
 
@@ -171,10 +175,34 @@ test('no long dashes anywhere in the rendered report', () => {
   }
 });
 
+// A value that reaches the page unrendered - "[object Object]", "undefined",
+// "NaN" - is invisible to tests that assert on the data structure, because the
+// structure is right and the RENDER is wrong. dataTable understood plain
+// strings and {html} but not the {text, color, bold} cells the sections pass
+// for a value carrying a verdict, and printed the literal words "[object
+// Object]" in finished client PDFs. Rendered output is the only place to catch
+// it, so every report, format and fixture is swept here.
+test('no unrendered values reach any report', () => {
+  for (const reportId of Object.keys(REPORTS)) {
+    for (const f of (REPORTS[reportId].formats || [{ id: undefined }])) {
+      for (const fx of ['empty', 'typical', 'oversized']) {
+        const html = reportHTML(buildReport(fixture(fx), reportId, { ...OPTS, format: f.id }));
+        const seen = html.replace(/<[^>]*>/g, ' ');   // what a reader actually sees
+        const where = reportId + '/' + (f.id || 'default') + '/' + fx;
+        assert.doesNotMatch(seen, /\[object Object\]/, where + ' prints [object Object]');
+        assert.doesNotMatch(seen, /(^|[>\s(\[,:])undefined([<\s).\],]|$)/, where + ' prints undefined');
+        assert.doesNotMatch(seen, /(^|[>\s(\[,:])NaN([<\s).\],%]|$)/, where + ' prints NaN');
+        assert.doesNotMatch(seen, /(^|[>\s(\[,:])null([<\s).\],]|$)/, where + ' prints null');
+      }
+    }
+  }
+});
+
 test('review sections print by default, with no framework name-drop', () => {
   const html = reportHTML(buildReport(fixture('typical'), 'board-report', OPTS));
   assert.match(html, /Leadership review/);
-  assert.match(html, /Active monitoring/);
+  assert.match(html, /Inspection performance/);   // was one "Active monitoring" section
+  assert.match(html, /Audit performance/);        // until the split gave each its own
   assert.match(html, /Issues raised by workers/);
   assert.match(html, /Checks required by law/);
   assert.match(html, /Successes this period|Closed off|actions delivered/);
@@ -183,11 +211,13 @@ test('review sections print by default, with no framework name-drop', () => {
 
 test('hidden sections drop their pages; locked sections always print', () => {
   const state = fixture('typical');
-  state.reportPrefs = { 'board-report': { hidden: {
-    reactive: true, active: true, training: true, workers: true, statutory: true,
-    wins: true, sinceLast: true, topFive: true, register: true, interpretation: true,
-    position: true, maturity: true,   // locked — must be ignored
-  } } };
+  // Hide EVERY unlocked section, derived from the registry rather than listed
+  // by hand - a new section then joins this test automatically instead of
+  // quietly slipping past it.
+  const hidden = {};
+  BOARD_SECTIONS.filter(s => !s.locked).forEach(s => { hidden[s.id] = true; });
+  BOARD_SECTIONS.filter(s => s.locked).forEach(s => { hidden[s.id] = true; });   // locked - must be ignored
+  state.reportPrefs = { 'board-report': { hidden } };
   const r = buildReport(state, 'board-report', OPTS);
   assert.equal(r.pages.length, 3);   // position + attention (locked with position) + status/sign-off survive
   const html = reportHTML(r);

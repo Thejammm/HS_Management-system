@@ -24,6 +24,7 @@ export const BOARD_SECTIONS = [
   { id: 'environmental',  label: 'Environmental events', hsg: 'Environmental incidents & investigations' },
   { id: 'decisions',      label: 'Management decisions - have the last meeting’s been actioned?', hsg: 'Closing the loop - decisions of the review' },
   { id: 'supply',         label: 'Subcontractor and supply chain performance', hsg: 'Competence of others working under your control' },
+  { id: 'ohealth',        label: 'Occupational health - surveillance and outcomes', hsg: 'Health risk, not just safety' },
   { id: 'wins',           label: 'Successes this period', hsg: 'Celebrate and promote successes' },
   { id: 'sinceLast',      label: 'Movement since the baseline', hsg: 'Closing the loop' },
   { id: 'topFive',        label: 'Top 5 priorities for next month', hsg: 'What we agreed to do next' },
@@ -220,6 +221,23 @@ export function buildBoardReport(state, opts = {}) {
     good: supEvents.filter(x => x.e.kind === 'Good performance').length,
     gapsOf,
   };
+  // Health surveillance: dates and outcomes only - no clinical detail reaches
+  // the report, and nothing is stored as a score.
+  const ohAll = Array.isArray(state.healthSurveillance) ? state.healthSurveillance : [];
+  const OH_ACT = ['Fit with restrictions', 'Referred', 'Not fit for the task', 'Declined by employee'];
+  const ohSoonIso = (function () { const s = new Date(todayIso + 'T12:00:00'); s.setDate(s.getDate() + 60); return s.toISOString().slice(0, 10); })();
+  const ohByType = {};
+  ohAll.forEach(r => { const k = r.type || 'other'; (ohByType[k] = ohByType[k] || []).push(r); });
+  const oh = {
+    total: ohAll.length,
+    people: new Set(ohAll.map(r => String(r.person || '').trim().toLowerCase()).filter(Boolean)).size,
+    overdue: ohAll.filter(r => r.nextDue && r.nextDue < todayIso),
+    soon: ohAll.filter(r => r.nextDue && r.nextDue >= todayIso && r.nextDue <= ohSoonIso).length,
+    noDate: ohAll.filter(r => !r.nextDue).length,
+    act: ohAll.filter(r => OH_ACT.includes(r.outcome)),
+    byType: ohByType,
+  };
+  const ohIll = (Array.isArray(state.incidents) ? state.incidents : []).filter(i => i && i.type === 'Ill health').length;
   const envAll = (Array.isArray(state.incidents) ? state.incidents : []).filter(i => i && i.type === 'Environmental');
   const env = { total: envAll.length, open: envAll.filter(i => i.status === 'Open').length,
     latest: envAll.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, 5) };
@@ -283,6 +301,38 @@ export function buildBoardReport(state, opts = {}) {
       (X.statTotal
         ? countPhrase(X.statTotal, 'statutory check is', 'statutory checks are') + ' tracked (thorough examinations, servicing and similar). ' + noneOrCount(X.statOverdue, 'is overdue', 'are overdue', 'None') + '; ' + noneOrCount(X.statDueSoon, 'falls due within 60 days', 'fall due within 60 days', 'none') + '.'
         : 'No statutory checks are tracked yet. If the business has lifting equipment, pressure systems, LEV or similar, their thorough-examination dates belong on the statutory tracker.') });
+  }
+  if (!hide.ohealth) {
+    if (!oh.total) {
+      peopleBlocks.push({ type: 'textBlock', title: 'Occupational health', body:
+        'No health surveillance is recorded' + (ohIll ? (', though ' + countPhrase(ohIll, 'ill-health event is', 'ill-health events are') + ' on the incident register') : '') + '. '
+        + 'Where noise, vibration, dust, fume or skin exposure is foreseeable, health surveillance is a legal duty and the register is what evidences it. Occupational ill health is the long-latency half of the picture: the harm arrives years after the exposure, and the claims arrive later still.' });
+    } else {
+      peopleBlocks.push({ type: 'kpiStrip', tiles: [
+        { value: String(oh.people), label: 'Under surveillance', note: oh.total + ' record' + (oh.total !== 1 ? 's' : '') },
+        { value: String(oh.overdue.length), label: 'Surveillance overdue', tone: oh.overdue.length ? 'bad' : 'ok', note: oh.soon ? (oh.soon + ' due within 60 days') : undefined },
+        { value: String(oh.act.length), label: 'Outcomes to act on', tone: oh.act.length ? 'warn' : 'ok' },
+        { value: String(ohIll), label: 'Ill-health events', note: 'on the incident register', tone: ohIll ? 'warn' : 'ok' },
+      ] });
+      const progRows = Object.keys(oh.byType).map(k => {
+        const rs = oh.byType[k];
+        const od = rs.filter(r => r.nextDue && r.nextDue < todayIso).length;
+        const label = ({ audiometry:'Audiometry (hearing)', havs:'Hand-arm vibration (HAVS)', respiratory:'Respiratory / lung function', skin:'Skin / dermatitis', asbestos:'Asbestos medical', lead:'Lead medical', radiation:'Ionising radiation medical', nightworker:'Night worker assessment', safetycrit:'Safety-critical medical', dse:'DSE eye and eyesight test', other:'Other surveillance' })[k] || k;
+        const driver = ({ audiometry:'Control of Noise at Work Regulations 2005', havs:'Control of Vibration at Work Regulations 2005', respiratory:'COSHH 2002', skin:'COSHH 2002', asbestos:'Control of Asbestos Regulations 2012', lead:'Control of Lead at Work Regulations 2002', radiation:'Ionising Radiations Regulations 2017', nightworker:'Working Time Regulations 1998', dse:'Health and Safety (Display Screen Equipment) Regulations 1992' })[k] || '';
+        return [ label, String(rs.length), { text: String(od), color: od ? [197,32,32] : [110,110,110], bold: !!od }, { text: driver || '-', color: [110,110,110] } ];
+      });
+      peopleBlocks.push({ type: 'dataTable', title: 'Surveillance programmes running',
+        cols: [ { header: 'Programme', w: '34%' }, { header: 'People', w: '12%' }, { header: 'Overdue', w: '12%' }, { header: 'Why it is required', w: '42%' } ],
+        rows: progRows,
+        footnote: 'Health surveillance is required where exposure is foreseeable. The register holds fitness outcomes and dates only - clinical detail stays with the provider.' });
+      if (oh.act.length) peopleBlocks.push({ type: 'dataTable', title: 'Outcomes the business must act on',
+        cols: [ { header: 'Role', w: '24%' }, { header: 'Programme', w: '26%' }, { header: 'Outcome', w: '22%' }, { header: 'What is required', w: '28%' } ],
+        rows: oh.act.slice(0, 6).map(r => [ r.role || '(role not recorded)',
+          ({ audiometry:'Audiometry', havs:'HAVS', respiratory:'Respiratory', skin:'Skin', asbestos:'Asbestos medical', lead:'Lead medical', radiation:'Radiation medical', nightworker:'Night worker', safetycrit:'Safety-critical', dse:'DSE eye test', other:'Other' })[r.type || 'other'] || '-',
+          { text: r.outcome || '-', bold: true, color: (r.outcome === 'Not fit for the task' || r.outcome === 'Declined by employee') ? [197,32,32] : [180,110,10] },
+          String(r.restrictions || 'to be determined').slice(0, 90) ]),
+        footnote: 'Named by role, not by person: the board needs to know an adjustment is required, not who it concerns.' });
+    }
   }
   const peoplePage = (peopleBlocks.length) ? {
     label: 'People & compliance', section: 'people', blocks: [

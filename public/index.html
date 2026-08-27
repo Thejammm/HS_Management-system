@@ -3800,6 +3800,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="incidentPanel"></div>
     <div id="decisionPanel"></div>
     <div id="supplyPanel"></div>
+    <div id="ohPanel"></div>
     <!-- The Risk assessment register lived here; it now sits at the bottom of
          the Documents tab, where employee logins can read it too. -->
   </div>
@@ -10577,6 +10578,7 @@ function migrateLoadedState(){
   if(!Array.isArray(S.incidents)) S.incidents = [];   // incident register: records + investigations, deliberately outside the KPI figures
   if(!Array.isArray(S.decisions)) S.decisions = [];   // management decisions: what leadership decided, and what came of it
   if(!Array.isArray(S.supplyChain)) S.supplyChain = [];   // supply chain: partners, their checks and how they have performed
+  if(!Array.isArray(S.healthSurveillance)) S.healthSurveillance = [];   // health surveillance: who, which exposure, when due (outcomes only, never clinical detail)
   if(!S.consultation || typeof S.consultation !== 'object') S.consultation = { briefings:[] };   // two-way communication record (sign-off tab)
   if(!Array.isArray(S.consultation.briefings)) S.consultation.briefings = [];
   // Regulatory tracker is now organised into named sections, each holding statutory
@@ -13838,7 +13840,7 @@ function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null;
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),
     draft:{typeId:'garage_inspection',results:{},notes:{},actionDetails:{},rectifyDetails:{},formData:{},periodFrom:'',periodTo:'',manager:'',location:'',ref:'',freq:'weekly',generalNotes:'',title:'',inspType:''},
-    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], consultation:{briefings:[]}, decisions:[], supplyChain:[], activeClient:null, branding:_newClientBranding() };
+    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], consultation:{briefings:[]}, decisions:[], supplyChain:[], healthSurveillance:[], activeClient:null, branding:_newClientBranding() };
 }
 // The practice's look carries to a new client; the client's NAME never does.
 function _newClientBranding(){
@@ -14191,6 +14193,15 @@ const COCKPIT_WIDGETS = {
   riskVsMaturity: { id:'riskVsMaturity', label:'Risk profile & H&S control maturity', group:'Feature', render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="full">${_riskPanelHTML({heading:true})}</div></div>` },
   riskMatrixOnly:   { id:'riskMatrixOnly', label:'Risk matrix (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="matrix">${_riskPanelHTML({heading:true,only:'matrix'})}</div></div>` },
   riskMaturityOnly: { id:'riskMaturityOnly', label:'H&S control maturity (only)', group:'Feature', defaultOff:true, render:x=>`<div class="ckx-panel" style="margin-bottom:18px;"><div data-riskpanel="maturity">${_riskPanelHTML({heading:true,only:'maturity'})}</div></div>` },
+  cardHealthSurv: { id:'cardHealthSurv', label:'Health surveillance', group:'Card', defaultOff:true, render:x=>{
+      const st=(typeof _ohStats==='function')?_ohStats():{total:0};
+      if(!st.total) return _ckMod('Health surveillance', _ckPend('Nobody is on the register yet.')+'<button class="ck-link" onclick="switchTab(\'monitoring\')">Open the register</button>');
+      return _ckMod('Health surveillance', `
+        <div class="ck-row"><span>Under surveillance</span><span style="font-weight:600;">${st.people} employee${st.people!==1?'s':''}</span></div>
+        <div class="ck-row"><span>Overdue</span><span style="color:${st.overdue?'var(--danger)':'inherit'};font-weight:600;">${st.overdue}${st.soon?(' · '+st.soon+' due soon'):''}</span></div>
+        <div class="ck-row"><span>Outcomes to act on</span><span style="color:${st.needsAction?'var(--warning)':'inherit'};font-weight:600;">${st.needsAction}</span></div>
+        <button class="ck-link" onclick="switchTab('monitoring')">Open the register</button>`);
+    } },
   cardSupply:     { id:'cardSupply', label:'Supply chain', group:'Card', defaultOff:true, render:x=>{
       const st=(typeof _supplyStats==='function')?_supplyStats():{total:0};
       if(!st.total) return _ckMod('Supply chain', _ckPend('No partners on the register yet.')+'<button class="ck-link" onclick="switchTab(\'monitoring\')">Open the register</button>');
@@ -23326,6 +23337,193 @@ function _renderSupply(){
   _detailsApply(el,_keep);
 }
 
+
+// ══════════════════════════════════════════════════════════════
+//  HEALTH SURVEILLANCE - who is under surveillance, for which exposure,
+//  when it was last done and when it falls due again.
+//  The long-latency half of health and safety: the harm that arrives years
+//  after the exposure, which is exactly why it needs a date-driven register
+//  rather than a memory. One record per person per surveillance type - the
+//  atomic fact - with the programme view derived by grouping on type.
+//  Facts in, metrics out: dates and outcomes only, so overdue, due-soon and
+//  the coverage per exposure are always calculated as they stand today.
+//  ⚠ DATA PROTECTION: health data is special category under UK GDPR. This
+//  register deliberately holds the FITNESS OUTCOME and the dates, never the
+//  clinical detail - the medical record stays with the provider.
+// ══════════════════════════════════════════════════════════════
+const OH_TYPES=[
+  { k:'audiometry',  label:'Audiometry (hearing)',        driver:'Control of Noise at Work Regulations 2005' },
+  { k:'havs',        label:'Hand-arm vibration (HAVS)',   driver:'Control of Vibration at Work Regulations 2005' },
+  { k:'respiratory', label:'Respiratory / lung function', driver:'COSHH 2002' },
+  { k:'skin',        label:'Skin / dermatitis',           driver:'COSHH 2002' },
+  { k:'asbestos',    label:'Asbestos medical',            driver:'Control of Asbestos Regulations 2012' },
+  { k:'lead',        label:'Lead medical',                driver:'Control of Lead at Work Regulations 2002' },
+  { k:'radiation',   label:'Ionising radiation medical',  driver:'Ionising Radiations Regulations 2017' },
+  { k:'nightworker', label:'Night worker assessment',     driver:'Working Time Regulations 1998' },
+  { k:'safetycrit',  label:'Safety-critical medical',     driver:'Fitness for a safety-critical role' },
+  { k:'dse',         label:'DSE eye and eyesight test',   driver:'Health and Safety (Display Screen Equipment) Regulations 1992' },
+  { k:'other',       label:'Other surveillance',          driver:'' }
+];
+// Outcome, not diagnosis. "Referred" and anything short of fit is what the
+// business must act on; the reason belongs to the provider, not this register.
+const OH_OUTCOMES=[
+  { k:'Fit',                   colour:'#16A34A', act:false },
+  { k:'Fit with restrictions', colour:'#D97706', act:true  },
+  { k:'Referred',              colour:'#2563EB', act:true  },
+  { k:'Not fit for the task',  colour:'#DC2626', act:true  },
+  { k:'Awaiting result',       colour:'#6B7280', act:false },
+  { k:'Declined by employee',  colour:'#DC2626', act:true  }
+];
+function _ohRecords(){ if(!Array.isArray(S.healthSurveillance)) S.healthSurveillance=[]; return S.healthSurveillance; }
+function _ohType(k){ return OH_TYPES.find(x=>x.k===k) || OH_TYPES[OH_TYPES.length-1]; }
+function _ohOutcome(v){ return OH_OUTCOMES.find(x=>x.k===v) || OH_OUTCOMES[4]; }
+// Due state derives from the date - never a stored flag.
+function _ohDue(r){
+  const d=r&&r.nextDue;
+  if(!d) return { k:'none', label:'no date set', colour:'#D97706' };
+  const today=new Date().toISOString().slice(0,10);
+  if(d<today) return { k:'overdue', label:'overdue', colour:'#DC2626' };
+  const soon=new Date(); soon.setDate(soon.getDate()+60);
+  if(d<=soon.toISOString().slice(0,10)) return { k:'soon', label:'due soon', colour:'#D97706' };
+  return { k:'ok', label:'in date', colour:'#16A34A' };
+}
+// Next due written from the last date + the interval, so the cycle keeps
+// itself rather than relying on somebody remembering to set it.
+function _ohRecalcDue(r){
+  const months=parseInt(r&&r.months,10)||0;
+  if(!r || !r.lastDate || !months) return;
+  const d=new Date(r.lastDate+'T12:00:00');
+  d.setMonth(d.getMonth()+months);
+  r.nextDue=d.toISOString().slice(0,10);
+}
+function _ohStats(){
+  const l=_ohRecords();
+  const byType={};
+  l.forEach(r=>{ const k=r.type||'other'; (byType[k]=byType[k]||[]).push(r); });
+  return { total:l.length,
+    people:new Set(l.map(r=>String(r.person||'').trim().toLowerCase()).filter(Boolean)).size,
+    overdue:l.filter(r=>_ohDue(r).k==='overdue').length,
+    soon:l.filter(r=>_ohDue(r).k==='soon').length,
+    noDate:l.filter(r=>_ohDue(r).k==='none').length,
+    needsAction:l.filter(r=>_ohOutcome(r.outcome).act).length,
+    awaiting:l.filter(r=>r.outcome==='Awaiting result').length,
+    byType };
+}
+function addOhRecord(){
+  if(_blockIfReadOnly()) return;
+  const r={ id:'oh_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    person:'', role:'', type:'havs', exposure:'', provider:'',
+    lastDate:'', months:12, nextDue:'', outcome:'Awaiting result', restrictions:'', raised:0 };
+  _stamp(r,'created');
+  _ohRecords().unshift(r); saveData();
+  _openOh.add(r.id); _renderOh();
+}
+function updateOh(id,f,v){
+  if(_roLocked()) return;
+  const r=_ohRecords().find(x=>x.id===id); if(!r) return;
+  r[f]=v;
+  if(f==='lastDate'||f==='months') _ohRecalcDue(r);   // the cycle keeps itself
+  _stamp(r,'updated');
+  if(f==='outcome'||f==='type'||f==='lastDate'||f==='months'||f==='nextDue'){ saveData(); _renderOh(); }
+  else scheduleAutoSave();
+}
+function deleteOhRecord(id){
+  if(_blockIfReadOnly()) return;
+  const r=_ohRecords().find(x=>x.id===id); if(!r) return;
+  if(!confirm('Remove this surveillance record'+(r.person?(' for '+r.person):'')+'?\n\nHealth records are usually kept for many years - remove only a record entered in error.')) return;
+  S.healthSurveillance=_ohRecords().filter(x=>x.id!==id); saveData(); _renderOh();
+}
+// Chase the ones that have fallen due, or the outcomes that need something done.
+function raiseOhAction(id){
+  if(_blockIfReadOnly()) return;
+  const r=_ohRecords().find(x=>x.id===id); if(!r) return;
+  const due=_ohDue(r), oc=_ohOutcome(r.outcome);
+  if(due.k!=='overdue' && due.k!=='none' && due.k!=='soon' && !oc.act){
+    showToast('Nothing outstanding on this record - it is in date and the outcome needs no action.','info'); return;
+  }
+  const who=String(r.person||'').trim()||'an employee';
+  const what = oc.act
+    ? ('Act on the surveillance outcome for '+who+' - '+_ohType(r.type).label.toLowerCase()+': '+(r.outcome||''))
+    : ('Book '+_ohType(r.type).label.toLowerCase()+' for '+who+(due.k==='overdue'?' - overdue':''));
+  const ap={ id:'ap_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    desc:what, owner:'', due:(due.k==='overdue'||due.k==='none')?'':(r.nextDue||''),
+    priority:(due.k==='overdue'||r.outcome==='Not fit for the task'||r.outcome==='Declined by employee')?'High':'Medium',
+    status:'Not started', riskId:'', docId:'',
+    note:'From the health surveillance register'+(_ohType(r.type).driver?(' ('+_ohType(r.type).driver+')'):'')+'. Record the outcome only - the clinical detail stays with the provider.',
+    completedDate:'' };
+  _stamp(ap,'created'); _apList().push(ap);
+  r.raised=(r.raised||0)+1;
+  saveData(); _renderOh();
+  showToast('✓ Action raised into the plan - set the owner and target date on the Client execution plan.','success');
+}
+var _openOh=new Set();
+function _renderOh(){
+  const el=document.getElementById('ohPanel'); if(!el) return;
+  const ro=_roLocked(); const dis=ro?' disabled':'';
+  const list=_ohRecords(); const st=_ohStats();
+  const _keep=_detailsSnapshot(el);
+  const rows=list.map(r=>{
+    const open=_openOh.has(r.id);
+    const ty=_ohType(r.type), due=_ohDue(r), oc=_ohOutcome(r.outcome);
+    const chip=(t,bg)=>`<span class="rc-chip" style="background:${bg}1a;color:${bg};">${esc(t)}</span>`;
+    return `<details class="card" ${open?'open ':''}style="border-left:4px solid ${due.k==='overdue'?'#DC2626':(oc.act?'#D97706':due.colour)};margin-bottom:8px;" ontoggle="this.open?_openOh.add('${r.id}'):_openOh.delete('${r.id}')">
+      <summary style="padding:10px 14px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;cursor:pointer;">
+        <span style="font-weight:700;font-size:13px;">${esc(r.person||'(unnamed)')}</span>
+        ${chip(ty.label,'#475569')}
+        ${r.role?`<span style="font-size:12px;color:var(--text-muted);">${esc(r.role)}</span>`:''}
+        <span style="flex:1;"></span>
+        ${r.nextDue?`<span style="font-size:11.5px;color:var(--text-muted);">due ${esc(fmtDate(r.nextDue))}</span>`:''}
+        ${chip(due.label, due.colour)}
+        ${chip(r.outcome||'Awaiting result', oc.colour)}
+      </summary>
+      <div style="padding:4px 16px 14px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px;">
+          <div class="field-group"><label class="field-label">Employee</label><input type="text"${dis} value="${esc(r.person||'')}" placeholder="Name" oninput="updateOh('${r.id}','person',this.value)"></div>
+          <div class="field-group"><label class="field-label">Role</label><input type="text"${dis} value="${esc(r.role||'')}" placeholder="e.g. Groundworker" oninput="updateOh('${r.id}','role',this.value)"></div>
+          <div class="field-group"><label class="field-label">Surveillance</label><select${dis} onchange="updateOh('${r.id}','type',this.value)">${OH_TYPES.map(t=>`<option value="${t.k}"${t.k===r.type?' selected':''}>${esc(t.label)}</option>`).join('')}</select>
+            ${ty.driver?`<div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;">${esc(ty.driver)}</div>`:''}</div>
+          <div class="field-group"><label class="field-label">Provider</label><input type="text"${dis} value="${esc(r.provider||'')}" placeholder="Who carries it out" oninput="updateOh('${r.id}','provider',this.value)"></div>
+        </div>
+        <div class="field-group" style="margin-top:8px;"><label class="field-label">Exposure it covers <span class="fl-hint" title="Why this person is under surveillance - the activity or substance that makes the exposure foreseeable. This is what justifies the programme.">(?)</span></label>
+          <input type="text"${dis} value="${esc(r.exposure||'')}" placeholder="e.g. Daily use of breakers and whackers" oninput="updateOh('${r.id}','exposure',this.value)"></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px;margin-top:8px;">
+          <div class="field-group"><label class="field-label">Last carried out</label><input type="date"${dis} value="${esc(r.lastDate||'')}" onchange="updateOh('${r.id}','lastDate',this.value)"></div>
+          <div class="field-group"><label class="field-label">Every (months) <span class="fl-hint" title="The interval for this programme. Set it and the next-due date writes itself from the last date.">(?)</span></label>
+            <input type="number" min="1" max="120"${dis} value="${esc(String(r.months||''))}" oninput="updateOh('${r.id}','months',this.value)"></div>
+          <div class="field-group"><label class="field-label">Next due</label><input type="date"${dis} value="${esc(r.nextDue||'')}" onchange="updateOh('${r.id}','nextDue',this.value)">
+            <div style="font-size:10.5px;font-weight:700;color:${due.colour};margin-top:3px;">${esc(due.label)}</div></div>
+          <div class="field-group"><label class="field-label">Outcome</label><select${dis} onchange="updateOh('${r.id}','outcome',this.value)">${OH_OUTCOMES.map(o=>`<option${o.k===(r.outcome||'Awaiting result')?' selected':''}>${o.k}</option>`).join('')}</select></div>
+        </div>
+        ${oc.act?`<div class="field-group" style="margin-top:8px;"><label class="field-label">What the business must do <span class="fl-hint" title="The adjustment, restriction or referral the outcome requires. Record what the business has to act on - never the clinical detail, which stays with the provider.">(?)</span></label>
+          <textarea${dis} rows="2" style="width:100%;" placeholder="e.g. Rotate off vibrating tools; review in 3 months" oninput="updateOh('${r.id}','restrictions',this.value)">${esc(r.restrictions||'')}</textarea></div>`:''}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+          ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="raiseOhAction('${r.id}')" title="Book the surveillance, or act on the outcome">↗ Raise an action</button>`}
+          ${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="deleteOhRecord('${r.id}')">${_ic('trash',13)}</button>`}
+        </div>
+        ${_attrFooter(r)}
+      </div>
+    </details>`;
+  }).join('');
+  const progs=Object.keys(st.byType).map(k=>{ const t=_ohType(k); const n=st.byType[k].length;
+    const od=st.byType[k].filter(x=>_ohDue(x).k==='overdue').length;
+    return `<span class="rc-chip" style="background:${od?'#DC2626':'#475569'}1a;color:${od?'#DC2626':'#475569'};">${esc(t.label)} · ${n}${od?(' · '+od+' overdue'):''}</span>`; }).join(' ');
+  const meta = st.total
+    ? (st.total+' record'+(st.total!==1?'s':'')+' · '+st.people+' employee'+(st.people!==1?'s':'')+(st.overdue?(' · '+st.overdue+' overdue'):'')+(st.needsAction?(' · '+st.needsAction+' to act on'):''))
+    : 'none recorded';
+  el.innerHTML=`<details class="coll" data-keep="monOh" style="margin:26px 0 16px;">
+    <summary><h3>Health surveillance</h3><span class="badge badge-muted">${esc(meta)}</span></summary>
+    <div class="coll-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:8px;">Who is under surveillance, for which exposure, when it was last done and when it falls due again. This is the long-latency half of health and safety - the harm that arrives years after the exposure - so it runs on dates rather than memory. Set the interval and the next-due date writes itself.</div>
+      <div style="font-size:11.5px;line-height:1.6;margin-bottom:12px;padding:8px 12px;border-left:3px solid #DC2626;background:#DC26260d;border-radius:0 7px 7px 0;color:var(--text);">
+        <b>Record the outcome, never the diagnosis.</b> Health data is special category under UK GDPR. Keep this register to fitness outcomes and dates - fit, fit with restrictions, referred - and what the business must do about it. The medical record stays with the provider.
+      </div>
+      ${progs?`<div class="chip-wrap" style="margin-bottom:12px;">${progs}</div>`:''}
+      ${ro?'':`<button class="btn btn-primary btn-sm no-print" style="margin-bottom:12px;" onclick="addOhRecord()">＋ Add a surveillance record</button>`}
+      ${rows||''}
+    </div></details>`;
+  _detailsApply(el,_keep);
+}
+
 function renderMonitoring(){
   const cont = document.getElementById('monitoringContainer');
   if(!cont) return;
@@ -23338,6 +23536,7 @@ function renderMonitoring(){
   _renderIncidents();
   _renderDecisions();
   _renderSupply();
+  _renderOh();
   const ro = _roLocked();
   const monthEl = document.getElementById('monMonth');
   if(monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0,7);
@@ -23576,6 +23775,7 @@ function suggestDocumentsFromApp(){
   if((S.siteInspections||[]).length) add('Process assurance register','process assurance');
   if((S.decisions||[]).length) add('Management decisions register','management decisions');
   if((S.supplyChain||[]).length) add('Supply chain register','supply chain');
+  if((S.healthSurveillance||[]).length) add('Health surveillance register','health surveillance');
   if((S.riskProfile||[]).some(r=>(r.actions||[]).some(a=>a.status==='Accepted'))) add('Risk acceptance register','risk profile');
   if((S.requirements||[]).length) add('Legal duties assessment','legal duties');
   const added=(S.documents||[]).length-before;
@@ -26770,7 +26970,7 @@ function exportEverything(){
 var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
-  'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain'];
+  'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

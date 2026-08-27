@@ -10,7 +10,8 @@
     "test": "node --test test/reports.test.mjs && npm run check",
     "check:consistency": "node scripts/check-app-report-consistency.mjs",
     "check:masthead": "node scripts/check-report-masthead-fit.mjs",
-    "check": "npm run check:consistency && npm run check:masthead"
+    "check": "npm run check:consistency && npm run check:masthead && npm run check:overflow",
+    "check:overflow": "node scripts/check-report-page-overflow.mjs"
   },
   "engines": {
     "node": ">=18"

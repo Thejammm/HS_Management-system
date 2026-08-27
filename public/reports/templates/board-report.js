@@ -667,16 +667,19 @@ export function buildBoardReport(state, opts = {}) {
       ...oversightBlocks,
     ] } : null;
 
-  const progBlocks = [];
+  const outBlocks = [];
+  const hiBlocks = [];
   // Actions, split the way Simon reads them: everything owed, and the ones
-  // sitting on the biggest risks.
+  // sitting on the biggest risks. Each list gets its OWN page: together, at
+  // real-world text lengths, the two tables overran the fixed A4 box and the
+  // overflow was cut at the page edge.
   const actRow = x => [ String(x.a.desc || '(no description)').slice(0, 90), x.parent || x.source,
     x.a.owner || 'no owner',
     { text: x.a.due ? fmtD(x.a.due) : 'no date', bold: true, color: (x.a.due && x.a.due < todayIso) ? [197,32,32] : (x.a.due ? [110,110,110] : [180,110,10]) } ];
   const actCols = [ { header: 'Action', w: '42%' }, { header: 'From', w: '24%' }, { header: 'Owner', w: '17%' }, { header: 'By when', w: '17%' } ];
   const openRows = D.openActRows || [];
   if (!hide.outstanding) {
-    progBlocks.push(openRows.length
+    outBlocks.push(openRows.length
       ? { type: 'dataTable', title: 'Outstanding actions - ' + openRows.length + ' open' + (D.overdue ? (', ' + D.overdue + ' overdue') : ''),
           cols: actCols, rows: openRows.slice(0, 10).map(actRow),
           footnote: (openRows.length > 10 ? ('Showing the 10 most pressing of ' + openRows.length + '. ') : '')
@@ -688,7 +691,7 @@ export function buildBoardReport(state, opts = {}) {
   }
   if (!hide.highrisk) {
     const hi = openRows.filter(x => x.tier === 'Critical' || x.tier === 'High');
-    progBlocks.push(hi.length
+    hiBlocks.push(hi.length
       ? { type: 'dataTable', title: 'High-risk actions - open on Critical and High risks',
           cols: [ { header: 'Action', w: '38%' }, { header: 'Risk', w: '24%' }, { header: 'Band', w: '10%' }, { header: 'Owner', w: '14%' }, { header: 'By when', w: '14%' } ],
           rows: hi.slice(0, 8).map(x => [ String(x.a.desc || '(no description)').slice(0, 80), x.parent || '-',
@@ -761,13 +764,22 @@ export function buildBoardReport(state, opts = {}) {
         footnote: (decDone.length > 6 ? ('Showing the latest 6 of ' + decDone.length + ' delivered. ') : '') + 'Decisions the business carried out. Superseded and not-pursued decisions are recorded on the register but are not counted as delivered.' });
     }
   }
-  const actionsPage = progBlocks.length ? {
+  const actionsPage = outBlocks.length ? {
     label: 'Actions', section: 'actions', blocks: [
       mast,
       { type: 'titleBlock', kicker: 'Leadership review · what is owed',
-        headline: D.overdue ? (countPhrase(D.overdue, 'action is overdue.', 'actions are overdue.')) : 'The open actions, and the ones on the biggest risks.',
-        standfirst: 'Everything open on the plan, overdue first - and separately, the actions sitting on the Critical and High risks, because those are the ones to ask about.' },
-      ...progBlocks,
+        headline: D.overdue ? (countPhrase(D.overdue, 'action is overdue.', 'actions are overdue.')) : 'The open actions on the plan.',
+        standfirst: 'Everything open on the plan, overdue first, with what has no owner or no date called out.' },
+      ...outBlocks,
+    ],
+  } : null;
+  const highriskPage = hiBlocks.length ? {
+    label: 'High-risk actions', section: 'highrisk', blocks: [
+      mast,
+      { type: 'titleBlock', kicker: 'Leadership review · the biggest risks',
+        headline: 'The actions sitting on the Critical and High risks.',
+        standfirst: 'These carry the most risk of anything on the plan - they are the ones to ask about first. The fatal and major-harm register follows.' },
+      ...hiBlocks,
     ],
   } : null;
   const deliveryPage = delivBlocks.length ? {
@@ -878,6 +890,7 @@ export function buildBoardReport(state, opts = {}) {
   if (dashboardPage) pages.push(dashboardPage);
   if (monitoringPage) pages.push(monitoringPage);
   if (actionsPage) pages.push(actionsPage);
+  if (highriskPage) pages.push(highriskPage);
   if (!hide.highrisk && !foldHide.register) pages.push(...registerPages);
   if (peoplePage) pages.push(peoplePage);
   if (compliancePage) pages.push(compliancePage);

@@ -3433,7 +3433,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <div id="riskLibrary" class="no-print"></div>
           <div id="riskFilters" class="no-print"></div>
           <div id="riskContainer"></div>
-          <div id="riskActionPlan"></div>
         </div>
       </details>
 
@@ -16543,7 +16542,7 @@ function updateRiskRating(id, field, value){
   const rate=document.getElementById('rrate-'+id); if(rate) rate.innerHTML=_riskRatingText(r);
   const b=document.getElementById('rprio-'+id); if(b) b.innerHTML=_riskPrioBadge(sc.priority, sc.rating);
   const lb=document.getElementById('rlprio-'+id); if(lb) lb.innerHTML=_riskPrioBadge(sc.priority, sc.rating);
-  _renderRiskDashboard(); _renderActionPlan();
+  _renderRiskDashboard();
 }
 
 // Structured business-impact dimensions (spec #7).
@@ -17120,42 +17119,9 @@ function _renderHazardLibrary(){
     <div class="card-body">${groups}</div></div>`;
 }
 
-// ── Aggregated action plan (spec #3) ──
-let _actPlanSort='due';
-function setActPlanSort(v){ _actPlanSort=v; _keepScroll(_renderActionPlan); }
-function _renderActionPlan(){
-  const el=document.getElementById('riskActionPlan'); if(!el) return;
-  let all=_allRiskActions();
-  if(!all.length){ el.innerHTML=''; return; }
-  const rank={Overdue:0,'In progress':1,'Not started':2,Complete:3};
-  const prank={Critical:0,High:1,Medium:2,Low:3,'':4};
-  all=all.slice().sort((a,b)=>{
-    if(_actPlanSort==='owner') return String(a.a.owner||'~').localeCompare(String(b.a.owner||'~'));
-    if(_actPlanSort==='status') return (rank[a.status]-rank[b.status]);
-    if(_actPlanSort==='priority') return (prank[a.a.priority||'']-prank[b.a.priority||'']);
-    return String(a.a.due||'9999').localeCompare(String(b.a.due||'9999')); // due (default)
-  });
-  const overdue=all.filter(x=>x.status==='Overdue').length;
-  const open=all.filter(x=>x.status!=='Complete').length;
-  const body=all.map(x=>{
-    const a=x.a, pc=_RISK_PRIO_COLOR[a.priority||'']||'var(--text-muted)';
-    return `<tr>
-      <td>${esc(a.desc||'(no description)')}</td>
-      <td>${esc(x.r.activity||x.r.hazard||'-')}</td>
-      <td>${esc(a.owner||'-')}</td>
-      <td>${a.due?fmtDate(a.due):'-'}</td>
-      <td><span style="color:${pc};font-weight:700;">${esc(a.priority||'-')}</span></td>
-      <td><span class="act-status ${_actionStatusClass(x.status)}">${x.status}</span></td>
-    </tr>`;
-  }).join('');
-  const sortBtn=(v,lab)=>`<button class="btn btn-xs ${_actPlanSort===v?'btn-primary':'btn-ghost'} no-print" onclick="setActPlanSort('${v}')">${lab}</button>`;
-  el.innerHTML=`<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Action plan</h3>
-      <span class="badge" style="border-color:${overdue?'#DC2626':'var(--border)'};color:${overdue?'#DC2626':'var(--text-muted)'};">${open} open · ${overdue} overdue</span></div>
-    <div class="card-body">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center;"><span style="font-size:12px;font-weight:600;color:var(--text-muted);">Sort:</span>${sortBtn('due','Target date')}${sortBtn('owner','Owner')}${sortBtn('status','Status')}${sortBtn('priority','Priority')}</div>
-      <div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Action</th><th>Risk</th><th>Owner</th><th>Target date</th><th>Priority</th><th>Status</th></tr></thead><tbody>${body}</tbody></table></div>
-    </div></div>`;
-}
+// The static Action plan table that used to sit here went 2026-08-28: it was
+// read-only decoration - the live worklist is the Client execution plan, and
+// the same figures print in the reports.
 
 // ══════════════════════════════════════════════════════════════
 //  ACTION PLAN TAB - the single worklist that closes the loop.
@@ -19381,7 +19347,6 @@ function renderRiskProfile(){
   _renderHazardLibrary();
   _renderRiskDashboard();
   _renderRiskFilters(all.length > 0);
-  _renderActionPlan();
   _renderAssurance();
 
   if(!all.length){
@@ -19568,7 +19533,6 @@ function renderRiskProfile(){
   const _bp1 = document.getElementById('rpBody'); if(_bp1) _bp1.scrollTop = _bodyTop;
   _riskSelKey = _viewKey;
 
-  _renderActionPlan();
   _renderAssurance();
 }
 

@@ -75,9 +75,9 @@ test('empty profile renders a valid report that says so', () => {
   const r = buildReport(fixture('empty'), 'board-report', OPTS);
   // A deliberate tripwire: adding a board section changes this. If that was
   // intended, update the number - it is here so page growth is never silent.
-  // 13 since the category reorganisation (dashboard, readiness and partners
-  // pages arrived; the picture-explained page folded into the dashboard).
-  assert.equal(r.pages.length, 13);
+  // 14 since the Actions page split in two (outstanding / high-risk) so the
+  // tables stop overrunning the page box at real-world text lengths.
+  assert.equal(r.pages.length, 14);
   const html = reportHTML(r);
   assert.match(html, /not yet complete enough/i);
   assert.doesNotMatch(html, /No have no/);
@@ -86,7 +86,7 @@ test('empty profile renders a valid report that says so', () => {
 
 test('typical profile paginates, and the last footer agrees with the total', () => {
   const r = buildReport(fixture('typical'), 'board-report', OPTS);
-  assert.equal(r.pages.length, 13);   // tripwire - see the note above
+  assert.equal(r.pages.length, 14);   // tripwire - see the note above
   const html = reportHTML(r);
   assert.match(html, /can still kill or maim/i);
   // The invariant that actually matters, derived so it cannot go stale: the

@@ -3322,6 +3322,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rp-row .rp-m{display:block;font-size:11px;color:var(--text-muted);margin-top:2px;}
     .rp-detail{position:sticky;top:calc(var(--hdr-h,60px) + 56px);max-height:calc(100vh - var(--hdr-h,60px) - 74px);background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;min-width:0;}
     .rp-head{padding:14px 16px 0;border-bottom:1px solid var(--border);flex:0 0 auto;}
+    .rp-modesw{display:inline-flex;gap:2px;background:var(--muted-bg);border:1px solid var(--border);border-radius:7px;padding:2px;}
+    .rp-modebtn{border:none;background:transparent;color:var(--text-muted);font-family:'Inter',sans-serif;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:5px;cursor:pointer;white-space:nowrap;}
+    .rp-modebtn.on{color:#fff;}
     .rp-name{border:none;background:transparent;font-family:'Inter',sans-serif;font-weight:700;font-size:16px;line-height:1.35;color:var(--text);width:100%;min-width:0;padding:0 0 2px;border-bottom:2px solid transparent;border-radius:0;}
     .rp-name::placeholder{color:var(--text-muted);font-weight:600;}
     .rp-name:hover{border-bottom-color:var(--border);}
@@ -10523,6 +10526,7 @@ function migrateLoadedState(){
     // Energy-source hazard model additions
     if(!Array.isArray(r.energy)) r.energy = [];
     if(r.sif === undefined) r.sif = '';            // '' = auto-derive via _riskSif()
+    if(r.mode === undefined) r.mode = 'hs';        // health & safety unless switched to operational
     if(r.controlLevel === undefined) r.controlLevel = '';
     if(r.reviewed === undefined) r.reviewed = false;  // manual "I've completed this" flag
     return r;
@@ -14727,8 +14731,20 @@ function _worstSeverity(r){
   return Math.max(parseInt(r&&r.severity,10)||0, parseInt(r&&r.targetS,10)||0, parseInt(r&&r.inherentS,10)||0);
 }
 function _riskSif(r){
+  // Fatal potential is a health-and-safety judgement. An operational risk is
+  // scored on business impact, so a 4 or 5 there means "serious for the
+  // business", never "could kill" - it must not reach the SIF register, the
+  // fatal-potential counts or the directors' duty wording.
+  if(typeof _riskMode==='function' && _riskMode(r)==='ops') return false;
   if(r && (r.sif===true || r.sif===false)) return r.sif;   // explicit override
   return _worstSeverity(r)>=4;   // worst credible severity 4-5 = could kill or seriously injure
+}
+// The business-critical flag is the operational twin of SIF: same idea (judge
+// the worst case, not the probability), counted separately and never mixed in.
+function _riskCritical(r){
+  if(typeof _riskMode!=='function' || _riskMode(r)!=='ops') return false;
+  if(r && (r.sif===true || r.sif===false)) return r.sif;
+  return _worstSeverity(r)>=4;
 }
 
 // ── Energy-based control hierarchy: remove → prevent → protect → stop-work ──
@@ -14739,6 +14755,87 @@ const CONTROL_LEVELS = [
   { k:'stopwork', label:'Stop work if unsafe',                        color:'#EA580C' }
 ];
 function _controlLevelLabel(k){ const c=CONTROL_LEVELS.find(x=>x.k===k); return c?c.label:''; }
+
+// ══════════════════════════════════════════════════════════════
+//  RISK MODE - health & safety, or operational.
+//  A profile drifts into operational risk the moment it is any use to a
+//  board, and H&S wording ("hazard", "persons at risk", "serious injury or
+//  fatality") is meaningless against "we lose our largest client". Each risk
+//  therefore carries its own mode. The MODEL never changes - same fields,
+//  same 1-5 x 1-5 scoring, same hold states, same actions - only the words
+//  do, so every count, chart and report keeps working across both.
+//  Operational wording follows the APM / Orange Book convention (probability
+//  x impact; terminate, treat, transfer, tolerate).
+// ══════════════════════════════════════════════════════════════
+const RISK_MODES=[
+  { k:'hs',  label:'Health & safety', short:'H&S',         colour:'#2563EB' },
+  { k:'ops', label:'Operational',     short:'Operational', colour:'#7C3AED' }
+];
+const RISK_TERMS={
+  hs:{
+    category:'Hazard type', activity:'Activity / process',
+    activityPh:'e.g. Site surveys, driving for work, work at height',
+    source:'Hazard', sourcePh:'The source of harm, e.g. fragile roof, asbestos, moving vehicles',
+    sourceHint:'A hazard is the SOURCE of harm (e.g. a forklift truck, a fragile roof). The risk is the likelihood that hazard causes harm, and how serious it would be.',
+    persons:'Persons at risk', personsDigest:'Who is at risk',
+    harm:'Potential harm / consequences', harmPh:'e.g. Fatality, major injury, occupational ill health, stress-related illness',
+    controls:'Existing controls', controlsPh:'Current control measures already in place',
+    controlLevel:'Best control level',
+    controlLevelHint:'The strongest control in place, best to weakest (a general hierarchy that fits any hazard): Eliminate the hazard → Prevent the harm by an engineering / physical control (e.g. edge protection to prevent a fall, a guard, isolation) → Protect the person with PPE, procedure or training → Stop work if it cannot be made safe. A ‘Protect’ answer means you are relying on PPE or procedure.',
+    rating:'Risk rating - Likelihood (L) × Severity (S), each 1-5',
+    L:'L', S:'S', likeWord:'Likelihood', sevWord:'Severity',
+    projected:'Projected (after controls are actioned)',
+    flag:'⚠ Serious injury or fatality (SIF) potential',
+    flagHelp:'Could this credibly kill or seriously injure someone? Judge on worst-case severity, not likelihood.',
+    flagChip:'⚠ SIF', flagChipTitle:'Serious injury or fatality potential',
+    linked:'Linked assessments / evidence',
+    reviewed:'✓ I have reviewed and completed this risk',
+    plan:'Action plan',
+    levels:{ remove:'Eliminate / remove the hazard', prevent:'Prevent the harm (engineering / physical)', protect:'Protect the person (PPE, procedure, training)', stopwork:'Stop work if unsafe' }
+  },
+  ops:{
+    category:'Risk category', activity:'Activity / area of the business',
+    activityPh:'e.g. Key client concentration, supplier failure, IT outage',
+    source:'Cause / risk source', sourcePh:'What could go wrong, e.g. single supplier, one key person, ageing plant',
+    sourceHint:'The cause is the SOURCE of the risk (e.g. one supplier, one key person). The risk is the probability that cause bites, and how big the impact would be.',
+    persons:'Who or what is affected', personsDigest:'Who or what is affected',
+    harm:'Consequence if it happens', harmPh:'e.g. Lost contract, prosecution, plant down for weeks, reputational damage',
+    controls:'Current response / mitigation', controlsPh:'What is already in place to manage this risk',
+    controlLevel:'Response strategy',
+    controlLevelHint:'The strongest response in place, best to weakest (the four Ts): Terminate - avoid the risk entirely → Treat - reduce it at source → Transfer or contain - insure, contract out, hold contingency → Tolerate - accept it and monitor. A ‘Tolerate’ answer means the business is carrying this risk knowingly.',
+    rating:'Risk rating - Probability (P) × Impact (I), each 1-5',
+    L:'P', S:'I', likeWord:'Probability', sevWord:'Impact',
+    projected:'Target (after the response is delivered)',
+    flag:'⚠ Business-critical risk',
+    flagHelp:'Could this credibly stop the business, or do damage it would struggle to recover from? Judge on worst-case impact, not probability.',
+    flagChip:'⚠ Critical', flagChipTitle:'Business-critical - worst case would seriously damage the business',
+    linked:'Linked documents / evidence',
+    reviewed:'✓ I have reviewed and completed this risk',
+    plan:'Response plan',
+    levels:{ remove:'Terminate - avoid the risk entirely', prevent:'Treat - reduce it at source', protect:'Transfer or contain - insure, contract, contingency', stopwork:'Tolerate - accept and monitor' }
+  }
+};
+function _riskMode(r){ return (r && r.mode==='ops') ? 'ops' : 'hs'; }
+function _rt(r, key){ const t=RISK_TERMS[_riskMode(r)]||RISK_TERMS.hs; const v=t[key]; return (v===undefined?RISK_TERMS.hs[key]:v); }
+function _riskModeLabel(r){ const m=_riskMode(r); const d=RISK_MODES.find(x=>x.k===m); return d?d.label:'Health & safety'; }
+// Control-level label in this risk's own language (same stored key either way).
+function _controlLevelLabelFor(r, k){ const L=_rt(r,'levels'); return (L&&L[k])||_controlLevelLabel(k); }
+function setRiskMode(id, mode){
+  if(_roLocked()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
+  const m=(mode==='ops')?'ops':'hs';
+  if(_riskMode(r)===m) return;
+  r.mode=m;
+  // The energy-damage model is a health-and-safety idea; an operational risk
+  // carries no energies, so they are cleared rather than left hidden and stale.
+  if(m==='ops') r.energy=[];
+  _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
+}
+
+// The flag on a risk, in whichever language it is written: SIF for health
+// and safety, business-critical for operational. One derivation, two names.
+function _riskFlagOn(r){ return (typeof _riskMode==='function' && _riskMode(r)==='ops') ? _riskCritical(r) : _riskSif(r); }
+
 function _controlLevelColor(k){ const c=CONTROL_LEVELS.find(x=>x.k===k); return c?c.color:'#9CA3AF'; }
 function _controlLevelDist(){ const d={remove:0,prevent:0,protect:0,stopwork:0,none:0}; (S.riskProfile||[]).forEach(r=>{ const l=r.controlLevel; if(l && d[l]!==undefined) d[l]++; else d.none++; }); return d; }
 // Default likelihood / severity descriptors (1-5). Editable via the Scoring key (S.riskConfig).
@@ -15380,7 +15477,7 @@ function addRiskEntry(){
   if(_blockIfReadOnly()) return;
   if(!Array.isArray(S.riskProfile)) S.riskProfile = [];
   const entry = { id:'risk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
-    category:'', area:'', pdca:'', energy:[], sif:'', controlLevel:'', reviewed:false, activity:'', hazard:'', personsAtRisk:[], harm:'', businessImpact:'',
+    mode:'hs', category:'', area:'', pdca:'', energy:[], sif:'', controlLevel:'', reviewed:false, activity:'', hazard:'', personsAtRisk:[], harm:'', businessImpact:'',
     impacts:{}, impactNotes:{}, controls:'',
     likelihood:'', severity:'', targetL:'', targetS:'',
     trend:'', actions:[], linked:[], furtherActions:'' };
@@ -18208,7 +18305,7 @@ function _reportData(){
   const sif=risks.filter(r=>_riskSif(r));
   const sifUncontrolled=sif.filter(r=>_riskControlStatus(r)==='None');
   const sifNoOwner=sif.filter(r=>!_riskOwner(r));
-  const maxSev=Math.max(0,...risks.map(_worstSeverity));
+  const maxSev=Math.max(0,...risks.filter(r=>(typeof _riskMode!=='function'||_riskMode(r)==='hs')).map(_worstSeverity));   // injury ladder: H&S risks only
   const acts=_allRiskActions();
   const actOverdue=acts.filter(x=>x.status==='Overdue').length;
   // Owner and date gaps are counted across the WHOLE plan and only on actions
@@ -19013,7 +19110,7 @@ function _rpDigestHTML(r){
   if(r.hazard) narr.push('<b>'+esc(r.hazard)+'.</b>');
   if(r.harm&&String(r.harm).trim()){ const h=esc(String(r.harm).trim()); narr.push(h+(/[.!?]$/.test(h)?'':'.')); }
   if(r.controls&&String(r.controls).trim()){ const c=esc(String(r.controls).trim()); narr.push('<b>Managed by:</b> '+c+(/[.!?]$/.test(c)?'':'.')); }
-  if(cl) narr.push('<b>Strongest control in place:</b> '+esc(cl)+'.');
+  if(cl) narr.push('<b>'+esc(_riskMode(r)==='ops'?'Strongest response in place':'Strongest control in place')+':</b> '+esc(_controlLevelLabelFor(r,r.controlLevel))+'.');
   const personsTxt=(r.personsAtRisk||[]).length ? r.personsAtRisk.map(p=>'<span class="dg-chip">'+esc(p)+'</span>').join('') : '<span style="color:var(--text-muted);font-size:12px;">Not recorded yet</span>';
   const whereBits=[];
   if(r.area) whereBits.push('<span class="dg-chip">'+esc(r.area)+'</span>');
@@ -19034,12 +19131,12 @@ function _rpDigestHTML(r){
     ${_scoreHistoryHTML(r)}
     ${narr.length?`<p class="dg-narr">${narr.join(' ')}</p>`:''}
     <div class="dg-grid">
-      <div class="dg-cell"><h5>Who is at risk</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${personsTxt}</div></div>
+      <div class="dg-cell"><h5>${esc(_rt(r,'personsDigest'))}</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${personsTxt}</div></div>
       <div class="dg-cell"><h5>Where</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${whereBits.join('')||'<span style="color:var(--text-muted);font-size:12px;">Organisation-wide</span>'}</div></div>
       <div class="dg-cell"><h5>Business impact${imMax?` <span class="dg-chip">worst ${imMax} / 5</span>`:''}</h5><p>${imTxt}</p></div>
     </div>
     <div class="dg-acts">
-      <div class="dg-ah"><span>Action plan</span><span>${acts.length?(openActs.length? openActs.length+' open · '+acts.length+' total' : 'all closed · '+acts.length+' total'):''}</span></div>
+      <div class="dg-ah"><span>${esc(_rt(r,'plan'))}</span><span>${acts.length?(openActs.length? openActs.length+' open · '+acts.length+' total' : 'all closed · '+acts.length+' total'):''}</span></div>
       ${actRows || `<div class="dg-act" style="color:var(--text-muted);">No actions recorded yet - add them on the Actions &amp; evidence tab.</div>`}
     </div>
     <div class="dg-cell" style="margin-bottom:13px;"><h5>Evidence behind this</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${links.length?links.map(l=>`<span class="dg-chip" title="${esc(l.url||'')}">📄 ${esc(l.ref||l.url)}</span>`).join(''):'<span style="color:var(--text-muted);font-size:12px;">No linked assessments recorded.</span>'}</div></div>
@@ -19107,8 +19204,9 @@ function renderRiskProfile(){
   // common scoring error is treating severity as fixed and only ever moving L.
   const LIKE_TIP = 'Likelihood 1-5 - how likely the harmful event is. Moves when a control stops the event happening: segregation, guarding, planned maintenance, permits, supervision, competence.';
   const SEV_TIP  = 'Severity 1-5 - how bad it would credibly be, and this number is NOT fixed. It moves whenever a control limits the extent of harm: lower speed, lower height, less energy or quantity, fall-arrest, containment, impact protection, fewer people exposed.';
-  const rsel = (id,f,v,first) => `<select${dis} title="${first==='L'?LIKE_TIP:SEV_TIP}" onchange="updateRiskRating('${id}','${f}',this.value)"><option value="">${first}</option>${[1,2,3,4,5].map(n=>`<option value="${n}"${String(v||'')===String(n)?' selected':''}>${n}</option>`).join('')}</select>`;
-  const ratingBox = (r,title,cls,lf,sf) => `<div class="rt-box ${cls}"><div class="rt-title">${title}</div><div class="rt-selects">${rsel(r.id,lf,r[lf],'L')}${rsel(r.id,sf,r[sf],'S')}</div></div>`;
+  const rsel = (r,f,v,isSev) => { const lab=_rt(r,isSev?'S':'L');
+    return `<select${dis} title="${isSev?SEV_TIP:LIKE_TIP}" onchange="updateRiskRating('${r.id}','${f}',this.value)"><option value="">${lab}</option>${[1,2,3,4,5].map(n=>`<option value="${n}"${String(v||'')===String(n)?' selected':''}>${n}</option>`).join('')}</select>`; };
+  const ratingBox = (r,title,cls,lf,sf) => `<div class="rt-box ${cls}"><div class="rt-title">${title}</div><div class="rt-selects">${rsel(r,lf,r[lf],false)}${rsel(r,sf,r[sf],true)}</div></div>`;
 
   const pdcaHint = `<span class="fl-hint" title="Plan-Do-Check-Act - where this risk sits in the manage-for-H&S cycle. Leave blank to derive it from the controls and actions you record.">(?)</span>`;
   const rateHint = `<span class="fl-hint" title="Both numbers can be reduced, and both should be. Likelihood falls when you make the event less likely: guarding, planned maintenance, permits, supervision, competence. Severity falls too - it is not fixed, whatever you may have been told. Reduce the energy, the height, the pressure or the quantity; put distance, a barrier or an interlock between the person and the harm; cut how many people are exposed; or change the method so the worst credible outcome is a lesser injury. Only where a control genuinely does nothing to the worst case do you move likelihood alone and leave severity where it is.">(?)</span>`;
@@ -19132,7 +19230,8 @@ function renderRiskProfile(){
   const listRows = rows.map(r => {
     const sc = _riskScore(r), htC = HAZARD_TYPE_COLOR[r.category] || '#9CA3AF';
     const bits = [r.category ? esc(r.category) : 'No hazard type yet'];
-    if(_riskSif(r)) bits.push('<span style="color:#DC2626;font-weight:700;">⚠ SIF</span>');
+    if(_riskMode(r)==='ops') bits.push('<span style="color:#7C3AED;font-weight:700;">Operational</span>');
+    if(_riskFlagOn(r)) bits.push('<span style="color:#DC2626;font-weight:700;">'+esc(_rt(r,'flagChip'))+'</span>');
     if(r.reviewed) bits.push('<span style="color:#16A34A;font-weight:700;">✓ reviewed</span>');
     return `<button type="button" class="rp-row${r.id===_riskSel?' on':''}" data-rid="${r.id}" role="option" aria-selected="${r.id===_riskSel?'true':'false'}" onclick="_selectRisk('${r.id}')" style="border-left-color:${htC};">
       <span style="min-width:0;flex:1 1 auto;">
@@ -19151,33 +19250,33 @@ function renderRiskProfile(){
     if(_riskSelTab==='summary') return _rpDigestHTML(r);
     if(_riskSelTab==='identify') return `
         <div class="field-grid" style="margin-bottom:12px;">
-          ${fg('Hazard type', sel(r.id,'category',r.category,_catOpts(r.category)))}
+          ${fg(_rt(r,'category'), sel(r.id,'category',r.category,_catOpts(r.category)))}
           ${fg('Business area', sel(r.id,'area',r.area,RISK_AREAS))}
           ${fg('PDCA stage '+pdcaHint, `<select${dis} onchange="updateRiskField('${r.id}','pdca',this.value)"><option value="">-</option>${RISK_PDCA.map(p=>`<option value="${p}"${r.pdca===p?' selected':''}>${p}</option>`).join('')}</select>`)}
         </div>
         <div class="field-grid" style="margin-bottom:12px;">
-          ${fg('Activity / process', `<input type="text"${dis} id="ractf-${r.id}" value="${esc(r.activity)}" placeholder="e.g. Site surveys, driving for work, work at height" oninput="updateRiskField('${r.id}','activity',this.value)">`)}
-          ${fg('Hazard '+hazHint, txt(r.id,'hazard',r.hazard,'The source of harm, e.g. fragile roof, asbestos, moving vehicles'))}
+          ${fg(_rt(r,'activity'), `<input type="text"${dis} id="ractf-${r.id}" value="${esc(r.activity)}" placeholder="${esc(_rt(r,'activityPh'))}" oninput="updateRiskField('${r.id}','activity',this.value)">`)}
+          ${fg(esc(_rt(r,'source'))+' <span class="fl-hint" title="'+esc(_rt(r,'sourceHint'))+'">(?)</span>', txt(r.id,'hazard',r.hazard,_rt(r,'sourcePh')))}
         </div>
-        <div style="margin-bottom:12px;">
+        ${_riskMode(r)==='ops' ? '' : `<div style="margin-bottom:12px;">
           <label class="field-label">Hazard source(s) - energy or human factors <span class="fl-hint" title="A hazard is usually an energy source: harm happens when energy is released or contacted (energy-damage model - Haddon; HSE). Tick the energies this activity carries. For a non-physical hazard (stress, violence, fatigue) tick Psychosocial. Leave blank if none apply.">(?)</span></label>
           <div class="chip-wrap" id="renergy-${r.id}">${ENERGY_SOURCES.map(e=>`<button type="button" class="chip${(r.energy||[]).includes(e.k)?' on':''}"${dis} title="${esc(e.def)}" onclick="toggleEnergy('${r.id}','${e.k}')">${e.label}</button>`).join('')}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 13px;border:1px solid ${_riskSif(r)?'#DC2626':'var(--border)'};border-radius:10px;background:${_riskSif(r)?'#DC26260d':'transparent'};">
-          <label style="font-size:13.5px;font-weight:700;color:${_riskSif(r)?'#DC2626':'var(--text)'};display:flex;align-items:center;gap:9px;cursor:pointer;">
-            <input type="checkbox"${dis} ${_riskSif(r)?'checked':''} onchange="setSif('${r.id}',this.checked)"> ⚠ Serious injury or fatality (SIF) potential
+        </div>`}
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 13px;border:1px solid ${_riskFlagOn(r)?'#DC2626':'var(--border)'};border-radius:10px;background:${_riskFlagOn(r)?'#DC26260d':'transparent'};">
+          <label style="font-size:13.5px;font-weight:700;color:${_riskFlagOn(r)?'#DC2626':'var(--text)'};display:flex;align-items:center;gap:9px;cursor:pointer;">
+            <input type="checkbox"${dis} ${_riskFlagOn(r)?'checked':''} onchange="setSif('${r.id}',this.checked)"> ${esc(_rt(r,'flag'))}
           </label>
-          <span style="font-size:11px;color:var(--text-muted);flex:1;min-width:180px;">Could this credibly kill or seriously injure someone? Judge on worst-case severity, not likelihood.${(r.sif===''||r.sif===undefined)?' Auto-set from severity - tick to fix it.':''}</span>
+          <span style="font-size:11px;color:var(--text-muted);flex:1;min-width:180px;">${esc(_rt(r,'flagHelp'))}${(r.sif===''||r.sif===undefined)?(' Auto-set from '+_rt(r,'sevWord').toLowerCase()+' - tick to fix it.'):''}</span>
         </div>`;
     if(_riskSelTab==='people') return `
         <div class="field-grid cols-1" style="margin-bottom:12px;">
-          ${fg('Persons at risk', `<div class="chip-wrap" id="rpers-${r.id}">${persons(r)}</div>`)}
+          ${fg(_rt(r,'persons'), `<div class="chip-wrap" id="rpers-${r.id}">${persons(r)}</div>`)}
         </div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
           ${fg('Business unit(s) threatened <span class="fl-hint" title="Which parts of the business this threat sits in. Risk profiling is done at business unit, division or branch level so the board can see where each arm is exposed. Tick none and the risk is organisation-wide - it then counts towards every unit.">(?)</span>', `<div class="chip-wrap" id="runits-${r.id}">${_riskUnitChips(r,dis)}</div>`)}
         </div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
-          ${fg('Potential harm / consequences', ta(r.id,'harm',r.harm,'e.g. Fatality, major injury, occupational ill health, stress-related illness'))}
+          ${fg(_rt(r,'harm'), ta(r.id,'harm',r.harm,_rt(r,'harmPh')))}
         </div>
         <div style="margin-bottom:14px;">
           <label class="field-label">Business impact <span class="fl-hint" title="Rate the credible worst-case impact on each dimension, 1 (negligible) to 5 (severe).">(?)</span></label>
@@ -19187,16 +19286,16 @@ function renderRiskProfile(){
         </div>`;
     if(_riskSelTab==='rating') return `
         <div class="field-grid cols-1" style="margin-bottom:12px;">
-          ${fg('Existing controls', ta(r.id,'controls',r.controls,'Current control measures already in place'))}
+          ${fg(_rt(r,'controls'), ta(r.id,'controls',r.controls,_rt(r,'controlsPh')))}
         </div>
         <div class="field-grid" style="margin-bottom:12px;">
-          ${fg('Best control level '+`<span class="fl-hint" title="The strongest control in place, best to weakest (a general hierarchy that fits any hazard): Eliminate the hazard → Prevent the harm by an engineering / physical control (e.g. edge protection to prevent a fall, a guard, isolation) → Protect the person with PPE, procedure or training → Stop work if it cannot be made safe. A 'Protect' answer means you are relying on PPE or procedure.">(?)</span>`, `<select${dis} onchange="updateRiskField('${r.id}','controlLevel',this.value)"><option value="">- Select -</option>${CONTROL_LEVELS.map(c=>`<option value="${c.k}"${r.controlLevel===c.k?' selected':''}>${c.label}</option>`).join('')}</select>`)}
+          ${fg(esc(_rt(r,'controlLevel'))+' <span class="fl-hint" title="'+esc(_rt(r,'controlLevelHint'))+'">(?)</span>', `<select${dis} onchange="updateRiskField('${r.id}','controlLevel',this.value)"><option value="">- Select -</option>${CONTROL_LEVELS.map(c=>`<option value="${c.k}"${r.controlLevel===c.k?' selected':''}>${esc(_controlLevelLabelFor(r,c.k))}</option>`).join('')}</select>`)}
         </div>
         <div class="risk-rating-row" style="flex-direction:column;align-items:stretch;gap:10px;">
-          <label class="field-label" style="margin:0;">Risk rating - Likelihood (L) × Severity (S), each 1-5 ${rateHint}</label>
+          <label class="field-label" style="margin:0;">${esc(_rt(r,'rating'))} ${rateHint}</label>
           <div class="rating-trio">
             ${ratingBox(r,'Inherent','rt-current','likelihood','severity')}
-            ${ratingBox(r,'Projected (after controls are actioned) '+projHint,'','targetL','targetS')}
+            ${ratingBox(r,esc(_rt(r,'projected'))+' '+projHint,'','targetL','targetS')}
             <div class="rt-box"><div class="rt-title">Risk trend ${trendHint}</div><div class="rt-selects">${sel(r.id,'trend',r.trend,RISK_TREND)}</div></div>
           </div>
           <div class="risk-flow" id="rflow-${r.id}">${_riskFlowHTML(r)}</div>
@@ -19206,11 +19305,11 @@ function renderRiskProfile(){
     const prov=_rpProvenanceBadge(r);
     return `
         <div style="margin:0 0 14px;">
-          <label class="field-label">Action plan <span class="fl-hint" title="Prioritised, owned and dated actions. This is where residual risk is dealt with: once the plan is delivered, the risk does not disappear - the completed plan and its evidence become the way the company manages this risk.">(?)</span></label>
+          <label class="field-label">${esc(_rt(r,'plan'))} <span class="fl-hint" title="Prioritised, owned and dated actions. This is where residual risk is dealt with: once the plan is delivered, the risk does not disappear - the completed plan and its evidence become the way the company manages this risk.">(?)</span></label>
           ${_riskActionsHTML(r,dis)}
         </div>
         <div style="margin:14px 0;">
-          <label class="field-label">Linked assessments / evidence <span class="fl-hint" title="The underlying documents this profile summarises - Fire Risk Assessment, COSHH, asbestos survey, training records, etc.">(?)</span></label>
+          <label class="field-label">${esc(_rt(r,'linked'))} <span class="fl-hint" title="The underlying documents this profile summarises - assessments, surveys, contracts, training records, etc.">(?)</span></label>
           ${_riskLinksHTML(r,dis)}
         </div>
         <label style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:16px;padding:11px 14px;border:1px solid ${r.reviewed?'#16A34A':'var(--border)'};border-radius:10px;background:${r.reviewed?'#16A34A0d':'transparent'};color:${r.reviewed?'#15803D':'var(--text)'};">
@@ -19235,10 +19334,11 @@ function renderRiskProfile(){
           </span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;align-items:center;">
+          ${ro?`<span class="rc-chip" style="background:${_riskMode(selR)==='ops'?'#7C3AED':'#2563EB'}1a;color:${_riskMode(selR)==='ops'?'#7C3AED':'#2563EB'};">${esc(_riskModeLabel(selR))}</span>`:`<span class="rp-modesw" title="Health &amp; safety risk, or operational / business risk. The scoring and the plan work the same either way - only the wording changes.">${RISK_MODES.map(m=>`<button type="button" class="rp-modebtn${_riskMode(selR)===m.k?' on':''}" style="${_riskMode(selR)===m.k?('background:'+m.colour+';border-color:'+m.colour+';'):''}" onclick="setRiskMode('${selR.id}','${m.k}')">${esc(m.label)}</button>`).join('')}</span>`}
           ${selR.category?`<span class="rc-chip" style="background:${selHtC}1a;color:${selHtC};">${esc(selR.category)}</span>`:''}
           ${selR.area?`<span class="rc-chip" style="background:var(--muted-bg);color:var(--text-muted);">${esc(selR.area)}</span>`:''}
           ${selR.libKey?`<span class="rc-chip" style="background:var(--muted-bg);color:var(--text-muted);font-weight:400;">library</span>`:''}
-          ${_riskSif(selR)?`<span class="rc-chip" style="background:#DC26261a;color:#DC2626;" title="Serious injury or fatality potential">⚠ SIF</span>`:''}
+          ${_riskFlagOn(selR)?`<span class="rc-chip" style="background:#DC26261a;color:#DC2626;" title="${esc(_rt(selR,'flagChipTitle'))}">${esc(_rt(selR,'flagChip'))}</span>`:''}
           ${selR.reviewed?`<span class="rc-chip" style="background:#16A34A1a;color:#16A34A;" title="You have marked this risk complete">✓ reviewed</span>`:''}
           <span class="rc-chip" style="background:${selPdcaC}1a;color:${selPdcaC};" title="Manage cycle stage (PDCA)">${selPdca}</span>
         </div>
@@ -19482,18 +19582,19 @@ function buildRiskProfileReportPDF(){
       keepBlock(nameLines.length*5 + 12);
       y+=1; doc.setTextColor(prgb[0],prgb[1],prgb[2]); nameLines.forEach(ln=>{ doc.text(ln,ML,y); y+=5; });
       doc.setFont('helvetica','normal');
-      if(_riskSif(r)) field('SIF flag', 'YES - can kill or seriously injure (independent of likelihood)');
-      field('Hazard type', r.category);
+      if(_riskFlagOn(r)) field(_riskMode(r)==='ops'?'Business-critical':'SIF flag', _riskMode(r)==='ops'?'YES - worst case would seriously damage the business':'YES - can kill or seriously injure (independent of likelihood)');
+      if(_riskMode(r)==='ops') field('Risk type','Operational');
+      field(_rt(r,'category'), r.category);
       field('Energy source(s)', (r.energy||[]).map(_energyLabel).join(', '));
       field('Business area', r.area);
-      field('Persons at risk', (r.personsAtRisk||[]).join(', '));
-      field('Release / how harm occurs', r.hazard);
+      field(_rt(r,'persons'), (r.personsAtRisk||[]).join(', '));
+      field(_riskMode(r)==='ops'?'Cause / risk source':'Release / how harm occurs', r.hazard);
       field('Consequence', r.harm);
       const imp = RISK_IMPACT_DIMS.filter(dm=>parseInt((r.impacts||{})[dm.k],10)>0)
         .map(dm=>dm.label.split(' (')[0]+' '+r.impacts[dm.k]).join(', ');
       field('Business impact', imp || r.businessImpact);
-      field('Existing controls', r.controls);
-      field('Best control level', _controlLevelLabel(r.controlLevel));
+      field(_rt(r,'controls'), r.controls);
+      field(_rt(r,'controlLevel'), _controlLevelLabelFor(r, r.controlLevel));
       const plan=_riskPlanState(r), tgtP=_riskTarget(r);
       const fmtR=(s)=> s.rating ? (s.l+'x'+s.s+'='+s.rating+' ('+s.priority+')') : '-';
       field('Risk rating', 'Inherent '+fmtR(sc)+((tgtP.rating&&plan.k!=='managed')?('  >  Projected '+fmtR(tgtP)):'')+'  >  '+plan.label.replace('✓ ',''));

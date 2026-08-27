@@ -25417,7 +25417,12 @@ async function casExportXlsx(){
   if(!_tOnline()){ alert('Sign in first to export the question set.'); return; }
   try{
     const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
-    const res=await _tApiRaw('/api/cas/export', JSON.stringify({ client, rows:_casExportRows() }));
+    // Trade: the recorded sector plus whatever discovery sectors are ticked -
+    // the filter Simon reads a collated workbook by.
+    const trade=[ (S.company&&S.company.sector)||'' ]
+      .concat((typeof _discSectorKeys==='function'?_discSectorKeys():[]).map(k=>{ const d=SECTOR_DEFS.find(x=>x.k===k); return d?d.label.split(' or ')[0].split(',')[0]:k; }))
+      .filter(Boolean).filter((v,i,arr)=>arr.indexOf(v)===i).join('; ');
+    const res=await _tApiRaw('/api/cas/export', JSON.stringify({ client, trade, rows:_casExportRows() }));
     if(!res.ok){ const e=await res.json().catch(()=>({})); alert('Export failed: '+(e.error||('HTTP '+res.status))); return; }
     const blob=await res.blob(); const cd=res.headers.get('content-disposition')||''; const m=/filename="([^"]+)"/.exec(cd); const name=m?m[1]:'CAS question set.xlsx';
     const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);

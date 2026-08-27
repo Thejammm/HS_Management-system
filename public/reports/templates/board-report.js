@@ -18,6 +18,10 @@ export const BOARD_SECTIONS = [
   { id: 'training',       label: 'Training record', hsg: 'Training record' },
   { id: 'workers',        label: 'Issues raised by workers', hsg: 'Worker consultation & involvement' },
   { id: 'statutory',      label: 'Checks required by law', hsg: 'Statutory checks (e.g. lifting equipment)' },
+  { id: 'legal',          label: 'Legal compliance - duties assessed, met and not in place', hsg: 'Compliance with legal requirements' },
+  { id: 'accreditation',  label: 'Accreditation readiness (Common Assessment Standard)', hsg: 'Assurance against external standards' },
+  { id: 'cdm',            label: 'CDM assurance - design reviews & CDM audits', hsg: 'Active monitoring · construction dutyholders' },
+  { id: 'environmental',  label: 'Environmental events', hsg: 'Environmental incidents & investigations' },
   { id: 'wins',           label: 'Successes this period', hsg: 'Celebrate and promote successes' },
   { id: 'sinceLast',      label: 'Movement since the baseline', hsg: 'Closing the loop' },
   { id: 'topFive',        label: 'Top 5 priorities for next month', hsg: 'What we agreed to do next' },
@@ -37,7 +41,7 @@ import { MATURITY_DOMAINS } from '../app-contract.js';
 // The consultant's judgement of the six HSG65 areas - words, never numbers.
 function judgementRows(state) {
   const j = (state && state.profiler && state.profiler.judgement) || {};
-  const words = { weak: 'Weak', adequate: 'Adequate', strong: 'Strong' };
+  const words = { weak: 'Weak', developing: 'Developing', adequate: 'Adequate', strong: 'Strong' };
   return MATURITY_DOMAINS
     .map(d => ({ label: d.name, j: j[d.id] || {} }))
     .filter(x => x.j.level)
@@ -144,6 +148,40 @@ export function buildBoardReport(state, opts = {}) {
   const fmtD = (d) => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
   const hsgFoot = { type: 'textBlock', body: 'A leadership review draws on: active and reactive monitoring, accident, incident and near-miss data, training records, inspection and investigation reports, risk assessments, issues raised by workers, and checks required by law. Each section above reports one of them from the live system. Period covered: the 90 days to ' + today + '.', cls: 'r-stamp' };
 
+  // ── Legal compliance, accreditation, CDM oversight and environmental
+  //    events - each computed here from the raw records (facts in, metrics
+  //    calculated; nothing stored). ──
+  const reqSections = Array.isArray(state.requirements) ? state.requirements : [];
+  const legal = { assessed: 0, met: 0, notInPlace: [], gaps: [] };
+  reqSections.forEach(sec => (sec.items || []).forEach(it => {
+    if (!(it && (it.present || it.adequate || it.reviewed))) return;
+    legal.assessed++;
+    if (it.present === 'Yes' && it.adequate === 'Yes') { legal.met++; return; }
+    const row = { duty: sec.heading || 'Legal duty', line: String(it.requirement || '').slice(0, 90), cite: sec.citation || '', due: it.dueDate || '', nip: it.present === 'No' };
+    if (row.nip) legal.notInPlace.push(row); else legal.gaps.push(row);
+  }));
+
+  const casStatus = (state.cas && state.cas.status && typeof state.cas.status === 'object') ? state.cas.status : {};
+  const cas = { ready: 0, partial: 0, gap: 0, na: 0, assessed: 0 };
+  Object.keys(casStatus).forEach(k => { const v = (casStatus[k] || {}).v;
+    if (v === 'ready') cas.ready++; else if (v === 'partial') cas.partial++; else if (v === 'gap') cas.gap++; else if (v === 'na') cas.na++; else return; cas.assessed++; });
+  const casAssessable = cas.assessed - cas.na;
+  const casPct = casAssessable > 0 ? Math.round(cas.ready / casAssessable * 100) : null;
+
+  const CDM_KINDS = ['CDM audit', 'Design review', 'Architectural review'];
+  const cdmAll = (Array.isArray(state.siteInspections) ? state.siteInspections : []).filter(v => CDM_KINDS.includes(v.kind));
+  const todayIso = (opts.today || new Date().toISOString().slice(0, 10));
+  const cdm = {
+    total: cdmAll.length,
+    done: cdmAll.filter(v => v.actual && v.outcome !== 'Not done').length,
+    overdue: cdmAll.filter(v => !v.actual && v.planned && v.planned < todayIso).length,
+    latest: cdmAll.filter(v => v.actual).sort((a, b) => String(b.actual).localeCompare(String(a.actual))).slice(0, 6),
+  };
+
+  const envAll = (Array.isArray(state.incidents) ? state.incidents : []).filter(i => i && i.type === 'Environmental');
+  const env = { total: envAll.length, open: envAll.filter(i => i.status === 'Open').length,
+    latest: envAll.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, 5) };
+
   const monBlocks = [];
   if (!hide.reactive) {
     monBlocks.push({ type: 'kpiStrip', tiles: [
@@ -213,6 +251,69 @@ export function buildBoardReport(state, opts = {}) {
       ...peopleBlocks,
     ],
   } : null;
+
+  const compBlocks = [];
+  if (!hide.legal) {
+    compBlocks.push({ type: 'kpiStrip', tiles: [
+      { value: String(legal.assessed), label: 'Duty lines assessed', tone: legal.assessed ? undefined : 'muted' },
+      { value: String(legal.met), label: 'Met - in place and adequate', tone: legal.met ? 'ok' : undefined },
+      { value: String(legal.gaps.length), label: 'In place but not adequate', tone: legal.gaps.length ? 'warn' : 'ok' },
+      { value: String(legal.notInPlace.length), label: 'Not in place', tone: legal.notInPlace.length ? 'bad' : 'ok' },
+    ] });
+    const legRows = legal.notInPlace.concat(legal.gaps).slice(0, 8);
+    compBlocks.push(legRows.length
+      ? { type: 'dataTable',
+          cols: [ { header: 'Duty', w: '22%' }, { header: 'Requirement', w: '38%' }, { header: 'Status', w: '14%' }, { header: 'Legal anchor', w: '15%' }, { header: 'By', w: '11%' } ],
+          rows: legRows.map(r => [ r.duty, r.line || '-', r.nip ? 'Not in place' : 'In place, not adequate', r.cite || '-', r.due ? fmtD(r.due) : '-' ]),
+          footnote: ((legal.notInPlace.length + legal.gaps.length > 8) ? ('Showing 8 of ' + (legal.notInPlace.length + legal.gaps.length) + ' open duty lines. ') : '') + 'From the Legal duties assessment. Each legal anchor is the duty the line discharges; a line not in place is a duty not being discharged.' }
+      : { type: 'textBlock', title: 'Legal compliance', body: legal.assessed ? 'Every assessed duty line is in place and adequate.' : 'The Legal duties assessment has not been started - the legal position cannot be evidenced until it is.' });
+  }
+  if (!hide.accreditation) {
+    compBlocks.push({ type: 'textBlock', title: 'Accreditation readiness (Common Assessment Standard)', body:
+      cas.assessed
+        ? (countPhrase(cas.assessed, 'criterion has', 'criteria have') + ' been assessed: ' + cas.ready + ' green, ' + cas.partial + ' amber, ' + cas.gap + ' red' + (cas.na ? (', ' + cas.na + ' not applicable') : '') + (casPct != null ? ('. ' + casPct + '% of the assessable criteria assessed so far are green') : '') + '. The criterion-by-criterion mapping and its evidence live on the Accreditation tab.')
+        : 'Accreditation readiness has not been assessed yet. The Accreditation tab maps the business against the Common Assessment Standard criterion by criterion - the route to SSIP and principal-contractor approval.' });
+  }
+  const compliancePage = compBlocks.length ? { label: 'Compliance', section: 'compliance', blocks: [
+      mast,
+      { type: 'titleBlock', kicker: 'Leadership review · the legal position and external standards',
+        headline: legal.notInPlace.length ? (countPhrase(legal.notInPlace.length, 'legal duty is', 'legal duties are') + ' not in place.')
+          : legal.gaps.length ? (countPhrase(legal.gaps.length, 'duty line needs', 'duty lines need') + ' strengthening.')
+          : legal.assessed ? 'Every assessed duty is in place and adequate.'
+          : 'Legal compliance and accreditation readiness.',
+        standfirst: 'Whether the duties the law places on the business are in place and adequate - and how the business currently reads against the accreditation standard its clients ask for.' },
+      ...compBlocks,
+    ] } : null;
+
+  const oversightBlocks = [];
+  if (!hide.cdm) {
+    oversightBlocks.push({ type: 'textBlock', title: 'CDM assurance - design reviews and CDM audits', body:
+      cdm.total
+        ? (countPhrase(cdm.done, 'CDM oversight activity has', 'CDM oversight activities have') + ' been completed (design reviews, architectural reviews and CDM audits) of ' + cdm.total + ' planned. ' + noneOrCount(cdm.overdue, 'planned activity is overdue', 'planned activities are overdue', 'None') + '.')
+        : 'No CDM oversight activities are recorded. Where the business designs or manages construction work, design reviews and CDM audits belong on the process-assurance plan.' });
+    if (cdm.latest.length) oversightBlocks.push({ type: 'dataTable',
+      cols: [ { header: 'Activity', w: '24%' }, { header: 'Site / project', w: '30%' }, { header: 'Done', w: '14%' }, { header: 'By', w: '14%' }, { header: 'Outcome', w: '18%' } ],
+      rows: cdm.latest.map(v => [ v.kind, v.site || '-', fmtD(v.actual), v.by || '-', v.outcome || '-' ]),
+      footnote: 'The latest completed CDM oversight, from the Process assurance register.' });
+  }
+  if (!hide.environmental) {
+    oversightBlocks.push({ type: 'textBlock', title: 'Environmental events', body:
+      env.total
+        ? (countPhrase(env.total, 'environmental event is', 'environmental events are') + ' on the incident register' + (env.open ? (', ' + countPhrase(env.open, 'investigation still open', 'investigations still open')) : ', none open') + '.')
+        : 'No environmental events are recorded. Spills, discharges and waste incidents belong on the incident register under the Environmental type - a clean record should reflect reality, not under-reporting.' });
+    if (env.latest.length) oversightBlocks.push({ type: 'dataTable',
+      cols: [ { header: 'Date', w: '14%' }, { header: 'What happened', w: '52%' }, { header: 'Where', w: '18%' }, { header: 'Status', w: '16%' } ],
+      rows: env.latest.map(i => [ fmtD(i.date), String(i.what || '(not recorded)').slice(0, 100), i.where || '-', (i.status === 'Open' ? 'Open - under investigation' : (i.status || 'Closed')) ]) });
+  }
+  const oversightPage = oversightBlocks.length ? { label: 'CDM & environment', section: 'oversight', blocks: [
+      mast,
+      { type: 'titleBlock', kicker: 'Leadership review · construction dutyholding and environmental performance',
+        headline: cdm.overdue ? (countPhrase(cdm.overdue, 'CDM oversight activity is', 'CDM oversight activities are') + ' overdue.')
+          : env.open ? (countPhrase(env.open, 'environmental investigation is', 'environmental investigations are') + ' open.')
+          : 'CDM oversight and environmental events.',
+        standfirst: 'The construction side of the duty - design reviews and CDM audits happening to plan - and any environmental events with their investigations.' },
+      ...oversightBlocks,
+    ] } : null;
 
   const progBlocks = [];
   if (!hide.wins) {
@@ -354,6 +455,8 @@ export function buildBoardReport(state, opts = {}) {
   const pages = [page1, ...attentionPages];
   if (monitoringPage) pages.push(monitoringPage);
   if (peoplePage) pages.push(peoplePage);
+  if (compliancePage) pages.push(compliancePage);
+  if (oversightPage) pages.push(oversightPage);
   if (progressPage) pages.push(progressPage);
   if (!hide.register) pages.push(...registerPages);
   if (!hide.interpretation) pages.push(page3);

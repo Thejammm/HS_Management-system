@@ -190,10 +190,14 @@ export function deriveBoardExtras(state, opts = {}) {
   // free plan) with the SAME exclusions (deleted, hideFromPlan = removed to
   // the consultant's holding area, blank stubs). Complete AND Accepted count
   // as closed off - Accepted rows are labelled, never passed off as done.
-  const wins = [];
+  // allDone is the full history - every action ever closed, with when it was
+  // identified (the created stamp) and when it closed. wins is the same list
+  // cut to the reporting period. One walk feeds both.
+  const allDone = [];
   const winPush = (a, src) => {
     const done = a.status === 'Complete' ? (a.completedDate || '') : (a.acceptDate || '');
-    if (done === '' || done >= p90) wins.push({ desc: String(a.desc || '(action)'), when: done, owner: String(a.owner || ''), accepted: a.status === 'Accepted', source: src });
+    allDone.push({ desc: String(a.desc || '(action)'), when: done, owner: String(a.owner || ''), accepted: a.status === 'Accepted', source: src,
+      created: String(a.createdAt || '').slice(0, 10) });
   };
   (Array.isArray(s.riskProfile) ? s.riskProfile : []).forEach(r => ((r.actions) || []).forEach(a => {
     if (!a || a.deleted || a.hideFromPlan) return;
@@ -215,7 +219,8 @@ export function deriveBoardExtras(state, opts = {}) {
     if (!(a.desc || a.owner || a.due)) return;
     if (a.status === 'Complete' || a.status === 'Accepted') winPush(a, String(a.sourceLabel || a.source || 'Action plan'));
   });
-  wins.sort((a, b) => String(b.when).localeCompare(String(a.when)));
+  allDone.sort((a, b) => String(b.when).localeCompare(String(a.when)));
+  const wins = allDone.filter(x => x.when === '' || x.when >= p90);
 
   // The consultant's five priorities for this month, and how last month's
   // five actually went - the loop the client feels.
@@ -235,7 +240,7 @@ export function deriveBoardExtras(state, opts = {}) {
     trnTotal: trn.length, trnExpired, trnSoon, staffN,
     brTotal: br.length, brRecent, brFb,
     statTotal: statItems.length, statOverdue, statDueSoon,
-    wins, baseline, periodFrom: p90,
+    wins, allDone, baseline, periodFrom: p90,
     top5, top5Last, t5Month, t5Prev,
   };
 }

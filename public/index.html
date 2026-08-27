@@ -3713,6 +3713,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div id="casSummary" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"></div>
       </div>
     </div>
+    <div id="membershipsPanel"></div>
     <div id="casContainer"></div>
     <div id="approvedPartner"></div>
   </div>
@@ -10581,6 +10582,7 @@ function migrateLoadedState(){
   if(!Array.isArray(S.supplyChain)) S.supplyChain = [];   // supply chain: partners, their checks and how they have performed
   if(!Array.isArray(S.healthSurveillance)) S.healthSurveillance = [];   // health surveillance: who, which exposure, when due (outcomes only, never clinical detail)
   if(!Array.isArray(S.buildingSafety)) S.buildingSafety = [];   // building safety: each building put through the higher-risk test, and the answer
+  if(!Array.isArray(S.memberships)) S.memberships = [];   // accreditations and memberships held - name, body, ref, expiry
   if(!S.consultation || typeof S.consultation !== 'object') S.consultation = { briefings:[] };   // two-way communication record (sign-off tab)
   if(!Array.isArray(S.consultation.briefings)) S.consultation.briefings = [];
   // Regulatory tracker is now organised into named sections, each holding statutory
@@ -13842,7 +13844,7 @@ function _stopOwnPoll(){ if(_ownPoll){ clearInterval(_ownPoll); _ownPoll = null;
 function _emptyConsultantState(){
   return { checklist:[], inspectionTypes:buildDefaultInspectionTypes(),
     draft:{typeId:'garage_inspection',results:{},notes:{},actionDetails:{},rectifyDetails:{},formData:{},periodFrom:'',periodTo:'',manager:'',location:'',ref:'',freq:'weekly',generalNotes:'',title:'',inspType:''},
-    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], consultation:{briefings:[]}, decisions:[], supplyChain:[], healthSurveillance:[], buildingSafety:[], activeClient:null, branding:_newClientBranding() };
+    inspections:[], actions:[], audit:{}, templates:[], documents:[], riskProfile:[], riskConfig:{likelihood:RISK_LIKELIHOOD_DEF.slice(),severity:RISK_SEVERITY_DEF.slice(),bands:Object.assign({},RISK_BANDS_DEF)}, riskDoc:{version:'1.0',author:'',created:new Date().toISOString().slice(0,10),lastReview:'',nextReview:'',approvedName:'',approvedRole:'',approvedDate:'',consulted:''}, riskAssurance:{leading:[],lagging:[],assurance:[]}, profiler:{exposure:{},maturity:{},meta:{libraryVersion:'2026.07-p1'}}, requirements:[], monitoring:{months:{},meta:{},regulatory:[]}, review:{ratings:[],feedback:'',suggestions:''}, cas:{gates:{},roles:{},status:{}}, company:{legalName:'',tradingName:'',regNo:'',sector:'',description:'',phone:'',email:'',website:'',address:'',employees:'',siteCount:'',shifts:'',elciInsurer:'',elciPolicy:'',elciRenewal:'',personnel:[],siteList:[],notes:''}, raRegister:[], appLinks:[], consultation:{briefings:[]}, decisions:[], supplyChain:[], healthSurveillance:[], buildingSafety:[], memberships:[], activeClient:null, branding:_newClientBranding() };
 }
 // The practice's look carries to a new client; the client's NAME never does.
 function _newClientBranding(){
@@ -14909,6 +14911,10 @@ function _controlLevelDist(){ const d={remove:0,prevent:0,protect:0,stopwork:0,n
 // Default likelihood / severity descriptors (1-5). Editable via the Scoring key (S.riskConfig).
 const RISK_LIKELIHOOD_DEF = ['Rare','Unlikely','Possible','Likely','Almost certain'];
 const RISK_SEVERITY_DEF   = ['Insignificant','Minor injury','Moderate injury','Major injury','Fatality / catastrophic'];
+// The operational pair. Probability reads the same as likelihood; impact is
+// the business consequence, not the injury.
+const RISK_PROB_DEF   = ['Rare','Unlikely','Possible','Likely','Almost certain'];
+const RISK_IMPACT_DEF = ['Negligible - absorbed in the day to day','Minor - handled within the team','Moderate - management time and real cost','Major - serious damage to money, clients or reputation','Severe - threatens the future of the business'];
 const RISK_BANDS_DEF      = { med:5, high:10, crit:16 };   // Low = below med
 const RISK_TREND   = ['Increasing','Stable','Reducing','Unknown'];
 const RISK_PERSONS = ['Employees','Contractors','Visitors','Members of the Public','Young Persons','Agency Workers'];
@@ -14933,6 +14939,8 @@ function _riskCfg(){
   return {
     like:  (Array.isArray(c.likelihood) && c.likelihood.length===5) ? c.likelihood : RISK_LIKELIHOOD_DEF.slice(),
     sev:   (Array.isArray(c.severity)   && c.severity.length===5)   ? c.severity   : RISK_SEVERITY_DEF.slice(),
+    prob:  (Array.isArray(c.probability) && c.probability.length===5) ? c.probability : RISK_PROB_DEF.slice(),
+    impact:(Array.isArray(c.impact)     && c.impact.length===5)     ? c.impact     : RISK_IMPACT_DEF.slice(),
     bands: Object.assign({}, RISK_BANDS_DEF, c.bands || {})
   };
 }
@@ -16888,7 +16896,8 @@ function _renderRiskDocControl(){
 function updateScoreKey(kind, idx, value){
   if(_roLocked()) return;
   const c=S.riskConfig=S.riskConfig||{};
-  if(!Array.isArray(c[kind]) || c[kind].length!==5) c[kind]=(kind==='likelihood'?RISK_LIKELIHOOD_DEF:RISK_SEVERITY_DEF).slice();
+  const defs={ likelihood:RISK_LIKELIHOOD_DEF, severity:RISK_SEVERITY_DEF, probability:RISK_PROB_DEF, impact:RISK_IMPACT_DEF };
+  if(!Array.isArray(c[kind]) || c[kind].length!==5) c[kind]=(defs[kind]||RISK_LIKELIHOOD_DEF).slice();
   c[kind][idx]=value; scheduleAutoSave();
 }
 function updateScoreBand(which, value){
@@ -16899,7 +16908,7 @@ function updateScoreBand(which, value){
 function resetScoreKey(){
   if(_blockIfReadOnly()) return;
   if(!confirm('Reset the scoring key descriptors and band thresholds to the defaults?')) return;
-  S.riskConfig={ likelihood:RISK_LIKELIHOOD_DEF.slice(), severity:RISK_SEVERITY_DEF.slice(), bands:Object.assign({},RISK_BANDS_DEF) };
+  S.riskConfig={ likelihood:RISK_LIKELIHOOD_DEF.slice(), severity:RISK_SEVERITY_DEF.slice(), probability:RISK_PROB_DEF.slice(), impact:RISK_IMPACT_DEF.slice(), bands:Object.assign({},RISK_BANDS_DEF) };
   saveData(); renderRiskProfile();
 }
 // The client's own category lists, health & safety and operational, edited
@@ -16916,11 +16925,8 @@ function _catEditorHTML(){
       ${dis?'':`<button class="btn btn-ghost btn-xs no-print" style="margin-top:5px;" onclick="resetRiskCategories('${mode}')">Reset to the standard list</button>`}
     </div>`;
   };
-  return `<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);">
-    <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">The categories this client's risks are filed under. They are labels only - the scoring, the bands and every report work the same whatever you call them - so set them to match the business. A category already in use cannot be removed.</div>
-    ${block('hs','Health & safety categories','The default list is the HSG65 hazard types. Add your own - a client who surveys buildings might add Asbestos; a landscaper might add Grounds machinery.')}
-    ${block('ops','Operational categories','Used by any risk switched to Operational. Business risk categories rather than hazard types - strategic, commercial, supply chain and so on.')}
-  </div>`;
+  return { hs: block('hs','Health & safety categories','The default list is the HSG65 hazard types. Add your own - a client who surveys buildings might add Asbestos; a landscaper might add Grounds machinery.'),
+           ops: block('ops','Operational categories','Used by any risk switched to Operational. Business risk categories rather than hazard types - strategic, commercial, supply chain and so on.') };
 }
 function _renderScoringKey(){
   const el=document.getElementById('riskScoreKey'); if(!el) return;
@@ -16930,10 +16936,12 @@ function _renderScoringKey(){
   const b=cfg.bands;
   // Keep whatever open/closed state the user chose across re-renders (closed on first paint)
   const _d=el.querySelector('details'); const _skOpen=_d?_d.open:false;
+  const cats=_catEditorHTML();
   el.innerHTML = `<details class="rp-subcard"${_skOpen?' open':''}>
-    <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('settings',17)} Scoring key <span style="font-weight:400;font-size:12px;color:var(--text-muted);">Likelihood × Severity, 1-5 each · ${esc(_bandRangeText())}</span></summary>
+    <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('settings',17)} Scoring key <span style="font-weight:400;font-size:12px;color:var(--text-muted);">H&S: Likelihood × Severity · Operational: Probability × Impact · ${esc(_bandRangeText())}</span></summary>
     <div class="sc-body">
-      ${_catEditorHTML()}
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">The categories this client's risks are filed under. They are labels only - the scoring, the bands and every report work the same whatever you call them - so set them to match the business. A category already in use cannot be removed.</div>
+      ${cats.hs}
       <div class="scorekey-grid">
         <div><div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Likelihood (1-5) <span class="fl-hint" title="How likely the harmful event is. Moves when a control stops the event happening: segregation, guarding, planned maintenance, permits, supervision, competence.">(?)</span></div>${cfg.like.map((t,i)=>line('likelihood',i,t)).join('')}</div>
         <div><div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Severity (1-5) <span class="fl-hint" title="How bad the harm would credibly be, and this number is NOT fixed. It moves whenever a control limits the extent of harm: lower speed, lower height, less energy or quantity, fall-arrest, containment, impact protection, fewer people exposed.">(?)</span></div>${cfg.sev.map((t,i)=>line('severity',i,t)).join('')}</div>
@@ -16949,7 +16957,22 @@ function _renderScoringKey(){
           <div style="margin-top:9px;">The discipline: a <strong>hard hat does not turn a fall from a scaffold from S5 into S2</strong>. Where the control does nothing to the worst credible outcome, move likelihood only and leave severity where it is - and say why in the notes when you do move it.</div>
         </div>
       </div>
-      <div style="font-weight:700;font-size:12px;color:var(--text-muted);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.03em;">Band thresholds (rating = L × S)</div>
+      <div style="margin:18px 0 0;border-top:1px solid var(--border);padding-top:14px;"></div>
+      ${cats.ops}
+      <div class="scorekey-grid">
+        <div><div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Probability (1-5) <span class="fl-hint" title="How likely the event is - same reading as likelihood, in business language. Moves when a response makes the event less likely: a second supplier, cross-training, planned maintenance, contract terms.">(?)</span></div>${cfg.prob.map((t,i)=>line('probability',i,t)).join('')}</div>
+        <div><div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Impact (1-5) <span class="fl-hint" title="What the event would cost the business - money, clients, reputation, time. Not fixed: a response that contains the damage moves impact even when it cannot stop the event.">(?)</span></div>${cfg.impact.map((t,i)=>line('impact',i,t)).join('')}</div>
+      </div>
+      <div style="margin-top:16px;padding:13px 15px;border:1px solid var(--border);border-left:3px solid #2563EB;border-radius:10px;background:#2563EB0d;">
+        <div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:9px;text-transform:uppercase;letter-spacing:.03em;">Worked example - an operational risk</div>
+        <div style="font-size:12.5px;line-height:1.7;color:var(--text);">
+          <div><strong>Client files scattered across inboxes and desktops - the wrong version gets issued.</strong> Start at P4 &times; I3 = 12, High.</div>
+          <div style="margin-top:5px;">&bull; <strong>One filing structure with naming rules.</strong> Issuing the wrong version becomes unlikely, but if it happens it still costs the same. <strong>P4 &rarr; P2, I stays 3</strong> = 6.</div>
+          <div style="margin-top:4px;">&bull; <strong>Document control on issued work</strong> - numbered versions and an issue register. Now even when it goes wrong, the error is caught and corrected before it does real damage. <strong>I3 &rarr; I2</strong> = 4, Low.</div>
+          <div style="margin-top:9px;">Same discipline as severity: only move impact when the response genuinely limits what the failure costs the business, and say why in the notes when you do.</div>
+        </div>
+      </div>
+      <div style="font-weight:700;font-size:12px;color:var(--text-muted);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.03em;">Band thresholds - both scales (rating = L × S, or P × I for operational risks)</div>
       <div class="band-line"><span style="width:70px;color:#16A34A;font-weight:700;">Low</span><span>1 to ${b.med-1}</span></div>
       <div class="band-line"><span style="width:70px;color:#F59E0B;font-weight:700;">Medium</span><span>from</span>${bandInput('med',b.med)}<span>to ${b.high-1}</span></div>
       <div class="band-line"><span style="width:70px;color:#EA580C;font-weight:700;">High</span><span>from</span>${bandInput('high',b.high)}<span>to ${b.crit-1}</span></div>
@@ -19844,6 +19867,9 @@ function buildRiskProfileReportPDF(){
   y+=1; const skCol=(hd,arr,rgb,x)=>{ const yy=y; doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(rgb[0],rgb[1],rgb[2]); doc.text(hd, x, yy);
     doc.setFont('helvetica','normal'); doc.setFontSize(8.8); doc.setTextColor(75,75,75); arr.forEach((t,i)=>doc.text((i+1)+'   '+t, x, yy+5.2+i*4.4)); };
   skCol('Likelihood', cfg.like, C.key, ML); skCol('Severity', cfg.sev, C.key, ML+92);
+  y += 5.2+5*4.4+4;
+  text('Operational risks score Probability (1-5) x Impact (1-5) on the same bands.', 9);
+  y+=1; skCol('Probability', cfg.prob, C.key, ML); skCol('Impact', cfg.impact.map(t=>String(t).split(' - ')[0]), C.key, ML+92);
   y += 5.2+5*4.4+2;
   text('Severity is not fixed. A control that only makes the event less likely moves likelihood alone (segregation, guarding, permits, supervision). A control that limits the extent of harm moves severity as well (speed limits, fall-arrest, containment, impact protection, fire-resisting construction, suppression). Where a control does nothing to the worst credible outcome, likelihood alone is reduced.', 8.5, false, [120,120,120]);
   text('Hazard model: a hazard is an energy source; harm occurs on the unplanned release of, or contact with, that energy (energy-damage model - Haddon; HSE). SIF (serious injury / fatality) potential is flagged independently of likelihood.', 8.5, false, [120,120,120]);
@@ -24102,6 +24128,7 @@ function suggestDocumentsFromApp(){
   if((S.supplyChain||[]).length) add('Supply chain register','supply chain');
   if((S.healthSurveillance||[]).length) add('Health surveillance register','health surveillance');
   if((S.buildingSafety||[]).length) add('Building safety register','building safety');
+  if((S.memberships||[]).length) add('Accreditations & memberships register','accreditation');
   if((S.riskProfile||[]).some(r=>(r.actions||[]).some(a=>a.status==='Accepted'))) add('Risk acceptance register','risk profile');
   if((S.requirements||[]).length) add('Legal duties assessment','legal duties');
   const added=(S.documents||[]).length-before;
@@ -24903,7 +24930,66 @@ function buildCasSubmissionPackPDF(){
   doc.save(safeClient+'_CAS-submission-pack_'+new Date().toISOString().slice(0,10)+'.pdf');
 }
 
+// ── Accreditations & memberships held ──────────────────────────
+//  What the business actually holds - SSIP certificates, CHAS,
+//  Constructionline, trade-body memberships. A PQQ asks to see these, and an
+//  expired one quoted on a tender is worse than none. Facts in, metrics out:
+//  the record holds the expiry date; the standing is derived from it every
+//  time, never stored.
+function _memberships(){ if(!Array.isArray(S.memberships)) S.memberships=[]; return S.memberships; }
+function _memFlag(d){
+  if(!d) return { k:'none', label:'no expiry recorded', colour:'#D97706' };
+  const today=new Date().toISOString().slice(0,10);
+  if(d<today) return { k:'expired', label:'expired', colour:'#DC2626' };
+  const soon=new Date(); soon.setDate(soon.getDate()+60);
+  if(d<=soon.toISOString().slice(0,10)) return { k:'soon', label:'expires soon', colour:'#D97706' };
+  return { k:'ok', label:'in date', colour:'#16A34A' };
+}
+function addMembership(){
+  if(_blockIfReadOnly()) return;
+  const m={ id:'mem_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    name:'', body:'', ref:'', expiry:'', notes:'' };
+  _stamp(m,'created');
+  _memberships().unshift(m); saveData(); _renderMemberships();
+}
+function updateMembership(id,f,v){
+  if(_roLocked()) return;
+  const m=_memberships().find(x=>x.id===id); if(!m) return;
+  m[f]=v; _stamp(m,'updated');
+  if(f==='expiry'){ saveData(); _renderMemberships(); } else scheduleAutoSave();
+}
+function deleteMembership(id){
+  if(_blockIfReadOnly()) return;
+  const m=_memberships().find(x=>x.id===id); if(!m) return;
+  if(!confirm('Remove "'+(m.name||'this membership')+'" from the register?')) return;
+  S.memberships=_memberships().filter(x=>x.id!==id); saveData(); _renderMemberships();
+}
+function _renderMemberships(){
+  const el=document.getElementById('membershipsPanel'); if(!el) return;
+  const ro=_roLocked(); const dis=ro?' disabled':'';
+  const list=_memberships();
+  const expired=list.filter(m=>_memFlag(m.expiry).k==='expired').length;
+  const soon=list.filter(m=>_memFlag(m.expiry).k==='soon').length;
+  const rows=list.map(m=>{ const f=_memFlag(m.expiry);
+    return `<div style="display:grid;grid-template-columns:1.4fr 1fr .8fr 150px 110px auto;gap:8px;align-items:center;padding:7px 0;border-top:1px dashed var(--border);">
+      <input type="text"${dis} value="${esc(m.name||'')}" placeholder="e.g. SSIP certificate, CHAS Elite" oninput="updateMembership('${m.id}','name',this.value)">
+      <input type="text"${dis} value="${esc(m.body||'')}" placeholder="Body / scheme" oninput="updateMembership('${m.id}','body',this.value)">
+      <input type="text"${dis} value="${esc(m.ref||'')}" placeholder="Ref" oninput="updateMembership('${m.id}','ref',this.value)">
+      <input type="date"${dis} value="${esc(m.expiry||'')}" onchange="updateMembership('${m.id}','expiry',this.value)">
+      <span style="font-size:11px;font-weight:700;color:${f.colour};">${esc(f.label)}</span>
+      ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Remove" onclick="deleteMembership('${m.id}')">${_ic('trash',13)}</button>`}
+    </div>`; }).join('');
+  const meta=list.length?(list.length+' held'+(expired?(' · '+expired+' expired'):'')+(soon?(' · '+soon+' expiring soon'):'')):'none recorded';
+  el.innerHTML=`<div class="card" style="margin-bottom:18px;">
+    <div class="card-band"><h3>Accreditations &amp; memberships held</h3><span class="badge badge-muted">${esc(meta)}</span></div>
+    <div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">The certificates and memberships the business actually holds - SSIP, CHAS, Constructionline, trade bodies. These are what a PQQ asks to see, and they feed the board report. The standing works itself out from the expiry date.</div>
+      ${ro?'':`<button class="btn btn-primary btn-sm no-print" style="margin-bottom:6px;" onclick="addMembership()">＋ Add one</button>`}
+      ${rows||''}
+    </div></div>`;
+}
 function renderCAS(){
+  _renderMemberships();
   const sel = document.getElementById('casSchemeFilter');
   if(sel && !sel.options.length){ sel.innerHTML = CAS_SCHEMES.map(s=>`<option value="${esc(s.id)}">${esc(s.label)}</option>`).join(''); }
   const scheme = CAS_SCHEMES.find(s=>s.id===(sel && sel.value)) || CAS_SCHEMES[0];
@@ -27296,7 +27382,7 @@ function exportEverything(){
 var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
-  'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance','buildingSafety'];
+  'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance','buildingSafety','memberships'];
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

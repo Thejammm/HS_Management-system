@@ -2770,18 +2770,19 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .lightbox-close{position:fixed;top:16px;right:20px;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:22px;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
 .lightbox-close:hover{background:rgba(255,255,255,.3);}
 
+/* ── CAS criteria grid: fixed columns so every section lines up ── */
+.cas-grid{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed;}
+.cas-grid th{padding:7px 9px;}
+.cas-grid td{padding:7px 9px;vertical-align:top;overflow-wrap:break-word;}
+.cas-xf-btn{border:1px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:4px;padding:1px 4px 0;cursor:pointer;vertical-align:-1px;margin-left:3px;}
+.cas-xf-btn:hover{color:var(--accent);border-color:var(--accent);}
+.cas-xf-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+#casXFPop{position:absolute;z-index:400;min-width:225px;max-width:290px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(15,23,42,.18);padding:10px 11px;font-size:12.5px;}
+.cas-xf-row{display:flex;align-items:center;gap:7px;padding:3px 2px;cursor:pointer;border-radius:5px;}
+.cas-xf-row:hover{background:var(--muted-bg);}
+.cas-xf-n{font-size:10.5px;color:var(--text-muted);}
+
 /* ── Consultant dial-in (client cockpit) ── */
-#consultantBar{display:none;background:#0f766e;color:#fff;border-bottom:2px solid #0b5d56;}
-#consultantBar.on{display:block;}
-.cbar-inner{max-width:none;margin:0;width:100%;padding:8px 20px;display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;font-size:13px;}
-.cbar-eye{font-size:15px;}
-.cbar-name{font-weight:700;}
-.cbar-ro{font-size:11px;font-weight:700;text-transform:none;letter-spacing:.05em;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:12px;padding:2px 9px;}
-.cbar-spacer{flex:1;}
-.cbar-btn{font-size:12px;font-weight:700;border-radius:6px;border:1.5px solid rgba(255,255,255,.5);background:transparent;color:#fff;padding:6px 12px;cursor:pointer;white-space:nowrap;}
-.cbar-btn:hover{background:rgba(255,255,255,.15);}
-.cbar-btn.solid{background:#fff;color:#0f766e;border-color:#fff;}
-.cbar-fresh{font-size:11px;opacity:.85;}
 #consultantPicker{display:none;}
 #consultantPicker.on{display:inline-flex;align-items:center;gap:6px;}
 /* View-as (role) switch + inspector banner */
@@ -3117,20 +3118,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 })();
 </script>
 <div class="app-content">
-
-<!-- ══════════ CONSULTANT "WORKING ON CLIENT" BANNER ══════════ -->
-<div id="consultantBar" class="no-print">
-  <div class="cbar-inner">
-    <span class="cbar-eye">✎</span>
-    <span>Working on <span class="cbar-name" id="cbarClientName">client</span></span>
-    <span class="cbar-ro">Changes saved to this client</span>
-    <span class="cbar-fresh" id="cbarFresh"></span>
-    <span class="cbar-spacer"></span>
-    <button class="cbar-btn" onclick="refreshConsultantView()">↻ Refresh</button>
-    <button class="cbar-btn solid" onclick="switchTab('cockpit')">🧭 Cockpit</button>
-    <button class="cbar-btn" onclick="exitConsultantView()">✕ My clients</button>
-  </div>
-</div>
 
 <!-- ══════════ INSPECTOR VIEW PREVIEW BANNER ══════════ -->
 <div id="inspectorBar" class="no-print">
@@ -7732,7 +7719,7 @@ function renderAuditProgress(){
   const delta=(a,b,goodDown)=>{ if(a==null||b==null) return ''; const d=+(b-a).toFixed(2); if(!d) return '<span style="color:var(--text-muted);font-size:11px;">no change</span>';
     const good=goodDown?d<0:d>0; return `<span style="color:${good?'#16A34A':'#DC2626'};font-weight:700;font-size:11px;">${d>0?'▲':'▼'} ${Math.abs(d)}</span>`; };
   const rows=[
-    ['Risks assured', m=>fmt(m.held), false],
+    ['Risks identified', m=>fmt(m.held), false],
     ['Need attention first', m=>fmt(m.ruleBreaches), true],
     ['Managed', m=>fmt(m.working), false],
     ['Vulnerable', m=>fmt(m.slipping), true],
@@ -7747,7 +7734,7 @@ function renderAuditProgress(){
     ['Briefings recorded', m=>fmt(m.briefings), false],
     ['Accreditation ready %', m=>m.casReady==null?'-':m.casReady+'%', false],
   ];
-  const rawOf=(m,label)=>{ const map={'Risks assured':m.held,'Need attention first':m.ruleBreaches,'Managed':m.working,'Vulnerable':m.slipping,'Uncontrolled':m.notHeld,'Risks profiled':m.risks,'High + critical risks':m.highCrit,'Open actions':m.openActions,'Overdue actions':m.overdueActions,'Actions delivered':m.delivered,'Training expired':m.trainingExpired,'Legal duty gaps':m.mgmtGaps,'Briefings recorded':m.briefings,'Accreditation ready %':m.casReady}; return map[label]; };
+  const rawOf=(m,label)=>{ const map={'Risks identified':m.held,'Need attention first':m.ruleBreaches,'Managed':m.working,'Vulnerable':m.slipping,'Uncontrolled':m.notHeld,'Risks profiled':m.risks,'High + critical risks':m.highCrit,'Open actions':m.openActions,'Overdue actions':m.overdueActions,'Actions delivered':m.delivered,'Training expired':m.trainingExpired,'Legal duty gaps':m.mgmtGaps,'Briefings recorded':m.briefings,'Accreditation ready %':m.casReady}; return map[label]; };
   const table = base ? `<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12.5px;min-width:100%;">
       <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;border-bottom:1.5px solid var(--border);">
         <th style="padding:6px 8px;">Measure</th><th style="padding:6px 8px;">Baseline<br><span style="font-weight:400;">${fmtDate(base.date)}</span></th>
@@ -8848,7 +8835,7 @@ function saveData(){
           S = res.state; migrateLoadedState(); _rerenderEverything();
         }
         _ownLastUpd = res.updatedAt || _ownLastUpd;
-        if(inClient){ _consultantLastUpd = res.updatedAt || _consultantLastUpd; _setFreshLabel(); }
+        if(inClient){ _consultantLastUpd = res.updatedAt || _consultantLastUpd; }
         const elC=document.getElementById('saveIndicator');
         if(elC){ elC.textContent='↻ Reloaded'; elC.style.color='var(--danger)'; elC.title='Someone else had just saved, so their version is now on screen.'; }
         _notePeerActivity();
@@ -8859,7 +8846,7 @@ function saveData(){
         _ownLastUpd = res.updatedAt;   // our own updatedAt; poll won't treat it as new
         // Dial-in has its own poll keyed on _consultantLastUpd - keep it in step
         // so the consultant's own save is not reloaded as if it were remote.
-        if(inClient){ _consultantLastUpd = res.updatedAt; _setFreshLabel(); }
+        if(inClient){ _consultantLastUpd = res.updatedAt; }
       }
       const el=document.getElementById('saveIndicator');
       if(res){
@@ -13733,26 +13720,13 @@ function exitConsultantView(silent){
   if(!silent && was) showToast('Back to my clients','info');
 }
 
+// The old "Working on {client}" banner went 2026-08-28 - everything on it was
+// a duplicate (the header's client picker names the client and its blank
+// option exits; the 30-second poll does what Refresh did; Cockpit is in the
+// sidebar). The body class is all that remains of the chrome.
 function _applyConsultantChrome(){
-  const bar = document.getElementById('consultantBar');
-  if(_consultantView){
-    const nameEl = document.getElementById('cbarClientName');
-    if(nameEl) nameEl.textContent = _consultantView.name;
-    _setFreshLabel();
-    if(bar) bar.classList.add('on');
-    document.body.classList.add('consultant-ro');
-  } else {
-    if(bar) bar.classList.remove('on');
-    document.body.classList.remove('consultant-ro');
-  }
-}
-
-function _setFreshLabel(){
-  const el = document.getElementById('cbarFresh');
-  if(!el) return;
-  el.textContent = _consultantLastUpd
-    ? '· updated ' + new Date(_consultantLastUpd).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
-    : '';
+  if(_consultantView) document.body.classList.add('consultant-ro');
+  else document.body.classList.remove('consultant-ro');
 }
 
 async function refreshConsultantView(auto){
@@ -13776,7 +13750,6 @@ async function refreshConsultantView(auto){
       if(auto) _notePeerActivity();   // an unprompted newer copy = someone else is in here
       showToast('↻ Updated','info');
     }
-    _setFreshLabel();
     _renderPeerChip();
   } catch(e){ /* keep showing the last good copy */ }
 }
@@ -14287,7 +14260,7 @@ const COCKPIT_WIDGETS = {
   // Dials & gauges - richer visuals, OFF by default (enable per client in the customiser).
   gaugeCompleteness:{ id:'gaugeCompleteness', label:'Completeness gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Assessment completeness', `${_gaugeSVG(x.RD.complete.total?Math.round(x.RD.complete.clear/x.RD.complete.total*100):0, {text:x.RD.complete.clear+'/'+x.RD.complete.total})}<div class="ck-pending" style="text-align:center;margin-top:2px;">checks clear</div><button class="ck-link" onclick="openCompletenessModal()" style="align-self:center;">What's left →</button>`) },
   gaugeCompliance:  { id:'gaugeCompliance', label:'Compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Inspection compliance', `${_gaugeSVG(x.compliance==null?0:x.compliance,{text:x.compliance==null?'--':x.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">pass + rectified</div><button class="ck-link" onclick="switchTab('monthly')" style="align-self:center;">Monthly report</button>`) },
-  gaugeMaturity:    { id:'gaugeMaturity', label:'Risks assured (gauge)', group:'Gauge', defaultOff:true, render:x=>{ const H=_holdSummary(); const pct=H.total?Math.round(H.held/H.total*100):0; const gcol=H.breaches.length?'#DC2626':(H.total&&H.held===H.total?'#16A34A':(H.total?'#F59E0B':'#9CA3AF')); return _ckMod('Risks assured', `${_gaugeSVG(pct,{text:H.total?(H.held+'/'+H.total):'--',color:gcol})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${H.breaches.length?(H.breaches.length+' need'+(H.breaches.length!==1?'':'s')+' attention first'):'nothing needs attention'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
+  gaugeMaturity:    { id:'gaugeMaturity', label:'Risks identified (gauge)', group:'Gauge', defaultOff:true, render:x=>{ const H=_holdSummary(); const pct=H.total?Math.round(H.held/H.total*100):0; const gcol=H.breaches.length?'#DC2626':(H.total&&H.held===H.total?'#16A34A':(H.total?'#F59E0B':'#9CA3AF')); return _ckMod('Risks identified', `${_gaugeSVG(pct,{text:H.total?(H.held+'/'+H.total):'--',color:gcol})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${H.breaches.length?(H.breaches.length+' need'+(H.breaches.length!==1?'':'s')+' attention first'):'nothing needs attention'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
   tachoRisk:        { id:'tachoRisk', label:'Risk exposure tacho', group:'Gauge', defaultOff:true, render:x=>_ckMod('Risk exposure', `${_tachoSVG(100 - x.rvm.riskIndex)}<div class="ck-pending" style="text-align:center;margin-top:2px;">${esc(x.rvm.riskLabel)} (${x.rvm.riskIndex}/100)</div><div style="text-align:center;font-size:10.5px;color:var(--text-muted);line-height:1.45;margin-top:2px;">Lower is better. The score is how much of the register sits in the higher bands - each risk counts by band (Critical 3, High 2, Medium 1, Low a half) against the worst case of 100.</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Open the risks behind this score</button>`) },
   gaugeAccreditation:{ id:'gaugeAccreditation', label:'Accreditation gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Accreditation readiness', `${_gaugeSVG(x.cas.pctReady==null?0:x.cas.pctReady,{text:x.cas.pctReady==null?'--':x.cas.pctReady+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">criteria ready</div><button class="ck-link" onclick="switchTab('cas')" style="align-self:center;">Open accreditation</button>`) },
   gaugeMgmtCompliance:{ id:'gaugeMgmtCompliance', label:'Legal duties compliance gauge', group:'Gauge', defaultOff:true, render:x=>_ckMod('Legal duties compliance', `${_gaugeSVG(x.reqStats.compliance==null?0:x.reqStats.compliance,{text:x.reqStats.compliance==null?'--':x.reqStats.compliance+'%'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">requirements met</div><button class="ck-link" onclick="switchTab('requirements')" style="align-self:center;">Open legal duties</button>`) },
@@ -15883,7 +15856,7 @@ function _riskPanelModel(){
 //  (Simon, 2026-08-19: "the numbers are total bollocks - find a different
 //  way"). Every risk is graded by FACTS the app already records onto the
 //  H&S Control Maturity scale, 4 down to 1; the company measure is a COUNT
-//  ("9 of 12 risks assured"), and HSG65 proportionality is a RULE (the bigger the
+//  ("9 of 12 risks identified"), and HSG65 proportionality is a RULE (the bigger the
 //  risk, the stricter the state it must be in) - never a ratio, never a
 //  decimal, never an opinion score.
 // ══════════════════════════════════════════════════════════════
@@ -15975,12 +15948,12 @@ function _holdSummary(){
   else if(breaches.length){
     pillT=breaches.length+' need'+(breaches.length!==1?'':'s')+' attention first'; pillC='#DC2626';
     const names=breaches.slice(0,2).map(b=>b.name+' ('+(b.hold.reasons[0]||b.breach)+')');
-    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' assured. '+breaches.length+' need'+(breaches.length!==1?'':'s')+' attention first: '+names.join('; ')+(breaches.length>2?('; and '+(breaches.length-2)+' more.'):'.');
+    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' identified. '+breaches.length+' need'+(breaches.length!==1?'':'s')+' attention first: '+names.join('; ')+(breaches.length>2?('; and '+(breaches.length-2)+' more.'):'.');
   }
-  else if(held===total){ pillT='all risks assured'; pillC='#0f6f5c'; verdict='All '+total+' risk'+(total!==1?'s are':' is')+' assured - controls recorded, plans delivered and signed off, or formally accepted.'; }
+  else if(held===total){ pillT='all risks identified'; pillC='#0f6f5c'; verdict='All '+total+' risk'+(total!==1?'s are':' is')+' identified - controls recorded, plans delivered and signed off, or formally accepted.'; }
   else {
     pillT='working to plan'; pillC='#c2740a';
-    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' assured; '+working+' managed'+(slipping?('; '+slipping+' vulnerable'):'')+(notheld?('; '+notheld+' uncontrolled'):'')+'. Nothing needs attention first - every Critical and High risk is assured or managed on time.';
+    verdict=held+' of '+total+' risk'+(total!==1?'s':'')+' identified; '+working+' managed'+(slipping?('; '+slipping+' vulnerable'):'')+(notheld?('; '+notheld+' uncontrolled'):'')+'. Nothing needs attention first - every Critical and High risk is assured or managed on time.';
   }
   return { rows, total, held, working, slipping, notheld, breaches, nextWorst, pillT, pillC, verdict };
 }
@@ -18757,7 +18730,7 @@ function _riskVsMaturity(){
   if(!H.total){ rag='#9CA3AF'; verdict='Add and score the risks to complete the picture.'; }
   else if(RD.sifUncontrolled.length>0 || H.breaches.length){ rag='#DC2626'; const _na=(H.breaches.length||RD.sifUncontrolled.length); verdict=_na+' risk'+(_na!==1?'s':'')+' need'+(_na!==1?'':'s')+' attention first.'; }
   else if(H.held<H.total){ rag='#F59E0B'; verdict=H.verdict; }
-  else { rag='#16A34A'; verdict='All risks assured.'; }
+  else { rag='#16A34A'; verdict='All risks identified.'; }
   return { riskIndex, riskLabel: riskIndex>=60?'High':riskIndex>=35?'Moderate':riskIndex>0?'Lower':'None', rag, verdict, sifUncontrolled:RD.sifUncontrolled.length, H, ragLabel: rag==='#DC2626'?'Priority':rag==='#F59E0B'?'Managed':rag==='#16A34A'?'Assured':'Incomplete' };
 }
 // (The old on-screen 0-100 risk-vs-maturity bars were replaced by _riskPanelHTML
@@ -18871,7 +18844,7 @@ function buildBoardReport(){
       {num:String(data.sifUncontrolled.length), label:'Of those, uncontrolled', color:data.sifUncontrolled.length?RED:NAVY, sub:'No completed control'},
       {num:data.execOverdue+' / '+data.execTotal, label:'Actions overdue', color:data.execOverdue?AMBER:NAVY, sub:'Across the whole plan'},
       {num:data.complete.clear+' / '+data.complete.total, label:'Assessment completeness', color:data.complete.clear<data.complete.total?AMBER:GREEN, sub:'Checks clear'},
-      {num:(function(){const H=_holdSummary();return H.total?(H.held+' / '+H.total):'-';})(), label:'Risks assured', color:(function(){const H=_holdSummary();return !H.total?GREY:(H.breaches.length?RED:(H.held===H.total?GREEN:AMBER));})(), sub:'graded on facts'} ],
+      {num:(function(){const H=_holdSummary();return H.total?(H.held+' / '+H.total):'-';})(), label:'Risks identified', color:(function(){const H=_holdSummary();return !H.total?GREY:(H.breaches.length?RED:(H.held===H.total?GREEN:AMBER));})(), sub:'graded on facts'} ],
     { title:'Board summary',
       paras:['Significant risks scored against the HSG65 framework: the inherent rating of each activity, and where it is projected to sit once the planned controls are actioned. '+(nFatal?(nFatal+(nFatal===1?' activity carries':' activities carry')+' inherent fatal or major potential; '+(sifResHigh?(sifResHigh+(sifResHigh===1?' is':' are')+' rated High or above'):'none is rated above Medium')+'. '):'')+''+(data.complete.clear<data.complete.total?('Of the '+data.complete.total+' assessment checks, '+data.complete.clear+' are clear, so these figures firm up as the rest is recorded.'):'All '+data.complete.total+' assessment checks are clear.')],
       subhead:'What the board must decide',
@@ -18885,7 +18858,7 @@ function buildBoardReport(){
     K.section('Risk exposure vs H&S control maturity', NAVY);
     K.bars([
       {label:'Risk exposure', val:rvm.riskIndex, color:rvm.riskIndex>=60?RED:rvm.riskIndex>=35?AMBER:GREEN, valLabel:rvm.riskLabel+' ('+rvm.riskIndex+'/100)'},
-      {label:'Risks assured', val:(rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, color:(rvm.H&&rvm.H.breaches.length)?RED:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?GREEN:AMBER), valLabel:(rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed'}
+      {label:'Risks identified', val:(rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, color:(rvm.H&&rvm.H.breaches.length)?RED:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?GREEN:AMBER), valLabel:(rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed'}
     ]);
     K.text('Verdict: '+rvm.verdict, 9, {color:[90,90,90], gap:1});
   }
@@ -19694,7 +19667,7 @@ function buildRiskProfileReportPDF(){
       doc.setFillColor(235,237,240); doc.roundedRect(bx,y,bw,5,2,2,'F'); doc.setFillColor(col[0],col[1],col[2]); if(v>0) doc.roundedRect(bx,y,Math.max(3,bw*v/100),5,2,2,'F');
       doc.setFont('helvetica','bold'); doc.setTextColor(col[0],col[1],col[2]); doc.text(vlab, RM, y+3.8, {align:'right'}); y+=10; };
     drawBar('Risk exposure', rvm.riskIndex, rvm.riskIndex>=60?[197,32,32]:rvm.riskIndex>=35?[180,110,10]:[22,120,60], rvm.riskLabel+' ('+rvm.riskIndex+'/100)');
-    drawBar('Risks assured', (rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, (rvm.H&&rvm.H.breaches.length)?[197,32,32]:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?[22,120,60]:[180,110,10]), (rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed');
+    drawBar('Risks identified', (rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, (rvm.H&&rvm.H.breaches.length)?[197,32,32]:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?[22,120,60]:[180,110,10]), (rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed');
     text('Verdict: '+rvm.verdict+'  Risk exposure reflects the spread of severity across the register, not an average; H&S control maturity is a count of the risks graded 4 - Assured on recorded facts, not a score.', 8.5, false, [110,110,110]);
   }
 
@@ -20300,7 +20273,7 @@ function renderRiskReview(){
             ${chip(rl.total,'Significant risks','var(--text)')}
             ${chip(rl.crit,'Critical',_RISK_PRIO_COLOR.Critical)}
             ${chip(rl.high,'High',_RISK_PRIO_COLOR.High)}
-            ${chip(os.H.held+'/'+os.H.total,'Risks assured', os.H.total&&os.H.held===os.H.total?'#16A34A':'var(--text)')}
+            ${chip(os.H.held+'/'+os.H.total,'Risks identified', os.H.total&&os.H.held===os.H.total?'#16A34A':'var(--text)')}
             ${chip(os.H.breaches.length,'Need attention first', os.H.breaches.length?'#DC2626':'#16A34A')}
           </div>
           <div style="font-size:13px;color:var(--text);line-height:1.5;">${esc(os.verdict)}</div>
@@ -24988,6 +24961,89 @@ function _renderMemberships(){
       ${rows||''}
     </div></div>`;
 }
+// ── Excel-style column filters for the criteria tables ──────────
+//  Funnel on a column header, tick the values you want, Apply. An empty
+//  selection (or everything ticked) clears that column's filter - exactly
+//  the AutoFilter model. Filter state is view state, never saved.
+var _casXF = { flags: [], docs: [], sts: [] };
+function _casXFActive(){ return !!(_casXF.flags.length || _casXF.docs.length || _casXF.sts.length); }
+function clearCasXF(){ _casXF = { flags: [], docs: [], sts: [] }; _closeCasXFPop(); renderCAS(); }
+// What each row offers each filterable column, in words.
+function _casRowFlagVals(q){
+  const f = q.flags || {}; const out = [];
+  if(f.gate) out.push('GATE');
+  if(f.timeCritical) out.push('Time-critical');
+  if(f.advisory) out.push('Advisory');
+  if(f.micro) out.push('Micro N/A');
+  if(_casProportionateOptional(q)) out.push('Proportionate');
+  if(!out.length) out.push('(no flag)');
+  return out;
+}
+function _casRowStatusVal(q){
+  if(!_casRowInScope(q.q)){
+    const r = _casScopeReason(q.q);
+    return (r && r.kind === 'cert') ? 'Covered by certificate' : 'Not in scope';
+  }
+  const st = (S.cas?.status?.[q.q] || {}).v;
+  const meta = _CAS_STATUS.find(x => x.v === st);
+  return meta ? meta.label : 'Unassessed';
+}
+function _casXFPass(q){
+  if(_casXF.flags.length && !_casRowFlagVals(q).some(v => _casXF.flags.includes(v))) return false;
+  if(_casXF.docs.length && !_casXF.docs.includes(_casDocType(q))) return false;
+  if(_casXF.sts.length && !_casXF.sts.includes(_casRowStatusVal(q))) return false;
+  return true;
+}
+// The funnel in a header cell. Coloured in while its filter is on.
+function _casXFTh(label, col){
+  const on = _casXF[col] && _casXF[col].length;
+  return esc(label) + ` <button type="button" class="cas-xf-btn${on ? ' on' : ''}" title="Filter this column${on ? ' - filter on' : ''}" onclick="openCasXFPop(event,'${col}')"><svg viewBox="0 0 24 24" width="11" height="11" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5 22 3"/></svg></button>`;
+}
+function _closeCasXFPop(){ const p = document.getElementById('casXFPop'); if(p) p.remove(); document.removeEventListener('mousedown', _casXFOutside, true); }
+function _casXFOutside(e){ const p = document.getElementById('casXFPop'); if(p && !p.contains(e.target)) _closeCasXFPop(); }
+function openCasXFPop(ev, col){
+  ev.stopPropagation();
+  _closeCasXFPop();
+  // Distinct values with counts, from every in-scheme row.
+  const counts = {};
+  const selEl = document.getElementById('casSchemeFilter');
+  const scheme = CAS_SCHEMES.find(s=>s.id===(selEl && selEl.value)) || CAS_SCHEMES[0];
+  CAS_FRAMEWORK.sections.filter(s => !scheme.sections || scheme.sections.includes(s.id)).forEach(s => s.questions.forEach(q => {
+    const vals = col === 'flags' ? _casRowFlagVals(q) : col === 'docs' ? [_casDocType(q)] : [_casRowStatusVal(q)];
+    vals.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+  }));
+  const order = col === 'sts'
+    ? ['Ready', 'Partial', 'Gap', 'N/A', 'Unassessed', 'Covered by certificate', 'Not in scope'].filter(v => counts[v] != null)
+    : Object.keys(counts).sort((a, b) => a.localeCompare(b));
+  const cur = _casXF[col];
+  const allTicked = !cur.length;
+  const rows = order.map(v => `<label class="cas-xf-row"><input type="checkbox" data-xfv="${esc(v)}" ${allTicked || cur.includes(v) ? 'checked' : ''}> <span style="flex:1;">${esc(v)}</span><span class="cas-xf-n">${counts[v]}</span></label>`).join('');
+  const pop = document.createElement('div');
+  pop.id = 'casXFPop';
+  pop.innerHTML = `<label class="cas-xf-row" style="border-bottom:1px solid var(--border);margin-bottom:3px;padding-bottom:6px;"><input type="checkbox" id="casXFAll" ${allTicked ? 'checked' : ''}> <b style="flex:1;">(Select all)</b></label>
+    <div style="max-height:260px;overflow:auto;">${rows}</div>
+    <div style="display:flex;gap:6px;margin-top:8px;">
+      <button class="btn btn-primary btn-xs" style="flex:1;" onclick="applyCasXF('${col}')">Apply</button>
+      <button class="btn btn-outline btn-xs" onclick="_casXF['${col}']=[];_closeCasXFPop();renderCAS();">Clear</button>
+      <button class="btn btn-ghost btn-xs" onclick="_closeCasXFPop()">✕</button>
+    </div>`;
+  document.body.appendChild(pop);
+  const r = ev.currentTarget.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.left - 30)) + 'px';
+  pop.style.top = (r.bottom + 6 + window.scrollY) + 'px';
+  const all = pop.querySelector('#casXFAll');
+  all.addEventListener('change', () => pop.querySelectorAll('input[data-xfv]').forEach(c => { c.checked = all.checked; }));
+  pop.querySelectorAll('input[data-xfv]').forEach(c => c.addEventListener('change', () => { if(!c.checked) all.checked = false; }));
+  setTimeout(() => document.addEventListener('mousedown', _casXFOutside, true), 0);
+}
+function applyCasXF(col){
+  const pop = document.getElementById('casXFPop'); if(!pop) return;
+  const boxes = [...pop.querySelectorAll('input[data-xfv]')];
+  const ticked = boxes.filter(c => c.checked).map(c => c.getAttribute('data-xfv'));
+  // Everything ticked (or nothing) = no filter, the AutoFilter convention.
+  _casXF[col] = (ticked.length === 0 || ticked.length === boxes.length) ? [] : ticked;
+  _closeCasXFPop(); renderCAS();
+}
 function renderCAS(){
   _renderMemberships();
   const sel = document.getElementById('casSchemeFilter');
@@ -25069,8 +25125,26 @@ function renderCAS(){
     </div>
   </div>`;
 
-  cont.innerHTML = scopePanel + sections.map(s => {
+  const xfBar = _casXFActive()
+    ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:8px 13px;border:1.5px solid var(--accent);border-radius:9px;background:var(--accent-light);font-size:12.5px;">
+        <b>Column filters on.</b> Sections with no matching rows are hidden.
+        <span style="flex:1;"></span>
+        <button class="btn btn-outline btn-xs" onclick="clearCasXF()">✕ Clear all filters</button>
+      </div>`
+    : '';
+  cont.innerHTML = scopePanel + xfBar + sections.map(s => {
     const bsa = s.id === 7;
+    const anyRow = s.questions.some(q => {
+      const inScope = _casRowInScope(q.q);
+      const st=(S.cas?.status?.[q.q]||{}).v;
+      if(_casFilter!=='all'){
+        if(!inScope) return false;
+        if(_casFilter==='unassessed'){ if(st) return false; }
+        else if(st!==_casFilter) return false;
+      }
+      return _casXFPass(q);
+    });
+    if(!anyRow && (_casXFActive() || _casFilter!=='all')) return '';
     return `<div class="card" style="margin-bottom:14px;${bsa?'border:1.5px solid var(--accent);':''}">
       <div class="card-band"><h3><span class="dot">●</span> ${esc(s.id + '. ' + s.name)} <span style="font-size:11px;color:var(--text-muted);font-weight:400;">Q${esc(s.range)}</span></h3>
         ${bsa?'<span class="badge badge-accent" style="font-size:10px;">Building Safety Act - mandatory for BSA work</span>':''}
@@ -25079,11 +25153,13 @@ function renderCAS(){
         <strong>Mandatory under CAS V5 for Building Safety Act work.</strong> These duties cover competence, dutyholder roles and (for Higher-Risk Buildings) the golden thread and mandatory occurrence reporting. AHS supports these through its BR Principal Designer / Principal Contractor services - the natural upsell for clients doing BSA-scope work.
       </div>`:''}
       <div class="card-body" style="padding:0;overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+        <table class="cas-grid">
+          <colgroup><col style="width:46px;"><col><col style="width:138px;"><col style="width:152px;"><col style="width:208px;"></colgroup>
           <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;">
-            <th style="padding:8px 10px;width:50px;">Q</th><th style="padding:8px 10px;">Requirement (our summary)</th>
-            <th style="padding:8px 10px;width:150px;">Document required</th>
-            <th style="padding:8px 10px;width:230px;">Readiness &amp; evidence</th>
+            <th>Q</th><th>${_casXFTh('Requirement (our summary)','flags')}</th>
+            <th>${_casXFTh('Document required','docs')}</th>
+            <th>${_casXFTh('Status','sts')}</th>
+            <th>Evidence</th>
           </tr></thead>
           <tbody>
             ${s.questions.map((q,i)=>{
@@ -25094,6 +25170,7 @@ function renderCAS(){
                 if(_casFilter==='unassessed'){ if(st) return ''; }
                 else if(st!==_casFilter) return '';
               }
+              if(!_casXFPass(q)) return '';
               const reason = inScope?null:_casScopeReason(q.q);
               const scopeCell = reason
                 ? (reason.kind==='cert'
@@ -25101,13 +25178,15 @@ function renderCAS(){
                     : `<span style="font-size:11px;color:var(--text-muted);" title="Gate Q${reason.q} (${esc(reason.label)}) answered so this work does not apply to this business.">Not in scope (Q${reason.q})</span>`)
                 : '<span style="font-size:11px;color:var(--text-muted);">Not in scope</span>';
               const raiseBtn = (inScope && !_roLocked() && st!=='ready' && st!=='na')
-                ? `<button class="btn btn-ghost btn-xs no-print" style="margin-top:4px;font-size:10.5px;" title="Put this criterion on the client execution plan as an action to close" onclick="_casRaiseGap('${encodeURIComponent(q.q)}','${encodeURIComponent(q.req)}')">→ plan</button>`
+                ? `<button class="btn btn-ghost btn-xs no-print" style="font-size:10.5px;" title="Put this criterion on the client execution plan as an action to close" onclick="_casRaiseGap('${encodeURIComponent(q.q)}','${encodeURIComponent(q.req)}')">→ plan</button>`
                 : '';
+              const badges=(_casFlagBadges(q.flags)+(_casProportionateOptional(q)?' <span class="badge badge-muted" style="font-size:10px;">Proportionate - statement/N-A OK</span>':'')).trim();
               return `<tr style="border-top:1px solid var(--border);background:${i%2?'transparent':'var(--muted-bg)'};${inScope?'':'opacity:.55;'}">
-              <td style="padding:8px 10px;font-weight:600;white-space:nowrap;">${esc(q.q)}</td>
-              <td style="padding:8px 10px;">${esc(q.req)}${_casFlagBadges(q.flags)}${_casProportionateOptional(q)?' <span class="badge badge-muted" style="font-size:10px;">Proportionate - statement/N-A OK</span>':''}</td>
-              <td style="padding:8px 10px;color:var(--text-muted);">${esc(_casDocType(q))}</td>
-              <td style="padding:8px 10px;">${inScope?(_casStatusControl(q.q)+_casEvidenceCell(q)+raiseBtn):scopeCell}</td>
+              <td style="font-weight:600;">${esc(q.q)}</td>
+              <td>${esc(q.req)}${badges?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;">${badges}</div>`:''}</td>
+              <td style="color:var(--text-muted);">${esc(_casDocType(q))}</td>
+              <td>${inScope?(_casStatusControl(q.q)+raiseBtn):scopeCell}</td>
+              <td>${inScope?(_casEvidenceCell(q)||'<span style="font-size:10.5px;color:var(--text-muted);">-</span>'):''}</td>
             </tr>`;
             }).join('')}
           </tbody>
@@ -25323,7 +25402,7 @@ function _suggestReviewFeedbackText(){
   const del=delRisk+delPlan;
   const br=((S.consultation&&S.consultation.briefings)||[]);
   const bits=[];
-  bits.push('Where you are: '+M.H.held+' of '+M.H.total+' risks assured'
+  bits.push('Where you are: '+M.H.held+' of '+M.H.total+' risks identified'
     +(M.H.breaches.length?('; '+M.H.breaches.length+' need'+(M.H.breaches.length!==1?'':'s')+' attention first'):'; nothing needs attention first')+'.');
   if(del) bits.push(del+' action'+(del!==1?'s have':' has')+' been delivered and kept as evidence - real progress the business should take credit for.');
   if(sc.compliance!=null) bits.push('Inspection compliance is running at '+sc.compliance+'%.');
@@ -25410,7 +25489,7 @@ function buildFeedbackReportPDF(){
   try{ const rvm=_riskVsMaturity(); K.section('Risk exposure vs H&S control maturity', NAVY);
     K.bars([
       {label:'Risk exposure', val:rvm.riskIndex, color: rvm.riskIndex>=60?RED:rvm.riskIndex>=35?AMBER:GREEN, valLabel: rvm.riskLabel+' ('+rvm.riskIndex+')'},
-      {label:'Risks assured', val: (rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, color: (rvm.H&&rvm.H.breaches.length)?RED:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?GREEN:AMBER), valLabel: (rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed'}
+      {label:'Risks identified', val: (rvm.H&&rvm.H.total)?Math.round(rvm.H.held/rvm.H.total*100):0, color: (rvm.H&&rvm.H.breaches.length)?RED:((rvm.H&&rvm.H.total&&rvm.H.held===rvm.H.total)?GREEN:AMBER), valLabel: (rvm.H&&rvm.H.total)?(rvm.H.held+' of '+rvm.H.total):'not assessed'}
     ]);
     K.text(rvm.verdict, 9, {color:GREY, gap:1});
   }catch(e){}
@@ -25548,7 +25627,7 @@ function buildAuditReportPDF(){
     K.kv('Agreed target', 'Every risk assured, nothing needing attention'+(tgt.targetDate?(' by '+fd(tgt.targetDate)):''));
     const fmt1=(v)=>v==null?'-':Number(v).toFixed(1);
     K.table([{header:'MEASURE',w:66},{header:'BASELINE',w:30},{header:'NOW',w:30},{header:'MOVEMENT',w:52}],
-      [ ['Risks assured', String(base.metrics.held ?? '-'), String(nowM.held ?? '-'), null],
+      [ ['Risks identified', String(base.metrics.held ?? '-'), String(nowM.held ?? '-'), null],
         ['Need attention first', String(base.metrics.ruleBreaches ?? '-'), String(nowM.ruleBreaches ?? '-'), null],
         ['High + critical risks', String(base.metrics.highCrit??'-'), String(nowM.highCrit??'-'), null],
         ['Open actions', String(base.metrics.openActions??'-'), String(nowM.openActions??'-'), null],
@@ -25780,7 +25859,7 @@ function _bsrData(){
 
   // GREEN - compliant with evidence, summarised in single lines
   const nextRev=(S.riskDoc&&S.riskDoc.nextReview)?fmtDate(S.riskDoc.nextReview):'the agreed review cycle';
-  if(H.held) greens.push({ issue:H.held+' of '+H.total+' risks assured', found:'controls recorded and plans delivered, signed off or defensibly accepted', due:nextRev });
+  if(H.held) greens.push({ issue:H.held+' of '+H.total+' risks identified', found:'controls recorded and plans delivered, signed off or defensibly accepted', due:nextRev });
   const rg=(typeof _reqGaps==='function')?_reqGaps():{gaps:0,assessed:0};
   const dutyMet=rg.assessed-rg.gaps;
   if(dutyMet>0) greens.push({ issue:dutyMet+' legal dut'+(dutyMet!==1?'ies':'y')+' met', found:'in place, adequate and evidenced on the Legal duties assessment', due:nextRev });

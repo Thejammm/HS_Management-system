@@ -14162,6 +14162,38 @@ function _cockpitContext(){
   return { today, insps, acts, openA, overdueA, awaiting, signedOff, pass, rect, act, compliance, risks, highRisk, modRisk, reqG, reqStats, lastRev, RD, rvm, cas, monData, monLabel, monHas, docCount, BW, BH, barSvg, donut };
 }
 
+// ── THE DIRECTOR'S RISK PICTURE (Simon, 2026-09-01). One model feeds the
+//    four Board widgets: how many / the journey to target / the ladder / the
+//    five in hand. Every figure reuses the app's existing judgements:
+//    uncontrolled = the 1-Uncontrolled hold state, bands = likelihood x
+//    severity, targets = the projected scores, progress = the same dependent
+//    count as the risk pathway. Nothing here derives anything twice. ──
+function _boardModel(){
+  const rows=(S.riskProfile||[]).map(r=>{
+    const sc=_riskScore(r); const hold=_riskHold(r); const g=_journeyGauge(r); const dep=_journeyDepCounts(r);
+    return { r, id:r.id, name:String(r.activity||r.hazard||'Unnamed risk'), sc, hold, g, dep,
+      unc: hold.k==='notheld', atTarget: !!(g&&g.atTarget) };
+  });
+  const total=rows.length;
+  const unc=rows.filter(z=>z.unc).length;
+  const atTgt=rows.filter(z=>z.atTarget).length;
+  const dep=rows.reduce((a,z)=>({done:a.done+z.dep.done,total:a.total+z.dep.total}),{done:0,total:0});
+  let inh=0, now=0, tgt=0, anyTgt=false;
+  const rated=rows.filter(z=>z.g);
+  rated.forEach(z=>{ inh+=z.g.inh.rating; now+=z.g.now.rating; if(z.g.tgt.rating){ anyTgt=true; tgt+=z.g.tgt.rating; } else tgt+=z.g.now.rating; });
+  const fillPct = inh>0 ? Math.max(0,Math.min(100,Math.round((inh-now)/inh*100))) : 0;
+  const tgtPct  = (inh>0&&anyTgt) ? Math.max(0,Math.min(100,Math.round((inh-tgt)/inh*100))) : null;
+  const nowBand = rated.length ? _bandFor(now/rated.length) : '';
+  return { rows, total, unc, ctl:total-unc, atTgt, dep, rated:rated.length, fillPct, tgtPct, nowBand, overdue:_overdueActionCount() };
+}
+// The chosen five: the company's pick of what to work on now (quick wins
+// welcome) - the one fact on this picture the app did not already hold.
+function _riskChosenToggle(id){
+  if(_roLocked()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
+  if(!r.chosen && (S.riskProfile||[]).filter(x=>x.chosen).length>=5){ showToast('Five already chosen - unpin one first','error'); return; }
+  r.chosen=!r.chosen; _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
+}
 // The registry. group = which zone/container the widget belongs in.
 const COCKPIT_WIDGETS = {
   kpiFatal:       { id:'kpiFatal', label:'Could kill or seriously injure', group:'KPI', render:x=>{
@@ -14334,18 +14366,95 @@ const COCKPIT_WIDGETS = {
         ${names.length?`<ul style="list-style:none;padding:0;margin:8px 0 0;font-size:11.5px;color:var(--text-muted);">${names.map(n=>`<li style="padding:2px 0;">▲ ${esc(n)}</li>`).join('')}</ul>`:''}
         <button class="ck-link" onclick="switchTab('risk');_rpStatJump('emerging')">See them →</button></div>`;
     } },
+  boardPicture: { id:'boardPicture', label:'Risk picture', group:'Board', render:x=>{
+      const B=_boardModel();
+      if(!B.total) return '<div class="ckx-panel"><h4>Risk picture</h4><div class="ck-pending">No risks recorded yet - build the profile and the picture draws itself.</div></div>';
+      const seg=(n,c,lab)=> n?('<div style="flex:'+n+';background:'+c+';display:flex;align-items:center;justify-content:center;gap:5px;color:#fff;font-weight:700;font-size:12.5px;min-width:40px;">'+n+' '+lab+'</div>'):'';
+      return '<div class="ckx-panel"><h4>Risk picture</h4>'
+        +'<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">'
+        +'<button type="button" style="all:unset;cursor:pointer;text-align:center;" onclick="switchTab(\'risk\')" title="Open the risk profile">'
+        +'<div style="font-size:38px;font-weight:800;color:var(--text);line-height:1;">'+B.total+'</div>'
+        +'<div style="font-size:11.5px;color:var(--text-muted);">significant risks</div></button>'
+        +'<div style="flex:1;min-width:260px;">'
+        +'<div style="display:flex;height:30px;border-radius:8px;overflow:hidden;">'+seg(B.unc,'#DC2626','uncontrolled')+seg(B.ctl,'#16A34A','controlled')+'</div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px;flex-wrap:wrap;gap:8px;">'
+        +'<span>'+B.unc+' of '+B.total+' '+(B.unc===1?'has':'have')+' no effective controls yet</span><span>'+B.ctl+' controlled and being worked</span></div>'
+        +'</div></div></div>';
+    } },
+  boardJourney: { id:'boardJourney', label:'Risk journey', group:'Board', render:x=>{
+      const B=_boardModel();
+      if(!B.rated) return '<div class="ckx-panel"><h4>Risk journey</h4><div class="ck-pending">Rate the risks (likelihood \u00d7 severity) and the company journey draws itself.</div></div>';
+      const col=_RISK_PRIO_COLOR[B.nowBand]||'#9CA3AF';
+      const line=B.tgtPct===null?'':'<div style="position:absolute;left:'+B.tgtPct+'%;top:-7px;bottom:-7px;width:4px;background:#2563EB;border-radius:2px;box-shadow:0 0 0 1.5px var(--surface,#fff);"></div>'
+        +'<div style="position:absolute;left:'+B.tgtPct+'%;top:-23px;transform:translateX(-'+(B.tgtPct>75?'100':B.tgtPct<15?'0':'50')+'%);font-size:10.5px;font-weight:700;color:#2563EB;white-space:nowrap;">TARGET - the controls you have set</div>';
+      return '<div class="ckx-panel"><h4>Risk journey</h4>'
+        +'<div style="position:relative;height:20px;background:var(--muted-bg);border-radius:10px;margin:'+(B.tgtPct===null?'8':'26')+'px 0 4px;">'
+        +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+B.fillPct+'%;min-width:14px;background:'+col+';border-radius:'+(B.fillPct>=98?'10px':'10px 0 0 10px')+';"></div>'+line+'</div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);"><span>where you started</span><span style="font-weight:700;color:'+col+';">where you are now</span><span>fully controlled</span></div>'
+        +'<div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--text-muted);">'
+        +'<span><b style="font-size:16px;color:#2563EB;">'+B.atTgt+' of '+B.total+'</b> risks at their planned target</span>'
+        +'<span><b style="font-size:16px;color:var(--text);">'+B.dep.done+' of '+B.dep.total+'</b> planned controls and actions in place</span>'
+        +(B.overdue?('<span><b style="font-size:16px;color:#DC2626;">'+B.overdue+'</b> action'+(B.overdue!==1?'s':'')+' overdue</span>'):'<span style="align-self:center;">nothing overdue</span>')+'</div>'
+        +(B.tgtPct===null?'<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">No projected scores set yet - add them on the risk cards and the blue target line appears.</div>':'')
+        +'<div style="margin-top:12px;padding:8px 13px;border-left:3px solid #16A34A;background:#16A34A0d;border-radius:0 8px 8px 0;font-size:12px;color:var(--text-muted);">When every risk reaches its line: review, set stronger controls, move the line, go again. Continuous improvement is the loop this picture runs on - the line never disappears, it moves.</div></div>';
+    } },
+  boardLadder: { id:'boardLadder', label:'Risk ladder', group:'Board', render:x=>{
+      const B=_boardModel();
+      if(!B.total) return '<div class="ckx-panel"><h4>Risk ladder</h4><div class="ck-pending">No risks recorded yet.</div></div>';
+      const chip=z=>'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':'Controlled')+(z.atTarget?' \u00b7 at its planned target':'')+' - click to open" '
+        +'style="display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;border:1.6px solid '+(z.unc?'#DC2626':'var(--border)')+';background:'+(z.unc?'#DC26260d':'var(--surface,#fff)')+';color:var(--text);">'
+        +'<span style="width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':'#16A34A')+';"></span>'+esc(z.name.slice(0,44))+(z.atTarget?' \u2713':'')+'</button>';
+      const rung=(band)=>{ const on=B.rows.filter(z=>z.sc.priority===band); if(!on.length) return '';
+        const c=_RISK_PRIO_COLOR[band];
+        return '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--border);">'
+          +'<div style="flex:0 0 84px;text-align:right;font-size:11px;font-weight:800;color:'+c+';">'+band.toUpperCase()+'</div>'
+          +'<div style="flex:0 0 24px;height:5px;border-radius:3px;background:'+c+';"></div>'
+          +'<div style="display:flex;gap:8px;flex-wrap:wrap;flex:1;">'+on.map(chip).join('')+'</div>'
+          +'<div style="flex:0 0 auto;font-size:11px;color:var(--text-muted);">'+on.length+' risk'+(on.length!==1?'s':'')+'</div></div>'; };
+      const unrated=B.rows.filter(z=>!z.sc.priority);
+      return '<div class="ckx-panel"><h4>Risk ladder - what kind of risks are they?</h4>'
+        +['Critical','High','Medium','Low'].map(rung).join('').replace('border-top:1px solid var(--border);','border-top:0;')
+        +(unrated.length?('<div style="font-size:11.5px;color:var(--text-muted);padding:8px 0 0;border-top:1px solid var(--border);margin-top:2px;">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name.slice(0,40))).join(', ')+'</div>'):'')
+        +'<div style="display:flex;gap:18px;font-size:11.5px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;">'
+        +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#DC2626;margin-right:5px;"></span>uncontrolled</span>'
+        +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#16A34A;margin-right:5px;"></span>controlled</span>'
+        +'<span>\u2713 = at its planned target</span><span>click a risk to open it</span></div></div>';
+    } },
+  boardFive: { id:'boardFive', label:'Five in hand', group:'Board', render:x=>{
+      const B=_boardModel(); const H=_holdSummary();
+      if(!B.total) return '<div class="ckx-panel"><h4>Five in hand</h4><div class="ck-pending">No risks recorded yet.</div></div>';
+      const top=H.breaches.concat(H.nextWorst).slice(0,5);
+      const chosen=H.rows.filter(z=>z.r&&z.r.chosen).sort(_holdWorstFirst).slice(0,5);
+      const topIds=top.map(z=>z.id), choIds=chosen.map(z=>z.id);
+      const word=z=>{ const bz=B.rows.find(b=>b.id===z.id); return (bz&&bz.atTarget)?'at target':(z.breach?'needs attention':z.hold.label.toLowerCase()); };
+      const fr=(z,i,other)=>{ const c=_RISK_PRIO_COLOR[z.band]||'#9CA3AF';
+        return '<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0;'+(i?'border-top:1px solid var(--border);':'')+'">'
+        +'<span style="flex:0 0 16px;text-align:center;font-weight:800;color:var(--text-muted);font-size:12px;">'+(i+1)+'</span>'
+        +'<span style="flex:0 0 12px;color:'+(other.includes(z.id)?'#7C3AED':'transparent')+';font-weight:800;" title="On both lists">\u25cf</span>'
+        +'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--text);">'+esc(z.name.slice(0,50))+'</button>'
+        +'<span style="flex:0 0 auto;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;background:'+c+';">'+(z.band||'-').toUpperCase()+'</span>'
+        +'<span style="flex:0 0 auto;font-size:10.5px;color:var(--text-muted);">'+word(z)+'</span></div>'; };
+      return '<div class="ckx-panel"><h4>Five in hand - biggest, and chosen</h4>'
+        +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">'
+        +'<div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;"><div style="font-size:12px;font-weight:700;margin-bottom:6px;">Top 5 by size - worst first</div>'
+        +(top.length?top.map((z,i)=>fr(z,i,choIds)).join(''):'<div class="ck-pending">Nothing to rank yet.</div>')+'</div>'
+        +'<div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;"><div style="font-size:12px;font-weight:700;margin-bottom:6px;">Our chosen 5 - working on now</div>'
+        +(chosen.length?chosen.map((z,i)=>fr(z,i,topIds)).join(''):'<div class="ck-pending">Pick up to five with the \u2606 star on the risk register - quick wins welcome.</div>')+'</div></div>'
+        +'<div style="display:flex;gap:18px;font-size:11px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;"><span><span style="color:#7C3AED;font-weight:800;">\u25cf</span> on both lists</span><span>left is the app\u2019s ranking (worst band, weakest control); right is your pick</span></div></div>';
+    } },
 };
 
 // Cockpit zones = ordered containers, one per widget group. The default order.
 const COCKPIT_LAYOUT_DEFAULT = [
+  { wrap:'',          group:'Board',   ids:['boardPicture','boardJourney','boardLadder','boardFive'] },
   { wrap:'ckx-kpis',  group:'KPI',     ids:['kpiFatal','kpiHighCrit','kpiOpenActions','kpiMgmtGaps','kpiCompleteness','kpiInspections','kpiTraining'] },
   { wrap:'ckx-row2',  group:'Chart',   ids:['chartInspections','chartCompliance','chartRiskCats','chartEmerging'] },
   { wrap:'',          group:'Feature', ids:['riskVsMaturity'] },
   { wrap:'ckx-mods',  group:'Card',    ids:['cardRiskPriorities','cardMgmtSystem','cardMonitoring','cardAccreditation','cardLastReview','cardDocuments','cardReports'] },
 ];
-const _CK_ZONE = { KPI:'ckx-kpis', Gauge:'ckx-gauges', Chart:'ckx-row2', Feature:'', Card:'ckx-mods' };
-const _CK_ZONE_ORDER = ['KPI','Gauge','Chart','Feature','Card'];
-const _CK_GROUP_LABEL = { KPI:'Headline numbers (KPIs)', Gauge:'Dials & gauges', Chart:'Charts', Feature:'Risk & maturity panel', Card:'Module cards' };
+const _CK_ZONE = { Board:'', KPI:'ckx-kpis', Gauge:'ckx-gauges', Chart:'ckx-row2', Feature:'', Card:'ckx-mods' };
+const _CK_ZONE_ORDER = ['Board','KPI','Gauge','Chart','Feature','Card'];
+const _CK_GROUP_LABEL = { Board:'Director risk picture', KPI:'Headline numbers (KPIs)', Gauge:'Dials & gauges', Chart:'Charts', Feature:'Risk & maturity panel', Card:'Module cards' };
 function _cockpitDefaultOrder(){ return COCKPIT_LAYOUT_DEFAULT.reduce((a,z)=>a.concat(z.ids),[]); }
 // Normalised {order,hidden}. Default-off widgets (gauges) start hidden; widgets added since a save get appended
 // (and hidden if default-off), so the default cockpit stays identical until a client explicitly enables them.
@@ -16234,16 +16343,17 @@ function _journeyBarHTML(r){
 }
 // The dependents under the parent risk: the controls in place and every
 // action, each with its status - what actually powers the bar.
-function _journeyDepsHTML(r){
+function _journeyDepCounts(r){
   const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due));
-  // The app's ONE judgement of the controls - _riskControlStatus - drives the
-  // row and the count. Green tick ONLY when it says 'In place'; 'Partial' gets
-  // an amber half-mark; 'None' shows the gap in red rather than pretending.
   const ctl=_riskControlStatus(r);
   const total=acts.length+((ctl!=='None'||acts.length)?1:0);
-  if(!total) return '<div style="font-size:12px;color:var(--text-muted);">Nothing powers this bar yet - record the controls in place and plan owned, dated actions, or formally accept the risk.</div>';
   const done=acts.filter(a=>{const st=_actionStatus(a);return st==='Complete'||st==='Accepted';}).length+(ctl==='In place'?1:0);
-  const dot=(kind,ch)=>'<span style="width:17px;height:17px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;'
+  return { acts, ctl, done, total };
+}
+function _journeyDepsHTML(r){
+  const {acts, ctl, done, total}=_journeyDepCounts(r);
+  if(!total) return '<div style="font-size:12px;color:var(--text-muted);">Nothing powers this bar yet - record the controls in place and plan owned, dated actions, or formally accept the risk.</div>';
+    const dot=(kind,ch)=>'<span style="width:17px;height:17px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;'
     +(kind==='done'?'background:#16A34A;color:#fff;':kind==='late'?'background:#DC2626;color:#fff;':kind==='part'?'background:#F59E0B;color:#fff;':'background:transparent;border:1.7px solid var(--border);color:var(--text-muted);')+'">'+ch+'</span>';
   const row=(d,txt,meta,late)=>'<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;padding:3px 0;min-width:0;">'+d
     +'<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+txt+'</span>'
@@ -19536,6 +19646,7 @@ function renderRiskProfile(){
         <span class="rp-t" id="rlt-${r.id}">${r.activity ? esc(r.activity) : (r.hazard?esc(r.hazard):'New risk')}</span>
         <span class="rp-m">${bits.join(' · ')}</span>
       </span>
+      <span onclick="event.stopPropagation();_riskChosenToggle('${r.id}')" title="${r.chosen?'In our five - click to unpin':'Pin to our chosen five (max 5) - shown on the cockpit'}" style="flex:0 0 auto;cursor:pointer;font-size:15px;line-height:1;color:${r.chosen?'#F59E0B':'var(--border)'};padding:0 2px;">${r.chosen?'\u2605':'\u2606'}</span>
       <span id="rlprio-${r.id}" style="flex:0 0 auto;">${_riskPrioBadge(sc.priority, sc.rating)}</span>
     </button>`;
   }).join('');

@@ -337,7 +337,7 @@ test('H&S control maturity grades every level and catches both breach kinds', ()
   assert.match(kinds, /run on acceptance alone/);   // h2: named before the generic state, so the precise reason survives
   assert.match(kinds, /is vulnerable/i);           // h4: high band at 2 Vulnerable
   assert.equal(D.holdS.breaches.length, 2);         // h5 is Low — no Medium/High rule engaged
-  assert.match(D.holdS.verdict, /1 of 5 risks assured/);
+  assert.match(D.holdS.verdict, /1 of 5 risks identified/);
   // Plan delivery: closed = every action complete; accepted is a caveat.
   assert.equal(D.planDone, 1);                      // h1 (all actions Complete)
   assert.equal(D.planAccepted, 1);                  // h2 (all actions Accepted)

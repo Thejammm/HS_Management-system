@@ -16194,6 +16194,68 @@ function _riskPanelHTML(o){
 //  the journey shows it as "Signed off": the way the company now runs it.
 //  (Not "Managed" - that word belongs to level 3 of the maturity scale.)
 // ══════════════════════════════════════════════════════════════
+// ── THE JOURNEY GAUGE (Simon, 2026-09-01). One derivation for the pathway
+//    card. The scale runs from the first score on record (the inherent left
+//    edge) down to zero - fully controlled, the right end. The fill and its
+//    colour are the level actually hit today; the blue line is the projected
+//    residual, the target the plan is written to reach. Every part reads
+//    facts the risk already stores (likelihood x severity, targetL/S,
+//    scoreHistory) - nothing new to fill in. If the score has been pushed
+//    WORSE than the first record, today's score becomes the left edge: the
+//    journey restarts from the worst known position, never off the scale. ──
+function _journeyGauge(r){
+  const now=_riskScore(r); if(!now.rating) return null;
+  const tgt=_riskTarget(r);
+  const hist=Array.isArray(r.scoreHistory)?r.scoreHistory:[];
+  const first=hist.length?_scorePair(hist[0].l,hist[0].s):null;
+  const inh=(first&&first.rating&&first.rating>=now.rating)?first:now;
+  const pos=x=>Math.max(0,Math.min(100,Math.round((inh.rating-x)/inh.rating*100)));
+  return { now, tgt, inh,
+    fillPct:pos(now.rating),
+    tgtPct:tgt.rating?pos(tgt.rating):null,
+    atTarget:!!tgt.rating&&now.rating<=tgt.rating,
+    moved:inh.rating!==now.rating };
+}
+function _journeyBarHTML(r){
+  const g=_journeyGauge(r);
+  if(!g) return '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Not yet rated - score likelihood \u00d7 severity on the risk card to draw the journey.</div>';
+  const col=_RISK_PRIO_COLOR[g.now.priority]||'#9CA3AF';
+  const radius=g.fillPct>=98?'8px':'8px 0 0 8px';
+  const tgtFlag=g.tgtPct===null?'':'<div style="position:absolute;left:'+g.tgtPct+'%;top:-6px;bottom:-6px;width:3.5px;background:#2563EB;border-radius:2px;box-shadow:0 0 0 1.5px var(--surface,#fff);"></div>'
+    +'<div style="position:absolute;left:'+g.tgtPct+'%;top:-21px;transform:translateX(-'+(g.tgtPct>78?'100':g.tgtPct<12?'0':'50')+'%);font-size:10px;font-weight:700;color:#2563EB;white-space:nowrap;">target '+g.tgt.rating+' \u00b7 '+g.tgt.priority+(g.atTarget?' \u2713':'')+'</div>';
+  const labels=g.moved
+    ? '<span>inherent '+g.inh.rating+' \u00b7 '+g.inh.priority+'</span><span style="font-weight:700;color:'+col+';">now '+g.now.rating+' \u00b7 '+g.now.priority+(g.atTarget?' - at the line':' - moving')+'</span><span>fully controlled</span>'
+    : '<span style="font-weight:700;color:'+col+';">inherent '+g.inh.rating+' \u00b7 '+g.inh.priority+' - as it stands today</span><span>fully controlled</span>';
+  return '<div style="margin:'+(g.tgtPct===null?'10':'26')+'px 0 0;">'
+    +'<div style="position:relative;height:16px;background:var(--muted-bg);border-radius:8px;">'
+    +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+g.fillPct+'%;min-width:14px;background:'+col+';border-radius:'+radius+';"></div>'
+    +tgtFlag+'</div>'
+    +'<div style="display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:var(--text-muted);margin-top:3px;flex-wrap:wrap;">'+labels+'</div></div>';
+}
+// The dependents under the parent risk: the controls in place and every
+// action, each with its status - what actually powers the bar.
+function _journeyDepsHTML(r){
+  const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due));
+  const hasCtl=!!(r.controls&&String(r.controls).trim());
+  const total=acts.length+(hasCtl?1:0);
+  if(!total) return '<div style="font-size:12px;color:var(--text-muted);">Nothing powers this bar yet - record the controls in place and plan owned, dated actions, or formally accept the risk.</div>';
+  const done=acts.filter(a=>{const st=_actionStatus(a);return st==='Complete'||st==='Accepted';}).length+(hasCtl?1:0);
+  const dot=(kind,ch)=>'<span style="width:17px;height:17px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;'
+    +(kind==='done'?'background:#16A34A;color:#fff;':kind==='late'?'background:#DC2626;color:#fff;':'background:transparent;border:1.7px solid var(--border);color:var(--text-muted);')+'">'+ch+'</span>';
+  const row=(d,txt,meta,late)=>'<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;padding:3px 0;min-width:0;">'+d
+    +'<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+txt+'</span>'
+    +'<span style="margin-left:auto;flex:0 0 auto;font-size:11px;'+(late?'color:#DC2626;font-weight:700;':'color:var(--text-muted);')+'">'+meta+'</span></div>';
+  const rows=[];
+  if(hasCtl){ const c=String(r.controls).trim(); rows.push(row(dot('done','\u2713'),'Controls in place: '+esc(c.slice(0,90))+(c.length>90?'\u2026':''),'recorded',false)); }
+  acts.forEach(a=>{
+    const st=_actionStatus(a);
+    const isDone=st==='Complete'||st==='Accepted';
+    const late=st==='Overdue';
+    const meta=[st,a.owner?esc(a.owner):'',a.due?fmtDate(a.due):''].filter(Boolean).join(' \u00b7 ');
+    rows.push(row(dot(isDone?'done':(late?'late':'open'), isDone?'\u2713':(late?'!':'')), esc(a.desc||'(action)'), meta, late));
+  });
+  return '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:600;margin-bottom:4px;">What powers this bar - '+done+' of '+total+' in place</div>'+rows.join('');
+}
 var _journeyFilter='all';
 function _journeyMilestones(r){
   const sc=_riskScore(r);
@@ -16238,36 +16300,41 @@ function renderRiskJourney(){
   const tile=(n,lab,c)=>`<div class="ckx-kpi" style="cursor:default;"><div style="font-size:24px;font-weight:800;color:${c};">${n}</div><div style="font-size:12px;color:var(--text-muted);">${lab}</div></div>`;
   const fbtn=(v,lab)=>`<button class="btn ${_journeyFilter===v?'btn-primary':'btn-outline'} btn-xs" onclick="setJourneyFilter('${v}')">${lab}</button>`;
   const card=(x)=>{
-    const r=x.r; const doneN=x.m.filter(s=>s.done).length;
+    const r=x.r;
     const htC=_catColour(r.category);
-    const steps=x.m.map((s,i)=>`
-      <div style="display:flex;gap:12px;">
-        <div style="display:flex;flex-direction:column;align-items:center;">
-          <div style="width:14px;height:14px;border-radius:50%;flex:0 0 auto;margin-top:2px;background:${s.done?'#16A34A':'var(--muted-bg)'};border:2px solid ${s.done?'#16A34A':'var(--border)'};color:#fff;font-size:9px;line-height:10px;text-align:center;">${s.done?'✓':''}</div>
-          ${i<x.m.length-1?`<div style="width:2px;flex:1;min-height:14px;background:${s.done?'#16A34A66':'var(--border)'};"></div>`:''}
-        </div>
-        <div style="padding-bottom:12px;min-width:0;">
-          <div style="font-size:12.5px;font-weight:700;color:${s.done?'var(--text)':'var(--text-muted)'};">${s.label}${s.when?` <span style="font-weight:400;color:var(--text-muted);">· ${s.when}</span>`:''}</div>
-          <div style="font-size:12px;color:var(--text-muted);line-height:1.45;">${esc(s.text)}</div>
-        </div>
-      </div>`).join('');
+    const hold=_riskHold(r);
+    const breach=_holdBreach(x.sc.priority, hold);
+    const signed=x.m[4].done;
+    const state = signed
+      ? `<span class="badge" style="border-color:${x.plan.colour};color:${x.plan.colour};background:${x.plan.colour}1a;">${x.plan.k==='accepted'?'\u2248 Accepted':'\u2713 Signed off'}</span>`
+      : (breach ? `<span style="font-size:10.5px;font-weight:700;color:#DC2626;">NEEDS ATTENTION FIRST \u00b7 ${esc(hold.reasons[0]||breach)}</span>`
+                : `<span class="badge" style="border-color:${x.plan.colour};color:${x.plan.colour};background:${x.plan.colour}1a;">${x.plan.label}</span>`);
+    const g=_journeyGauge(r);
+    const hint=(!signed && g && g.tgtPct===null)
+      ? '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">No projected score set - add it on the risk card and the blue target line appears here.</div>'
+      : '';
     return `<details class="card" style="border-left:4px solid ${htC};margin-bottom:10px;">
-      <summary style="padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;">
-        <span style="font-weight:700;font-size:13.5px;flex:1;min-width:200px;">${esc(r.activity||r.hazard||'New risk')}</span>
-        ${_riskPrioBadge(x.sc.priority,x.sc.rating)}
-        <span class="badge" style="border-color:${x.plan.colour};color:${x.plan.colour};background:${x.plan.colour}1a;">${x.m[4].done?(x.plan.k==='accepted'?'≈ Accepted':'✓ Signed off'):x.plan.label}</span>
-        <span style="font-size:11.5px;color:var(--text-muted);">${doneN}/5 steps</span>
+      <summary style="padding:12px 16px 12px;cursor:pointer;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-weight:700;font-size:13.5px;flex:1;min-width:200px;">${esc(r.activity||r.hazard||'New risk')}${_riskSif(r)?' <span style="font-weight:400;font-size:11px;color:var(--text-muted);">could kill or seriously injure</span>':''}</span>
+          ${_riskPrioBadge(x.sc.priority,x.sc.rating)}
+          ${state}
+        </div>
+        ${_journeyBarHTML(r)}
       </summary>
-      <div style="padding:6px 18px 12px;">
-        ${steps}
-        ${_empView()?'':`<button class="btn btn-outline btn-xs no-print" onclick="_journeyOpenRisk('${r.id}')">Open in risk profile →</button>`}
+      <div style="padding:10px 18px 12px;border-top:1px dashed var(--border);">
+        ${_journeyDepsHTML(r)}
+        ${signed?`<div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.45;">${esc(x.m[4].text)}</div>`:''}
+        ${hint}
+        ${_scoreHistoryHTML(r)}
+        ${_empView()?'':`<button class="btn btn-outline btn-xs no-print" style="margin-top:10px;" onclick="_journeyOpenRisk('${r.id}')">Open in risk profile \u2192</button>`}
       </div>
     </details>`;
   };
   el.innerHTML = `<div class="card" style="margin-bottom:14px;">
       <div class="card-band"><h3><span class="dot">●</span> Risk pathway</h3></div>
       <div class="card-body">
-        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">The story of every risk, from identified to signed off. A risk never leaves the profile - once its action plan is delivered, evidenced and signed off, this page shows it as the way the company now manages that risk.</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">The story of every risk, from identified to signed off - a risk never leaves the profile. Each bar runs from the <b>inherent score</b> to <b>fully controlled</b>: the fill and its colour are the level actually hit today, and the <span style="color:#2563EB;font-weight:700;">blue line</span> is the residual target the action plan is written to reach. Open a risk to see what powers its bar.</div>
         <div class="ckx-kpis" style="margin-bottom:12px;">${tile(managedN,'Signed off','#16A34A')}${tile(planN,'Plan in progress','#F59E0B')}${tile(earlyN,'Being assessed','#9CA3AF')}</div>
         <div style="display:flex;gap:8px;" class="no-print">${fbtn('all','All ('+enriched.length+')')}${fbtn('open','In progress ('+(enriched.length-managedN)+')')}${fbtn('managed','Signed off ('+managedN+')')}</div>
       </div>

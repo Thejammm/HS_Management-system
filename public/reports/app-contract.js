@@ -297,12 +297,12 @@ export function holdSummaryOf(state, tierOfRisk, opts = {}) {
   else if (breaches.length) {
     pillT = breaches.length + ' need' + (breaches.length !== 1 ? '' : 's') + ' attention first'; pillC = '#DC2626';
     const names = breaches.slice(0, 2).map(b => b.name + ' (' + (b.hold.reasons[0] || b.breach) + ')');
-    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' assured. ' + breaches.length + ' need' + (breaches.length !== 1 ? '' : 's') + ' attention first: ' + names.join('; ') + (breaches.length > 2 ? ('; and ' + (breaches.length - 2) + ' more.') : '.');
+    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' identified. ' + breaches.length + ' need' + (breaches.length !== 1 ? '' : 's') + ' attention first: ' + names.join('; ') + (breaches.length > 2 ? ('; and ' + (breaches.length - 2) + ' more.') : '.');
   }
-  else if (held === total) { pillT = 'all risks assured'; pillC = '#0f6f5c'; verdict = 'All ' + total + ' risk' + (total !== 1 ? 's are' : ' is') + ' assured - controls recorded, plans delivered and signed off, or formally accepted.'; }
+  else if (held === total) { pillT = 'all risks identified'; pillC = '#0f6f5c'; verdict = 'All ' + total + ' risk' + (total !== 1 ? 's are' : ' is') + ' identified - controls recorded, plans delivered and signed off, or formally accepted.'; }
   else {
     pillT = 'working to plan'; pillC = '#c2740a';
-    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' assured; ' + working + ' managed' + (slipping ? ('; ' + slipping + ' vulnerable') : '') + (notheld ? ('; ' + notheld + ' uncontrolled') : '') + '. Nothing needs attention first - every Critical and High risk is assured or managed on time.';
+    verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' identified; ' + working + ' managed' + (slipping ? ('; ' + slipping + ' vulnerable') : '') + (notheld ? ('; ' + notheld + ' uncontrolled') : '') + '. Nothing needs attention first - every Critical and High risk is assured or managed on time.';
   }
   return { rows, total, held, working, slipping, notheld, breaches, nextWorst, pillT, pillC, verdict };
 }

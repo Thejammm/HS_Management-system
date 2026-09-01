@@ -266,10 +266,68 @@ export function coverBlock({ org, title, period, refCode, issued }) {
   </div>`;
 }
 
+// ── The director's risk picture (the cockpit's Board zone on paper) ──
+// Lead figure beside one proportional strip: red / amber / green, always
+// summing to the total - nothing to mis-add.
+export function splitStrip({ lead, segments, notes }) {
+  const total = segments.reduce((a, s) => a + s.n, 0);
+  const segs = segments.filter(s => s.n > 0).map(s =>
+    `<i class="r-split-seg" style="flex:${s.n};background:${s.colour}"><b>${s.n}</b>&nbsp;${esc(s.label)}</i>`).join('');
+  return `<div class="r-split">
+    <div class="r-split-lead"><div class="r-split-num">${esc(lead.value)}</div><div class="r-split-lab">${esc(lead.label)}</div></div>
+    <div class="r-split-body">${total ? `<div class="r-split-bar">${segs}</div>` : '<div class="r-footnote">No risks recorded yet.</div>'}
+      ${notes && notes.length ? `<div class="r-split-notes">${notes.map(n => `<span>${esc(n)}</span>`).join('')}</div>` : ''}</div>
+  </div>`;
+}
+
+// The company journey: started -> now (fill, band colour) -> blue target
+// line -> fully controlled, with the counts and the improvement loop beneath.
+export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note }) {
+  const line = (tgtPct == null) ? '' :
+    `<i class="r-jny-line" style="left:${tgtPct}%"></i><span class="r-jny-flag" style="left:${tgtPct}%;transform:translateX(-${tgtPct > 75 ? 100 : tgtPct < 15 ? 0 : 50}%)">TARGET - the controls you have set</span>`;
+  return `<div class="r-jny${tgtPct == null ? '' : ' r-jny-flagged'}">
+    <div class="r-jny-track"><i class="r-jny-fill" style="width:${Math.max(2, fillPct || 0)}%;background:${colour}"></i>${line}</div>
+    <div class="r-jny-labs"><span>where you started</span><span style="color:${colour};font-weight:700">where you are now</span><span>fully controlled</span></div>
+    <div class="r-jny-counts">${counts.map(c => `<span><b${c.colour ? ` style="color:${c.colour}"` : ''}>${esc(c.value)}</b> ${esc(c.label)}</span>`).join('')}</div>
+    ${note ? `<div class="r-footnote">${esc(note)}</div>` : ''}
+    ${loop ? `<div class="r-jny-loop">${esc(loop)}</div>` : ''}
+  </div>`;
+}
+
+// Named risks on the Critical-to-Low scale; the dot carries the controls
+// judgement (red none / amber partly / green in place), a tick = at target.
+export function riskLadder({ rungs, unrated }) {
+  const rows = rungs.filter(r => r.chips.length).map(r => `<div class="r-lad-row">
+      <span class="r-lad-band" style="color:${r.colour}">${esc(String(r.band).toUpperCase())}</span>
+      <span class="r-lad-rung" style="background:${r.colour}"></span>
+      <span class="r-lad-chips">${r.chips.map(c => `<span class="r-lad-chip${c.dot === '#DC2626' ? ' r-lad-unc' : ''}"><i style="background:${c.dot}"></i>${esc(c.name)}${c.tick ? ' &#10003;' : ''}</span>`).join('')}</span>
+      <span class="r-lad-n">${r.chips.length} risk${r.chips.length !== 1 ? 's' : ''}</span>
+    </div>`).join('');
+  const key = `<div class="r-lad-key"><span><i style="background:#DC2626"></i>uncontrolled</span><span><i style="background:#F59E0B"></i>partly controlled</span><span><i style="background:#16A34A"></i>controlled</span><span>&#10003; = at its planned target</span></div>`;
+  return `<div class="r-lad">${rows || '<div class="r-footnote">No rated risks yet.</div>'}
+    ${unrated && unrated.length ? `<div class="r-footnote">${unrated.length} risk${unrated.length !== 1 ? 's' : ''} not yet rated - ${unrated.map(esc).join(', ')}</div>` : ''}
+    ${key}</div>`;
+}
+
+// Two ranked lists side by side (top five by size, and the chosen five);
+// the purple dot marks a risk on both.
+export function twinPanels({ left, right, footnote }) {
+  const panel = (p) => `<div class="r-twin-panel"><div class="r-twin-title">${esc(p.title)}</div>
+    ${p.rows.length ? p.rows.map((r, i) => `<div class="r-twin-row">
+      <b class="r-twin-rank">${i + 1}</b>
+      <i class="r-twin-both"${r.both ? '' : ' style="visibility:hidden"'}>&#9679;</i>
+      <span class="r-twin-name">${esc(r.name)}</span>
+      <span class="r-twin-band" style="background:${r.bandColour}">${esc(r.band)}</span>
+      <span class="r-twin-word">${esc(r.word)}</span>
+    </div>`).join('') : `<div class="r-footnote">${esc(p.empty || 'Nothing yet.')}</div>`}</div>`;
+  return `<div class="r-twin">${panel(left)}${panel(right)}</div>${footnote ? `<div class="r-footnote">${esc(footnote)}</div>` : ''}`;
+}
+
 const BLOCKS = {
   masthead, titleBlock, kpiStrip, decisionsPanel, dataTable, dualBar, planBar, gapBars, matrix5x5,
   distributionBars, hierarchyStrip, statementPanel, tagList, stepScale,
   signoffGrid, soWhat, pageFooter, textBlock, coverBlock,
+  splitStrip, journeyStrip, riskLadder, twinPanels,
 };
 
 // Render one block descriptor {type, ...props} to HTML.

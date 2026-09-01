@@ -90,6 +90,73 @@ export function targetOf(risk) {
   return (l && s) ? { l, s, score: l * s } : null;
 }
 
+// ── The director's risk picture (2026-09-01) - mirrors the app's
+//    _journeyGauge / _journeyDepCounts / _boardModel word for word; the
+//    consistency check diffs the two ends, so a drift fails the build. ──
+// The left edge of a journey: the first score on record (scoreHistory[0]),
+// unless today's score is worse - then the journey restarts from the worst
+// known position, never off the scale.
+export function inherentOf(risk) {
+  const now = residualOf(risk);
+  if (!now) return null;
+  const h = Array.isArray(risk && risk.scoreHistory) ? risk.scoreHistory : [];
+  const fl = h.length ? int(h[0].l) : null, fs = h.length ? int(h[0].s) : null;
+  const first = (fl && fs) ? { l: fl, s: fs, score: fl * fs } : null;
+  return (first && first.score >= now.score) ? first : now;
+}
+export function journeyGaugeOf(risk) {
+  const now = residualOf(risk);
+  if (!now) return null;
+  const tgt = targetOf(risk);
+  const inh = inherentOf(risk);
+  const pos = x => Math.max(0, Math.min(100, Math.round((inh.score - x) / inh.score * 100)));
+  return { now, tgt, inh, fillPct: pos(now.score), tgtPct: tgt ? pos(tgt.score) : null,
+           atTarget: !!tgt && now.score <= tgt.score, moved: inh.score !== now.score };
+}
+// What powers a risk's bar: the controls slot (judged by controlStatusOf,
+// the app's one truth - In place / Partial / None) plus every action.
+export function journeyDepCountsOf(risk) {
+  const acts = ((risk && risk.actions) || []).filter(a => a && !a.deleted && (a.desc || a.owner || a.due));
+  const ctl = controlStatusOf(risk);
+  const total = acts.length + ((ctl !== 'None' || acts.length) ? 1 : 0);
+  const done = acts.filter(a => a.status === 'Complete' || a.status === 'Accepted').length + (ctl === 'In place' ? 1 : 0);
+  return { acts, ctl, done, total };
+}
+export function boardModelOf(state, opts = {}) {
+  const bands = bandsFrom(state);
+  const today = opts.today || new Date().toISOString().slice(0, 10);
+  const risks = (state && Array.isArray(state.riskProfile)) ? state.riskProfile : [];
+  const rows = risks.map(r => {
+    const now = residualOf(r);
+    const g = journeyGaugeOf(r);
+    const dep = journeyDepCountsOf(r);
+    return { id: r.id, name: String(r.activity || r.hazard || 'Unnamed risk'),
+             tier: now ? tierFor(now.score, bands) : null, score: now ? now.score : null,
+             unc: dep.ctl === 'None', part: dep.ctl === 'Partial', atTarget: !!(g && g.atTarget), gauge: g, dep };
+  });
+  const total = rows.length;
+  const unc = rows.filter(z => z.unc).length;
+  const part = rows.filter(z => z.part).length;
+  const atTgt = rows.filter(z => z.atTarget).length;
+  const dep = rows.reduce((a, z) => ({ done: a.done + z.dep.done, total: a.total + z.dep.total }), { done: 0, total: 0 });
+  let inh = 0, now = 0, tgt = 0, anyTgt = false;
+  const rated = rows.filter(z => z.gauge);
+  rated.forEach(z => { inh += z.gauge.inh.score; now += z.gauge.now.score;
+    if (z.gauge.tgt) { anyTgt = true; tgt += z.gauge.tgt.score; } else tgt += z.gauge.now.score; });
+  const fillPct = inh > 0 ? Math.max(0, Math.min(100, Math.round((inh - now) / inh * 100))) : 0;
+  const tgtPct  = (inh > 0 && anyTgt) ? Math.max(0, Math.min(100, Math.round((inh - tgt) / inh * 100))) : null;
+  const nowBand = rated.length ? tierFor(now / rated.length, bands) : null;
+  // Overdue mirrors the app's _overdueActionCount: every non-deleted action on
+  // a risk, open (not Complete/Accepted) and dated before today.
+  let overdue = 0;
+  risks.forEach(r => ((r && r.actions) || []).forEach(a => {
+    if (!a || a.deleted) return;
+    if (a.status === 'Complete' || a.status === 'Accepted') return;
+    if (a.due && a.due < today) overdue++;
+  }));
+  return { rows, total, unc, part, inplace: total - unc - part, atTgt, dep, rated: rated.length, fillPct, tgtPct, nowBand, overdue };
+}
+
 // ── Zero-safe copy ──
 // Every sentence that interpolates a count goes through one of these, so the
 // "No have no named owner" class of bug cannot be written.

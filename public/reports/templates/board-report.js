@@ -1,6 +1,7 @@
 // Board report template - Signal (data-forward) and Brief (editorial) formats.
 // Both build the SAME content; format changes the skin class only.
-import { deriveBoard, deriveBoardExtras, noneOrCount, countPhrase, hasHave, TIER_COLOURS, HOLD_STATES, HOLD_ORDER, docFor, producerOf , trainingRowsOf } from '../derive.js';
+import { deriveBoard, deriveBoardExtras, boardModelOf, noneOrCount, countPhrase, hasHave, TIER_COLOURS, TIER_ORDER, HOLD_STATES, HOLD_ORDER, docFor, producerOf , trainingRowsOf } from '../derive.js';
+import { holdWorstFirst } from '../app-contract.js';
 import { esc, tierWord, planBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
 
@@ -13,6 +14,10 @@ import { paginateRows } from '../engine.js';
 // state.reportPrefs['board-report'].hidden (locked sections always print).
 export const BOARD_SECTIONS = [
   { id: 'position',       label: 'Executive summary', locked: true, hsg: 'Headline, movement since the baseline, decisions required' },
+  { id: 'riskPicture',    label: 'Risk picture', hsg: 'How many risks, split red / amber / green by the controls judgement' },
+  { id: 'riskJourney',    label: 'Risk journey', hsg: 'As-is to target: the company bar, the blue line, the improvement loop' },
+  { id: 'riskLadder',     label: 'Risk ladder', hsg: 'Every named risk on the Critical-to-Low scale' },
+  { id: 'fiveInHand',     label: 'Five in hand', hsg: 'The worst five beside the five the business chose to work on' },
   { id: 'dashboard',      label: 'H&S dashboard', hsg: 'The live picture - tiles, matrix, bands, control ladder' },
   { id: 'accidents',      label: 'Accidents', hsg: 'Reactive monitoring · incident data' },
   { id: 'nearmiss',       label: 'Near misses', hsg: 'Reactive monitoring · leading indicator' },
@@ -883,10 +888,75 @@ export function buildBoardReport(state, opts = {}) {
     ],
   };
 
-  // The running order follows the picker: summary, dashboard, this period,
-  // actions (with the register), people, compliance, partners, environment &
-  // CDM, readiness, delivery, sign-off.
-  const pages = [page1, ...attentionPages];
+  // ── The director's risk picture - the cockpit's four Board sections on
+  //    paper, same derivations (boardModelOf mirrors the app's _boardModel;
+  //    the consistency check diffs them). Same running order as the screen:
+  //    the picture leads, straight after the executive summary. ──
+  const B = boardModelOf(state, { today: opts.today });
+  const picBlocks = [];
+  if (!hide.riskPicture) {
+    picBlocks.push({ type: 'splitStrip',
+      lead: { value: String(B.total), label: 'significant risks' },
+      segments: [
+        { n: B.unc, label: 'uncontrolled', colour: '#DC2626' },
+        { n: B.part, label: 'partly controlled', colour: '#F59E0B' },
+        { n: B.inplace, label: 'controlled', colour: '#16A34A' } ],
+      notes: [ B.unc + ' of ' + B.total + ' with no effective controls yet',
+               B.inplace + ' controlled and being worked' ] });
+  }
+  if (!hide.riskJourney) {
+    picBlocks.push(B.rated
+      ? { type: 'journeyStrip', fillPct: B.fillPct, tgtPct: B.tgtPct, colour: TIER_COLOURS[B.nowBand] || '#b7b7ba',
+          counts: [
+            { value: B.atTgt + ' of ' + B.total, label: 'risks at their planned target', colour: '#2563EB' },
+            { value: B.dep.done + ' of ' + B.dep.total, label: 'planned controls and actions in place' },
+            { value: String(B.overdue), label: countPhrase(B.overdue, 'action overdue', 'actions overdue').replace(/^\d+ /, ''), colour: B.overdue ? '#DC2626' : undefined } ],
+          note: B.tgtPct == null ? 'No projected scores set yet - the blue target line appears once they are.' : undefined,
+          loop: 'When every risk reaches its line: review, set stronger controls, move the line, go again. Continuous improvement is the loop this picture runs on - the line never disappears, it moves.' }
+      : { type: 'textBlock', title: 'Risk journey', body: 'Rate the risks (likelihood × severity) and the company journey draws itself.' });
+  }
+  const picturePage = picBlocks.length ? {
+    label: 'Risk picture', section: 'riskPicture', blocks: [ mast,
+      { type: 'titleBlock', kicker: 'The risk picture',
+        headline: B.total ? (B.total + ' significant risk' + (B.total !== 1 ? 's' : '') + ' - ' + B.unc + ' uncontrolled, ' + B.atTgt + ' at target.') : 'No risks recorded yet.',
+        standfirst: 'The same picture the cockpit leads with: how many risks, how well controlled, and where the company is on the journey to the targets its controls were set to reach.' },
+      ...picBlocks ],
+  } : null;
+  const ladBlocks = [];
+  if (!hide.riskLadder) {
+    ladBlocks.push({ type: 'riskLadder',
+      rungs: TIER_ORDER.map(band => ({ band, colour: TIER_COLOURS[band],
+        chips: B.rows.filter(z => z.tier === band).map(z => ({ name: z.name.slice(0, 44), dot: z.unc ? '#DC2626' : (z.part ? '#F59E0B' : '#16A34A'), tick: z.atTarget })) })),
+      unrated: B.rows.filter(z => !z.tier).map(z => z.name.slice(0, 40)) });
+  }
+  if (!hide.fiveInHand) {
+    const chosenIds = new Set(((state && state.riskProfile) || []).filter(r => r && r.chosen).map(r => r.id));
+    const top = D.holdS.breaches.concat(D.holdS.nextWorst).slice(0, 5);
+    const chosen = D.holdS.rows.filter(z => chosenIds.has(z.id)).sort(holdWorstFirst).slice(0, 5);
+    const topIds = new Set(top.map(z => z.id));
+    const bmById = {}; B.rows.forEach(z => { bmById[z.id] = z; });
+    const word = z => (bmById[z.id] && bmById[z.id].atTarget) ? 'at target' : (z.breach ? 'needs attention' : z.hold.label.toLowerCase());
+    const li = z => ({ name: String(z.name).slice(0, 50), band: (z.band || '-').toUpperCase(), bandColour: TIER_COLOURS[z.band] || '#b7b7ba', word: word(z) });
+    ladBlocks.push({ type: 'twinPanels',
+      left:  { title: 'Top 5 by size - worst first', rows: top.map(z => Object.assign(li(z), { both: chosenIds.has(z.id) })), empty: 'Nothing to rank yet.' },
+      right: { title: 'Our chosen 5 - working on now', rows: chosen.map(z => Object.assign(li(z), { both: topIds.has(z.id) })), empty: 'Pick up to five with the star on the risk register - quick wins welcome.' },
+      footnote: '● = on both lists. Left is the app’s ranking (worst band, weakest control); right is the five the business chose to work on now - they may or may not be the same.' });
+  }
+  const ladderPage = ladBlocks.length ? {
+    label: 'Risk ladder', section: 'riskLadder', blocks: [ mast,
+      { type: 'titleBlock', kicker: 'The risk ladder',
+        headline: 'Every named risk on the scale, and the five in hand.',
+        standfirst: 'Risk to the business from Critical down to Low. The dot on each risk carries the controls judgement - red none, amber partly, green in place.' },
+      ...ladBlocks ],
+  } : null;
+
+  // The running order follows the picker: summary, the risk picture, dashboard,
+  // this period, actions (with the register), people, compliance, partners,
+  // environment & CDM, readiness, delivery, sign-off.
+  const pages = [page1];
+  if (picturePage) pages.push(picturePage);
+  if (ladderPage) pages.push(ladderPage);
+  pages.push(...attentionPages);
   if (dashboardPage) pages.push(dashboardPage);
   if (monitoringPage) pages.push(monitoringPage);
   if (actionsPage) pages.push(actionsPage);

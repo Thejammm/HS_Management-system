@@ -75,9 +75,10 @@ test('empty profile renders a valid report that says so', () => {
   const r = buildReport(fixture('empty'), 'board-report', OPTS);
   // A deliberate tripwire: adding a board section changes this. If that was
   // intended, update the number - it is here so page growth is never silent.
-  // 14 since the Actions page split in two (outstanding / high-risk) so the
-  // tables stop overrunning the page box at real-world text lengths.
-  assert.equal(r.pages.length, 14);
+  // 14 since the Actions page split in two (outstanding / high-risk); 16 since
+  // the director's risk picture pages (picture/journey + ladder/five) joined
+  // straight after the executive summary, mirroring the cockpit's Board zone.
+  assert.equal(r.pages.length, 16);
   const html = reportHTML(r);
   assert.match(html, /not yet complete enough/i);
   assert.doesNotMatch(html, /No have no/);
@@ -86,7 +87,7 @@ test('empty profile renders a valid report that says so', () => {
 
 test('typical profile paginates, and the last footer agrees with the total', () => {
   const r = buildReport(fixture('typical'), 'board-report', OPTS);
-  assert.equal(r.pages.length, 14);   // tripwire - see the note above
+  assert.equal(r.pages.length, 16);   // tripwire - see the note above
   const html = reportHTML(r);
   assert.match(html, /can still kill or maim/i);
   // The invariant that actually matters, derived so it cannot go stale: the
@@ -95,6 +96,28 @@ test('typical profile paginates, and the last footer agrees with the total', () 
   assert.match(html, new RegExp('Page ' + n + ' of ' + n));
   assert.doesNotMatch(html, new RegExp('Page ' + (n + 1) + ' of'));
   assert.doesNotMatch(html, /No have no/);
+});
+
+// The director's risk picture pages mirror the cockpit's Board zone: the
+// split strip, the journey with its blue target line, the ladder and the two
+// five-lists - and each responds to its own customiser toggle.
+test('the risk picture pages carry the cockpit sections and obey their toggles', () => {
+  const st = fixture('typical');
+  const r = buildReport(st, 'board-report', OPTS);
+  const html = reportHTML(r);
+  assert.match(html, /The same picture the cockpit leads with/);
+  assert.match(html, /significant risks/);
+  assert.match(html, /TARGET - the controls you have set|No projected scores set yet|Rate the risks/);
+  assert.match(html, /Top 5 by size - worst first/);
+  assert.match(html, /Our chosen 5 - working on now/);
+  assert.match(html, /the line never disappears, it moves|Rate the risks/);
+  const off = JSON.parse(JSON.stringify(st));
+  off.reportPrefs = { 'board-report': { hidden: { riskPicture: true, riskJourney: true, riskLadder: true, fiveInHand: true } } };
+  const r2 = buildReport(off, 'board-report', OPTS);
+  const html2 = reportHTML(r2);
+  assert.equal(r2.pages.length, r.pages.length - 2);
+  assert.doesNotMatch(html2, /The same picture the cockpit leads with/);
+  assert.doesNotMatch(html2, /Our chosen 5 - working on now/);
 });
 
 test('attention list lives on its own page, never the front page', () => {

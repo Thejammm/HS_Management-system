@@ -2997,7 +2997,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 </div>
 
 <!-- Drill-down modal -->
-<div class="drilldown-bg" id="drilldownBg" onclick="if(event.target===this)closeDrilldown()">
+<div class="drilldown-bg" id="drilldownBg" onmousedown="this._downSelf=(event.target===this)" onclick="if(this._downSelf&&event.target===this)closeDrilldown();this._downSelf=false;">
   <div class="drilldown-modal">
     <div class="drilldown-header">
       <div class="drilldown-title" id="drilldownTitle"></div>
@@ -3467,7 +3467,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
       <!-- Analysis - the deep views on demand: risks by hazard type and the
            SIF register / energy analysis. Opened by the Analysis button. -->
-      <div id="riskAnalysisOverlay" class="no-print" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9990;align-items:flex-start;justify-content:center;padding:24px;overflow:auto;" onclick="if(event.target===this)closeRiskAnalysis()">
+      <div id="riskAnalysisOverlay" class="no-print" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9990;align-items:flex-start;justify-content:center;padding:24px;overflow:auto;" onmousedown="this._downSelf=(event.target===this)" onclick="if(this._downSelf&&event.target===this)closeRiskAnalysis();this._downSelf=false;">
         <div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:1080px;width:100%;box-shadow:0 18px 60px rgba(0,0,0,.35);padding:16px 22px 20px;margin:auto 0;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
             <h3 style="margin:0;font-size:16px;">Analysis - the deep views</h3>
@@ -9090,7 +9090,7 @@ function openOfflineWorkModal(){
         <button class="btn btn-primary" onclick="confirmOfflineWork()">Continue offline</button>
       </div>
     </div></div>`;
-  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  _backdropClose(ov, ()=>ov.remove());
   document.body.appendChild(ov);
   setTimeout(()=>{ const el=document.getElementById('offActorName'); if(el) el.focus(); },50);
 }
@@ -13657,6 +13657,17 @@ function applyViewMode(){
 let _consultantEdit = true;
 function _roLocked(){ return !!(_consultantView && !_consultantEdit); }
 
+// ── THE SELECTION RULE (Simon, 2026-09-03: "make sure it doesnt happen ever
+//    again in this app"): a backdrop click closes an overlay ONLY when the
+//    press STARTED on the backdrop. Drag-selecting text out of an input and
+//    releasing over the backdrop fires a click on the overlay (the browser
+//    targets the common ancestor of mousedown and mouseup) - that must never
+//    close the box under the user's hands. EVERY overlay uses this guard;
+//    never write a bare click-to-close backdrop again. ──
+function _backdropClose(ov, fn){
+  ov.addEventListener('mousedown', function(e){ ov._downSelf = (e.target === ov); });
+  ov.addEventListener('click', function(e){ if(ov._downSelf && e.target === ov) fn(); ov._downSelf = false; });
+}
 function _blockIfReadOnly(){
   if(_roLocked()){
     showToast('Read only: viewing ' + (_consultantView?.name||'client'), 'info');
@@ -16600,7 +16611,7 @@ function openCompletenessModal(){
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('complOverlay').remove()">✕ Close</button>
     </div>
     <div style="padding:8px 20px 14px;overflow-y:auto;">${rows}</div></div>`;
-  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  _backdropClose(ov, ()=>ov.remove());
   document.body.appendChild(ov);
 }
 // Preserve the open/closed state of <details data-keep> across an innerHTML
@@ -16787,7 +16798,7 @@ function _promptRescore(r){
       <button class="btn btn-primary btn-sm" onclick="_saveRescore('${r.id}')">Save the new score</button>
     </div>
   </div>`;
-  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  _backdropClose(ov, ()=>ov.remove());
   document.body.appendChild(ov);
 }
 function _saveRescore(rid){
@@ -16972,7 +16983,7 @@ function openAcceptRisk(id){
       <button class="btn btn-ghost" onclick="document.getElementById('acceptRiskOv').remove()">Cancel</button>
       <button class="btn btn-primary" onclick="confirmAcceptRisk('${r.id}')">Accept the risk</button>
     </div></div>`;
-  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  _backdropClose(ov, ()=>ov.remove());
   document.body.appendChild(ov);
   const w=document.getElementById('arWhy'); if(w) w.focus();
 }
@@ -18708,7 +18719,7 @@ function openMaturityAction(domId){
       <button class="btn btn-ghost" onclick="document.getElementById('matActionOv').remove()">Cancel</button>
       <button class="btn btn-primary" onclick="confirmMaturityAction('${esc(d.id)}')">＋ Add to the plan</button>
     </div></div>`;
-  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  _backdropClose(ov, ()=>ov.remove());
   document.body.appendChild(ov);
   setTimeout(()=>{ const el=document.getElementById('maDesc'); if(el) el.focus(); },50);
 }
@@ -19307,7 +19318,7 @@ async function openBoardSections(){
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
       <button class="btn btn-primary" onclick="document.getElementById('boardSecOv').remove()">Done</button>
     </div></div>`;
-  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  _backdropClose(ov, ()=>ov.remove());
   document.body.appendChild(ov);
 }
 function setBoardSection(id, hide){
@@ -19455,7 +19466,7 @@ function openMonthlyAssurancePicker(){
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;"><button class="btn btn-ghost btn-sm" id="_marCancel">Cancel</button><button class="btn btn-primary btn-sm" id="_marGo">Create the report</button></div>
   </div>`;
   document.body.appendChild(ov); const close=()=>ov.remove();
-  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  _backdropClose(ov, close);
   ov.querySelector('#_marCancel').onclick=close;
   ov.querySelector('#_marGo').onclick=()=>{ const m=ov.querySelector('#_marMonth').value; close(); downloadMonthlyAssuranceReport(m); };
 }
@@ -19762,8 +19773,7 @@ function renderRiskProfile(){
           ${fg(_rt(r,'category'), sel(r.id,'category',r.category,_catOpts(r.category, r)))}
           ${fg('Business area', sel(r.id,'area',r.area,RISK_AREAS))}
         </div>
-        <div class="field-grid" style="margin-bottom:12px;">
-          ${fg(esc(_rt(r,'source'))+' <span class="fl-hint" title="'+esc(_rt(r,'sourceHint'))+'">(?)</span>', txt(r.id,'hazard',r.hazard,_rt(r,'sourcePh')))}
+        <div class="field-grid cols-1" style="margin-bottom:12px;">
           ${fg(_rt(r,'activity'), `<input type="text"${dis} id="ractf-${r.id}" value="${esc(r.activity)}" placeholder="${esc(_rt(r,'activityPh'))}" oninput="updateRiskField('${r.id}','activity',this.value)">`)}
         </div>
         ${_riskMode(r)==='ops' ? '' : `<div style="margin-bottom:12px;">
@@ -19850,7 +19860,7 @@ function renderRiskProfile(){
     </tr></thead><tbody id="rpTbody">${_riskTableRowsHTML()}</tbody></table></div>`;
   let modal='';
   if(_riskModalOpen && selR){
-    modal = `<div id="riskModalOverlay" class="no-print" onclick="if(event.target===this)_riskCloseModal()" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9980;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;">
+    modal = `<div id="riskModalOverlay" class="no-print" onmousedown="this._downSelf=(event.target===this)" onclick="if(this._downSelf&&event.target===this)_riskCloseModal();this._downSelf=false;" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9980;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;">
     <div style="max-width:840px;width:100%;margin:auto 0;background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.4);max-height:calc(100vh - 40px);display:flex;flex-direction:column;overflow:hidden;">
       <div class="rp-head" style="padding:12px 16px 0;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -20866,7 +20876,7 @@ function _discDraw(){
   let ov=document.getElementById('discOverlay');
   if(!ov){ ov=document.createElement('div'); ov.id='discOverlay';
     ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
-    ov.addEventListener('click',e=>{ if(e.target===ov) _discClose(false); });
+    _backdropClose(ov, ()=>_discClose(false));
     document.body.appendChild(ov); }
   const qRow=it=>{
     const v=ex[it.id];
@@ -21558,7 +21568,7 @@ function openRaiseActionBox(opts){
       +'<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'raiseActionOverlay\').remove()">Cancel</button>'
       +'<button class="btn btn-primary btn-sm" onclick="_raiseActionSave()">Add to the plan</button>'
     +'</div></div>';
-  ov.addEventListener('click',function(e){ if(e.target===ov) ov.remove(); });
+  _backdropClose(ov, function(){ ov.remove(); });
   document.body.appendChild(ov);
   setTimeout(function(){ const t=document.getElementById('raiseActionText'); if(t) t.focus(); },60);
 }
@@ -22089,7 +22099,7 @@ function regEditItem(secId, id){
       <div style="display:flex;gap:8px;"><button type="button" id="_reCancel" class="btn btn-ghost btn-sm">Cancel</button><button type="button" id="_reSave" class="btn btn-primary btn-sm">Save</button></div>
     </div></div>`;
   document.body.appendChild(ov); const close=()=>ov.remove();
-  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  _backdropClose(ov, close);
   ov.querySelector('#_reCancel').onclick=close;
   ov.querySelector('#_reRC').onclick=()=>{ const nd=_regNextDue(ov.querySelector('#_reLD').value, ov.querySelector('#_reF').value); if(nd) ov.querySelector('#_reND').value=nd; else showToast('Set both a date carried out and a frequency first','info'); };
   ov.querySelector('#_reDel').onclick=()=>{ close(); deleteRegItem(secId,id); };
@@ -23318,7 +23328,7 @@ function _xlsxMapWizard(kind, peek, fname, buf, onMapping){
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;';
   document.body.appendChild(ov);
   const close=()=>ov.remove();
-  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  _backdropClose(ov, close);
   const guessFor=(heading)=>{ const h=String(heading||'').trim(); if(!h) return 'skip';
     for(const f of fields){ if(f.guess && f.guess.test(h)) return f.k; }
     return kind==='training' ? 'course' : 'skip'; };
@@ -23434,7 +23444,7 @@ function _xlsxPeekModal_dead(peek, fname, onPick){   // superseded by _xlsxMapWi
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;"><button class="btn btn-ghost btn-sm" id="_pkCancel">Cancel</button></div>
   </div>`;
   document.body.appendChild(ov); const close=()=>ov.remove();
-  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  _backdropClose(ov, close);
   ov.querySelector('#_pkCancel').onclick=close;
   ov.querySelectorAll('tr[data-row]').forEach(tr=>{
     tr.onmouseenter=()=>{ tr.style.background='var(--muted-bg)'; };
@@ -23483,7 +23493,7 @@ function trainingEditCell(pid, course){
   document.body.appendChild(ov);
   const close=()=>ov.remove();
   const setCell=(val)=>{ p.cells[course]=val; saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews(); close(); };
-  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  _backdropClose(ov, close);
   ov.querySelector('#_tECancel').onclick=close;
   ov.querySelector('#_tEClear').onclick=()=>setCell({type:'empty',v:''});
   ov.querySelector('#_tESave').onclick=()=>{ const dv=ov.querySelector('#_tED').value; if(dv) setCell({type:'date',v:dv}); else close(); };
@@ -23509,7 +23519,7 @@ function trainingAddPerson(){
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;"><button type="button" id="_tpCancel" class="btn btn-ghost btn-sm">Cancel</button><button type="button" id="_tpSave" class="btn btn-primary btn-sm">Add</button></div>
   </div>`;
   document.body.appendChild(ov); const close=()=>ov.remove();
-  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  _backdropClose(ov, close);
   ov.querySelector('#_tpCancel').onclick=close;
   ov.querySelector('#_tpG').onchange=()=>{ ov.querySelector('#_tpCols').innerHTML=colInputs(ov.querySelector('#_tpG').value); };
   ov.querySelector('#_tpSave').onclick=()=>{ const f=ov.querySelector('#_tpF').value.trim(), l=ov.querySelector('#_tpL').value.trim();

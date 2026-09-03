@@ -15039,7 +15039,7 @@ const RISK_TERMS={
     flagChip:'⚠ SIF', flagChipTitle:'Serious injury or fatality potential',
     linked:'Linked assessments / evidence',
     reviewed:'✓ I have reviewed and completed this risk',
-    plan:'Action plan',
+    plan:'Control table & raised actions',
     levels:{ remove:'Eliminate / remove the hazard', prevent:'Prevent the harm (engineering / physical)', protect:'Protect the person (PPE, procedure, training)', stopwork:'Stop work if unsafe' }
   },
   ops:{
@@ -15060,7 +15060,7 @@ const RISK_TERMS={
     flagChip:'⚠ Critical', flagChipTitle:'Business-critical - worst case would seriously damage the business',
     linked:'Linked documents / evidence',
     reviewed:'✓ I have reviewed and completed this risk',
-    plan:'Response plan',
+    plan:'Control table & raised actions',
     levels:{ remove:'Terminate - avoid the risk entirely', prevent:'Treat - reduce it at source', protect:'Transfer or contain - insure, contract, contingency', stopwork:'Tolerate - accept and monitor' }
   }
 };
@@ -16932,8 +16932,12 @@ function updateRiskAction(rid, aid, field, value){
   // Closing an action → offer to link the evidence that shows it was dealt with.
   if(field==='status' && (value==='Complete'||value==='Accepted')) _promptActionEvidence(a, r);
 }
-function _riskActionsHTML(r, dis){
-  const acts=(r.actions||[]).filter(a=>!a.deleted);
+function _riskActionsHTML(r, dis, which){
+  // which='ctl' - the Control table (rows flagged hideFromPlan: they stay on
+  // the risk and never reach the execution plan). which='plan' - everything
+  // raised to the plan (unflagged rows, legacy data included). No arg = all
+  // rows (the digest and older callers keep their view).
+  const acts=(r.actions||[]).filter(a=>!a.deleted).filter(a=> which==='ctl' ? !!a.hideFromPlan : which==='plan' ? !a.hideFromPlan : true);
   const stOpts=(cur)=>RISK_ACTION_STATUS.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
   const prOpts=(cur)=>['Critical','High','Medium','Low'].map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
   const body = acts.map(a=>{
@@ -16954,8 +16958,10 @@ function _riskActionsHTML(r, dis){
     </tr>`;
   }).join('');
   return `<table class="act-table"><thead><tr><th>Action</th><th>Owner</th><th>Target date</th><th>Status</th><th>Priority</th>${dis?'':'<th></th>'}</tr></thead>
-    <tbody>${body || `<tr><td colspan="${dis?5:6}" style="color:var(--text-muted);">No actions yet.</td></tr>`}</tbody></table>
-    ${dis?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">${_riskRaisePillHTML(r)}${_riskPlanState(r).k==='accepted'?'':`<button class="btn btn-ghost btn-xs no-print" title="If the current controls are sufficient and no further action is justified, formally accept this risk - recorded with who and why on the acceptance register" onclick="openAcceptRisk('${r.id}')">≈ Accept this risk</button>`}</div>`}`;
+    <tbody>${body || `<tr><td colspan="${dis?5:6}" style="color:var(--text-muted);">${which==='ctl'?'No controls listed yet - add them below.':which==='plan'?'Nothing raised to the plan yet.':'No actions yet.'}</td></tr>`}</tbody></table>
+    ${dis?'':(which==='ctl'
+      ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-outline btn-xs no-print" onclick="addRiskControl('${r.id}')">＋ Add control</button></div>`
+      : `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">${_riskRaisePillHTML(r)}${_riskPlanState(r).k==='accepted'?'':`<button class="btn btn-ghost btn-xs no-print" title="If the current controls are sufficient and no further action is justified, formally accept this risk - recorded with who and why on the acceptance register" onclick="openAcceptRisk('${r.id}')">≈ Accept this risk</button>`}</div>`)}`;
 }
 // ── Formal risk acceptance: the honest route when the current controls are
 //    sufficient. Records who and why as a terminal Accepted action, so it
@@ -17361,10 +17367,10 @@ function insertLibraryRisk(key, quiet){
     category:_ht, area:_libArea(t.key), pdca:'', energy:(_HTYPE_ENERGY[_ht]||[]).slice(), sif:'', controlLevel:'', reviewed:false, activity:t.activity, hazard:t.hazard, personsAtRisk:(t.persons||[]).slice(),
     harm:t.harm, businessImpact:'', impacts:Object.assign({}, (typeof _LIB_IMPACTS!=='undefined'&&_LIB_IMPACTS[t.key])||{}), impactNotes:{}, controls:t.controls,
     likelihood:String(t.l), severity:String(t.s), targetL:'', targetS:'', trend:t.trend,
-    // The library seeds its suggested starter action (Simon: keep it) - it is
-    // an ordinary row: edit the wording or bin it in the grid if it means
-    // nothing to this business.
-    actions: t.action?[{ id:'act_'+Math.random().toString(36).slice(2,9), desc:t.action, owner:'', due:'', status:'Not started', priority:_bandFor(t.l*t.s) }]:[],
+    // The library seeds its suggestion into the CONTROL TABLE (hideFromPlan:
+    // it stays on the risk, never the execution plan) - an ordinary row:
+    // rewrite it or bin it if it means nothing to this business.
+    actions: t.action?[{ id:'act_'+Math.random().toString(36).slice(2,9), desc:t.action, owner:'', due:'', status:'Not started', priority:'', hideFromPlan:true }]:[],
     linked: t.duty?[{ id:'lnk_'+Math.random().toString(36).slice(2,9), ref:'Key duty: '+t.duty, url:'' }]:[],
     furtherActions:'' };
   entry.biAuto=true; entry.businessImpact=_impactSummaryText(entry);   // standard wording from the priors, editable
@@ -19858,10 +19864,12 @@ function renderRiskProfile(){
     const prov=_rpProvenanceBadge(r);
     return `
         <div style="margin:0 0 14px;">
-          ${_riskControlsListHTML(r, dis)}
-          <label class="field-label">${esc(_rt(r,'plan'))} <span class="fl-hint" title="Prioritised, owned and dated actions. This is where residual risk is dealt with: once the plan is delivered, the risk does not disappear - the completed plan and its evidence become the way the company manages this risk.">(?)</span></label>
-          <div style="font-size:11.5px;color:var(--text-muted);margin:2px 0 8px;">Everything below is on the client execution plan - raised deliberately with the button above, owned and dated.</div>
-          ${_riskActionsHTML(r,dis)}
+          <label class="field-label">Control table <span class="fl-hint" title="The controls this risk runs on - training, processes, physical measures - each owned and dated here. They stay on the risk and NEVER enter the action plan. Work someone must go and DO is raised separately below.">(?)</span></label>
+          <div style="font-size:11.5px;color:var(--text-muted);margin:2px 0 8px;">These stay on the risk and never enter the action plan.</div>
+          ${_riskActionsHTML(r,dis,'ctl')}
+          <label class="field-label" style="margin-top:16px;">Raised to the action plan <span class="fl-hint" title="Actions raised with the button below, exactly as on Legal duties: what needs doing, who owns it, by when. Every row here is on the client execution plan, linked back to this risk.">(?)</span></label>
+          <div style="font-size:11.5px;color:var(--text-muted);margin:2px 0 8px;">Everything here is on the client execution plan, carrying this risk as its source.</div>
+          ${_riskActionsHTML(r,dis,'plan')}
         </div>
         <div style="margin:14px 0;">
           <label class="field-label">${esc(_rt(r,'linked'))} <span class="fl-hint" title="The underlying documents this profile summarises - assessments, surveys, contracts, training records, etc.">(?)</span></label>
@@ -21673,14 +21681,15 @@ function addRiskControl(id){
   if(_blockIfReadOnly()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
   openRaiseActionBox({ source:'New control for \u00b7 '+String(r.activity||r.hazard||'this risk').slice(0,60),
-    title:'What control will hold this risk?', hideMeta:true,
+    title:'What control will hold this risk?',
     placeholder:'The thing the company will have, e.g. manual handling training, a permit-to-work process',
-    saveLabel:'Add the control',
+    saveLabel:'Add to the control table',
     onSave:function(v){
-      const c={ id:'ctl_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), text:v.desc, status:'planned' };
-      _riskControlItems(r).push(c);
+      if(!Array.isArray(r.actions)) r.actions=[];
+      const a={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:v.desc, owner:v.owner||'', due:v.due||'', status:'Not started', priority:'', hideFromPlan:true };
+      _stamp(a,'created'); r.actions.push(a);
       _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
-      showToast('Control added - now delegate it so someone puts it in place','success');
+      showToast('Control added to the control table - it stays on this risk, never the plan','success');
     }});
 }
 function markRiskControlInPlace(riskId, ctlId){
@@ -21736,7 +21745,7 @@ function _riskControlsListHTML(r, dis){
 }
 function _riskRaisePillHTML(r){
   if(_roLocked()) return '<button class="btn btn-outline btn-xs no-print" disabled title="Read only - you are viewing this client without edit mode on. Turn on edit mode and this raises an action into the execution plan.">\uff0b Add action</button>';
-  return '<button class="btn btn-outline btn-xs no-print'+(r.raised?' btn-raised':'')+'" onclick="raiseRiskAction(\''+r.id+'\')" title="'+(r.raised?('Raised '+r.raised+' time'+(r.raised!==1?'s':'')+' - raise another'):'The same box as legal duties: write what needs doing, name the owner and date, and it goes onto the client execution plan linked to this risk')+'">'+(r.raised?'\u2713 Raised - raise another':'\uff0b Raise to action plan')+'</button>';
+  return '<button class="btn btn-outline btn-xs no-print'+(r.raised?' btn-raised':'')+'" onclick="raiseRiskAction(\''+r.id+'\')" title="'+(r.raised?('Raised '+r.raised+' time'+(r.raised!==1?'s':'')+' - add another'):'The same box as legal duties: write what needs doing, name the owner and date, and it goes onto the client execution plan linked to this risk')+'">'+(r.raised?'\u2713 Added - add another':'\uff0b Add action')+'</button>';
 }
 // Raise an action from a management-system requirement into the plan. Writes the
 // action text on the item (which _allMgmtActions feeds into the execution/action plan).

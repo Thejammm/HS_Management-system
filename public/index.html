@@ -19559,6 +19559,29 @@ function _riskDisplayOrder(){
 //    report; the other four are the same editing fields as before, grouped
 //    so no tab is more than about a screen tall. ──
 const RP_TABS = [['summary','Summary'],['identify','Identify'],['people','People & impact'],['rating','Controls & rating'],['actions','Actions & evidence']];
+// ── THE RISK JOURNEY TABS (Simon, 2026-09-03): the four working tabs are
+//    numbered steps whose dots read straight off recorded facts - grey not
+//    started, amber started, green done - and a prompt line names the next
+//    step, so adding a risk stops being daunting and starts being guided. ──
+const _RISK_STEP_N = { identify:1, people:2, rating:3, actions:4 };
+function _riskTabState(r, key){
+  if(key==='identify'){ const n=[r.category, r.area, String(r.activity||'').trim()].filter(Boolean).length; return n===3?'done':(n?'part':'none'); }
+  if(key==='people'){ const p=(r.personsAtRisk||[]).length>0; const im=RISK_IMPACT_DIMS.some(d=>parseInt((r.impacts||{})[d.k],10)>0); return (p&&im)?'done':((p||im)?'part':'none'); }
+  if(key==='rating'){ const c=!!(r.controls&&String(r.controls).trim()); const l=!!r.controlLevel; const sc=!!_riskScore(r).rating; const n=[c,l,sc].filter(Boolean).length; return n===3?'done':(n?'part':'none'); }
+  if(key==='actions'){ const st=_riskPlanState(r); if((st.k==='managed'&&r.reviewed)||st.k==='accepted') return 'done'; if(st.k==='open'||st.k==='managed') return 'part'; return 'none'; }
+  return '';
+}
+function _riskJourneyLineHTML(r){
+  const steps=['identify','people','rating','actions'];
+  const done=steps.filter(k=>_riskTabState(r,k)==='done').length;
+  const nextK=steps.find(k=>_riskTabState(r,k)!=='done');
+  const lbl=k=>{ const t=RP_TABS.find(x=>x[0]===k); return t?t[1]:k; };
+  return '<div class="no-print" style="font-size:11px;color:'+(done===4?'#16A34A':'var(--text-muted)')+';padding:3px 0 8px;font-weight:'+(done===4?'700':'400')+';">'
+    +(done===4
+      ? '\u2713 All four steps complete - this is now how the company manages this risk'
+      : 'Risk journey: '+done+' of 4 steps done \u00b7 next: <b>'+_RISK_STEP_N[nextK]+' \u00b7 '+esc(lbl(nextK))+'</b>')
+    +'</div>';
+}
 let _riskSelKey = '';   // last rendered "risk|tab" - same view keeps its panel scroll across re-renders
 // Provenance badge (suggested by discovery / discovery withdrawn) - shown on the
 // Summary tab and beside the reviewed tick, one derivation for both.
@@ -19762,7 +19785,13 @@ function renderRiskProfile(){
     </button>`;
   }).join('');
 
-  const tabBtns = RP_TABS.map(t => `<button type="button" role="tab" aria-selected="${_riskSelTab===t[0]?'true':'false'}" class="${_riskSelTab===t[0]?'on':''}" onclick="_riskDetailTab('${t[0]}')">${t[1]}</button>`).join('');
+  const tabBtns = RP_TABS.map(t => {
+    const st=_riskTabState(selR,t[0]);
+    const dotC= st==='done'?'#16A34A': st==='part'?'#F59E0B': st==='none'?'var(--border)':'';
+    const n=_RISK_STEP_N[t[0]];
+    const tip= st==='done'?'Step complete': st==='part'?'Started - more to fill in': st==='none'?'Not started yet':'';
+    return `<button type="button" role="tab" aria-selected="${_riskSelTab===t[0]?'true':'false'}" class="${_riskSelTab===t[0]?'on':''}" onclick="_riskDetailTab('${t[0]}')"${tip?` title="${tip}"`:''}>${dotC?`<i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dotC};margin-right:6px;vertical-align:1px;"></i>`:''}${n?(n+' \u00b7 '):''}${t[1]}</button>`;
+  }).join('');
 
   // The four editing tabs reuse the exact field blocks the old long card had,
   // grouped so no tab is more than about a screen tall.
@@ -19888,6 +19917,7 @@ function renderRiskProfile(){
           ${selR.reviewed?`<span class="rc-chip" style="background:#16A34A1a;color:#16A34A;" title="You have marked this risk complete">✓ reviewed</span>`:''}
         </div>
         <div class="rp-tabs no-print" role="tablist">${tabBtns}</div>
+        ${_riskJourneyLineHTML(selR)}
       </div>
       <div class="rp-body" id="rpBody" style="flex:1;min-height:0;overflow:auto;padding:14px 16px;">${tabBody(selR)}</div>
       <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);">
@@ -21600,7 +21630,7 @@ function raiseRiskAction(id){
   }});
 }
 function _riskRaisePillHTML(r){
-  if(_roLocked()) return '';
+  if(_roLocked()) return '<button class="btn btn-outline btn-xs no-print" disabled title="Read only - you are viewing this client without edit mode on. Turn on edit mode and this raises an action into the execution plan.">\uff0b Add action</button>';
   return '<button class="btn btn-outline btn-xs no-print'+(r.raised?' btn-raised':'')+'" onclick="raiseRiskAction(\''+r.id+'\')" title="'+(r.raised?('Raised '+r.raised+' time'+(r.raised!==1?'s':'')+' - add another'):'Write what needs doing - it appears word for word in the client execution plan')+'">'+(r.raised?'\u2713 Added - add another':'\uff0b Add action')+'</button>';
 }
 // Raise an action from a management-system requirement into the plan. Writes the

@@ -14479,7 +14479,11 @@ const COCKPIT_WIDGETS = {
       const B=_boardModel(); const H=_holdSummary();
       if(!B.total) return '<div class="ckx-panel"><h4>Putting us at risk today</h4><div class="ck-pending">No risks recorded yet.</div></div>';
       const top=H.breaches.concat(H.nextWorst).slice(0,5);
-      const chosen=H.rows.filter(z=>z.r&&z.r.chosen).sort(_holdWorstFirst).slice(0,5);
+      // ONE choosing mechanism (Simon): the Top 5 tick box on the execution
+      // plan. The chosen risks are the risks behind this month's ticked five.
+      const _m5=_top5Month();
+      const _chosenIds=new Set(); (S.riskProfile||[]).forEach(rr=>{ if((rr.actions||[]).some(a=>!a.deleted&&a.top5===_m5)) _chosenIds.add(rr.id); });
+      const chosen=H.rows.filter(z=>_chosenIds.has(z.id)).sort(_holdWorstFirst).slice(0,5);
       const topIds=top.map(z=>z.id), choIds=chosen.map(z=>z.id);
       const word=z=>{ const bz=B.rows.find(b=>b.id===z.id); return (bz&&bz.atTarget)?'at target':(z.breach?'needs attention':z.hold.label.toLowerCase()); };
       const fr=(z,i,other)=>{ const c=_RISK_PRIO_COLOR[z.band]||'#9CA3AF';
@@ -14494,7 +14498,7 @@ const COCKPIT_WIDGETS = {
         +'<div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;"><div style="font-size:12px;font-weight:700;margin-bottom:6px;">Top 5 by size - worst first</div>'
         +(top.length?top.map((z,i)=>fr(z,i,choIds)).join(''):'<div class="ck-pending">Nothing to rank yet.</div>')+'</div>'
         +'<div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;"><div style="font-size:12px;font-weight:700;margin-bottom:6px;">Our chosen 5 - working on now</div>'
-        +(chosen.length?chosen.map((z,i)=>fr(z,i,topIds)).join(''):'<div class="ck-pending">Pick up to five with the \u2606 star on the risk register - quick wins welcome.</div>')+'</div></div>'
+        +(chosen.length?chosen.map((z,i)=>fr(z,i,topIds)).join(''):'<div class="ck-pending">Tick this month\u2019s Top 5 on the execution plan - the risks behind them appear here.</div>')+'</div></div>'
         +'<div style="display:flex;gap:18px;font-size:11px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;"><span><span style="color:#7C3AED;font-weight:800;">\u25cf</span> on both lists</span><span>left is the app\u2019s ranking (worst band, weakest control); right is your pick</span></div></div>';
     } },
 };
@@ -19612,8 +19616,7 @@ function _rpDigestHTML(r){
   const narr=[];
   if(r.hazard) narr.push('<b>'+esc(r.hazard)+'.</b>');
   if(r.harm&&String(r.harm).trim()){ const h=esc(String(r.harm).trim()); narr.push(h+(/[.!?]$/.test(h)?'':'.')); }
-  if(r.controls&&String(r.controls).trim()){ const c=esc(String(r.controls).trim()); narr.push('<b>Managed by:</b> '+c+(/[.!?]$/.test(c)?'':'.')); }
-  if(cl) narr.push('<b>'+esc(_riskMode(r)==='ops'?'Strongest response in place':'Strongest control in place')+':</b> '+esc(_controlLevelLabelFor(r,r.controlLevel))+'.');
+  // Controls stay OFF the summary (Simon) - they live on 3 · Controls & rating.
   const personsTxt=(r.personsAtRisk||[]).length ? r.personsAtRisk.map(p=>'<span class="dg-chip">'+esc(p)+'</span>').join('') : '<span style="color:var(--text-muted);font-size:12px;">Not recorded yet</span>';
   const whereBits=[];
   if(r.area) whereBits.push('<span class="dg-chip">'+esc(r.area)+'</span>');
@@ -19630,19 +19633,19 @@ function _rpDigestHTML(r){
   const prov=_rpProvenanceBadge(r);
   const updLine=_attrLine(r,'updated');
   return `<div class="rp-digest">
-    <div class="dg-flow">${_riskFlowHTML(r)}${r.trend?`<span class="dg-chip" style="margin-left:auto;color:${trendC};">Trend: ${esc(r.trend)}</span>`:''}</div>
+    <div class="dg-flow" onclick="_riskDetailTab('rating')" style="cursor:pointer;" title="Click to edit the scores on 3 · Controls & rating">${_riskFlowHTML(r)}${r.trend?`<span class="dg-chip" style="margin-left:auto;color:${trendC};">Trend: ${esc(r.trend)}</span>`:''}</div>
     ${_scoreHistoryHTML(r)}
-    ${narr.length?`<p class="dg-narr">${narr.join(' ')}</p>`:''}
+    ${narr.length?`<p class="dg-narr" onclick="_riskDetailTab('identify')" style="cursor:pointer;" title="Click to edit on 1 · Identify">${narr.join(' ')}</p>`:''}
     <div class="dg-grid">
-      <div class="dg-cell"><h5>${esc(_rt(r,'personsDigest'))}</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${personsTxt}</div></div>
-      <div class="dg-cell"><h5>Where</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${whereBits.join('')||'<span style="color:var(--text-muted);font-size:12px;">Organisation-wide</span>'}</div></div>
-      <div class="dg-cell"><h5>Business impact${imMax?` <span class="dg-chip">worst ${imMax} / 5</span>`:''}</h5><p>${imTxt}</p></div>
+      <div class="dg-cell" onclick="_riskDetailTab('people')" style="cursor:pointer;" title="Click to edit on 2 · People & impact"><h5>${esc(_rt(r,'personsDigest'))}</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${personsTxt}</div></div>
+      <div class="dg-cell" onclick="_riskDetailTab('identify')" style="cursor:pointer;" title="Click to edit on 1 · Identify"><h5>Where</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${whereBits.join('')||'<span style="color:var(--text-muted);font-size:12px;">Organisation-wide</span>'}</div></div>
+      <div class="dg-cell" onclick="_riskDetailTab('people')" style="cursor:pointer;" title="Click to edit on 2 · People & impact"><h5>Business impact${imMax?` <span class="dg-chip">worst ${imMax} / 5</span>`:''}</h5><p>${imTxt}</p></div>
     </div>
-    <div class="dg-acts">
+    <div class="dg-acts" onclick="_riskDetailTab('actions')" style="cursor:pointer;" title="Click to work the plan on 4 · Actions & evidence">
       <div class="dg-ah"><span>${esc(_rt(r,'plan'))}</span><span>${acts.length?(openActs.length? openActs.length+' open · '+acts.length+' total' : 'all closed · '+acts.length+' total'):''}</span></div>
       ${actRows || `<div class="dg-act" style="color:var(--text-muted);">No actions recorded yet - add them on the Actions &amp; evidence tab.</div>`}
     </div>
-    <div class="dg-cell" style="margin-bottom:13px;"><h5>Evidence behind this</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${links.length?links.map(l=>`<span class="dg-chip" title="${esc(l.url||'')}">📄 ${esc(l.ref||l.url)}</span>`).join(''):'<span style="color:var(--text-muted);font-size:12px;">No linked assessments recorded.</span>'}</div></div>
+    <div class="dg-cell" style="margin-bottom:13px;cursor:pointer;" onclick="_riskDetailTab('actions')" title="Click to link evidence on 4 · Actions & evidence"><h5>Evidence behind this</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${links.length?links.map(l=>`<span class="dg-chip" title="${esc(l.url||'')}">📄 ${esc(l.ref||l.url)}</span>`).join(''):'<span style="color:var(--text-muted);font-size:12px;">No linked assessments recorded.</span>'}</div></div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);">
       ${r.reviewed?'<span style="color:#16A34A;font-weight:700;">✓ Reviewed and complete</span>':'<span>Not yet marked reviewed - the tick is on the Actions &amp; evidence tab</span>'}
       ${prov}
@@ -19675,13 +19678,12 @@ function _riskVisibleRows(){
 }
 function _riskTableRowsHTML(){
   const rows=_riskVisibleRows();
-  if(!rows.length) return '<tr><td colspan="10" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
+  if(!rows.length) return '<tr><td colspan="9" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
   return rows.map(r=>{
     const sc=_riskScore(r); const ops=_riskMode(r)==='ops'; const cc=_catColour(r.category);
     const ctl=_riskControlStatus(r); const cdot=ctl==='None'?'#DC2626':(ctl==='Partial'?'#F59E0B':'#16A34A');
     const cword=ctl==='None'?'uncontrolled':(ctl==='Partial'?'partly controlled':'controlled');
     return '<tr class="rpt-row" onclick="_riskOpenModal(\''+r.id+'\')" title="Open this risk - Esc brings you straight back">'
-      +'<td onclick="event.stopPropagation();_riskChosenToggle(\''+r.id+'\')" style="cursor:pointer;text-align:center;font-size:14px;color:'+(r.chosen?'#F59E0B':'var(--border)')+';" title="'+(r.chosen?'In our five - click to unpin':'Pin to our chosen five (max 5) - shown on the cockpit')+'">'+(r.chosen?'\u2605':'\u2606')+'</td>'
       +'<td onclick="event.stopPropagation()" style="white-space:nowrap;">'+RISK_MODES.map(m=>'<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:'+(_riskMode(r)===m.k?'700':'400')+';color:'+(_riskMode(r)===m.k?m.colour:'var(--text-muted)')+';cursor:pointer;line-height:1.5;"><input type="radio" name="kind_'+r.id+'" '+(_riskMode(r)===m.k?'checked':'')+' onchange="setRiskMode(\''+r.id+'\',\''+m.k+'\')" style="accent-color:'+m.colour+';width:12px;height:12px;cursor:pointer;">'+(m.k==='hs'?'H&S':'Ops')+'</label>').join('')+'</td>'
       +'<td style="font-weight:600;color:var(--text-muted);">'+(r.hazard?esc(String(r.hazard).slice(0,70)):'<span style="opacity:.45;">-</span>')+'</td>'
       +'<td><span class="rc-chip" style="background:'+cc+'1a;color:'+cc+';">'+esc(r.category||'-')+'</span>'+(ops?' <span class="rc-chip" style="background:#7C3AED1a;color:#7C3AED;">Operational</span>':'')+'</td>'
@@ -19904,7 +19906,6 @@ function renderRiskProfile(){
     : _riskModeFilter==='hs' ? { src:'Hazard source', cat:'Hazard type', flag:'SIF' }
     : { src:'Hazard / cause', cat:'Type', flag:'SIF' };
   const table=`<div style="overflow-x:auto;"><table class="rpt"><thead><tr>
-      <th style="width:26px;" title="Your chosen five - shown on the cockpit"></th>
       <th style="width:70px;" title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
       <th>${_hh.src}</th><th>${_hh.cat}</th><th>Business area</th>
       <th>Associated risk - what could happen</th>

@@ -954,7 +954,9 @@ export function buildBoardReport(state, opts = {}) {
     });
   }
   if (!hide.fiveInHand) {
-    const chosenIds = new Set(((state && state.riskProfile) || []).filter(r => r && r.chosen).map(r => r.id));
+    // ONE choosing mechanism: the risks behind this month's Top 5 ticks.
+    const chosenIds = new Set();
+    ((state && state.riskProfile) || []).forEach(r => { if (r && (r.actions || []).some(a => a && !a.deleted && a.top5 === X.t5Month)) chosenIds.add(r.id); });
     const top = D.holdS.breaches.concat(D.holdS.nextWorst).slice(0, 5);
     const chosen = D.holdS.rows.filter(z => chosenIds.has(z.id)).sort(holdWorstFirst).slice(0, 5);
     const topIds = new Set(top.map(z => z.id));
@@ -963,7 +965,7 @@ export function buildBoardReport(state, opts = {}) {
     const li = z => ({ name: String(z.name), band: (z.band || '-').toUpperCase(), bandColour: TIER_COLOURS[z.band] || '#b7b7ba', word: word(z) });
     fiveBlocks.push({ type: 'twinPanels',
       left:  { title: 'Top 5 by size - worst first', rows: top.map(z => Object.assign(li(z), { both: chosenIds.has(z.id) })), empty: 'Nothing to rank yet.' },
-      right: { title: 'Our chosen 5 - working on now', rows: chosen.map(z => Object.assign(li(z), { both: topIds.has(z.id) })), empty: 'Pick up to five with the star on the risk register - quick wins welcome.' },
+      right: { title: 'Our chosen 5 - working on now', rows: chosen.map(z => Object.assign(li(z), { both: topIds.has(z.id) })), empty: 'Tick this month’s Top 5 on the execution plan - the risks behind them appear here.' },
       footnote: '● = on both lists. Left is the app’s ranking (worst band, weakest control); right is the five the business chose to work on now - they may or may not be the same.' });
   }
   const ladderPages = ladBlocks.map((blk, i) => ({

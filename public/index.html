@@ -16522,10 +16522,16 @@ function renderRiskJourney(){
       : (breach ? `<span style="font-size:10.5px;font-weight:700;color:#DC2626;">NEEDS ATTENTION FIRST \u00b7 ${esc(hold.reasons[0]||breach)}</span>`
                 : `<span class="badge" style="border-color:${x.plan.colour};color:${x.plan.colour};background:${x.plan.colour}1a;">${x.plan.label}</span>`);
     const g=_journeyGauge(r);
+    // The ladder wash, on the pathway (Simon: same effect here): each card
+    // sweeps its band colour, deepens on hover, opens below as before.
+    const _bc=_RISK_PRIO_COLOR[x.sc.priority]||'#9CA3AF';
+    const _wa=({Critical:'2E',High:'24',Medium:'1C',Low:'14'})[x.sc.priority]||'12';
+    const _w0='linear-gradient(100deg,'+_bc+_wa+','+_bc+'08 62%,transparent)';
+    const _w1='linear-gradient(100deg,'+_bc+'3D,'+_bc+'12 62%,transparent)';
     const hint=(!signed && g && g.tgtPct===null)
       ? '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">No projected score set - add it on the risk card and the blue target line appears here.</div>'
       : '';
-    return `<details class="card" style="border-left:4px solid ${htC};margin-bottom:10px;">
+    return `<details class="card" style="border-left:4px solid ${_bc};border-radius:4px;margin-bottom:10px;background:${_w0};transition:background .15s;" onmouseover="this.style.background='${_w1}'" onmouseout="this.style.background='${_w0}'">
       <summary style="padding:12px 16px 12px;cursor:pointer;">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span style="font-weight:700;font-size:13.5px;flex:1;min-width:200px;">${esc(r.activity||r.hazard||'New risk')}${_riskSif(r)?' <span style="font-weight:400;font-size:11px;color:var(--text-muted);">could kill or seriously injure</span>':''}</span>

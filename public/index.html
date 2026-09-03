@@ -19953,7 +19953,7 @@ function renderRiskProfile(){
           </span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;align-items:center;">
-          ${ro?`<span class="rc-chip" style="background:${_riskMode(selR)==='ops'?'#7C3AED':'#2563EB'}1a;color:${_riskMode(selR)==='ops'?'#7C3AED':'#2563EB'};">${esc(_riskModeLabel(selR))}</span>`:`<span class="rp-modesw" title="Health &amp; safety risk, or operational / business risk. The scoring and the plan work the same either way - only the wording changes.">${RISK_MODES.map(m=>`<button type="button" class="rp-modebtn${_riskMode(selR)===m.k?' on':''}" style="${_riskMode(selR)===m.k?('background:'+m.colour+';border-color:'+m.colour+';'):''}" onclick="setRiskMode('${selR.id}','${m.k}')">${esc(m.label)}</button>`).join('')}</span>`}
+          <span class="rc-chip" style="background:${_riskMode(selR)==='ops'?'#7C3AED':'#2563EB'}1a;color:${_riskMode(selR)==='ops'?'#7C3AED':'#2563EB'};" title="Set with the Kind radios on the register table">${esc(_riskModeLabel(selR))}</span>
           ${selR.category?`<span class="rc-chip" style="background:${selHtC}1a;color:${selHtC};">${esc(selR.category)}</span>`:''}
           ${selR.area?`<span class="rc-chip" style="background:var(--muted-bg);color:var(--text-muted);">${esc(selR.area)}</span>`:''}
           ${selR.libKey?`<span class="rc-chip" style="background:var(--muted-bg);color:var(--text-muted);font-weight:400;">library</span>`:''}

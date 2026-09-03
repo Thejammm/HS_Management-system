@@ -15364,7 +15364,7 @@ function updateExecAction(refStr, field, value){
   if(typeof _stamp==='function') _stamp(o,'updated');
   saveData(); _refreshActionViews();
   // Risk-profile action closed from the plan → same evidence prompt as the risk card.
-  if(field==='status' && (value==='Complete'||value==='Accepted') && ref.t==='risk'){ const _er=(S.riskProfile||[]).find(x=>x.id===ref.a); if(_er) setTimeout(()=>_promptActionEvidence(o,_er), 150); }
+  if(field==='status' && (value==='Complete'||value==='Accepted') && ref.t==='risk'){ const _er=(S.riskProfile||[]).find(x=>x.id===ref.a); if(_er){ _ctlOnActionClosed(_er, o); setTimeout(()=>_promptActionEvidence(o,_er), 150); } }
   // Training renewal closed → capture the new date/status straight into the matrix cell.
   if(field==='status' && value==='Complete' && o.trainingPersonId && typeof _trainingActionCompleted==='function'){ setTimeout(()=>_trainingActionCompleted(o), 60); }
 }
@@ -16918,7 +16918,7 @@ function updateRiskAction(rid, aid, field, value){
   if(_roLocked()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
   const a=(r.actions||[]).find(x=>x.id===aid); if(!a) return;
-  a[field]=value; if(field==='status') _stampActionCompletion(a, value); _stamp(r,'updated'); scheduleAutoSave();
+  a[field]=value; if(field==='status'){ _stampActionCompletion(a, value); if(value==='Complete'||value==='Accepted') _ctlOnActionClosed(r, a); } _stamp(r,'updated'); scheduleAutoSave();
   if(field==='status'||field==='due'){ const fl=document.getElementById('rflow-'+rid); if(fl) fl.innerHTML=_riskFlowHTML(r); }
   // Date / priority edits must NEVER rebuild the panel - the cell being typed
   // in would be destroyed. Targeted updates only; a full refresh happens on
@@ -19681,7 +19681,7 @@ function _riskTableRowsHTML(){
       +'<td><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;white-space:nowrap;"><i style="width:9px;height:9px;border-radius:50%;background:'+cdot+';display:inline-block;"></i>'+cword+'</span></td>'
       +'</tr>'; }).join('');
 }
-function _riskOpenModal(id){ _riskSel=id; _riskSelTab='summary'; _riskModalOpen=true; _keepScroll(renderRiskProfile); }
+function _riskOpenModal(id){ _riskSel=id; _riskSelTab='summary'; _riskModalOpen=true; const sec=document.getElementById('wfRegister'); if(sec&&!sec.open) sec.open=true; _keepScroll(renderRiskProfile); }
 function _riskCloseModal(){ _riskModalOpen=false; _keepScroll(renderRiskProfile); }
 function _riskModalStep(d){
   const rows=_riskVisibleRows(); if(!rows.length) return;
@@ -19838,6 +19838,7 @@ function renderRiskProfile(){
         <div class="field-grid cols-1" style="margin-bottom:12px;">
           ${fg(_rt(r,'controls'), ta(r.id,'controls',r.controls,_rt(r,'controlsPh')))}
         </div>
+        ${_riskControlsListHTML(r, dis)}
         <div class="field-grid" style="margin-bottom:12px;">
           ${fg(esc(_rt(r,'controlLevel'))+' <span class="fl-hint" title="'+esc(_rt(r,'controlLevelHint'))+'">(?)</span>', `<select${dis} onchange="updateRiskField('${r.id}','controlLevel',this.value)"><option value="">- Select -</option>${CONTROL_LEVELS.map(c=>`<option value="${c.k}"${r.controlLevel===c.k?' selected':''}>${esc(_controlLevelLabelFor(r,c.k))}</option>`).join('')}</select>`)}
         </div>
@@ -21591,15 +21592,19 @@ function openRaiseActionBox(opts){
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99997;display:flex;align-items:center;justify-content:center;padding:18px;';
   ov.innerHTML='<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:560px;width:100%;box-shadow:0 18px 60px rgba(0,0,0,.35);">'
     +'<div style="padding:14px 18px;border-bottom:1.5px solid var(--border);">'
-      +'<div style="font-weight:800;font-size:15px;">What action is needed?</div>'
+      +'<div style="font-weight:800;font-size:15px;">'+esc(opts.title||'What action is needed?')+'</div>'
       +'<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">'+esc(opts.source||'')+' \u00b7 it appears word for word in the client execution plan</div>'
     +'</div>'
     +'<div style="padding:14px 18px;">'
-      +'<textarea id="raiseActionText" rows="3" placeholder="Write it as an instruction - e.g. Commission a fire risk assessment for the office" style="width:100%;font-size:13.5px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:transparent;color:inherit;resize:vertical;box-sizing:border-box;"></textarea>'
+      +'<textarea id="raiseActionText" rows="3" placeholder="'+esc(opts.placeholder||'Write it as an instruction - e.g. Commission a fire risk assessment for the office')+'" style="width:100%;font-size:13.5px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:transparent;color:inherit;resize:vertical;box-sizing:border-box;">'+esc(opts.prefill||'')+'</textarea>'
+      +(opts.hideMeta?'':'<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">'
+        +'<label style="flex:1;min-width:150px;font-size:11.5px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">Owner - who will do it<input id="raiseActionOwner" type="text" placeholder="Name / role" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:transparent;color:inherit;"></label>'
+        +'<label style="flex:0 0 160px;font-size:11.5px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">Target date<input id="raiseActionDue" type="date" style="font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:transparent;color:inherit;"></label>'
+      +'</div>')
     +'</div>'
     +'<div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;">'
       +'<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'raiseActionOverlay\').remove()">Cancel</button>'
-      +'<button class="btn btn-primary btn-sm" onclick="_raiseActionSave()">Add to the plan</button>'
+      +'<button class="btn btn-primary btn-sm" onclick="_raiseActionSave()">'+esc(opts.saveLabel||'Add to the plan')+'</button>'
     +'</div></div>';
   _backdropClose(ov, function(){ ov.remove(); });
   document.body.appendChild(ov);
@@ -21607,11 +21612,13 @@ function openRaiseActionBox(opts){
 }
 function _raiseActionSave(){
   const t=document.getElementById('raiseActionText');
-  const v=t?String(t.value).trim():'';
-  if(!v){ showToast('Write what needs doing first','error'); return; }
+  const desc=t?String(t.value).trim():'';
+  if(!desc){ showToast('Write what needs doing first','error'); return; }
+  const owner=String((document.getElementById('raiseActionOwner')||{}).value||'').trim();
+  const due=String((document.getElementById('raiseActionDue')||{}).value||'').trim();
   const ov=document.getElementById('raiseActionOverlay'); if(ov) ov.remove();
   const cb=_raiseBoxCb; _raiseBoxCb=null;
-  if(typeof cb==='function') cb(v);
+  if(typeof cb==='function') cb({ desc:desc, owner:owner, due:due });
 }
 // The risk profile's raise: writes a COMPLETE, described action into the
 // risk's own plan - which already feeds the execution plan, the journey bars
@@ -21619,15 +21626,110 @@ function _raiseActionSave(){
 function raiseRiskAction(id){
   if(_blockIfReadOnly()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
-  openRaiseActionBox({ source:(_riskMode(r)==='ops'?'Operational risk':'Risk profile')+' \u00b7 '+String(r.activity||r.hazard||'this risk').slice(0,60), onSave:function(desc){
+  openRaiseActionBox({ source:(_riskMode(r)==='ops'?'Operational risk':'Risk profile')+' \u00b7 '+String(r.activity||r.hazard||'this risk').slice(0,60), onSave:function(v){
     if(!Array.isArray(r.actions)) r.actions=[];
-    const a={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:desc, owner:'', due:'', status:'Not started', priority:_suggestPriority(r) };
+    const a={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:v.desc, owner:v.owner||'', due:v.due||'', status:'Not started', priority:_suggestPriority(r) };
     _stamp(a,'created'); r.actions.push(a);
     r.raised=(r.raised||0)+1;
     _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
     try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
     showToast('\u2713 Action added to the plan - set an owner and target date','success');
   }});
+}
+// ── CONTROLS vs ACTIONS (Simon, 2026-09-03): a control is a thing the
+//    company will HAVE (training, a management process); the action is the
+//    DELEGATED WORK to put it in place - and that delegation is what the
+//    execution plan holds. A control lives on the risk; when its linked
+//    action completes it flips to In place and its text joins r.controls,
+//    the single truth _riskControlStatus and every report already read. ──
+function _riskControlItems(r){ if(!Array.isArray(r.controlItems)) r.controlItems=[]; return r.controlItems; }
+function _ctlLinkedAction(r,c){ return c.actionId ? ((r.actions||[]).find(a=>a.id===c.actionId && !a.deleted) || null) : null; }
+function _ctlState(r,c){
+  if(c.status==='inplace') return 'inplace';
+  const a=_ctlLinkedAction(r,c);
+  if(a){ const st=_actionStatus(a); return (st==='Complete'||st==='Accepted') ? 'inplace' : 'delegated'; }
+  return 'planned';
+}
+function _ctlAppendToControls(r, text){
+  const cur=String(r.controls||'').trim();
+  if(cur.toLowerCase().includes(String(text).toLowerCase())) return;
+  r.controls = cur ? (cur.replace(/[;\s]+$/,'')+'; '+text) : String(text);
+}
+// Called from BOTH status paths (the risk grid and the execution plan) when
+// an action closes: the control it delegates flips in place.
+function _ctlOnActionClosed(r, act){
+  if(!r || !act) return;
+  const c=(r.controlItems||[]).find(x=>x.actionId===act.id);
+  if(!c || c.status==='inplace') return;
+  c.status='inplace';
+  _ctlAppendToControls(r, c.text);
+  if(typeof showToast==='function') showToast('\u2713 Control in place - added to this risk\u2019s controls','success');
+}
+function addRiskControl(id){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
+  openRaiseActionBox({ source:'New control for \u00b7 '+String(r.activity||r.hazard||'this risk').slice(0,60),
+    title:'What control will hold this risk?', hideMeta:true,
+    placeholder:'The thing the company will have, e.g. manual handling training, a permit-to-work process',
+    saveLabel:'Add the control',
+    onSave:function(v){
+      const c={ id:'ctl_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), text:v.desc, status:'planned' };
+      _riskControlItems(r).push(c);
+      _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
+      showToast('Control added - now delegate it so someone puts it in place','success');
+    }});
+}
+function markRiskControlInPlace(riskId, ctlId){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===riskId); if(!r) return;
+  const c=(r.controlItems||[]).find(x=>x.id===ctlId); if(!c) return;
+  c.status='inplace'; _ctlAppendToControls(r, c.text);
+  _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
+}
+function removeRiskControl(riskId, ctlId){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===riskId); if(!r) return;
+  r.controlItems=(r.controlItems||[]).filter(x=>x.id!==ctlId);
+  _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
+}
+function delegateRiskControl(riskId, ctlId){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===riskId); if(!r) return;
+  const c=(r.controlItems||[]).find(x=>x.id===ctlId); if(!c) return;
+  openRaiseActionBox({ source:'Delegate \u00b7 '+String(c.text).slice(0,60),
+    prefill:'Put in place: '+c.text,
+    onSave:function(v){
+      if(!Array.isArray(r.actions)) r.actions=[];
+      const a={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:v.desc, owner:v.owner||'', due:v.due||'', status:'Not started', priority:_suggestPriority(r), controlId:c.id };
+      _stamp(a,'created'); r.actions.push(a);
+      c.actionId=a.id;
+      r.raised=(r.raised||0)+1;
+      _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
+      try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
+      showToast('\u2713 Delegated - the action is on the execution plan','success');
+    }});
+}
+function _riskControlsListHTML(r, dis){
+  const items=_riskControlItems(r);
+  const rows=items.map(c=>{
+    const st=_ctlState(r,c); const a=_ctlLinkedAction(r,c);
+    const chip= st==='inplace' ? '<span class="rc-chip" style="background:#16A34A1a;color:#16A34A;">\u2713 In place</span>'
+      : st==='delegated' ? '<span class="rc-chip" style="background:#2563EB1a;color:#2563EB;">Delegated'+(a&&a.owner?(' \u00b7 '+esc(a.owner)):'')+(a&&a.due?(' \u00b7 '+esc(a.due)):'')+'</span>'
+      : '<span class="rc-chip" style="background:#F59E0B1a;color:#B45309;">Planned - needs an owner</span>';
+    return '<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px dashed var(--border);">'
+      +'<span style="flex:1;min-width:160px;font-size:13px;font-weight:600;">'+esc(c.text)+'</span>'+chip
+      +(dis?'':(st==='planned'
+          ? '<button class="btn btn-outline btn-xs no-print" onclick="delegateRiskControl(\''+r.id+'\',\''+c.id+'\')" title="Raise the action that puts this control in place - owner and date - onto the execution plan">Delegate \u2192 raise the action</button>'
+            +'<button class="btn btn-ghost btn-xs no-print" onclick="markRiskControlInPlace(\''+r.id+'\',\''+c.id+'\')" title="It already exists - mark it in place">Already in place</button>'
+          : ''))
+      +(dis?'':'<button class="btn btn-ghost btn-xs no-print" onclick="removeRiskControl(\''+r.id+'\',\''+c.id+'\')" title="Remove this control">'+_ic('trash',12)+'</button>')
+      +'</div>';
+  }).join('');
+  return '<div style="margin:2px 0 12px;">'
+    +'<label class="field-label">Controls for this risk - each one delegated to an owner <span class="fl-hint" title="A control is a thing the company will HAVE: training, a management process, a physical measure. Delegating it raises the implementation action - owner and date - onto the client execution plan. When that action completes, the control shows In place and joins the controls above.">(?)</span></label>'
+    +(rows||'<div style="font-size:12px;color:var(--text-muted);padding:2px 0 4px;">None listed yet - add the controls that will hold this risk, then delegate each one.</div>')
+    +(dis?'':'<button class="btn btn-outline btn-xs no-print" style="margin-top:6px;" onclick="addRiskControl(\''+r.id+'\')">\uff0b Add control</button>')
+    +'</div>';
 }
 function _riskRaisePillHTML(r){
   if(_roLocked()) return '<button class="btn btn-outline btn-xs no-print" disabled title="Read only - you are viewing this client without edit mode on. Turn on edit mode and this raises an action into the execution plan.">\uff0b Add action</button>';
@@ -21639,8 +21741,9 @@ function raiseReqAction(sectionId, itemId){
   if(_blockIfReadOnly()) return;
   const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
   const it = (s.items||[]).find(i => i.id === itemId); if(!it) return;
-  openRaiseActionBox({ source:'Legal duties \u00b7 '+String(it.requirement||s.heading||'').slice(0,60), onSave:function(desc){
-    _reqAddAction(it, desc);
+  openRaiseActionBox({ source:'Legal duties \u00b7 '+String(it.requirement||s.heading||'').slice(0,60), onSave:function(v){
+    const act=_reqAddAction(it, v.desc);
+    if(act){ if(v.owner) act.owner=v.owner; if(v.due) act.due=v.due; }
     it.raised=(it.raised||0)+1;
     _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
     try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}

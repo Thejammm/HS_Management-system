@@ -14422,9 +14422,9 @@ const COCKPIT_WIDGETS = {
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#16A34A;margin-right:5px;"></span>controlled</span>'
         +'<span>\u2713 = at its planned target</span><span>click a risk to open it</span></div></div>';
     } },
-  boardFive: { id:'boardFive', label:'Five in hand', group:'Board', render:x=>{
+  boardFive: { id:'boardFive', label:'Putting us at risk today', group:'Board', render:x=>{
       const B=_boardModel(); const H=_holdSummary();
-      if(!B.total) return '<div class="ckx-panel"><h4>Five in hand</h4><div class="ck-pending">No risks recorded yet.</div></div>';
+      if(!B.total) return '<div class="ckx-panel"><h4>Putting us at risk today</h4><div class="ck-pending">No risks recorded yet.</div></div>';
       const top=H.breaches.concat(H.nextWorst).slice(0,5);
       const chosen=H.rows.filter(z=>z.r&&z.r.chosen).sort(_holdWorstFirst).slice(0,5);
       const topIds=top.map(z=>z.id), choIds=chosen.map(z=>z.id);
@@ -14433,10 +14433,10 @@ const COCKPIT_WIDGETS = {
         return '<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0;'+(i?'border-top:1px solid var(--border);':'')+'">'
         +'<span style="flex:0 0 16px;text-align:center;font-weight:800;color:var(--text-muted);font-size:12px;">'+(i+1)+'</span>'
         +'<span style="flex:0 0 12px;color:'+(other.includes(z.id)?'#7C3AED':'transparent')+';font-weight:800;" title="On both lists">\u25cf</span>'
-        +'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--text);">'+esc(z.name.slice(0,50))+'</button>'
+        +'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left;font-weight:600;color:var(--text);">'+esc(z.name)+'</button>'
         +'<span style="flex:0 0 auto;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;background:'+c+';">'+(z.band||'-').toUpperCase()+'</span>'
         +'<span style="flex:0 0 auto;font-size:10.5px;color:var(--text-muted);">'+word(z)+'</span></div>'; };
-      return '<div class="ckx-panel"><h4>Five in hand - biggest, and chosen</h4>'
+      return '<div class="ckx-panel"><h4>Putting us at risk today</h4>'
         +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">'
         +'<div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;"><div style="font-size:12px;font-weight:700;margin-bottom:6px;">Top 5 by size - worst first</div>'
         +(top.length?top.map((z,i)=>fr(z,i,choIds)).join(''):'<div class="ck-pending">Nothing to rank yet.</div>')+'</div>'

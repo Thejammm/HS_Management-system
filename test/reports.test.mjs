@@ -106,19 +106,19 @@ test('the risk picture pages carry the cockpit sections and obey their toggles',
   const st = fixture('typical');
   const r = buildReport(st, 'board-report', OPTS);
   const html = reportHTML(r);
-  assert.match(html, /The same picture the cockpit leads with/);
+  assert.match(html, /How many risks the business carries/);
   assert.match(html, /significant risks/);
-  assert.match(html, /TARGET - the controls you have set|No projected scores set yet|Rate the risks/);
-  assert.match(html, /Top 5 by size - worst first/);
-  assert.match(html, /Our chosen 5 - working on now/);
-  assert.match(html, /the line never disappears, it moves|Rate the risks/);
+  assert.match(html, /TARGET · planned controls|No projected scores set yet|Rate the risks/);
+  assert.match(html, /Highest-rated risks/);
+  assert.match(html, /This month’s five priorities/);
+  assert.match(html, /Continuous improvement is the operating cycle|Rate the risks/);
   const off = JSON.parse(JSON.stringify(st));
   off.reportPrefs = { 'board-report': { hidden: { riskPicture: true, riskJourney: true, riskLadder: true, fiveInHand: true } } };
   const r2 = buildReport(off, 'board-report', OPTS);
   const html2 = reportHTML(r2);
   assert.equal(r2.pages.length, r.pages.length - 3);
-  assert.doesNotMatch(html2, /The same picture the cockpit leads with/);
-  assert.doesNotMatch(html2, /Our chosen 5 - working on now/);
+  assert.doesNotMatch(html2, /How many risks the business carries/);
+  assert.doesNotMatch(html2, /This month’s five priorities/);
 });
 
 test('attention list lives on its own page, never the front page', () => {

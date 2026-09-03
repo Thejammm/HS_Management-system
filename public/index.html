@@ -14401,7 +14401,7 @@ const COCKPIT_WIDGETS = {
     } },
   boardPicture: { id:'boardPicture', label:'Risk picture', group:'Board', render:x=>{
       const B=_boardModel();
-      if(!B.total) return '<div class="ckx-panel"><h4>Risk picture</h4><div class="ck-pending">No risks recorded yet - build the profile and the picture draws itself.</div></div>';
+      if(!B.total) return '<div class="ckx-panel"><h4>Risk picture</h4><div class="ck-pending">No risks recorded. This view populates from the risk profile.</div></div>';
       const seg=(n,c,lab)=> n?('<div style="flex:'+n+';background:'+c+';display:flex;align-items:center;justify-content:center;gap:5px;color:#fff;font-weight:700;font-size:12.5px;min-width:40px;">'+n+' '+lab+'</div>'):'';
       return '<div class="ckx-panel"><h4>Risk picture</h4>'
         +'<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">'
@@ -14411,25 +14411,25 @@ const COCKPIT_WIDGETS = {
         +'<div style="flex:1;min-width:260px;">'
         +'<div style="display:flex;height:30px;border-radius:8px;overflow:hidden;">'+seg(B.unc,'#DC2626','uncontrolled')+seg(B.part,'#F59E0B','partly controlled')+seg(B.inplace,'#16A34A','controlled')+'</div>'
         +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px;flex-wrap:wrap;gap:8px;">'
-        +'<span>'+B.unc+' of '+B.total+' with no effective controls yet</span>'+(B.part?'<span>'+B.part+' partly controlled</span>':'')+'<span>'+B.inplace+' controlled and being worked</span></div>'
+        +'<span>'+B.unc+' of '+B.total+' with no effective controls yet</span>'+(B.part?'<span>'+B.part+' partly controlled</span>':'')+'<span>'+B.inplace+' controlled and progressing</span></div>'
         +'</div></div></div>';
     } },
   boardJourney: { id:'boardJourney', label:'Risk journey', group:'Board', render:x=>{
       const B=_boardModel();
-      if(!B.rated) return '<div class="ckx-panel"><h4>Risk journey</h4><div class="ck-pending">Rate the risks (likelihood \u00d7 severity) and the company journey draws itself.</div></div>';
+      if(!B.rated) return '<div class="ckx-panel"><h4>Risk journey</h4><div class="ck-pending">Rate the risks (likelihood \u00d7 severity) to populate the company journey.</div></div>';
       const col=_RISK_PRIO_COLOR[B.nowBand]||'#9CA3AF';
       const line=B.tgtPct===null?'':'<div style="position:absolute;left:'+B.tgtPct+'%;top:-7px;bottom:-7px;width:4px;background:#2563EB;border-radius:2px;box-shadow:0 0 0 1.5px var(--surface,#fff);"></div>'
-        +'<div style="position:absolute;left:'+B.tgtPct+'%;top:-23px;transform:translateX(-'+(B.tgtPct>75?'100':B.tgtPct<15?'0':'50')+'%);font-size:10.5px;font-weight:700;color:#2563EB;white-space:nowrap;">TARGET - the controls you have set</div>';
+        +'<div style="position:absolute;left:'+B.tgtPct+'%;top:-23px;transform:translateX(-'+(B.tgtPct>75?'100':B.tgtPct<15?'0':'50')+'%);font-size:10.5px;font-weight:700;color:#2563EB;white-space:nowrap;">TARGET \u00b7 planned controls</div>';
       return '<div class="ckx-panel"><h4>Risk journey</h4>'
         +'<div style="position:relative;height:20px;background:var(--muted-bg);border-radius:10px;margin:'+(B.tgtPct===null?'8':'26')+'px 0 4px;">'
         +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+B.fillPct+'%;min-width:14px;background:'+col+';border-radius:'+(B.fillPct>=98?'10px':'10px 0 0 10px')+';"></div>'+line+'</div>'
-        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);"><span>where you started</span><span style="font-weight:700;color:'+col+';">where you are now</span><span>fully controlled</span></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);"><span>Baseline</span><span style="font-weight:700;color:'+col+';">Current position</span><span>Fully controlled</span></div>'
         +'<div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--text-muted);">'
         +'<span><b style="font-size:16px;color:#2563EB;">'+B.atTgt+' of '+B.total+'</b> risks at their planned target</span>'
         +'<span><b style="font-size:16px;color:var(--text);">'+B.dep.done+' of '+B.dep.total+'</b> planned controls and actions in place</span>'
         +(B.overdue?('<span><b style="font-size:16px;color:#DC2626;">'+B.overdue+'</b> action'+(B.overdue!==1?'s':'')+' overdue</span>'):'<span style="align-self:center;">nothing overdue</span>')+'</div>'
         +(B.tgtPct===null?'<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">No projected scores set yet - add them on the risk cards and the blue target line appears.</div>':'')
-        +'<div style="margin-top:12px;padding:8px 13px;border-left:3px solid #16A34A;background:#16A34A0d;border-radius:0 8px 8px 0;font-size:12px;color:var(--text-muted);">When every risk reaches its line: review, set stronger controls, move the line, go again. Continuous improvement is the loop this picture runs on - the line never disappears, it moves.</div></div>';
+        +'<div style="margin-top:12px;padding:8px 13px;border-left:3px solid #16A34A;background:#16A34A0d;border-radius:0 8px 8px 0;font-size:12px;color:var(--text-muted);">When every risk reaches its target, review sets stronger controls and a new target. Continuous improvement is the operating cycle.</div></div>';
     } },
   boardLadder: { id:'boardLadder', label:'Risk ladder', group:'Board', render:x=>{
       const B=_boardModel();
@@ -14445,10 +14445,10 @@ const COCKPIT_WIDGETS = {
       // explains what that level DEMANDS - the same rule _holdBreach enforces
       // - and shows the tenant's own score range, so neither can drift.
       const MEAN={
-        Critical:'must reach 3 \u00b7 Managed or better - first call on time and money',
-        High:'must reach 3 \u00b7 Managed or better - never run on acceptance alone',
+        Critical:'requires 3 \u00b7 Managed or better; first priority for resource',
+        High:'requires 3 \u00b7 Managed or better; never run on acceptance alone',
         Medium:'must never sit at 1 \u00b7 Uncontrolled',
-        Low:'sensible precautions - never a breach on its own' };
+        Low:'managed with routine precautions' };
       const _bnd=_riskCfg().bands;
       const RANGE={ Critical:_bnd.crit+'-25', High:_bnd.high+'-'+(_bnd.crit-1), Medium:_bnd.med+'-'+(_bnd.high-1), Low:'1-'+(_bnd.med-1) };
       const WASH={ Critical:'2E', High:'24', Medium:'1C', Low:'14' };   // the wash cools down the ladder
@@ -14468,16 +14468,16 @@ const COCKPIT_WIDGETS = {
             +'<div style="font-size:10.5px;color:var(--text-muted);line-height:1.35;margin-top:1px;">'+MEAN[band]+'</div>'
           +'</div>'
           +'<div style="display:flex;flex-direction:column;gap:5px;align-items:stretch;flex:1;min-width:0;align-self:center;padding:8px 14px 8px 0;">'
-            +(on.length?on.map(chip).join(''):'<span style="font-size:11.5px;color:var(--text-muted);">none at this level</span>')+'</div></div>'; };
+            +(on.length?on.map(chip).join(''):'<span style="font-size:11.5px;color:var(--text-muted);">None at this level.</span>')+'</div></div>'; };
       const unrated=B.rows.filter(z=>!z.sc.priority);
-      return '<div class="ckx-panel"><h4>Risk ladder - what kind of risks are they?</h4>'
+      return '<div class="ckx-panel"><h4>Risk ladder</h4><div style="font-size:11px;color:var(--text-muted);margin:-2px 0 8px;">Risk to the business, Critical to Low</div>'
         +'<div>'+['Critical','High','Medium','Low'].map(rung).join('')+'</div>'
         +(unrated.length?('<div style="font-size:11.5px;color:var(--text-muted);padding:8px 0 0;border-top:1px solid var(--border);margin-top:2px;">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name)).join(', ')+'</div>'):'')
         +'<div style="display:flex;gap:18px;font-size:11.5px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;">'
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#DC2626;margin-right:5px;"></span>uncontrolled</span>'
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#F59E0B;margin-right:5px;"></span>partly controlled</span>'
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#16A34A;margin-right:5px;"></span>controlled</span>'
-        +'<span>\u2713 = at its planned target</span><span>click a risk to open it</span></div></div>';
+        +'<span>\u2713 = at its planned target</span><span>Select a risk to open it.</span></div></div>';
     } },
   boardFive: { id:'boardFive', label:'Putting us at risk today', group:'Board', render:x=>{
       const B=_boardModel(); const H=_holdSummary();
@@ -14499,11 +14499,11 @@ const COCKPIT_WIDGETS = {
         +'<span style="flex:0 0 auto;font-size:10.5px;color:var(--text-muted);">'+word(z)+'</span></div>'; };
       return '<div class="ckx-panel"><h4>Putting us at risk today</h4>'
         +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">'
-        +'<div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;"><div style="font-size:12px;font-weight:700;margin-bottom:6px;">Top 5 by size - worst first</div>'
-        +(top.length?top.map((z,i)=>fr(z,i,choIds)).join(''):'<div class="ck-pending">Nothing to rank yet.</div>')+'</div>'
-        +'<div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;"><div style="font-size:12px;font-weight:700;margin-bottom:6px;">Our chosen 5 - working on now</div>'
-        +(chosen.length?chosen.map((z,i)=>fr(z,i,topIds)).join(''):'<div class="ck-pending">Tick this month\u2019s Top 5 on the execution plan - the risks behind them appear here.</div>')+'</div></div>'
-        +'<div style="display:flex;gap:18px;font-size:11px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;"><span><span style="color:#7C3AED;font-weight:800;">\u25cf</span> on both lists</span><span>left is the app\u2019s ranking (worst band, weakest control); right is your pick</span></div></div>';
+        +'<div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;"><div style="font-size:12px;font-weight:700;margin-bottom:6px;">Highest-rated risks</div>'
+        +(top.length?top.map((z,i)=>fr(z,i,choIds)).join(''):'<div class="ck-pending">No rated risks.</div>')+'</div>'
+        +'<div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;"><div style="font-size:12px;font-weight:700;margin-bottom:6px;">This month\u2019s five priorities</div>'
+        +(chosen.length?chosen.map((z,i)=>fr(z,i,topIds)).join(''):'<div class="ck-pending">Populated from this month\u2019s Top 5 on the client execution plan.</div>')+'</div></div>'
+        +'<div style="display:flex;gap:18px;font-size:11px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;"><span><span style="color:#7C3AED;font-weight:800;">\u25cf</span> appears on both lists</span><span>Left: system ranking by band and control state. Right: the five selected for this month.</span></div></div>';
     } },
 };
 
@@ -14744,7 +14744,7 @@ function renderReports(){
     { title:'Business Status Report', accent:'#991B1B', tint:'#F9E8E8', fn:'downloadBusinessStatusReport()',
       meta:(function(){ try{ const b=_bsrData(); return b.counts.red+' red · '+b.counts.amber+' amber · '+b.counts.green+' green'; }catch(e){ return 'One-page RAG position'; } })(),
       icon:svg('<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>'),
-      desc:'One page, warts and all: every red, amber and green in the system - what we found, the consequence if nothing is done, and what has to happen by when. The RAG definitions print on the report so the colours cannot be argued with.',
+      desc:'One page, as it stands: every red, amber and green in the system - what we found, the consequence if nothing is done, and what has to happen by when. The RAG definitions print on the report so the colours cannot be argued with.',
       tags:['One page','RAG','Plain English'] },
     { title:'Risk Profile', accent:'#2563EB', tint:'#E7EFFD', fn:'downloadRiskProfileReport()', meta:riskMeta,
       icon:svg('<path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>'),
@@ -15390,7 +15390,7 @@ function updateExecAction(refStr, field, value){
   const o=_execOrigin(ref); if(!o) return;
   o[field]=value;
   if(field==='status'){ _stampActionCompletion(o, value); _logAdd(o, (value==='Complete'?'completed':value==='Accepted'?'accepted':'status'), (value==='Complete'?'Marked complete':value==='Accepted'?'Risk accepted':'Status set to '+value));
-    if(value==='Complete') showToast('✓ Delivered - nice work. It moves to the Delivered list as evidence.','success'); }
+    if(value==='Complete') showToast('✓ Complete. Recorded as evidence on the delivered list.','success'); }
   if(typeof _stamp==='function') _stamp(o,'updated');
   saveData(); _refreshActionViews();
   // Risk-profile action closed from the plan → same evidence prompt as the risk card.
@@ -15773,7 +15773,7 @@ function renderExecPlan(){
     ? epTable(fOverdue.concat(fDueThis))
     : `<div class="ck-pending" style="padding:8px 0;">Nothing overdue or due this month${_epXFActive()&&(overdue.length||dueThis.length)?' matches the filters':''}.</div>`;
   root.innerHTML = `
-    <div class="rep-hero"><h2>Client execution plan</h2><p>Everything you need to do - from your risk profile, legal duties, assurance and accreditation. Set a target date and mark progress. Traffic lights: <span style="color:${RAG_COLOR.red};font-weight:700;">overdue</span> &middot; <span style="color:${RAG_COLOR.amber};font-weight:700;">this month</span> &middot; <span style="color:${RAG_COLOR.green};font-weight:700;">on track</span>.</p></div>
+    <div class="rep-hero"><h2>Client execution plan</h2><p>All actions from the risk profile, legal duties, assurance and accreditation - owned, dated and tracked. Traffic lights: <span style="color:${RAG_COLOR.red};font-weight:700;">overdue</span> &middot; <span style="color:${RAG_COLOR.amber};font-weight:700;">this month</span> &middot; <span style="color:${RAG_COLOR.green};font-weight:700;">on track</span>.</p></div>
     ${_top5BannerHTML()}
     ${_epXFActive()?`<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:8px 13px;border:1.5px solid var(--accent);border-radius:9px;background:var(--accent-light);font-size:12.5px;">
         <b>Column filters on.</b> The tiles keep the full counts; the lists below are filtered.
@@ -16445,7 +16445,7 @@ function _journeyDepCounts(r){
 }
 function _journeyDepsHTML(r){
   const {acts, ctl, done, total}=_journeyDepCounts(r);
-  if(!total) return '<div style="font-size:12px;color:var(--text-muted);">Nothing powers this bar yet - record the controls in place and plan owned, dated actions, or formally accept the risk.</div>';
+  if(!total) return '<div style="font-size:12px;color:var(--text-muted);">No controls or actions recorded. Record the controls in place and plan owned, dated actions, or formally accept the risk.</div>';
     const dot=(kind,ch)=>'<span style="width:17px;height:17px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;'
     +(kind==='done'?'background:#16A34A;color:#fff;':kind==='late'?'background:#DC2626;color:#fff;':kind==='part'?'background:#F59E0B;color:#fff;':'background:transparent;border:1.7px solid var(--border);color:var(--text-muted);')+'">'+ch+'</span>';
   const row=(d,txt,meta,late)=>'<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;padding:3px 0;min-width:0;">'+d
@@ -16466,7 +16466,7 @@ function _journeyDepsHTML(r){
     const meta=[st,a.owner?esc(a.owner):'',a.due?fmtDate(a.due):''].filter(Boolean).join(' \u00b7 ');
     rows.push(row(dot(isDone?'done':(late?'late':'open'), isDone?'\u2713':(late?'!':'')), esc(a.desc||'(action)'), meta, late));
   });
-  return '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:600;margin-bottom:4px;">What powers this bar - '+done+' of '+total+' in place</div>'+rows.join('');
+  return '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:600;margin-bottom:4px;">Controls and actions \u00b7 '+done+' of '+total+' in place</div>'+rows.join('');
 }
 var _journeyFilter='all';
 function _journeyMilestones(r){
@@ -16552,7 +16552,7 @@ function renderRiskJourney(){
   el.innerHTML = `<div class="card" style="margin-bottom:14px;">
       <div class="card-band"><h3><span class="dot">●</span> Risk pathway</h3></div>
       <div class="card-body">
-        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">The story of every risk, from identified to signed off - a risk never leaves the profile. Each bar runs from the <b>inherent score</b> to <b>fully controlled</b>: the fill and its colour are the level actually hit today, and the <span style="color:#2563EB;font-weight:700;">blue line</span> is the residual target the action plan is written to reach. Open a risk to see what powers its bar.</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Every risk, from identified to signed off - a risk never leaves the profile. Each bar runs from the <b>inherent score</b> to <b>fully controlled</b>: the fill shows the level held today, and the <span style="color:#2563EB;font-weight:700;">blue line</span> marks the residual target the action plan is written to reach. Open a risk for the detail.</div>
         <div class="ckx-kpis" style="margin-bottom:12px;">${tile(managedN,'Signed off','#16A34A')}${tile(planN,'Plan in progress','#F59E0B')}${tile(earlyN,'Being assessed','#9CA3AF')}</div>
         <div style="display:flex;gap:8px;" class="no-print">${fbtn('all','All ('+enriched.length+')')}${fbtn('open','In progress ('+(enriched.length-managedN)+')')}${fbtn('managed','Signed off ('+managedN+')')}</div>
       </div>
@@ -21646,7 +21646,7 @@ function openRaiseActionBox(opts){
   ov.innerHTML='<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:560px;width:100%;box-shadow:0 18px 60px rgba(0,0,0,.35);">'
     +'<div style="padding:14px 18px;border-bottom:1.5px solid var(--border);">'
       +'<div style="font-weight:800;font-size:15px;">'+esc(opts.title||'What action is needed?')+'</div>'
-      +'<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">'+esc(opts.source||'')+' \u00b7 it appears word for word in the client execution plan</div>'
+      +'<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">'+esc(opts.source||'')+' \u00b7 recorded verbatim on the client execution plan</div>'
     +'</div>'
     +'<div style="padding:14px 18px;">'
       +'<textarea id="raiseActionText" rows="3" placeholder="'+esc(opts.placeholder||'Write it as an instruction - e.g. Commission a fire risk assessment for the office')+'" style="width:100%;font-size:13.5px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:transparent;color:inherit;resize:vertical;box-sizing:border-box;">'+esc(opts.prefill||'')+'</textarea>'
@@ -26860,7 +26860,7 @@ function buildBusinessStatusReportPDF(){
   const B=_bsrData();
   const client=(typeof _consultantView!=='undefined'&&_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||activeClientName()||'Client';
   const d=_docFor('bizStatus');
-  const K=_mkPdf('Business Status Report', client, d, 'The position on one page - red, amber and green, warts and all');
+  const K=_mkPdf('Business Status Report', client, d, 'The position on one page - every red, amber and green, as it stands');
   const RGBS={RED:[220,38,38],AMBER:[245,158,11],GREEN:[22,163,74],'NOT ASSESSED':[120,128,140]};
   const oc=RGBS[B.overall]||[120,128,140];
   const preparedBy=(typeof _actor==='function'&&(_actor().name))||'Archer Health and Safety';

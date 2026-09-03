@@ -284,10 +284,10 @@ export function splitStrip({ lead, segments, notes }) {
 // line -> fully controlled, with the counts and the improvement loop beneath.
 export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note }) {
   const line = (tgtPct == null) ? '' :
-    `<i class="r-jny-line" style="left:${tgtPct}%"></i><span class="r-jny-flag" style="left:${tgtPct}%;transform:translateX(-${tgtPct > 75 ? 100 : tgtPct < 15 ? 0 : 50}%)">TARGET - the controls you have set</span>`;
+    `<i class="r-jny-line" style="left:${tgtPct}%"></i><span class="r-jny-flag" style="left:${tgtPct}%;transform:translateX(-${tgtPct > 75 ? 100 : tgtPct < 15 ? 0 : 50}%)">TARGET · planned controls</span>`;
   return `<div class="r-jny${tgtPct == null ? '' : ' r-jny-flagged'}">
     <div class="r-jny-track"><i class="r-jny-fill" style="width:${Math.max(2, fillPct || 0)}%;background:${colour}"></i>${line}</div>
-    <div class="r-jny-labs"><span>where you started</span><span style="color:${colour};font-weight:700">where you are now</span><span>fully controlled</span></div>
+    <div class="r-jny-labs"><span>Baseline</span><span style="color:${colour};font-weight:700">Current position</span><span>Fully controlled</span></div>
     <div class="r-jny-counts">${counts.map(c => `<span><b${c.colour ? ` style="color:${c.colour}"` : ''}>${esc(c.value)}</b> ${esc(c.label)}</span>`).join('')}</div>
     ${note ? `<div class="r-footnote">${esc(note)}</div>` : ''}
     ${loop ? `<div class="r-jny-loop">${esc(loop)}</div>` : ''}
@@ -302,7 +302,7 @@ export function riskLadder({ rungs, unrated }) {
     return `<div class="r-lad-row" style="background:linear-gradient(100deg,${r.colour}${wa},${r.colour}08 62%,transparent);border-radius:4px;">
       <span class="r-lad-frame"><i class="r-lad-rail" style="background:${r.colour}55"></i><i class="r-lad-rail r-lad-rail2" style="background:${r.colour}55"></i><i class="r-lad-bar" style="background:${r.colour}"></i></span>
       <span class="r-lad-label"><b style="color:${r.colour}">${esc(String(r.band).toUpperCase())}</b><i class="r-lad-range"> · score ${esc(r.range || '')}</i><span class="r-lad-sub">${esc(r.sub || '')}</span></span>
-      <span class="r-lad-chips">${r.chips.length ? r.chips.map(c => `<span class="r-lad-line"><i style="background:${c.dot}"></i>${esc(c.name)}${c.tick ? ' &#10003;' : ''}</span>`).join('') : '<span class="r-footnote">none at this level</span>'}</span>
+      <span class="r-lad-chips">${r.chips.length ? r.chips.map(c => `<span class="r-lad-line"><i style="background:${c.dot}"></i>${esc(c.name)}${c.tick ? ' &#10003;' : ''}</span>`).join('') : '<span class="r-footnote">None at this level.</span>'}</span>
     </div>`; }).join('');
   const key = `<div class="r-lad-key"><span><i style="background:#DC2626"></i>uncontrolled</span><span><i style="background:#F59E0B"></i>partly controlled</span><span><i style="background:#16A34A"></i>controlled</span><span>&#10003; = at its planned target</span></div>`;
   return `<div class="r-lad">${rows || '<div class="r-footnote">No rated risks yet.</div>'}

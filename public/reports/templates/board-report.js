@@ -772,7 +772,7 @@ export function buildBoardReport(state, opts = {}) {
   const actionsPage = outBlocks.length ? {
     label: 'Actions', section: 'actions', blocks: [
       mast,
-      { type: 'titleBlock', kicker: 'Leadership review · what is owed',
+      { type: 'titleBlock', kicker: 'Outstanding actions',
         headline: D.overdue ? (countPhrase(D.overdue, 'action is overdue.', 'actions are overdue.')) : 'The open actions on the plan.',
         standfirst: 'Everything open on the plan, overdue first, with what has no owner or no date called out.' },
       ...outBlocks,
@@ -781,7 +781,7 @@ export function buildBoardReport(state, opts = {}) {
   const highriskPage = hiBlocks.length ? {
     label: 'High-risk actions', section: 'highrisk', blocks: [
       mast,
-      { type: 'titleBlock', kicker: 'Leadership review · the biggest risks',
+      { type: 'titleBlock', kicker: 'Highest-rated risks',
         headline: 'The actions sitting on the Critical and High risks.',
         standfirst: 'These carry the most risk of anything on the plan - they are the ones to ask about first. The fatal and major-harm register follows.' },
       ...hiBlocks,
@@ -790,7 +790,7 @@ export function buildBoardReport(state, opts = {}) {
   const deliveryPage = delivBlocks.length ? {
     label: 'Delivery & decisions', section: 'delivery', blocks: [
       mast,
-      { type: 'titleBlock', kicker: 'Leadership review · closing the loop',
+      { type: 'titleBlock', kicker: 'Delivery and decisions',
         headline: (function () {
           const done = X.wins.filter(w => !w.accepted).length, acc = X.wins.length - X.wins.filter(w => !w.accepted).length;
           const parts = [];
@@ -798,7 +798,7 @@ export function buildBoardReport(state, opts = {}) {
           if (acc) parts.push(countPhrase(acc, 'risk formally accepted', 'risks formally accepted'));
           return parts.length ? (parts.join(' and ') + '.') : 'Delivery, decisions and the five for next month.';
         })(),
-        standfirst: 'The meeting’s own page: what was completed, whether the last meeting’s decisions happened, and the five priorities agreed for next month. Next month’s report opens by checking this page.' },
+        standfirst: 'Work completed, the status of decisions from the last meeting, and the five priorities agreed for next month. The next report opens by checking this page.' },
       ...delivBlocks,
     ],
   } : null;
@@ -902,7 +902,7 @@ export function buildBoardReport(state, opts = {}) {
         { n: B.part, label: 'partly controlled', colour: '#F59E0B' },
         { n: B.inplace, label: 'controlled', colour: '#16A34A' } ],
       notes: [ B.unc + ' of ' + B.total + ' with no effective controls yet',
-               B.inplace + ' controlled and being worked' ] });
+               B.inplace + ' controlled and progressing' ] });
   }
   if (!hide.riskJourney) {
     picBlocks.push(B.rated
@@ -912,14 +912,14 @@ export function buildBoardReport(state, opts = {}) {
             { value: B.dep.done + ' of ' + B.dep.total, label: 'planned controls and actions in place' },
             { value: String(B.overdue), label: countPhrase(B.overdue, 'action overdue', 'actions overdue').replace(/^\d+ /, ''), colour: B.overdue ? '#DC2626' : undefined } ],
           note: B.tgtPct == null ? 'No projected scores set yet - the blue target line appears once they are.' : undefined,
-          loop: 'When every risk reaches its line: review, set stronger controls, move the line, go again. Continuous improvement is the loop this picture runs on - the line never disappears, it moves.' }
+          loop: 'When every risk reaches its target, review sets stronger controls and a new target. Continuous improvement is the operating cycle.' }
       : { type: 'textBlock', title: 'Risk journey', body: 'Rate the risks (likelihood × severity) and the company journey draws itself.' });
   }
   const picturePage = picBlocks.length ? {
     label: 'Risk picture', section: 'riskPicture', blocks: [ mast,
       { type: 'titleBlock', kicker: 'The risk picture',
         headline: B.total ? (B.total + ' significant risk' + (B.total !== 1 ? 's' : '') + ' - ' + B.unc + ' uncontrolled, ' + B.atTgt + ' at target.') : 'No risks recorded yet.',
-        standfirst: 'The same picture the cockpit leads with: how many risks, how well controlled, and where the company is on the journey to the targets its controls were set to reach.' },
+        standfirst: 'How many risks the business carries, how well controlled they are, and the position on the journey to the targets its controls are set to reach.' },
       ...picBlocks ],
   } : null;
   const ladBlocks = [];
@@ -927,7 +927,7 @@ export function buildBoardReport(state, opts = {}) {
   if (!hide.riskLadder) {
     // Each band label explains what the level DEMANDS - the same rule the
     // breach logic enforces - and the tenant's own score range.
-    const LMEAN = { Critical: 'must reach 3 · Managed or better - first call on time and money', High: 'must reach 3 · Managed or better - never run on acceptance alone', Medium: 'must never sit at 1 · Uncontrolled', Low: 'sensible precautions - never a breach on its own' };
+    const LMEAN = { Critical: 'requires 3 · Managed or better; first priority for resource', High: 'requires 3 · Managed or better; never run on acceptance alone', Medium: 'must never sit at 1 · Uncontrolled', Low: 'managed with routine precautions' };
     const lb = bandsFrom(state);
     const LRANGE = { Critical: lb.crit + '-25', High: lb.high + '-' + (lb.crit - 1), Medium: lb.med + '-' + (lb.high - 1), Low: '1-' + (lb.med - 1) };
     // One line per risk means a big register cannot fit one page: pack at
@@ -964,9 +964,9 @@ export function buildBoardReport(state, opts = {}) {
     const word = z => (bmById[z.id] && bmById[z.id].atTarget) ? 'at target' : (z.breach ? 'needs attention' : z.hold.label.toLowerCase());
     const li = z => ({ name: String(z.name), band: (z.band || '-').toUpperCase(), bandColour: TIER_COLOURS[z.band] || '#b7b7ba', word: word(z) });
     fiveBlocks.push({ type: 'twinPanels',
-      left:  { title: 'Top 5 by size - worst first', rows: top.map(z => Object.assign(li(z), { both: chosenIds.has(z.id) })), empty: 'Nothing to rank yet.' },
-      right: { title: 'Our chosen 5 - working on now', rows: chosen.map(z => Object.assign(li(z), { both: topIds.has(z.id) })), empty: 'Tick this month’s Top 5 on the execution plan - the risks behind them appear here.' },
-      footnote: '● = on both lists. Left is the app’s ranking (worst band, weakest control); right is the five the business chose to work on now - they may or may not be the same.' });
+      left:  { title: 'Highest-rated risks', rows: top.map(z => Object.assign(li(z), { both: chosenIds.has(z.id) })), empty: 'No rated risks.' },
+      right: { title: 'This month’s five priorities', rows: chosen.map(z => Object.assign(li(z), { both: topIds.has(z.id) })), empty: 'Populated from this month’s Top 5 on the client execution plan.' },
+      footnote: '● = appears on both lists. Left: system ranking by band and control state. Right: the five selected for this month.' });
   }
   const ladderPages = ladBlocks.map((blk, i) => ({
     label: 'Risk ladder' + (ladBlocks.length > 1 ? (' · part ' + (i + 1) + ' of ' + ladBlocks.length) : ''), section: 'riskLadder', blocks: [ mast,
@@ -978,8 +978,8 @@ export function buildBoardReport(state, opts = {}) {
   const fivePage = fiveBlocks.length ? {
     label: 'Putting us at risk today', section: 'fiveInHand', blocks: [ mast,
       { type: 'titleBlock', kicker: 'Putting us at risk today',
-        headline: 'The worst five, beside the chosen five.',
-        standfirst: 'Left is the app’s ranking - worst band, weakest control. Right is the five the business chose to work on now; they may or may not be the same.' },
+        headline: 'Highest-rated risks and this month’s five priorities.',
+        standfirst: 'Left: system ranking by band and control state. Right: the five selected for this month.' },
       ...fiveBlocks ],
   } : null;
 

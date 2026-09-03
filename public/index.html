@@ -14954,6 +14954,28 @@ function _riskComplete(r){
 // Preserve the scroll position across a re-render triggered by a click (stops the page jumping).
 function _keepScroll(fn){ const y = window.pageYOffset || document.documentElement.scrollTop || 0; fn(); window.scrollTo(0, y); requestAnimationFrame(()=>window.scrollTo(0, y)); }
 
+// ── THE SCROLL LOCK (Simon, 2026-09-03): while ANY modal overlay is on
+//    screen the page behind must not scroll. One watchdog, no per-modal
+//    wiring: every modal here opens or closes on a click or a key, so a
+//    short re-check after each covers them all - including future ones, as
+//    long as their id ends in "Overlay" or "Ov" (the house convention) or
+//    they use the drilldown backdrop class. Self-healing: if the lock were
+//    ever left on with nothing open, the next click clears it. ──
+function _syncBodyScroll(){
+  let vis=false;
+  document.querySelectorAll('[id$="Overlay"],[id$="Ov"],.drilldown-bg').forEach(function(el){
+    if(vis) return;
+    if(el.offsetWidth>0 && el.offsetHeight>0 && getComputedStyle(el).position==='fixed') vis=true;
+  });
+  document.documentElement.style.overflow = vis ? 'hidden' : '';
+  document.body.style.overflow = vis ? 'hidden' : '';
+}
+(function(){
+  var kick=function(){ setTimeout(_syncBodyScroll,60); setTimeout(_syncBodyScroll,400); };
+  document.addEventListener('click', kick, true);
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape'||e.key==='Enter') kick(); }, true);
+})();
+
 // ── Energy-source hazard model (AHS-authored, per the energy-damage model - Haddon; HSE guidance) ──
 // A hazard is an energy source: harm happens on the unplanned release of, or unwanted contact with, that energy.
 const ENERGY_SOURCES = [

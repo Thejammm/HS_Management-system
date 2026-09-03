@@ -19773,6 +19773,9 @@ function renderRiskProfile(){
           ${fg(_rt(r,'category'), sel(r.id,'category',r.category,_catOpts(r.category, r)))}
           ${fg('Business area', sel(r.id,'area',r.area,RISK_AREAS))}
         </div>
+        ${_riskMode(r)==='ops' ? `<div class="field-grid cols-1" style="margin-bottom:12px;">
+          ${fg(esc(_rt(r,'source'))+' <span class="fl-hint" title="'+esc(_rt(r,'sourceHint'))+'">(?)</span>', txt(r.id,'hazard',r.hazard,_rt(r,'sourcePh')))}
+        </div>` : ''}
         <div class="field-grid cols-1" style="margin-bottom:12px;">
           ${fg(_rt(r,'activity'), `<input type="text"${dis} id="ractf-${r.id}" value="${esc(r.activity)}" placeholder="${esc(_rt(r,'activityPh'))}" oninput="updateRiskField('${r.id}','activity',this.value)">`)}
         </div>

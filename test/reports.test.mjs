@@ -371,7 +371,8 @@ test('board report speaks the H&S control maturity scale, never the retired labe
   state.profiler = state.profiler || {};
   state.profiler.judgement = { leadership: { level: 'strong', note: 'Board reviews quarterly' } };
   const html = reportHTML(buildReport(state, 'board-report', OPTS));
-  assert.match(html, /Risks assured/);
+  assert.match(html, /Risks identified/);                    // the app's chip label since the assured rename
+  assert.doesNotMatch(html, /Risks assured/);                // the metric label never says assured now
   assert.match(html, /Risks fully actioned/);                // plan-delivery tile (positive)
   assert.doesNotMatch(html, /Risks sitting High or Critical/); // removed — added nothing
   assert.match(html, /What it means/);                       // state definitions table

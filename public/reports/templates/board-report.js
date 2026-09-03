@@ -17,7 +17,7 @@ export const BOARD_SECTIONS = [
   { id: 'riskPicture',    label: 'Risk picture', hsg: 'How many risks, split red / amber / green by the controls judgement' },
   { id: 'riskJourney',    label: 'Risk journey', hsg: 'As-is to target: the company bar, the blue line, the improvement loop' },
   { id: 'riskLadder',     label: 'Risk ladder', hsg: 'Every named risk on the Critical-to-Low scale' },
-  { id: 'fiveInHand',     label: 'Five in hand', hsg: 'The worst five beside the five the business chose to work on' },
+  { id: 'fiveInHand',     label: 'Putting us at risk today', hsg: 'The worst five beside the five the business chose to work on' },
   { id: 'dashboard',      label: 'H&S dashboard', hsg: 'The live picture - tiles, matrix, bands, control ladder' },
   { id: 'accidents',      label: 'Accidents', hsg: 'Reactive monitoring · incident data' },
   { id: 'nearmiss',       label: 'Near misses', hsg: 'Reactive monitoring · leading indicator' },
@@ -116,7 +116,7 @@ export function buildBoardReport(state, opts = {}) {
       return { value: D.planDone + '/' + total, label: 'Risks fully actioned', note,
                tone: total && (D.planDone + D.planAccepted === total) ? 'ok' : undefined };
     })(),
-    { value: D.holdS.held + '/' + D.holdS.total, label: 'Risks assured', note: D.holdS.breaches.length ? (D.holdS.breaches.length + ' need' + (D.holdS.breaches.length !== 1 ? '' : 's') + ' attention first') : 'nothing needs attention', tone: D.holdS.breaches.length ? 'bad' : (D.holdS.total && D.holdS.held === D.holdS.total ? 'ok' : undefined) },
+    { value: D.holdS.held + '/' + D.holdS.total, label: 'Risks identified', note: D.holdS.breaches.length ? (D.holdS.breaches.length + ' need' + (D.holdS.breaches.length !== 1 ? '' : 's') + ' attention first') : 'nothing needs attention', tone: D.holdS.breaches.length ? 'bad' : (D.holdS.total && D.holdS.held === D.holdS.total ? 'ok' : undefined) },
     { value: String(D.overdue), label: 'Actions overdue', tone: D.overdue ? 'warn' : 'ok' },
   ];
 
@@ -165,7 +165,7 @@ export function buildBoardReport(state, opts = {}) {
     return { type: 'dataTable', title: 'Movement since the baseline',
       cols: [ { header: 'Measure', w: '40%' }, { header: 'Baseline ' + fmtD(X.baseline.date), w: '20%' }, { header: 'Now', w: '20%' }, { header: 'Movement', w: '20%' } ],
       rows: [
-        [ 'Risks assured', String(b.held ?? '-'), String(D.holdS.held), (b.held != null) ? ((D.holdS.held > b.held) ? ('up ' + (D.holdS.held - b.held)) : (D.holdS.held < b.held) ? ('down ' + (b.held - D.holdS.held)) : 'no change') : '-' ],
+        [ 'Risks identified', String(b.held ?? '-'), String(D.holdS.held), (b.held != null) ? ((D.holdS.held > b.held) ? ('up ' + (D.holdS.held - b.held)) : (D.holdS.held < b.held) ? ('down ' + (b.held - D.holdS.held)) : 'no change') : '-' ],
         [ 'Need attention first', String(b.ruleBreaches ?? '-'), String(D.holdS.breaches.length), (b.ruleBreaches != null) ? ((D.holdS.breaches.length < b.ruleBreaches) ? ('down ' + (b.ruleBreaches - D.holdS.breaches.length)) : (D.holdS.breaches.length > b.ruleBreaches) ? ('up ' + (D.holdS.breaches.length - b.ruleBreaches)) : 'no change') : '-' ],
         [ 'High + critical risks', String(b.highCrit ?? '-'), String(D.highPlus), mv(b.highCrit, D.highPlus) ],
         [ 'Open actions', String(b.openActions ?? '-'), String(D.openActions), mv(b.openActions, D.openActions) ],
@@ -936,7 +936,7 @@ export function buildBoardReport(state, opts = {}) {
     const topIds = new Set(top.map(z => z.id));
     const bmById = {}; B.rows.forEach(z => { bmById[z.id] = z; });
     const word = z => (bmById[z.id] && bmById[z.id].atTarget) ? 'at target' : (z.breach ? 'needs attention' : z.hold.label.toLowerCase());
-    const li = z => ({ name: String(z.name).slice(0, 50), band: (z.band || '-').toUpperCase(), bandColour: TIER_COLOURS[z.band] || '#b7b7ba', word: word(z) });
+    const li = z => ({ name: String(z.name), band: (z.band || '-').toUpperCase(), bandColour: TIER_COLOURS[z.band] || '#b7b7ba', word: word(z) });
     ladBlocks.push({ type: 'twinPanels',
       left:  { title: 'Top 5 by size - worst first', rows: top.map(z => Object.assign(li(z), { both: chosenIds.has(z.id) })), empty: 'Nothing to rank yet.' },
       right: { title: 'Our chosen 5 - working on now', rows: chosen.map(z => Object.assign(li(z), { both: topIds.has(z.id) })), empty: 'Pick up to five with the star on the risk register - quick wins welcome.' },
@@ -945,7 +945,7 @@ export function buildBoardReport(state, opts = {}) {
   const ladderPage = ladBlocks.length ? {
     label: 'Risk ladder', section: 'riskLadder', blocks: [ mast,
       { type: 'titleBlock', kicker: 'The risk ladder',
-        headline: 'Every named risk on the scale, and the five in hand.',
+        headline: 'Every named risk on the scale, and what is putting us at risk today.',
         standfirst: 'Risk to the business from Critical down to Low. The dot on each risk carries the controls judgement - red none, amber partly, green in place.' },
       ...ladBlocks ],
   } : null;

@@ -15857,13 +15857,14 @@ function addRiskEntry(){
   if(_blockIfReadOnly()) return;
   if(!Array.isArray(S.riskProfile)) S.riskProfile = [];
   const entry = { id:'risk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
-    mode:'hs', category:'', area:'', pdca:'', energy:[], sif:'', controlLevel:'', reviewed:false, activity:'', hazard:'', personsAtRisk:[], harm:'', businessImpact:'',
+    mode:(_riskModeFilter==='ops'?'ops':'hs'), category:'', area:'', pdca:'', energy:[], sif:'', controlLevel:'', reviewed:false, activity:'', hazard:'', personsAtRisk:[], harm:'', businessImpact:'',
     impacts:{}, impactNotes:{}, controls:'',
     likelihood:'', severity:'', targetL:'', targetS:'',
     trend:'', actions:[], linked:[], furtherActions:'' };
   _stamp(entry, 'created');
   S.riskProfile.push(entry);
   _riskSel = entry.id; _riskSelTab = 'identify';   // select the new risk, straight onto the first editing tab
+  _riskModalOpen = true;                           // and open it in the modal, already speaking its kind's language
   _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };   // a filter must never hide the risk just added
   saveData();
   renderRiskProfile();
@@ -16072,7 +16073,8 @@ function gotoOpenActions(){
 // split view, clearing any filters that would hide it, and flash the panel.
 function _gotoRisk(id){
   _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };
-  _riskModeFilter='all'; _riskSearch='';
+  const _jr=(S.riskProfile||[]).find(x=>x.id===id);
+  _riskModeFilter=_jr?_riskMode(_jr):'hs'; _riskSearch='';
   _riskSel = id; _riskSelTab = 'summary'; _riskModalOpen = true;
   switchTab('risk');
   setTimeout(()=>{
@@ -19654,7 +19656,7 @@ function _rpDigestHTML(r){
 //    click opens the five editing tabs in a modal with prev/next; Esc or
 //    Done returns to the list exactly where it was. ONE visibility pipeline
 //    (_riskVisibleRows) feeds the table, the modal stepper and the counts. ──
-var _riskModalOpen=false, _riskModeFilter='all', _riskSearch='', _riskKeysBound=false;
+var _riskModalOpen=false, _riskModeFilter='hs', _riskSearch='', _riskKeysBound=false;
 function _riskVisibleRows(){
   const all=_riskDisplayOrder();
   return all.filter(r=>{
@@ -19690,7 +19692,7 @@ function _riskTableRowsHTML(){
       +'<td><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;white-space:nowrap;"><i style="width:9px;height:9px;border-radius:50%;background:'+cdot+';display:inline-block;"></i>'+cword+'</span></td>'
       +'</tr>'; }).join('');
 }
-function _riskOpenModal(id){ _riskSel=id; _riskSelTab='summary'; _riskModalOpen=true; const sec=document.getElementById('wfRegister'); if(sec&&!sec.open) sec.open=true; _keepScroll(renderRiskProfile); }
+function _riskOpenModal(id){ const _r=(S.riskProfile||[]).find(x=>x.id===id); if(_r) _riskModeFilter=_riskMode(_r); _riskSel=id; _riskSelTab='summary'; _riskModalOpen=true; const sec=document.getElementById('wfRegister'); if(sec&&!sec.open) sec.open=true; _keepScroll(renderRiskProfile); }
 function _riskCloseModal(){ _riskModalOpen=false; _keepScroll(renderRiskProfile); }
 function _riskModalStep(d){
   const rows=_riskVisibleRows(); if(!rows.length) return;
@@ -19889,9 +19891,10 @@ function renderRiskProfile(){
   const filteredNote = rows.length < all.length
     ? `<div class="no-print" style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Showing ${rows.length} of ${all.length} risks - <a href="#" onclick="clearRiskFilters();return false;">clear the filters</a> · click a row to open it</div>`
     : `<div class="no-print" style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">${rows.length} risk${rows.length!==1?'s':''} · click a row to open it - Esc brings you straight back</div>`;
-  const modeChips=[['all','All'],['hs','H&S'],['ops','Operational']].map(([k,l])=>`<button type="button" class="btn btn-xs no-print ${_riskModeFilter===k?'btn-primary':'btn-ghost'}" onclick="setRiskModeFilter('${k}')">${l}</button>`).join('');
-  const toolbar=`<div class="no-print" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-      <span style="font-size:12px;font-weight:600;color:var(--text-muted);">Show:</span>${modeChips}
+  const modeRadios=RISK_MODES.map(m=>`<label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:${_riskModeFilter===m.k?'700':'400'};color:${_riskModeFilter===m.k?m.colour:'var(--text)'};cursor:pointer;">
+      <input type="radio" name="riskKindPick" ${_riskModeFilter===m.k?'checked':''} onchange="setRiskModeFilter('${m.k}')" style="accent-color:${m.colour};width:15px;height:15px;cursor:pointer;">${esc(m.label)} risks</label>`).join('');
+  const toolbar=`<div class="no-print" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+      ${modeRadios}<span style="font-size:11px;color:var(--text-muted);">a new risk is added as the kind selected</span>
       <input type="text" value="${esc(_riskSearch)}" placeholder="Search risks…" oninput="setRiskSearch(this.value)" style="margin-left:auto;min-width:170px;font-size:12px;padding:6px 9px;border:1px solid var(--border);border-radius:7px;background:transparent;color:inherit;">
     </div>`;
   // Header wording follows the mode filter - H&S speaks hazards, operational

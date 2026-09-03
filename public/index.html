@@ -19854,6 +19854,13 @@ function renderRiskProfile(){
           <label class="field-label" style="margin:0;">${esc(_rt(r,'rating'))} ${rateHint}</label>
           <div class="rating-trio">
             ${ratingBox(r,'Inherent','rt-current','likelihood','severity')}
+          </div>
+          <div style="margin:4px 0 2px;">
+            <label class="field-label">Control table <span class="fl-hint" title="The controls this risk runs on - training, processes, physical measures - each owned and dated here. They stay on the risk and NEVER enter the action plan. Work someone must go and DO is raised on the Actions &amp; evidence tab.">(?)</span></label>
+            <div style="font-size:11.5px;color:var(--text-muted);margin:2px 0 8px;">These stay on the risk and never enter the action plan. Score the projection below once they are set.</div>
+            ${_riskActionsHTML(r,dis,'ctl')}
+          </div>
+          <div class="rating-trio">
             ${ratingBox(r,esc(_rt(r,'projected'))+' '+projHint,'','targetL','targetS')}
             <div class="rt-box"><div class="rt-title">Risk trend ${trendHint}</div><div class="rt-selects">${sel(r.id,'trend',r.trend,RISK_TREND)}</div></div>
           </div>
@@ -19864,10 +19871,7 @@ function renderRiskProfile(){
     const prov=_rpProvenanceBadge(r);
     return `
         <div style="margin:0 0 14px;">
-          <label class="field-label">Control table <span class="fl-hint" title="The controls this risk runs on - training, processes, physical measures - each owned and dated here. They stay on the risk and NEVER enter the action plan. Work someone must go and DO is raised separately below.">(?)</span></label>
-          <div style="font-size:11.5px;color:var(--text-muted);margin:2px 0 8px;">These stay on the risk and never enter the action plan.</div>
-          ${_riskActionsHTML(r,dis,'ctl')}
-          <label class="field-label" style="margin-top:16px;">Raised to the action plan <span class="fl-hint" title="Actions raised with the button below, exactly as on Legal duties: what needs doing, who owns it, by when. Every row here is on the client execution plan, linked back to this risk.">(?)</span></label>
+          <label class="field-label">Raised to the action plan <span class="fl-hint" title="Actions raised with the button below, exactly as on Legal duties: what needs doing, who owns it, by when. Every row here is on the client execution plan, linked back to this risk. The controls this risk runs on live on the Controls &amp; rating tab.">(?)</span></label>
           <div style="font-size:11.5px;color:var(--text-muted);margin:2px 0 8px;">Everything here is on the client execution plan, carrying this risk as its source.</div>
           ${_riskActionsHTML(r,dis,'plan')}
         </div>

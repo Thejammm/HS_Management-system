@@ -257,7 +257,7 @@
 .r-jny-counts b { font-size:13px; color:var(--r-ink); }
 .r-jny-loop { margin-top:9px; padding:6px 10px; border-left:3px solid #16A34A; background:rgba(22,163,74,.06); font-size:8.5px; color:var(--r-muted); }
 
-.r-lad-row { display:flex; align-items:stretch; gap:9px; }
+.r-lad-row { display:flex; align-items:stretch; gap:9px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 .r-lad-frame { flex:0 0 32px; position:relative; min-height:23px; display:block; }
 .r-lad-rail { position:absolute; left:5px; top:0; bottom:0; width:3.5px; display:block; }
 .r-lad-rail2 { left:auto; right:5px; }
@@ -265,11 +265,9 @@
 .r-lad-label { flex:0 0 138px; align-self:center; font-size:8px; font-weight:800; letter-spacing:.06em; }
 .r-lad-range { font-weight:600; font-style:normal; color:var(--r-muted); letter-spacing:0; }
 .r-lad-sub { display:block; font-weight:400; letter-spacing:0; font-size:7px; line-height:1.3; color:var(--r-muted); margin-top:1px; }
-.r-lad-chips { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; align-items:flex-start; align-self:center; padding:2px 0; }
-.r-lad-chip { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border:1px solid var(--r-hair); border-radius:10px; font-size:8.5px; font-weight:600; white-space:normal; overflow-wrap:anywhere; max-width:100%; }
-.r-lad-chip i { width:7px; height:7px; border-radius:50%; display:inline-block; }
-.r-lad-unc { border-color:#DC2626; background:rgba(220,38,38,.05); }
-.r-lad-n { flex:0 0 auto; align-self:center; font-size:8px; color:var(--r-muted); }
+.r-lad-chips { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; align-items:stretch; align-self:center; padding:2px 8px 2px 0; }
+.r-lad-line { display:flex; align-items:center; gap:5px; font-size:8.5px; font-weight:600; white-space:normal; overflow-wrap:anywhere; max-width:100%; padding:1px 0; }
+.r-lad-line i { width:6px; height:6px; border-radius:50%; display:inline-block; flex:0 0 auto; }
 .r-lad-key { display:flex; gap:14px; flex-wrap:wrap; font-size:8px; color:var(--r-muted); margin-top:5px; }
 .r-lad-key i { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:3px; }
 

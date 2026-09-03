@@ -297,12 +297,13 @@ export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note }) {
 // Named risks on the Critical-to-Low scale; the dot carries the controls
 // judgement (red none / amber partly / green in place), a tick = at target.
 export function riskLadder({ rungs, unrated }) {
-  const rows = rungs.map(r => `<div class="r-lad-row">
+  const WASH = { CRITICAL: "2E", HIGH: "24", MEDIUM: "1C", LOW: "14" };
+  const rows = rungs.map(r => { const wa = WASH[String(r.band).toUpperCase().replace(" (CONT.)", "")] || "1C";
+    return `<div class="r-lad-row" style="background:linear-gradient(100deg,${r.colour}${wa},${r.colour}08 62%,transparent);border-radius:4px;">
       <span class="r-lad-frame"><i class="r-lad-rail" style="background:${r.colour}55"></i><i class="r-lad-rail r-lad-rail2" style="background:${r.colour}55"></i><i class="r-lad-bar" style="background:${r.colour}"></i></span>
       <span class="r-lad-label"><b style="color:${r.colour}">${esc(String(r.band).toUpperCase())}</b><i class="r-lad-range"> · score ${esc(r.range || '')}</i><span class="r-lad-sub">${esc(r.sub || '')}</span></span>
-      <span class="r-lad-chips">${r.chips.length ? r.chips.map(c => `<span class="r-lad-chip${c.dot === '#DC2626' ? ' r-lad-unc' : ''}"><i style="background:${c.dot}"></i>${esc(c.name)}${c.tick ? ' &#10003;' : ''}</span>`).join('') : '<span class="r-footnote">none at this level</span>'}</span>
-      <span class="r-lad-n">${r.chips.length ? (r.chips.length + ' risk' + (r.chips.length !== 1 ? 's' : '')) : ''}</span>
-    </div>`).join('');
+      <span class="r-lad-chips">${r.chips.length ? r.chips.map(c => `<span class="r-lad-line"><i style="background:${c.dot}"></i>${esc(c.name)}${c.tick ? ' &#10003;' : ''}</span>`).join('') : '<span class="r-footnote">none at this level</span>'}</span>
+    </div>`; }).join('');
   const key = `<div class="r-lad-key"><span><i style="background:#DC2626"></i>uncontrolled</span><span><i style="background:#F59E0B"></i>partly controlled</span><span><i style="background:#16A34A"></i>controlled</span><span>&#10003; = at its planned target</span></div>`;
   return `<div class="r-lad">${rows || '<div class="r-footnote">No rated risks yet.</div>'}
     ${unrated && unrated.length ? `<div class="r-footnote">${unrated.length} risk${unrated.length !== 1 ? 's' : ''} not yet rated - ${unrated.map(esc).join(', ')}</div>` : ''}

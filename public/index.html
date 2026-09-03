@@ -14434,9 +14434,11 @@ const COCKPIT_WIDGETS = {
   boardLadder: { id:'boardLadder', label:'Risk ladder', group:'Board', render:x=>{
       const B=_boardModel();
       if(!B.total) return '<div class="ckx-panel"><h4>Risk ladder</h4><div class="ck-pending">No risks recorded yet.</div></div>';
+      // Plain lines, no borders (Simon: the pills looked infantile): the wash
+      // carries the level, the dot carries the controls judgement.
       const chip=z=>'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':(z.part?'Partly controlled':'Controlled'))+(z.atTarget?' \u00b7 at its planned target':'')+' - click to open" '
-        +'style="display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;max-width:100%;border:1.6px solid '+(z.unc?'#DC2626':'var(--border)')+';background:'+(z.unc?'#DC26260d':'var(--surface,#fff)')+';color:var(--text);">'
-        +'<span style="width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':'#16A34A'))+';"></span>'+esc(z.name)+(z.atTarget?' \u2713':'')+'</button>';
+        +'style="all:unset;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;max-width:100%;color:var(--text);padding:2px 0;">'
+        +'<span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':'#16A34A'))+';"></span>'+esc(z.name)+(z.atTarget?' \u2713':'')+'</button>';
       // A real ladder: the rails run unbroken down the left (tinted with each
       // band's colour, so the ladder itself grades red to green), the rung is
       // a solid bar between them, and an empty rung says so. Each band label
@@ -14449,9 +14451,12 @@ const COCKPIT_WIDGETS = {
         Low:'sensible precautions - never a breach on its own' };
       const _bnd=_riskCfg().bands;
       const RANGE={ Critical:_bnd.crit+'-25', High:_bnd.high+'-'+(_bnd.crit-1), Medium:_bnd.med+'-'+(_bnd.high-1), Low:'1-'+(_bnd.med-1) };
+      const WASH={ Critical:'2E', High:'24', Medium:'1C', Low:'14' };   // the wash cools down the ladder
       const rung=(band)=>{ const on=B.rows.filter(z=>z.sc.priority===band);
         const c=_RISK_PRIO_COLOR[band];
-        return '<div style="display:flex;align-items:stretch;gap:12px;">'
+        const w0='linear-gradient(100deg,'+c+WASH[band]+','+c+'08 62%,transparent)';
+        const w1='linear-gradient(100deg,'+c+'3D,'+c+'12 62%,transparent)';
+        return '<div style="display:flex;align-items:stretch;gap:12px;border-radius:4px;background:'+w0+';transition:background .15s;" onmouseover="this.style.background=\''+w1+'\'" onmouseout="this.style.background=\''+w0+'\'">'
           +'<div style="flex:0 0 56px;position:relative;min-height:56px;">'
             +'<div style="position:absolute;left:9px;top:0;bottom:0;width:5px;background:'+c+'55;"></div>'
             +'<div style="position:absolute;right:9px;top:0;bottom:0;width:5px;background:'+c+'55;"></div>'
@@ -14462,9 +14467,8 @@ const COCKPIT_WIDGETS = {
               +' <span style="font-weight:600;color:var(--text-muted);letter-spacing:0;">\u00b7 score '+RANGE[band]+'</span></div>'
             +'<div style="font-size:10.5px;color:var(--text-muted);line-height:1.35;margin-top:1px;">'+MEAN[band]+'</div>'
           +'</div>'
-          +'<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;flex:1;min-width:0;align-self:center;padding:8px 0;">'
-            +(on.length?on.map(chip).join(''):'<span style="font-size:11.5px;color:var(--text-muted);">none at this level</span>')+'</div>'
-          +'<div style="flex:0 0 auto;align-self:center;font-size:11px;color:var(--text-muted);">'+(on.length?(on.length+' risk'+(on.length!==1?'s':'')):'')+'</div></div>'; };
+          +'<div style="display:flex;flex-direction:column;gap:5px;align-items:stretch;flex:1;min-width:0;align-self:center;padding:8px 14px 8px 0;">'
+            +(on.length?on.map(chip).join(''):'<span style="font-size:11.5px;color:var(--text-muted);">none at this level</span>')+'</div></div>'; };
       const unrated=B.rows.filter(z=>!z.sc.priority);
       return '<div class="ckx-panel"><h4>Risk ladder - what kind of risks are they?</h4>'
         +'<div>'+['Critical','High','Medium','Low'].map(rung).join('')+'</div>'

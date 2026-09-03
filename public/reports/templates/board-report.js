@@ -1,6 +1,6 @@
 // Board report template - Signal (data-forward) and Brief (editorial) formats.
 // Both build the SAME content; format changes the skin class only.
-import { deriveBoard, deriveBoardExtras, boardModelOf, noneOrCount, countPhrase, hasHave, TIER_COLOURS, TIER_ORDER, HOLD_STATES, HOLD_ORDER, docFor, producerOf , trainingRowsOf } from '../derive.js';
+import { deriveBoard, deriveBoardExtras, boardModelOf, bandsFrom, noneOrCount, countPhrase, hasHave, TIER_COLOURS, TIER_ORDER, HOLD_STATES, HOLD_ORDER, docFor, producerOf , trainingRowsOf } from '../derive.js';
 import { holdWorstFirst } from '../app-contract.js';
 import { esc, tierWord, planBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
@@ -923,11 +923,35 @@ export function buildBoardReport(state, opts = {}) {
       ...picBlocks ],
   } : null;
   const ladBlocks = [];
+  const fiveBlocks = [];
   if (!hide.riskLadder) {
-    ladBlocks.push({ type: 'riskLadder',
-      rungs: TIER_ORDER.map(band => ({ band, colour: TIER_COLOURS[band],
-        chips: B.rows.filter(z => z.tier === band).map(z => ({ name: z.name, dot: z.unc ? '#DC2626' : (z.part ? '#F59E0B' : '#16A34A'), tick: z.atTarget })) })),
-      unrated: B.rows.filter(z => !z.tier).map(z => z.name) });
+    // Each band label explains what the level DEMANDS - the same rule the
+    // breach logic enforces - and the tenant's own score range.
+    const LMEAN = { Critical: 'must reach 3 · Managed or better - first call on time and money', High: 'must reach 3 · Managed or better - never run on acceptance alone', Medium: 'must never sit at 1 · Uncontrolled', Low: 'sensible precautions - never a breach on its own' };
+    const lb = bandsFrom(state);
+    const LRANGE = { Critical: lb.crit + '-25', High: lb.high + '-' + (lb.crit - 1), Medium: lb.med + '-' + (lb.high - 1), Low: '1-' + (lb.med - 1) };
+    // One line per risk means a big register cannot fit one page: pack at
+    // most LAD_LINES chip-lines per slice, a band continuing across slices.
+    const LAD_LINES = 22;
+    const allRungs = TIER_ORDER.map(band => ({ band, colour: TIER_COLOURS[band], sub: LMEAN[band], range: LRANGE[band],
+      chips: B.rows.filter(z => z.tier === band).map(z => ({ name: z.name, dot: z.unc ? '#DC2626' : (z.part ? '#F59E0B' : '#16A34A'), tick: z.atTarget })) }));
+    const ladSlices = []; let _cur = []; let _used = 0;
+    const _pushSlice = () => { if (_cur.length) { ladSlices.push(_cur); _cur = []; _used = 0; } };
+    allRungs.forEach(r => {
+      let chips = r.chips.slice(); let first = true;
+      do {
+        if (_used >= LAD_LINES) _pushSlice();
+        const take = chips.splice(0, Math.max(1, Math.min(chips.length, LAD_LINES - _used)));
+        _cur.push({ band: r.band + (first ? '' : ' (cont.)'), colour: r.colour, sub: first ? r.sub : '', range: first ? r.range : '', chips: take });
+        _used += Math.max(1, take.length);
+        first = false;
+      } while (chips.length);
+    });
+    _pushSlice();
+    const ladUnrated = B.rows.filter(z => !z.tier).map(z => z.name);
+    ladSlices.forEach((sl, i) => {
+      ladBlocks.push({ type: 'riskLadder', rungs: sl, unrated: i === ladSlices.length - 1 ? ladUnrated : [] });
+    });
   }
   if (!hide.fiveInHand) {
     const chosenIds = new Set(((state && state.riskProfile) || []).filter(r => r && r.chosen).map(r => r.id));
@@ -937,17 +961,24 @@ export function buildBoardReport(state, opts = {}) {
     const bmById = {}; B.rows.forEach(z => { bmById[z.id] = z; });
     const word = z => (bmById[z.id] && bmById[z.id].atTarget) ? 'at target' : (z.breach ? 'needs attention' : z.hold.label.toLowerCase());
     const li = z => ({ name: String(z.name), band: (z.band || '-').toUpperCase(), bandColour: TIER_COLOURS[z.band] || '#b7b7ba', word: word(z) });
-    ladBlocks.push({ type: 'twinPanels',
+    fiveBlocks.push({ type: 'twinPanels',
       left:  { title: 'Top 5 by size - worst first', rows: top.map(z => Object.assign(li(z), { both: chosenIds.has(z.id) })), empty: 'Nothing to rank yet.' },
       right: { title: 'Our chosen 5 - working on now', rows: chosen.map(z => Object.assign(li(z), { both: topIds.has(z.id) })), empty: 'Pick up to five with the star on the risk register - quick wins welcome.' },
       footnote: '● = on both lists. Left is the app’s ranking (worst band, weakest control); right is the five the business chose to work on now - they may or may not be the same.' });
   }
-  const ladderPage = ladBlocks.length ? {
-    label: 'Risk ladder', section: 'riskLadder', blocks: [ mast,
-      { type: 'titleBlock', kicker: 'The risk ladder',
-        headline: 'Every named risk on the scale, and what is putting us at risk today.',
-        standfirst: 'Risk to the business from Critical down to Low. The dot on each risk carries the controls judgement - red none, amber partly, green in place.' },
-      ...ladBlocks ],
+  const ladderPages = ladBlocks.map((blk, i) => ({
+    label: 'Risk ladder' + (ladBlocks.length > 1 ? (' · part ' + (i + 1) + ' of ' + ladBlocks.length) : ''), section: 'riskLadder', blocks: [ mast,
+      { type: 'titleBlock', kicker: 'The risk ladder' + (ladBlocks.length > 1 ? (' \u00b7 part ' + (i + 1) + ' of ' + ladBlocks.length) : ''),
+        headline: i === 0 ? 'Every named risk on the scale.' : 'The ladder, continued.',
+        standfirst: i === 0 ? 'Risk to the business from Critical down to Low, one line per risk. The dot carries the controls judgement - red none, amber partly, green in place - and each level says what it demands.' : undefined },
+      blk ],
+  }));
+  const fivePage = fiveBlocks.length ? {
+    label: 'Putting us at risk today', section: 'fiveInHand', blocks: [ mast,
+      { type: 'titleBlock', kicker: 'Putting us at risk today',
+        headline: 'The worst five, beside the chosen five.',
+        standfirst: 'Left is the app’s ranking - worst band, weakest control. Right is the five the business chose to work on now; they may or may not be the same.' },
+      ...fiveBlocks ],
   } : null;
 
   // The running order follows the picker: summary, the risk picture, dashboard,
@@ -955,7 +986,8 @@ export function buildBoardReport(state, opts = {}) {
   // environment & CDM, readiness, delivery, sign-off.
   const pages = [page1];
   if (picturePage) pages.push(picturePage);
-  if (ladderPage) pages.push(ladderPage);
+  pages.push(...ladderPages);
+  if (fivePage) pages.push(fivePage);
   pages.push(...attentionPages);
   if (dashboardPage) pages.push(dashboardPage);
   if (monitoringPage) pages.push(monitoringPage);

@@ -76,9 +76,10 @@ test('empty profile renders a valid report that says so', () => {
   // A deliberate tripwire: adding a board section changes this. If that was
   // intended, update the number - it is here so page growth is never silent.
   // 14 since the Actions page split in two (outstanding / high-risk); 16 since
-  // the director's risk picture pages (picture/journey + ladder/five) joined
-  // straight after the executive summary, mirroring the cockpit's Board zone.
-  assert.equal(r.pages.length, 16);
+  // the director's risk picture pages joined straight after the executive
+  // summary; 17 since the one-risk-per-line ladder took its own page and the
+  // five-lists (Putting us at risk today) took theirs.
+  assert.equal(r.pages.length, 17);
   const html = reportHTML(r);
   assert.match(html, /not yet complete enough/i);
   assert.doesNotMatch(html, /No have no/);
@@ -87,7 +88,7 @@ test('empty profile renders a valid report that says so', () => {
 
 test('typical profile paginates, and the last footer agrees with the total', () => {
   const r = buildReport(fixture('typical'), 'board-report', OPTS);
-  assert.equal(r.pages.length, 16);   // tripwire - see the note above
+  assert.equal(r.pages.length, 17);   // tripwire - see the note above
   const html = reportHTML(r);
   assert.match(html, /can still kill or maim/i);
   // The invariant that actually matters, derived so it cannot go stale: the
@@ -115,7 +116,7 @@ test('the risk picture pages carry the cockpit sections and obey their toggles',
   off.reportPrefs = { 'board-report': { hidden: { riskPicture: true, riskJourney: true, riskLadder: true, fiveInHand: true } } };
   const r2 = buildReport(off, 'board-report', OPTS);
   const html2 = reportHTML(r2);
-  assert.equal(r2.pages.length, r.pages.length - 2);
+  assert.equal(r2.pages.length, r.pages.length - 3);
   assert.doesNotMatch(html2, /The same picture the cockpit leads with/);
   assert.doesNotMatch(html2, /Our chosen 5 - working on now/);
 });

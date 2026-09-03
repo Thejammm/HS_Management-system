@@ -299,7 +299,7 @@ export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note }) {
 export function riskLadder({ rungs, unrated }) {
   const rows = rungs.map(r => `<div class="r-lad-row">
       <span class="r-lad-frame"><i class="r-lad-rail" style="background:${r.colour}55"></i><i class="r-lad-rail r-lad-rail2" style="background:${r.colour}55"></i><i class="r-lad-bar" style="background:${r.colour}"></i></span>
-      <span class="r-lad-band" style="color:${r.colour}">${esc(String(r.band).toUpperCase())}</span>
+      <span class="r-lad-label"><b style="color:${r.colour}">${esc(String(r.band).toUpperCase())}</b><i class="r-lad-range"> · score ${esc(r.range || '')}</i><span class="r-lad-sub">${esc(r.sub || '')}</span></span>
       <span class="r-lad-chips">${r.chips.length ? r.chips.map(c => `<span class="r-lad-chip${c.dot === '#DC2626' ? ' r-lad-unc' : ''}"><i style="background:${c.dot}"></i>${esc(c.name)}${c.tick ? ' &#10003;' : ''}</span>`).join('') : '<span class="r-footnote">none at this level</span>'}</span>
       <span class="r-lad-n">${r.chips.length ? (r.chips.length + ' risk' + (r.chips.length !== 1 ? 's' : '')) : ''}</span>
     </div>`).join('');

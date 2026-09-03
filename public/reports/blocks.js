@@ -297,11 +297,11 @@ export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note }) {
 // Named risks on the Critical-to-Low scale; the dot carries the controls
 // judgement (red none / amber partly / green in place), a tick = at target.
 export function riskLadder({ rungs, unrated }) {
-  const rows = rungs.filter(r => r.chips.length).map(r => `<div class="r-lad-row">
+  const rows = rungs.map(r => `<div class="r-lad-row">
+      <span class="r-lad-frame"><i class="r-lad-rail" style="background:${r.colour}55"></i><i class="r-lad-rail r-lad-rail2" style="background:${r.colour}55"></i><i class="r-lad-bar" style="background:${r.colour}"></i></span>
       <span class="r-lad-band" style="color:${r.colour}">${esc(String(r.band).toUpperCase())}</span>
-      <span class="r-lad-rung" style="background:${r.colour}"></span>
-      <span class="r-lad-chips">${r.chips.map(c => `<span class="r-lad-chip${c.dot === '#DC2626' ? ' r-lad-unc' : ''}"><i style="background:${c.dot}"></i>${esc(c.name)}${c.tick ? ' &#10003;' : ''}</span>`).join('')}</span>
-      <span class="r-lad-n">${r.chips.length} risk${r.chips.length !== 1 ? 's' : ''}</span>
+      <span class="r-lad-chips">${r.chips.length ? r.chips.map(c => `<span class="r-lad-chip${c.dot === '#DC2626' ? ' r-lad-unc' : ''}"><i style="background:${c.dot}"></i>${esc(c.name)}${c.tick ? ' &#10003;' : ''}</span>`).join('') : '<span class="r-footnote">none at this level</span>'}</span>
+      <span class="r-lad-n">${r.chips.length ? (r.chips.length + ' risk' + (r.chips.length !== 1 ? 's' : '')) : ''}</span>
     </div>`).join('');
   const key = `<div class="r-lad-key"><span><i style="background:#DC2626"></i>uncontrolled</span><span><i style="background:#F59E0B"></i>partly controlled</span><span><i style="background:#16A34A"></i>controlled</span><span>&#10003; = at its planned target</span></div>`;
   return `<div class="r-lad">${rows || '<div class="r-footnote">No rated risks yet.</div>'}

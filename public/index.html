@@ -14405,16 +14405,25 @@ const COCKPIT_WIDGETS = {
       const chip=z=>'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':(z.part?'Partly controlled':'Controlled'))+(z.atTarget?' \u00b7 at its planned target':'')+' - click to open" '
         +'style="display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;max-width:100%;border:1.6px solid '+(z.unc?'#DC2626':'var(--border)')+';background:'+(z.unc?'#DC26260d':'var(--surface,#fff)')+';color:var(--text);">'
         +'<span style="width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':'#16A34A'))+';"></span>'+esc(z.name)+(z.atTarget?' \u2713':'')+'</button>';
-      const rung=(band)=>{ const on=B.rows.filter(z=>z.sc.priority===band); if(!on.length) return '';
+      // A real ladder: the rails run unbroken down the left (tinted with each
+      // band's colour, so the ladder itself grades red to green), the rung is
+      // a solid bar between them, and an empty rung says so - nothing at
+      // Critical is news a director should see, not a missing row.
+      const rung=(band)=>{ const on=B.rows.filter(z=>z.sc.priority===band);
         const c=_RISK_PRIO_COLOR[band];
-        return '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--border);">'
-          +'<div style="flex:0 0 84px;text-align:right;font-size:11px;font-weight:800;color:'+c+';">'+band.toUpperCase()+'</div>'
-          +'<div style="flex:0 0 24px;height:5px;border-radius:3px;background:'+c+';"></div>'
-          +'<div style="display:flex;gap:8px;flex-wrap:wrap;flex:1;">'+on.map(chip).join('')+'</div>'
-          +'<div style="flex:0 0 auto;font-size:11px;color:var(--text-muted);">'+on.length+' risk'+(on.length!==1?'s':'')+'</div></div>'; };
+        return '<div style="display:flex;align-items:stretch;gap:12px;">'
+          +'<div style="flex:0 0 56px;position:relative;min-height:46px;">'
+            +'<div style="position:absolute;left:9px;top:0;bottom:0;width:5px;background:'+c+'55;"></div>'
+            +'<div style="position:absolute;right:9px;top:0;bottom:0;width:5px;background:'+c+'55;"></div>'
+            +'<div style="position:absolute;left:9px;right:9px;top:50%;transform:translateY(-50%);height:10px;border-radius:5px;background:'+c+';box-shadow:0 1px 2px rgba(0,0,0,.18);"></div>'
+          +'</div>'
+          +'<div style="flex:0 0 74px;align-self:center;font-size:11px;font-weight:800;letter-spacing:.03em;color:'+c+';">'+band.toUpperCase()+'</div>'
+          +'<div style="display:flex;gap:8px;flex-wrap:wrap;flex:1;align-self:center;padding:8px 0;">'
+            +(on.length?on.map(chip).join(''):'<span style="font-size:11.5px;color:var(--text-muted);">none at this level</span>')+'</div>'
+          +'<div style="flex:0 0 auto;align-self:center;font-size:11px;color:var(--text-muted);">'+(on.length?(on.length+' risk'+(on.length!==1?'s':'')):'')+'</div></div>'; };
       const unrated=B.rows.filter(z=>!z.sc.priority);
       return '<div class="ckx-panel"><h4>Risk ladder - what kind of risks are they?</h4>'
-        +['Critical','High','Medium','Low'].map(rung).join('').replace('border-top:1px solid var(--border);','border-top:0;')
+        +'<div>'+['Critical','High','Medium','Low'].map(rung).join('')+'</div>'
         +(unrated.length?('<div style="font-size:11.5px;color:var(--text-muted);padding:8px 0 0;border-top:1px solid var(--border);margin-top:2px;">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name)).join(', ')+'</div>'):'')
         +'<div style="display:flex;gap:18px;font-size:11.5px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;">'
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#DC2626;margin-right:5px;"></span>uncontrolled</span>'

@@ -926,8 +926,8 @@ export function buildBoardReport(state, opts = {}) {
   if (!hide.riskLadder) {
     ladBlocks.push({ type: 'riskLadder',
       rungs: TIER_ORDER.map(band => ({ band, colour: TIER_COLOURS[band],
-        chips: B.rows.filter(z => z.tier === band).map(z => ({ name: z.name.slice(0, 44), dot: z.unc ? '#DC2626' : (z.part ? '#F59E0B' : '#16A34A'), tick: z.atTarget })) })),
-      unrated: B.rows.filter(z => !z.tier).map(z => z.name.slice(0, 40)) });
+        chips: B.rows.filter(z => z.tier === band).map(z => ({ name: z.name, dot: z.unc ? '#DC2626' : (z.part ? '#F59E0B' : '#16A34A'), tick: z.atTarget })) })),
+      unrated: B.rows.filter(z => !z.tier).map(z => z.name) });
   }
   if (!hide.fiveInHand) {
     const chosenIds = new Set(((state && state.riskProfile) || []).filter(r => r && r.chosen).map(r => r.id));

@@ -14403,8 +14403,8 @@ const COCKPIT_WIDGETS = {
       const B=_boardModel();
       if(!B.total) return '<div class="ckx-panel"><h4>Risk ladder</h4><div class="ck-pending">No risks recorded yet.</div></div>';
       const chip=z=>'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':(z.part?'Partly controlled':'Controlled'))+(z.atTarget?' \u00b7 at its planned target':'')+' - click to open" '
-        +'style="display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;border:1.6px solid '+(z.unc?'#DC2626':'var(--border)')+';background:'+(z.unc?'#DC26260d':'var(--surface,#fff)')+';color:var(--text);">'
-        +'<span style="width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':'#16A34A'))+';"></span>'+esc(z.name.slice(0,44))+(z.atTarget?' \u2713':'')+'</button>';
+        +'style="display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;max-width:100%;border:1.6px solid '+(z.unc?'#DC2626':'var(--border)')+';background:'+(z.unc?'#DC26260d':'var(--surface,#fff)')+';color:var(--text);">'
+        +'<span style="width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':'#16A34A'))+';"></span>'+esc(z.name)+(z.atTarget?' \u2713':'')+'</button>';
       const rung=(band)=>{ const on=B.rows.filter(z=>z.sc.priority===band); if(!on.length) return '';
         const c=_RISK_PRIO_COLOR[band];
         return '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--border);">'
@@ -14415,7 +14415,7 @@ const COCKPIT_WIDGETS = {
       const unrated=B.rows.filter(z=>!z.sc.priority);
       return '<div class="ckx-panel"><h4>Risk ladder - what kind of risks are they?</h4>'
         +['Critical','High','Medium','Low'].map(rung).join('').replace('border-top:1px solid var(--border);','border-top:0;')
-        +(unrated.length?('<div style="font-size:11.5px;color:var(--text-muted);padding:8px 0 0;border-top:1px solid var(--border);margin-top:2px;">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name.slice(0,40))).join(', ')+'</div>'):'')
+        +(unrated.length?('<div style="font-size:11.5px;color:var(--text-muted);padding:8px 0 0;border-top:1px solid var(--border);margin-top:2px;">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name)).join(', ')+'</div>'):'')
         +'<div style="display:flex;gap:18px;font-size:11.5px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;">'
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#DC2626;margin-right:5px;"></span>uncontrolled</span>'
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#F59E0B;margin-right:5px;"></span>partly controlled</span>'

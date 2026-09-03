@@ -3458,22 +3458,24 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </details>
 
-      <!-- Analysis - the deep views, on demand: risks by hazard type, the SIF
-           register and energy analysis, and the consultant judgement. Opened
-           by the Analysis button; the register page stays a clean snapshot. -->
+      <!-- 2 · Consultant judgement - back on the page below the register
+           (Simon: vital). The Analysis modal keeps the review views. -->
+      <details class="coll wf-sec" id="wfMaturity">
+        <summary><h3>Consultant judgement - the six HSG65 areas</h3><span class="coll-meta">Weak &middot; Developing &middot; Adequate &middot; Strong - replaces the old maturity score</span></summary>
+        <div class="coll-body"><div id="riskMaturity"></div></div>
+      </details>
+
+      <!-- Analysis - the deep views on demand: risks by hazard type and the
+           SIF register / energy analysis. Opened by the Analysis button. -->
       <div id="riskAnalysisOverlay" class="no-print" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9990;align-items:flex-start;justify-content:center;padding:24px;overflow:auto;" onclick="if(event.target===this)closeRiskAnalysis()">
         <div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:1080px;width:100%;box-shadow:0 18px 60px rgba(0,0,0,.35);padding:16px 22px 20px;margin:auto 0;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
             <h3 style="margin:0;font-size:16px;">Analysis - the deep views</h3>
-            <span style="font-size:12px;color:var(--text-muted);">hazard types &middot; SIF register &middot; consultant judgement</span>
+            <span style="font-size:12px;color:var(--text-muted);">risks by hazard type &middot; SIF register &middot; energy analysis</span>
             <button class="btn btn-ghost btn-sm no-print" style="margin-left:auto;" onclick="closeRiskAnalysis()" title="Close (Esc)">&#10005; Close</button>
           </div>
           <div id="riskReviewSummary"></div>
           <div id="riskReviewAnalysis"></div>
-          <details class="coll wf-sec" id="wfMaturity" open>
-            <summary><h3>Consultant judgement - the six HSG65 areas</h3><span class="coll-meta">Weak &middot; Developing &middot; Adequate &middot; Strong - replaces the old maturity score</span></summary>
-            <div class="coll-body"><div id="riskMaturity"></div></div>
-          </details>
         </div>
       </div>
     </div>
@@ -15628,6 +15630,16 @@ function _refreshActionViews(){
 }
 // The Client execution plan tab - RAG-coded, this-month focus + full year.
 var _execRowOpen={};
+// The drill-in answers Simon's question first - what exactly do I need to do,
+// and where did it come from - before the activity log.
+function _epWhatHTML(a){
+  let ctx='';
+  try{ if(a.ref && a.ref.t==='risk'){ const r=(S.riskProfile||[]).find(x=>x.id===a.ref.a); if(r&&r.controls) ctx=' \u00b7 current controls: '+String(r.controls).slice(0,140); } }catch(e){}
+  return '<div style="border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:9px 12px;margin:4px 0 8px;">'
+    +'<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:3px;">What to do</div>'
+    +'<div style="font-size:13px;font-weight:600;">'+esc(a.desc||'(no description yet - open the source and write it)')+'</div>'
+    +'<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">From: '+esc(a.source)+(a.sourceLabel?(' \u00b7 '+esc(a.sourceLabel)):'')+(a.priority?(' \u00b7 priority '+esc(a.priority)):'')+esc(ctx)+'</div></div>';
+}
 function toggleExecRow(rk){ _execRowOpen[rk]=!_execRowOpen[rk]; renderExecPlan(); }
 // ── AutoFilter for the plan - same engine, same conventions as the CAS tab.
 //    View state only, never saved. ──
@@ -15690,7 +15702,7 @@ function renderExecPlan(){
     const resTip=closed?((a.status==='Accepted'?'Risk accepted':'Completed')+(a.resolvedDate?(' '+fmtDate(a.resolvedDate)):'')+(a.resolvedBy?(' by '+a.resolvedBy):'')):'';
     return `<tr style="border-top:1px solid var(--border);">
       <td><span title="${a.rag==='red'?'Overdue':a.rag==='amber'?'Due this month / needs a date':a.rag==='grey'?'Risk accepted':'On track'}" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c};vertical-align:middle;"></span></td>
-      <td class="cas-req" style="font-weight:600;">${esc(a.desc||'(no description yet - add it in the source section)')}</td>
+      <td class="cas-req" style="font-weight:600;cursor:pointer;" onclick="toggleExecRow('${rk}')" title="Click to see exactly what to do, where it came from, and the activity log">${esc(a.desc||'(no description yet - add it in the source section)')}</td>
       <td title="${esc(a.source)}${a.sourceLabel?(' · '+esc(a.sourceLabel)):''}"><span class="badge badge-muted">${esc(a.source)}</span></td>
       <td title="${esc(a.owner||'')}">${esc(a.owner||'-')}</td>
       <td>${esc(a.priority||'-')}</td>
@@ -15700,7 +15712,7 @@ function renderExecPlan(){
       <td class="ep-act">
         <button type="button" class="no-print" onclick="toggleExecRow('${rk}')" title="${opn?'Hide the activity log':'Activity log and notes'+(lc?(' ('+lc+')'):'')}" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:12px;font-weight:700;padding:0 2px;">${opn?'▾':'▸'}${lc?lc:''}</button>${closed?evChip(a):''}${(closed && !dis && _isConsultantish())?`<button type="button" class="no-print" onclick="deleteExecAction('${rk}')" title="Remove this completed action - step 1 of 2: it moves to your consultant-only Deleted actions area; 'Delete from app' there removes it permanently" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:20px;height:20px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;">✕</button>`:''}
       </td>
-    </tr>${opn?`<tr><td></td><td colspan="8" style="white-space:normal;overflow:visible;">${resTip?`<div style="font-size:12px;color:#16A34A;font-weight:600;margin:2px 0 5px;">${esc(resTip)}</div>`:''}${_actionLogPanelHTML(a)}</td></tr>`:''}`;
+    </tr>${opn?`<tr><td></td><td colspan="8" style="white-space:normal;overflow:visible;">${resTip?`<div style="font-size:12px;color:#16A34A;font-weight:600;margin:2px 0 5px;">${esc(resTip)}</div>`:''}${_epWhatHTML(a)}${_actionLogPanelHTML(a)}</td></tr>`:''}`;
   };
   // The same colgroup on every list, so every column lines up everywhere.
   const epTable=(list)=>list.length?`<div style="overflow-x:auto;"><table class="cas-grid ep-grid">
@@ -16532,7 +16544,7 @@ function _complScored(RD){
   sig.push(_complSignal(true,risks.filter(r=>!r.reviewed).length,'risks not yet reviewed and agreed','Risk profile',"switchTab('risk')"));
   sig.push(_complSignal(true,risks.filter(r=>!r.controlLevel).length,'risks without a best-control-level judgement','Risk profile',"switchTab('risk')"));
   sig.push(_complSignal(true,risks.filter(r=>!RISK_IMPACT_DIMS.some(d=>parseInt((r.impacts||{})[d.k],10)>0)).length,'risks without business-impact ratings','Risk profile',"switchTab('risk')"));
-  sig.push(_complSignal(true,MATURITY_ORDER.filter(id=>!((_judgeState()[id]||{}).level)).length,'HSG65 areas without a consultant judgement','Judge areas',"switchTab('risk'); setTimeout(()=>{ openRiskAnalysis(); const el=document.getElementById('wfMaturity'); if(el){ el.open=true; el.scrollIntoView({behavior:'smooth'}); } },350)"));
+  sig.push(_complSignal(true,MATURITY_ORDER.filter(id=>!((_judgeState()[id]||{}).level)).length,'HSG65 areas without a consultant judgement','Judge areas',"switchTab('risk'); setTimeout(()=>{ const el=document.getElementById('wfMaturity'); if(el){ el.open=true; el.scrollIntoView({behavior:'smooth'}); } },350)"));
   sig.push(_complSignal(true,RD?RD.actNoOwner:0,'actions without an owner','Execution plan',"switchTab('execplan')"));
   sig.push(_complSignal(true,RD?RD.actNoDate:0,'actions without a target date','Execution plan',"switchTab('execplan')"));
   let reqPend=0; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ if(!it.reviewed) reqPend++; }));
@@ -16932,7 +16944,7 @@ function _riskActionsHTML(r, dis){
   }).join('');
   return `<table class="act-table"><thead><tr><th>Action</th><th>Owner</th><th>Target date</th><th>Status</th><th>Priority</th>${dis?'':'<th></th>'}</tr></thead>
     <tbody>${body || `<tr><td colspan="${dis?5:6}" style="color:var(--text-muted);">No actions yet.</td></tr>`}</tbody></table>
-    ${dis?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-outline btn-xs no-print" onclick="addRiskAction('${r.id}')">＋ Add action</button>${_riskPlanState(r).k==='accepted'?'':`<button class="btn btn-ghost btn-xs no-print" title="If the current controls are sufficient and no further action is justified, formally accept this risk - recorded with who and why on the acceptance register" onclick="openAcceptRisk('${r.id}')">≈ Accept this risk</button>`}</div>`}`;
+    ${dis?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">${_riskRaisePillHTML(r)}${_riskPlanState(r).k==='accepted'?'':`<button class="btn btn-ghost btn-xs no-print" title="If the current controls are sufficient and no further action is justified, formally accept this risk - recorded with who and why on the acceptance register" onclick="openAcceptRisk('${r.id}')">≈ Accept this risk</button>`}</div>`}`;
 }
 // ── Formal risk acceptance: the honest route when the current controls are
 //    sufficient. Records who and why as a terminal Accepted action, so it
@@ -19744,7 +19756,7 @@ function renderRiskProfile(){
   // The four editing tabs reuse the exact field blocks the old long card had,
   // grouped so no tab is more than about a screen tall.
   const tabBody = (r) => {
-    if(_riskSelTab==='summary') return _rpDigestHTML(r);
+    if(_riskSelTab==='summary') return _rpDigestHTML(r) + (dis?'':('<div class="no-print" style="margin-top:12px;">'+_riskRaisePillHTML(r)+'</div>'));
     if(_riskSelTab==='identify') return `
         <div class="field-grid" style="margin-bottom:12px;">
           ${fg(_rt(r,'category'), sel(r.id,'category',r.category,_catOpts(r.category, r)))}
@@ -21523,19 +21535,74 @@ function toggleReqReviewed(sectionId, itemId){
   else { it.reviewedDate=''; it.reviewedBy=''; }
   _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
 }
+// ── RAISE ACTION, one pattern everywhere (Simon, 2026-09-03): a proper box
+//    asks "What action is needed?", the text lands word for word in the
+//    client execution plan, and the pill turns green. Legal duties and the
+//    risk profile both use it - no more blank rows, no browser prompt. ──
+var _raiseBoxCb=null;
+function openRaiseActionBox(opts){
+  opts=opts||{};
+  const old=document.getElementById('raiseActionOverlay'); if(old) old.remove();
+  _raiseBoxCb=opts.onSave||null;
+  const ov=document.createElement('div'); ov.id='raiseActionOverlay'; ov.className='no-print';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99997;display:flex;align-items:center;justify-content:center;padding:18px;';
+  ov.innerHTML='<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:560px;width:100%;box-shadow:0 18px 60px rgba(0,0,0,.35);">'
+    +'<div style="padding:14px 18px;border-bottom:1.5px solid var(--border);">'
+      +'<div style="font-weight:800;font-size:15px;">What action is needed?</div>'
+      +'<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">'+esc(opts.source||'')+' \u00b7 it appears word for word in the client execution plan</div>'
+    +'</div>'
+    +'<div style="padding:14px 18px;">'
+      +'<textarea id="raiseActionText" rows="3" placeholder="Write it as an instruction - e.g. Commission a fire risk assessment for the office" style="width:100%;font-size:13.5px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:transparent;color:inherit;resize:vertical;box-sizing:border-box;"></textarea>'
+    +'</div>'
+    +'<div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;">'
+      +'<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'raiseActionOverlay\').remove()">Cancel</button>'
+      +'<button class="btn btn-primary btn-sm" onclick="_raiseActionSave()">Add to the plan</button>'
+    +'</div></div>';
+  ov.addEventListener('click',function(e){ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+  setTimeout(function(){ const t=document.getElementById('raiseActionText'); if(t) t.focus(); },60);
+}
+function _raiseActionSave(){
+  const t=document.getElementById('raiseActionText');
+  const v=t?String(t.value).trim():'';
+  if(!v){ showToast('Write what needs doing first','error'); return; }
+  const ov=document.getElementById('raiseActionOverlay'); if(ov) ov.remove();
+  const cb=_raiseBoxCb; _raiseBoxCb=null;
+  if(typeof cb==='function') cb(v);
+}
+// The risk profile's raise: writes a COMPLETE, described action into the
+// risk's own plan - which already feeds the execution plan, the journey bars
+// and the hold state. The granular grid stays for working the detail.
+function raiseRiskAction(id){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
+  openRaiseActionBox({ source:(_riskMode(r)==='ops'?'Operational risk':'Risk profile')+' \u00b7 '+String(r.activity||r.hazard||'this risk').slice(0,60), onSave:function(desc){
+    if(!Array.isArray(r.actions)) r.actions=[];
+    const a={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:desc, owner:'', due:'', status:'Not started', priority:_suggestPriority(r) };
+    _stamp(a,'created'); r.actions.push(a);
+    r.raised=(r.raised||0)+1;
+    _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
+    try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
+    showToast('\u2713 Action added to the plan - set an owner and target date','success');
+  }});
+}
+function _riskRaisePillHTML(r){
+  if(_roLocked()) return '';
+  return '<button class="btn btn-outline btn-xs no-print'+(r.raised?' btn-raised':'')+'" onclick="raiseRiskAction(\''+r.id+'\')" title="'+(r.raised?('Raised '+r.raised+' time'+(r.raised!==1?'s':'')+' - add another'):'Write what needs doing - it appears word for word in the client execution plan')+'">'+(r.raised?'\u2713 Added - add another':'\uff0b Add action')+'</button>';
+}
 // Raise an action from a management-system requirement into the plan. Writes the
 // action text on the item (which _allMgmtActions feeds into the execution/action plan).
 function raiseReqAction(sectionId, itemId){
   if(_blockIfReadOnly()) return;
   const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
   const it = (s.items||[]).find(i => i.id === itemId); if(!it) return;
-  const desc = (typeof prompt==='function') ? prompt('What action is needed? (It appears in the execution / action plan.)', '') : '';
-  if(desc===null || !String(desc).trim()) return;
-  _reqAddAction(it, String(desc).trim());
-  it.raised=(it.raised||0)+1;
-  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
-  try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
-  if(typeof showToast==='function') showToast('✓ Action added to the plan - set a target date','success');
+  openRaiseActionBox({ source:'Legal duties \u00b7 '+String(it.requirement||s.heading||'').slice(0,60), onSave:function(desc){
+    _reqAddAction(it, desc);
+    it.raised=(it.raised||0)+1;
+    _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+    try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
+    if(typeof showToast==='function') showToast('\u2713 Action added to the plan - set a target date','success');
+  }});
 }
 // (Per-criterion "Raise" removed - the gap is raised per ITEM via raiseReqGapAction:
 //  the item title becomes the action and the open criteria its detail.)

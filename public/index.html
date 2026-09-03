@@ -19656,7 +19656,7 @@ function _rpDigestHTML(r){
 //    click opens the five editing tabs in a modal with prev/next; Esc or
 //    Done returns to the list exactly where it was. ONE visibility pipeline
 //    (_riskVisibleRows) feeds the table, the modal stepper and the counts. ──
-var _riskModalOpen=false, _riskModeFilter='hs', _riskSearch='', _riskKeysBound=false;
+var _riskModalOpen=false, _riskModeFilter='all', _riskSearch='', _riskKeysBound=false;
 function _riskVisibleRows(){
   const all=_riskDisplayOrder();
   return all.filter(r=>{
@@ -19675,13 +19675,14 @@ function _riskVisibleRows(){
 }
 function _riskTableRowsHTML(){
   const rows=_riskVisibleRows();
-  if(!rows.length) return '<tr><td colspan="9" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
+  if(!rows.length) return '<tr><td colspan="10" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
   return rows.map(r=>{
     const sc=_riskScore(r); const ops=_riskMode(r)==='ops'; const cc=_catColour(r.category);
     const ctl=_riskControlStatus(r); const cdot=ctl==='None'?'#DC2626':(ctl==='Partial'?'#F59E0B':'#16A34A');
     const cword=ctl==='None'?'uncontrolled':(ctl==='Partial'?'partly controlled':'controlled');
     return '<tr class="rpt-row" onclick="_riskOpenModal(\''+r.id+'\')" title="Open this risk - Esc brings you straight back">'
       +'<td onclick="event.stopPropagation();_riskChosenToggle(\''+r.id+'\')" style="cursor:pointer;text-align:center;font-size:14px;color:'+(r.chosen?'#F59E0B':'var(--border)')+';" title="'+(r.chosen?'In our five - click to unpin':'Pin to our chosen five (max 5) - shown on the cockpit')+'">'+(r.chosen?'\u2605':'\u2606')+'</td>'
+      +'<td onclick="event.stopPropagation()" style="white-space:nowrap;">'+RISK_MODES.map(m=>'<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:'+(_riskMode(r)===m.k?'700':'400')+';color:'+(_riskMode(r)===m.k?m.colour:'var(--text-muted)')+';cursor:pointer;line-height:1.5;"><input type="radio" name="kind_'+r.id+'" '+(_riskMode(r)===m.k?'checked':'')+' onchange="setRiskMode(\''+r.id+'\',\''+m.k+'\')" style="accent-color:'+m.colour+';width:12px;height:12px;cursor:pointer;">'+(m.k==='hs'?'H&S':'Ops')+'</label>').join('')+'</td>'
       +'<td style="font-weight:600;color:var(--text-muted);">'+(r.hazard?esc(String(r.hazard).slice(0,70)):'<span style="opacity:.45;">-</span>')+'</td>'
       +'<td><span class="rc-chip" style="background:'+cc+'1a;color:'+cc+';">'+esc(r.category||'-')+'</span>'+(ops?' <span class="rc-chip" style="background:#7C3AED1a;color:#7C3AED;">Operational</span>':'')+'</td>'
       +'<td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">'+esc(r.area||'-')+'</td>'
@@ -19891,10 +19892,9 @@ function renderRiskProfile(){
   const filteredNote = rows.length < all.length
     ? `<div class="no-print" style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Showing ${rows.length} of ${all.length} risks - <a href="#" onclick="clearRiskFilters();return false;">clear the filters</a> · click a row to open it</div>`
     : `<div class="no-print" style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">${rows.length} risk${rows.length!==1?'s':''} · click a row to open it - Esc brings you straight back</div>`;
-  const modeRadios=RISK_MODES.map(m=>`<label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:${_riskModeFilter===m.k?'700':'400'};color:${_riskModeFilter===m.k?m.colour:'var(--text)'};cursor:pointer;">
-      <input type="radio" name="riskKindPick" ${_riskModeFilter===m.k?'checked':''} onchange="setRiskModeFilter('${m.k}')" style="accent-color:${m.colour};width:15px;height:15px;cursor:pointer;">${esc(m.label)} risks</label>`).join('');
-  const toolbar=`<div class="no-print" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-      ${modeRadios}<span style="font-size:11px;color:var(--text-muted);">a new risk is added as the kind selected</span>
+  const modeChips=[['all','All'],['hs','H&S'],['ops','Operational']].map(([k,l])=>`<button type="button" class="btn btn-xs no-print ${_riskModeFilter===k?'btn-primary':'btn-ghost'}" onclick="setRiskModeFilter('${k}')">${l}</button>`).join('');
+  const toolbar=`<div class="no-print" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+      <span style="font-size:12px;font-weight:600;color:var(--text-muted);">Show:</span>${modeChips}
       <input type="text" value="${esc(_riskSearch)}" placeholder="Search risks…" oninput="setRiskSearch(this.value)" style="margin-left:auto;min-width:170px;font-size:12px;padding:6px 9px;border:1px solid var(--border);border-radius:7px;background:transparent;color:inherit;">
     </div>`;
   // Header wording follows the mode filter - H&S speaks hazards, operational
@@ -19905,6 +19905,7 @@ function renderRiskProfile(){
     : { src:'Hazard / cause', cat:'Type', flag:'SIF' };
   const table=`<div style="overflow-x:auto;"><table class="rpt"><thead><tr>
       <th style="width:26px;" title="Your chosen five - shown on the cockpit"></th>
+      <th style="width:70px;" title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
       <th>${_hh.src}</th><th>${_hh.cat}</th><th>Business area</th>
       <th>Associated risk - what could happen</th>
       <th style="text-align:center;" title="Worst case: could kill or seriously injure (H&amp;S) / business-critical (operational)">${_hh.flag}</th>

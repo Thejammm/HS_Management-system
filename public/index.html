@@ -3745,6 +3745,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
        TAB - CAS / ACCREDITATION
   ══════════════════════════════════════ -->
   <div id="tab-cas" class="tab-panel">
+    <div id="evidenceAuditContainer"></div>
     <div class="card no-print" style="margin-bottom:18px;">
       <div class="card-band"><h3><span class="dot">●</span> Accreditation readiness</h3>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
@@ -22802,10 +22803,12 @@ function renderAppLinks(){
 //  touched, previous synced records are replaced, never duplicated.
 // ══════════════════════════════════════════════════════════════
 function _linkedAppsState(){ if(!Array.isArray(S.linkedApps)) S.linkedApps=[]; return S.linkedApps; }
-function addLinkedApp(){
+function addLinkedApp(kind){
   if(!_canEditLinks() || _blockIfReadOnly()) return;
+  const cas = kind==='casaudit';
   _linkedAppsState().push({ id:'la_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-    kind:'inspections', label:'Inspection app', baseUrl:'https://inspections.archerhs.co.uk',
+    kind:cas?'casaudit':'inspections', label:cas?'CAS Auditor':'Inspection app',
+    baseUrl:cas?'https://casaudit.archerhs.co.uk':'https://inspections.archerhs.co.uk',
     remoteTenantId:'', autoSync:true, lastSyncAt:'', lastStatus:'' });
   saveData(); renderAppLinks(); try{ applyViewMode(); }catch(e){}
 }
@@ -22819,10 +22822,14 @@ function updateLinkedApp(id,f,v){
 function deleteLinkedApp(id){
   if(!_canEditLinks() || _blockIfReadOnly()) return;
   const l=_linkedAppsState().find(x=>x.id===id); if(!l) return;
-  if(!confirm('Remove this link? Its synced inspections and actions will also be removed from Compass (they stay safe in the app they were done in).')) return;
+  const _cmsg = l.kind==='casaudit'
+    ? 'Remove this link? The synced evidence view is removed from Compass (everything stays safe in CAS Auditor).'
+    : 'Remove this link? Its synced inspections and actions will also be removed from Compass (they stay safe in the app they were done in).';
+  if(!confirm(_cmsg)) return;
   S.inspections=(S.inspections||[]).filter(i=>!(i.source==='linked'&&i.sourceApp===id));
   S.actions=(S.actions||[]).filter(a=>!(a.source==='linked'&&a.sourceApp===id));
   S.linkedApps=_linkedAppsState().filter(x=>x.id!==id);
+  if(S.evidenceAudit && S.evidenceAudit[id]) delete S.evidenceAudit[id];
   saveData(); renderAppLinks(); if(typeof renderActions==='function'){ try{ renderActions(); renderActionStats(); }catch(e){} }
   try{ applyViewMode(); }catch(e){}
   showToast('Link removed - synced records cleared.','success');
@@ -22843,6 +22850,70 @@ function _mergeLinkedRecords(link, payload){
     });
   }
 }
+// ── Evidence audit (CAS Auditor link): the pulled evidence-day list lives
+//    under S.evidenceAudit[linkId] and renders as a card on the Accreditation
+//    tab; owed lines raise into the execution plan through the one pattern. ──
+function _mergeCasauditRecords(link, payload){
+  if(!S.evidenceAudit || typeof S.evidenceAudit!=='object') S.evidenceAudit={};
+  S.evidenceAudit[link.id]={ fetchedAt: payload.fetchedAt||new Date().toISOString(),
+    updatedAt: payload.remoteUpdatedAt||'', client: payload.client||null };
+  try{ renderEvidenceAudit(); }catch(e){}
+}
+function _evStatusMeta(st){
+  return st==='g' ? { label:'In the folder', color:'var(--success)' }
+       : st==='a' ? { label:'Client to send', color:'var(--warning)' }
+       : st==='n' ? { label:'Not applicable', color:'var(--text-muted)' }
+       : { label:'Not reviewed', color:'var(--border)' };
+}
+function renderEvidenceAudit(){
+  const cont=document.getElementById('evidenceAuditContainer'); if(!cont) return;
+  const links=_linkedAppsState().filter(l=>l.kind==='casaudit');
+  if(!links.length){ cont.innerHTML=''; return; }
+  const ev=(S.evidenceAudit&&typeof S.evidenceAudit==='object')?S.evidenceAudit:{};
+  cont.innerHTML=links.map(l=>{
+    const rec=ev[l.id]; const c=rec&&rec.client;
+    if(!c) return `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3>Evidence audit</h3><span class="badge badge-muted">from CAS Auditor</span></div>
+      <div class="card-body"><div style="font-size:13px;color:var(--text-muted);">Nothing pulled yet.${_roLocked()?'':` <button class="btn btn-primary btn-sm no-print" onclick="syncLinkedApp('${l.id}')">Pull now</button>`}</div></div></div>`;
+    const lines=Array.isArray(c.lines)?c.lines:[];
+    let g=0,a=0,nn=0; lines.forEach(x=>{ if(x.status==='g')g++; else if(x.status==='a')a++; else if(x.status==='n')nn++; });
+    const rows=lines.map((x,i)=>{
+      const m=_evStatusMeta(x.status);
+      return `<tr>
+        <td style="white-space:nowrap;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${m.color};margin-right:7px;"></span>${m.label}</td>
+        <td><b>${esc(x.name||'')}</b>${x.note?`<div style="font-size:11.5px;color:var(--text-muted);">${esc(x.note)}</div>`:''}</td>
+        <td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">${x.last?new Date(x.last+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'-'}</td>
+        <td style="text-align:right;">${x.status==='a'&&!_roLocked()?`<button class="btn btn-outline btn-sm no-print" id="evraise-${l.id}-${i}" onclick="_evRaiseGap('${l.id}',${i})">Raise</button>`:''}</td>
+      </tr>`; }).join('');
+    return `<div class="card" style="margin-bottom:18px;">
+      <div class="card-band"><h3>Evidence audit${c.name?(' · '+esc(c.name)):''}</h3><span class="badge badge-muted">from CAS Auditor</span></div>
+      <div class="card-body">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:13px;">
+          <span><b style="color:var(--success);">${g}</b> in the folder</span>
+          <span><b style="color:var(--warning);">${a}</b> for the client to send</span>
+          <span><b style="color:var(--text-muted);">${nn}</b> not applicable</span>
+          <span style="margin-left:auto;font-size:11.5px;color:var(--text-muted);">As at ${rec.fetchedAt?new Date(rec.fetchedAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'-'}${_roLocked()?'':` · <button class="btn btn-ghost btn-sm no-print" onclick="syncLinkedApp('${l.id}')">Pull now</button>`}</span>
+        </div>
+        <div style="overflow-x:auto;"><table class="act-table" style="width:100%;">
+          <thead><tr><th>Status</th><th>Evidence</th><th>Recorded</th><th></th></tr></thead>
+          <tbody>${rows||'<tr><td colspan="4" style="color:var(--text-muted);">No evidence lines yet.</td></tr>'}</tbody>
+        </table></div>
+      </div></div>`;
+  }).join('');
+}
+function _evRaiseGap(linkId, idx){
+  if(_blockIfReadOnly()) return;
+  const rec=S.evidenceAudit&&S.evidenceAudit[linkId]; const c=rec&&rec.client; if(!c) return;
+  const line=(c.lines||[])[idx]; if(!line) return;
+  if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
+  const title='Evidence audit: '+(line.name||'')+(line.note?(' - '+line.note):'');
+  if(S.actionPlan.some(x=>(x.desc||'').indexOf('Evidence audit: '+(line.name||''))===0 && x.status!=='Complete')){ showToast('Already on the plan','info'); return; }
+  const it={ id:_reqUid('act'), desc:title, owner:'', due:'', status:'Not started', priority:'', source:'Evidence audit', sourceLabel:(c.name||'CAS Auditor') };
+  if(typeof _stamp==='function') _stamp(it,'created');
+  S.actionPlan.push(it);
+  saveData(); _refreshActionViews();
+  showToast('\u2713 Raised into the execution plan - set its target date there','success');
+  _raiseFlash('evraise-'+linkId+'-'+idx);
+}
 async function syncLinkedApp(id, opts){
   opts=opts||{};
   const link=_linkedAppsState().find(x=>x.id===id); if(!link) return;
@@ -22850,10 +22921,13 @@ async function syncLinkedApp(id, opts){
   if(typeof Auth==='undefined' || !Auth.isSignedIn() || !Auth.activeTenantId()){
     if(!opts.silent) showToast('Sign in first - linked sync runs through the server.','info'); return;
   }
-  if(!link.remoteTenantId){ if(!opts.silent) showToast('Set the remote tenant id first (the client\'s tenant id in the Inspection app).','info'); return; }
+  if(!link.remoteTenantId){ if(!opts.silent) showToast(link.kind==='casaudit'
+      ? 'Set the Link ID first (copy it from the client\'s row on the CAS Auditor Admin tab).'
+      : 'Set the remote tenant id first (the client\'s tenant id in the Inspection app).','info'); return; }
   const btn=document.getElementById('lasync-'+id); if(btn){ btn.disabled=true; btn.textContent='Syncing…'; }
   try{
-    const r=await fetch('/api/linked/inspections?tenantId='+encodeURIComponent(Auth.activeTenantId())+'&linkId='+encodeURIComponent(id), { credentials:'include' });
+    const _ep = link.kind==='casaudit' ? 'casaudit' : 'inspections';
+    const r=await fetch('/api/linked/'+_ep+'?tenantId='+encodeURIComponent(Auth.activeTenantId())+'&linkId='+encodeURIComponent(id), { credentials:'include' });
     let j={}; try{ j=await r.json(); }catch(e){}
     if(!r.ok || !j.ok){
       link.lastStatus='error: '+(j.error||('http '+r.status));
@@ -22861,7 +22935,7 @@ async function syncLinkedApp(id, opts){
       if(!opts.silent) showToast('Sync failed ('+(j.error||r.status)+') - keeping the last-synced data.','error');
       return;
     }
-    _mergeLinkedRecords(link, j);
+    if(link.kind==='casaudit') _mergeCasauditRecords(link, j); else _mergeLinkedRecords(link, j);
     link.lastSyncAt=j.fetchedAt||new Date().toISOString(); link.lastStatus='ok';
     saveData(); renderAppLinks();
     if(typeof renderActions==='function'){ try{ renderActions(); renderActionStats(); }catch(e){} }
@@ -22896,7 +22970,7 @@ function _linkedAppsCardHTML(canEdit){
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px;">
         <div class="field-group"><label class="field-label">Label</label><input type="text"${dis} value="${esc(l.label||'')}" oninput="updateLinkedApp('${l.id}','label',this.value)"></div>
         <div class="field-group"><label class="field-label">App address</label><input type="text"${dis} value="${esc(l.baseUrl||'')}" oninput="updateLinkedApp('${l.id}','baseUrl',this.value)"></div>
-        <div class="field-group"><label class="field-label">Client's tenant id in that app</label><input type="text"${dis} value="${esc(l.remoteTenantId||'')}" oninput="updateLinkedApp('${l.id}','remoteTenantId',this.value)"></div>
+        <div class="field-group"><label class="field-label">${l.kind==='casaudit'?"Client's Link ID (CAS Auditor Admin tab)":"Client's tenant id in that app"}</label><input type="text"${dis} value="${esc(l.remoteTenantId||'')}" oninput="updateLinkedApp('${l.id}','remoteTenantId',this.value)"></div>
       </div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px;">
         <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;"><input type="checkbox"${dis} ${l.autoSync?'checked':''} onchange="updateLinkedApp('${l.id}','autoSync',this.checked)"> Auto-sync when this client loads</label>
@@ -22908,9 +22982,9 @@ function _linkedAppsCardHTML(canEdit){
   return `<div class="card" style="margin:0 0 16px;">
     <div class="card-band"><h3>Linked apps - data sync</h3><span class="badge badge-muted">${list.length||''}</span></div>
     <div class="card-body">
-      <div class="no-print" style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Pull this client's inspections and actions from their standalone Inspection app, automatically. Inspections stay DONE over there (the source of truth); Compass is where they are seen and managed. Synced records carry a "from Inspection app" badge and are view-only here.</div>
+      <div class="no-print" style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Pull this client's inspections and actions from their standalone Inspection app, automatically. Inspections stay DONE over there (the source of truth); Compass is where they are seen and managed. Synced records carry a "from Inspection app" badge and are view-only here. A CAS Auditor link pulls the client's evidence-day list into the Accreditation tab the same way.</div>
       ${rows||'<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">No linked apps yet.</div>'}
-      ${canEdit&&!dis?`<button class="btn btn-outline btn-sm no-print" onclick="addLinkedApp()">＋ Link an app</button>`:''}
+      ${canEdit&&!dis?`<button class="btn btn-outline btn-sm no-print" onclick="addLinkedApp()">＋ Link the Inspection app</button> <button class="btn btn-outline btn-sm no-print" onclick="addLinkedApp('casaudit')">＋ Link the CAS Auditor</button>`:''}
     </div>
   </div>`;
 }
@@ -26024,6 +26098,7 @@ async function casExportXlsx(){
 }
 function renderCAS(){
   _renderMemberships();
+  try{ renderEvidenceAudit(); }catch(e){}
   const sel = document.getElementById('casSchemeFilter');
   if(sel && !sel.options.length){ sel.innerHTML = CAS_SCHEMES.map(s=>`<option value="${esc(s.id)}">${esc(s.label)}</option>`).join(''); }
   const scheme = CAS_SCHEMES.find(s=>s.id===(sel && sel.value)) || CAS_SCHEMES[0];

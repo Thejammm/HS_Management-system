@@ -14497,14 +14497,15 @@ const COCKPIT_WIDGETS = {
       const _chosenIds=new Set(); (S.riskProfile||[]).forEach(rr=>{ if((rr.actions||[]).some(a=>!a.deleted&&a.top5===_m5)) _chosenIds.add(rr.id); });
       const chosen=H.rows.filter(z=>_chosenIds.has(z.id)).sort(_holdWorstFirst).slice(0,5);
       const topIds=top.map(z=>z.id), choIds=chosen.map(z=>z.id);
-      const word=z=>{ const bz=B.rows.find(b=>b.id===z.id); return (bz&&bz.atTarget)?'at target':(z.breach?'needs attention':z.hold.label.toLowerCase()); };
+      const word=z=>{ const bz=B.rows.find(b=>b.id===z.id); return (bz&&bz.atTarget)?'controlled as reasonably practicable':(z.breach?'needs attention':z.hold.label.toLowerCase()); };
+      const atT=z=>{ const bz=B.rows.find(b=>b.id===z.id); return !!(bz&&bz.atTarget); };
       const fr=(z,i,other)=>{ const c=_RISK_PRIO_COLOR[z.band]||'#9CA3AF';
         return '<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0;'+(i?'border-top:1px solid var(--border);':'')+'">'
         +'<span style="flex:0 0 16px;text-align:center;font-weight:800;color:var(--text-muted);font-size:12px;">'+(i+1)+'</span>'
         +'<span style="flex:0 0 12px;color:'+(other.includes(z.id)?'#7C3AED':'transparent')+';font-weight:800;" title="On both lists">\u25cf</span>'
-        +'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left;font-weight:600;color:var(--text);">'+esc(z.name)+'</button>'
+        +'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left;font-weight:600;color:'+(atT(z)?'#16A34A':'var(--text)')+';">'+esc(z.name)+'</button>'
         +'<span style="flex:0 0 auto;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;background:'+c+';">'+(z.band||'-').toUpperCase()+'</span>'
-        +'<span style="flex:0 0 auto;font-size:10.5px;color:var(--text-muted);">'+word(z)+'</span></div>'; };
+        +'<span style="flex:0 0 auto;font-size:10.5px;color:'+(atT(z)?'#16A34A':'var(--text-muted)')+';font-weight:'+(atT(z)?'700':'400')+';">'+word(z)+'</span></div>'; };
       return '<div class="ckx-panel"><h4>Putting us at risk today</h4>'
         +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">'
         +'<div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;"><div style="font-size:12px;font-weight:700;margin-bottom:6px;">Highest-rated risks</div>'

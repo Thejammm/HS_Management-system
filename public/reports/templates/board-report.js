@@ -963,8 +963,8 @@ export function buildBoardReport(state, opts = {}) {
     const chosen = D.holdS.rows.filter(z => chosenIds.has(z.id)).sort(holdWorstFirst).slice(0, 5);
     const topIds = new Set(top.map(z => z.id));
     const bmById = {}; B.rows.forEach(z => { bmById[z.id] = z; });
-    const word = z => (bmById[z.id] && bmById[z.id].atTarget) ? 'at target' : (z.breach ? 'needs attention' : z.hold.label.toLowerCase());
-    const li = z => ({ name: String(z.name), band: (z.band || '-').toUpperCase(), bandColour: TIER_COLOURS[z.band] || '#b7b7ba', word: word(z) });
+    const word = z => (bmById[z.id] && bmById[z.id].atTarget) ? 'controlled as reasonably practicable' : (z.breach ? 'needs attention' : z.hold.label.toLowerCase());
+    const li = z => ({ name: String(z.name), band: (z.band || '-').toUpperCase(), bandColour: TIER_COLOURS[z.band] || '#b7b7ba', word: word(z), atTarget: !!(bmById[z.id] && bmById[z.id].atTarget) });
     fiveBlocks.push({ type: 'twinPanels',
       left:  { title: 'Highest-rated risks', rows: top.map(z => Object.assign(li(z), { both: chosenIds.has(z.id) })), empty: 'No rated risks.' },
       right: { title: 'This month’s five priorities', rows: chosen.map(z => Object.assign(li(z), { both: topIds.has(z.id) })), empty: 'Populated from this month’s Top 5 on the client execution plan.' },

@@ -9,7 +9,7 @@ import url from 'node:url';
 
 import { tierFor, bandsFrom, noneOrCount, countPhrase, isAre, hasHave, deriveBoard, deriveBoardExtras, residualOf } from '../public/reports/derive.js';
 import { reportHTML, paginateRows } from '../public/reports/engine.js';
-import { matrix5x5, journeyStrip } from '../public/reports/blocks.js';
+import { matrix5x5, journeyStrip, twinPanels } from '../public/reports/blocks.js';
 import { docFor, trainingRowsOf } from '../public/reports/app-contract.js';
 import { REPORTS, BOARD_SECTIONS, buildReport, getReportFormat, setReportFormat } from '../public/reports/templates/index.js';
 
@@ -136,6 +136,17 @@ test('attention list lives on its own page, never the front page', () => {
   const big = reportHTML(buildReport(big0, 'board-report', OPTS));
   assert.match(big, /Needs attention first - part 1 of 2/);
   assert.match(big, /Needs attention first - part 2 of 2/);
+});
+
+test('five-list rows celebrate only at the residual target', () => {
+  const html = twinPanels({
+    left: { title: 'Highest-rated risks', empty: '-', rows: [
+      { name: 'Work at height', band: 'MEDIUM', bandColour: '#F59E0B', word: 'controlled as reasonably practicable', atTarget: true, both: false },
+      { name: 'Driving for work', band: 'HIGH', bandColour: '#EA580C', word: 'needs attention', atTarget: false, both: false } ] },
+    right: { title: 'This month’s five priorities', empty: '-', rows: [] } });
+  assert.match(html, /style="color:#16A34A">Work at height/);
+  assert.match(html, /color:#16A34A;font-weight:700">controlled as reasonably practicable/);
+  assert.doesNotMatch(html, /color:#16A34A">Driving for work/);
 });
 
 test('journey strip celebrates only at the planned target line', () => {

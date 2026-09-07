@@ -318,9 +318,9 @@ export function twinPanels({ left, right, footnote }) {
     ${p.rows.length ? p.rows.map((r, i) => `<div class="r-twin-row">
       <b class="r-twin-rank">${i + 1}</b>
       <i class="r-twin-both"${r.both ? '' : ' style="visibility:hidden"'}>&#9679;</i>
-      <span class="r-twin-name">${esc(r.name)}</span>
+      <span class="r-twin-name"${r.atTarget ? ' style="color:#16A34A"' : ''}>${esc(r.name)}</span>
       <span class="r-twin-band" style="background:${r.bandColour}">${esc(r.band)}</span>
-      <span class="r-twin-word">${esc(r.word)}</span>
+      <span class="r-twin-word"${r.atTarget ? ' style="color:#16A34A;font-weight:700"' : ''}>${esc(r.word)}</span>
     </div>`).join('') : `<div class="r-footnote">${esc(p.empty || 'Nothing yet.')}</div>`}</div>`;
   return `<div class="r-twin">${panel(left)}${panel(right)}</div>${footnote ? `<div class="r-footnote">${esc(footnote)}</div>` : ''}`;
 }

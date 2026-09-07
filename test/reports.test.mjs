@@ -9,8 +9,8 @@ import url from 'node:url';
 
 import { tierFor, bandsFrom, noneOrCount, countPhrase, isAre, hasHave, deriveBoard, deriveBoardExtras, residualOf } from '../public/reports/derive.js';
 import { reportHTML, paginateRows } from '../public/reports/engine.js';
-import { matrix5x5, journeyStrip, twinPanels } from '../public/reports/blocks.js';
-import { docFor, trainingRowsOf } from '../public/reports/app-contract.js';
+import { matrix5x5, journeyStrip, twinPanels, riskLadder } from '../public/reports/blocks.js';
+import { docFor, trainingRowsOf, macroOf, MACRO_OF_THEME, MACRO_LABELS } from '../public/reports/app-contract.js';
 import { REPORTS, BOARD_SECTIONS, buildReport, getReportFormat, setReportFormat } from '../public/reports/templates/index.js';
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
@@ -418,4 +418,32 @@ test('snapshots per fixture are stable', () => {
     if (!fs.existsSync(file)) { fs.writeFileSync(file, html); continue; }
     assert.equal(html, fs.readFileSync(file, 'utf8'), 'snapshot drift: ' + file + ' (delete it to accept the change)');
   }
+});
+
+test('macro map mirrors the app library (macroKey and label per theme)', () => {
+  const html = fs.readFileSync(path.join(here, '..', 'public', 'index.html'), 'utf8');
+  const i = html.indexOf('HAZARD_LIBRARY'); const j = html.indexOf('[', i);
+  let d = 0, k = j, inS = false, e = false, q = '';
+  for (; k < html.length; k++) { const c = html[k]; if (inS) { if (e) e = false; else if (c === '\\') e = true; else if (c === q) inS = false; continue; } if (c === "'" || c === '"') { inS = true; q = c; } else if (c === '[' || c === '{') d++; else if (c === ']' || c === '}') { d--; if (!d) { k++; break; } } }
+  const lib = JSON.parse(html.slice(j, k));
+  assert.equal(lib.length, Object.keys(MACRO_OF_THEME).length, 'every theme is mapped');
+  lib.forEach(t => {
+    assert.equal(MACRO_OF_THEME[t.key], t.macroKey, 'macroKey for ' + t.key);
+    assert.equal(MACRO_LABELS[t.macroKey], t.macro, 'label for ' + t.key);
+  });
+});
+
+test('macroOf: theme category, direct placement, tenant rename, none', () => {
+  assert.equal(macroOf({ libKey: 'fire' }, {}), 'Fire & explosion');
+  assert.equal(macroOf({ libKey: 'roadrisk' }, {}), 'Transport & driving');
+  assert.equal(macroOf({ libKey: 'fire', macroKey: 'height' }, {}), 'Work at height');
+  assert.equal(macroOf({ libKey: 'fire' }, { macroNames: { fire: 'Burning' } }), 'Burning');
+  assert.equal(macroOf({}, {}), '');
+});
+
+test('ladder and twin panels carry the macro tag', () => {
+  const lad = riskLadder({ rungs: [{ band: 'High', colour: '#EA580C', sub: '', range: '', chips: [{ name: 'X', dot: '#DC2626', macro: 'Fire & explosion' }] }], unrated: [] });
+  assert.ok(lad.includes('r-mac">Fire &amp; explosion'), 'ladder chip carries the tag');
+  const twin = twinPanels({ left: { title: 'L', rows: [{ name: 'X', band: 'HIGH', bandColour: '#EA580C', word: 'needs attention', atTarget: false, macro: 'Work at height' }] }, right: { title: 'R', rows: [] } });
+  assert.ok(twin.includes('r-mac">Work at height'), 'twin row carries the tag');
 });

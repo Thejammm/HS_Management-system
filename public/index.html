@@ -14457,7 +14457,7 @@ const COCKPIT_WIDGETS = {
       // carries the level, the dot carries the controls judgement.
       const chip=z=>'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':(z.part?'No target set':'Controlled as reasonably practicable'))+' - click to open" '
         +'style="all:unset;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;max-width:100%;color:'+(z.unc||z.part?'var(--text)':'#16A34A')+';padding:2px 0;">'
-        +'<span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':'#16A34A'))+';"></span>'+esc(z.name)+'</button>';
+        +'<span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':'#16A34A'))+';"></span><span>'+esc(z.name)+_macroTagHTML(z.r)+'</span></button>';
       // A real ladder: the rails run unbroken down the left (tinted with each
       // band's colour, so the ladder itself grades red to green), the rung is
       // a solid bar between them, and an empty rung says so. Each band label
@@ -14514,7 +14514,7 @@ const COCKPIT_WIDGETS = {
         return '<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0;'+(i?'border-top:1px solid var(--border);':'')+'">'
         +'<span style="flex:0 0 16px;text-align:center;font-weight:800;color:var(--text-muted);font-size:12px;">'+(i+1)+'</span>'
         +'<span style="flex:0 0 12px;color:'+(other.includes(z.id)?'#7C3AED':'transparent')+';font-weight:800;" title="On both lists">\u25cf</span>'
-        +'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left;font-weight:600;color:'+(atT(z)?'#16A34A':'var(--text)')+';">'+esc(z.name)+'</button>'
+        +'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left;font-weight:600;color:'+(atT(z)?'#16A34A':'var(--text)')+';">'+esc(z.name)+_macroTagHTML(z.r)+'</button>'
         +'<span style="flex:0 0 auto;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;background:'+c+';">'+(z.band||'-').toUpperCase()+'</span>'
         +'<span style="flex:0 0 auto;font-size:10.5px;color:'+(atT(z)?'#16A34A':'var(--text-muted)')+';font-weight:'+(atT(z)?'700':'400')+';">'+word(z)+'</span></div>'; };
       return '<div class="ckx-panel"><h4>Putting us at risk today</h4>'
@@ -15713,7 +15713,7 @@ function _epWhatHTML(a){
   const _rkR=_execRiskOf(a);
   try{ if(_rkR&&_rkR.controls) ctx=' \u00b7 current controls: '+String(_rkR.controls).slice(0,140); }catch(e){}
   return '<div style="border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:9px 12px;margin:4px 0 8px;">'
-    +(_rkR?'<div class="ep-risk-line" style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:5px;cursor:pointer;" onclick="_gotoRisk(\''+_rkR.id+'\')" title="Open this risk in the Risk profile">'+esc(_rkR.activity||_rkR.hazard||'Risk')+' \u2192</div>':'')
+    +(_rkR?'<div class="ep-risk-line" style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:5px;cursor:pointer;" onclick="_gotoRisk(\''+_rkR.id+'\')" title="Open this risk in the Risk profile">'+esc(_rkR.activity||_rkR.hazard||'Risk')+' \u2192'+_macroTagHTML(_rkR)+'</div>':'')
     +'<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:3px;">What to do</div>'
     +'<div style="font-size:13px;font-weight:600;">'+esc(a.desc||'(no description yet - open the source and write it)')+'</div>'
     +'<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">From: '+esc(a.source)+((a.sourceLabel&&!_rkR)?(' \u00b7 '+esc(a.sourceLabel)):'')+(a.priority?(' \u00b7 priority '+esc(a.priority)):'')+esc(ctx)+'</div></div>';
@@ -20918,6 +20918,11 @@ function _riskVisibleRows(){
   });
 }
 function _macroColour(k){ return ({ fire:'#DC2626', height:'#EA580C', transport:'#7C3AED', plant:'#2563EB', health:'#0891B2', construction:'#B45309', ergonomics:'#059669', people:'#DB2777', premises:'#0EA5E9', management:'#4B5563', business:'#6D28D9' })[k]||'#9CA3AF'; }
+function _macroTagHTML(r){
+  const k=_riskMacroOf(r); if(!k) return '';
+  const c=_macroColour(k);
+  return '<span class="mac-tag" style="display:inline-block;margin-left:6px;padding:0 6px;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:'+c+';border:1px solid '+c+'55;border-radius:3px;vertical-align:middle;white-space:nowrap;">'+esc(_macroName(k))+'</span>';
+}
 function _macroName(k){ const o=(S.macroNames||{})[k]; if(o) return o; const t=HAZARD_LIBRARY.find(x=>x.macroKey===k); return t?(t.macro||k):k; }
 function _macroRenameStart(ev,k){
   if(_blockIfReadOnly()) return;
@@ -21237,7 +21242,7 @@ function renderRiskProfile(){
           <span class="rc-chip" style="background:${_riskMode(selR)==='ops'?'#7C3AED':'#2563EB'}1a;color:${_riskMode(selR)==='ops'?'#7C3AED':'#2563EB'};" title="Set with the Kind radios on the register table">${esc(_riskModeLabel(selR))}</span>
           ${selR.category?`<span class="rc-chip" style="background:${selHtC}1a;color:${selHtC};">${esc(selR.category)}</span>`:''}
           ${selR.area?`<span class="rc-chip" style="background:var(--muted-bg);color:var(--text-muted);">${esc(selR.area)}</span>`:''}
-          ${selR.libKey?`<span class="rc-chip" style="background:var(--muted-bg);color:var(--text-muted);font-weight:400;">library</span>`:''}
+          ${_riskMacroOf(selR)?`<span class="rc-chip" style="background:${_macroColour(_riskMacroOf(selR))}1a;color:${_macroColour(_riskMacroOf(selR))};" title="Macro category">${esc(_macroName(_riskMacroOf(selR)))}</span>`:''}
           ${_riskFlagOn(selR)?`<span class="rc-chip" style="background:#DC26261a;color:#DC2626;" title="${esc(_rt(selR,'flagChipTitle'))}">${esc(_rt(selR,'flagChip'))}</span>`:''}
           ${selR.reviewed?`<span class="rc-chip" style="background:#16A34A1a;color:#16A34A;" title="You have marked this risk complete">✓ reviewed</span>`:''}
         </div>
@@ -28326,7 +28331,7 @@ function _bsrData(){
   const nextRev=(S.riskDoc&&S.riskDoc.nextReview)?fmtDate(S.riskDoc.nextReview):'the agreed review cycle';
   const _alarp=(S.riskProfile||[]).filter(r=>_riskControlStatus(r)==='In place');
   if(_alarp.length) greens.push({ issue:_alarp.length+' risk'+(_alarp.length!==1?'s':'')+' controlled as reasonably practicable',
-    found:'at or beyond the residual target the controls were set to reach'+(_alarp.length<=6?(': '+_alarp.map(r=>String(r.activity||r.hazard||'risk').slice(0,44)).join('; ')):''),
+    found:'at or beyond the residual target the controls were set to reach'+(_alarp.length<=6?(': '+_alarp.map(r=>String(r.activity||r.hazard||'risk').slice(0,44)+(_riskMacroOf(r)?(' ('+_macroName(_riskMacroOf(r))+')'):'')).join('; ')):''),
     due:nextRev });
   if(H.held) greens.push({ issue:H.held+' of '+H.total+' risks identified', found:'controls recorded and plans delivered, signed off or defensibly accepted', due:nextRev });
   const rg=(typeof _reqGaps==='function')?_reqGaps():{gaps:0,assessed:0};

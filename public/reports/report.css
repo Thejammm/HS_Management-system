@@ -270,6 +270,7 @@
 .r-lad-chips { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; align-items:stretch; align-self:center; padding:2px 8px 2px 0; }
 .r-lad-line { display:flex; align-items:center; gap:5px; font-size:8.5px; font-weight:600; white-space:normal; overflow-wrap:anywhere; max-width:100%; padding:1px 0; }
 .r-lad-line i { width:6px; height:6px; border-radius:50%; display:inline-block; flex:0 0 auto; }
+.r-mac { display:inline-block; margin-left:4px; padding:0 4px; font-size:6.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; font-style:normal; color:var(--r-muted); border:1px solid #d0d2d6; border-radius:2px; vertical-align:middle; white-space:nowrap; }
 .r-lad-key { display:flex; gap:14px; flex-wrap:wrap; font-size:8px; color:var(--r-muted); margin-top:5px; }
 .r-lad-key i { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:3px; }
 

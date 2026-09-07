@@ -1,7 +1,7 @@
 // Board report template - Signal (data-forward) and Brief (editorial) formats.
 // Both build the SAME content; format changes the skin class only.
 import { deriveBoard, deriveBoardExtras, boardModelOf, bandsFrom, noneOrCount, countPhrase, hasHave, TIER_COLOURS, TIER_ORDER, HOLD_STATES, HOLD_ORDER, docFor, producerOf , trainingRowsOf } from '../derive.js';
-import { holdWorstFirst } from '../app-contract.js';
+import { holdWorstFirst, macroOf } from '../app-contract.js';
 import { esc, tierWord, planBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
 
@@ -940,8 +940,9 @@ export function buildBoardReport(state, opts = {}) {
     // One line per risk means a big register cannot fit one page: pack at
     // most LAD_LINES chip-lines per slice, a band continuing across slices.
     const LAD_LINES = 22;
+    const ladById = {}; ((state && state.riskProfile) || []).forEach(r => { if (r) ladById[r.id] = r; });
     const allRungs = TIER_ORDER.map(band => ({ band, colour: TIER_COLOURS[band], sub: LMEAN[band], range: LRANGE[band],
-      chips: B.rows.filter(z => z.tier === band).map(z => ({ name: z.name, dot: z.unc ? '#DC2626' : (z.part ? '#F59E0B' : '#16A34A'), tick: z.atTarget })) }));
+      chips: B.rows.filter(z => z.tier === band).map(z => ({ name: z.name, dot: z.unc ? '#DC2626' : (z.part ? '#F59E0B' : '#16A34A'), tick: z.atTarget, macro: macroOf(ladById[z.id], state) })) }));
     const ladSlices = []; let _cur = []; let _used = 0;
     const _pushSlice = () => { if (_cur.length) { ladSlices.push(_cur); _cur = []; _used = 0; } };
     allRungs.forEach(r => {
@@ -968,8 +969,9 @@ export function buildBoardReport(state, opts = {}) {
     const chosen = D.holdS.rows.filter(z => chosenIds.has(z.id)).sort(holdWorstFirst).slice(0, 5);
     const topIds = new Set(top.map(z => z.id));
     const bmById = {}; B.rows.forEach(z => { bmById[z.id] = z; });
+    const fvById = {}; ((state && state.riskProfile) || []).forEach(r => { if (r) fvById[r.id] = r; });
     const word = z => (bmById[z.id] && bmById[z.id].atTarget) ? 'controlled as reasonably practicable' : (z.breach ? 'needs attention' : z.hold.label.toLowerCase());
-    const li = z => ({ name: String(z.name), band: (z.band || '-').toUpperCase(), bandColour: TIER_COLOURS[z.band] || '#b7b7ba', word: word(z), atTarget: !!(bmById[z.id] && bmById[z.id].atTarget) });
+    const li = z => ({ name: String(z.name), band: (z.band || '-').toUpperCase(), bandColour: TIER_COLOURS[z.band] || '#b7b7ba', word: word(z), atTarget: !!(bmById[z.id] && bmById[z.id].atTarget), macro: macroOf(fvById[z.id], state) });
     fiveBlocks.push({ type: 'twinPanels',
       left:  { title: 'Highest-rated risks', rows: top.map(z => Object.assign(li(z), { both: chosenIds.has(z.id) })), empty: 'No rated risks.' },
       right: { title: 'This month’s five priorities', rows: chosen.map(z => Object.assign(li(z), { both: topIds.has(z.id) })), empty: 'Populated from this month’s Top 5 on the client execution plan.' },

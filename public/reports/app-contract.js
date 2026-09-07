@@ -179,6 +179,36 @@ export function controlsTextOf(r) {
   return rows.length ? rows.join('; ') : box;
 }
 
+// ── Macro category - mirror of the app's HAZARD_LIBRARY macroKey / macro
+//    labels (a test diffs the two). A library risk takes its theme's
+//    category; r.macroKey places any risk directly; state.macroNames carries
+//    the tenant's own names. ──
+export const MACRO_LABELS = {
+  fire: 'Fire & explosion', height: 'Work at height', transport: 'Transport & driving',
+  plant: 'Plant, equipment & electricity', health: 'Hazardous substances & health',
+  construction: 'Construction & confined spaces', ergonomics: 'Manual handling & ergonomics',
+  people: 'People & wellbeing', premises: 'Premises & environment',
+  management: 'Competence & legal duties', business: 'Business continuity'
+};
+export const MACRO_OF_THEME = {
+  fire: 'fire', workatheight: 'height', transport: 'transport', roadrisk: 'transport',
+  workequip: 'plant', lifting: 'plant', electrical: 'plant',
+  ohexposure: 'health', asbestos: 'health', biological: 'health', legionella: 'health',
+  hrconstruction: 'construction', confined: 'construction',
+  manualhandling: 'ergonomics', dseoffice: 'ergonomics', peoplecare: 'ergonomics',
+  ohwellbeing: 'people', violence: 'people', loneworking: 'people', vulnerable: 'people', safeguarding: 'people', publicsafety: 'people',
+  premises: 'premises', environment: 'premises', outdoor: 'premises', weather: 'premises',
+  competence: 'management', contractor: 'management', compliance: 'management', dutyholder: 'management', designrisk: 'management', licence: 'management',
+  financial: 'business', continuity: 'business', keypeople: 'business', contractloss: 'business', information: 'business'
+};
+export function macroOf(r, state) {
+  if (!r) return '';
+  const k = (r.macroKey && MACRO_LABELS[r.macroKey]) ? r.macroKey : (MACRO_OF_THEME[r.libKey] || '');
+  if (!k) return '';
+  const o = state && state.macroNames && state.macroNames[k];
+  return o || MACRO_LABELS[k];
+}
+
 // ── Category normalisation - verbatim port of the app's _hazardType (applied
 //    by the app's migrateLoadedState; the report normalises the same way so a
 //    legacy/imported category can never split the counts) ──

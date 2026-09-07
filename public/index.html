@@ -15945,7 +15945,7 @@ function updateRiskField(id, field, value){
   if(field === 'category' || field === 'area' || field === 'pdca'){ _keepScroll(renderRiskProfile); return; }
   if(field === 'trend') _renderRiskDashboard();
   // Overtyping the impact summary switches auto-write off; clearing it back on.
-  if(field === 'businessImpact'){ r.biAuto = String(value).trim()==='' ? true : false; if(r.biAuto){ r.businessImpact=_impactSummaryText(r); const f=document.getElementById('rbi-'+id); if(f&&document.activeElement!==f) f.value=r.businessImpact; } }
+  if(field === 'businessImpact'){ r.biAuto = String(value).trim()==='' ? true : false; if(r.biAuto){ r.businessImpact=_impactSummaryText(r); const f=document.getElementById('rbi-'+id); if(f&&document.activeElement!==f){ f.value=r.businessImpact; _agrow(f); } } }
 }
 
 function togglePersonAtRisk(id, p){
@@ -16080,6 +16080,16 @@ function _selectRisk(id){
     if(pan) pan.scrollIntoView({behavior:'smooth',block:'start'});
   }
 }
+// Auto-growing prose boxes in the risk modal: every textarea sizes itself
+// to its content and keeps growing as you type. _agrowAll binds and sizes
+// after each modal render; _agrow resizes one box.
+function _agrow(el){ if(!el||el.tagName!=='TEXTAREA') return;
+  el.style.overflowY='hidden'; el.style.resize='none';
+  el.style.height='auto'; el.style.height=Math.max(el.scrollHeight+2,40)+'px'; }
+function _agrowAll(){ const R=document.getElementById('rpBody'); if(!R) return;
+  R.querySelectorAll('textarea').forEach(function(el){
+    if(!el._ag){ el._ag=true; el.addEventListener('input', function(){ _agrow(el); }); }
+    _agrow(el); }); }
 function _riskDetailTab(tab){ if(_riskSelTab===tab) return; _riskSelTab=tab; _keepScroll(renderRiskProfile); }
 function setRiskFilter(f, v){ _riskFilter[f] = v; renderRiskProfile(); }
 function clearRiskFilters(){ _riskFilter = { category:'', priority:'', trend:'', sif:false, bizcrit:false, highcrit:false, unit:'' }; renderRiskProfile(); }
@@ -16893,7 +16903,7 @@ function updateRiskImpact(id, dim, value){
   // Pre-existing risks with hand-typed text (biAuto undefined) are left alone.
   if(r.biAuto===true || (r.biAuto!==false && !String(r.businessImpact||'').trim())){
     r.biAuto=true; r.businessImpact=_impactSummaryText(r);
-    const f=document.getElementById('rbi-'+id); if(f) f.value=r.businessImpact;
+    const f=document.getElementById('rbi-'+id); if(f){ f.value=r.businessImpact; _agrow(f); }
   }
   _renderRiskDashboard();
 }
@@ -19879,7 +19889,7 @@ function renderRiskProfile(){
           <label class="field-label">Business impact <span class="fl-hint" title="Rate the credible worst-case impact on each dimension, 1 (negligible) to 5 (severe).">(?)</span></label>
           ${_impactRowsHTML(r,dis)}
           <div class="impact-chips" style="margin-top:9px;" id="rimp-${r.id}">${_impactChipsHTML(r)}</div>
-          ${fg('Impact summary <span class="fl-hint" title="Written for you from the ratings above in plain standard wording. Type your own to override it; clear the box to go back to the automatic wording.">(?)</span>', `<input type="text"${dis} id="rbi-${r.id}" value="${esc(r.businessImpact)}" placeholder="Rates itself from the impact scores above" oninput="updateRiskField('${r.id}','businessImpact',this.value)">`)}
+          ${fg('Impact summary <span class="fl-hint" title="Written for you from the ratings above in plain standard wording. Type your own to override it; clear the box to go back to the automatic wording.">(?)</span>', `<textarea${dis} rows="1" id="rbi-${r.id}" placeholder="Rates itself from the impact scores above" oninput="updateRiskField('${r.id}','businessImpact',this.value)">${esc(r.businessImpact)}</textarea>`)}
         </div>`;
     if(_riskSelTab==='rating') return `
         <div class="field-grid cols-1" style="margin-bottom:12px;">
@@ -19986,6 +19996,7 @@ function renderRiskProfile(){
 
   const _bp1 = document.getElementById('rpBody'); if(_bp1) _bp1.scrollTop = _bodyTop;
   _riskSelKey = _viewKey;
+  _agrowAll();
 
   _renderAssurance();
 }

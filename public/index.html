@@ -15055,7 +15055,7 @@ const RISK_TERMS={
   hs:{
     category:'Hazard type', activity:'Associated risk - what could happen',
     activityPh:'The harmful event, e.g. a fall from the fragile roof during survey work',
-    source:'Hazard', sourcePh:'The source of harm, e.g. fragile roof, asbestos, moving vehicles',
+    source:'Hazard source - what could cause harm', sourcePh:'The source of harm, e.g. fragile roof, asbestos, moving vehicles',
     sourceHint:'A hazard is the SOURCE of harm (e.g. a forklift truck, a fragile roof). The risk is the likelihood that hazard causes harm, and how serious it would be.',
     persons:'Persons at risk', personsDigest:'Who is at risk',
     harm:'Potential harm / consequences', harmPh:'e.g. Fatality, major injury, occupational ill health, stress-related illness',
@@ -19721,17 +19721,16 @@ function _riskVisibleRows(){
 }
 function _riskTableRowsHTML(){
   const rows=_riskVisibleRows();
-  if(!rows.length) return '<tr><td colspan="9" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
+  if(!rows.length) return '<tr><td colspan="8" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
   return rows.map(r=>{
     const sc=_riskScore(r); const ops=_riskMode(r)==='ops'; const cc=_catColour(r.category);
     const ctl=_riskControlStatus(r); const cdot=ctl==='None'?'#DC2626':(ctl==='Partial'?'#F59E0B':'#16A34A');
     const cword=ctl==='None'?'uncontrolled':(ctl==='Partial'?'partly controlled':'controlled');
     return '<tr class="rpt-row" onclick="_riskOpenModal(\''+r.id+'\')" title="Open this risk - Esc brings you straight back">'
       +'<td onclick="event.stopPropagation()" style="white-space:nowrap;">'+RISK_MODES.map(m=>'<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:'+(_riskMode(r)===m.k?'700':'400')+';color:'+(_riskMode(r)===m.k?m.colour:'var(--text-muted)')+';cursor:pointer;line-height:1.5;"><input type="radio" name="kind_'+r.id+'" '+(_riskMode(r)===m.k?'checked':'')+' onchange="setRiskMode(\''+r.id+'\',\''+m.k+'\')" style="accent-color:'+m.colour+';width:12px;height:12px;cursor:pointer;">'+(m.k==='hs'?'H&S':'Ops')+'</label>').join('')+'</td>'
-      +'<td style="font-weight:600;color:var(--text-muted);">'+(r.hazard?esc(String(r.hazard).slice(0,70)):'<span style="opacity:.45;">-</span>')+'</td>'
+      +'<td style="font-weight:700;">'+esc(r.activity||r.hazard||'New risk')+(r.reviewed?' <span style="color:#16A34A;font-weight:700;font-size:11px;" title="Reviewed and completed">\u2713</span>':'')+'</td>'
       +'<td><span class="rc-chip" style="background:'+cc+'1a;color:'+cc+';">'+esc(r.category||'-')+'</span>'+(ops?' <span class="rc-chip" style="background:#7C3AED1a;color:#7C3AED;">Operational</span>':'')+'</td>'
       +'<td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">'+esc(r.area||'-')+'</td>'
-      +'<td style="font-weight:700;">'+esc(r.activity||r.hazard||'New risk')+(r.reviewed?' <span style="color:#16A34A;font-weight:700;font-size:11px;" title="Reviewed and completed">\u2713</span>':'')+'</td>'
       +'<td style="text-align:center;">'+(_riskFlagOn(r)?('<span style="color:'+(ops?'#7C3AED':'#DC2626')+';font-weight:800;" title="'+esc(_rt(r,'flagChipTitle'))+'">\u26a0</span>'):'')+'</td>'
       +'<td>'+_riskPrioBadge(sc.priority,null)+'</td>'
       +'<td style="text-align:center;font-weight:800;">'+(sc.rating||'-')+'</td>'
@@ -19859,9 +19858,9 @@ function renderRiskProfile(){
           ${fg(_rt(r,'category'), sel(r.id,'category',r.category,_catOpts(r.category, r)))}
           ${fg('Business area', sel(r.id,'area',r.area,RISK_AREAS))}
         </div>
-        ${_riskMode(r)==='ops' ? `<div class="field-grid cols-1" style="margin-bottom:12px;">
+        <div class="field-grid cols-1" style="margin-bottom:12px;">
           ${fg(esc(_rt(r,'source'))+' <span class="fl-hint" title="'+esc(_rt(r,'sourceHint'))+'">(?)</span>', txt(r.id,'hazard',r.hazard,_rt(r,'sourcePh')))}
-        </div>` : ''}
+        </div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
           ${fg(_rt(r,'activity'), `<input type="text"${dis} id="ractf-${r.id}" value="${esc(r.activity)}" placeholder="${esc(_rt(r,'activityPh'))}" oninput="updateRiskField('${r.id}','activity',this.value)">`)}
         </div>
@@ -19945,13 +19944,13 @@ function renderRiskProfile(){
   // Header wording follows the mode filter - H&S speaks hazards, operational
   // speaks causes; the mixed view names both.
   const _hh = _riskModeFilter==='ops'
-    ? { src:'Cause / risk source', cat:'Risk category', flag:'Critical' }
-    : _riskModeFilter==='hs' ? { src:'Hazard source', cat:'Hazard type', flag:'SIF' }
-    : { src:'Hazard / cause', cat:'Type', flag:'SIF' };
+    ? { cat:'Risk category', flag:'Critical' }
+    : _riskModeFilter==='hs' ? { cat:'Hazard type', flag:'SIF' }
+    : { cat:'Type', flag:'SIF' };
   const table=`<div style="overflow-x:auto;"><table class="rpt"><thead><tr>
       <th style="width:70px;" title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
-      <th>${_hh.src}</th><th>${_hh.cat}</th><th>Business area</th>
       <th>Associated risk - what could happen</th>
+      <th>${_hh.cat}</th><th>Business area</th>
       <th style="text-align:center;" title="Worst case: could kill or seriously injure (H&amp;S) / business-critical (operational)">${_hh.flag}</th>
       <th>Band</th><th style="text-align:center;">Level</th><th>Controlled?</th>
     </tr></thead><tbody id="rpTbody">${_riskTableRowsHTML()}</tbody></table></div>`;

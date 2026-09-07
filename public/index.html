@@ -15759,12 +15759,13 @@ function renderExecPlan(){
   const trow=(a)=>{ const c=RAG_COLOR[a.rag]||RAG_COLOR.grey; const rk=ref(a); const opn=_execRowOpen[rk]; const lc=_logCount(a);
     // Celebration: an action whose risk sits at its residual target - the
     // work on that risk has delivered what it promised.
-    const _rkAt=(a.ref&&a.ref.t==='risk')?(function(){ const r=(S.riskProfile||[]).find(x=>x.id===a.ref.a); return !!(r&&_riskControlStatus(r)==='In place'); })():false;
+    const _rkR=(a.ref&&a.ref.t==='risk')?((S.riskProfile||[]).find(x=>x.id===a.ref.a)||null):null;
+    const _rkAt=!!(_rkR&&_riskControlStatus(_rkR)==='In place');
     const closed=(a.status==='Complete'||a.status==='Accepted');
     const resTip=closed?((a.status==='Accepted'?'Risk accepted':'Completed')+(a.resolvedDate?(' '+fmtDate(a.resolvedDate)):'')+(a.resolvedBy?(' by '+a.resolvedBy):'')):'';
     return `<tr style="border-top:1px solid var(--border);${_rkAt?'background:linear-gradient(100deg,#16A34A12,#16A34A05 62%,transparent);':''}">
       <td><span title="${a.rag==='red'?'Overdue':a.rag==='amber'?'Due this month / needs a date':a.rag==='grey'?'Risk accepted':'On track'}" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c};vertical-align:middle;"></span></td>
-      <td class="cas-req" style="font-weight:600;cursor:pointer;" onclick="toggleExecRow('${rk}')" title="Click to see exactly what to do, where it came from, and the activity log">${esc(a.desc||'(no description yet - add it in the source section)')}</td>
+      <td class="cas-req" style="font-weight:600;cursor:pointer;" onclick="toggleExecRow('${rk}')" title="Click to see exactly what to do, where it came from, and the activity log">${a.sourceLabel?`<div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:2px;${_rkR?'cursor:pointer;':''}"${_rkR?` onclick="event.stopPropagation();_gotoRisk('${_rkR.id}')" title="Open this risk in the Risk profile"`:''}>${esc(a.sourceLabel)}${_rkR?' \u2192':''}</div>`:''}${esc(a.desc||'(no description yet - add it in the source section)')}</td>
       <td title="${esc(a.source)}${a.sourceLabel?(' · '+esc(a.sourceLabel)):''}${_rkAt?' · controlled as reasonably practicable':''}">${_rkAt?`<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;" title="This risk is controlled as reasonably practicable">${esc(a.source)} \u2713</span>`:`<span class="badge badge-muted">${esc(a.source)}</span>`}</td>
       <td title="${esc(a.owner||'')}">${esc(a.owner||'-')}</td>
       <td>${esc(a.priority||'-')}</td>
@@ -17620,7 +17621,7 @@ function renderRiskJourney(){
         <div style="display:flex;gap:8px;" class="no-print">${fbtn('all','All ('+enriched.length+')')}${fbtn('open','In progress ('+(enriched.length-managedN)+')')}${fbtn('managed','Signed off ('+managedN+')')}</div>
       </div>
     </div>
-    ${rows.length ? rows.map(card).join('') : `<div class="card"><div class="card-body"><div class="empty"><h4>No risks ${_journeyFilter==='managed'?'signed off yet':'to show'}</h4><p>${_journeyFilter==='managed'?'Deliver an action plan and tick the risk as reviewed, and it will appear here.':'Build the risk profile first - the journey writes itself from there.'}</p></div></div></div>`}`;
+    ${rows.length ? (_riskGroupMode==='macro' ? _riskMacroGroups(rows,x=>x.r).map(g=>_macroHeadHTML(g)+g.list.map(card).join('')).join('') : rows.map(card).join('')) : `<div class="card"><div class="card-body"><div class="empty"><h4>No risks ${_journeyFilter==='managed'?'signed off yet':'to show'}</h4><p>${_journeyFilter==='managed'?'Deliver an action plan and tick the risk as reviewed, and it will appear here.':'Build the risk profile first - the journey writes itself from there.'}</p></div></div></div>`}`;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -20784,37 +20785,41 @@ function _riskVisibleRows(){
     return true;
   });
 }
+function _riskMacroGroups(rows, rOf){
+  rOf=rOf||(x=>x);
+  const groups=new Map();
+  rows.forEach(x=>{ const k=_riskMacroOf(rOf(x)); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(x); });
+  const bandRank={Critical:4,High:3,Medium:2,Low:1,'':0};
+  return [...groups.entries()].map(([k,list])=>{
+    const worst=list.reduce((w,x)=>{ const p=_riskScore(rOf(x)).priority||''; return bandRank[p]>bandRank[w]?p:w; },'');
+    const atT=list.filter(x=>_riskControlStatus(rOf(x))==='In place').length;
+    return { k, list, worst, atT, allAt:atT===list.length,
+      name:k?((HAZARD_LIBRARY.find(t=>t.key===k)||{}).activity||k):'Not yet grouped - set the Macro category on each risk',
+      roll:atT?(atT+' of '+list.length+' controlled as reasonably practicable'):(list.length+' risk'+(list.length!==1?'s':'')) };
+  }).sort((a,b)=>{
+    if(!a.k!==!b.k) return a.k?-1:1;
+    if(bandRank[b.worst]!==bandRank[a.worst]) return bandRank[b.worst]-bandRank[a.worst];
+    return String(a.k?a.name:'').localeCompare(String(b.k?b.name:''));
+  });
+}
+function _macroHeadHTML(g){
+  return '<div class="jny-macro'+(g.allAt?' jny-mac-at':'')+'" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px;padding:8px 12px;border-left:4px solid '+(g.allAt?'#16A34A':'var(--border)')+';background:'+(g.allAt?'linear-gradient(100deg,#16A34A22,#16A34A08 62%,transparent)':'var(--muted-bg)')+';">'
+    +'<span style="font-weight:700;font-size:13px;">'+esc(g.name)+'</span>'
+    +'<span style="margin-left:auto;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(g.atT?'#15803d':'var(--text-muted)')+';">'+((g.k&&g.worst)?_riskPrioBadge(g.worst,null)+' ':'')+esc(g.roll)+'</span></div>';
+}
 function setRiskGroupMode(m){ _riskGroupMode=m; _keepScroll(renderRiskProfile); }
 function _riskMacroOf(r){ return (r&&r.libKey&&HAZARD_LIBRARY.some(t=>t.key===r.libKey))?r.libKey:''; }
 function _riskTableRowsHTML(){
   const rows=_riskVisibleRows();
   if(!rows.length) return '<tr><td colspan="8" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
   if(_riskGroupMode==='macro'){
-    // The macro layer: the visible rows grouped under their organisation-level
-    // themes, worst group first, each header rolling up count, worst band and
-    // the celebration; unlinked risks close the table under an honest prompt.
-    const groups=new Map();
-    rows.forEach(r=>{ const k=_riskMacroOf(r); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(r); });
-    const bandRank={Critical:4,High:3,Medium:2,Low:1,'':0};
-    const entries=[...groups.entries()].map(([k,list])=>{
-      const worst=list.reduce((w,r)=>{ const p=_riskScore(r).priority||''; return bandRank[p]>bandRank[w]?p:w; },'');
-      return { k, list, worst };
-    }).sort((a,b)=>{
-      if(!a.k!==!b.k) return a.k?-1:1;
-      if(bandRank[b.worst]!==bandRank[a.worst]) return bandRank[b.worst]-bandRank[a.worst];
-      const an=a.k?(HAZARD_LIBRARY.find(t=>t.key===a.k)||{}).activity||'':'';
-      const bn=b.k?(HAZARD_LIBRARY.find(t=>t.key===b.k)||{}).activity||'':'';
-      return String(an).localeCompare(String(bn));
-    });
-    return entries.map(g=>{
-      const atT=g.list.filter(r=>_riskControlStatus(r)==='In place').length;
-      const allAt=atT===g.list.length;
-      const name=g.k?((HAZARD_LIBRARY.find(t=>t.key===g.k)||{}).activity||g.k):'Not yet grouped - set the Macro category on each risk';
-      const roll=atT?(atT+' of '+g.list.length+' controlled as reasonably practicable'):(g.list.length+' risk'+(g.list.length!==1?'s':''));
-      const head='<tr class="rpt-macro'+(allAt?' rpt-mac-at':'')+'">'
-        +'<td colspan="6" style="font-weight:700;">'+esc(name)+'</td>'
-        +'<td colspan="2" style="text-align:right;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(atT?'#15803d':'var(--text-muted)')+';">'
-        +((g.k&&g.worst)?_riskPrioBadge(g.worst,null)+' ':'')+esc(roll)+'</td></tr>';
+    // The macro layer: ONE grouping derivation (_riskMacroGroups) presented as
+    // header rows here, headings on the pathway, subheads in the PDF.
+    return _riskMacroGroups(rows).map(g=>{
+      const head='<tr class="rpt-macro'+(g.allAt?' rpt-mac-at':'')+'">'
+        +'<td colspan="6" style="font-weight:700;">'+esc(g.name)+'</td>'
+        +'<td colspan="2" style="text-align:right;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(g.atT?'#15803d':'var(--text-muted)')+';">'
+        +((g.k&&g.worst)?_riskPrioBadge(g.worst,null)+' ':'')+esc(g.roll)+'</td></tr>';
       return head+_riskRowHTML(g.list);
     }).join('');
   }
@@ -21318,12 +21323,8 @@ function buildRiskProfileReportPDF(){
   }
 
   // ── Risk detail ──
-  section('Risk detail', rated.length+' risks by priority', C.det);
-  ['Critical','High','Medium','Low',''].forEach(p => {
-    const grp = scored.filter(x => x.sc.priority===p);
-    if(!grp.length) return;
-    subHead((p||'Not yet rated')+' ('+grp.length+')', _RISK_PRIO_RGB[p]);
-    grp.forEach(x => {
+  section('Risk detail', _riskGroupMode==='macro'?(risks.length+' risks by macro category'):(rated.length+' risks by priority'), C.det);
+  const riskBody = (x) => {
       const r=x.r, sc=x.sc;
       // Risk name in the priority colour, bold, as a mini-heading - kept whole with its first field
       const _pdfCtl=_riskControlStatus(r);
@@ -21361,8 +21362,20 @@ function buildRiskProfileReportPDF(){
       const linkLines=(r.linked||[]).filter(l=>l.ref||l.url).map(l=>(l.ref||'')+(l.url?(' - '+l.url):''));
       if(linkLines.length) field('Linked evidence', linkLines.join('\n'));
       y+=3.5;
+  };
+  if(_riskGroupMode==='macro'){
+    _riskMacroGroups(scored.slice().sort((a,b)=>(b.sc.rating||0)-(a.sc.rating||0)), xx=>xx.r).forEach(g=>{
+      subHead(g.name+' - '+g.roll, g.allAt?[22,131,71]:(_RISK_PRIO_RGB[g.worst]||[110,116,126]));
+      g.list.forEach(riskBody);
     });
-  });
+  } else {
+    ['Critical','High','Medium','Low',''].forEach(p => {
+      const grp = scored.filter(x => x.sc.priority===p);
+      if(!grp.length) return;
+      subHead((p||'Not yet rated')+' ('+grp.length+')', _RISK_PRIO_RGB[p]);
+      grp.forEach(riskBody);
+    });
+  }
 
   // ── Action plan (aggregate) - table ──
   const acts=_allRiskActions();

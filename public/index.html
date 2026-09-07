@@ -20618,6 +20618,10 @@ async function _discImportFile(file){
     }
     _stamp(S.profiler,'updated'); saveData();
     if(typeof renderRiskProfile==='function') _keepScroll(renderRiskProfile);
+    // The imported answers change the discovery tallies and can wake the
+    // Build-profile button - the panel must repaint too (it lives in the
+    // review render), or the button sits stale-disabled after an import.
+    if(typeof renderRiskReview==='function'){ try{ renderRiskReview(); }catch(e){} }
     showToast('✓ Imported '+(yes+no)+' answer'+((yes+no)!==1?'s':'')+' ('+yes+' yes, '+no+' no)'
       +(notes?(' and '+notes+' note'+(notes!==1?'s':'')):'')
       +(conflicts?(' - '+conflicts+' had both boxes ticked and '+(conflicts!==1?'were':'was')+' left to ask on the visit'):'')
@@ -20815,7 +20819,7 @@ function _discSuggestedKeys(){
 // flagged unreviewed. Additive only - existing themes are never touched, and
 // re-running discovery just tops up anything new.
 function buildProfileFromDiscovery(){
-  if(_roLocked()) return;
+  if(_roLocked()){ showToast('Read only - switch to edit mode to build the profile.','info'); return; }
   const sug=_discSuggestedKeys();
   if(!sug.size){ showToast('Nothing to add - the profile already covers every theme the discovery answers point at.','info'); return; }
   const names=[...sug.keys()].map(k=>{ const t=HAZARD_LIBRARY.find(x=>x.key===k); return t?t.activity:k; });
@@ -20841,7 +20845,7 @@ function _riskHasWork(r){
   return (r.actions||[]).some(a=>(a.status && a.status!=='Not started') || a.owner || a.due);
 }
 function reviewDiscoveryOrphans(){
-  if(_roLocked()) return;
+  if(_roLocked()){ showToast('Read only - switch to edit mode to review the flagged themes.','info'); return; }
   const orph=_discOrphanedThemes();
   if(!orph.length){ showToast('Profile and discovery answers are in step - nothing to review.','info'); return; }
   const removable=orph.filter(r=>!_riskHasWork(r));

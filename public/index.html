@@ -18196,7 +18196,7 @@ function _riskActionsHTML(r, dis, which){
   return `<table class="act-table"><thead><tr><th>Action</th><th>Owner</th><th>Target date</th><th>Status</th><th>Priority</th>${dis?'':'<th></th>'}</tr></thead>
     <tbody>${body || `<tr><td colspan="${dis?5:6}" style="color:var(--text-muted);">${which==='ctl'?'No controls listed yet - add them below.':which==='plan'?'Nothing raised to the plan yet.':'No actions yet.'}</td></tr>`}</tbody></table>
     ${dis?'':(which==='ctl'
-      ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-outline btn-xs no-print" onclick="addRiskControl('${r.id}')">＋ Add control</button></div>`
+      ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-outline btn-xs no-print" onclick="addRiskControl('${r.id}')">＋ Add control</button>${_raStartBtnHTML(r)}</div>`
       : `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">${_riskRaisePillHTML(r)}${_riskPlanState(r).k==='accepted'?'':`<button class="btn btn-ghost btn-xs no-print" title="If the current controls are sufficient and no further action is justified, formally accept this risk - recorded with who and why on the acceptance register" onclick="openAcceptRisk('${r.id}')">≈ Accept this risk</button>`}</div>`)}`;
 }
 // ── Formal risk acceptance: the honest route when the current controls are
@@ -23957,7 +23957,7 @@ function renderRaRegister(){
           ? `<a class="rar-open" href="${esc(loc)}" target="_blank" rel="noopener">Open &#8599;</a>`
           : `<button class="rar-copy no-print" onclick="copyRaLocation('${e.id}')">Copy</button>`)
       : '';
-    return `<div class="rar-card rar-${st.key}">
+    return `<div class="rar-card rar-${st.key}" id="rar-${e.id}">
       <div class="rar-top">
         <div class="rar-icon">${_RA_DOC_ICON}</div>
         <input class="rar-title" value="${esc(e.title||'')}" placeholder="Risk assessment / RAMS title" oninput="updateRaRegField('${e.id}','title',this.value)"${ro?' disabled':''}>
@@ -23969,6 +23969,8 @@ function renderRaRegister(){
         <div class="rar-fld"><label>Assessed</label><input type="date" value="${esc(e.date||'')}" onchange="updateRaRegDate('${e.id}','date',this.value)"${ro?' disabled':''}></div>
         <div class="rar-fld"><label>Review due</label><input type="date" value="${esc(e.reviewDate||'')}" onchange="updateRaRegDate('${e.id}','reviewDate',this.value)"${ro?' disabled':''}></div>
       </div>
+      ${e.riskId?`<div style="margin:2px 0 6px;"><button type="button" class="btn btn-ghost btn-xs no-print" onclick="_gotoRisk('${e.riskId}')" title="Open the risk this assessment started from">From the risk profile: ${esc(_psoRiskName(e.riskId)||'risk')} \u2192</button></div>`:''}
+      ${(e.notes||e.riskId)?`<div class="rar-fld" style="margin-bottom:6px;"><label>Starting point</label><textarea rows="7" style="width:100%;font-size:12px;line-height:1.4;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;resize:vertical;" oninput="updateRaRegField('${e.id}','notes',this.value)"${ro?' disabled':''}>${esc(e.notes||'')}</textarea></div>`:''}
       <span class="rar-status rar-${st.key}">${st.label}</span>
       ${e.missing?`<span class="rar-status rar-overdue" title="Not seen the last time the folder was indexed - it may have been renamed, moved or deleted. Fix the entry or remove it; indexing never deletes rows for you.">⚠ Not in last folder index</span>`:(e.indexed?`<span class="rar-status rar-ok" style="opacity:.7;" title="Indexed from the client's folder - re-drag the folder any time to refresh">folder-indexed</span>`:'')}
       <div class="rar-loc">
@@ -23982,6 +23984,41 @@ function renderRaRegister(){
   }).join('') + '</div>';
 }
 
+// The RA bridge (Simon): the control table "starts to build the actual risk
+// assessments for the tasks" - one click puts a register entry down with the
+// risk read back as the starting point for whoever writes the task RA.
+function _raBriefFromRisk(r){
+  const ct=_riskControlsText(r); const mk=_riskMacroOf(r);
+  const L=[];
+  if(mk) L.push('Macro category: '+_macroName(mk));
+  L.push('Risk: '+(r.activity||r.hazard||'Unnamed risk'));
+  if(String(r.assocRisk||'').trim()) L.push('Associated risk: '+String(r.assocRisk).trim());
+  if(String(r.harm||'').trim()) L.push(_rt(r,'harm')+': '+String(r.harm).trim());
+  if((r.personsAtRisk||[]).length) L.push(_rt(r,'persons')+': '+r.personsAtRisk.join(', '));
+  L.push('Controls (starting point from the risk profile):'+(ct.rows.length?('\n- '+ct.rows.join('\n- ')):'\n- none recorded yet'));
+  if(ct.box) L.push('Reality today: '+ct.box);
+  return L.join('\n');
+}
+function _raStartBtnHTML(r){
+  if(_roLocked()) return '';
+  const e=_raRegState().find(x=>x.riskId===r.id);
+  return e
+    ? '<button type="button" class="btn btn-ghost btn-xs no-print" onclick="startRiskAssessment(\''+r.id+'\')" title="This risk already has a risk assessment on the register - open it">\u2713 On the RA register - open</button>'
+    : '<button type="button" class="btn btn-outline btn-xs no-print" onclick="startRiskAssessment(\''+r.id+'\')" title="Puts a risk assessment entry on the register pre-filled from this risk - the title, the associated risk, the harm and the controls above - as the starting point for whoever writes the task risk assessment">Start a risk assessment from this risk</button>';
+}
+function startRiskAssessment(id){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
+  let e=_raRegState().find(x=>x.riskId===id);
+  if(!e){
+    e={ id:'rar_'+Math.random().toString(36).slice(2,9), title:'Risk assessment - '+(r.activity||r.hazard||'risk'), ref:'', area:r.area||'', date:'', reviewDate:'', location:'', notes:_raBriefFromRisk(r), riskId:id };
+    _raRegState().push(e); saveData();
+    showToast('\u2713 Risk assessment started on the register - the starting point is filled from this risk','success');
+  }
+  _riskCloseModal();
+  switchTab('documents');
+  setTimeout(()=>{ renderRaRegister(); const el=document.getElementById('rar-'+e.id); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.style.outline='2px solid var(--accent)'; setTimeout(()=>{ el.style.outline=''; },1800); } },350);
+}
 function addRaRegEntry(){
   if(_roLocked()) return;
   _raRegState().push({ id:'rar_'+Math.random().toString(36).slice(2,9), title:'', ref:'', area:'', date:'', reviewDate:'', location:'', notes:'' });

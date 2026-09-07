@@ -4,6 +4,7 @@ import { deriveBoard, countPhrase, TIER_COLOURS, docFor } from '../derive.js';
 import { tierWord, dualBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
 import { residualOf, targetOf, tierFor, bandsFrom, producerOf } from '../derive.js';
+import { controlsTextOf } from '../app-contract.js';
 
 export function buildRiskAssessment(state, opts = {}) {
   const D = deriveBoard(state, opts);
@@ -25,7 +26,7 @@ export function buildRiskAssessment(state, opts = {}) {
       assoc: String(r.assocRisk || ''),
       residual: res, projected: tgt,
       tier: res ? tierFor(res.score, bands) : null,
-      controls: String(r.controls || '').slice(0, 140),
+      controls: controlsTextOf(r).slice(0, 140),
     };
   }).sort((a, b) => ((b.residual && b.residual.score) || 0) - ((a.residual && a.residual.score) || 0));
 

@@ -170,6 +170,15 @@ export function controlStatusOf(r) {
   return now <= tgt ? 'In place' : 'None';
 }
 
+// ── Controls text - verbatim port of the app's _riskControlsText: the control
+//    table rows (hideFromPlan, the risk-assessment-level controls) first, the
+//    reality box as the fallback. ──
+export function controlsTextOf(r) {
+  const rows = (r && Array.isArray(r.actions) ? r.actions : []).filter(a => a && !a.deleted && a.hideFromPlan && String(a.desc || '').trim()).map(a => String(a.desc).trim());
+  const box = String((r && r.controls) || '').trim();
+  return rows.length ? rows.join('; ') : box;
+}
+
 // ── Category normalisation - verbatim port of the app's _hazardType (applied
 //    by the app's migrateLoadedState; the report normalises the same way so a
 //    legacy/imported category can never split the counts) ──

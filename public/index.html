@@ -14971,9 +14971,18 @@ function _riskPdca(r){
   return 'Check';
 }
 
+// The controls a risk runs on, as text: the control table rows (the risk-
+// assessment-level controls) first, the reality box as the fallback. Every
+// surface that prints or judges "the controls" reads this - mirrored in the
+// reports layer as controlsTextOf.
+function _riskControlsText(r){
+  const rows=(r&&Array.isArray(r.actions)?r.actions:[]).filter(a=>a&&!a.deleted&&a.hideFromPlan&&String(a.desc||'').trim()).map(a=>String(a.desc).trim());
+  const box=String((r&&r.controls)||'').trim();
+  return { rows, box, text: rows.length?rows.join('; '):box };
+}
 // A risk is "complete" when its key fields are filled in (shows a green tick when minimised).
 function _riskComplete(r){
-  return !!(r && r.category && (r.activity||r.hazard) && r.likelihood && r.severity && r.controls && String(r.controls).trim());
+  return !!(r && r.category && (r.activity||r.hazard) && r.likelihood && r.severity && _riskControlsText(r).text);
 }
 // Preserve the scroll position across a re-render triggered by a click (stops the page jumping).
 function _keepScroll(fn){ const y = window.pageYOffset || document.documentElement.scrollTop || 0; fn(); window.scrollTo(0, y); requestAnimationFrame(()=>window.scrollTo(0, y)); }
@@ -15078,7 +15087,7 @@ const RISK_TERMS={
     assocHint:'The task-level scenario this risk shows up in. The macro category is the hazard, the title is the risk, this is where it happens in the work - it never changes the title.',
     persons:'Persons at risk', personsDigest:'Who is at risk',
     harm:'How might they be harmed', harmPh:'e.g. Fatality, major injury, occupational ill health, stress-related illness',
-    controls:'Existing controls', controlsPh:'Current control measures already in place',
+    controls:'Reality today - what actually exists', controlsPh:'What is actually in place now - None is an honest answer',
     controlLevel:'Best control level',
     controlLevelHint:'The strongest control in place, best to weakest (a general hierarchy that fits any hazard): Eliminate the hazard → Prevent the harm by an engineering / physical control (e.g. edge protection to prevent a fall, a guard, isolation) → Protect the person with PPE, procedure or training → Stop work if it cannot be made safe. A ‘Protect’ answer means you are relying on PPE or procedure.',
     rating:'Risk rating - Likelihood (L) × Severity (S), each 1-5',
@@ -15099,7 +15108,7 @@ const RISK_TERMS={
     assocHint:'The specific scenario this risk shows up in. The macro category is the theme, the title is the risk, this is where it happens - it never changes the title.',
     persons:'Who or what is affected', personsDigest:'Who or what is affected',
     harm:'Consequence if it happens', harmPh:'e.g. Lost contract, prosecution, plant down for weeks, reputational damage',
-    controls:'Current response / mitigation', controlsPh:'What is already in place to manage this risk',
+    controls:'Reality today - what actually exists', controlsPh:'What is actually in place now - None is an honest answer',
     controlLevel:'Response strategy',
     controlLevelHint:'The strongest response in place, best to weakest (the four Ts): Terminate - avoid the risk entirely → Treat - reduce it at source → Transfer or contain - insure, contract out, hold contingency → Tolerate - accept it and monitor. A ‘Tolerate’ answer means the business is carrying this risk knowingly.',
     rating:'Risk rating - Probability (P) × Impact (I), each 1-5',
@@ -15299,7 +15308,7 @@ function _allRiskActions(){
   });
   return out;
 }
-function _overdueActionCount(){ return _allRiskActions().filter(x=>x.status==='Overdue').length; }
+function _overdueActionCount(){ return _allRiskActions().filter(x=>!(x.a&&x.a.hideFromPlan)&&x.status==='Overdue').length; }
 function _reviewOverdue(){ const d=S.riskDoc&&S.riskDoc.nextReview; if(!d) return false; const nx=new Date(d+'T23:59:59'); return !isNaN(nx) && nx < new Date(); }
 
 // ══════════════════════════════════════════════════════════════
@@ -17638,7 +17647,7 @@ function _journeyDepsHTML(r){
     +'<span style="margin-left:auto;flex:0 0 auto;font-size:11px;'+(late?'color:#DC2626;font-weight:700;':'color:var(--text-muted);')+'">'+meta+'</span></div>';
   const rows=[];
   {
-    const c=String(r.controls||'').trim();
+    const c=_riskControlsText(r).text;
     const shown=c?(esc(c.slice(0,90))+(c.length>90?'\u2026':'')):esc(_controlLevelLabelFor(r,r.controlLevel)||'');
     if(ctl==='In place')      rows.push(row(dot('done','\u2713'),'Controls in place: '+shown,'at target',false));
     else if(ctl==='Partial')  rows.push(row(dot('part','~'),(c?'Controls recorded: '+shown:'No controls recorded'),'no residual target set',false));
@@ -20019,7 +20028,7 @@ function _reportData(){
   const opsCount=risks.filter(r=>(typeof _riskMode==='function') && _riskMode(r)==='ops').length;
   const sifNoOwner=sif.filter(r=>!_riskOwner(r));
   const maxSev=Math.max(0,...risks.filter(r=>(typeof _riskMode!=='function'||_riskMode(r)==='hs')).map(_worstSeverity));   // injury ladder: H&S risks only
-  const acts=_allRiskActions();
+  const acts=_allRiskActions().filter(x=>!(x.a&&x.a.hideFromPlan));   // actions = plan rows; control rows are controls
   const actOverdue=acts.filter(x=>x.status==='Overdue').length;
   // Owner and date gaps are counted across the WHOLE plan and only on actions
   // still open - the gap line sends you to the execution plan, so it has to
@@ -21155,7 +21164,7 @@ function renderRiskProfile(){
             ${ratingBox(r,'Inherent','rt-current','likelihood','severity')}
           </div>
           <div style="margin:4px 0 2px;background:var(--surface,#fff);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
-            <label class="field-label">Control table <span class="fl-hint" title="The controls this risk runs on - training, processes, physical measures - each owned and dated here. They stay on the risk and NEVER enter the action plan. Work someone must go and DO is raised on the Actions &amp; evidence tab.">(?)</span></label>
+            <label class="field-label">Control table <span class="fl-hint" title="The controls this risk runs on, in risk-assessment language - trained competent persons, edge protection, permits - the starting point for the task risk assessments. Each owned and dated here; they stay on the risk and NEVER enter the action plan.">(?)</span></label>
             <div style="font-size:11.5px;color:var(--text-muted);margin:2px 0 8px;">These stay on the risk and never enter the action plan. Score the projection below once they are set.</div>
             ${_riskActionsHTML(r,dis,'ctl')}
           </div>
@@ -21170,7 +21179,7 @@ function renderRiskProfile(){
     const prov=_rpProvenanceBadge(r);
     return `
         <div style="margin:0 0 14px;">
-          <label class="field-label">Raised to the action plan <span class="fl-hint" title="Actions raised with the button below, exactly as on Legal duties: what needs doing, who owns it, by when. Every row here is on the client execution plan, linked back to this risk. The controls this risk runs on live on the Controls &amp; rating tab.">(?)</span></label>
+          <label class="field-label">Raised to the action plan <span class="fl-hint" title="The actions are the policy, process and procedure machinery that puts each control in place and keeps it there - roles delegated to named people, a process on a cycle, a provider that notifies, a named keeper. Every row here is on the client execution plan, linked back to this risk.">(?)</span></label>
           <div style="font-size:11.5px;color:var(--text-muted);margin:2px 0 8px;">Everything here is on the client execution plan, carrying this risk as its source.</div>
           ${_riskActionsHTML(r,dis,'plan')}
         </div>
@@ -21490,6 +21499,7 @@ function buildRiskProfileReportPDF(){
       const imp = RISK_IMPACT_DIMS.filter(dm=>parseInt((r.impacts||{})[dm.k],10)>0)
         .map(dm=>dm.label.split(' (')[0]+' '+r.impacts[dm.k]).join(', ');
       field('Business impact', imp || r.businessImpact);
+      field('Controls (risk assessment)', _riskControlsText(r).rows.join('\n'));
       field(_rt(r,'controls'), r.controls);
       field(_rt(r,'controlLevel'), _controlLevelLabelFor(r, r.controlLevel));
       field('Controls status',
@@ -21502,8 +21512,8 @@ function buildRiskProfileReportPDF(){
       field('Risk rating', 'Inherent '+fmtR(sc)+((tgtP.rating&&plan.k!=='managed')?('  >  Projected '+fmtR(tgtP)):'')+'  >  '+plan.label.replace('✓ ',''));
       if(Array.isArray(r.scoreHistory)&&r.scoreHistory.length) field('Score history', r.scoreHistory.map(e=>(e.l*e.s)+' ('+e.l+'x'+e.s+') '+(e.note||'')+' '+fd(e.at)).join('  >  ')+'  >  now '+(sc.rating||'-'));
       field('Risk trend', r.trend);
-      const actLines=(r.actions||[]).filter(a=>a.desc||a.owner||a.due).map((a,i)=>(a.desc||'(action)')+'  ['+_actionStatus(a)+(a.owner?(' · '+a.owner):'')+(a.due?(' · due '+fd(a.due)):'')+(a.priority?(' · '+a.priority):'')+']');
-      if(actLines.length) field('Actions', actLines.join('\n'));
+      const actLines=(r.actions||[]).filter(a=>!a.deleted&&!a.hideFromPlan&&(a.desc||a.owner||a.due)).map((a,i)=>(a.desc||'(action)')+'  ['+_actionStatus(a)+(a.owner?(' · '+a.owner):'')+(a.due?(' · due '+fd(a.due)):'')+(a.priority?(' · '+a.priority):'')+']');
+      if(actLines.length) field('Actions (plan)', actLines.join('\n'));
       const linkLines=(r.linked||[]).filter(l=>l.ref||l.url).map(l=>(l.ref||'')+(l.url?(' - '+l.url):''));
       if(linkLines.length) field('Linked evidence', linkLines.join('\n'));
       y+=3.5;
@@ -21523,7 +21533,7 @@ function buildRiskProfileReportPDF(){
   }
 
   // ── Action plan (aggregate) - table ──
-  const acts=_allRiskActions();
+  const acts=_allRiskActions().filter(x=>!(x.a&&x.a.hideFromPlan));
   if(acts.length){
     section('Action plan', 'Prioritised - '+_overdueActionCount()+' overdue', C.act, 30);
     const rank={Overdue:0,'In progress':1,'Not started':2,Complete:3};
@@ -23338,12 +23348,12 @@ function buildPolicyPDF(){
   K.text('Monitoring and review: performance is monitored through leading and lagging indicators and a planned assurance schedule'+(monN?(' ('+monN+' measures defined)'):'')+', with monthly figures recorded and the position reviewed with the health and safety adviser.', 9.5);
   K.text('Accidents, incidents and near misses: all events are reported, recorded on the incident register and investigated for cause; RIDDOR-reportable events are notified to the enforcing authority. Lessons feed the action plan.', 9.5);
   const fire=(S.riskProfile||[]).find(r=>(r.category==='Fire')||/fire/i.test(r.activity||''));
-  if(fire && String(fire.controls||'').trim()) K.text('Fire and emergencies: '+String(fire.controls).slice(0,300), 9.5);
+  if(fire && _riskControlsText(fire).text) K.text('Fire and emergencies: '+_riskControlsText(fire).text.slice(0,300), 9.5);
   const top=rated.slice().sort((a,b)=>(_riskScore(b).rating||0)-(_riskScore(a).rating||0)).slice(0,8)
-    .filter(r=>String(r.controls||'').trim());
+    .filter(r=>_riskControlsText(r).text);
   if(top.length){
     K.text('Arrangements for the principal risks:', 10, {bold:true});
-    K.table([{header:'RISK AREA',w:58},{header:'ARRANGEMENTS',w:120}], top.map(r=>[(r.activity||r.hazard||'').slice(0,60), String(r.controls||'').slice(0,160)]));
+    K.table([{header:'RISK AREA',w:58},{header:'ARRANGEMENTS',w:120}], top.map(r=>[(r.activity||r.hazard||'').slice(0,60), _riskControlsText(r).text.slice(0,160)]));
   }
   _pdfBrandFooter(doc, ML, RM);
   doc.save('hs-policy-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
@@ -27955,7 +27965,7 @@ function buildFeedbackReportPDF(){
   const priRisks=(S.riskProfile||[]).map(r=>({r,sc:_riskScore(r)})).filter(x=>x.sc.priority==='Critical'||x.sc.priority==='High').sort((a,b)=>(b.sc.rating||0)-(a.sc.rating||0));
   if(priRisks.length){
     K.table([{header:'RISK',w:104},{header:'PRIORITY',w:34},{header:'CONTROLS',w:40}],
-      priRisks.map(x=>[{text:x.r.activity||x.r.hazard||'Risk', bold:true}, {text:x.sc.priority+' '+x.sc.rating, bold:true, color:x.sc.priority==='Critical'?RED:AMBER}, {text:x.r.controls||'-', color:GREY}]),
+      priRisks.map(x=>[{text:x.r.activity||x.r.hazard||'Risk', bold:true}, {text:x.sc.priority+' '+x.sc.rating, bold:true, color:x.sc.priority==='Critical'?RED:AMBER}, {text:_riskControlsText(x.r).text||'-', color:GREY}]),
       {headFill:NAVY, headText:[255,255,255]});
   } else K.text('No critical or high risks recorded.', 9.5, {color:GREY});
   // Management system gaps (table)

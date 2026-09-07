@@ -3450,7 +3450,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             <button class="btn btn-primary no-print" id="addRiskBtn" onclick="addRiskEntry()">＋ Add risk</button>
             <button class="btn btn-outline no-print" id="addLibRiskBtn" onclick="openHazardLibrary()">＋ From hazard library</button>
             <button class="btn btn-ghost no-print" id="riskBackupBtn" onclick="backupRiskData()" title="Download a JSON backup of this client's risk data">Backup data (JSON)</button>
-            <button class="btn btn-outline no-print" id="riskAnalysisBtn" onclick="openRiskAnalysis()" title="The deep views: risks by hazard type, the SIF register and the consultant judgement">Analysis</button>
+            <button class="btn btn-outline no-print" id="riskAnalysisBtn" onclick="openRiskAnalysis()" title="The deep views: risks by macro category, the SIF register and the consultant judgement">Analysis</button>
           </div>
           <div id="riskLibrary" class="no-print"></div>
           <div id="riskFilters" class="no-print"></div>
@@ -3465,13 +3465,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="coll-body"><div id="riskMaturity"></div></div>
       </details>
 
-      <!-- Analysis - the deep views on demand: risks by hazard type and the
+      <!-- Analysis - the deep views on demand: risks by macro category and the
            SIF register / energy analysis. Opened by the Analysis button. -->
       <div id="riskAnalysisOverlay" class="no-print" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9990;align-items:flex-start;justify-content:center;padding:24px;overflow:auto;" onmousedown="this._downSelf=(event.target===this)" onclick="if(this._downSelf&&event.target===this)closeRiskAnalysis();this._downSelf=false;">
         <div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:1080px;width:100%;box-shadow:0 18px 60px rgba(0,0,0,.35);padding:16px 22px 20px;margin:auto 0;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
             <h3 style="margin:0;font-size:16px;">Analysis - the deep views</h3>
-            <span style="font-size:12px;color:var(--text-muted);">risks by hazard type &middot; SIF register &middot; energy analysis</span>
+            <span style="font-size:12px;color:var(--text-muted);">risks by macro category &middot; SIF register &middot; energy analysis</span>
             <button class="btn btn-ghost btn-sm no-print" style="margin-left:auto;" onclick="closeRiskAnalysis()" title="Close (Esc)">&#10005; Close</button>
           </div>
           <div id="riskReviewSummary"></div>
@@ -3482,7 +3482,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 
   <!-- ══════════════════════════════════════
-       TAB - RISK PROFILE REVIEW (by hazard type + PDCA)
+       TAB - RISK PROFILE REVIEW (by macro category + PDCA)
   ══════════════════════════════════════ -->
   <style>
     .rr-typecard{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden;}
@@ -14384,22 +14384,22 @@ const COCKPIT_WIDGETS = {
   gaugeSifControl:  { id:'gaugeSifControl', label:'Fatal-risk control gauge', group:'Gauge', defaultOff:true, render:x=>{ const t=x.RD.sif.length, pct=t?Math.round((t-x.RD.sifUncontrolled.length)/t*100):0; return _ckMod('Fatal-risk control', `${_gaugeSVG(pct,{text:t?pct+'%':'n/a'})}<div class="ck-pending" style="text-align:center;margin-top:2px;">${t?('of '+t+' fatal-potential controlled'):'no fatal-potential risks'}</div><button class="ck-link" onclick="switchTab('risk')" style="align-self:center;">Risk profile</button>`); } },
   // Moved up from the Risk profile tab (they were text lists there): the
   // category split as a pie and the emerging-risk count as a gauge.
-  chartRiskCats:    { id:'chartRiskCats', label:'Risks by category (pie)', group:'Chart', render:x=>{
-      const byCat={}; (S.riskProfile||[]).forEach(r=>{ const c=r.category||'Uncategorised'; byCat[c]=(byCat[c]||0)+1; });
+  chartRiskCats:    { id:'chartRiskCats', label:'Risks by macro category (pie)', group:'Chart', render:x=>{
+      const byCat={}; (S.riskProfile||[]).forEach(r=>{ const c=_riskMacroOf(r); byCat[c]=(byCat[c]||0)+1; });
       const cats=Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]); const total=cats.reduce((a,c)=>a+byCat[c],0);
-      if(!total) return `<div class="ckx-panel"><h4>Risks by category</h4><div class="ck-pending">No risks in the profile yet.</div></div>`;
+      if(!total) return `<div class="ckx-panel"><h4>Risks by macro category</h4><div class="ck-pending">No risks in the profile yet.</div></div>`;
       let a0=-Math.PI/2, segs='';
       cats.forEach(c=>{ const frac=byCat[c]/total, a1=a0+frac*2*Math.PI, large=frac>0.5?1:0;
-        const col=_catColour(c);
+        const col=_macroColour(c);
         const x0=60+48*Math.cos(a0), y0=60+48*Math.sin(a0), x1=60+48*Math.cos(a1), y1=60+48*Math.sin(a1);
         segs += frac>=0.999 ? `<circle cx="60" cy="60" r="48" fill="${col}"/>`
           : `<path d="M60 60 L${x0.toFixed(1)} ${y0.toFixed(1)} A48 48 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${col}"/>`;
         a0=a1; });
-      const legend=cats.map(c=>{ const col=_catColour(c);
-        return `<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:3px;background:${col};display:inline-block;flex:0 0 auto;"></span>${esc(c)}&nbsp;<b>${byCat[c]}</b></span>`; }).join('');
-      return `<div class="ckx-panel"><h4>Risks by category</h4>
+      const legend=cats.map(c=>{ const col=_macroColour(c);
+        return `<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:3px;background:${col};display:inline-block;flex:0 0 auto;"></span>${esc(c?_macroName(c):'Not yet grouped')}&nbsp;<b>${byCat[c]}</b></span>`; }).join('');
+      return `<div class="ckx-panel"><h4>Risks by macro category</h4>
         <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
-          <svg viewBox="0 0 120 120" width="108" height="108" role="img" aria-label="Risks by category">${segs}<circle cx="60" cy="60" r="26" fill="var(--surface)"/><text x="60" y="66" text-anchor="middle" style="font-size:20px;font-weight:700;fill:var(--text);">${total}</text></svg>
+          <svg viewBox="0 0 120 120" width="108" height="108" role="img" aria-label="Risks by macro category">${segs}<circle cx="60" cy="60" r="26" fill="var(--surface)"/><text x="60" y="66" text-anchor="middle" style="font-size:20px;font-weight:700;fill:var(--text);">${total}</text></svg>
           <div style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--text-muted);min-width:0;">${legend}</div>
         </div>
         <button class="ck-link" onclick="switchTab('risk')">Open the risk profile →</button></div>`;
@@ -14982,7 +14982,7 @@ function _riskControlsText(r){
 }
 // A risk is "complete" when its key fields are filled in (shows a green tick when minimised).
 function _riskComplete(r){
-  return !!(r && r.category && (r.activity||r.hazard) && r.likelihood && r.severity && _riskControlsText(r).text);
+  return !!(r && (r.activity||r.hazard) && r.likelihood && r.severity && _riskControlsText(r).text);
 }
 // Preserve the scroll position across a re-render triggered by a click (stops the page jumping).
 function _keepScroll(fn){ const y = window.pageYOffset || document.documentElement.scrollTop || 0; fn(); window.scrollTo(0, y); requestAnimationFrame(()=>window.scrollTo(0, y)); }
@@ -15081,7 +15081,7 @@ const RISK_MODES=[
 ];
 const RISK_TERMS={
   hs:{
-    category:'Hazard type', activity:'Risk title',
+    category:'Macro category', activity:'Risk title',
     activityPh:'What we are talking about, e.g. fire breaking out on site or at the premises',
     assoc:'Associated risk', assocPh:'Where it bites in the work, e.g. the petrol tank catching fire in the van after refuelling the strimmer',
     assocHint:'The task-level scenario this risk shows up in. The macro category is the hazard, the title is the risk, this is where it happens in the work - it never changes the title.',
@@ -15102,7 +15102,7 @@ const RISK_TERMS={
     levels:{ remove:'Eliminate / remove the hazard', prevent:'Prevent the harm (engineering / physical)', protect:'Protect the person (PPE, procedure, training)', stopwork:'Stop work if unsafe' }
   },
   ops:{
-    category:'Risk category', activity:'Risk title',
+    category:'Macro category', activity:'Risk title',
     activityPh:'e.g. losing the key client, a supplier failure stopping production',
     assoc:'Associated risk', assocPh:'Where it bites in the business, e.g. the one supplier holding the only tooling for the main product line',
     assocHint:'The specific scenario this risk shows up in. The macro category is the theme, the title is the risk, this is where it happens - it never changes the title.',
@@ -17898,7 +17898,7 @@ function _renderRiskDashboard(){
   const overdueActions = _overdueActionCount();
   // Count by category (spec #9)
   const byCat = {};
-  risks.forEach(r => { const c=r.category||'Uncategorised'; byCat[c]=(byCat[c]||0)+1; });
+  risks.forEach(r => { const k=_riskMacroOf(r); const c=k?_macroName(k):'Not yet grouped'; byCat[c]=(byCat[c]||0)+1; });
   const catRows = Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a])
     .map(c=>`<li><span>${esc(c)}</span><span style="font-weight:700;">${byCat[c]}</span></li>`).join('')
     || '<li style="color:var(--text-muted);list-style:none;">No categories yet.</li>';
@@ -18495,11 +18495,11 @@ function _renderScoringKey(){
   const b=cfg.bands;
   // Keep whatever open/closed state the user chose across re-renders (closed on first paint)
   const _d=el.querySelector('details'); const _skOpen=_d?_d.open:false;
-  const cats=_catEditorHTML();
+  const cats={hs:'',ops:''};   // category lists retired for the macro layer - nothing to edit here now
   el.innerHTML = `<details class="rp-subcard"${_skOpen?' open':''}>
     <summary style="padding:14px 18px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:10px;">${_ic('settings',17)} Scoring key <span style="font-weight:400;font-size:12px;color:var(--text-muted);">H&S: Likelihood × Severity · Operational: Probability × Impact · ${esc(_bandRangeText())}</span></summary>
     <div class="sc-body">
-      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">The categories this client's risks are filed under. They are labels only - the scoring, the bands and every report work the same whatever you call them - so set them to match the business. A category already in use cannot be removed.</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">The scoring key this client rates against. The bands and every report follow it.</div>
       ${cats.hs}
       <div class="scorekey-grid">
         <div><div style="font-weight:700;font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Likelihood (1-5) <span class="fl-hint" title="How likely the harmful event is. Moves when a control stops the event happening: segregation, guarding, planned maintenance, permits, supervision, competence.">(?)</span></div>${cfg.like.map((t,i)=>line('likelihood',i,t)).join('')}</div>
@@ -18633,11 +18633,9 @@ function _renderHazardLibrary(){
   const card=(t)=>{
     const inn=present.has(t.key);
     const sc=_scorePair(t.l,t.s); const c=_RISK_PRIO_COLOR[sc.priority];
-    const ht=_hazardType(t.category, t.hazard); const hc=HAZARD_TYPE_COLOR[ht];
     return `<div class="lib-item${inn?' lib-in':''}">
-      <span class="li-cat" style="color:${hc};">${esc(ht)}</span>
+      <span class="li-cat" style="color:${_macroColour(t.macroKey)};">${esc(t.macro||'')}</span>
       <span class="li-name">${esc(t.activity)}</span>
-      <span class="li-meta">${esc(t.macro||'')}</span>
       <span class="li-meta">Suggested: <strong style="color:${c};">${t.l} × ${t.s} = ${sc.rating} (${sc.priority})</strong> · ${esc(t.trend)}</span>
       ${inn ? `<span style="font-size:11px;font-weight:700;color:#16A34A;">✓ In profile</span>`
             : `<button class="btn btn-primary btn-xs" onclick="insertLibraryRisk('${t.key}')" style="margin-top:2px;align-self:flex-start;">＋ Add to profile</button>`}
@@ -20915,10 +20913,11 @@ function _riskVisibleRows(){
     if(_riskFilter.highcrit && !(sc.priority==='High'||sc.priority==='Critical')) return false;
     if(_riskFilter.unit){ const u=_riskUnits(r); if(u.length && !u.includes(_riskFilter.unit)) return false; }
     if(_riskModeFilter!=='all' && _riskMode(r)!==_riskModeFilter) return false;
-    if(_riskSearch && !(((r.activity||'')+' '+(r.assocRisk||'')+' '+(r.category||'')+' '+(r.area||'')).toLowerCase().includes(_riskSearch))) return false;
+    if(_riskSearch && !(((r.activity||'')+' '+(r.assocRisk||'')+' '+(_riskMacroOf(r)?_macroName(_riskMacroOf(r)):'')+' '+(r.area||'')).toLowerCase().includes(_riskSearch))) return false;
     return true;
   });
 }
+function _macroColour(k){ return ({ fire:'#DC2626', height:'#EA580C', transport:'#7C3AED', plant:'#2563EB', health:'#0891B2', construction:'#B45309', ergonomics:'#059669', people:'#DB2777', premises:'#0EA5E9', management:'#4B5563', business:'#6D28D9' })[k]||'#9CA3AF'; }
 function _macroName(k){ const o=(S.macroNames||{})[k]; if(o) return o; const t=HAZARD_LIBRARY.find(x=>x.macroKey===k); return t?(t.macro||k):k; }
 function _macroRenameStart(ev,k){
   if(_blockIfReadOnly()) return;
@@ -20982,13 +20981,13 @@ function _riskTableRowsHTML(){
 }
 function _riskRowHTML(rows){
   return rows.map(r=>{
-    const sc=_riskScore(r); const ops=_riskMode(r)==='ops'; const cc=_catColour(r.category);
+    const sc=_riskScore(r); const ops=_riskMode(r)==='ops'; const mk=_riskMacroOf(r); const cc=_macroColour(mk);
     const ctl=_riskControlStatus(r); const cdot=ctl==='None'?'#DC2626':(ctl==='Partial'?'#F59E0B':'#16A34A');
     const cword=ctl==='None'?'uncontrolled':(ctl==='Partial'?'no target set':'controlled as reasonably practicable');
     return '<tr class="rpt-row'+(ctl==='In place'?' rpt-atline':'')+'" onclick="_riskOpenModal(\''+r.id+'\')" title="'+(ctl==='In place'?'Controlled as reasonably practicable - open this risk. Esc brings you straight back':'Open this risk - Esc brings you straight back')+'">'
       +'<td onclick="event.stopPropagation()" style="white-space:nowrap;">'+RISK_MODES.map(m=>'<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:'+(_riskMode(r)===m.k?'700':'400')+';color:'+(_riskMode(r)===m.k?m.colour:'var(--text-muted)')+';cursor:pointer;line-height:1.5;"><input type="radio" name="kind_'+r.id+'" '+(_riskMode(r)===m.k?'checked':'')+' onchange="setRiskMode(\''+r.id+'\',\''+m.k+'\')" style="accent-color:'+m.colour+';width:12px;height:12px;cursor:pointer;">'+(m.k==='hs'?'H&S':'Ops')+'</label>').join('')+'</td>'
       +'<td style="font-weight:700;">'+esc(r.activity||r.hazard||'New risk')+(r.reviewed?' <span style="color:#16A34A;font-weight:700;font-size:11px;" title="Reviewed and completed">\u2713</span>':'')+'</td>'
-      +'<td><span class="rc-chip" style="background:'+cc+'1a;color:'+cc+';">'+esc(r.category||'-')+'</span>'+(ops?' <span class="rc-chip" style="background:#7C3AED1a;color:#7C3AED;">Operational</span>':'')+'</td>'
+      +'<td><span class="rc-chip" style="background:'+cc+'1a;color:'+cc+';">'+esc(mk?_macroName(mk):'-')+'</span>'+(ops?' <span class="rc-chip" style="background:#7C3AED1a;color:#7C3AED;">Operational</span>':'')+'</td>'
       +'<td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">'+esc(r.area||'-')+'</td>'
       +'<td style="text-align:center;">'+(_riskFlagOn(r)?('<span style="color:'+(ops?'#7C3AED':'#DC2626')+';font-weight:800;" title="'+esc(_rt(r,'flagChipTitle'))+'">\u26a0</span>'):'')+'</td>'
       +'<td>'+_riskPrioBadge(sc.priority,null)+'</td>'
@@ -21113,7 +21112,6 @@ function renderRiskProfile(){
     if(_riskSelTab==='summary') return _rpDigestHTML(r) + (dis?'':('<div class="no-print" style="margin-top:12px;">'+_riskRaisePillHTML(r)+'</div>'));
     if(_riskSelTab==='identify') return `
         <div class="field-grid" style="margin-bottom:12px;">
-          ${fg(_rt(r,'category'), sel(r.id,'category',r.category,_catOpts(r.category, r)))}
           ${fg('Business area', sel(r.id,'area',r.area,RISK_AREAS))}
         </div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
@@ -21206,9 +21204,9 @@ function renderRiskProfile(){
   // Header wording follows the mode filter - H&S speaks hazards, operational
   // speaks causes; the mixed view names both.
   const _hh = _riskModeFilter==='ops'
-    ? { cat:'Risk category', flag:'Critical' }
-    : _riskModeFilter==='hs' ? { cat:'Hazard type', flag:'SIF' }
-    : { cat:'Type', flag:'SIF' };
+    ? { cat:'Macro', flag:'Critical' }
+    : _riskModeFilter==='hs' ? { cat:'Macro', flag:'SIF' }
+    : { cat:'Macro', flag:'SIF' };
   const table=`<div style="overflow-x:auto;"><table class="rpt"><thead><tr>
       <th style="width:70px;" title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
       <th>Risk title</th>
@@ -21391,7 +21389,7 @@ function buildRiskProfileReportPDF(){
   const rated  = scored.filter(x => x.sc.priority);
   const cnt = p => rated.filter(x => x.sc.priority===p).length;
   const emergingList = risks.filter(r => r.trend==='Increasing');
-  const byCat = {}; risks.forEach(r=>{const c=r.category||'Uncategorised'; byCat[c]=(byCat[c]||0)+1;});
+  const byCat = {}; risks.forEach(r=>{const k=_riskMacroOf(r); const c=k?_macroName(k):'Not yet grouped'; byCat[c]=(byCat[c]||0)+1;});
 
   // ── Profile at a glance + data completeness (no meaningless average - spec Part B) ──
   const RD=_reportData();
@@ -21438,7 +21436,7 @@ function buildRiskProfileReportPDF(){
   field('Emerging', String(emergingList.length)+' (trend increasing)');
   field('Overdue actions', String(_overdueActionCount()));
   field('Profile review', _reviewOverdue()?'OVERDUE':'in date');
-  field('By category', Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]).map(c=>c+' ('+byCat[c]+')').join(',  '));
+  field('By macro category', Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]).map(c=>c+' ('+byCat[c]+')').join(',  '));
 
   // ── Risk distribution matrix + overall company score (two frames, side by side) ──
   if(_reportSectionOn('risk.matrix')){
@@ -21490,7 +21488,7 @@ function buildRiskProfileReportPDF(){
       doc.setFont('helvetica','normal');
       if(_riskFlagOn(r)) field(_riskMode(r)==='ops'?'Business-critical':'SIF flag', _riskMode(r)==='ops'?'YES - worst case would seriously damage the business':'YES - can kill or seriously injure (independent of likelihood)');
       if(_riskMode(r)==='ops') field('Risk type','Operational');
-      field(_rt(r,'category'), r.category);
+      field('Macro category', _riskMacroOf(r)?_macroName(_riskMacroOf(r)):'');
       field('Energy source(s)', (r.energy||[]).map(_energyLabel).join(', '));
       field('Business area', r.area);
       field(_rt(r,'persons'), (r.personsAtRisk||[]).join(', '));
@@ -22460,30 +22458,30 @@ function renderRiskReview(){
       </div>
     </div></details>`;
 
-  // 2) Risks summarised by hazard type (with area sub-tag + PDCA pill).
+  // 2) Risks summarised by macro category (with area sub-tag + PDCA pill).
   let summary='';
   if(!risks.length){
-    summary=`<div class="card"><div class="card-body"><div class="empty"><div class="empty-icon" style="color:var(--text-muted);">${_ic('shield',38)}</div><h4>No risks recorded yet</h4><p>Add risks in the Risk profile tab (from the activity library or by hand) and they will be summarised here by hazard type.</p></div></div></div>`;
+    summary=`<div class="card"><div class="card-body"><div class="empty"><div class="empty-icon" style="color:var(--text-muted);">${_ic('shield',38)}</div><h4>No risks recorded yet</h4><p>Add risks in the Risk profile tab (from the activity library or by hand) and they will be summarised here by macro category.</p></div></div></div>`;
   } else {
-    const byType={}; risks.forEach(r=>{ const t=r.category||'(untyped)'; (byType[t]=byType[t]||[]).push(r); });
-    const typeOrder=HAZARD_TYPES.filter(t=>byType[t]).concat(Object.keys(byType).filter(t=>!HAZARD_TYPES.includes(t)));
-    const tiles=typeOrder.map(t=>{ const c=_catColour(t); return `<div class="rr-typetile" style="border-top-color:${c};"><div class="rt-n" style="color:${c};">${byType[t].length}</div><div class="rt-l">${esc(t)}</div></div>`; }).join('');
+    const byType={}; risks.forEach(r=>{ const t=_riskMacroOf(r)||''; (byType[t]=byType[t]||[]).push(r); });
+    const typeOrder=_macroKeys().filter(t=>byType[t]).concat(byType['']?['']:[]);
+    const tiles=typeOrder.map(t=>{ const c=_macroColour(t); return `<div class="rr-typetile" style="border-top-color:${c};"><div class="rt-n" style="color:${c};">${byType[t].length}</div><div class="rt-l">${esc(t?_macroName(t):'Not yet grouped')}</div></div>`; }).join('');
     const groups=typeOrder.map(t=>{
-      const c=_catColour(t);
+      const c=_macroColour(t);
       const list=byType[t].slice().sort((a,b)=>(_riskScore(b).rating||0)-(_riskScore(a).rating||0));
       const rows=list.map(r=>{
         const sc=_riskScore(r); const pc=_RISK_PRIO_COLOR[sc.priority]||'#9CA3AF';
         const pdca=_riskPdca(r); const pdc=RISK_PDCA_COLOR[pdca];
         return `<div class="rr-row rr-click" onclick="_gotoRisk('${r.id}')" title="Open this risk to see and complete its content">
-          <div><div class="rr-name">${esc(r.activity||r.hazard||'Unnamed risk')}</div><div class="rr-sub">${esc(_riskMacroOf(r)?_macroName(_riskMacroOf(r)):'')}</div></div>
+          <div><div class="rr-name">${esc(r.activity||r.hazard||'Unnamed risk')}</div><div class="rr-sub">${esc(String(r.assocRisk||'').slice(0,90))}</div></div>
           <div>${r.area?`<span class="rr-area">${esc(r.area)}</span>`:'<span class="rr-sub">-</span>'}</div>
           <div><span class="badge" style="border-color:${pc};color:${pc};background:${pc}1a;">${sc.priority||'Not rated'}${sc.rating?' · '+sc.rating:''}</span></div>
           <div><span class="rr-pdca" style="background:${pdc}1a;color:${pdc};border:1px solid ${pdc};">${pdca}</span></div>
         </div>`;
       }).join('');
-      return `<div class="rr-typecard"><div class="rr-typehead" style="border-left-color:${c};"><span style="width:12px;height:12px;border-radius:50%;background:${c};display:inline-block;"></span><h3>${esc(t)}</h3><span class="rr-count">${byType[t].length} risk${byType[t].length!==1?'s':''}</span></div>${rows}</div>`;
+      return `<div class="rr-typecard"><div class="rr-typehead" style="border-left-color:${c};"><span style="width:12px;height:12px;border-radius:50%;background:${c};display:inline-block;"></span><h3>${esc(t?_macroName(t):'Not yet grouped')}</h3><span class="rr-count">${byType[t].length} risk${byType[t].length!==1?'s':''}</span></div>${rows}</div>`;
     }).join('');
-    summary=`<h3 style="font-size:14px;margin:6px 0 10px;">Risks by hazard type</h3><div class="rr-typegrid">${tiles}</div>${groups}`;
+    summary=`<h3 style="font-size:14px;margin:6px 0 10px;">Risks by macro category</h3><div class="rr-typegrid">${tiles}</div>${groups}`;
   }
 
   // 3) Energy-model analysis - SIF register, energy coverage gap-check, control-level distribution.

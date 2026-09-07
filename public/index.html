@@ -15849,56 +15849,1078 @@ function _epJump(id){
 // ── Hazard library (spec #8) - seeded from ahs-required-risks.md.
 // Suggested starting ratings only; must be reviewed and agreed by the company.
 const HAZARD_LIBRARY = [
-  // Risk PROFILING library - organisation-level (macro) THREAT themes, framed to surface aggregate
-  // risk and prioritise resources across the whole business. Task-by-task detail belongs in the
-  // RA Register, not here. Ratings are starting suggestions to agree per client at review.
-  // Per NEBOSH, a risk profile "considers and consolidates a range of threats and a range of
-  // risks, not just those related to health and safety", weighing harm to people, disruption to
-  // the organisation and financial impacts - so the set deliberately spans beyond H&S hazards.
-  // ── People ──
-  { key:'competence', category:'Legal / Regulatory', activity:'Providing competent, trained and supervised people across the organisation', hazard:'Aggregate risk that the workforce lacks the competence, training or supervision for the risks it faces', persons:['Employees','Contractors'], harm:'Errors and unsafe acts across the business from under-trained or under-supervised staff; a systemic driver behind most incidents.', controls:'Organisation-wide training-needs matrix; induction and role-based competence standards; refresher and supervision regime; competence checks for high-risk tasks.', action:'Prioritise a training-needs matrix and a supervision standard covering every role.', duty:'MHSWR 1999 reg. 13; HSWA 1974 s.2', inh:[3,4], l:3, s:4, trend:'Stable' },
-  { key:'ohwellbeing', category:'Psychosocial', activity:'Managing occupational health, wellbeing and work-related stress', hazard:'Cumulative ill-health, mental-health and stress exposure across the workforce', persons:['Employees'], harm:'Long-latency ill health, sickness absence and staff turnover; a growing organisational liability.', controls:'Stress risk assessment against the HSE Management Standards; health surveillance where exposures justify it; wellbeing and EAP provision; absence monitoring.', action:'Prioritise a stress/wellbeing programme and a health-surveillance decision for exposed groups.', duty:'MHSWR 1999; HSWA 1974 s.2', inh:[3,3], l:3, s:3, trend:'Increasing' },
-  { key:'vulnerable', category:'Legal / Regulatory', activity:'Employing young persons, new & expectant mothers, agency and other at-risk groups', hazard:'Groups needing enhanced controls not being specifically assessed', persons:['Employees','Agency Workers'], harm:'Disproportionate harm to workers who are less experienced or more susceptible.', controls:'Specific risk assessments for young persons and new/expectant mothers; agency-worker information exchange; tailored supervision and restrictions.', action:'Prioritise specific assessments for at-risk worker groups.', duty:'MHSWR 1999 regs. 16-19', inh:[2,3], l:2, s:3, trend:'Stable' },
-  { key:'violence', category:'Psychosocial', activity:'Staff dealing with the public, customers or service users', hazard:'Workplace violence and aggression', persons:['Employees'], harm:'Assault, injury and psychological harm to customer-facing and lone staff.', controls:'Violence risk assessment; conflict de-escalation training; alarms, reporting and post-incident support; lone-worker links.', action:'Assess violence exposure and prioritise de-escalation training and reporting.', duty:'HSWA 1974; MHSWR 1999', inh:[3,3], l:3, s:3, trend:'Increasing' },
-  { key:'publicsafety', category:'Physical', activity:'Work that can affect passengers, customers, site visitors or the public', hazard:'Harm to non-employees affected by the organisation\'s undertaking', persons:['Members of the Public','Contractors'], harm:'Injury to people who are not employees - passengers, customers, visitors or the public - with significant liability.', controls:'Assessment of who is affected by each activity; segregation and public-protection measures; safeguarding of vulnerable service users; clear duty under section 3.', action:'Map where the public and service users are affected and prioritise protection measures.', duty:'HSWA 1974 s.3', inh:[3,4], l:2, s:4, trend:'Stable' },
-  { key:'safeguarding', category:'Psychosocial', activity:'Safeguarding children and adults at risk in the organisation\'s care', hazard:'Abuse, neglect or harm to service users the organisation transports, cares for, teaches or supports', persons:['Members of the Public','Young Persons','Employees'], harm:'Physical, sexual, emotional or financial abuse or neglect of a person in the organisation\'s care; equally a false allegation that ends a career. Rarely surfaces through H&S reporting, so it stays invisible until it is serious.', controls:'Safeguarding policy naming a designated lead and a deputy; DBS checks at the right level, recorded and re-checked; safeguarding training for every role in contact with service users; a reporting route that does not depend on the line manager; supervision or two-person arrangements where one-to-one contact is unavoidable.', action:'Prioritise a named safeguarding lead, a DBS position statement and a reporting route that works when the manager is the concern.', duty:'HSWA 1974 s.3; Care Act 2014 (adults at risk); Children Act 1989. Sector and contract terms set the specific duties.', inh:[2,5], l:2, s:5, trend:'Stable' },
-  { key:'keypeople', category:'Business continuity', activity:'Losing key people, skills and corporate knowledge', hazard:'Concentration of critical knowledge, competence or client relationships in very few people', persons:['Employees'], harm:'Operations, compliance or a client relationship that only one person can actually sustain, lost at no notice through resignation, illness or death.', controls:'Identify single points of dependency by role, not by name; document the work so it can be picked up; cross-train and deputise; succession and retention planning for critical roles; keep competence records current.', action:'Prioritise identifying single points of dependency and cross-training cover for each.', duty:'No single statute - MHSWR 1999 reg. 7 requires competent persons to assist; the rest is business resilience.', inh:[3,3], l:3, s:3, trend:'Increasing' },
-  { key:'dseoffice', category:'Ergonomic', activity:'Office-based, DSE, home and agile working', hazard:'Display screen equipment, homeworking and agile-working ergonomics', persons:['Employees'], harm:'Musculoskeletal disorders, eye strain and fatigue across office and remote staff.', controls:'DSE self-assessments; workstation and home-working set-up guidance; eye-test provision; agile-working policy.', action:'Roll out DSE self-assessments and a home/agile-working standard.', duty:'Health and Safety (Display Screen Equipment) Regulations 1992; Workplace (H,S&W) Regulations 1992', inh:[3,2], l:3, s:2, trend:'Stable' },
-  // ── Operations ──
-  { key:'workatheight', category:'Work at height', activity:'Any work at height across sites, premises and installations', hazard:'Falls from height - the organisation\'s highest-consequence safety exposure', persons:['Employees','Contractors'], harm:'Falls remain the leading cause of workplace death; a single event can be fatal.', controls:'Organisation-wide work-at-height standard applying the hierarchy (avoid, prevent, minimise); access-equipment provision and inspection; competence and rescue arrangements.', action:'Prioritise a work-at-height standard, access-equipment investment and competence across all teams.', duty:'Work at Height Regulations 2005', inh:[3,5], l:3, s:5, trend:'Stable' },
-  { key:'ohexposure', category:'Chemical / Hazardous substances', activity:'Operations creating dust, fume, fibres, noise or vibration', hazard:'Aggregate occupational-health exposure (respiratory, hearing and hand-arm vibration)', persons:['Employees'], harm:'Occupational lung disease, hearing loss and hand-arm vibration syndrome - the largest long-latency liability in many trades.', controls:'COSHH and exposure assessments; elimination/substitution and LEV; RPE programme with face-fit; noise and vibration exposure limits; health surveillance.', action:'Prioritise exposure monitoring, LEV/RPE and a health-surveillance programme.', duty:'COSHH 2002; Control of Noise at Work Regulations 2005; Control of Vibration at Work Regulations 2005', inh:[3,4], l:3, s:4, trend:'Stable' },
-  { key:'asbestos', category:'Chemical / Hazardous substances', activity:'Work on or in pre-2000 buildings, sites and premises', hazard:'Disturbance of, or exposure to, asbestos-containing materials across the portfolio', persons:['Employees','Contractors','Members of the Public'], harm:'Inhalation of asbestos fibres - mesothelioma and asbestos-related cancers (long latency, often fatal).', controls:'Asbestos register / management survey discipline before work; refurbishment & demolition surveys; asbestos-awareness training; no-disturbance and stop-work rules.', action:'Prioritise register discipline, surveys and awareness training across all sites.', duty:'Control of Asbestos Regulations 2012', inh:[2,5], l:2, s:5, trend:'Stable' },
-  { key:'manualhandling', category:'Ergonomic', activity:'Manual handling and load-moving across operations', hazard:'Musculoskeletal injury from manual handling', persons:['Employees'], harm:'Back and musculoskeletal injuries - a leading cause of sickness absence across the workforce.', controls:'Manual-handling assessments (MAC); mechanisation and handling aids; training; task and load redesign.', action:'Prioritise handling aids and assessments for the heaviest-handling operations.', duty:'Manual Handling Operations Regulations 1992', inh:[3,3], l:3, s:3, trend:'Stable' },
-  { key:'confined', category:'Physical', activity:'Operations requiring entry to confined or restricted spaces', hazard:'Confined and restricted spaces (ducts, risers, tanks, plant, chambers)', persons:['Employees'], harm:'Asphyxiation, oxygen deficiency, toxic atmosphere or entrapment - frequently multiple fatalities.', controls:'Presumption against entry; confined-space assessment; permit-to-work, atmospheric monitoring, standby and rescue; competence.', action:'Prioritise a confined-space policy, permits and rescue arrangements where entry is foreseeable.', duty:'Confined Spaces Regulations 1997', inh:[2,5], l:2, s:5, trend:'Stable' },
-  { key:'roadrisk', category:'Driving for work', activity:'Driving and travel for work (fleet and grey fleet)', hazard:'Occupational road risk - collisions on work journeys', persons:['Employees','Members of the Public'], harm:'Death or serious injury in a road traffic collision - often the single biggest fatal risk an organisation carries.', controls:'Driving-at-work policy; licence, insurance and vehicle checks; journey and fatigue management; telematics and post-incident review.', action:'Prioritise a driving-at-work policy with licence/vehicle checks and journey management.', duty:'HSWA 1974; MHSWR 1999', inh:[3,4], l:3, s:4, trend:'Stable' },
-  { key:'contractor', category:'Contractor / Supply chain', activity:'Engaging contractors, sub-contractors and the supply chain', hazard:'Failure to select, control and coordinate others working for or around the business', persons:['Employees','Contractors','Members of the Public'], harm:'Incidents caused by poorly controlled contractors, with liability flowing back to the organisation.', controls:'Contractor pre-qualification and selection; site rules, induction and permits; coordination and cooperation arrangements; CDM roles where construction applies.', action:'Prioritise a contractor-management standard covering selection, control and coordination.', duty:'MHSWR 1999 reg. 11; CDM 2015', inh:[3,4], l:3, s:4, trend:'Stable' },
-  { key:'loneworking', category:'Physical', activity:'People working alone, off-site or remotely', hazard:'Lone and remote working without support or escalation', persons:['Employees'], harm:'A lone worker injured, taken ill or threatened with no one aware and delayed help.', controls:'Lone-working policy; check-in and escalation; lone-worker devices/apps; task restrictions for higher-risk lone activity.', action:'Prioritise a lone-working system with check-in and escalation.', duty:'MHSWR 1999 reg. 3', inh:[2,4], l:2, s:4, trend:'Stable' },
-  { key:'outdoor', category:'Environmental', activity:'Outdoor, grounds and external site work', hazard:'Weather, thermal, UV and biological exposure in outdoor work', persons:['Employees'], harm:'Heat and cold stress, UV exposure, and biological agents (e.g. leptospirosis, tetanus, zoonoses) affecting outdoor workers.', controls:'Weather and thermal planning; UV and hydration measures; biological-agent controls and hygiene; postponement authority in severe weather.', action:'Prioritise weather, thermal and biological-exposure controls for outdoor teams.', duty:'MHSWR 1999; COSHH 2002 (biological agents)', inh:[3,3], l:3, s:3, trend:'Increasing' },
-  { key:'environment', category:'Environmental', activity:'Environmental harm, waste and discharges arising from operations', hazard:'Pollution of land, water or air, and the handling and transfer of waste the organisation produces', persons:['Employees','Contractors','Members of the Public'], harm:'Contaminated ground or watercourse, uncontrolled emission, or waste passed to an unlicensed carrier. Clean-up cost and prosecution usually exceed the original saving by an order of magnitude.', controls:'Registered waste carrier checks and retained transfer notes; spill containment and a drainage plan; bunded storage for oils and chemicals; permits and exemptions held and in date; emissions and discharges identified against the activities that create them.', action:'Prioritise a waste duty-of-care position, a drainage and spill plan, and a check that every permit and exemption is current.', duty:'Environmental Protection Act 1990 s.34 (waste duty of care); Environmental Permitting (England and Wales) Regulations 2016', inh:[3,3], l:3, s:3, trend:'Increasing' },
-  // ── Equipment ──
-  { key:'workequip', category:'Physical', activity:'Provision, maintenance and use of work equipment and machinery', hazard:'Unsafe or poorly maintained plant, machinery and work equipment', persons:['Employees'], harm:'Entanglement, amputation and crush injuries from unguarded or ill-maintained equipment.', controls:'PUWER regime - suitable equipment, guarding, planned maintenance and inspection; competence and safe-use instruction.', action:'Prioritise a PUWER maintenance, guarding and inspection regime across all equipment.', duty:'PUWER 1998', inh:[3,4], l:3, s:4, trend:'Stable' },
-  { key:'lifting', category:'Physical', activity:'Lifting equipment and lifting operations', hazard:'Failure of lifting equipment or of the lift itself', persons:['Employees'], harm:'Dropped or failed loads causing crush or fatal injury.', controls:'LOLER thorough examination regime; lift planning and competent slinger/signaller; rated, marked and inspected equipment; exclusion zones.', action:'Prioritise LOLER examinations and lift-planning competence.', duty:'LOLER 1998; PUWER 1998', inh:[2,4], l:2, s:4, trend:'Stable' },
-  { key:'transport', category:'Physical', activity:'Vehicles and mobile plant operating in yards, workshops and sites', hazard:'Workplace transport - vehicle and pedestrian interface', persons:['Employees','Members of the Public'], harm:'Pedestrians struck by vehicles or mobile plant - a leading cause of workplace fatalities.', controls:'Traffic management and segregation; safe routes, signage and reversing controls; mobile-plant operator competence; site speed and one-way systems.', action:'Prioritise traffic management and pedestrian segregation on sites and in yards.', duty:'Workplace (H,S&W) Regulations 1992; PUWER 1998', inh:[4,4], l:3, s:4, trend:'Stable' },
-  { key:'electrical', category:'Electrical', activity:'Electrical installations and work on or near electrical services', hazard:'Electric shock, burns or arc flash; unsafe fixed installations', persons:['Employees','Contractors'], harm:'Electrocution, burns and fire from unsafe installations or live working.', controls:'Fixed-installation inspection & testing (EICR) regime; safe isolation and lock-off; competent persons; portable-appliance and maintenance controls.', action:'Prioritise the fixed-wiring inspection regime and safe-isolation competence.', duty:'Electricity at Work Regulations 1989', inh:[2,5], l:2, s:5, trend:'Stable' },
-  // ── Premises ──
-  { key:'premises', category:'Physical', activity:'The condition and welfare of premises and workplaces', hazard:'Slips, trips, structure, welfare and general workplace conditions', persons:['Employees','Members of the Public'], harm:'Slips, trips and falls on the level - the most common cause of major injury - plus welfare and structural failings.', controls:'Planned workplace inspections; housekeeping, lighting and floor maintenance; welfare provision; premises and structural maintenance.', action:'Prioritise a workplace-inspection regime and a welfare/maintenance baseline.', duty:'Workplace (H,S&W) Regulations 1992', inh:[3,3], l:3, s:3, trend:'Stable' },
-  { key:'fire', category:'Fire', activity:'Fire safety and dangerous substances across premises and operations', hazard:'Fire and explosion - including hot work and flammable/dangerous substances', persons:['Employees','Members of the Public'], harm:'Fire causing multiple casualties, business loss and enforcement.', controls:'Fire risk assessments and arrangements; means of escape, detection and drills; DSEAR assessment and zoning; hot-work permits and flammable storage.', action:'Prioritise current fire risk assessments and DSEAR/hot-work controls.', duty:'Regulatory Reform (Fire Safety) Order 2005; DSEAR 2002', inh:[2,5], l:2, s:5, trend:'Stable' },
-  { key:'legionella', category:'Biological', activity:'Management of water systems in premises', hazard:'Legionella and water-system contamination', persons:['Employees','Members of the Public'], harm:'Legionnaires\' disease from poorly managed water systems.', controls:'Legionella risk assessment; written scheme of control; monitoring, temperature checks and record-keeping; responsible person appointed.', action:'Prioritise a legionella risk assessment and written control scheme.', duty:'HSWA 1974; ACOP L8 (HSG274)', inh:[2,4], l:2, s:4, trend:'Stable' },
-  { key:'weather', category:'Environmental', activity:'Severe weather and climate disruption to operations', hazard:'Flooding, storm, snow, heat and other severe weather affecting premises, fleet, people and supply', persons:['Employees','Contractors','Members of the Public'], harm:'Premises flooded or without power, fleet unable to run, staff unable to travel, work outdoors or in vehicles becoming dangerous in extreme heat or ice.', controls:'Know the flood and exposure risk at each site; severe weather triggers and a decision-maker named in advance; heat and cold arrangements for outdoor and vehicle-based work; alternative premises or working arrangements; recovery priorities agreed before they are needed.', action:'Prioritise severe weather triggers, a named decision-maker and a recovery order for each site.', duty:'No specific statute - assessed under the MHSWR 1999 general duty to assess, with premises and continuity planning.', inh:[3,3], l:3, s:3, trend:'Increasing' },
-  // ── Legal roles ──
-  { key:'dutyholder', category:'Legal / Regulatory', activity:'Holding statutory duty-holder roles (CDM, Building Safety Act)', hazard:'Appointed duties not discharged competently or on time', persons:['Employees','Contractors','Members of the Public'], harm:'Regulatory breach, unsafe buildings/projects and enforcement where dutyholder obligations are missed.', controls:'Clear appointment and acceptance of roles (client, principal designer, principal contractor, dutyholder, principal accountable person); competence and resource checks; documented discharge of duties and gateways.', action:'Confirm which statutory roles the organisation holds and how each duty is discharged and evidenced.', duty:'CDM 2015; Building Safety Act 2022', inh:[2,4], l:2, s:4, trend:'Increasing' },
-  { key:'designrisk', category:'Legal / Regulatory', activity:'Designing buildings, products, services or works', hazard:'Failure to eliminate or reduce risk through design', persons:['Employees','Contractors','Members of the Public'], harm:'Foreseeable risk built into projects - to constructors, end users and the public - and safety-critical design failures.', controls:'Design risk management process; general principles of prevention applied at design; designer risk registers and pre-construction information; Building Safety gateways for higher-risk buildings.', action:'Prioritise a design risk management process and a designer risk register.', duty:'CDM 2015 reg. 9; Building Safety Act 2022', inh:[2,4], l:2, s:4, trend:'Stable' },
-  // ── Business & change ──
-  { key:'licence', category:'Legal / Regulatory', activity:'Losing a licence, permit or accreditation needed to trade', hazard:'Dependence on a licence, permit, registration or accreditation that can be suspended or withdrawn', persons:['Employees'], harm:'Suspension or loss of the authorisation the business trades under - stopping work immediately, regardless of how healthy the order book is.', controls:'List every licence, permit, registration and accreditation the business depends on with its renewal date and its conditions; know who holds each and what would trigger review; keep the evidence each one requires current; treat conditions as operational requirements, not paperwork.', action:'Prioritise a register of every authorisation the business trades under, with renewal dates and conditions.', duty:'Depends on the authorisation held - operator licensing, environmental permits, HSE approvals and scheme accreditation each set their own conditions.', inh:[2,5], l:2, s:5, trend:'Stable' },
-  { key:'compliance', category:'Legal / Regulatory', activity:'Keeping pace with legal and regulatory H&S duties', hazard:'Legal compliance gaps and enforcement exposure', persons:['Employees'], harm:'Enforcement action, prosecution, financial penalty and reputational damage from unmet duties.', controls:'Legal register kept current; compliance monitoring and auditing; action tracking to closure; competent advice.', action:'Prioritise a live legal register and a compliance-monitoring cycle.', duty:'HSWA 1974', inh:[3,4], l:3, s:4, trend:'Stable' },
-  { key:'information', category:'Legal / Regulatory', activity:'Personal data, business information and system security', hazard:'Loss, exposure or compromise of personal data, client information or the systems the business runs on', persons:['Employees','Members of the Public'], harm:'Personal or special-category data disclosed, a ransomware event that stops operations, or records lost that the organisation is required to hold.', controls:'Know what personal data is held, why, and for how long; access limited to those who need it; backups tested by restoring, not by assuming; multi-factor authentication; a breach reporting route with the 72-hour clock understood; staff trained on phishing and device loss.', action:'Prioritise an information asset list, a tested backup restore and a breach reporting route.', duty:'UK GDPR; Data Protection Act 2018', inh:[3,4], l:3, s:3, trend:'Increasing' },
-  { key:'contractloss', category:'Business continuity', activity:'Dependence on a major client, contract or framework', hazard:'Concentration of turnover in one client, contract or framework that can be withdrawn', persons:['Employees'], harm:'Loss or non-renewal of a single contract removing a large share of income at short notice, often triggered by a safety or compliance failure rather than price.', controls:'Know what share of turnover each client represents; track contract end and re-tender dates well ahead; hold the compliance evidence the contract depends on; diversify the client base; understand the safety and accreditation conditions that could terminate it.', action:'Prioritise a client concentration figure and a re-tender calendar for the largest contracts.', duty:'No statutory duty - a commercial threat carried here because profiling spans threats beyond health and safety.', inh:[2,4], l:2, s:4, trend:'Stable' },
-  { key:'financial', category:'Business continuity', activity:'Uninsured loss, claims and the cost of poor safety performance', hazard:'Financial exposure arising from incidents, claims, enforcement and the cost of getting safety wrong', persons:['Employees'], harm:'Uninsured or excess costs, a claim outside cover, premium loading after a poor claims history, fines calculated on turnover, and the uninsured cost of an incident which typically dwarfs the insured cost.', controls:'Employers\' liability and public liability cover in force and adequate; know what the policies exclude and what the excess is; claims history reviewed for trends; enforcement and legal cost exposure understood at board level; incident costs captured, not just incident counts.', action:'Prioritise a review of cover, exclusions and claims history against the actual risk profile.', duty:'Employers\' Liability (Compulsory Insurance) Act 1969', inh:[2,4], l:2, s:4, trend:'Stable' },
-  // ── Added 2026-08 for full discovery coverage (care, biological, high-risk construction) ──
-  { key:'peoplecare', category:'Ergonomic', activity:'Care, support or clinical services - moving, handling and assisting people', hazard:'Injury moving or assisting people, and harm to those receiving care', persons:['Employees','Members of the Public'], harm:'Musculoskeletal injury to staff; injury or harm to the person being assisted, including medication error.', controls:'Person-specific moving and handling assessments; hoists and handling equipment provided and maintained; moving-and-handling training and competence; medication management procedure where relevant.', action:'Prioritise person-specific handling assessments, equipment provision and staff competence.', duty:'Manual Handling Operations Regulations 1992; MHSWR 1999', inh:[3,4], l:3, s:4, trend:'Stable' },
-  { key:'biological', category:'Biological', activity:'Work with exposure to infection, blood or bodily fluids', hazard:'Exposure to biological agents and infection', persons:['Employees'], harm:'Infection and disease from needlestick, splash, contact or airborne exposure.', controls:'Infection-control procedures and exposure assessment; immunisation where appropriate; PPE and safe sharps and waste handling; post-exposure reporting and follow-up.', action:'Prioritise an infection-control assessment, immunisation review and sharps/waste procedures.', duty:'COSHH 2002 (biological agents)', inh:[3,4], l:3, s:4, trend:'Stable' },
-  { key:'hrconstruction', category:'Physical', activity:'High-risk construction operations - excavation, demolition and structural alteration', hazard:'Collapse, falling structures, buried services and unplanned structural failure', persons:['Employees','Contractors','Members of the Public'], harm:'Crushing, burial or service-strike injury - frequently fatal when it goes wrong.', controls:'Temporary works and excavation support designed and checked; services located before digging; demolition and refurbishment surveys with method statements; competent supervision and exclusion zones.', action:'Prioritise temporary-works control, service avoidance and demolition planning.', duty:'CDM 2015; MHSWR 1999', inh:[3,5], l:3, s:5, trend:'Stable' },
-  { key:'continuity', category:'Business continuity', activity:'Responding to major incidents and organisational change', hazard:'Business continuity and change outpacing controls', persons:['Employees'], harm:'A major safety event, enforcement or poorly managed change disrupting or halting the organisation.', controls:'Business continuity and incident-management plans; change-management review for new plant, sites, processes or growth; post-incident learning.', action:'Prioritise a continuity/incident plan and a change-review step for significant changes.', duty:'MHSWR 1999 regs. 3 & 4', inh:[2,4], l:2, s:4, trend:'Stable' }
+ {
+  "key": "competence",
+  "category": "Legal / Regulatory",
+  "activity": "Providing competent, trained and supervised people across the organisation",
+  "hazard": "Aggregate risk that the workforce lacks the competence, training or supervision for the risks it faces",
+  "persons": [
+   "Employees",
+   "Contractors"
+  ],
+  "harm": "Errors and unsafe acts across the business from under-trained or under-supervised staff; a systemic driver behind most incidents.",
+  "controls": "Organisation-wide training-needs matrix; induction and role-based competence standards; refresher and supervision regime; competence checks for high-risk tasks.",
+  "duty": "MHSWR 1999 reg. 13; HSWA 1974 s.2",
+  "inh": [
+   3,
+   4
+  ],
+  "l": 3,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Assess every role against the risks it faces and record the training, qualifications and supervision each requires",
+   "Ensure induction covers the risks, rules and reporting route before anyone works unsupervised",
+   "Ensure supervision arrangements name who supervises whom for the higher-risk tasks"
+  ],
+  "deliverables": [
+   "Develop the training-needs matrix covering every role",
+   "Review refresher training and bring overdue items back into date",
+   "Review supervision arrangements for the highest-risk activities"
+  ]
+ },
+ {
+  "key": "ohwellbeing",
+  "category": "Psychosocial",
+  "activity": "Managing occupational health, wellbeing and work-related stress",
+  "hazard": "Cumulative ill-health, mental-health and stress exposure across the workforce",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Long-latency ill health, sickness absence and staff turnover; a growing organisational liability.",
+  "controls": "Stress risk assessment against the HSE Management Standards; health surveillance where exposures justify it; wellbeing and EAP provision; absence monitoring.",
+  "duty": "MHSWR 1999; HSWA 1974 s.2",
+  "inh": [
+   3,
+   3
+  ],
+  "l": 3,
+  "s": 3,
+  "trend": "Increasing",
+  "measures": [
+   "Assess work-related stress against the HSE Management Standards",
+   "Ensure absence is monitored and patterns are reviewed for work-related causes",
+   "Ensure people know the wellbeing and support routes available to them"
+  ],
+  "deliverables": [
+   "Develop the stress risk assessment and its action set",
+   "Review whether exposures justify health surveillance and record the decision"
+  ]
+ },
+ {
+  "key": "vulnerable",
+  "category": "Legal / Regulatory",
+  "activity": "Employing young persons, new & expectant mothers, agency and other at-risk groups",
+  "hazard": "Groups needing enhanced controls not being specifically assessed",
+  "persons": [
+   "Employees",
+   "Agency Workers"
+  ],
+  "harm": "Disproportionate harm to workers who are less experienced or more susceptible.",
+  "controls": "Specific risk assessments for young persons and new/expectant mothers; agency-worker information exchange; tailored supervision and restrictions.",
+  "duty": "MHSWR 1999 regs. 16-19",
+  "inh": [
+   2,
+   3
+  ],
+  "l": 2,
+  "s": 3,
+  "trend": "Stable",
+  "measures": [
+   "Assess young persons' work specifically, with restrictions and supervision recorded",
+   "Ensure new and expectant mothers are individually assessed on notification and at review",
+   "Ensure agency and temporary workers receive the same risk information as employees"
+  ],
+  "deliverables": [
+   "Develop specific assessments for each at-risk group employed",
+   "Review the information exchanged with agencies before workers start"
+  ]
+ },
+ {
+  "key": "violence",
+  "category": "Psychosocial",
+  "activity": "Staff dealing with the public, customers or service users",
+  "hazard": "Workplace violence and aggression",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Assault, injury and psychological harm to customer-facing and lone staff.",
+  "controls": "Violence risk assessment; conflict de-escalation training; alarms, reporting and post-incident support; lone-worker links.",
+  "duty": "HSWA 1974; MHSWR 1999",
+  "inh": [
+   3,
+   3
+  ],
+  "l": 3,
+  "s": 3,
+  "trend": "Increasing",
+  "measures": [
+   "Assess where staff face the public and where aggression is foreseeable",
+   "Ensure incidents and near misses of aggression are reported and reviewed",
+   "Ensure post-incident support is available and known"
+  ],
+  "deliverables": [
+   "Develop conflict and de-escalation training for exposed roles",
+   "Review alarms, escalation and lone-worker links for public-facing work"
+  ]
+ },
+ {
+  "key": "publicsafety",
+  "category": "Physical",
+  "activity": "Work that can affect passengers, customers, site visitors or the public",
+  "hazard": "Harm to non-employees affected by the organisation's undertaking",
+  "persons": [
+   "Members of the Public",
+   "Contractors"
+  ],
+  "harm": "Injury to people who are not employees - passengers, customers, visitors or the public - with significant liability.",
+  "controls": "Assessment of who is affected by each activity; segregation and public-protection measures; safeguarding of vulnerable service users; clear duty under section 3.",
+  "duty": "HSWA 1974 s.3",
+  "inh": [
+   3,
+   4
+  ],
+  "l": 2,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Assess each activity for who beyond the workforce it can affect",
+   "Ensure segregation, signage and physical protection where the public are near the work",
+   "Ensure vulnerable service users are specifically considered in the arrangements"
+  ],
+  "deliverables": [
+   "Develop public-protection measures for the activities with public interface",
+   "Review site and premises access arrangements for visitors and the public"
+  ]
+ },
+ {
+  "key": "safeguarding",
+  "category": "Psychosocial",
+  "activity": "Safeguarding children and adults at risk in the organisation's care",
+  "hazard": "Abuse, neglect or harm to service users the organisation transports, cares for, teaches or supports",
+  "persons": [
+   "Members of the Public",
+   "Young Persons",
+   "Employees"
+  ],
+  "harm": "Physical, sexual, emotional or financial abuse or neglect of a person in the organisation's care; equally a false allegation that ends a career. Rarely surfaces through H&S reporting, so it stays invisible until it is serious.",
+  "controls": "Safeguarding policy naming a designated lead and a deputy; DBS checks at the right level, recorded and re-checked; safeguarding training for every role in contact with service users; a reporting route that does not depend on the line manager; supervision or two-person arrangements where one-to-one contact is unavoidable.",
+  "duty": "HSWA 1974 s.3; Care Act 2014 (adults at risk); Children Act 1989. Sector and contract terms set the specific duties.",
+  "inh": [
+   2,
+   5
+  ],
+  "l": 2,
+  "s": 5,
+  "trend": "Stable",
+  "measures": [
+   "Ensure a named safeguarding lead and deputy are appointed and known",
+   "Ensure DBS checks are held at the right level, recorded and re-checked",
+   "Ensure a reporting route exists that does not depend on the line manager"
+  ],
+  "deliverables": [
+   "Develop the safeguarding policy and position statement",
+   "Review safeguarding training for every role in contact with service users",
+   "Review one-to-one contact arrangements and introduce two-person cover where unavoidable"
+  ]
+ },
+ {
+  "key": "keypeople",
+  "category": "Business continuity",
+  "activity": "Losing key people, skills and corporate knowledge",
+  "hazard": "Concentration of critical knowledge, competence or client relationships in very few people",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Operations, compliance or a client relationship that only one person can actually sustain, lost at no notice through resignation, illness or death.",
+  "controls": "Identify single points of dependency by role, not by name; document the work so it can be picked up; cross-train and deputise; succession and retention planning for critical roles; keep competence records current.",
+  "duty": "No single statute - MHSWR 1999 reg. 7 requires competent persons to assist; the rest is business resilience.",
+  "inh": [
+   3,
+   3
+  ],
+  "l": 3,
+  "s": 3,
+  "trend": "Increasing",
+  "measures": [
+   "Assess where critical knowledge, competence or client relationships sit with one person",
+   "Ensure the critical work is documented well enough to be picked up by another",
+   "Ensure deputies are identified for each single point of dependency"
+  ],
+  "deliverables": [
+   "Develop cross-training and deputising for each dependency identified",
+   "Review succession and retention arrangements for the critical roles"
+  ]
+ },
+ {
+  "key": "dseoffice",
+  "category": "Ergonomic",
+  "activity": "Office-based, DSE, home and agile working",
+  "hazard": "Display screen equipment, homeworking and agile-working ergonomics",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Musculoskeletal disorders, eye strain and fatigue across office and remote staff.",
+  "controls": "DSE self-assessments; workstation and home-working set-up guidance; eye-test provision; agile-working policy.",
+  "duty": "Health and Safety (Display Screen Equipment) Regulations 1992; Workplace (H,S&W) Regulations 1992",
+  "inh": [
+   3,
+   2
+  ],
+  "l": 3,
+  "s": 2,
+  "trend": "Stable",
+  "measures": [
+   "Ensure every screen user completes a DSE self-assessment, at home as well as in the office",
+   "Ensure workstation issues raised in assessments are actioned and closed",
+   "Ensure eye-test provision is known and available"
+  ],
+  "deliverables": [
+   "Develop the home and agile working standard",
+   "Review DSE assessments for remote and hybrid staff"
+  ]
+ },
+ {
+  "key": "workatheight",
+  "category": "Work at height",
+  "activity": "Any work at height across sites, premises and installations",
+  "hazard": "Falls from height",
+  "persons": [
+   "Employees",
+   "Contractors"
+  ],
+  "harm": "Falls from ladders, roofs, MEWPs or access equipment - a single fall can be fatal.",
+  "controls": "Organisation-wide work-at-height standard applying the hierarchy (avoid, prevent, minimise); access-equipment provision and inspection; competence and rescue arrangements.",
+  "duty": "Work at Height Regulations 2005",
+  "inh": [
+   3,
+   5
+  ],
+  "l": 3,
+  "s": 5,
+  "trend": "Stable",
+  "measures": [
+   "Assess each work-at-height task against the hierarchy - avoid, prevent, minimise",
+   "Ensure access equipment is suitable, inspected and maintained with records kept",
+   "Ensure everyone working at height is trained and competent for the equipment they use"
+  ],
+  "deliverables": [
+   "Develop job-specific RAMS for the work-at-height tasks the business actually does",
+   "Review roles and responsibilities for information, supervision, instruction and training",
+   "Develop the inspection and asset register for all access equipment"
+  ]
+ },
+ {
+  "key": "ohexposure",
+  "category": "Chemical / Hazardous substances",
+  "activity": "Operations creating dust, fume, fibres, noise or vibration",
+  "hazard": "Aggregate occupational-health exposure (respiratory, hearing and hand-arm vibration)",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Occupational lung disease, hearing loss and hand-arm vibration syndrome - the largest long-latency liability in many trades.",
+  "controls": "COSHH and exposure assessments; elimination/substitution and LEV; RPE programme with face-fit; noise and vibration exposure limits; health surveillance.",
+  "duty": "COSHH 2002; Control of Noise at Work Regulations 2005; Control of Vibration at Work Regulations 2005",
+  "inh": [
+   3,
+   4
+  ],
+  "l": 3,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Assess exposure to dust, fume, fibres, noise and vibration task by task",
+   "Ensure extraction, RPE and face-fit arrangements match the assessed exposures",
+   "Ensure exposure records are kept for the tasks that create them"
+  ],
+  "deliverables": [
+   "Develop the health-surveillance programme for exposed groups",
+   "Review COSHH assessments against the substances and tasks in use",
+   "Review noise and vibration exposure against the action values"
+  ]
+ },
+ {
+  "key": "asbestos",
+  "category": "Chemical / Hazardous substances",
+  "activity": "Work on or in pre-2000 buildings, sites and premises",
+  "hazard": "Disturbance of, or exposure to, asbestos-containing materials across the portfolio",
+  "persons": [
+   "Employees",
+   "Contractors",
+   "Members of the Public"
+  ],
+  "harm": "Inhalation of asbestos fibres - mesothelioma and asbestos-related cancers (long latency, often fatal).",
+  "controls": "Asbestos register / management survey discipline before work; refurbishment & demolition surveys; asbestos-awareness training; no-disturbance and stop-work rules.",
+  "duty": "Control of Asbestos Regulations 2012",
+  "inh": [
+   2,
+   5
+  ],
+  "l": 2,
+  "s": 5,
+  "trend": "Stable",
+  "measures": [
+   "Ensure the asbestos register or management survey is checked before any work on pre-2000 fabric",
+   "Ensure refurbishment and demolition surveys are obtained before intrusive work",
+   "Ensure stop-work and no-disturbance rules are understood by everyone on the tools"
+  ],
+  "deliverables": [
+   "Review asbestos-awareness training for everyone who could disturb fabric",
+   "Develop the survey and register discipline across every site worked on"
+  ]
+ },
+ {
+  "key": "manualhandling",
+  "category": "Ergonomic",
+  "activity": "Manual handling and load-moving across operations",
+  "hazard": "Musculoskeletal injury from manual handling",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Back and musculoskeletal injuries - a leading cause of sickness absence across the workforce.",
+  "controls": "Manual-handling assessments (MAC); mechanisation and handling aids; training; task and load redesign.",
+  "duty": "Manual Handling Operations Regulations 1992",
+  "inh": [
+   3,
+   3
+  ],
+  "l": 3,
+  "s": 3,
+  "trend": "Stable",
+  "measures": [
+   "Assess the heaviest and most frequent handling tasks with the MAC tool",
+   "Ensure handling aids are provided, maintained and actually used",
+   "Ensure loads, routes and storage are laid out to reduce carrying and twisting"
+  ],
+  "deliverables": [
+   "Develop manual-handling assessments for the significant handling operations",
+   "Review manual-handling training against the tasks people really do"
+  ]
+ },
+ {
+  "key": "confined",
+  "category": "Physical",
+  "activity": "Operations requiring entry to confined or restricted spaces",
+  "hazard": "Confined and restricted spaces (ducts, risers, tanks, plant, chambers)",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Asphyxiation, oxygen deficiency, toxic atmosphere or entrapment - frequently multiple fatalities.",
+  "controls": "Presumption against entry; confined-space assessment; permit-to-work, atmospheric monitoring, standby and rescue; competence.",
+  "duty": "Confined Spaces Regulations 1997",
+  "inh": [
+   2,
+   5
+  ],
+  "l": 2,
+  "s": 5,
+  "trend": "Stable",
+  "measures": [
+   "Assess which spaces meet the confined-space definition and record the presumption against entry",
+   "Ensure entry only happens under a permit with atmospheric monitoring and standby",
+   "Ensure rescue arrangements are in place and rehearsed before any entry"
+  ],
+  "deliverables": [
+   "Develop the confined-space policy and permit-to-work system",
+   "Review competence of everyone who plans, supervises or makes entries"
+  ]
+ },
+ {
+  "key": "roadrisk",
+  "category": "Driving for work",
+  "activity": "Driving and travel for work (fleet and grey fleet)",
+  "hazard": "Occupational road risk - collisions on work journeys",
+  "persons": [
+   "Employees",
+   "Members of the Public"
+  ],
+  "harm": "Death or serious injury in a road traffic collision - often the single biggest fatal risk an organisation carries.",
+  "controls": "Driving-at-work policy; licence, insurance and vehicle checks; journey and fatigue management; telematics and post-incident review.",
+  "duty": "HSWA 1974; MHSWR 1999",
+  "inh": [
+   3,
+   4
+  ],
+  "l": 3,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Ensure licence, insurance and vehicle checks are carried out and recorded for all who drive for work",
+   "Assess journeys for fatigue, distance and scheduling pressure",
+   "Ensure vehicle defect reporting and maintenance are working"
+  ],
+  "deliverables": [
+   "Develop the driving-for-work policy covering fleet and grey fleet",
+   "Review journey and fatigue management for the highest-mileage roles",
+   "Review collisions and near misses for patterns and actions"
+  ]
+ },
+ {
+  "key": "contractor",
+  "category": "Contractor / Supply chain",
+  "activity": "Engaging contractors, sub-contractors and the supply chain",
+  "hazard": "Failure to select, control and coordinate others working for or around the business",
+  "persons": [
+   "Employees",
+   "Contractors",
+   "Members of the Public"
+  ],
+  "harm": "Incidents caused by poorly controlled contractors, with liability flowing back to the organisation.",
+  "controls": "Contractor pre-qualification and selection; site rules, induction and permits; coordination and cooperation arrangements; CDM roles where construction applies.",
+  "duty": "MHSWR 1999 reg. 11; CDM 2015",
+  "inh": [
+   3,
+   4
+  ],
+  "l": 3,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Assess contractors' competence before appointment and record the checks",
+   "Ensure site rules, induction and permits are applied to everyone working for the business",
+   "Ensure coordination and information exchange happen where trades overlap"
+  ],
+  "deliverables": [
+   "Develop the contractor selection and control standard",
+   "Review the supply chain against the standard and close the gaps",
+   "Review CDM arrangements where the work is construction"
+  ]
+ },
+ {
+  "key": "loneworking",
+  "category": "Physical",
+  "activity": "People working alone, off-site or remotely",
+  "hazard": "Lone and remote working without support or escalation",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "A lone worker injured, taken ill or threatened with no one aware and delayed help.",
+  "controls": "Lone-working policy; check-in and escalation; lone-worker devices/apps; task restrictions for higher-risk lone activity.",
+  "duty": "MHSWR 1999 reg. 3",
+  "inh": [
+   2,
+   4
+  ],
+  "l": 2,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Assess which roles and tasks involve working alone and what could go wrong in each",
+   "Ensure a check-in and escalation system covers every lone worker",
+   "Ensure higher-risk tasks are restricted from lone working"
+  ],
+  "deliverables": [
+   "Develop the lone-working procedure with check-in and escalation",
+   "Review lone-worker devices or apps for the roles that need them"
+  ]
+ },
+ {
+  "key": "outdoor",
+  "category": "Environmental",
+  "activity": "Outdoor, grounds and external site work",
+  "hazard": "Weather, thermal, UV and biological exposure in outdoor work",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Heat and cold stress, UV exposure, and biological agents (e.g. leptospirosis, tetanus, zoonoses) affecting outdoor workers.",
+  "controls": "Weather and thermal planning; UV and hydration measures; biological-agent controls and hygiene; postponement authority in severe weather.",
+  "duty": "MHSWR 1999; COSHH 2002 (biological agents)",
+  "inh": [
+   3,
+   3
+  ],
+  "l": 3,
+  "s": 3,
+  "trend": "Increasing",
+  "measures": [
+   "Assess outdoor tasks for weather, thermal, UV and biological exposure",
+   "Ensure hydration, shade, warm-up and postponement arrangements are in place seasonally",
+   "Ensure hygiene and first-aid arrangements cover the biological risks present"
+  ],
+  "deliverables": [
+   "Develop the severe-weather working and postponement rules",
+   "Review immunisation and hygiene arrangements for exposed outdoor work"
+  ]
+ },
+ {
+  "key": "environment",
+  "category": "Environmental",
+  "activity": "Environmental harm, waste and discharges arising from operations",
+  "hazard": "Pollution of land, water or air, and the handling and transfer of waste the organisation produces",
+  "persons": [
+   "Employees",
+   "Contractors",
+   "Members of the Public"
+  ],
+  "harm": "Contaminated ground or watercourse, uncontrolled emission, or waste passed to an unlicensed carrier. Clean-up cost and prosecution usually exceed the original saving by an order of magnitude.",
+  "controls": "Registered waste carrier checks and retained transfer notes; spill containment and a drainage plan; bunded storage for oils and chemicals; permits and exemptions held and in date; emissions and discharges identified against the activities that create them.",
+  "duty": "Environmental Protection Act 1990 s.34 (waste duty of care); Environmental Permitting (England and Wales) Regulations 2016",
+  "inh": [
+   3,
+   3
+  ],
+  "l": 3,
+  "s": 3,
+  "trend": "Increasing",
+  "measures": [
+   "Ensure waste carriers are registered and transfer notes are retained",
+   "Ensure oils and chemicals are stored bunded with spill kits to hand",
+   "Assess drainage so a spill cannot reach a watercourse unchecked"
+  ],
+  "deliverables": [
+   "Develop the spill and drainage plan for each site",
+   "Review every permit and exemption held and diarise renewals"
+  ]
+ },
+ {
+  "key": "workequip",
+  "category": "Physical",
+  "activity": "Provision, maintenance and use of work equipment and machinery",
+  "hazard": "Unsafe or poorly maintained plant, machinery and work equipment",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Entanglement, amputation and crush injuries from unguarded or ill-maintained equipment.",
+  "controls": "PUWER regime - suitable equipment, guarding, planned maintenance and inspection; competence and safe-use instruction.",
+  "duty": "PUWER 1998",
+  "inh": [
+   3,
+   4
+  ],
+  "l": 3,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Assess all plant and equipment for suitability, guarding and condition",
+   "Ensure planned maintenance and inspection happen with records kept",
+   "Ensure safe-use instruction and competence for each equipment type"
+  ],
+  "deliverables": [
+   "Develop the equipment register with maintenance and inspection schedules",
+   "Review guarding across the machinery inventory and close the gaps"
+  ]
+ },
+ {
+  "key": "lifting",
+  "category": "Physical",
+  "activity": "Lifting equipment and lifting operations",
+  "hazard": "Failure of lifting equipment or of the lift itself",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Dropped or failed loads causing crush or fatal injury.",
+  "controls": "LOLER thorough examination regime; lift planning and competent slinger/signaller; rated, marked and inspected equipment; exclusion zones.",
+  "duty": "LOLER 1998; PUWER 1998",
+  "inh": [
+   2,
+   4
+  ],
+  "l": 2,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Ensure every item of lifting equipment has a current thorough examination",
+   "Assess and plan lifts with competent people and rated, marked equipment",
+   "Ensure exclusion zones keep people out from under loads"
+  ],
+  "deliverables": [
+   "Develop the lifting-equipment asset register with examination dates",
+   "Review lift planning and slinger/signaller competence"
+  ]
+ },
+ {
+  "key": "transport",
+  "category": "Physical",
+  "activity": "Vehicles and mobile plant operating in yards, workshops and sites",
+  "hazard": "Workplace transport - vehicle and pedestrian interface",
+  "persons": [
+   "Employees",
+   "Members of the Public"
+  ],
+  "harm": "Pedestrians struck by vehicles or mobile plant - a leading cause of workplace fatalities.",
+  "controls": "Traffic management and segregation; safe routes, signage and reversing controls; mobile-plant operator competence; site speed and one-way systems.",
+  "duty": "Workplace (H,S&W) Regulations 1992; PUWER 1998",
+  "inh": [
+   4,
+   4
+  ],
+  "l": 3,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Assess vehicle movements and pedestrian routes at each yard, workshop and site",
+   "Ensure segregation, signage, lighting and reversing controls where they interact",
+   "Ensure mobile-plant operators are trained and authorised"
+  ],
+  "deliverables": [
+   "Develop the traffic-management plan for each site with vehicle movements",
+   "Review speed limits, one-way flows and pedestrian crossings on the ground"
+  ]
+ },
+ {
+  "key": "electrical",
+  "category": "Electrical",
+  "activity": "Electrical installations and work on or near electrical services",
+  "hazard": "Electric shock, burns or arc flash; unsafe fixed installations",
+  "persons": [
+   "Employees",
+   "Contractors"
+  ],
+  "harm": "Electrocution, burns and fire from unsafe installations or live working.",
+  "controls": "Fixed-installation inspection & testing (EICR) regime; safe isolation and lock-off; competent persons; portable-appliance and maintenance controls.",
+  "duty": "Electricity at Work Regulations 1989",
+  "inh": [
+   2,
+   5
+  ],
+  "l": 2,
+  "s": 5,
+  "trend": "Stable",
+  "measures": [
+   "Ensure the fixed-installation inspection and testing (EICR) regime is current for every premises",
+   "Ensure safe isolation and lock-off are applied to all electrical work",
+   "Ensure only competent persons work on or near electrical services"
+  ],
+  "deliverables": [
+   "Review EICR reports and close the coded observations",
+   "Develop the portable-appliance testing and inspection arrangements"
+  ]
+ },
+ {
+  "key": "premises",
+  "category": "Physical",
+  "activity": "The condition and welfare of premises and workplaces",
+  "hazard": "Slips, trips, structure, welfare and general workplace conditions",
+  "persons": [
+   "Employees",
+   "Members of the Public"
+  ],
+  "harm": "Slips, trips and falls on the level - the most common cause of major injury - plus welfare and structural failings.",
+  "controls": "Planned workplace inspections; housekeeping, lighting and floor maintenance; welfare provision; premises and structural maintenance.",
+  "duty": "Workplace (H,S&W) Regulations 1992",
+  "inh": [
+   3,
+   3
+  ],
+  "l": 3,
+  "s": 3,
+  "trend": "Stable",
+  "measures": [
+   "Ensure planned workplace inspections happen and the findings are actioned",
+   "Ensure housekeeping, lighting and floor condition are maintained day to day",
+   "Ensure welfare provision meets the workplace standards"
+  ],
+  "deliverables": [
+   "Develop the workplace-inspection regime and its checklist",
+   "Review premises and structural maintenance against the inspection findings"
+  ]
+ },
+ {
+  "key": "fire",
+  "category": "Fire",
+  "activity": "Fire safety and dangerous substances across premises and operations",
+  "hazard": "Fire and explosion - including hot work and flammable/dangerous substances",
+  "persons": [
+   "Employees",
+   "Members of the Public"
+  ],
+  "harm": "Fire causing multiple casualties, business loss and enforcement.",
+  "controls": "Fire risk assessments and arrangements; means of escape, detection and drills; DSEAR assessment and zoning; hot-work permits and flammable storage.",
+  "duty": "Regulatory Reform (Fire Safety) Order 2005; DSEAR 2002",
+  "inh": [
+   2,
+   5
+  ],
+  "l": 2,
+  "s": 5,
+  "trend": "Stable",
+  "measures": [
+   "Ensure the fire risk assessment for each premises is current and its actions closed",
+   "Ensure escape routes, detection and emergency lighting are maintained and tested",
+   "Ensure flammable and dangerous substances are stored and used under DSEAR controls"
+  ],
+  "deliverables": [
+   "Review fire drills, wardens and evacuation arrangements",
+   "Develop hot-work permit arrangements where hot work happens",
+   "Review the DSEAR assessment against the substances actually on site"
+  ]
+ },
+ {
+  "key": "legionella",
+  "category": "Biological",
+  "activity": "Management of water systems in premises",
+  "hazard": "Legionella and water-system contamination",
+  "persons": [
+   "Employees",
+   "Members of the Public"
+  ],
+  "harm": "Legionnaires' disease from poorly managed water systems.",
+  "controls": "Legionella risk assessment; written scheme of control; monitoring, temperature checks and record-keeping; responsible person appointed.",
+  "duty": "HSWA 1974; ACOP L8 (HSG274)",
+  "inh": [
+   2,
+   4
+  ],
+  "l": 2,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Ensure a legionella risk assessment covers every water system",
+   "Ensure the written scheme of control is operated with temperatures checked and recorded",
+   "Ensure a responsible person is appointed and competent"
+  ],
+  "deliverables": [
+   "Develop the written scheme of control from the risk assessment",
+   "Review monitoring records and flushing of little-used outlets"
+  ]
+ },
+ {
+  "key": "weather",
+  "category": "Environmental",
+  "activity": "Severe weather and climate disruption to operations",
+  "hazard": "Flooding, storm, snow, heat and other severe weather affecting premises, fleet, people and supply",
+  "persons": [
+   "Employees",
+   "Contractors",
+   "Members of the Public"
+  ],
+  "harm": "Premises flooded or without power, fleet unable to run, staff unable to travel, work outdoors or in vehicles becoming dangerous in extreme heat or ice.",
+  "controls": "Know the flood and exposure risk at each site; severe weather triggers and a decision-maker named in advance; heat and cold arrangements for outdoor and vehicle-based work; alternative premises or working arrangements; recovery priorities agreed before they are needed.",
+  "duty": "No specific statute - assessed under the MHSWR 1999 general duty to assess, with premises and continuity planning.",
+  "inh": [
+   3,
+   3
+  ],
+  "l": 3,
+  "s": 3,
+  "trend": "Increasing",
+  "measures": [
+   "Assess each site's flood, wind and exposure risk",
+   "Ensure severe-weather triggers and a named decision-maker are agreed in advance",
+   "Ensure heat and cold arrangements cover outdoor and vehicle-based work"
+  ],
+  "deliverables": [
+   "Develop the severe-weather plan with triggers and recovery priorities",
+   "Review alternative premises and working arrangements for loss of a site"
+  ]
+ },
+ {
+  "key": "dutyholder",
+  "category": "Legal / Regulatory",
+  "activity": "Holding statutory duty-holder roles (CDM, Building Safety Act)",
+  "hazard": "Appointed duties not discharged competently or on time",
+  "persons": [
+   "Employees",
+   "Contractors",
+   "Members of the Public"
+  ],
+  "harm": "Regulatory breach, unsafe buildings/projects and enforcement where dutyholder obligations are missed.",
+  "controls": "Clear appointment and acceptance of roles (client, principal designer, principal contractor, dutyholder, principal accountable person); competence and resource checks; documented discharge of duties and gateways.",
+  "duty": "CDM 2015; Building Safety Act 2022",
+  "inh": [
+   2,
+   4
+  ],
+  "l": 2,
+  "s": 4,
+  "trend": "Increasing",
+  "measures": [
+   "Assess which statutory roles the organisation holds on each project and building",
+   "Ensure each appointment is accepted in writing with competence and resource checked",
+   "Ensure the discharge of each duty is documented as it happens"
+  ],
+  "deliverables": [
+   "Develop the dutyholder register listing every role held and its evidence",
+   "Review gateway and handover obligations on live projects"
+  ]
+ },
+ {
+  "key": "designrisk",
+  "category": "Legal / Regulatory",
+  "activity": "Designing buildings, products, services or works",
+  "hazard": "Failure to eliminate or reduce risk through design",
+  "persons": [
+   "Employees",
+   "Contractors",
+   "Members of the Public"
+  ],
+  "harm": "Foreseeable risk built into projects - to constructors, end users and the public - and safety-critical design failures.",
+  "controls": "Design risk management process; general principles of prevention applied at design; designer risk registers and pre-construction information; Building Safety gateways for higher-risk buildings.",
+  "duty": "CDM 2015 reg. 9; Building Safety Act 2022",
+  "inh": [
+   2,
+   4
+  ],
+  "l": 2,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Ensure the general principles of prevention are applied and recorded at design stage",
+   "Ensure residual design risks are communicated to those who will build, use and maintain",
+   "Assess higher-risk building work against the gateway requirements"
+  ],
+  "deliverables": [
+   "Develop the design risk management process and designer risk register",
+   "Review pre-construction information provided on current projects"
+  ]
+ },
+ {
+  "key": "licence",
+  "category": "Legal / Regulatory",
+  "activity": "Losing a licence, permit or accreditation needed to trade",
+  "hazard": "Dependence on a licence, permit, registration or accreditation that can be suspended or withdrawn",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Suspension or loss of the authorisation the business trades under - stopping work immediately, regardless of how healthy the order book is.",
+  "controls": "List every licence, permit, registration and accreditation the business depends on with its renewal date and its conditions; know who holds each and what would trigger review; keep the evidence each one requires current; treat conditions as operational requirements, not paperwork.",
+  "duty": "Depends on the authorisation held - operator licensing, environmental permits, HSE approvals and scheme accreditation each set their own conditions.",
+  "inh": [
+   2,
+   5
+  ],
+  "l": 2,
+  "s": 5,
+  "trend": "Stable",
+  "measures": [
+   "Assess which licences, permits, registrations and accreditations the business trades under",
+   "Ensure each one's conditions are treated as operating requirements with an owner",
+   "Ensure the evidence each authorisation requires is kept current"
+  ],
+  "deliverables": [
+   "Develop the authorisation register with renewal dates and conditions",
+   "Review the trigger events that could suspend each authorisation"
+  ]
+ },
+ {
+  "key": "compliance",
+  "category": "Legal / Regulatory",
+  "activity": "Keeping pace with legal and regulatory H&S duties",
+  "hazard": "Legal compliance gaps and enforcement exposure",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Enforcement action, prosecution, financial penalty and reputational damage from unmet duties.",
+  "controls": "Legal register kept current; compliance monitoring and auditing; action tracking to closure; competent advice.",
+  "duty": "HSWA 1974",
+  "inh": [
+   3,
+   4
+  ],
+  "l": 3,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Ensure the legal register reflects the duties the operations actually attract",
+   "Ensure compliance is checked on a cycle, not assumed",
+   "Ensure actions from audits and inspections are tracked to closure"
+  ],
+  "deliverables": [
+   "Develop the compliance-monitoring cycle and its calendar",
+   "Review access to competent advice for the duties held"
+  ]
+ },
+ {
+  "key": "information",
+  "category": "Legal / Regulatory",
+  "activity": "Personal data, business information and system security",
+  "hazard": "Loss, exposure or compromise of personal data, client information or the systems the business runs on",
+  "persons": [
+   "Employees",
+   "Members of the Public"
+  ],
+  "harm": "Personal or special-category data disclosed, a ransomware event that stops operations, or records lost that the organisation is required to hold.",
+  "controls": "Know what personal data is held, why, and for how long; access limited to those who need it; backups tested by restoring, not by assuming; multi-factor authentication; a breach reporting route with the 72-hour clock understood; staff trained on phishing and device loss.",
+  "duty": "UK GDPR; Data Protection Act 2018",
+  "inh": [
+   3,
+   4
+  ],
+  "l": 3,
+  "s": 3,
+  "trend": "Increasing",
+  "measures": [
+   "Assess what personal and business data is held, where, and who can reach it",
+   "Ensure backups are tested by restoring, and multi-factor authentication is on",
+   "Ensure the breach reporting route and the 72-hour clock are understood"
+  ],
+  "deliverables": [
+   "Develop the information asset list and retention position",
+   "Review phishing and device-loss training for all staff"
+  ]
+ },
+ {
+  "key": "contractloss",
+  "category": "Business continuity",
+  "activity": "Dependence on a major client, contract or framework",
+  "hazard": "Concentration of turnover in one client, contract or framework that can be withdrawn",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Loss or non-renewal of a single contract removing a large share of income at short notice, often triggered by a safety or compliance failure rather than price.",
+  "controls": "Know what share of turnover each client represents; track contract end and re-tender dates well ahead; hold the compliance evidence the contract depends on; diversify the client base; understand the safety and accreditation conditions that could terminate it.",
+  "duty": "No statutory duty - a commercial threat carried here because profiling spans threats beyond health and safety.",
+  "inh": [
+   2,
+   4
+  ],
+  "l": 2,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Assess what share of turnover each major client and contract represents",
+   "Ensure contract end and re-tender dates are tracked well ahead",
+   "Ensure the compliance evidence each contract depends on is held current"
+  ],
+  "deliverables": [
+   "Develop the re-tender calendar for the largest contracts",
+   "Review the safety and accreditation conditions that could terminate each"
+  ]
+ },
+ {
+  "key": "financial",
+  "category": "Business continuity",
+  "activity": "Uninsured loss, claims and the cost of poor safety performance",
+  "hazard": "Financial exposure arising from incidents, claims, enforcement and the cost of getting safety wrong",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Uninsured or excess costs, a claim outside cover, premium loading after a poor claims history, fines calculated on turnover, and the uninsured cost of an incident which typically dwarfs the insured cost.",
+  "controls": "Employers' liability and public liability cover in force and adequate; know what the policies exclude and what the excess is; claims history reviewed for trends; enforcement and legal cost exposure understood at board level; incident costs captured, not just incident counts.",
+  "duty": "Employers' Liability (Compulsory Insurance) Act 1969",
+  "inh": [
+   2,
+   4
+  ],
+  "l": 2,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Ensure employers' and public liability cover is in force and adequate for the work",
+   "Assess what the policies exclude and what the excesses are",
+   "Ensure incident costs are captured, not just incident counts"
+  ],
+  "deliverables": [
+   "Review cover, exclusions and claims history against the risk profile",
+   "Develop board-level visibility of enforcement and claims exposure"
+  ]
+ },
+ {
+  "key": "peoplecare",
+  "category": "Ergonomic",
+  "activity": "Care, support or clinical services - moving, handling and assisting people",
+  "hazard": "Injury moving or assisting people, and harm to those receiving care",
+  "persons": [
+   "Employees",
+   "Members of the Public"
+  ],
+  "harm": "Musculoskeletal injury to staff; injury or harm to the person being assisted, including medication error.",
+  "controls": "Person-specific moving and handling assessments; hoists and handling equipment provided and maintained; moving-and-handling training and competence; medication management procedure where relevant.",
+  "duty": "Manual Handling Operations Regulations 1992; MHSWR 1999",
+  "inh": [
+   3,
+   4
+  ],
+  "l": 3,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Assess moving and handling person by person, not generically",
+   "Ensure hoists and handling equipment are provided, examined and maintained",
+   "Ensure medication management is controlled where the service handles it"
+  ],
+  "deliverables": [
+   "Develop person-specific handling plans from the assessments",
+   "Review moving-and-handling training and competence for all care staff"
+  ]
+ },
+ {
+  "key": "biological",
+  "category": "Biological",
+  "activity": "Work with exposure to infection, blood or bodily fluids",
+  "hazard": "Exposure to biological agents and infection",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "Infection and disease from needlestick, splash, contact or airborne exposure.",
+  "controls": "Infection-control procedures and exposure assessment; immunisation where appropriate; PPE and safe sharps and waste handling; post-exposure reporting and follow-up.",
+  "duty": "COSHH 2002 (biological agents)",
+  "inh": [
+   3,
+   4
+  ],
+  "l": 3,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Assess exposure to infection, blood and bodily fluids task by task",
+   "Ensure safe sharps, waste and spill procedures are in place and followed",
+   "Ensure post-exposure reporting and follow-up are understood"
+  ],
+  "deliverables": [
+   "Develop the infection-control procedures for the exposures present",
+   "Review immunisation provision for exposed roles"
+  ]
+ },
+ {
+  "key": "hrconstruction",
+  "category": "Physical",
+  "activity": "High-risk construction operations - excavation, demolition and structural alteration",
+  "hazard": "Collapse, falling structures, buried services and unplanned structural failure",
+  "persons": [
+   "Employees",
+   "Contractors",
+   "Members of the Public"
+  ],
+  "harm": "Crushing, burial or service-strike injury - frequently fatal when it goes wrong.",
+  "controls": "Temporary works and excavation support designed and checked; services located before digging; demolition and refurbishment surveys with method statements; competent supervision and exclusion zones.",
+  "duty": "CDM 2015; MHSWR 1999",
+  "inh": [
+   3,
+   5
+  ],
+  "l": 3,
+  "s": 5,
+  "trend": "Stable",
+  "measures": [
+   "Assess ground and soil stability, nearby structures, trees and land formations before excavation",
+   "Obtain pre-construction information identifying land contamination and underground services",
+   "Ensure a working procedure provides information, instruction and supervision on every site with excavation or structural work"
+  ],
+  "deliverables": [
+   "Revise the RAMS for excavation, demolition and structural work to be job-specific",
+   "Develop pre-construction information requests and procurement requirements",
+   "Review training of everyone exposed so identification, assessment and supervision are competent"
+  ]
+ },
+ {
+  "key": "continuity",
+  "category": "Business continuity",
+  "activity": "Responding to major incidents and organisational change",
+  "hazard": "Business continuity and change outpacing controls",
+  "persons": [
+   "Employees"
+  ],
+  "harm": "A major safety event, enforcement or poorly managed change disrupting or halting the organisation.",
+  "controls": "Business continuity and incident-management plans; change-management review for new plant, sites, processes or growth; post-incident learning.",
+  "duty": "MHSWR 1999 regs. 3 & 4",
+  "inh": [
+   2,
+   4
+  ],
+  "l": 2,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Assess which events would stop the organisation and what the recovery order is",
+   "Ensure significant changes - new plant, sites, processes, growth - get a change review",
+   "Ensure incidents are followed by recorded learning, not just repair"
+  ],
+  "deliverables": [
+   "Develop the continuity and incident-management plan",
+   "Review the change-management step against recent changes"
+  ]
+ }
 ];
 
 function addRiskEntry(){
@@ -17443,10 +18465,16 @@ function insertLibraryRisk(key, quiet){
     category:_ht, area:_libArea(t.key), pdca:'', energy:(_HTYPE_ENERGY[_ht]||[]).slice(), sif:'', controlLevel:'', reviewed:false, activity:t.activity, hazard:t.hazard, personsAtRisk:(t.persons||[]).slice(),
     harm:t.harm, businessImpact:'', impacts:Object.assign({}, (typeof _LIB_IMPACTS!=='undefined'&&_LIB_IMPACTS[t.key])||{}), impactNotes:{}, controls:t.controls,
     likelihood:String(t.l), severity:String(t.s), targetL:'', targetS:'', trend:t.trend,
-    // The library seeds its suggestion into the CONTROL TABLE (hideFromPlan:
-    // it stays on the risk, never the execution plan) - an ordinary row:
-    // rewrite it or bin it if it means nothing to this business.
-    actions: t.action?[{ id:'act_'+Math.random().toString(36).slice(2,9), desc:t.action, owner:'', due:'', status:'Not started', priority:'', hideFromPlan:true }]:[],
+    // Seeded Simon's way: the measures land in the CONTROL TABLE
+    // (hideFromPlan - the risk runs on them, they never reach the plan) and
+    // the deliverables land RAISED to the plan, High priority on serious
+    // themes. Owners and dates are the consultant's to set with the client;
+    // every row is an ordinary row - rewrite or bin what does not fit.
+    actions: (function(){ const rows=[];
+      (t.measures||[]).forEach(d=>rows.push({ id:'act_'+Math.random().toString(36).slice(2,9), desc:d, owner:'', due:'', status:'Not started', priority:'', hideFromPlan:true }));
+      (t.deliverables||[]).forEach(d=>rows.push({ id:'act_'+Math.random().toString(36).slice(2,9), desc:d, owner:'', due:'', status:'Not started', priority:(parseInt(t.s,10)>=4?'High':'') }));
+      if(!rows.length && t.action) rows.push({ id:'act_'+Math.random().toString(36).slice(2,9), desc:t.action, owner:'', due:'', status:'Not started', priority:'', hideFromPlan:true });
+      return rows; })(),
     linked: t.duty?[{ id:'lnk_'+Math.random().toString(36).slice(2,9), ref:'Key duty: '+t.duty, url:'' }]:[],
     furtherActions:'' };
   entry.biAuto=true; entry.businessImpact=_impactSummaryText(entry);   // standard wording from the priors, editable

@@ -127,8 +127,13 @@ test('attention list lives on its own page, never the front page', () => {
   assert.match(html, /the named list has its own page/);       // front-page verdict: counts only
   assert.match(html, /risks need attention first\./);           // the attention page headline
   assert.match(html, /The named list follows this page/);       // decision: no names inline
-  // Oversized: 13 breaches spill across two attention pages.
-  const big = reportHTML(buildReport(fixture('oversized'), 'board-report', OPTS));
+  // Spill coverage: under the score-vs-target controls truth the stock
+  // oversized fixture only breaches 11 rows (one page), so the spill is
+  // forced with extra Critical risks sitting above their residual targets.
+  const big0 = fixture('oversized');
+  for (let i = 0; i < 8; i++) big0.riskProfile.push({ id: 'ox' + i, activity: 'Overflow risk ' + i,
+    likelihood: '5', severity: '5', targetL: '1', targetS: '2', controls: 'Baseline controls', actions: [] });
+  const big = reportHTML(buildReport(big0, 'board-report', OPTS));
   assert.match(big, /Needs attention first - part 1 of 2/);
   assert.match(big, /Needs attention first - part 2 of 2/);
 });

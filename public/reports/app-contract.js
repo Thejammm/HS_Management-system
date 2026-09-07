@@ -155,12 +155,19 @@ export function sifOf(r) {
 }
 
 // ── Control status - verbatim port of the app's _riskControlStatus ──
+// Score vs target IS the controls truth (Simon's model, 2026-09-07):
+//   'In place' = at or beyond the residual target
+//                (controlled as reasonably practicable)
+//   'Partial'  = scored, but no residual target set yet
+//   'None'     = above the target, or not yet scored - uncontrolled
 export function controlStatusOf(r) {
-  const hasControls = !!(r && r.controls && String(r.controls).trim());
-  const strong = r && (r.controlLevel === 'remove' || r.controlLevel === 'prevent');
-  if (!hasControls && !(r && r.controlLevel)) return 'None';
-  if (hasControls && strong) return 'In place';
-  return 'Partial';
+  // rating maths matches the app's _scorePair exactly: parseInt, no clamp
+  const p = (l, s) => { l = parseInt(l, 10) || 0; s = parseInt(s, 10) || 0; return (!l || !s) ? 0 : l * s; };
+  const now = p(r && r.likelihood, r && r.severity);
+  if (!now) return 'None';
+  const tgt = p(r && r.targetL, r && r.targetS);
+  if (!tgt) return 'Partial';
+  return now <= tgt ? 'In place' : 'None';
 }
 
 // ── Category normalisation - verbatim port of the app's _hazardType (applied

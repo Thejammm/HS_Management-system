@@ -101,7 +101,7 @@ export function buildBoardReport(state, opts = {}) {
   const kpis = [
     { value: D.maxSev ? String(D.maxSev) + '/5' : '-', label: 'Worst possible harm', note: D.highestHarm, tone: D.maxSev >= 5 ? 'bad' : D.maxSev >= 4 ? 'warn' : undefined },
     { value: String(D.fatal), label: 'Could kill or seriously injure', tone: D.fatal ? 'bad' : 'ok' },
-    { value: String(D.fatalUncontrolled), label: 'Of those, no controls recorded', tone: D.fatalUncontrolled ? 'bad' : 'ok' },
+    { value: String(D.fatalUncontrolled), label: 'Of those, uncontrolled', tone: D.fatalUncontrolled ? 'bad' : 'ok' },
     // The positive half: work CLOSED OUT. A risk counts when every planned
     // action on it is complete; formal acceptances are stated as a caveat,
     // never counted as done. (Replaced the High-or-Critical tile - that
@@ -121,7 +121,7 @@ export function buildBoardReport(state, opts = {}) {
   ];
 
   const decisions = [];
-  if (D.fatalUncontrolled) decisions.push({ text: 'Direct that the ' + countPhrase(D.fatalUncontrolled, 'risk that could kill or seriously injure and has', 'risks that could kill or seriously injure and have') + ' no recorded controls get controls recorded this quarter.', rationale: 'A could-kill risk with no recorded controls is the first thing an inspector or prosecutor will ask about.' });
+  if (D.fatalUncontrolled) decisions.push({ text: 'Direct that the ' + countPhrase(D.fatalUncontrolled, 'uncontrolled risk that could kill or seriously injure is', 'uncontrolled risks that could kill or seriously injure are') + ' brought to their residual targets this quarter.', rationale: 'A could-kill risk still above its residual target is the first thing an inspector or prosecutor will ask about.' });
   if (D.overdue) decisions.push({ text: 'Reset owners and dates on the ' + countPhrase(D.overdue, 'overdue action', 'overdue actions') + '.', rationale: 'Overdue actions with no intervention become evidence of a plan the organisation does not follow.' });
   // Numbers only on the front page - the named list gets its own page so ten
   // of them can never crowd the position (Simon).
@@ -899,10 +899,10 @@ export function buildBoardReport(state, opts = {}) {
       lead: { value: String(B.total), label: 'significant risks' },
       segments: [
         { n: B.unc, label: 'uncontrolled', colour: '#DC2626' },
-        { n: B.part, label: 'partly controlled', colour: '#F59E0B' },
-        { n: B.inplace, label: 'controlled', colour: '#16A34A' } ],
+        { n: B.part, label: 'no target set', colour: '#F59E0B' },
+        { n: B.inplace, label: 'controlled as reasonably practicable', colour: '#16A34A' } ],
       notes: [ B.unc + ' of ' + B.total + ' with no effective controls yet',
-               B.inplace + ' controlled and progressing' ] });
+               B.inplace + ' controlled as reasonably practicable' ] });
   }
   if (!hide.riskJourney) {
     picBlocks.push(B.rated
@@ -972,7 +972,7 @@ export function buildBoardReport(state, opts = {}) {
     label: 'Risk ladder' + (ladBlocks.length > 1 ? (' · part ' + (i + 1) + ' of ' + ladBlocks.length) : ''), section: 'riskLadder', blocks: [ mast,
       { type: 'titleBlock', kicker: 'The risk ladder' + (ladBlocks.length > 1 ? (' \u00b7 part ' + (i + 1) + ' of ' + ladBlocks.length) : ''),
         headline: i === 0 ? 'Every named risk on the scale.' : 'The ladder, continued.',
-        standfirst: i === 0 ? 'Risk to the business from Critical down to Low, one line per risk. The dot carries the controls judgement - red none, amber partly, green in place - and each level says what it demands.' : undefined },
+        standfirst: i === 0 ? 'Risk to the business from Critical down to Low, one line per risk. The dot carries the controls judgement - red uncontrolled, amber no target set, green controlled as reasonably practicable - and each level says what it demands.' : undefined },
       blk ],
   }));
   const fivePage = fiveBlocks.length ? {

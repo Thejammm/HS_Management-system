@@ -14410,9 +14410,9 @@ const COCKPIT_WIDGETS = {
         +'<div style="font-size:38px;font-weight:800;color:var(--text);line-height:1;">'+B.total+'</div>'
         +'<div style="font-size:11.5px;color:var(--text-muted);">significant risks</div></button>'
         +'<div style="flex:1;min-width:260px;">'
-        +'<div style="display:flex;height:30px;border-radius:8px;overflow:hidden;">'+seg(B.unc,'#DC2626','uncontrolled')+seg(B.part,'#F59E0B','partly controlled')+seg(B.inplace,'#16A34A','controlled')+'</div>'
+        +'<div style="display:flex;height:30px;border-radius:8px;overflow:hidden;">'+seg(B.unc,'#DC2626','uncontrolled')+seg(B.part,'#F59E0B','no target set')+seg(B.inplace,'#16A34A','controlled')+'</div>'
         +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px;flex-wrap:wrap;gap:8px;">'
-        +'<span>'+B.unc+' of '+B.total+' with no effective controls yet</span>'+(B.part?'<span>'+B.part+' partly controlled</span>':'')+'<span>'+B.inplace+' controlled and progressing</span></div>'
+        +'<span>'+B.unc+' of '+B.total+' uncontrolled - above the residual target</span>'+(B.part?'<span>'+B.part+' with no residual target set</span>':'')+'<span>'+B.inplace+' controlled as reasonably practicable</span></div>'
         +'</div></div></div>';
     } },
   boardJourney: { id:'boardJourney', label:'Risk journey', group:'Board', render:x=>{
@@ -14424,7 +14424,7 @@ const COCKPIT_WIDGETS = {
       return '<div class="ckx-panel"><h4>Risk journey</h4>'
         +'<div style="position:relative;height:20px;background:var(--muted-bg);border-radius:10px;margin:'+(B.tgtPct===null?'8':'26')+'px 0 4px;">'
         +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+B.fillPct+'%;min-width:14px;background:'+col+';border-radius:'+(B.fillPct>=98?'10px':'10px 0 0 10px')+';"></div>'+line+'</div>'
-        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);"><span>Baseline</span><span style="font-weight:700;color:'+col+';">Current position</span><span>Fully controlled</span></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);"><span>Baseline</span><span style="font-weight:700;color:'+col+';">Current position</span><span>Fully avoided</span></div>'
         +'<div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--text-muted);">'
         +'<span><b style="font-size:16px;color:#2563EB;">'+B.atTgt+' of '+B.total+'</b> risks at their planned target</span>'
         +'<span><b style="font-size:16px;color:var(--text);">'+B.dep.done+' of '+B.dep.total+'</b> planned controls and actions in place</span>'
@@ -14437,9 +14437,9 @@ const COCKPIT_WIDGETS = {
       if(!B.total) return '<div class="ckx-panel"><h4>Risk ladder</h4><div class="ck-pending">No risks recorded yet.</div></div>';
       // Plain lines, no borders (Simon: the pills looked infantile): the wash
       // carries the level, the dot carries the controls judgement.
-      const chip=z=>'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':(z.part?'Partly controlled':'Controlled'))+(z.atTarget?' \u00b7 at its planned target':'')+' - click to open" '
+      const chip=z=>'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':(z.part?'No target set':'Controlled as reasonably practicable'))+' - click to open" '
         +'style="all:unset;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;max-width:100%;color:var(--text);padding:2px 0;">'
-        +'<span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':'#16A34A'))+';"></span>'+esc(z.name)+(z.atTarget?' \u2713':'')+'</button>';
+        +'<span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':'#16A34A'))+';"></span>'+esc(z.name)+'</button>';
       // A real ladder: the rails run unbroken down the left (tinted with each
       // band's colour, so the ladder itself grades red to green), the rung is
       // a solid bar between them, and an empty rung says so. Each band label
@@ -14476,9 +14476,9 @@ const COCKPIT_WIDGETS = {
         +(unrated.length?('<div style="font-size:11.5px;color:var(--text-muted);padding:8px 0 0;border-top:1px solid var(--border);margin-top:2px;">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name)).join(', ')+'</div>'):'')
         +'<div style="display:flex;gap:18px;font-size:11.5px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;">'
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#DC2626;margin-right:5px;"></span>uncontrolled</span>'
-        +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#F59E0B;margin-right:5px;"></span>partly controlled</span>'
-        +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#16A34A;margin-right:5px;"></span>controlled</span>'
-        +'<span>\u2713 = at its planned target</span><span>Select a risk to open it.</span></div></div>';
+        +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#F59E0B;margin-right:5px;"></span>no residual target set</span>'
+        +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#16A34A;margin-right:5px;"></span>controlled as reasonably practicable</span>'
+        +'<span>Select a risk to open it.</span></div></div>';
     } },
   boardFive: { id:'boardFive', label:'Putting us at risk today', group:'Board', render:x=>{
       const B=_boardModel(); const H=_holdSummary();
@@ -16437,8 +16437,8 @@ function _journeyBarHTML(r){
   const tgtFlag=g.tgtPct===null?'':'<div style="position:absolute;left:'+g.tgtPct+'%;top:-6px;bottom:-6px;width:3.5px;background:#2563EB;border-radius:2px;box-shadow:0 0 0 1.5px var(--surface,#fff);"></div>'
     +'<div style="position:absolute;left:'+g.tgtPct+'%;top:-21px;transform:translateX(-'+(g.tgtPct>78?'100':g.tgtPct<12?'0':'50')+'%);font-size:10px;font-weight:700;color:#2563EB;white-space:nowrap;">target '+g.tgt.rating+' \u00b7 '+g.tgt.priority+(g.atTarget?' \u2713':'')+'</div>';
   const labels=g.moved
-    ? '<span>inherent '+g.inh.rating+' \u00b7 '+g.inh.priority+'</span><span style="font-weight:700;color:'+col+';">now '+g.now.rating+' \u00b7 '+g.now.priority+(g.atTarget?' - at the line':' - moving')+'</span><span>fully controlled</span>'
-    : '<span style="font-weight:700;color:'+col+';">inherent '+g.inh.rating+' \u00b7 '+g.inh.priority+' - as it stands today</span><span>fully controlled</span>';
+    ? '<span>inherent '+g.inh.rating+' \u00b7 '+g.inh.priority+'</span><span style="font-weight:700;color:'+col+';">now '+g.now.rating+' \u00b7 '+g.now.priority+(g.atTarget?' - controlled as reasonably practicable':' - uncontrolled')+'</span><span>fully avoided - no risk remains</span>'
+    : '<span style="font-weight:700;color:'+col+';">inherent '+g.inh.rating+' \u00b7 '+g.inh.priority+' - as it stands today</span><span>fully avoided - no risk remains</span>';
   return '<div style="margin:'+(g.tgtPct===null?'10':'26')+'px 0 0;">'
     +'<div style="position:relative;height:16px;background:var(--muted-bg);border-radius:8px;">'
     +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+g.fillPct+'%;min-width:14px;background:'+col+';border-radius:'+radius+';"></div>'
@@ -16466,8 +16466,9 @@ function _journeyDepsHTML(r){
   {
     const c=String(r.controls||'').trim();
     const shown=c?(esc(c.slice(0,90))+(c.length>90?'\u2026':'')):esc(_controlLevelLabelFor(r,r.controlLevel)||'');
-    if(ctl==='In place')      rows.push(row(dot('done','\u2713'),'Controls in place: '+shown,'recorded',false));
-    else if(ctl==='Partial')  rows.push(row(dot('part','~'),'Controls partly in place'+(shown?(': '+shown):''),'partial',false));
+    if(ctl==='In place')      rows.push(row(dot('done','\u2713'),'Controls in place: '+shown,'at target',false));
+    else if(ctl==='Partial')  rows.push(row(dot('part','~'),(c?'Controls recorded: '+shown:'No controls recorded'),'no residual target set',false));
+    else if(c)                rows.push(row(dot('open',''),'Controls recorded: '+shown,'above target',false));
     else if(acts.length)      rows.push(row(dot('open',''),'No controls recorded','not recorded',true));
   }
   acts.forEach(a=>{
@@ -16563,7 +16564,7 @@ function renderRiskJourney(){
   el.innerHTML = `<div class="card" style="margin-bottom:14px;">
       <div class="card-band"><h3><span class="dot">●</span> Risk pathway</h3></div>
       <div class="card-body">
-        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Every risk, from identified to signed off - a risk never leaves the profile. Each bar runs from the <b>inherent score</b> to <b>fully controlled</b>: the fill shows the level held today, and the <span style="color:#2563EB;font-weight:700;">blue line</span> marks the residual target the action plan is written to reach. Open a risk for the detail.</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Every risk, from identified to signed off - a risk never leaves the profile. Each bar runs from the <b>inherent score</b> towards <b>fully avoided - no risk remains</b>: the fill is the current score, and the <span style="color:#2563EB;font-weight:700;">blue line</span> marks the residual target. At or beyond the line the risk is controlled as reasonably practicable; review then sets the next, stronger target. Open a risk for the detail.</div>
         <div class="ckx-kpis" style="margin-bottom:12px;">${tile(managedN,'Signed off','#16A34A')}${tile(planN,'Plan in progress','#F59E0B')}${tile(earlyN,'Being assessed','#9CA3AF')}</div>
         <div style="display:flex;gap:8px;" class="no-print">${fbtn('all','All ('+enriched.length+')')}${fbtn('open','In progress ('+(enriched.length-managedN)+')')}${fbtn('managed','Signed off ('+managedN+')')}</div>
       </div>
@@ -18806,11 +18807,16 @@ function confirmMaturityAction(domId){
 // ══════════════════════════════════════════════════════════════
 // Control status of a risk on the energy hierarchy: None / Partial / In place.
 function _riskControlStatus(r){
-  const hasControls = !!(r && r.controls && String(r.controls).trim());
-  const strong = r && (r.controlLevel==='remove' || r.controlLevel==='prevent');
-  if(!hasControls && !(r&&r.controlLevel)) return 'None';
-  if(hasControls && strong) return 'In place';
-  return 'Partial';
+  // Score vs target IS the controls truth (Simon's model, 2026-09-07):
+  // controlled means the current score has reached the residual target the
+  // controls were written to hit - the promise kept, not perfection.
+  //   'In place' = at or beyond the residual target
+  //                (controlled as reasonably practicable)
+  //   'Partial'  = scored, but no residual target set yet - set the line
+  //   'None'     = above the target, or not yet scored - uncontrolled
+  const now=_riskScore(r); if(!now.rating) return 'None';
+  const tgt=_riskTarget(r); if(!tgt.rating) return 'Partial';
+  return now.rating<=tgt.rating ? 'In place' : 'None';
 }
 function _riskOwner(r){ const a=(r.actions||[]).find(x=>x.owner&&x.owner.trim()); return a?a.owner.trim():''; }
 const _HARM_LADDER=['-','Insignificant','Minor injury','Moderate injury','Major injury','Fatality / permanent disability'];
@@ -19212,7 +19218,7 @@ function buildBoardReport(){
   K.heroSplit(
     [ {num:data.highestHarm.split(' /')[0], label:'Highest credible harm', color:data.maxSev>=4?RED:GREY, sub:'Worst credible outcome'},
       {num:String(data.sif.length), label:'Fatal-potential risks', color:data.sifUncontrolled.length?RED:(data.sif.length?AMBER:NAVY), sub:'Inherent worst case'},
-      {num:String(data.sifUncontrolled.length), label:'Of those, uncontrolled', color:data.sifUncontrolled.length?RED:NAVY, sub:'No completed control'},
+      {num:String(data.sifUncontrolled.length), label:'Of those, uncontrolled', color:data.sifUncontrolled.length?RED:NAVY, sub:'Above their residual target'},
       {num:data.execOverdue+' / '+data.execTotal, label:'Actions overdue', color:data.execOverdue?AMBER:NAVY, sub:'Across the whole plan'},
       {num:data.complete.clear+' / '+data.complete.total, label:'Assessment completeness', color:data.complete.clear<data.complete.total?AMBER:GREEN, sub:'Checks clear'},
       {num:(function(){const H=_holdSummary();return H.total?(H.held+' / '+H.total):'-';})(), label:'Risks identified', color:(function(){const H=_holdSummary();return !H.total?GREY:(H.breaches.length?RED:(H.held===H.total?GREEN:AMBER));})(), sub:'graded on facts'} ],
@@ -19725,7 +19731,7 @@ function _riskTableRowsHTML(){
   return rows.map(r=>{
     const sc=_riskScore(r); const ops=_riskMode(r)==='ops'; const cc=_catColour(r.category);
     const ctl=_riskControlStatus(r); const cdot=ctl==='None'?'#DC2626':(ctl==='Partial'?'#F59E0B':'#16A34A');
-    const cword=ctl==='None'?'uncontrolled':(ctl==='Partial'?'partly controlled':'controlled');
+    const cword=ctl==='None'?'uncontrolled':(ctl==='Partial'?'no target set':'controlled as reasonably practicable');
     return '<tr class="rpt-row" onclick="_riskOpenModal(\''+r.id+'\')" title="Open this risk - Esc brings you straight back">'
       +'<td onclick="event.stopPropagation()" style="white-space:nowrap;">'+RISK_MODES.map(m=>'<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:'+(_riskMode(r)===m.k?'700':'400')+';color:'+(_riskMode(r)===m.k?m.colour:'var(--text-muted)')+';cursor:pointer;line-height:1.5;"><input type="radio" name="kind_'+r.id+'" '+(_riskMode(r)===m.k?'checked':'')+' onchange="setRiskMode(\''+r.id+'\',\''+m.k+'\')" style="accent-color:'+m.colour+';width:12px;height:12px;cursor:pointer;">'+(m.k==='hs'?'H&S':'Ops')+'</label>').join('')+'</td>'
       +'<td style="font-weight:700;">'+esc(r.activity||r.hazard||'New risk')+(r.reviewed?' <span style="color:#16A34A;font-weight:700;font-size:11px;" title="Reviewed and completed">\u2713</span>':'')+'</td>'

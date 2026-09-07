@@ -271,22 +271,25 @@ export function coverBlock({ org, title, period, refCode, issued }) {
 // summing to the total - nothing to mis-add.
 export function splitStrip({ lead, segments, notes }) {
   const total = segments.reduce((a, s) => a + s.n, 0);
+  // Colour-only segments - the counts live outside the bar (the notes row),
+  // each in its own state colour; the title keeps the figure on the segment.
   const segs = segments.filter(s => s.n > 0).map(s =>
-    `<i class="r-split-seg" style="flex:${s.n};background:${s.colour}"><b>${s.n}</b>&nbsp;${esc(s.label)}</i>`).join('');
+    `<i class="r-split-seg" style="flex:${s.n};background:${s.colour}" title="${s.n} ${esc(s.label)}"></i>`).join('');
   return `<div class="r-split">
     <div class="r-split-lead"><div class="r-split-num">${esc(lead.value)}</div><div class="r-split-lab">${esc(lead.label)}</div></div>
     <div class="r-split-body">${total ? `<div class="r-split-bar">${segs}</div>` : '<div class="r-footnote">No risks recorded yet.</div>'}
-      ${notes && notes.length ? `<div class="r-split-notes">${notes.map(n => `<span>${esc(n)}</span>`).join('')}</div>` : ''}</div>
+      ${notes && notes.length ? `<div class="r-split-notes">${notes.map(n => { const o = (n && typeof n === 'object') ? n : { text: n }; return `<span${o.colour ? ` style="color:${o.colour};font-weight:600"` : ''}>${esc(o.text)}</span>`; }).join('')}</div>` : ''}</div>
   </div>`;
 }
 
 // The company journey: started -> now (fill, band colour) -> blue target
 // line -> fully controlled, with the counts and the improvement loop beneath.
-export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note, atLine }) {
+export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note, atLine, flagLabel, startPct }) {
   const line = (tgtPct == null) ? '' :
-    `<i class="r-jny-line" style="left:${tgtPct}%"></i><span class="r-jny-flag" style="left:${tgtPct}%;transform:translateX(-${tgtPct > 75 ? 100 : tgtPct < 15 ? 0 : 50}%)">TARGET · planned controls</span>`;
+    `<i class="r-jny-line" style="left:${tgtPct}%"></i><span class="r-jny-flag" style="left:${tgtPct}%;transform:translateX(-${tgtPct > 75 ? 100 : tgtPct < 15 ? 0 : 50}%)">${esc(flagLabel || 'TARGET · planned controls')}</span>`;
+  const start = (startPct == null) ? '' : `<i class="r-jny-start" style="left:${startPct}%" title="Inherent - where the book started"></i>`;
   return `<div class="r-jny${tgtPct == null ? '' : ' r-jny-flagged'}">
-    <div class="r-jny-track"><i class="r-jny-fill" style="width:${Math.max(2, fillPct || 0)}%;background:${colour}"></i>${line}</div>
+    <div class="r-jny-track"><i class="r-jny-fill" style="width:${Math.max(2, fillPct || 0)}%;background:${colour}"></i>${start}${line}</div>
     <div class="r-jny-labs"><span>Highest risk</span><span style="color:${colour};font-weight:700">Current position</span><span>Fully avoided</span></div>
     ${atLine ? '<div class="r-jny-alarp">Controlled as reasonably practicable &#10003; - the position has reached the planned target line</div>' : ''}
     <div class="r-jny-counts">${counts.map(c => `<span><b${c.colour ? ` style="color:${c.colour}"` : ''}>${esc(c.value)}</b> ${esc(c.label)}</span>`).join('')}</div>

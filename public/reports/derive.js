@@ -160,7 +160,11 @@ export function boardModelOf(state, opts = {}) {
     if (a.status === 'Complete' || a.status === 'Accepted') return;
     if (a.due && a.due < today) overdue++;
   }));
-  return { rows, total, unc, part, inplace: total - unc - part, atTgt, dep, rated: rated.length, fillPct, tgtPct, nowBand, overdue };
+  // Mirrors the app's _boardModel: how many targets are real, and where the
+  // book started on the shared absolute axis.
+  let tgtSet = 0; rated.forEach(z => { if (z.gauge.tgt) tgtSet++; });
+  const inhPct = MAXSUM > 0 ? Math.max(0, Math.min(100, Math.round((MAXSUM - inh) / MAXSUM * 100))) : 0;
+  return { rows, total, unc, part, inplace: total - unc - part, atTgt, dep, rated: rated.length, tgtSet, inhPct, fillPct, tgtPct, nowBand, overdue };
 }
 
 // ── Zero-safe copy ──

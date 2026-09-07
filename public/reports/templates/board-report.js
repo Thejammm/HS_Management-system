@@ -900,15 +900,21 @@ export function buildBoardReport(state, opts = {}) {
       segments: [
         { n: B.unc, label: 'uncontrolled', colour: '#DC2626' },
         { n: B.part, label: 'no target set', colour: '#F59E0B' },
-        { n: B.inplace, label: 'controlled as reasonably practicable', colour: '#16A34A' } ],
-      notes: [ B.unc + ' of ' + B.total + ' with no effective controls yet',
-               B.inplace + ' controlled as reasonably practicable' ] });
+        { n: B.inplace, label: 'controlled', colour: '#16A34A' } ],
+      notes: [ { text: B.unc + ' of ' + B.total + ' uncontrolled - above the residual target', colour: '#DC2626' },
+               ...(B.part ? [{ text: B.part + ' with no residual target set', colour: '#B45309' }] : []),
+               { text: B.inplace + ' controlled as reasonably practicable', colour: '#15803d' } ] });
   }
   if (!hide.riskJourney) {
+    // The celebration and the green fill require every rated risk to carry a
+    // REAL target - a missing target only holds the line where the risk sits.
+    const jAtLine = B.tgtPct != null && B.fillPct >= B.tgtPct && B.rated > 0 && B.tgtSet === B.rated;
     picBlocks.push(B.rated
       ? { type: 'journeyStrip', fillPct: B.fillPct, tgtPct: B.tgtPct,
-          atLine: B.tgtPct != null && B.fillPct >= B.tgtPct,
-          colour: (B.tgtPct != null && B.fillPct >= B.tgtPct) ? '#16A34A' : (TIER_COLOURS[B.nowBand] || '#b7b7ba'),
+          atLine: jAtLine,
+          colour: jAtLine ? '#16A34A' : (TIER_COLOURS[B.nowBand] || '#b7b7ba'),
+          flagLabel: (B.tgtSet < B.rated) ? ('TARGET · ' + B.tgtSet + ' of ' + B.rated + ' risks have set theirs') : 'TARGET · planned controls',
+          startPct: B.inhPct,
           counts: [
             { value: B.atTgt + ' of ' + B.total, label: 'risks at their planned target', colour: '#2563EB' },
             { value: B.dep.done + ' of ' + B.dep.total, label: 'planned controls and actions in place' },

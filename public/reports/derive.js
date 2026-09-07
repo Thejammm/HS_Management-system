@@ -146,11 +146,11 @@ export function boardModelOf(state, opts = {}) {
   const rated = rows.filter(z => z.gauge);
   rated.forEach(z => { inh += z.gauge.inh.score; now += z.gauge.now.score;
     if (z.gauge.tgt) { anyTgt = true; tgt += z.gauge.tgt.score; } else tgt += z.gauge.now.score; });
-  // Company gauge on the same absolute axis as every risk bar (mirrors the
-  // app's _boardModel): 25 per rated risk at the hot end.
-  const MAXSUM = 25 * rated.length;
-  const fillPct = MAXSUM > 0 ? Math.max(0, Math.min(100, Math.round((MAXSUM - now) / MAXSUM * 100))) : 0;
-  const tgtPct  = (MAXSUM > 0 && anyTgt) ? Math.max(0, Math.min(100, Math.round((MAXSUM - tgt) / MAXSUM * 100))) : null;
+  // The company journey measures MOVEMENT (mirrors the app's _boardModel):
+  // earned score travel from the baseline book towards fully avoided. An
+  // untouched book shows zero - standing lives on the per-risk bars.
+  const fillPct = inh > 0 ? Math.max(0, Math.min(100, Math.round((inh - now) / inh * 100))) : 0;
+  const tgtPct  = (inh > 0 && anyTgt) ? Math.max(0, Math.min(100, Math.round((inh - tgt) / inh * 100))) : null;
   const nowBand = rated.length ? tierFor(now / rated.length, bands) : null;
   // Overdue mirrors the app's _overdueActionCount: every non-deleted action on
   // a risk, open (not Complete/Accepted) and dated before today.
@@ -160,11 +160,9 @@ export function boardModelOf(state, opts = {}) {
     if (a.status === 'Complete' || a.status === 'Accepted') return;
     if (a.due && a.due < today) overdue++;
   }));
-  // Mirrors the app's _boardModel: how many targets are real, and where the
-  // book started on the shared absolute axis.
+  // Mirrors the app's _boardModel: how many of the targets are real.
   let tgtSet = 0; rated.forEach(z => { if (z.gauge.tgt) tgtSet++; });
-  const inhPct = MAXSUM > 0 ? Math.max(0, Math.min(100, Math.round((MAXSUM - inh) / MAXSUM * 100))) : 0;
-  return { rows, total, unc, part, inplace: total - unc - part, atTgt, dep, rated: rated.length, tgtSet, inhPct, fillPct, tgtPct, nowBand, overdue };
+  return { rows, total, unc, part, inplace: total - unc - part, atTgt, dep, rated: rated.length, tgtSet, fillPct, tgtPct, nowBand, overdue };
 }
 
 // ── Zero-safe copy ──

@@ -290,7 +290,7 @@ export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note, atLi
   const start = (startPct == null) ? '' : `<i class="r-jny-start" style="left:${startPct}%" title="Inherent - where the book started"></i>`;
   return `<div class="r-jny${tgtPct == null ? '' : ' r-jny-flagged'}">
     <div class="r-jny-track"><i class="r-jny-fill" style="width:${Math.max(2, fillPct || 0)}%;background:${colour}"></i>${start}${line}</div>
-    <div class="r-jny-labs"><span>Highest risk</span><span style="color:${colour};font-weight:700">Current position</span><span>Fully avoided</span></div>
+    <div class="r-jny-labs"><span>Baseline - as found</span><span style="color:${colour};font-weight:700">Current position</span><span>Fully avoided</span></div>
     ${atLine ? '<div class="r-jny-alarp">Controlled as reasonably practicable &#10003; - the position has reached the planned target line</div>' : ''}
     <div class="r-jny-counts">${counts.map(c => `<span><b${c.colour ? ` style="color:${c.colour}"` : ''}>${esc(c.value)}</b> ${esc(c.label)}</span>`).join('')}</div>
     ${note ? `<div class="r-footnote">${esc(note)}</div>` : ''}

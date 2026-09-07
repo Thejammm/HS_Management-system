@@ -914,7 +914,6 @@ export function buildBoardReport(state, opts = {}) {
           atLine: jAtLine,
           colour: jAtLine ? '#16A34A' : (TIER_COLOURS[B.nowBand] || '#b7b7ba'),
           flagLabel: (B.tgtSet < B.rated) ? ('TARGET · ' + B.tgtSet + ' of ' + B.rated + ' risks have set theirs') : 'TARGET · planned controls',
-          startPct: B.inhPct,
           counts: [
             { value: B.atTgt + ' of ' + B.total, label: 'risks at their planned target', colour: '#2563EB' },
             { value: B.dep.done + ' of ' + B.dep.total, label: 'planned controls and actions in place' },

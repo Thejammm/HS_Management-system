@@ -15067,12 +15067,12 @@ const RISK_MODES=[
 ];
 const RISK_TERMS={
   hs:{
-    category:'Hazard type', activity:'Associated risk - what could happen',
+    category:'Hazard type', activity:'Associated risk / activity',
     activityPh:'The harmful event, e.g. a fall from the fragile roof during survey work',
     source:'Hazard source - what could cause harm', sourcePh:'The source of harm, e.g. fragile roof, asbestos, moving vehicles',
     sourceHint:'A hazard is the SOURCE of harm (e.g. a forklift truck, a fragile roof). The risk is the likelihood that hazard causes harm, and how serious it would be.',
     persons:'Persons at risk', personsDigest:'Who is at risk',
-    harm:'Potential harm / consequences', harmPh:'e.g. Fatality, major injury, occupational ill health, stress-related illness',
+    harm:'How might they be harmed', harmPh:'e.g. Fatality, major injury, occupational ill health, stress-related illness',
     controls:'Existing controls', controlsPh:'Current control measures already in place',
     controlLevel:'Best control level',
     controlLevelHint:'The strongest control in place, best to weakest (a general hierarchy that fits any hazard): Eliminate the hazard → Prevent the harm by an engineering / physical control (e.g. edge protection to prevent a fall, a guard, isolation) → Protect the person with PPE, procedure or training → Stop work if it cannot be made safe. A ‘Protect’ answer means you are relying on PPE or procedure.',
@@ -15088,7 +15088,7 @@ const RISK_TERMS={
     levels:{ remove:'Eliminate / remove the hazard', prevent:'Prevent the harm (engineering / physical)', protect:'Protect the person (PPE, procedure, training)', stopwork:'Stop work if unsafe' }
   },
   ops:{
-    category:'Risk category', activity:'Associated risk - what could happen to the business',
+    category:'Risk category', activity:'Associated risk / activity',
     activityPh:'e.g. losing the key client, a supplier failure stopping production',
     source:'Cause / risk source', sourcePh:'What could go wrong, e.g. single supplier, one key person, ageing plant',
     sourceHint:'The cause is the SOURCE of the risk (e.g. one supplier, one key person). The risk is the probability that cause bites, and how big the impact would be.',
@@ -19689,8 +19689,10 @@ function _rpDigestHTML(r){
   const trendC = r.trend==='Increasing' ? '#DC2626' : r.trend==='Reducing' ? '#16A34A' : 'var(--text-muted)';
   const cl=_controlLevelLabel(r.controlLevel);
   const narr=[];
-  if(r.hazard) narr.push('<b>'+esc(r.hazard)+'.</b>');
-  if(r.harm&&String(r.harm).trim()){ const h=esc(String(r.harm).trim()); narr.push(h+(/[.!?]$/.test(h)?'':'.')); }
+  // Two distinct lines, labelled, each editing where it lives: the hazard
+  // source on 1 · Identify, the harm on 2 · People & impact.
+  if(r.hazard) narr.push('<div onclick="_riskDetailTab(\'identify\')" style="cursor:pointer;margin-bottom:3px;" title="Click to edit on 1 · Identify"><span style="font-size:11px;color:var(--text-muted);">'+esc(String(_rt(r,'source')).split(' - ')[0])+' · </span><b>'+esc(r.hazard)+'</b></div>');
+  if(r.harm&&String(r.harm).trim()){ const h=esc(String(r.harm).trim()); narr.push('<div onclick="_riskDetailTab(\'people\')" style="cursor:pointer;" title="Click to edit on 2 · People & impact"><span style="font-size:11px;color:var(--text-muted);">'+esc(_rt(r,'harm'))+' · </span>'+h+'</div>'); }
   // Controls stay OFF the summary (Simon) - they live on 3 · Controls & rating.
   const personsTxt=(r.personsAtRisk||[]).length ? r.personsAtRisk.map(p=>'<span class="dg-chip">'+esc(p)+'</span>').join('') : '<span style="color:var(--text-muted);font-size:12px;">Not recorded yet</span>';
   const whereBits=[];
@@ -19710,7 +19712,7 @@ function _rpDigestHTML(r){
   return `<div class="rp-digest">
     <div class="dg-flow" onclick="_riskDetailTab('rating')" style="cursor:pointer;" title="Click to edit the scores on 3 · Controls & rating">${_riskFlowHTML(r)}${r.trend?`<span class="dg-chip" style="margin-left:auto;color:${trendC};">Trend: ${esc(r.trend)}</span>`:''}</div>
     ${_scoreHistoryHTML(r)}
-    ${narr.length?`<p class="dg-narr" onclick="_riskDetailTab('identify')" style="cursor:pointer;" title="Click to edit on 1 · Identify">${narr.join(' ')}</p>`:''}
+    ${narr.length?`<div class="dg-narr">${narr.join('')}</div>`:''}
     <div class="dg-grid">
       <div class="dg-cell" onclick="_riskDetailTab('people')" style="cursor:pointer;" title="Click to edit on 2 · People & impact"><h5>${esc(_rt(r,'personsDigest'))}</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${personsTxt}</div></div>
       <div class="dg-cell" onclick="_riskDetailTab('identify')" style="cursor:pointer;" title="Click to edit on 1 · Identify"><h5>Where</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${whereBits.join('')||'<span style="color:var(--text-muted);font-size:12px;">Organisation-wide</span>'}</div></div>
@@ -19981,7 +19983,7 @@ function renderRiskProfile(){
     : { cat:'Type', flag:'SIF' };
   const table=`<div style="overflow-x:auto;"><table class="rpt"><thead><tr>
       <th style="width:70px;" title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
-      <th>Associated risk - what could happen</th>
+      <th>Associated risk / activity</th>
       <th>${_hh.cat}</th><th>Business area</th>
       <th style="text-align:center;" title="Worst case: could kill or seriously injure (H&amp;S) / business-critical (operational)">${_hh.flag}</th>
       <th>Band</th><th style="text-align:center;">Level</th><th>Controlled?</th>
@@ -19998,7 +20000,7 @@ function renderRiskProfile(){
           <button type="button" class="btn btn-ghost btn-xs no-print" title="Close - back to the list (Esc)" onclick="_riskCloseModal()">✕</button>
         </div>
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
-          <input class="rp-name" id="ract-${selR.id}" value="${esc(selR.activity||'')}" placeholder="${selR.hazard?esc(selR.hazard):'Name the associated risk - what could happen'}"${ro?' disabled':''} oninput="updateRiskField('${selR.id}','activity',this.value)" title="The risk's name. Typing here and the Associated risk field on the Identify tab are the same thing.">
+          <input class="rp-name" id="ract-${selR.id}" value="${esc(selR.activity||'')}" placeholder="${selR.hazard?esc(selR.hazard):'Name the associated risk / activity'}"${ro?' disabled':''} oninput="updateRiskField('${selR.id}','activity',this.value)" title="The risk's name. Typing here and the Associated risk field on the Identify tab are the same thing.">
           <span style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
             ${_riskControlStatus(selR)==='In place'?'<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;white-space:nowrap;">Controlled as reasonably practicable \u2713</span>':''}
             <span id="rprio-${selR.id}">${_riskPrioBadge(selSc.priority, selSc.rating)}</span>
@@ -20269,7 +20271,7 @@ function buildRiskProfileReportPDF(){
       field('Business area', r.area);
       field(_rt(r,'persons'), (r.personsAtRisk||[]).join(', '));
       field(_riskMode(r)==='ops'?'Cause / risk source':'Release / how harm occurs', r.hazard);
-      field('Consequence', r.harm);
+      field(_rt(r,'harm'), r.harm);
       const imp = RISK_IMPACT_DIMS.filter(dm=>parseInt((r.impacts||{})[dm.k],10)>0)
         .map(dm=>dm.label.split(' (')[0]+' '+r.impacts[dm.k]).join(', ');
       field('Business impact', imp || r.businessImpact);

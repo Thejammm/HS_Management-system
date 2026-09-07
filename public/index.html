@@ -20113,7 +20113,7 @@ function buildRiskProfileReportPDF(){
   const subHead=(t, rgb)=>{ y+=2.5; if(y>276){doc.addPage();y=TOP;} doc.setFillColor(rgb[0],rgb[1],rgb[2]); doc.circle(ML+1.4, y-1.2, 1.4, 'F'); doc.setFont('helvetica','bold'); doc.setFontSize(10.8); doc.setTextColor(rgb[0],rgb[1],rgb[2]); doc.text(t, ML+5, y); y+=5; doc.setFont('helvetica','normal'); };
   // Two-column field: BOLD navy label (wraps within its column) + value; the whole row stays on one page.
   const LABW=42;
-  const field=(label, val)=>{
+  const field=(label, val, valCol)=>{
     if(val===undefined||val===null||String(val).trim()==='') return;
     const valX=ML+LABW, valW=RM-valX;
     doc.setFont('helvetica','bold'); doc.setFontSize(9); const labLines=doc.splitTextToSize(String(label), LABW-3);
@@ -20122,7 +20122,7 @@ function buildRiskProfileReportPDF(){
     if(y+n*4.3+1.4>284){ doc.addPage(); y=TOP; }
     const y0=y;
     doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(NAVY[0],NAVY[1],NAVY[2]); labLines.forEach((ln,i)=>doc.text(ln, ML, y0+i*4.3));
-    doc.setFont('helvetica','normal'); doc.setTextColor(75,75,75); valLines.forEach((ln,i)=>doc.text(ln, valX, y0+i*4.3));
+    doc.setFont('helvetica','normal'); const _vc=valCol||[75,75,75]; doc.setTextColor(_vc[0],_vc[1],_vc[2]); valLines.forEach((ln,i)=>doc.text(ln, valX, y0+i*4.3));
     y = y0 + n*4.3 + 1.4;
   };
   // Local wrapping table (cells never overflow, header repeats across pages, each row kept whole).
@@ -20164,6 +20164,8 @@ function buildRiskProfileReportPDF(){
   glance('Highest credible harm', RD.highestHarm, RD.maxSev>=4?[197,32,32]:[70,70,70]);
   glance('Risks with fatal potential (SIF)', String(RD.sif.length), RD.sif.length?[197,32,32]:[40,40,40]);
   glance('Of those, uncontrolled', String(RD.sifUncontrolled.length), RD.sifUncontrolled.length?[197,32,32]:[40,40,40]);
+  { const _alp=(S.riskProfile||[]).filter(rr=>_riskControlStatus(rr)==='In place').length;
+    glance('Controlled as reasonably practicable', _alp+' of '+(S.riskProfile||[]).length, _alp?[22,131,71]:[40,40,40]); }
   glance('Actions overdue', RD.actOverdue+' of '+RD.acts.length, RD.actOverdue?[180,110,10]:[40,40,40]);
   section('Assessment completeness', '', [180,110,10], 24);
   if(y>282){doc.addPage();y=TOP;} doc.setFont('helvetica','bold'); doc.setFontSize(14); const _cc=RD.complete.clear===RD.complete.total?[22,120,60]:[180,110,10]; doc.setTextColor(_cc[0],_cc[1],_cc[2]); doc.text(RD.complete.clear+' of '+RD.complete.total+' checks clear', ML, y); y+=6;
@@ -20234,7 +20236,7 @@ function buildRiskProfileReportPDF(){
     section('Emerging risks', 'Trend increasing', C.emg);
     emergingList.sort((a,b)=>(_riskScore(b).rating||0)-(_riskScore(a).rating||0)).forEach(r=>{
       const s=_riskScore(r);
-      text((s.priority||'Unrated')+(s.rating?(' '+s.rating):'')+' - '+(r.activity||r.hazard||'Unnamed risk'),9,false,_RISK_PRIO_RGB[s.priority]||[70,70,70]);
+      text((s.priority||'Unrated')+(s.rating?(' '+s.rating):'')+' - '+(r.activity||r.hazard||'Unnamed risk'),9,false,_riskControlStatus(r)==='In place'?[22,131,71]:(_RISK_PRIO_RGB[s.priority]||[70,70,70]));
     });
   }
 
@@ -20247,7 +20249,8 @@ function buildRiskProfileReportPDF(){
     grp.forEach(x => {
       const r=x.r, sc=x.sc;
       // Risk name in the priority colour, bold, as a mini-heading - kept whole with its first field
-      const prgb=_RISK_PRIO_RGB[sc.priority]||[20,20,20];
+      const _pdfCtl=_riskControlStatus(r);
+      const prgb=_pdfCtl==='In place'?[22,131,71]:(_RISK_PRIO_RGB[sc.priority]||[20,20,20]);
       doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
       const nameLines=doc.splitTextToSize(r.activity || r.hazard || 'Unnamed risk', RM-ML);
       keepBlock(nameLines.length*5 + 12);
@@ -20266,6 +20269,11 @@ function buildRiskProfileReportPDF(){
       field('Business impact', imp || r.businessImpact);
       field(_rt(r,'controls'), r.controls);
       field(_rt(r,'controlLevel'), _controlLevelLabelFor(r, r.controlLevel));
+      field('Controls status',
+        _pdfCtl==='In place'?'Controlled as reasonably practicable - at or beyond the residual target'
+        :(_pdfCtl==='Partial'?'No residual target set - set the line the controls are working to'
+        :'Uncontrolled - above the residual target, or not yet scored'),
+        _pdfCtl==='In place'?[22,131,71]:(_pdfCtl==='Partial'?[180,83,9]:[185,28,28]));
       const plan=_riskPlanState(r), tgtP=_riskTarget(r);
       const fmtR=(s)=> s.rating ? (s.l+'x'+s.s+'='+s.rating+' ('+s.priority+')') : '-';
       field('Risk rating', 'Inherent '+fmtR(sc)+((tgtP.rating&&plan.k!=='managed')?('  >  Projected '+fmtR(tgtP)):'')+'  >  '+plan.label.replace('✓ ',''));

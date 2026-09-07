@@ -22,7 +22,7 @@ export function buildRiskAssessment(state, opts = {}) {
     const res = residualOf(r), tgt = targetOf(r);
     return {
       name: String(r.activity || r.hazard || 'Unnamed risk'),
-      hazard: String(r.hazard || ''),
+      assoc: String(r.assocRisk || ''),
       residual: res, projected: tgt,
       tier: res ? tierFor(res.score, bands) : null,
       controls: String(r.controls || '').slice(0, 140),
@@ -30,14 +30,14 @@ export function buildRiskAssessment(state, opts = {}) {
   }).sort((a, b) => ((b.residual && b.residual.score) || 0) - ((a.residual && a.residual.score) || 0));
 
   const cols = [
-    { header: 'Activity', w: '22%' },
-    { header: 'Hazard', w: '18%' },
+    { header: 'Risk title', w: '22%' },
+    { header: 'Associated risk', w: '18%' },
     { header: 'Score - now → after controls (of 25)', w: '22%' },
     { header: 'Band', w: '10%' },
     { header: 'Controls', w: '28%' },
   ];
   const rowFor = r => ([
-    r.name, r.hazard,
+    r.name, r.assoc,
     { html: dualBar({ residual: r.residual, projected: r.projected, tier: r.tier }) },
     { html: tierWord(r.tier) },
     r.controls,

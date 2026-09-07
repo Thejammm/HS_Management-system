@@ -10548,6 +10548,7 @@ function migrateLoadedState(){
     if(r.controls === undefined && r.mitigation !== undefined) r.controls = r.mitigation;
     if(!Array.isArray(r.personsAtRisk)) r.personsAtRisk = [];
     if(r.furtherActions === undefined) r.furtherActions = '';
+    if(r.assocRisk === undefined) r.assocRisk = '';
     const wordToNum = { Low:'2', Moderate:'3', High:'4' };
     if(typeof r.likelihood === 'string' && wordToNum[r.likelihood]) r.likelihood = wordToNum[r.likelihood];
     if((r.severity === undefined || r.severity === '') && wordToNum[r.priority]) r.severity = wordToNum[r.priority];
@@ -15070,10 +15071,10 @@ const RISK_MODES=[
 ];
 const RISK_TERMS={
   hs:{
-    category:'Hazard type', activity:'Associated risk / activity',
-    activityPh:'The harmful event, e.g. a fall from the fragile roof during survey work',
-    source:'Hazard source - what could cause harm', sourcePh:'The source of harm, e.g. fragile roof, asbestos, moving vehicles',
-    sourceHint:'A hazard is the SOURCE of harm (e.g. a forklift truck, a fragile roof). The risk is the likelihood that hazard causes harm, and how serious it would be.',
+    category:'Hazard type', activity:'Risk title',
+    activityPh:'What we are talking about, e.g. fire breaking out on site or at the premises',
+    assoc:'Associated risk', assocPh:'Where it bites in the work, e.g. the petrol tank catching fire in the van after refuelling the strimmer',
+    assocHint:'The task-level scenario this risk shows up in. The macro category is the hazard, the title is the risk, this is where it happens in the work - it never changes the title.',
     persons:'Persons at risk', personsDigest:'Who is at risk',
     harm:'How might they be harmed', harmPh:'e.g. Fatality, major injury, occupational ill health, stress-related illness',
     controls:'Existing controls', controlsPh:'Current control measures already in place',
@@ -15091,10 +15092,10 @@ const RISK_TERMS={
     levels:{ remove:'Eliminate / remove the hazard', prevent:'Prevent the harm (engineering / physical)', protect:'Protect the person (PPE, procedure, training)', stopwork:'Stop work if unsafe' }
   },
   ops:{
-    category:'Risk category', activity:'Associated risk / activity',
+    category:'Risk category', activity:'Risk title',
     activityPh:'e.g. losing the key client, a supplier failure stopping production',
-    source:'Cause / risk source', sourcePh:'What could go wrong, e.g. single supplier, one key person, ageing plant',
-    sourceHint:'The cause is the SOURCE of the risk (e.g. one supplier, one key person). The risk is the probability that cause bites, and how big the impact would be.',
+    assoc:'Associated risk', assocPh:'Where it bites in the business, e.g. the one supplier holding the only tooling for the main product line',
+    assocHint:'The specific scenario this risk shows up in. The macro category is the theme, the title is the risk, this is where it happens - it never changes the title.',
     persons:'Who or what is affected', personsDigest:'Who or what is affected',
     harm:'Consequence if it happens', harmPh:'e.g. Lost contract, prosecution, plant down for weeks, reputational damage',
     controls:'Current response / mitigation', controlsPh:'What is already in place to manage this risk',
@@ -17628,7 +17629,7 @@ function _journeyMilestones(r){
   const managed=(plan.k==='managed' && r.reviewed && !!sc.rating) || (plan.k==='accepted' && !!sc.rating);
   const m=[];
   m.push({ done:true, label:'Identified', when:(r.createdAt||'').slice(0,10),
-    text:(r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':('Added by '+(r.createdBy||'the team')))+(r.hazard?(' - '+r.hazard):'') });
+    text:(r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':('Added by '+(r.createdBy||'the team'))) });
   const _tgt=_riskTarget(r);
   const _hist=Array.isArray(r.scoreHistory)?r.scoreHistory:[];
   m.push({ done:!!sc.rating&&impactsRated, label:'Assessed', when:'',
@@ -18552,7 +18553,7 @@ function insertLibraryRisk(key, quiet){
   const t=HAZARD_LIBRARY.find(x=>x.key===key); if(!t) return;
   const _ht=_hazardType(t.category, t.hazard);
   const entry={ id:'risk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), libKey:t.key,
-    category:_ht, area:_libArea(t.key), pdca:'', energy:(_HTYPE_ENERGY[_ht]||[]).slice(), sif:'', controlLevel:'', reviewed:false, activity:t.activity, hazard:t.hazard, personsAtRisk:(t.persons||[]).slice(),
+    category:_ht, area:_libArea(t.key), pdca:'', energy:(_HTYPE_ENERGY[_ht]||[]).slice(), sif:'', controlLevel:'', reviewed:false, activity:t.activity, hazard:t.hazard, assocRisk:'', personsAtRisk:(t.persons||[]).slice(),
     harm:t.harm, businessImpact:'', impacts:Object.assign({}, (typeof _LIB_IMPACTS!=='undefined'&&_LIB_IMPACTS[t.key])||{}), impactNotes:{}, controls:'',
     likelihood:String(t.l), severity:String(t.s), targetL:'', targetS:'', trend:t.trend,
     // Seeded Simon's way: the measures land in the CONTROL TABLE
@@ -18589,7 +18590,7 @@ function _renderHazardLibrary(){
     return `<div class="lib-item${inn?' lib-in':''}">
       <span class="li-cat" style="color:${hc};">${esc(ht)}</span>
       <span class="li-name">${esc(t.activity)}</span>
-      <span class="li-meta">${esc(t.hazard)}</span>
+      <span class="li-meta">${esc(t.macro||'')}</span>
       <span class="li-meta">Suggested: <strong style="color:${c};">${t.l} × ${t.s} = ${sc.rating} (${sc.priority})</strong> · ${esc(t.trend)}</span>
       ${inn ? `<span style="font-size:11px;font-weight:700;color:#16A34A;">✓ In profile</span>`
             : `<button class="btn btn-primary btn-xs" onclick="insertLibraryRisk('${t.key}')" style="margin-top:2px;align-self:flex-start;">＋ Add to profile</button>`}
@@ -20800,16 +20801,16 @@ function _rpProvenanceBadge(r){
 }
 // The Summary tab: presentation only - every fact on it is edited on the other tabs.
 function _rpDigestHTML(r){
-  const filled = !!((r.activity||r.hazard) || (r.harm&&String(r.harm).trim()) || (r.controls&&String(r.controls).trim()) || _riskScore(r).rating);
+  const filled = !!((r.activity||r.hazard||(r.assocRisk&&String(r.assocRisk).trim())) || (r.harm&&String(r.harm).trim()) || (r.controls&&String(r.controls).trim()) || _riskScore(r).rating);
   if(!filled) return `<div class="empty" style="padding:26px 10px;"><h4>Nothing recorded on this risk yet</h4><p>Work through the Identify, People &amp; impact, Controls &amp; rating and Actions &amp; evidence tabs - this page then reads the risk back as a one-screen summary.</p></div>`;
   const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due)).filter(a=>!a.hideFromPlan);   // the summary shows what is RAISED - controls stay on tab 3
   const openActs=acts.filter(a=>{ const st=_actionStatus(a); return st!=='Complete'&&st!=='Accepted'; });
   const trendC = r.trend==='Increasing' ? '#DC2626' : r.trend==='Reducing' ? '#16A34A' : 'var(--text-muted)';
   const cl=_controlLevelLabel(r.controlLevel);
   const narr=[];
-  // Two distinct lines, labelled, each editing where it lives: the hazard
-  // source on 1 · Identify, the harm on 2 · People & impact.
-  if(r.hazard) narr.push('<div onclick="_riskDetailTab(\'identify\')" style="cursor:pointer;margin-bottom:3px;" title="Click to edit on 1 · Identify"><span style="font-size:11px;color:var(--text-muted);">'+esc(String(_rt(r,'source')).split(' - ')[0])+' · </span><b>'+esc(r.hazard)+'</b></div>');
+  // Two distinct lines, labelled, each editing where it lives: the associated
+  // risk on 1 · Identify, the harm on 2 · People & impact.
+  if(r.assocRisk&&String(r.assocRisk).trim()) narr.push('<div onclick="_riskDetailTab(\'identify\')" style="cursor:pointer;margin-bottom:3px;" title="Click to edit on 1 · Identify"><span style="font-size:11px;color:var(--text-muted);">'+esc(_rt(r,'assoc'))+' · </span><b>'+esc(String(r.assocRisk).trim())+'</b></div>');
   if(r.harm&&String(r.harm).trim()){ const h=esc(String(r.harm).trim()); narr.push('<div onclick="_riskDetailTab(\'people\')" style="cursor:pointer;" title="Click to edit on 2 · People & impact"><span style="font-size:11px;color:var(--text-muted);">'+esc(_rt(r,'harm'))+' · </span>'+h+'</div>'); }
   // Controls stay OFF the summary (Simon) - they live on 3 · Controls & rating.
   const personsTxt=(r.personsAtRisk||[]).length ? r.personsAtRisk.map(p=>'<span class="dg-chip">'+esc(p)+'</span>').join('') : '<span style="color:var(--text-muted);font-size:12px;">Not recorded yet</span>';
@@ -20867,7 +20868,7 @@ function _riskVisibleRows(){
     if(_riskFilter.highcrit && !(sc.priority==='High'||sc.priority==='Critical')) return false;
     if(_riskFilter.unit){ const u=_riskUnits(r); if(u.length && !u.includes(_riskFilter.unit)) return false; }
     if(_riskModeFilter!=='all' && _riskMode(r)!==_riskModeFilter) return false;
-    if(_riskSearch && !(((r.activity||'')+' '+(r.hazard||'')+' '+(r.category||'')+' '+(r.area||'')).toLowerCase().includes(_riskSearch))) return false;
+    if(_riskSearch && !(((r.activity||'')+' '+(r.assocRisk||'')+' '+(r.category||'')+' '+(r.area||'')).toLowerCase().includes(_riskSearch))) return false;
     return true;
   });
 }
@@ -20999,7 +21000,6 @@ function renderRiskProfile(){
   const fg   = (label,inner) => `<div class="field-group"><label class="field-label">${label}</label>${inner}</div>`;
   const persons = (r) => RISK_PERSONS.map(p =>
     `<button type="button" class="chip${(r.personsAtRisk||[]).includes(p)?' on':''}"${dis} onclick="togglePersonAtRisk('${r.id}','${p.replace(/'/g,"\\'")}')">${p}</button>`).join('');
-  const hazHint   = `<span class="fl-hint" title="A hazard is the SOURCE of harm (e.g. a forklift truck, a fragile roof). The risk is the likelihood that hazard causes harm, and how serious it would be.">(?)</span>`;
   const trendHint = `<span class="fl-hint" title="Indicates whether the level of risk is changing over time.">(?)</span>`;
 
   // One-liners on the L and S boxes. SEV_TIP is deliberately blunt: the most
@@ -21067,13 +21067,13 @@ function renderRiskProfile(){
           ${fg('Macro category <span class="fl-hint" title="The organisation-level risk this sits under - the high level over the task detail. Groups the register and rolls up what is controlled.">(?)</span>', selv(r.id,'libKey',r.libKey,HAZARD_LIBRARY.map(t=>({v:t.key,label:_macroName(t.key)})).sort((a,b)=>a.label.localeCompare(b.label))))}
         </div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
-          ${fg(esc(_rt(r,'source'))+' <span class="fl-hint" title="'+esc(_rt(r,'sourceHint'))+'">(?)</span>', txt(r.id,'hazard',r.hazard,_rt(r,'sourcePh')))}
-        </div>
-        <div class="field-grid cols-1" style="margin-bottom:12px;">
           ${fg(_rt(r,'activity'), `<input type="text"${dis} id="ractf-${r.id}" value="${esc(r.activity)}" placeholder="${esc(_rt(r,'activityPh'))}" oninput="updateRiskField('${r.id}','activity',this.value)">`)}
         </div>
+        <div class="field-grid cols-1" style="margin-bottom:12px;">
+          ${fg(esc(_rt(r,'assoc'))+' <span class="fl-hint" title="'+esc(_rt(r,'assocHint'))+'">(?)</span>', ta(r.id,'assocRisk',r.assocRisk||'',_rt(r,'assocPh')))}
+        </div>
         ${_riskMode(r)==='ops' ? '' : `<div style="margin-bottom:12px;">
-          <label class="field-label">Hazard source(s) - energy or human factors <span class="fl-hint" title="A hazard is usually an energy source: harm happens when energy is released or contacted (energy-damage model - Haddon; HSE). Tick the energies this activity carries. For a non-physical hazard (stress, violence, fatigue) tick Psychosocial. Leave blank if none apply.">(?)</span></label>
+          <label class="field-label">Energy source(s) - how the harm is released <span class="fl-hint" title="A hazard is usually an energy source: harm happens when energy is released or contacted (energy-damage model - Haddon; HSE). Tick the energies this activity carries. For a non-physical hazard (stress, violence, fatigue) tick Psychosocial. Leave blank if none apply.">(?)</span></label>
           <div class="chip-wrap" id="renergy-${r.id}">${ENERGY_SOURCES.map(e=>`<button type="button" class="chip${(r.energy||[]).includes(e.k)?' on':''}"${dis} title="${esc(e.def)}" onclick="toggleEnergy('${r.id}','${e.k}')">${e.label}</button>`).join('')}</div>
         </div>`}
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 13px;border:1px solid ${_riskFlagOn(r)?'#DC2626':'var(--border)'};border-radius:10px;background:${_riskFlagOn(r)?'#DC26260d':'transparent'};">
@@ -21158,7 +21158,7 @@ function renderRiskProfile(){
     : { cat:'Type', flag:'SIF' };
   const table=`<div style="overflow-x:auto;"><table class="rpt"><thead><tr>
       <th style="width:70px;" title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
-      <th>Associated risk / activity</th>
+      <th>Risk title</th>
       <th>${_hh.cat}</th><th>Business area</th>
       <th style="text-align:center;" title="Worst case: could kill or seriously injure (H&amp;S) / business-critical (operational)">${_hh.flag}</th>
       <th>Band</th><th style="text-align:center;">Level</th><th>Controlled?</th>
@@ -21175,7 +21175,7 @@ function renderRiskProfile(){
           <button type="button" class="btn btn-ghost btn-xs no-print" title="Close - back to the list (Esc)" onclick="_riskCloseModal()">✕</button>
         </div>
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
-          <input class="rp-name" id="ract-${selR.id}" value="${esc(selR.activity||'')}" placeholder="${selR.hazard?esc(selR.hazard):'Name the associated risk / activity'}"${ro?' disabled':''} oninput="updateRiskField('${selR.id}','activity',this.value)" title="The risk's name. Typing here and the Associated risk field on the Identify tab are the same thing.">
+          <input class="rp-name" id="ract-${selR.id}" value="${esc(selR.activity||'')}" placeholder="Name the risk - what we are talking about"${ro?' disabled':''} oninput="updateRiskField('${selR.id}','activity',this.value)" title="The risk's title. Typing here and the Risk title field on the Identify tab are the same thing.">
           <span style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
             ${_riskControlStatus(selR)==='In place'?'<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;white-space:nowrap;">Controlled as reasonably practicable \u2713</span>':''}
             <span id="rprio-${selR.id}">${_riskPrioBadge(selSc.priority, selSc.rating)}</span>
@@ -21441,7 +21441,7 @@ function buildRiskProfileReportPDF(){
       field('Energy source(s)', (r.energy||[]).map(_energyLabel).join(', '));
       field('Business area', r.area);
       field(_rt(r,'persons'), (r.personsAtRisk||[]).join(', '));
-      field(_riskMode(r)==='ops'?'Cause / risk source':'Release / how harm occurs', r.hazard);
+      field(_rt(r,'assoc'), r.assocRisk);
       field(_rt(r,'harm'), r.harm);
       const imp = RISK_IMPACT_DIMS.filter(dm=>parseInt((r.impacts||{})[dm.k],10)>0)
         .map(dm=>dm.label.split(' (')[0]+' '+r.impacts[dm.k]).join(', ');
@@ -21599,7 +21599,7 @@ function _buildDiscoveryQuestionnairePDFLegacy(){
     if(a.length) asking.push({dm, rows:a});
   });
 
-  K.text('How this works: your consultant has answered what could be established from the records and the visit. The rest only you can answer. Mark Yes or No against each remaining question, add a note where it helps, and send the completed pages back - every answer shapes the risk profile - the associated risks and activities, their hazard sources and how people might be harmed - and the residual targets the plan then works to; a question left blank is simply asked at the next visit.', 9.5, {color:GREY, gap:2});
+  K.text('How this works: your consultant has answered what could be established from the records and the visit. The rest only you can answer. Mark Yes or No against each remaining question, add a note where it helps, and send the completed pages back - every answer shapes the risk profile - the risks, where they show up in the work and how people might be harmed - and the residual targets the plan then works to; a question left blank is simply asked at the next visit.', 9.5, {color:GREY, gap:2});
   K.text('Answers need evidence: where you mark Yes, your consultant will usually ask to see what sits behind it - a certificate, a record, a policy. Note where it lives; if it does not exist yet, say so - that becomes part of the plan, never a black mark.', 9, {bold:true, color:AMBER, gap:3});
   K.tiles([
     {num:st.answered, label:'Already established', color:GREEN, sub:'answered for you'},
@@ -21693,7 +21693,7 @@ async function buildDiscoveryQuestionnairePDF(){
   newPage();
   page.drawText('DISCOVERY QUESTIONNAIRE',{x:ML,y:y-20,size:21,font:bold,color:NAVY}); y-=30;
   text('What we already know about the business, and what we need you to tell us.',10.5,{color:GREY,gap:6});
-  text('How this works: your consultant has answered what could be established from the records and the visit. The rest only you can answer - and you can do it right here in this PDF: click Yes or No against each question, type anything useful in the notes box, then SAVE the file and email it back. Every answer shapes the risk profile - the associated risks and activities, their hazard sources and how people might be harmed - and the residual targets the plan then works to. A question left blank is simply asked at the next visit.',9,{color:GREY,gap:5});
+  text('How this works: your consultant has answered what could be established from the records and the visit. The rest only you can answer - and you can do it right here in this PDF: click Yes or No against each question, type anything useful in the notes box, then SAVE the file and email it back. Every answer shapes the risk profile - the risks, where they show up in the work and how people might be harmed - and the residual targets the plan then works to. A question left blank is simply asked at the next visit.',9,{color:GREY,gap:5});
   text('One thing to know now: answers need evidence. Where you answer Yes, your consultant will usually ask to see what sits behind it - a certificate, a record, a policy, a photo. If you know where it lives, say so in the notes box. If it does not exist yet, say that too - it simply becomes part of the plan, never a black mark.',9,{bold:true,color:AMBER,gap:5});
   text(st.answered+' already established   -   '+(st.total-st.answered)+' for you to answer   -   '+st.total+' questions fit the business (of '+st.bank+' in the bank)',9,{bold:true,color:NAVY,gap:8});
 
@@ -22304,7 +22304,7 @@ function renderRiskReview(){
         const sc=_riskScore(r); const pc=_RISK_PRIO_COLOR[sc.priority]||'#9CA3AF';
         const pdca=_riskPdca(r); const pdc=RISK_PDCA_COLOR[pdca];
         return `<div class="rr-row rr-click" onclick="_gotoRisk('${r.id}')" title="Open this risk to see and complete its content">
-          <div><div class="rr-name">${esc(r.activity||r.hazard||'Unnamed risk')}</div><div class="rr-sub">${esc(r.hazard||'')}</div></div>
+          <div><div class="rr-name">${esc(r.activity||r.hazard||'Unnamed risk')}</div><div class="rr-sub">${esc(r.libKey?_macroName(r.libKey):'')}</div></div>
           <div>${r.area?`<span class="rr-area">${esc(r.area)}</span>`:'<span class="rr-sub">-</span>'}</div>
           <div><span class="badge" style="border-color:${pc};color:${pc};background:${pc}1a;">${sc.priority||'Not rated'}${sc.rating?' · '+sc.rating:''}</span></div>
           <div><span class="rr-pdca" style="background:${pdc}1a;color:${pdc};border:1px solid ${pdc};">${pdca}</span></div>
@@ -26493,7 +26493,7 @@ function _signoffSuggestions(staff){
   const words=[...new Set(recs.flatMap(r=>String(r.course||'').toLowerCase().split(/[^a-z]+/).filter(w=>w.length>3&&!stop.has(w))))];
   const out=[];
   (S.riskProfile||[]).forEach(r=>{
-    const txt=((r.activity||'')+' '+(r.hazard||'')).toLowerCase();
+    const txt=((r.activity||'')+' '+(r.assocRisk||'')).toLowerCase();
     const hit=words.find(w=>txt.indexOf(w)!==-1);
     if(hit){
       const title=('Risk assessment - '+(r.activity||r.hazard||'')).slice(0,90);

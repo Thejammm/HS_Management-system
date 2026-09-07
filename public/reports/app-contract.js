@@ -200,7 +200,7 @@ export const HOLD_STATES = {
   held:     { k: 'held',     level: 4, label: 'Assured',      sub: 'Established & effective',      colour: '#16A34A', desc: 'Established and effective: controls recorded, and the plan delivered and signed off - or the risk formally accepted.' },
   working:  { k: 'working',  level: 3, label: 'Managed',      sub: 'Established with gaps',        colour: '#F59E0B', desc: 'Established with gaps: controls recorded and every gap has an owned, dated action - all on time.' },
   slipping: { k: 'slipping', level: 2, label: 'Vulnerable',   sub: 'Deteriorating / at risk',      colour: '#EA580C', desc: 'Deteriorating: the plan is overdue, or actions are missing an owner or a date.' },
-  notheld:  { k: 'notheld',  level: 1, label: 'Uncontrolled', sub: 'Not established / ineffective', colour: '#DC2626', desc: 'Not established: no controls recorded, no plan and no formal acceptance, or the risk is not yet scored.' },
+  notheld:  { k: 'notheld',  level: 1, label: 'Uncontrolled', sub: 'Not established / ineffective', colour: '#DC2626', desc: 'Not established: above its residual target or not yet scored, with no plan and no formal acceptance.' },
 };
 // "4 · Assured" - the level and the word together, for compact labels.
 export function hsLevel(k){ const st = HOLD_STATES[k]; return st ? (st.level + ' · ' + st.label) : ''; }
@@ -230,7 +230,7 @@ export function holdOf(r, opts = {}) {
   const controls = controlStatusOf(r) !== 'None';
   const reasons = [];
   if (!rated) reasons.push('not yet scored');
-  if (!controls) reasons.push('no controls recorded');
+  if (!controls && rated) reasons.push('above its residual target');
   if (plan === 'none' && rated && controls) reasons.push('no plan and not accepted');
   if (!rated || !controls || plan === 'none')
     return Object.assign({}, HOLD_STATES.notheld, { reasons: reasons.length ? reasons : ['no plan and not accepted'] });

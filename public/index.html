@@ -14215,8 +14215,11 @@ function _boardModel(){
   let inh=0, now=0, tgt=0, anyTgt=false;
   const rated=rows.filter(z=>z.g);
   rated.forEach(z=>{ inh+=z.g.inh.rating; now+=z.g.now.rating; if(z.g.tgt.rating){ anyTgt=true; tgt+=z.g.tgt.rating; } else tgt+=z.g.now.rating; });
-  const fillPct = inh>0 ? Math.max(0,Math.min(100,Math.round((inh-now)/inh*100))) : 0;
-  const tgtPct  = (inh>0&&anyTgt) ? Math.max(0,Math.min(100,Math.round((inh-tgt)/inh*100))) : null;
+  // Company gauge on the same absolute axis as every risk bar: 25 per rated
+  // risk at the hot end, fully avoided at the far end.
+  const MAXSUM = 25*rated.length;
+  const fillPct = MAXSUM>0 ? Math.max(0,Math.min(100,Math.round((MAXSUM-now)/MAXSUM*100))) : 0;
+  const tgtPct  = (MAXSUM>0&&anyTgt) ? Math.max(0,Math.min(100,Math.round((MAXSUM-tgt)/MAXSUM*100))) : null;
   const nowBand = rated.length ? _bandFor(now/rated.length) : '';
   return { rows, total, unc, part, inplace:total-unc-part, atTgt, dep, rated:rated.length, fillPct, tgtPct, nowBand, overdue:_overdueActionCount() };
 }
@@ -14424,7 +14427,7 @@ const COCKPIT_WIDGETS = {
       return '<div class="ckx-panel"><h4>Risk journey</h4>'
         +'<div style="position:relative;height:20px;background:var(--muted-bg);border-radius:10px;margin:'+(B.tgtPct===null?'8':'26')+'px 0 4px;">'
         +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+B.fillPct+'%;min-width:14px;background:'+col+';border-radius:'+(B.fillPct>=98?'10px':'10px 0 0 10px')+';"></div>'+line+'</div>'
-        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);"><span>Baseline</span><span style="font-weight:700;color:'+col+';">Current position</span><span>Fully avoided</span></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);"><span>Highest risk</span><span style="font-weight:700;color:'+col+';">Current position</span><span>Fully avoided</span></div>'
         +'<div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--text-muted);">'
         +'<span><b style="font-size:16px;color:#2563EB;">'+B.atTgt+' of '+B.total+'</b> risks at their planned target</span>'
         +'<span><b style="font-size:16px;color:var(--text);">'+B.dep.done+' of '+B.dep.total+'</b> planned controls and actions in place</span>'
@@ -16174,7 +16177,7 @@ const HOLD_STATES = {
   held:     { k:'held',     level:4, label:'Assured',      sub:'Established & effective',      colour:'#16A34A', desc:'Established and effective: controls recorded, and the plan delivered and signed off - or the risk formally accepted.' },
   working:  { k:'working',  level:3, label:'Managed',      sub:'Established with gaps',        colour:'#F59E0B', desc:'Established with gaps: controls recorded and every gap has an owned, dated action - all on time.' },
   slipping: { k:'slipping', level:2, label:'Vulnerable',   sub:'Deteriorating / at risk',      colour:'#EA580C', desc:'Deteriorating: the plan is overdue, or actions are missing an owner or a date.' },
-  notheld:  { k:'notheld',  level:1, label:'Uncontrolled', sub:'Not established / ineffective', colour:'#DC2626', desc:'Not established: no controls recorded, no plan and no formal acceptance, or the risk is not yet scored.' },
+  notheld:  { k:'notheld',  level:1, label:'Uncontrolled', sub:'Not established / ineffective', colour:'#DC2626', desc:'Not established: above its residual target or not yet scored, with no plan and no formal acceptance.' },
 };
 // "4 · Assured" - the level and the word together, used wherever a compact
 // label is shown (bars, chips, tables, PDFs).
@@ -16186,7 +16189,7 @@ function _riskHold(r){
   const controls=_riskControlStatus(r)!=='None';
   const reasons=[];
   if(!sc.rating) reasons.push('not yet scored');
-  if(!controls) reasons.push('no controls recorded');
+  if(!controls && sc.rating) reasons.push('above its residual target');
   if(plan.k==='none' && sc.rating && controls) reasons.push('no plan and not accepted');
   if(!sc.rating || !controls || plan.k==='none')
     return Object.assign({}, HOLD_STATES.notheld, { reasons: reasons.length?reasons:['no plan and not accepted'] });
@@ -16422,9 +16425,14 @@ function _journeyGauge(r){
   const hist=Array.isArray(r.scoreHistory)?r.scoreHistory:[];
   const first=hist.length?_scorePair(hist[0].l,hist[0].s):null;
   const inh=(first&&first.rating&&first.rating>=now.rating)?first:now;
-  const pos=x=>Math.max(0,Math.min(100,Math.round((inh.rating-x)/inh.rating*100)));
+  // Absolute temperature scale (Simon): the axis is the same for every risk -
+  // far left = the highest possible score (25), far right = fully avoided.
+  // A risk that starts at its target still SHOWS its standing.
+  const MAXR=25;
+  const pos=x=>Math.max(0,Math.min(100,Math.round((MAXR-x)/MAXR*100)));
   return { now, tgt, inh,
     fillPct:pos(now.rating),
+    inhPct:pos(inh.rating),
     tgtPct:tgt.rating?pos(tgt.rating):null,
     atTarget:!!tgt.rating&&now.rating<=tgt.rating,
     moved:inh.rating!==now.rating };
@@ -16432,7 +16440,7 @@ function _journeyGauge(r){
 function _journeyBarHTML(r){
   const g=_journeyGauge(r);
   if(!g) return '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Not yet rated - score likelihood \u00d7 severity on the risk card to draw the journey.</div>';
-  const col=_RISK_PRIO_COLOR[g.now.priority]||'#9CA3AF';
+  const col=g.atTarget?'#16A34A':(_RISK_PRIO_COLOR[g.now.priority]||'#9CA3AF');
   const radius=g.fillPct>=98?'8px':'8px 0 0 8px';
   const tgtFlag=g.tgtPct===null?'':'<div style="position:absolute;left:'+g.tgtPct+'%;top:-6px;bottom:-6px;width:3.5px;background:#2563EB;border-radius:2px;box-shadow:0 0 0 1.5px var(--surface,#fff);"></div>'
     +'<div style="position:absolute;left:'+g.tgtPct+'%;top:-21px;transform:translateX(-'+(g.tgtPct>78?'100':g.tgtPct<12?'0':'50')+'%);font-size:10px;font-weight:700;color:#2563EB;white-space:nowrap;">target '+g.tgt.rating+' \u00b7 '+g.tgt.priority+(g.atTarget?' \u2713':'')+'</div>';
@@ -16442,6 +16450,7 @@ function _journeyBarHTML(r){
   return '<div style="margin:'+(g.tgtPct===null?'10':'26')+'px 0 0;">'
     +'<div style="position:relative;height:16px;background:var(--muted-bg);border-radius:8px;">'
     +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+g.fillPct+'%;min-width:14px;background:'+col+';border-radius:'+radius+';"></div>'
+    +(g.moved?'<div style="position:absolute;left:'+g.inhPct+'%;top:2px;bottom:2px;width:2px;background:#94A3B8;border-radius:1px;" title="inherent '+g.inh.rating+'"></div>':'')
     +tgtFlag+'</div>'
     +'<div style="display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:var(--text-muted);margin-top:3px;flex-wrap:wrap;">'+labels+'</div></div>';
 }
@@ -16536,8 +16545,10 @@ function renderRiskJourney(){
     const g=_journeyGauge(r);
     // The ladder wash, on the pathway (Simon: same effect here): each card
     // sweeps its band colour, deepens on hover, opens below as before.
-    const _bc=_RISK_PRIO_COLOR[x.sc.priority]||'#9CA3AF';
-    const _wa=({Critical:'2E',High:'24',Medium:'1C',Low:'14'})[x.sc.priority]||'12';
+    const _atT=!!(g&&g.atTarget);
+    const _bc=_atT?'#16A34A':(_RISK_PRIO_COLOR[x.sc.priority]||'#9CA3AF');
+    const _wa=_atT?'24':(({Critical:'2E',High:'24',Medium:'1C',Low:'14'})[x.sc.priority]||'12');
+    const _cel=_atT?'<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;">Controlled as reasonably practicable \u2713</span>':'';
     const _w0='linear-gradient(100deg,'+_bc+_wa+','+_bc+'08 62%,transparent)';
     const _w1='linear-gradient(100deg,'+_bc+'3D,'+_bc+'12 62%,transparent)';
     const hint=(!signed && g && g.tgtPct===null)
@@ -16547,6 +16558,7 @@ function renderRiskJourney(){
       <summary style="padding:12px 16px 12px;cursor:pointer;">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span style="font-weight:700;font-size:13.5px;flex:1;min-width:200px;">${esc(r.activity||r.hazard||'New risk')}${_riskSif(r)?' <span style="font-weight:400;font-size:11px;color:var(--text-muted);">could kill or seriously injure</span>':''}</span>
+          ${_cel}
           ${_riskPrioBadge(x.sc.priority,x.sc.rating)}
           ${state}
         </div>

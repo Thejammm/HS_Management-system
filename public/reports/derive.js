@@ -109,8 +109,11 @@ export function journeyGaugeOf(risk) {
   if (!now) return null;
   const tgt = targetOf(risk);
   const inh = inherentOf(risk);
-  const pos = x => Math.max(0, Math.min(100, Math.round((inh.score - x) / inh.score * 100)));
-  return { now, tgt, inh, fillPct: pos(now.score), tgtPct: tgt ? pos(tgt.score) : null,
+  // Absolute temperature scale, mirroring the app's _journeyGauge: the axis
+  // is the same for every risk - far left = 25, far right = fully avoided.
+  const MAXR = 25;
+  const pos = x => Math.max(0, Math.min(100, Math.round((MAXR - x) / MAXR * 100)));
+  return { now, tgt, inh, fillPct: pos(now.score), inhPct: pos(inh.score), tgtPct: tgt ? pos(tgt.score) : null,
            atTarget: !!tgt && now.score <= tgt.score, moved: inh.score !== now.score };
 }
 // What powers a risk's bar: the controls slot (judged by controlStatusOf,
@@ -143,8 +146,11 @@ export function boardModelOf(state, opts = {}) {
   const rated = rows.filter(z => z.gauge);
   rated.forEach(z => { inh += z.gauge.inh.score; now += z.gauge.now.score;
     if (z.gauge.tgt) { anyTgt = true; tgt += z.gauge.tgt.score; } else tgt += z.gauge.now.score; });
-  const fillPct = inh > 0 ? Math.max(0, Math.min(100, Math.round((inh - now) / inh * 100))) : 0;
-  const tgtPct  = (inh > 0 && anyTgt) ? Math.max(0, Math.min(100, Math.round((inh - tgt) / inh * 100))) : null;
+  // Company gauge on the same absolute axis as every risk bar (mirrors the
+  // app's _boardModel): 25 per rated risk at the hot end.
+  const MAXSUM = 25 * rated.length;
+  const fillPct = MAXSUM > 0 ? Math.max(0, Math.min(100, Math.round((MAXSUM - now) / MAXSUM * 100))) : 0;
+  const tgtPct  = (MAXSUM > 0 && anyTgt) ? Math.max(0, Math.min(100, Math.round((MAXSUM - tgt) / MAXSUM * 100))) : null;
   const nowBand = rated.length ? tierFor(now / rated.length, bands) : null;
   // Overdue mirrors the app's _overdueActionCount: every non-deleted action on
   // a risk, open (not Complete/Accepted) and dated before today.

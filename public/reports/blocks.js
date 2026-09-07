@@ -287,7 +287,7 @@ export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note }) {
     `<i class="r-jny-line" style="left:${tgtPct}%"></i><span class="r-jny-flag" style="left:${tgtPct}%;transform:translateX(-${tgtPct > 75 ? 100 : tgtPct < 15 ? 0 : 50}%)">TARGET · planned controls</span>`;
   return `<div class="r-jny${tgtPct == null ? '' : ' r-jny-flagged'}">
     <div class="r-jny-track"><i class="r-jny-fill" style="width:${Math.max(2, fillPct || 0)}%;background:${colour}"></i>${line}</div>
-    <div class="r-jny-labs"><span>Baseline</span><span style="color:${colour};font-weight:700">Current position</span><span>Fully avoided</span></div>
+    <div class="r-jny-labs"><span>Highest risk</span><span style="color:${colour};font-weight:700">Current position</span><span>Fully avoided</span></div>
     <div class="r-jny-counts">${counts.map(c => `<span><b${c.colour ? ` style="color:${c.colour}"` : ''}>${esc(c.value)}</b> ${esc(c.label)}</span>`).join('')}</div>
     ${note ? `<div class="r-footnote">${esc(note)}</div>` : ''}
     ${loop ? `<div class="r-jny-loop">${esc(loop)}</div>` : ''}

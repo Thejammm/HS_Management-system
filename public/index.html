@@ -3514,6 +3514,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rpt-row:hover td{background:var(--muted-bg);}
     .rpt-row.rpt-atline{background:linear-gradient(100deg,#16A34A14,#16A34A06 62%,transparent);}
     .rpt-row.rpt-atline:hover td{background:#16A34A1a;}
+    .rpt-macro{background:var(--muted-bg);}
+    .rpt-macro td{border-top:2px solid var(--border);padding-top:8px;padding-bottom:8px;}
+    .rpt-macro.rpt-mac-at{background:linear-gradient(100deg,#16A34A22,#16A34A08 62%,transparent);}
   </style>
   <!-- Combined risk panel: matrix + H&S control maturity in one frame.
        Text and chrome ride the app theme vars so dark mode stays readable;
@@ -20764,7 +20767,7 @@ function _rpDigestHTML(r){
 //    click opens the five editing tabs in a modal with prev/next; Esc or
 //    Done returns to the list exactly where it was. ONE visibility pipeline
 //    (_riskVisibleRows) feeds the table, the modal stepper and the counts. ──
-var _riskModalOpen=false, _riskModeFilter='all', _riskSearch='', _riskKeysBound=false;
+var _riskModalOpen=false, _riskModeFilter='all', _riskSearch='', _riskKeysBound=false, _riskGroupMode='macro';
 function _riskVisibleRows(){
   const all=_riskDisplayOrder();
   return all.filter(r=>{
@@ -20781,9 +20784,43 @@ function _riskVisibleRows(){
     return true;
   });
 }
+function setRiskGroupMode(m){ _riskGroupMode=m; _keepScroll(renderRiskProfile); }
+function _riskMacroOf(r){ return (r&&r.libKey&&HAZARD_LIBRARY.some(t=>t.key===r.libKey))?r.libKey:''; }
 function _riskTableRowsHTML(){
   const rows=_riskVisibleRows();
   if(!rows.length) return '<tr><td colspan="8" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
+  if(_riskGroupMode==='macro'){
+    // The macro layer: the visible rows grouped under their organisation-level
+    // themes, worst group first, each header rolling up count, worst band and
+    // the celebration; unlinked risks close the table under an honest prompt.
+    const groups=new Map();
+    rows.forEach(r=>{ const k=_riskMacroOf(r); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(r); });
+    const bandRank={Critical:4,High:3,Medium:2,Low:1,'':0};
+    const entries=[...groups.entries()].map(([k,list])=>{
+      const worst=list.reduce((w,r)=>{ const p=_riskScore(r).priority||''; return bandRank[p]>bandRank[w]?p:w; },'');
+      return { k, list, worst };
+    }).sort((a,b)=>{
+      if(!a.k!==!b.k) return a.k?-1:1;
+      if(bandRank[b.worst]!==bandRank[a.worst]) return bandRank[b.worst]-bandRank[a.worst];
+      const an=a.k?(HAZARD_LIBRARY.find(t=>t.key===a.k)||{}).activity||'':'';
+      const bn=b.k?(HAZARD_LIBRARY.find(t=>t.key===b.k)||{}).activity||'':'';
+      return String(an).localeCompare(String(bn));
+    });
+    return entries.map(g=>{
+      const atT=g.list.filter(r=>_riskControlStatus(r)==='In place').length;
+      const allAt=atT===g.list.length;
+      const name=g.k?((HAZARD_LIBRARY.find(t=>t.key===g.k)||{}).activity||g.k):'Not yet grouped - set the Macro category on each risk';
+      const roll=atT?(atT+' of '+g.list.length+' controlled as reasonably practicable'):(g.list.length+' risk'+(g.list.length!==1?'s':''));
+      const head='<tr class="rpt-macro'+(allAt?' rpt-mac-at':'')+'">'
+        +'<td colspan="6" style="font-weight:700;">'+esc(name)+'</td>'
+        +'<td colspan="2" style="text-align:right;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(atT?'#15803d':'var(--text-muted)')+';">'
+        +((g.k&&g.worst)?_riskPrioBadge(g.worst,null)+' ':'')+esc(roll)+'</td></tr>';
+      return head+_riskRowHTML(g.list);
+    }).join('');
+  }
+  return _riskRowHTML(rows);
+}
+function _riskRowHTML(rows){
   return rows.map(r=>{
     const sc=_riskScore(r); const ops=_riskMode(r)==='ops'; const cc=_catColour(r.category);
     const ctl=_riskControlStatus(r); const cdot=ctl==='None'?'#DC2626':(ctl==='Partial'?'#F59E0B':'#16A34A');
@@ -20921,6 +20958,9 @@ function renderRiskProfile(){
           ${fg('Business area', sel(r.id,'area',r.area,RISK_AREAS))}
         </div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
+          ${fg('Macro category <span class="fl-hint" title="The organisation-level risk this sits under - the high level over the task detail. Groups the register and rolls up what is controlled.">(?)</span>', selv(r.id,'libKey',r.libKey,HAZARD_LIBRARY.map(t=>({v:t.key,label:t.activity})).sort((a,b)=>a.label.localeCompare(b.label))))}
+        </div>
+        <div class="field-grid cols-1" style="margin-bottom:12px;">
           ${fg(esc(_rt(r,'source'))+' <span class="fl-hint" title="'+esc(_rt(r,'sourceHint'))+'">(?)</span>', txt(r.id,'hazard',r.hazard,_rt(r,'sourcePh')))}
         </div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
@@ -21001,6 +21041,7 @@ function renderRiskProfile(){
   const modeChips=[['all','All'],['hs','H&S'],['ops','Operational']].map(([k,l])=>`<button type="button" class="btn btn-xs no-print ${_riskModeFilter===k?'btn-primary':'btn-ghost'}" onclick="setRiskModeFilter('${k}')">${l}</button>`).join('');
   const toolbar=`<div class="no-print" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
       <span style="font-size:12px;font-weight:600;color:var(--text-muted);">Show:</span>${modeChips}
+      <span style="font-size:12px;font-weight:600;color:var(--text-muted);margin-left:10px;">View:</span>${[['macro','Macro'],['flat','Flat']].map(([k,l])=>`<button type="button" class="btn btn-xs no-print ${_riskGroupMode===k?'btn-primary':'btn-ghost'}" onclick="setRiskGroupMode('${k}')">${l}</button>`).join('')}
       <input type="text" value="${esc(_riskSearch)}" placeholder="Search risks…" oninput="setRiskSearch(this.value)" style="margin-left:auto;min-width:170px;font-size:12px;padding:6px 9px;border:1px solid var(--border);border-radius:7px;background:transparent;color:inherit;">
     </div>`;
   // Header wording follows the mode filter - H&S speaks hazards, operational

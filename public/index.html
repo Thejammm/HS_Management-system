@@ -15747,12 +15747,15 @@ function renderExecPlan(){
   // One grid row per action - the CAS discipline: everything on one line,
   // only the action text wraps. The activity log opens as a full-width row.
   const trow=(a)=>{ const c=RAG_COLOR[a.rag]||RAG_COLOR.grey; const rk=ref(a); const opn=_execRowOpen[rk]; const lc=_logCount(a);
+    // Celebration: an action whose risk sits at its residual target - the
+    // work on that risk has delivered what it promised.
+    const _rkAt=(a.ref&&a.ref.t==='risk')?(function(){ const r=(S.riskProfile||[]).find(x=>x.id===a.ref.a); return !!(r&&_riskControlStatus(r)==='In place'); })():false;
     const closed=(a.status==='Complete'||a.status==='Accepted');
     const resTip=closed?((a.status==='Accepted'?'Risk accepted':'Completed')+(a.resolvedDate?(' '+fmtDate(a.resolvedDate)):'')+(a.resolvedBy?(' by '+a.resolvedBy):'')):'';
-    return `<tr style="border-top:1px solid var(--border);">
+    return `<tr style="border-top:1px solid var(--border);${_rkAt?'background:linear-gradient(100deg,#16A34A12,#16A34A05 62%,transparent);':''}">
       <td><span title="${a.rag==='red'?'Overdue':a.rag==='amber'?'Due this month / needs a date':a.rag==='grey'?'Risk accepted':'On track'}" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c};vertical-align:middle;"></span></td>
       <td class="cas-req" style="font-weight:600;cursor:pointer;" onclick="toggleExecRow('${rk}')" title="Click to see exactly what to do, where it came from, and the activity log">${esc(a.desc||'(no description yet - add it in the source section)')}</td>
-      <td title="${esc(a.source)}${a.sourceLabel?(' · '+esc(a.sourceLabel)):''}"><span class="badge badge-muted">${esc(a.source)}</span></td>
+      <td title="${esc(a.source)}${a.sourceLabel?(' · '+esc(a.sourceLabel)):''}${_rkAt?' · controlled as reasonably practicable':''}">${_rkAt?`<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;" title="This risk is controlled as reasonably practicable">${esc(a.source)} \u2713</span>`:`<span class="badge badge-muted">${esc(a.source)}</span>`}</td>
       <td title="${esc(a.owner||'')}">${esc(a.owner||'-')}</td>
       <td>${esc(a.priority||'-')}</td>
       <td style="text-align:center;">${dis?(a.top5===_top5Month()?'★':''):`<input type="checkbox" title="Mark this as one of the five priorities for ${_top5MonthLabel(_top5Month())} - they lead the board report and get checked off next month" ${a.top5===_top5Month()?'checked':''} onchange="toggleTop5('${rk}')" style="width:16px;height:16px;cursor:pointer;accent-color:#B45309;vertical-align:middle;">`}</td>

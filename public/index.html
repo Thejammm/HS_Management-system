@@ -14421,13 +14421,15 @@ const COCKPIT_WIDGETS = {
   boardJourney: { id:'boardJourney', label:'Risk journey', group:'Board', render:x=>{
       const B=_boardModel();
       if(!B.rated) return '<div class="ckx-panel"><h4>Risk journey</h4><div class="ck-pending">Rate the risks (likelihood \u00d7 severity) to populate the company journey.</div></div>';
-      const col=_RISK_PRIO_COLOR[B.nowBand]||'#9CA3AF';
+      const atLine=B.tgtPct!==null && B.fillPct>=B.tgtPct;
+      const col=atLine?'#16A34A':(_RISK_PRIO_COLOR[B.nowBand]||'#9CA3AF');
       const line=B.tgtPct===null?'':'<div style="position:absolute;left:'+B.tgtPct+'%;top:-7px;bottom:-7px;width:4px;background:#2563EB;border-radius:2px;box-shadow:0 0 0 1.5px var(--surface,#fff);"></div>'
         +'<div style="position:absolute;left:'+B.tgtPct+'%;top:-23px;transform:translateX(-'+(B.tgtPct>75?'100':B.tgtPct<15?'0':'50')+'%);font-size:10.5px;font-weight:700;color:#2563EB;white-space:nowrap;">TARGET \u00b7 planned controls</div>';
       return '<div class="ckx-panel"><h4>Risk journey</h4>'
         +'<div style="position:relative;height:20px;background:var(--muted-bg);border-radius:10px;margin:'+(B.tgtPct===null?'8':'26')+'px 0 4px;">'
         +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+B.fillPct+'%;min-width:14px;background:'+col+';border-radius:'+(B.fillPct>=98?'10px':'10px 0 0 10px')+';"></div>'+line+'</div>'
         +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);"><span>Highest risk</span><span style="font-weight:700;color:'+col+';">Current position</span><span>Fully avoided</span></div>'
+        +(atLine?'<div style="margin-top:8px;font-size:12.5px;font-weight:700;color:#16A34A;">Controlled as reasonably practicable \u2713 - the position has reached the planned target line</div>':'')
         +'<div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--text-muted);">'
         +'<span><b style="font-size:16px;color:#2563EB;">'+B.atTgt+' of '+B.total+'</b> risks at their planned target</span>'
         +'<span><b style="font-size:16px;color:var(--text);">'+B.dep.done+' of '+B.dep.total+'</b> planned controls and actions in place</span>'

@@ -906,7 +906,9 @@ export function buildBoardReport(state, opts = {}) {
   }
   if (!hide.riskJourney) {
     picBlocks.push(B.rated
-      ? { type: 'journeyStrip', fillPct: B.fillPct, tgtPct: B.tgtPct, colour: TIER_COLOURS[B.nowBand] || '#b7b7ba',
+      ? { type: 'journeyStrip', fillPct: B.fillPct, tgtPct: B.tgtPct,
+          atLine: B.tgtPct != null && B.fillPct >= B.tgtPct,
+          colour: (B.tgtPct != null && B.fillPct >= B.tgtPct) ? '#16A34A' : (TIER_COLOURS[B.nowBand] || '#b7b7ba'),
           counts: [
             { value: B.atTgt + ' of ' + B.total, label: 'risks at their planned target', colour: '#2563EB' },
             { value: B.dep.done + ' of ' + B.dep.total, label: 'planned controls and actions in place' },

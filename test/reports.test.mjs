@@ -9,7 +9,7 @@ import url from 'node:url';
 
 import { tierFor, bandsFrom, noneOrCount, countPhrase, isAre, hasHave, deriveBoard, deriveBoardExtras, residualOf } from '../public/reports/derive.js';
 import { reportHTML, paginateRows } from '../public/reports/engine.js';
-import { matrix5x5 } from '../public/reports/blocks.js';
+import { matrix5x5, journeyStrip } from '../public/reports/blocks.js';
 import { docFor, trainingRowsOf } from '../public/reports/app-contract.js';
 import { REPORTS, BOARD_SECTIONS, buildReport, getReportFormat, setReportFormat } from '../public/reports/templates/index.js';
 
@@ -136,6 +136,13 @@ test('attention list lives on its own page, never the front page', () => {
   const big = reportHTML(buildReport(big0, 'board-report', OPTS));
   assert.match(big, /Needs attention first - part 1 of 2/);
   assert.match(big, /Needs attention first - part 2 of 2/);
+});
+
+test('journey strip celebrates only at the planned target line', () => {
+  const at = journeyStrip({ fillPct: 71, tgtPct: 71, colour: '#16A34A', atLine: true, counts: [] });
+  assert.match(at, /Controlled as reasonably practicable/);
+  const short = journeyStrip({ fillPct: 57, tgtPct: 71, colour: '#EA580C', atLine: false, counts: [] });
+  assert.doesNotMatch(short, /Controlled as reasonably practicable/);
 });
 
 test('matrix squares are coloured by their band, on the tenant bands', () => {

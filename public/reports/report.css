@@ -256,6 +256,7 @@
 .r-jny-counts { display:flex; gap:22px; flex-wrap:wrap; font-size:9.5px; color:var(--r-muted); margin-top:8px; }
 .r-jny-counts b { font-size:13px; color:var(--r-ink); }
 .r-jny-loop { margin-top:9px; padding:6px 10px; border-left:3px solid #16A34A; background:rgba(22,163,74,.06); font-size:8.5px; color:var(--r-muted); }
+.r-jny-alarp { margin-top:6px; font-size:9.5px; font-weight:700; color:#16A34A; }
 
 .r-lad-row { display:flex; align-items:stretch; gap:9px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 .r-lad-frame { flex:0 0 32px; position:relative; min-height:23px; display:block; }

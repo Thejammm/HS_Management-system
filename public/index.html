@@ -15691,13 +15691,21 @@ function _refreshActionViews(){
 var _execRowOpen={};
 // The drill-in answers Simon's question first - what exactly do I need to do,
 // and where did it come from - before the activity log.
+function _execRiskOf(a){
+  if(!a||!a.ref) return null;
+  if(a.ref.t==='risk') return (S.riskProfile||[]).find(x=>x.id===a.ref.a)||null;
+  if(a.ref.t==='free'){ const fa=(S.actionPlan||[]).find(x=>x.id===a.ref.a); if(fa&&fa.riskId) return (S.riskProfile||[]).find(x=>x.id===fa.riskId)||null; }
+  return null;
+}
 function _epWhatHTML(a){
   let ctx='';
-  try{ if(a.ref && a.ref.t==='risk'){ const r=(S.riskProfile||[]).find(x=>x.id===a.ref.a); if(r&&r.controls) ctx=' \u00b7 current controls: '+String(r.controls).slice(0,140); } }catch(e){}
+  const _rkR=_execRiskOf(a);
+  try{ if(_rkR&&_rkR.controls) ctx=' \u00b7 current controls: '+String(_rkR.controls).slice(0,140); }catch(e){}
   return '<div style="border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:9px 12px;margin:4px 0 8px;">'
+    +(_rkR?'<div class="ep-risk-line" style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:5px;cursor:pointer;" onclick="_gotoRisk(\''+_rkR.id+'\')" title="Open this risk in the Risk profile">'+esc(_rkR.activity||_rkR.hazard||'Risk')+' \u2192</div>':'')
     +'<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:3px;">What to do</div>'
     +'<div style="font-size:13px;font-weight:600;">'+esc(a.desc||'(no description yet - open the source and write it)')+'</div>'
-    +'<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">From: '+esc(a.source)+(a.sourceLabel?(' \u00b7 '+esc(a.sourceLabel)):'')+(a.priority?(' \u00b7 priority '+esc(a.priority)):'')+esc(ctx)+'</div></div>';
+    +'<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">From: '+esc(a.source)+((a.sourceLabel&&!_rkR)?(' \u00b7 '+esc(a.sourceLabel)):'')+(a.priority?(' \u00b7 priority '+esc(a.priority)):'')+esc(ctx)+'</div></div>';
 }
 function toggleExecRow(rk){ _execRowOpen[rk]=!_execRowOpen[rk]; renderExecPlan(); }
 // ── AutoFilter for the plan - same engine, same conventions as the CAS tab.
@@ -15759,13 +15767,13 @@ function renderExecPlan(){
   const trow=(a)=>{ const c=RAG_COLOR[a.rag]||RAG_COLOR.grey; const rk=ref(a); const opn=_execRowOpen[rk]; const lc=_logCount(a);
     // Celebration: an action whose risk sits at its residual target - the
     // work on that risk has delivered what it promised.
-    const _rkR=(a.ref&&a.ref.t==='risk')?((S.riskProfile||[]).find(x=>x.id===a.ref.a)||null):null;
+    const _rkR=_execRiskOf(a);
     const _rkAt=!!(_rkR&&_riskControlStatus(_rkR)==='In place');
     const closed=(a.status==='Complete'||a.status==='Accepted');
     const resTip=closed?((a.status==='Accepted'?'Risk accepted':'Completed')+(a.resolvedDate?(' '+fmtDate(a.resolvedDate)):'')+(a.resolvedBy?(' by '+a.resolvedBy):'')):'';
     return `<tr style="border-top:1px solid var(--border);${_rkAt?'background:linear-gradient(100deg,#16A34A12,#16A34A05 62%,transparent);':''}">
       <td><span title="${a.rag==='red'?'Overdue':a.rag==='amber'?'Due this month / needs a date':a.rag==='grey'?'Risk accepted':'On track'}" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c};vertical-align:middle;"></span></td>
-      <td class="cas-req" style="font-weight:600;cursor:pointer;" onclick="toggleExecRow('${rk}')" title="Click to see exactly what to do, where it came from, and the activity log">${a.sourceLabel?`<div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:2px;${_rkR?'cursor:pointer;':''}"${_rkR?` onclick="event.stopPropagation();_gotoRisk('${_rkR.id}')" title="Open this risk in the Risk profile"`:''}>${esc(a.sourceLabel)}${_rkR?' \u2192':''}</div>`:''}${esc(a.desc||'(no description yet - add it in the source section)')}</td>
+      <td class="cas-req" style="font-weight:600;cursor:pointer;" onclick="toggleExecRow('${rk}')" title="Click to see exactly what to do, where it came from, and the activity log">${esc(a.desc||'(no description yet - add it in the source section)')}</td>
       <td title="${esc(a.source)}${a.sourceLabel?(' · '+esc(a.sourceLabel)):''}${_rkAt?' · controlled as reasonably practicable':''}">${_rkAt?`<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;" title="This risk is controlled as reasonably practicable">${esc(a.source)} \u2713</span>`:`<span class="badge badge-muted">${esc(a.source)}</span>`}</td>
       <td title="${esc(a.owner||'')}">${esc(a.owner||'-')}</td>
       <td>${esc(a.priority||'-')}</td>

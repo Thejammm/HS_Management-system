@@ -14445,7 +14445,7 @@ const COCKPIT_WIDGETS = {
       // Plain lines, no borders (Simon: the pills looked infantile): the wash
       // carries the level, the dot carries the controls judgement.
       const chip=z=>'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':(z.part?'No target set':'Controlled as reasonably practicable'))+' - click to open" '
-        +'style="all:unset;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;max-width:100%;color:var(--text);padding:2px 0;">'
+        +'style="all:unset;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;max-width:100%;color:'+(z.unc||z.part?'var(--text)':'#16A34A')+';padding:2px 0;">'
         +'<span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':'#16A34A'))+';"></span>'+esc(z.name)+'</button>';
       // A real ladder: the rails run unbroken down the left (tinted with each
       // band's colour, so the ladder itself grades red to green), the rung is
@@ -26952,6 +26952,10 @@ function _bsrData(){
 
   // GREEN - compliant with evidence, summarised in single lines
   const nextRev=(S.riskDoc&&S.riskDoc.nextReview)?fmtDate(S.riskDoc.nextReview):'the agreed review cycle';
+  const _alarp=(S.riskProfile||[]).filter(r=>_riskControlStatus(r)==='In place');
+  if(_alarp.length) greens.push({ issue:_alarp.length+' risk'+(_alarp.length!==1?'s':'')+' controlled as reasonably practicable',
+    found:'at or beyond the residual target the controls were set to reach'+(_alarp.length<=6?(': '+_alarp.map(r=>String(r.activity||r.hazard||'risk').slice(0,44)).join('; ')):''),
+    due:nextRev });
   if(H.held) greens.push({ issue:H.held+' of '+H.total+' risks identified', found:'controls recorded and plans delivered, signed off or defensibly accepted', due:nextRev });
   const rg=(typeof _reqGaps==='function')?_reqGaps():{gaps:0,assessed:0};
   const dutyMet=rg.assessed-rg.gaps;

@@ -303,7 +303,7 @@ export function riskLadder({ rungs, unrated }) {
     return `<div class="r-lad-row" style="background:linear-gradient(100deg,${r.colour}${wa},${r.colour}08 62%,transparent);border-radius:4px;">
       <span class="r-lad-frame"><i class="r-lad-rail" style="background:${r.colour}55"></i><i class="r-lad-rail r-lad-rail2" style="background:${r.colour}55"></i><i class="r-lad-bar" style="background:${r.colour}"></i></span>
       <span class="r-lad-label"><b style="color:${r.colour}">${esc(String(r.band).toUpperCase())}</b><i class="r-lad-range"> · score ${esc(r.range || '')}</i><span class="r-lad-sub">${esc(r.sub || '')}</span></span>
-      <span class="r-lad-chips">${r.chips.length ? r.chips.map(c => `<span class="r-lad-line"><i style="background:${c.dot}"></i>${esc(c.name)}</span>`).join('') : '<span class="r-footnote">None at this level.</span>'}</span>
+      <span class="r-lad-chips">${r.chips.length ? r.chips.map(c => `<span class="r-lad-line"${c.dot === '#16A34A' ? ' style="color:#16A34A"' : ''}><i style="background:${c.dot}"></i>${esc(c.name)}</span>`).join('') : '<span class="r-footnote">None at this level.</span>'}</span>
     </div>`; }).join('');
   const key = `<div class="r-lad-key"><span><i style="background:#DC2626"></i>uncontrolled</span><span><i style="background:#F59E0B"></i>no residual target set</span><span><i style="background:#16A34A"></i>controlled as reasonably practicable</span></div>`;
   return `<div class="r-lad">${rows || '<div class="r-footnote">No rated risks yet.</div>'}

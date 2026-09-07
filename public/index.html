@@ -22039,6 +22039,123 @@ const DISC_PROFILE_MAP={
     c_restructure:['ohwellbeing'], c_acquisition:['continuity'], c_regulatory:['compliance'], c_seasonal:['vulnerable']
   }
 };
+// What each yes answer says, as a scenario fragment: the Associated risk of a
+// theme built from discovery is written from the answers that fired it - the
+// client's own facts, in their words where the returned questionnaire carried
+// a note - ready for the consultant to sharpen to the task.
+const DISC_ASSOC={
+ "b_survey_pre2000": "surveying, inspecting or designing works to pre-2000 buildings",
+ "b_dutyholder": "statutory dutyholder roles accepted - CDM or Building Safety Act principal roles",
+ "b_design": "designs or specifications produced for construction work",
+ "b_domestic": "work in or visits to occupied domestic properties",
+ "b_public": "members of the public affected by the work",
+ "b_manufacture": "goods manufactured, fabricated or processed",
+ "b_warehouse": "goods stored or a warehouse operated",
+ "b_retail": "the public served on the premises",
+ "b_food": "food prepared, handled or served",
+ "b_care": "care, support or clinical services provided",
+ "b_passengers": "passengers carried as a service",
+ "b_atrisk": "staff working unsupervised with children or adults at risk",
+ "b_contractdep": "one client or contract accounting for a large share of turnover",
+ "b_licence": "a licence, permit or accreditation needed to trade",
+ "b_events": "events or activities open to the public",
+ "o_height": "work at height on lofts, roofs, ladders and fragile surfaces",
+ "o_driving": "driving for work",
+ "o_confined": "entry into confined or void spaces - crawl spaces, cellars, risers, roof voids",
+ "o_livesites": "attendance on live construction sites",
+ "o_manual": "manual handling of equipment, ladders, materials and loads",
+ "o_lone": "people working alone away from a fixed base",
+ "o_outdoor": "work outdoors and externally on buildings",
+ "o_hotwork": "hot works - welding, cutting, grinding, brazing",
+ "o_chemicals": "hazardous substances and chemicals used, stored or handled",
+ "o_dust": "dust, fumes or vapours created by the work",
+ "o_noise": "significant or prolonged noise exposure",
+ "o_vibration": "vibrating and percussive tools in use",
+ "o_excavation": "excavation and groundworks",
+ "o_demolition": "demolition and strip-out",
+ "o_flammables": "flammable liquids or gases used or stored",
+ "o_elecwork": "electrical installation or maintenance carried out",
+ "o_water": "work on, over or near water",
+ "o_transport": "vehicle movement in areas shared with people on foot",
+ "o_violence": "aggression or violence possible from customers or the public",
+ "o_nightshift": "night and rotating shift work",
+ "o_cash": "cash or valuables handled",
+ "o_livestock": "livestock or large animals worked with",
+ "o_atv": "tractors, ATVs or quad bikes in use",
+ "o_grain": "grain stored or handled, silos or bins entered",
+ "o_agrichem": "pesticides and agrochemicals used",
+ "o_hgv": "HGVs driven or an O-licence operated under",
+ "o_loading": "vehicles loaded and unloaded",
+ "o_deliveries": "deliveries made to premises and the public",
+ "o_coldstore": "work in cold stores or extreme temperatures",
+ "o_movepeople": "people moved, handled or assisted",
+ "o_vehmaint": "vehicles maintained, serviced or repaired",
+ "o_wastegen": "waste, effluent or emissions generated",
+ "o_infection": "exposure to infection, blood or bodily fluids",
+ "o_medicines": "medicines handled or administered",
+ "o_medrad": "medical imaging, X-ray or lasers in use",
+ "o_pool": "a swimming pool, spa or leisure water operated",
+ "o_scafferect": "scaffolding or temporary structures erected, altered or dismantled for others",
+ "o_roadside": "work on or next to live roads, footways and public highways",
+ "p_office": "a fixed office or workplace operated",
+ "p_home": "home and hybrid working",
+ "p_clientsites": "most work at client or third-party premises",
+ "p_derelict": "entry into void, derelict or neglected properties",
+ "p_publicaccess": "members of the public entering the premises",
+ "p_water_sys": "water systems that could harbour legionella",
+ "p_gas": "a gas supply or gas appliances on site",
+ "p_plant": "a plant room, boiler or pressure system on site",
+ "p_multi": "multi-tenant or shared premises occupied",
+ "p_persondata": "personal or sensitive data held about customers or service users",
+ "p_landlord": "premises let or managed for others",
+ "w_agency": "agency workers or subcontractors used",
+ "w_young": "people under 18 employed",
+ "w_newexpectant": "new or expectant mothers who could be exposed",
+ "w_migrant": "workers for whom English is a second language",
+ "w_vulnerable": "staff with health conditions relevant to their work",
+ "w_apprentices": "apprentices or trainees",
+ "w_selfemployed": "self-employed workers engaged",
+ "w_safetycrit": "roles carrying safety-critical responsibilities",
+ "w_volunteers": "volunteers used",
+ "w_keyperson": "one or two people whose loss would seriously disrupt operations",
+ "a_workequip": "powered work equipment and tools in use",
+ "a_lifting": "lifting equipment or access platforms - MEWPs, hoists - in use",
+ "a_electrical": "reliance on portable electrical equipment",
+ "a_vehicles": "company or grey-fleet vehicles operated",
+ "a_display": "display screen equipment as a significant part of the work",
+ "a_pressure": "pressure systems operated - compressors, boilers, autoclaves, air receivers",
+ "a_ladders": "ladders, steps or podiums relied on for access",
+ "a_forklift": "forklifts or materials-handling equipment operated",
+ "a_plant": "mobile plant operated - diggers, dumpers, rollers, telehandlers",
+ "a_scaffold": "scaffolding or temporary works used",
+ "a_lev": "reliance on local exhaust ventilation",
+ "d_cdm_pd": "acting as Principal Designer under CDM 2015",
+ "d_bsa_pd": "acting as Principal Designer under the Building Safety Act",
+ "d_pc": "acting as Principal Contractor",
+ "d_client": "advising or acting as the CDM Client",
+ "d_dutytomanage": "premises occupied or managed with a duty to manage asbestos",
+ "d_responsible": "the Responsible Person for fire safety at premises",
+ "d_landlordgas": "landlord gas-safety duties held",
+ "d_waste": "an environmental permit held or waste handled",
+ "d_data": "a data controller processing personal data",
+ "d_food": "a registered food business operator",
+ "c_growth": "rapid growth or many new staff in the last 12 months",
+ "c_newsector": "new sectors or services entered",
+ "c_firstdutyholder": "a statutory dutyholder role taken on for the first time",
+ "c_newpremises": "new premises moved to or added",
+ "c_keyperson": "heavy dependence on one or two key people",
+ "c_newequipment": "new equipment or processes introduced",
+ "c_restructure": "recent restructuring or redundancies",
+ "c_acquisition": "a business acquired or merged",
+ "c_regulatory": "legislation about to change the obligations",
+ "c_seasonal": "large seasonal surges in activity or staff"
+};
+function _discAssocText(firedBy){
+  const notes=(_profState().discNotes||{});
+  const bits=(firedBy||[]).filter(q=>q!=='universal'&&DISC_ASSOC[q]).map(q=>DISC_ASSOC[q]+(notes[q]?(' (client: "'+String(notes[q]).trim()+'")'):''));
+  if(!bits.length) return '';
+  const s=bits.join('; '); return s.charAt(0).toUpperCase()+s.slice(1)+'.';
+}
 // Which themes the current answers suggest that are not already in the profile.
 // Returns Map(libKey → [what fired it]). Universals only suggest once discovery
 // has actually been started (so an untouched client isn't nagged).
@@ -22061,7 +22178,7 @@ function buildProfileFromDiscovery(){
   const names=[...sug.keys()].map(k=>{ const t=HAZARD_LIBRARY.find(x=>x.key===k); return t?t.activity:k; });
   if(!confirm('Build the risk profile from discovery?\n\nThis adds '+sug.size+' suggested theme'+(sug.size!==1?'s':'')+' from the library, pre-scored with suggested ratings and marked for your review:\n\n• '+names.slice(0,14).join('\n• ')+(names.length>14?('\n… and '+(names.length-14)+' more'):'')+'\n\nNothing existing is changed - you review and agree each rating with the client.')) return;
   let n=0;
-  sug.forEach((firedBy,k)=>{ const e=insertLibraryRisk(k, true); if(e){ e.suggestedBy='discovery'; e.suggestedFrom=firedBy; n++; } });
+  sug.forEach((firedBy,k)=>{ const e=insertLibraryRisk(k, true); if(e){ e.suggestedBy='discovery'; e.suggestedFrom=firedBy; if(!e.assocRisk) e.assocRisk=_discAssocText(firedBy); n++; } });
   saveData(); renderRiskProfile(); renderRiskReview();
   showToast('✓ Added '+n+' suggested theme'+(n!==1?'s':'')+' - review and agree each rating','success');
 }

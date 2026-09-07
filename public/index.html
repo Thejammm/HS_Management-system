@@ -10549,6 +10549,7 @@ function migrateLoadedState(){
     if(!Array.isArray(r.personsAtRisk)) r.personsAtRisk = [];
     if(r.furtherActions === undefined) r.furtherActions = '';
     if(r.assocRisk === undefined) r.assocRisk = '';
+    if(r.macroKey === undefined) r.macroKey = '';
     const wordToNum = { Low:'2', Moderate:'3', High:'4' };
     if(typeof r.likelihood === 'string' && wordToNum[r.likelihood]) r.likelihood = wordToNum[r.likelihood];
     if((r.severity === undefined || r.severity === '') && wordToNum[r.priority]) r.severity = wordToNum[r.priority];
@@ -15892,7 +15893,8 @@ const HAZARD_LIBRARY = [
    "A training matrix kept and managed by a named person",
    "Induction and role-based competence standards written into the employment process"
   ],
-  "macro": "Competence"
+  "macro": "Competence & legal duties",
+  "macroKey": "management"
  },
  {
   "key": "ohwellbeing",
@@ -15922,7 +15924,8 @@ const HAZARD_LIBRARY = [
    "Wellbeing and support routes published and briefed",
    "A named person responsible for health and wellbeing"
   ],
-  "macro": "Health & wellbeing"
+  "macro": "People & wellbeing",
+  "macroKey": "people"
  },
  {
   "key": "vulnerable",
@@ -15954,7 +15957,8 @@ const HAZARD_LIBRARY = [
    "Information-exchange process with agencies before workers start",
    "Review cycle as circumstances change"
   ],
-  "macro": "Vulnerable persons"
+  "macro": "People & wellbeing",
+  "macroKey": "people"
  },
  {
   "key": "violence",
@@ -15985,7 +15989,8 @@ const HAZARD_LIBRARY = [
    "De-escalation training process on a refresher cycle",
    "Alarm and escalation arrangements tested, with a named owner"
   ],
-  "macro": "Violence & aggression"
+  "macro": "People & wellbeing",
+  "macroKey": "people"
  },
  {
   "key": "publicsafety",
@@ -16016,7 +16021,8 @@ const HAZARD_LIBRARY = [
    "Access-control process for visitors and the public at sites and premises",
    "Roles and responsibilities delegated for the public interface on each job"
   ],
-  "macro": "Public safety"
+  "macro": "People & wellbeing",
+  "macroKey": "people"
  },
  {
   "key": "safeguarding",
@@ -16049,7 +16055,8 @@ const HAZARD_LIBRARY = [
    "DBS checking process at the right level, with a re-check cycle and records",
    "Safeguarding training process on a refresher cycle"
   ],
-  "macro": "Safeguarding"
+  "macro": "People & wellbeing",
+  "macroKey": "people"
  },
  {
   "key": "keypeople",
@@ -16078,7 +16085,8 @@ const HAZARD_LIBRARY = [
    "Succession and retention review for the critical roles",
    "A named owner keeping the dependency list current"
   ],
-  "macro": "Key-person dependency"
+  "macro": "Business continuity",
+  "macroKey": "business"
  },
  {
   "key": "dseoffice",
@@ -16108,7 +16116,8 @@ const HAZARD_LIBRARY = [
    "Eye-test provision arranged and published",
    "A named owner for DSE records and follow-ups"
   ],
-  "macro": "DSE & office"
+  "macro": "Manual handling & ergonomics",
+  "macroKey": "ergonomics"
  },
  {
   "key": "workatheight",
@@ -16140,7 +16149,8 @@ const HAZARD_LIBRARY = [
    "Training process for the equipment types used, on a refresher cycle",
    "Roles and responsibilities delegated for planning and supervising height work"
   ],
-  "macro": "Work at height"
+  "macro": "Work at height",
+  "macroKey": "height"
  },
  {
   "key": "ohexposure",
@@ -16170,7 +16180,8 @@ const HAZARD_LIBRARY = [
    "Equipment maintenance and face-fit testing process on a cycle",
    "A named keeper for exposure records and assessments"
   ],
-  "macro": "Health exposures"
+  "macro": "Hazardous substances & health",
+  "macroKey": "health"
  },
  {
   "key": "asbestos",
@@ -16203,7 +16214,8 @@ const HAZARD_LIBRARY = [
    "Asbestos-awareness training process on a refresher cycle",
    "A named keeper for surveys, registers and training records"
   ],
-  "macro": "Asbestos"
+  "macro": "Hazardous substances & health",
+  "macroKey": "health"
  },
  {
   "key": "manualhandling",
@@ -16233,7 +16245,8 @@ const HAZARD_LIBRARY = [
    "Manual-handling training process matched to real tasks, on a refresher cycle",
    "Roles and responsibilities delegated for assessing and reviewing the tasks"
   ],
-  "macro": "Manual handling"
+  "macro": "Manual handling & ergonomics",
+  "macroKey": "ergonomics"
  },
  {
   "key": "confined",
@@ -16264,7 +16277,8 @@ const HAZARD_LIBRARY = [
    "Competence process for planners, supervisors and entrants",
    "Rescue-rehearsal cycle with records"
   ],
-  "macro": "Confined spaces"
+  "macro": "Construction & confined spaces",
+  "macroKey": "construction"
  },
  {
   "key": "roadrisk",
@@ -16295,7 +16309,8 @@ const HAZARD_LIBRARY = [
    "Vehicle check and defect-reporting procedure with maintenance arrangements",
    "Journey-planning and fatigue rules with a named owner"
   ],
-  "macro": "Road risk"
+  "macro": "Transport & driving",
+  "macroKey": "transport"
  },
  {
   "key": "contractor",
@@ -16328,7 +16343,8 @@ const HAZARD_LIBRARY = [
    "Induction, site-rules and permit process for everyone working for the business",
    "Audit and review cycle for the contractors used, with a named owner"
   ],
-  "macro": "Contractors"
+  "macro": "Competence & legal duties",
+  "macroKey": "management"
  },
  {
   "key": "loneworking",
@@ -16359,7 +16375,8 @@ const HAZARD_LIBRARY = [
    "Assessment process deciding which tasks may be done alone",
    "Device or app provision with a provider and a named administrator"
   ],
-  "macro": "Lone working"
+  "macro": "People & wellbeing",
+  "macroKey": "people"
  },
  {
   "key": "outdoor",
@@ -16389,7 +16406,8 @@ const HAZARD_LIBRARY = [
    "Immunisation and hygiene arrangements with health providers",
    "Roles and responsibilities delegated for calling conditions on the day"
   ],
-  "macro": "Outdoor work"
+  "macro": "Premises & environment",
+  "macroKey": "premises"
  },
  {
   "key": "environment",
@@ -16422,7 +16440,8 @@ const HAZARD_LIBRARY = [
    "Spill and drainage plan per site, with kit checks on a cycle",
    "A named keeper for permits, exemptions and renewals"
   ],
-  "macro": "Environment"
+  "macro": "Premises & environment",
+  "macroKey": "premises"
  },
  {
   "key": "workequip",
@@ -16453,7 +16472,8 @@ const HAZARD_LIBRARY = [
    "Safe-use training process per equipment type",
    "Defect-reporting and quarantine procedure briefed to all"
   ],
-  "macro": "Work equipment"
+  "macro": "Plant, equipment & electricity",
+  "macroKey": "plant"
  },
  {
   "key": "lifting",
@@ -16483,7 +16503,8 @@ const HAZARD_LIBRARY = [
    "Lifting-equipment asset register kept by a named person",
    "Competence process for slingers, signallers and lift planners"
   ],
-  "macro": "Lifting operations"
+  "macro": "Plant, equipment & electricity",
+  "macroKey": "plant"
  },
  {
   "key": "transport",
@@ -16515,7 +16536,8 @@ const HAZARD_LIBRARY = [
    "Site-layout process - routes, speed limits and crossings marked on the ground",
    "Review cycle after changes to vehicles, layout or volumes"
   ],
-  "macro": "Workplace transport"
+  "macro": "Transport & driving",
+  "macroKey": "transport"
  },
  {
   "key": "electrical",
@@ -16547,7 +16569,8 @@ const HAZARD_LIBRARY = [
    "Roles and responsibilities delegated for electrical safety",
    "A named keeper for test records and coded observations"
   ],
-  "macro": "Electricity"
+  "macro": "Plant, equipment & electricity",
+  "macroKey": "plant"
  },
  {
   "key": "premises",
@@ -16579,7 +16602,8 @@ const HAZARD_LIBRARY = [
    "Maintenance process with contractors and response times for defects",
    "A named keeper for the inspection and maintenance records"
   ],
-  "macro": "Premises & welfare"
+  "macro": "Premises & environment",
+  "macroKey": "premises"
  },
  {
   "key": "fire",
@@ -16611,7 +16635,8 @@ const HAZARD_LIBRARY = [
    "Testing and maintenance process for detection, emergency lighting and extinguishers, with a provider on a service cycle",
    "A named keeper for the fire logbook and drill records"
   ],
-  "macro": "Fire"
+  "macro": "Fire & explosion",
+  "macroKey": "fire"
  },
  {
   "key": "legionella",
@@ -16641,7 +16666,8 @@ const HAZARD_LIBRARY = [
    "A responsible person appointed, trained and named",
    "Monitoring provider arrangement with a review cycle"
   ],
-  "macro": "Legionella"
+  "macro": "Hazardous substances & health",
+  "macroKey": "health"
  },
  {
   "key": "weather",
@@ -16673,7 +16699,8 @@ const HAZARD_LIBRARY = [
    "Alternative premises and working arrangements agreed in advance",
    "A named owner keeping the plan current"
   ],
-  "macro": "Severe weather"
+  "macro": "Premises & environment",
+  "macroKey": "premises"
  },
  {
   "key": "dutyholder",
@@ -16705,7 +16732,8 @@ const HAZARD_LIBRARY = [
    "Competence and resource check process before each appointment",
    "Gateway and handover obligations tracked on a project calendar"
   ],
-  "macro": "Statutory duties"
+  "macro": "Competence & legal duties",
+  "macroKey": "management"
  },
  {
   "key": "designrisk",
@@ -16737,7 +16765,8 @@ const HAZARD_LIBRARY = [
    "Pre-construction information process on every project",
    "Gateway assessment process for higher-risk building work"
   ],
-  "macro": "Design risk"
+  "macro": "Competence & legal duties",
+  "macroKey": "management"
  },
  {
   "key": "licence",
@@ -16766,7 +16795,8 @@ const HAZARD_LIBRARY = [
    "Renewal notification arrangements with each issuing body so nothing lapses",
    "Trigger-event review - what could suspend each authorisation"
   ],
-  "macro": "Licences & accreditations"
+  "macro": "Competence & legal duties",
+  "macroKey": "management"
  },
  {
   "key": "compliance",
@@ -16796,7 +16826,8 @@ const HAZARD_LIBRARY = [
    "Roles and responsibilities delegated for each duty area",
    "Access to competent H&S advice retained"
   ],
-  "macro": "Legal compliance"
+  "macro": "Competence & legal duties",
+  "macroKey": "management"
  },
  {
   "key": "information",
@@ -16828,7 +16859,8 @@ const HAZARD_LIBRARY = [
    "Backup and restore testing process on a cycle",
    "Phishing and device-loss training process for all staff"
   ],
-  "macro": "Information & data"
+  "macro": "Business continuity",
+  "macroKey": "business"
  },
  {
   "key": "contractloss",
@@ -16856,7 +16888,8 @@ const HAZARD_LIBRARY = [
    "Compliance-evidence process keeping accreditations current",
    "Review cycle for the safety conditions that could terminate each contract"
   ],
-  "macro": "Contract loss"
+  "macro": "Business continuity",
+  "macroKey": "business"
  },
  {
   "key": "financial",
@@ -16886,7 +16919,8 @@ const HAZARD_LIBRARY = [
    "Incident-cost capture process feeding board reporting",
    "A named owner for insurance and claims records"
   ],
-  "macro": "Insurance & claims"
+  "macro": "Business continuity",
+  "macroKey": "business"
  },
  {
   "key": "peoplecare",
@@ -16917,7 +16951,8 @@ const HAZARD_LIBRARY = [
    "Moving-and-handling training process for all care staff",
    "Medication-management procedure with competence checks"
   ],
-  "macro": "People handling & care"
+  "macro": "Manual handling & ergonomics",
+  "macroKey": "ergonomics"
  },
  {
   "key": "biological",
@@ -16947,7 +16982,8 @@ const HAZARD_LIBRARY = [
    "Sharps, waste and spill arrangements with kit checks on a cycle",
    "Post-exposure reporting and follow-up process"
   ],
-  "macro": "Biological agents"
+  "macro": "Hazardous substances & health",
+  "macroKey": "health"
  },
  {
   "key": "hrconstruction",
@@ -16980,7 +17016,8 @@ const HAZARD_LIBRARY = [
    "Training process so identification, assessment and supervision are competent",
    "Roles and responsibilities delegated for supervising every high-risk operation"
   ],
-  "macro": "High-risk construction"
+  "macro": "Construction & confined spaces",
+  "macroKey": "construction"
  },
  {
   "key": "continuity",
@@ -17010,7 +17047,8 @@ const HAZARD_LIBRARY = [
    "Post-incident learning process with recorded actions",
    "A named owner testing the plan on a cycle"
   ],
-  "macro": "Business continuity"
+  "macro": "Business continuity",
+  "macroKey": "business"
  }
 ];
 
@@ -18553,7 +18591,7 @@ function insertLibraryRisk(key, quiet){
   const t=HAZARD_LIBRARY.find(x=>x.key===key); if(!t) return;
   const _ht=_hazardType(t.category, t.hazard);
   const entry={ id:'risk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), libKey:t.key,
-    category:_ht, area:_libArea(t.key), pdca:'', energy:(_HTYPE_ENERGY[_ht]||[]).slice(), sif:'', controlLevel:'', reviewed:false, activity:t.activity, hazard:t.hazard, assocRisk:'', personsAtRisk:(t.persons||[]).slice(),
+    category:_ht, area:_libArea(t.key), pdca:'', energy:(_HTYPE_ENERGY[_ht]||[]).slice(), sif:'', controlLevel:'', reviewed:false, activity:t.activity, hazard:t.hazard, assocRisk:'', macroKey:'', personsAtRisk:(t.persons||[]).slice(),
     harm:t.harm, businessImpact:'', impacts:Object.assign({}, (typeof _LIB_IMPACTS!=='undefined'&&_LIB_IMPACTS[t.key])||{}), impactNotes:{}, controls:'',
     likelihood:String(t.l), severity:String(t.s), targetL:'', targetS:'', trend:t.trend,
     // Seeded Simon's way: the measures land in the CONTROL TABLE
@@ -20872,7 +20910,7 @@ function _riskVisibleRows(){
     return true;
   });
 }
-function _macroName(k){ const o=(S.macroNames||{})[k]; if(o) return o; const t=HAZARD_LIBRARY.find(x=>x.key===k); return t?(t.macro||t.activity):k; }
+function _macroName(k){ const o=(S.macroNames||{})[k]; if(o) return o; const t=HAZARD_LIBRARY.find(x=>x.macroKey===k); return t?(t.macro||k):k; }
 function _macroRenameStart(ev,k){
   if(_blockIfReadOnly()) return;
   const tr=ev.target.closest('tr'); const span=tr&&tr.querySelector('.rpt-mac-name'); if(!span) return;
@@ -20883,7 +20921,7 @@ function _macroRenameStart(ev,k){
 function _macroRenameCommit(k,v){
   v=String(v||'').trim();
   S.macroNames=S.macroNames||{};
-  const t=HAZARD_LIBRARY.find(x=>x.key===k); const def=t?(t.macro||t.activity):'';
+  const t=HAZARD_LIBRARY.find(x=>x.macroKey===k); const def=t?(t.macro||''):'';
   if(!v||v===def) delete S.macroNames[k]; else S.macroNames[k]=v;
   saveData(); _keepScroll(renderRiskProfile);
 }
@@ -20910,7 +20948,13 @@ function _macroHeadHTML(g){
     +'<span style="margin-left:auto;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(g.atT?'#15803d':'var(--text-muted)')+';">'+((g.k&&g.worst)?_riskPrioBadge(g.worst,null)+' ':'')+esc(g.roll)+'</span></div>';
 }
 function setRiskGroupMode(m){ _riskGroupMode=m; _keepScroll(renderRiskProfile); }
-function _riskMacroOf(r){ return (r&&r.libKey&&HAZARD_LIBRARY.some(t=>t.key===r.libKey))?r.libKey:''; }
+function _riskMacroOf(r){
+  if(!r) return '';
+  if(r.macroKey&&HAZARD_LIBRARY.some(t=>t.macroKey===r.macroKey)) return r.macroKey;
+  const t=r.libKey?HAZARD_LIBRARY.find(x=>x.key===r.libKey):null;
+  return (t&&t.macroKey)||'';
+}
+function _macroKeys(){ const seen=[]; HAZARD_LIBRARY.forEach(t=>{ if(t.macroKey&&!seen.includes(t.macroKey)) seen.push(t.macroKey); }); return seen; }
 function _riskTableRowsHTML(){
   const rows=_riskVisibleRows();
   if(!rows.length) return '<tr><td colspan="8" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
@@ -21064,7 +21108,7 @@ function renderRiskProfile(){
           ${fg('Business area', sel(r.id,'area',r.area,RISK_AREAS))}
         </div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
-          ${fg('Macro category <span class="fl-hint" title="The organisation-level risk this sits under - the high level over the task detail. Groups the register and rolls up what is controlled.">(?)</span>', selv(r.id,'libKey',r.libKey,HAZARD_LIBRARY.map(t=>({v:t.key,label:_macroName(t.key)})).sort((a,b)=>a.label.localeCompare(b.label))))}
+          ${fg('Macro category <span class="fl-hint" title="The high-level hazard category this risk sits under - Fire, Work at height, Transport... Groups the register and rolls up what is controlled. Library risks take the category of their theme; choose one to place any risk.">(?)</span>', selv(r.id,'macroKey',_riskMacroOf(r),_macroKeys().map(k=>({v:k,label:_macroName(k)})).sort((a,b)=>a.label.localeCompare(b.label))))}
         </div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
           ${fg(_rt(r,'activity'), `<input type="text"${dis} id="ractf-${r.id}" value="${esc(r.activity)}" placeholder="${esc(_rt(r,'activityPh'))}" oninput="updateRiskField('${r.id}','activity',this.value)">`)}
@@ -22421,7 +22465,7 @@ function renderRiskReview(){
         const sc=_riskScore(r); const pc=_RISK_PRIO_COLOR[sc.priority]||'#9CA3AF';
         const pdca=_riskPdca(r); const pdc=RISK_PDCA_COLOR[pdca];
         return `<div class="rr-row rr-click" onclick="_gotoRisk('${r.id}')" title="Open this risk to see and complete its content">
-          <div><div class="rr-name">${esc(r.activity||r.hazard||'Unnamed risk')}</div><div class="rr-sub">${esc(r.libKey?_macroName(r.libKey):'')}</div></div>
+          <div><div class="rr-name">${esc(r.activity||r.hazard||'Unnamed risk')}</div><div class="rr-sub">${esc(_riskMacroOf(r)?_macroName(_riskMacroOf(r)):'')}</div></div>
           <div>${r.area?`<span class="rr-area">${esc(r.area)}</span>`:'<span class="rr-sub">-</span>'}</div>
           <div><span class="badge" style="border-color:${pc};color:${pc};background:${pc}1a;">${sc.priority||'Not rated'}${sc.rating?' · '+sc.rating:''}</span></div>
           <div><span class="rr-pdca" style="background:${pdc}1a;color:${pdc};border:1px solid ${pdc};">${pdca}</span></div>

@@ -3519,16 +3519,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rr-typetile{border:1px solid var(--border);border-radius:11px;padding:13px 15px;background:var(--surface);border-top:4px solid var(--border);}
     .rr-typetile .rt-n{font-size:26px;font-weight:700;line-height:1;}
     .rr-typetile .rt-l{font-size:12px;font-weight:600;color:var(--text-muted);margin-top:5px;}
-    .rpt{width:100%;border-collapse:collapse;font-size:12.5px;}
+    .rpt{width:100%;min-width:880px;table-layout:fixed;border-collapse:collapse;font-size:12.5px;}
+    .rpt td,.rpt th{overflow-wrap:anywhere;}
     .rpt th{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);text-align:left;padding:6px 8px;font-weight:600;border-bottom:1.5px solid var(--border);white-space:nowrap;}
-    .rpt td{padding:9px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+    .rpt td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
     .rpt-row{cursor:pointer;}
     .rpt-row:hover td{background:var(--muted-bg);}
     .rpt-row.rpt-atline{background:linear-gradient(100deg,#16A34A14,#16A34A06 62%,transparent);}
     .rpt-row.rpt-atline:hover td{background:#16A34A1a;}
     .rpt-macro{background:var(--muted-bg);cursor:pointer;}
     .rpt-macro:hover td{background:var(--border);}
-    .rpt-macro td{border-top:2px solid var(--border);padding-top:8px;padding-bottom:8px;}
+    .rpt-macro td{border-top:2px solid var(--border);padding-top:6px;padding-bottom:6px;}
     .rpt-macro.rpt-mac-at{background:linear-gradient(100deg,#16A34A22,#16A34A08 62%,transparent);}
   </style>
   <!-- Combined risk panel: matrix + H&S control maturity in one frame.
@@ -21020,11 +21021,11 @@ function _riskRowHTML(rows){
       +'<td onclick="event.stopPropagation()" style="white-space:nowrap;">'+RISK_MODES.map(m=>'<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:'+(_riskMode(r)===m.k?'700':'400')+';color:'+(_riskMode(r)===m.k?m.colour:'var(--text-muted)')+';cursor:pointer;line-height:1.5;"><input type="radio" name="kind_'+r.id+'" '+(_riskMode(r)===m.k?'checked':'')+' onchange="setRiskMode(\''+r.id+'\',\''+m.k+'\')" style="accent-color:'+m.colour+';width:12px;height:12px;cursor:pointer;">'+(m.k==='hs'?'H&S':'Ops')+'</label>').join('')+'</td>'
       +'<td style="font-weight:700;">'+esc(r.activity||r.hazard||'New risk')+(r.reviewed?' <span style="color:#16A34A;font-weight:700;font-size:11px;" title="Reviewed and completed">\u2713</span>':'')+'</td>'
       +'<td><span class="rc-chip" style="background:'+cc+'1a;color:'+cc+';">'+esc(mk?_macroName(mk):'-')+'</span>'+(ops?' <span class="rc-chip" style="background:#7C3AED1a;color:#7C3AED;">Operational</span>':'')+'</td>'
-      +'<td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">'+esc(r.area||'-')+'</td>'
+      +'<td style="font-size:12px;color:var(--text-muted);">'+esc(r.area||'-')+'</td>'
       +'<td style="text-align:center;">'+(_riskFlagOn(r)?('<span style="color:'+(ops?'#7C3AED':'#DC2626')+';font-weight:800;" title="'+esc(_rt(r,'flagChipTitle'))+'">\u26a0</span>'):'')+'</td>'
       +'<td>'+_riskPrioBadge(sc.priority,null)+'</td>'
       +'<td style="text-align:center;font-weight:800;">'+(sc.rating||'-')+'</td>'
-      +'<td><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;white-space:nowrap;"><i style="width:9px;height:9px;border-radius:50%;background:'+cdot+';display:inline-block;"></i>'+cword+'</span></td>'
+      +'<td><span style="display:inline-flex;align-items:flex-start;gap:6px;font-size:12px;font-weight:600;"><i style="width:9px;height:9px;border-radius:50%;background:'+cdot+';display:inline-block;flex:0 0 auto;margin-top:4px;"></i><span>'+cword+'</span></span></td>'
       +'</tr>'; }).join('');
 }
 function _riskOpenModal(id){ const _r=(S.riskProfile||[]).find(x=>x.id===id); if(_r) _riskModeFilter=_riskMode(_r); _riskSel=id; _riskMacroLast=id; _riskSelTab='summary'; _riskModalOpen=true; const sec=document.getElementById('wfRegister'); if(sec&&!sec.open) sec.open=true; _keepScroll(renderRiskProfile); }
@@ -21246,8 +21247,8 @@ function renderRiskProfile(){
     ? { cat:'Macro', flag:'Critical' }
     : _riskModeFilter==='hs' ? { cat:'Macro', flag:'SIF' }
     : { cat:'Macro', flag:'SIF' };
-  const table=`<div style="overflow-x:auto;"><table class="rpt"><thead><tr>
-      <th style="width:70px;" title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
+  const table=`<div style="overflow-x:auto;"><table class="rpt"><colgroup><col style="width:64px"><col><col style="width:16%"><col style="width:12%"><col style="width:44px"><col style="width:84px"><col style="width:56px"><col style="width:15%"></colgroup><thead><tr>
+      <th title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
       <th>Risk title</th>
       <th>${_hh.cat}</th><th>Business area</th>
       <th style="text-align:center;" title="Worst case: could kill or seriously injure (H&amp;S) / business-critical (operational)">${_hh.flag}</th>

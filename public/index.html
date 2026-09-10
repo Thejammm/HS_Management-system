@@ -14619,11 +14619,11 @@ const REPORT_SECTIONS = [
   { id:'risk.units',           report:'Risk profile',      label:'Exposure by business unit' },
   { id:'risk.controls',        report:'Risk profile',      label:'Controls by level' },
   { id:'risk.energy',          report:'Risk profile',      label:'Energy coverage' },
-  { id:'action.summary',       report:'Action plan',       label:'At-a-glance summary tiles' },
+  { id:'action.summary',       report:'Client execution plan', label:'At-a-glance summary line' },
   { id:'mgmt.summary',         report:'Legal duties', label:'Compliance at-a-glance tiles' },
   { id:'mgmt.completeness',    report:'Legal duties', label:'Data completeness note' },
 ];
-const REPORT_SECTION_ORDER = ['Risk profile','Action plan','Legal duties'];
+const REPORT_SECTION_ORDER = ['Risk profile','Client execution plan','Legal duties'];
 function _reportSectionOn(id){ return !(S.config && S.config.reportSections && S.config.reportSections[id]===false); }
 function setReportSection(id, on){ if(!S.config) S.config={}; if(!S.config.reportSections) S.config.reportSections={}; if(on) delete S.config.reportSections[id]; else S.config.reportSections[id]=false; saveData(); try{ renderReports(); }catch(e){} }
 // ── Reports customiser: lives on the Reports tab (moved from the cockpit
@@ -14736,11 +14736,6 @@ function renderReports(){
       icon:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h3"/>'),
       desc:'The send-to-the-client gap report: what discovery has already established, and the questions only the client can answer - a fillable PDF they tick and type straight into, save and send back. Import the returned file on the Risk profile tab and the answers land in the wizard.',
       tags:['New client','Fillable','Auto-import'] },
-    { title:'Action Plan', accent:'#B45309', tint:'#FDF3E7', fn:'downloadActionPlanReport()',
-      meta:(_execOpenCount()+' open action'+(_execOpenCount()!==1?'s':'')),
-      icon:svg('<path d="M11 12H3"/><path d="M16 6H3"/><path d="M16 18H3"/><path d="m19 10-4 4 4 4"/>'),
-      desc:'The working action plan as the consultant sees it on the Actions tab - every open action with owner, date and status.',
-      tags:['Working list','Owners','Dates'] },
     { title:'Action Archive', accent:'#6B7280', tint:'#F1F2F4', fn:'downloadArchiveReport()',
       meta:(function(){ const n=(S.actionArchive||[]).length; return n?(n+' archived action'+(n!==1?'s':'')):'Nothing archived'; })(),
       icon:svg('<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>'),
@@ -14786,8 +14781,8 @@ function renderReports(){
       tags:['Technical','Matrix + score','Full register'] },
     { title:'Client Execution Plan', accent:'#0EA5E9', tint:'#E4F4FC', fn:'downloadExecPlanReport()', meta:(_execOpenCount()+' open action'+(_execOpenCount()!==1?'s':'')),
       icon:svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
-      desc:'A point-in-time snapshot for the client: every action to do, grouped by month and traffic-lit - from risk profile, legal duties, assurance and accreditation.',
-      tags:['Client','By month','RAG'] },
+      desc:'The client execution plan as a fillable PDF: every action to do, grouped by month, with a tick box and a notes line against each - the client ticks off what is done, notes the evidence, saves the file and sends it back.',
+      tags:['Client','Fillable','By month'] },
     { title:'Completed Actions', accent:'#16A34A', tint:'#E7F6EE', fn:'downloadCompletedActionsReport()', meta:(_execActions().filter(a=>a.status==='Complete').length+' completed'),
       icon:svg('<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>'),
       desc:'The delivered-work history - actions completed, grouped by month, for the period you pick on the Action Plan tab (month / quarter / year / all).',
@@ -18965,7 +18960,7 @@ function renderActionPlanTab(){
   root.innerHTML = `<div class="card no-print" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Action plan</h3></div>
       <div class="card-body"><div style="font-size:13px;color:var(--text-muted);line-height:1.5;">Everything that needs doing for this client in one place. It closes the loop: risks and gaps generate actions, you work them through, and the Action Plan report is your record of what you have delivered.</div></div></div>
     ${stats}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 6px;"><span style="font-size:12px;font-weight:600;color:var(--text-muted);">Report:</span><button class="btn btn-ghost btn-sm no-print" onclick="downloadActionPlanReport()">⭳ Action plan PDF</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 6px;"><span style="font-size:12px;font-weight:600;color:var(--text-muted);">Report:</span><button class="btn btn-ghost btn-sm no-print" onclick="downloadExecPlanReport()">⭳ Client execution plan PDF</button></div>
     ${riskCard}
     ${mgmtCard}
     ${hiddenBlock}
@@ -20084,7 +20079,6 @@ const REPORT_DOCS = [
   { key:'bizStatus',        title:'Business Status Report',       code:'BSR' },
   { key:'decisions',        title:'Management Decisions',         code:'MD'  },
   { key:'riskProfile',      title:'Risk Profile',                 code:'RP'  },
-  { key:'actionPlan',       title:'Action Plan',                  code:'AP'  },
   { key:'executionPlan',    title:'Client Execution Plan',        code:'EP'  },
   { key:'completedActions', title:'Completed Actions',            code:'CA'  },
   { key:'actionArchive',    title:'Action Archive',               code:'AA'  },
@@ -20634,9 +20628,141 @@ async function openBoardReportPrint(){
 }
 function downloadBoardReport(){ if(!(S.riskProfile||[]).length){ showToast('Add at least one risk first','info'); return; } try{ buildBoardReport(); showToast('✓ Board report created','success'); }catch(e){ console.error('Board report failed',e); showToast('Could not build the report - see console','error'); } }
 function downloadActionPlanReport(){ if(!(S.riskProfile||[]).length){ showToast('Add at least one risk first','info'); return; } try{ buildActionPlanReport(); showToast('✓ Action plan created','success'); }catch(e){ console.error('Action plan failed',e); showToast('Could not build the plan - see console','error'); } }
-function downloadExecPlanReport(){ try{ buildExecPlanReportPDF(); showToast('✓ Execution plan created','success'); }catch(e){ console.error('Exec plan report failed',e); showToast('Could not build the plan - see console','error'); } }
+async function downloadExecPlanReport(){
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+  const safe=client.replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+  try{
+    const bytes=await buildExecPlanFormPDF();
+    const blob=new Blob([bytes],{type:'application/pdf'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='client-execution-plan-'+safe+'.pdf'; a.click(); URL.revokeObjectURL(a.href);
+    showToast('\u2713 Fillable execution plan created - the client ticks actions off and notes the evidence straight in the PDF','success',6000);
+  }catch(e){
+    console.error('Fillable execution plan failed, falling back to the print version:',e);
+    try{ buildExecPlanReportPDF(); showToast('\u2713 Execution plan created (print version - the fillable maker was unavailable)','info',6000); }
+    catch(e2){ console.error('Exec plan report failed',e2); showToast('Could not build the report - see console','error'); }
+  }
+}
 // Client Execution Plan report - point-in-time snapshot of every non-inspection
 // action, grouped by month, RAG-coded. Same house style + document control.
+// The Client Execution Plan as a fillable PDF - the questionnaire's pattern:
+// pdf-lib form fields the client ticks and types into, saves and sends back.
+async function buildExecPlanFormPDF(){
+  const L=window.PDFLib; if(!L) throw new Error('pdf-lib is not loaded');
+  const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
+  const d=_docFor('executionPlan');
+  const pdf=await L.PDFDocument.create();
+  const font=await pdf.embedFont(L.StandardFonts.Helvetica);
+  const bold=await pdf.embedFont(L.StandardFonts.HelveticaBold);
+  const form=pdf.getForm();
+  const W=595.28, H=841.89, ML=40, MR=W-40, BOT=58;
+  const NAVY=L.rgb(30/255,58/255,95/255), INK=L.rgb(.16,.18,.2), GREY=L.rgb(.43,.45,.47),
+        GREEN=L.rgb(22/255,120/255,60/255), RED=L.rgb(185/255,28/255,28/255), AMBER=L.rgb(.71,.43,.04), HAIR=L.rgb(.84,.85,.87);
+  const A=t=>_pdfAscii(String(t==null?'':t));
+  const wrap=(t,f,size,w)=>{ const out=[]; String(A(t)).split('\n').forEach(seg=>{ const words=seg.split(/\s+/).filter(Boolean); let cur='';
+    words.forEach(wd=>{ const trial=cur?cur+' '+wd:wd; if(f.widthOfTextAtSize(trial,size)<=w) cur=trial; else { if(cur) out.push(cur); cur=wd; } });
+    out.push(cur); }); return out.length?out:['']; };
+  let page, y;
+  const header=()=>{
+    page.drawText(A(client).toUpperCase(),{x:ML,y:H-34,size:12,font:bold,color:NAVY});
+    if(!d._omit){ const meta=A('REF '+d.ref+'  -  ISSUED '+fmtDate(d.issued));
+      page.drawText(meta,{x:MR-font.widthOfTextAtSize(meta,6.5),y:H-32,size:6.5,font,color:GREY}); }
+    page.drawLine({start:{x:ML,y:H-42},end:{x:MR,y:H-42},thickness:0.8,color:NAVY});
+  };
+  const newPage=()=>{ page=pdf.addPage([W,H]); header(); y=H-58; };
+  const ensure=(need)=>{ if(y-need<BOT) newPage(); };
+  const text=(t,size,o)=>{ o=o||{}; const f=o.bold?bold:font; const w=o.w||(MR-ML); const lh=size*1.34;
+    wrap(t,f,size,w).forEach(ln=>{ ensure(lh); page.drawText(ln,{x:o.x||ML,y:y-size,size,font:f,color:o.color||INK}); y-=lh; }); y-=(o.gap||2); };
+  const sectionHead=(t,colour)=>{ ensure(26); y-=6; page.drawText(A(t).toUpperCase(),{x:ML,y:y-10,size:10.5,font:bold,color:colour||NAVY});
+    page.drawLine({start:{x:ML,y:y-15},end:{x:MR,y:y-15},thickness:0.6,color:colour||NAVY}); y-=24; };
+  const fd=(s)=> s ? new Date(String(s)+(String(s).length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'no date';
+  const acts=_execActions();
+  const open=acts.filter(a=>a.status!=='Complete'&&a.status!=='Accepted');
+  const overdue=acts.filter(a=>a.rag==='red');
+  const thisKey=new Date().toISOString().slice(0,7);
+  const dueThis=open.filter(a=>_actionMonthKey(a.due)===thisKey && a.rag!=='red');
+  const done=acts.filter(a=>a.status==='Complete');
+  const monthName=(k)=>{ if(!k) return 'No target date'; const p=k.split('-'); return new Date(+p[0],+p[1]-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); };
+  const seen=new Set();
+  const fid=(a,suffix)=>{ let base='ep_'+String((a.ref&&(a.ref.b||a.ref.c||a.ref.a))||'x').replace(/[^a-z0-9_]/gi,'_'); let k=base+'_'+suffix, i=2; while(seen.has(k)){ k=base+'_'+i+'_'+suffix; i++; } seen.add(k); return k; };
+
+  newPage();
+  page.drawText('CLIENT EXECUTION PLAN',{x:ML,y:y-20,size:21,font:bold,color:NAVY}); y-=30;
+  text('Everything to do, by when - from the risk profile, legal duties, assurance and accreditation. Tick each action off as it is done, set its status from the dropdown and note the evidence beside it, then save the file and send it back to your consultant.',10,{color:GREY,gap:6});
+  if(_reportSectionOn('action.summary')) text(open.length+' open'+(overdue.length?('   -   '+overdue.length+' overdue'):'')+(dueThis.length?('   -   '+dueThis.length+' due this month'):'')+'   -   '+done.length+' complete',9,{bold:true,color:overdue.length?RED:NAVY,gap:8});
+
+  const byMonth={}; open.forEach(a=>{ const k=_actionMonthKey(a.due); (byMonth[k]=byMonth[k]||[]).push(a); });
+  const keys=Object.keys(byMonth).filter(k=>k).sort(); if(byMonth['']) keys.push('');
+  if(!open.length) text('No open actions - the plan is clear.',10,{color:GREEN,gap:6});
+  const EP_STATUSES=['Not started','In progress','Complete'];
+  const X_TICK=ML, X_ACT=ML+18, AW=196, X_OWN=X_ACT+AW+6, OW=62, X_TGT=X_OWN+OW+4, TW=50, X_STS=X_TGT+TW+4, SW=76, X_NOTE=X_STS+SW+6, NW=MR-X_NOTE;
+  keys.forEach(k=>{
+    ensure(48);
+    sectionHead(monthName(k)+'  ('+byMonth[k].length+')');
+    page.drawText('DONE',{x:X_TICK,y:y-6,size:6,font:bold,color:GREY});
+    page.drawText('ACTION',{x:X_ACT,y:y-6,size:6,font:bold,color:GREY});
+    page.drawText('OWNER',{x:X_OWN,y:y-6,size:6,font:bold,color:GREY});
+    page.drawText('TARGET',{x:X_TGT,y:y-6,size:6,font:bold,color:GREY});
+    page.drawText('STATUS',{x:X_STS,y:y-6,size:6,font:bold,color:GREY});
+    page.drawText('NOTES / EVIDENCE',{x:X_NOTE,y:y-6,size:6,font:bold,color:GREY});
+    y-=12;
+    byMonth[k].forEach(a=>{
+      const aLines=wrap(a.desc||'(no description)',font,8.2,AW);
+      const srcLines=a.sourceLabel?wrap(a.source+' - '+a.sourceLabel,font,6.8,AW):[];
+      const oLines=wrap(a.owner||'-',font,7.5,OW);
+      const contentH=aLines.length*10.4+srcLines.length*8.4;
+      const rh=Math.max(contentH,oLines.length*9.5,22)+8;
+      ensure(rh);
+      aLines.forEach((ln,i)=>{ page.drawText(ln,{x:X_ACT,y:y-8.2-i*10.4,size:8.2,font,color:INK}); });
+      srcLines.forEach((ln,i)=>{ page.drawText(ln,{x:X_ACT,y:y-8.2-aLines.length*10.4-i*8.4,size:6.8,font,color:GREY}); });
+      oLines.forEach((ln,i)=>{ page.drawText(ln,{x:X_OWN,y:y-8.2-i*9.5,size:7.5,font,color:INK}); });
+      page.drawText(A(fd(a.due)),{x:X_TGT,y:y-8.2,size:7.5,font,color:a.rag==='red'?RED:(a.rag==='amber'?AMBER:GREY)});
+      const dd=form.createDropdown(fid(a,'status'));
+      dd.addOptions(EP_STATUSES.slice());
+      dd.select(EP_STATUSES.includes(a.raw)?a.raw:EP_STATUSES[0]);
+      dd.addToPage(page,{x:X_STS,y:y-19,width:SW,height:17,borderColor:HAIR,borderWidth:0.8});
+      dd.setFontSize(7);
+      const cb=form.createCheckBox(fid(a,'done'));
+      cb.addToPage(page,{x:X_TICK,y:y-14,width:12,height:12,borderColor:GREY,borderWidth:1});
+      const tf=form.createTextField(fid(a,'notes'));
+      tf.addToPage(page,{x:X_NOTE,y:y-19,width:NW,height:17,borderColor:HAIR,borderWidth:0.8});
+      tf.setFontSize(7.5);
+      y-=rh;
+      page.drawLine({start:{x:ML,y:y+3},end:{x:MR,y:y+3},thickness:0.4,color:HAIR});
+    });
+    y-=4;
+  });
+  if(done.length){
+    ensure(40);
+    sectionHead('Completed  ('+done.length+')',GREEN);
+    done.forEach(a=>{
+      const aLines=wrap(a.desc||'(no description)',font,8.2,MR-X_ACT-70);
+      const rh=Math.max(aLines.length*10.4,14)+6;
+      ensure(rh);
+      const cb=form.createCheckBox(fid(a,'done')); cb.check(); cb.enableReadOnly();
+      cb.addToPage(page,{x:X_TICK,y:y-13,width:12,height:12,borderColor:GREEN,borderWidth:1});
+      aLines.forEach((ln,i)=>{ page.drawText(ln,{x:X_ACT,y:y-8.2-i*10.4,size:8.2,font,color:GREY}); });
+      page.drawText(A(a.completedDate?fd(a.completedDate):'done'),{x:MR-60,y:y-8.2,size:7.5,font,color:GREEN});
+      y-=rh;
+    });
+  }
+  ensure(100); y-=4;
+  text('Anything to tell us - blockers, dates that need to move, help you need.',9,{bold:true,color:NAVY,gap:2});
+  const gf=form.createTextField('ep__general'); gf.enableMultiline(); ensure(70);
+  gf.addToPage(page,{x:ML,y:y-62,width:MR-ML,height:60,borderColor:HAIR,borderWidth:0.8}); gf.setFontSize(8.5); y-=70;
+  text('Save this file (File > Save, or the download button in your browser viewer) and email it back to your consultant.',8.5,{color:GREY,gap:4});
+  const producer=A(((S.branding&&S.branding.producer)||'AHS Compliance Consulting'));
+  const pages=pdf.getPages();
+  pages.forEach((pg,i)=>{
+    pg.drawLine({start:{x:ML,y:44},end:{x:MR,y:44},thickness:0.5,color:HAIR});
+    pg.drawText(producer+'  -  AHS Compass, Guiding you to Safety',{x:ML,y:33,size:6.5,font,color:GREY});
+    const lbl='Page '+(i+1)+' of '+pages.length;
+    pg.drawText(lbl,{x:MR-font.widthOfTextAtSize(lbl,6.5),y:33,size:6.5,font,color:GREY});
+    const mid='Client Execution Plan  -  uncontrolled when printed';
+    pg.drawText(mid,{x:(W-font.widthOfTextAtSize(mid,6.5))/2,y:33,size:6.5,font,color:GREY});
+  });
+  return await pdf.save();
+}
 function buildExecPlanReportPDF(){
   const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
   const d=_docFor('executionPlan');

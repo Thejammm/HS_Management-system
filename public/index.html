@@ -2888,6 +2888,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ckb-tog input{width:16px;height:16px;cursor:pointer;}
 .ckb-move{display:flex;gap:2px;flex:0 0 auto;}
 .ckb-foot{margin-top:8px;padding-top:12px;border-top:1px solid var(--border);}
+    .ckb-filter{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;margin-top:8px;padding-top:9px;border-top:1px solid var(--border);}
+    .ckb-filter label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);}
+    .ckb-filter select,.ckb-filter input{padding:5px 7px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12.5px;font-weight:400;text-transform:none;letter-spacing:0;}
+    .ckb-fnote{grid-column:1/-1;display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--text-muted);line-height:1.45;}
 /* Reports tab */
 .rep-hero{margin-bottom:24px;}
 .rep-hero h2{font-size:clamp(22px,3.4vw,30px);font-weight:700;color:var(--text);letter-spacing:-.02em;}
@@ -14629,6 +14633,54 @@ const REPORT_SECTIONS = [
 const REPORT_SECTION_ORDER = ['Risk profile','Client execution plan','Legal duties'];
 function _reportSectionOn(id){ return !(S.config && S.config.reportSections && S.config.reportSections[id]===false); }
 function setReportSection(id, on){ if(!S.config) S.config={}; if(!S.config.reportSections) S.config.reportSections={}; if(on) delete S.config.reportSections[id]; else S.config.reportSections[id]=false; saveData(); try{ renderReports(); }catch(e){} }
+// ── The execution plan's report filter (Simon): pick a person and a target-date
+//    window in Customise reports, and only the matching actions are generated.
+//    One derivation, used by the fillable plan, the print fallback, the panel
+//    and the report card - so what the card says is what the PDF contains. ──
+function _epFilter(){ const f=(S.config&&S.config.epFilter)||{}; return { owner:String(f.owner||''), from:String(f.from||''), to:String(f.to||'') }; }
+function _epFilterOn(f){ f=f||_epFilter(); return !!(f.owner||f.from||f.to); }
+function _epFilterMatch(a, f){
+  f=f||_epFilter();
+  if(f.owner && String(a.owner||'').trim()!==f.owner) return false;
+  if(f.from||f.to){
+    const d=String(a.due||'');
+    if(!d) return false;                       // no target date, no place in a dated window
+    if(f.from && d<f.from) return false;
+    if(f.to && d>f.to) return false;
+  }
+  return true;
+}
+function _epFilterActions(){ const f=_epFilter(); return _execActions().filter(a=>_epFilterMatch(a,f)); }
+function _epFilterLabel(){
+  const f=_epFilter(); const p=[];
+  if(f.owner) p.push(f.owner);
+  if(f.from&&f.to) p.push('target '+fmtDate(f.from)+' to '+fmtDate(f.to));
+  else if(f.from) p.push('target from '+fmtDate(f.from));
+  else if(f.to) p.push('target to '+fmtDate(f.to));
+  return p.join(' - ');
+}
+function _epOwners(){ return [...new Set(_execActions().map(a=>String(a.owner||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+function setEpFilter(field, value){
+  if(_blockIfReadOnly()) return;
+  if(!S.config) S.config={};
+  const f=Object.assign({owner:'',from:'',to:''}, S.config.epFilter||{});
+  f[field]=String(value||'');
+  if(f.from&&f.to&&f.to<f.from){ showToast('The end date is before the start date','error'); try{ renderReports(); }catch(e){} return; }
+  S.config.epFilter=f; saveData(); try{ renderReports(); }catch(e){}
+}
+function clearEpFilter(){ if(_blockIfReadOnly()) return; if(S.config) delete S.config.epFilter; saveData(); try{ renderReports(); }catch(e){} }
+function _epFilterEditorHTML(){
+  const f=_epFilter(), on=_epFilterOn(f), dis=_roLocked()?' disabled':'';
+  const openOf=(list)=>list.filter(a=>a.status!=='Complete'&&a.status!=='Accepted').length;
+  const all=openOf(_execActions()), now=openOf(_epFilterActions());
+  return `<div class="ckb-filter">
+      <label style="grid-column:1/-1;">Person<select${dis} onchange="setEpFilter('owner',this.value)"><option value="">Everyone</option>${_epOwners().map(o=>`<option value="${esc(o)}"${f.owner===o?' selected':''}>${esc(o)}</option>`).join('')}</select></label>
+      <label>Target date from<input type="date"${dis} value="${esc(f.from)}" onchange="setEpFilter('from',this.value)"></label>
+      <label>Target date to<input type="date"${dis} value="${esc(f.to)}" onchange="setEpFilter('to',this.value)"></label>
+      <div class="ckb-fnote"><span>${on?(now+' of '+all+' open action'+(all!==1?'s':'')+' match - only these are generated'):(all+' open action'+(all!==1?'s':'')+' - the whole plan is generated')}</span>${on?`<button class="btn btn-ghost btn-xs" style="margin-left:auto;" onclick="clearEpFilter()">Clear</button>`:''}</div>
+      <div class="ckb-fnote" style="font-size:11px;">A date window reads each action's target date, so anything without one is left out while a window is set. The plan says on its face that it is a filtered extract.</div>
+    </div>`;
+}
 // ── Reports customiser: lives on the Reports tab (moved from the cockpit
 //    cog). One registry (REPORT_SECTIONS) drives it; as each report's bespoke
 //    section list is agreed it is added to the registry and appears here.
@@ -14655,10 +14707,10 @@ function _reportEditorBoardHTML(){
 }
 function _reportEditorHTML(){
   const rsec=_reportEditorBoardHTML()+REPORT_SECTION_ORDER.map(rep=>{ const items=REPORT_SECTIONS.filter(s=>s.report===rep); if(!items.length) return '';
-    return `<div class="ckb-group"><div class="ckb-gh">${esc(rep)}</div>`+items.map(s=>`<div class="ckb-row"><label class="ckb-tog"><input type="checkbox" ${_reportSectionOn(s.id)?'checked':''} onchange="setReportSection('${s.id}',this.checked)"><span>${esc(s.label)}</span></label></div>`).join('')+`</div>`; }).join('');
+    return `<div class="ckb-group"><div class="ckb-gh">${esc(rep)}</div>`+items.map(s=>`<div class="ckb-row"><label class="ckb-tog"><input type="checkbox" ${_reportSectionOn(s.id)?'checked':''} onchange="setReportSection('${s.id}',this.checked)"><span>${esc(s.label)}</span></label></div>`).join('')+(rep==='Client execution plan'?_epFilterEditorHTML():'')+`</div>`; }).join('');
   return `<div class="ckb-panel no-print">
       <div class="ckb-head"><h3>Customise reports</h3><button class="btn btn-ghost btn-sm" onclick="toggleReportEditor()">Done</button></div>
-      <p class="ckb-note">Untick a section and it is left out of that report's PDF for this client - saved per client. Sections marked always included are the report's core and cannot be switched off.</p>
+      <p class="ckb-note">Untick a section and it is left out of that report's PDF for this client - saved per client. Sections marked always included are the report's core and cannot be switched off. The execution plan can also be filtered to one person and a date window before it is generated.</p>
       <div class="ckb-cols">${rsec}</div>
       <p class="ckb-note" style="margin-top:10px;">Bespoke section lists for the other reports are added one report at a time - as each is agreed it appears here.</p>
     </div>`;
@@ -14782,7 +14834,7 @@ function renderReports(){
       icon:svg('<path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>'),
       desc:'The full technical register in the energy-source model: the L×S matrix with company score, controls by level and energy coverage.',
       tags:['Technical','Matrix + score','Full register'] },
-    { title:'Client Execution Plan', accent:'#0EA5E9', tint:'#E4F4FC', fn:'downloadExecPlanReport()', meta:(_execOpenCount()+' open action'+(_execOpenCount()!==1?'s':'')),
+    { title:'Client Execution Plan', accent:'#0EA5E9', tint:'#E4F4FC', fn:'downloadExecPlanReport()', meta:(function(){ const on=_epFilterOn(); const n=on?_epFilterActions().filter(a=>a.status!=='Complete'&&a.status!=='Accepted').length:_execOpenCount(); return n+' open action'+(n!==1?'s':'')+(on?(' \u00b7 filtered: '+_epFilterLabel()):''); })(),
       icon:svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
       desc:'The client execution plan as a fillable PDF: every action to do, grouped by month, with a tick box and a notes line against each - the client ticks off what is done, notes the evidence, saves the file and sends it back.',
       tags:['Client','Fillable','By month'] },
@@ -20241,6 +20293,36 @@ function _docFor(key){
 }
 
 // WinAnsi-safe ASCII fallback (Helvetica subset lacks arrows/curly quotes/dashes).
+// One footer for the pdf-lib forms (execution plan, discovery questionnaire).
+// Three strings shared one line and ran into each other on any decent-length
+// practice name (Simon: "the footer text bleeds"), so the document line now has
+// its own row beneath, and the brand suffix is dropped rather than allowed to
+// overlap the page number - the practice name always survives.
+function _pdfFooterLayout(font, o){
+  const size=6.5, ML=o.ML, MR=o.MR;
+  const label='Page '+o.page+' of '+o.pages;
+  const labelW=font.widthOfTextAtSize(label,size);
+  const room=MR-ML-labelW-14;
+  let left=String(o.producer||'')+'  -  AHS Compass, Guiding you to Safety';
+  if(font.widthOfTextAtSize(left,size)>room) left=String(o.producer||'');
+  while(left.length>4 && font.widthOfTextAtSize(left,size)>room) left=left.slice(0,-2);
+  return { size, ruleY:44, left, leftX:ML, leftY:33, label, labelX:MR-labelW, labelY:33, mid:String(o.mid||''), midX:ML, midY:24 };
+}
+function _pdfFormFooter(pdf, o){
+  const L=window.PDFLib; if(!L) return;
+  const font=o.font, ML=o.ML, MR=o.MR;
+  const GREY=L.rgb(.43,.45,.47), HAIR=L.rgb(.84,.85,.87);
+  const producer=_pdfAscii(String((S.branding&&S.branding.producer)||'AHS Compliance Consulting'));
+  const mid=_pdfAscii(String(o.mid||''));
+  const pages=pdf.getPages();
+  pages.forEach((pg,i)=>{
+    const F=_pdfFooterLayout(font,{ML,MR,producer,mid,page:i+1,pages:pages.length});
+    pg.drawLine({start:{x:ML,y:F.ruleY},end:{x:MR,y:F.ruleY},thickness:0.5,color:HAIR});
+    pg.drawText(F.left,{x:F.leftX,y:F.leftY,size:F.size,font,color:GREY});
+    pg.drawText(F.label,{x:F.labelX,y:F.labelY,size:F.size,font,color:GREY});
+    if(F.mid) pg.drawText(F.mid,{x:F.midX,y:F.midY,size:F.size,font,color:GREY});
+  });
+}
 function _pdfAscii(t){ return String(t).replace(/→/g,'>').replace(/×/g,'x').replace(/—/g,'-').replace(/–/g,'-').replace(/·/g,'-').replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/…/g,'...'); }
 // Right-aligned masthead text that can never run into what sits to its left.
 // Shrinks a little first (a slightly smaller name still reads as the name),
@@ -20830,7 +20912,7 @@ async function buildExecPlanFormPDF(){
   const sectionHead=(t,colour)=>{ ensure(26); y-=6; page.drawText(A(t).toUpperCase(),{x:ML,y:y-10,size:10.5,font:bold,color:colour||NAVY});
     page.drawLine({start:{x:ML,y:y-15},end:{x:MR,y:y-15},thickness:0.6,color:colour||NAVY}); y-=24; };
   const fd=(s)=> s ? new Date(String(s)+(String(s).length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'no date';
-  const acts=_execActions();
+  const acts=_epFilterActions();
   const open=acts.filter(a=>a.status!=='Complete'&&a.status!=='Accepted');
   const overdue=acts.filter(a=>a.rag==='red');
   const thisKey=new Date().toISOString().slice(0,7);
@@ -20843,6 +20925,7 @@ async function buildExecPlanFormPDF(){
   newPage();
   page.drawText('CLIENT EXECUTION PLAN',{x:ML,y:y-20,size:21,font:bold,color:NAVY}); y-=30;
   text('Everything to do, by when - from the risk profile, legal duties, assurance and accreditation. Tick each action off as it is done, set its status from the dropdown and note the evidence beside it, then save the file and send it back to your consultant.',10,{color:GREY,gap:6});
+  if(_epFilterOn()) text('Filtered extract - '+_epFilterLabel()+'. Actions outside this filter are not shown.',9,{bold:true,color:NAVY,gap:6});
   if(_reportSectionOn('action.summary')) text(open.length+' open'+(overdue.length?('   -   '+overdue.length+' overdue'):'')+(dueThis.length?('   -   '+dueThis.length+' due this month'):'')+'   -   '+done.length+' complete',9,{bold:true,color:overdue.length?RED:NAVY,gap:8});
 
   const byMonth={}; open.forEach(a=>{ const k=_actionMonthKey(a.due); (byMonth[k]=byMonth[k]||[]).push(a); });
@@ -20905,27 +20988,18 @@ async function buildExecPlanFormPDF(){
   const gf=form.createTextField('ep__general'); gf.enableMultiline(); ensure(70);
   gf.addToPage(page,{x:ML,y:y-62,width:MR-ML,height:60,borderColor:HAIR,borderWidth:0.8}); gf.setFontSize(8.5); y-=70;
   text('Save this file (File > Save, or the download button in your browser viewer) and email it back to your consultant.',8.5,{color:GREY,gap:4});
-  const producer=A(((S.branding&&S.branding.producer)||'AHS Compliance Consulting'));
-  const pages=pdf.getPages();
-  pages.forEach((pg,i)=>{
-    pg.drawLine({start:{x:ML,y:44},end:{x:MR,y:44},thickness:0.5,color:HAIR});
-    pg.drawText(producer+'  -  AHS Compass, Guiding you to Safety',{x:ML,y:33,size:6.5,font,color:GREY});
-    const lbl='Page '+(i+1)+' of '+pages.length;
-    pg.drawText(lbl,{x:MR-font.widthOfTextAtSize(lbl,6.5),y:33,size:6.5,font,color:GREY});
-    const mid='Client Execution Plan  -  uncontrolled when printed';
-    pg.drawText(mid,{x:(W-font.widthOfTextAtSize(mid,6.5))/2,y:33,size:6.5,font,color:GREY});
-  });
+  _pdfFormFooter(pdf,{font,W,ML,MR,mid:'Client Execution Plan  -  uncontrolled when printed'});
   return await pdf.save();
 }
 function buildExecPlanReportPDF(){
   const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
   const d=_docFor('executionPlan');
   const RED=[220,38,38], AMBER=[245,158,11], GREEN=[22,163,74], GREY=[120,120,120], NAVY=[30,58,95];
-  const K=_mkPdf('Client Execution Plan', client, d, 'Everything to do, by when - from the risk profile, legal duties, assurance and accreditation. A point-in-time snapshot.');
+  const K=_mkPdf('Client Execution Plan', client, d, 'Everything to do, by when - from the risk profile, legal duties, assurance and accreditation. A point-in-time snapshot.'+(_epFilterOn()?(' Filtered extract - '+_epFilterLabel()+'.'):''));
   const { doc } = K;
   const fd=(s)=> s ? new Date(String(s)+(String(s).length===10?'T12:00:00':'')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'no date';
   const ragCol=(r)=>r==='red'?RED:r==='amber'?AMBER:r==='grey'?GREY:GREEN;
-  const acts=_execActions();
+  const acts=_epFilterActions();
   const open=acts.filter(a=>a.status!=='Complete'&&a.status!=='Accepted');
   const overdue=acts.filter(a=>a.rag==='red');
   const thisKey=new Date().toISOString().slice(0,7);
@@ -22145,16 +22219,7 @@ async function buildDiscoveryQuestionnairePDF(){
   text('Thank you. Save this file (File > Save, or the download button in your browser viewer) and email it back to your consultant - the answers go straight into your risk profile and the plan that follows from it.',8.5,{color:GREY,gap:0});
 
   // footers, once the page count is known
-  const producer=A(((S.branding&&S.branding.producer)||'AHS Compliance Consulting'));
-  const pages=pdf.getPages();
-  pages.forEach((pg,i)=>{
-    pg.drawLine({start:{x:ML,y:44},end:{x:MR,y:44},thickness:0.5,color:HAIR});
-    pg.drawText(producer+'  -  AHS Compass, Guiding you to Safety',{x:ML,y:33,size:6.5,font,color:GREY});
-    const lbl='Page '+(i+1)+' of '+pages.length;
-    pg.drawText(lbl,{x:MR-font.widthOfTextAtSize(lbl,6.5),y:33,size:6.5,font,color:GREY});
-    const mid='Uncontrolled when printed';
-    pg.drawText(mid,{x:(W-font.widthOfTextAtSize(mid,6.5))/2,y:33,size:6.5,font,color:GREY});
-  });
+  _pdfFormFooter(pdf,{font,W,ML,MR,mid:'Uncontrolled when printed'});
 
   return await pdf.save();
 }

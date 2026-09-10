@@ -15029,14 +15029,29 @@ function _realityNow(r){
     .map(a=>({ desc:String(a.desc).trim(), date:a.completedDate||'' }))
     .sort((x,y)=>String(x.date||'9999').localeCompare(String(y.date||'9999')));
 }
-function _realityNowHTML(r){
-  const lines=_realityNow(r);
-  return '<div style="margin-top:6px;border-top:1px dashed var(--border);padding-top:6px;">'
-    +'<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:3px;">Now in place</div>'
-    +(lines.length
-      ? lines.map(l=>'<div style="font-size:12.5px;line-height:1.5;">'+esc(l.desc)+' <i style="color:var(--text-muted);">- in place since '+esc(l.date?fmtDate(l.date):'date not recorded')+'</i></div>').join('')
-      : '<div style="font-size:11.5px;color:var(--text-muted);">Nothing in place yet - as the controls below are marked Complete they appear here with the date, and this becomes the reality today that the next score is judged against.</div>')
-    +'</div>';
+// Reality today follows the control table (Simon): the first time a control
+// is marked Complete the box is REWRITTEN with the controls in place and the
+// date each went in - whatever was typed before is superseded, these are the
+// high level controls and they get updated at review. After that the in-place
+// lines follow the table (a row leaving Complete drops its line) and any words
+// added underneath stay. A textarea cannot italicise, so the date sits after
+// the control in plain text.
+const _REALITY_RX = / - in place since /;
+function _realityLines(r){
+  return _realityNow(r).map(l=>l.desc+' - in place since '+(l.date?fmtDate(l.date):'date not recorded'));
+}
+function _realitySync(r){
+  if(!r) return false;
+  const sys=_realityLines(r);
+  const cur=String(r.controls||'');
+  const kept=r.controlsAuto ? cur.split(/\r?\n/).filter(l=>l.trim()&&!_REALITY_RX.test(l)) : [];
+  if(!sys.length){
+    if(!r.controlsAuto) return false;
+    const t=kept.join('\n'); if(t===cur) return false; r.controls=t; return true;
+  }
+  r.controlsAuto=true;
+  const next=sys.concat(kept).join('\n'); if(next===cur) return false;
+  r.controls=next; return true;
 }
 // A risk is "complete" when its key fields are filled in (shows a green tick when minimised).
 function _riskComplete(r){
@@ -18038,6 +18053,29 @@ function _riskPlanState(r){
   // the reviewed-and-completed tick - one word, one meaning.
   return { k:'managed', label:'✓ Plan delivered', colour:'#16A34A', title:'Every action is closed. Tick "reviewed and completed" on the risk to sign it off as managed.' };
 }
+// Open work on a risk: the control table rows, the rows raised to the plan
+// (tab 4) and the Actions-tab actions linked to it. One count for the score
+// gate and the re-score prompt.
+function _riskOpenWork(r){
+  const live=a=>a&&!a.deleted&&(a.desc||a.owner||a.due);
+  const open=a=>{ const st=_actionStatus(a); return st!=='Complete'&&st!=='Accepted'; };
+  const rows=(r&&Array.isArray(r.actions)?r.actions:[]).filter(live).filter(open);
+  const controls=rows.filter(a=>a.hideFromPlan).length;
+  const linked=(typeof _apList==='function'?_apList():[]).filter(a=>live(a)&&a.riskId===r.id).filter(open).length;
+  const actions=rows.filter(a=>!a.hideFromPlan).length+linked;
+  return { controls, actions, total:controls+actions };
+}
+// The score cannot be moved to read controlled while work is open (Simon:
+// "it needs to stop me changing the score if I haven't done the controls").
+// patch = the fields about to change; '' means go ahead.
+function _riskScoreGate(r, patch){
+  if(!r) return '';
+  const next=Object.assign({}, r, patch||{});
+  if(_riskControlStatus(next)!=='In place') return '';
+  const w=_riskOpenWork(r); if(!w.total) return '';
+  const parts=[]; if(w.controls) parts.push(w.controls+' control'+(w.controls!==1?'s':'')); if(w.actions) parts.push(w.actions+' action'+(w.actions!==1?'s':''));
+  return 'Not yet - '+parts.join(' and ')+' still open on this risk. Close the work first; the score can only read controlled once it is done.';
+}
 function _riskFlowHTML(r){
   const cur=_riskScore(r), tgt=_riskTarget(r);
   const part=(sc,lab)=>{ if(!sc.rating) return `<span style="color:var(--text-muted);font-weight:400;">${lab} -</span>`;
@@ -18065,6 +18103,7 @@ function _scoreHistoryHTML(r){
 function _maybeRescore(rid){
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r || _roLocked()) return;
   if(_riskPlanState(r).k!=='managed') return;
+  if(_riskOpenWork(r).total) return;   // an Actions-tab action linked to the risk still open
   if(!_riskScore(r).rating) return;
   if(document.getElementById('rescoreOverlay')) return;
   setTimeout(()=>_promptRescore(r), 300);
@@ -18100,6 +18139,7 @@ function _saveRescore(rid){
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r){ if(ov) ov.remove(); return; }
   const L=parseInt((document.getElementById('rescoreL')||{}).value,10), Sv=parseInt((document.getElementById('rescoreS')||{}).value,10);
   if(!(L>=1&&L<=5&&Sv>=1&&Sv<=5)){ showToast('Pick both likelihood and severity','error'); return; }
+  const gate=_riskScoreGate(r, {likelihood:String(L), severity:String(Sv)}); if(gate){ showToast(gate,'error'); return; }
   const old=_riskScore(r);
   if(old.rating && (old.l!==L || old.s!==Sv)){
     if(!Array.isArray(r.scoreHistory)) r.scoreHistory=[];
@@ -18113,9 +18153,10 @@ function _saveRescore(rid){
   saveData(); _keepScroll(renderRiskProfile);
   showToast(old.rating===(L*Sv)?'Score confirmed at '+(L*Sv):'✓ Re-scored - was '+old.rating+', now '+(L*Sv)+'. The journey shows the improvement.','success');
 }
-function updateRiskRating(id, field, value){
+function updateRiskRating(id, field, value, el){
   if(_roLocked()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
+  const gate=_riskScoreGate(r, {[field]:value}); if(gate){ if(el) el.value=r[field]||''; showToast(gate,'error'); return; }
   r[field]=value; _stamp(r,'updated'); scheduleAutoSave();
   const flow=document.getElementById('rflow-'+id); if(flow) flow.innerHTML=_riskFlowHTML(r);
   const sc=_riskScore(r);
@@ -18212,7 +18253,7 @@ function updateRiskAction(rid, aid, field, value){
   if(_roLocked()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
   const a=(r.actions||[]).find(x=>x.id===aid); if(!a) return;
-  a[field]=value; if(field==='status'){ _stampActionCompletion(a, value); if(value==='Complete'||value==='Accepted') _ctlOnActionClosed(r, a); } _stamp(r,'updated'); scheduleAutoSave();
+  a[field]=value; if(field==='status'){ _stampActionCompletion(a, value); if(a.hideFromPlan) _realitySync(r); if(value==='Complete'||value==='Accepted') _ctlOnActionClosed(r, a); } _stamp(r,'updated'); scheduleAutoSave();
   if(field==='status'||field==='due'){ const fl=document.getElementById('rflow-'+rid); if(fl) fl.innerHTML=_riskFlowHTML(r); }
   // Date / priority edits must NEVER rebuild the panel - the cell being typed
   // in would be destroyed. Targeted updates only; a full refresh happens on
@@ -21331,7 +21372,7 @@ function renderRiskProfile(){
   const LIKE_TIP = 'Likelihood 1-5 - how likely the harmful event is. Moves when a control stops the event happening: segregation, guarding, planned maintenance, permits, supervision, competence.';
   const SEV_TIP  = 'Severity 1-5 - how bad it would credibly be, and this number is NOT fixed. It moves whenever a control limits the extent of harm: lower speed, lower height, less energy or quantity, fall-arrest, containment, impact protection, fewer people exposed.';
   const rsel = (r,f,v,isSev) => { const lab=_rt(r,isSev?'S':'L');
-    return `<select${dis} title="${isSev?SEV_TIP:LIKE_TIP}" onchange="updateRiskRating('${r.id}','${f}',this.value)"><option value="">${lab}</option>${[1,2,3,4,5].map(n=>`<option value="${n}"${String(v||'')===String(n)?' selected':''}>${n}</option>`).join('')}</select>`; };
+    return `<select${dis} title="${isSev?SEV_TIP:LIKE_TIP}" onchange="updateRiskRating('${r.id}','${f}',this.value,this)"><option value="">${lab}</option>${[1,2,3,4,5].map(n=>`<option value="${n}"${String(v||'')===String(n)?' selected':''}>${n}</option>`).join('')}</select>`; };
   const ratingBox = (r,title,cls,lf,sf) => `<div class="rt-box ${cls}"><div class="rt-title">${title}</div><div class="rt-selects">${rsel(r,lf,r[lf],false)}${rsel(r,sf,r[sf],true)}</div></div>`;
 
   const pdcaHint = `<span class="fl-hint" title="Plan-Do-Check-Act - where this risk sits in the manage-for-H&S cycle. Leave blank to derive it from the controls and actions you record.">(?)</span>`;
@@ -21430,14 +21471,14 @@ function renderRiskProfile(){
         </div>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">These risks/controls are associated to the risk and never enter the client’s execution plan, they are to introduce policy/process/procedure to control the hazard at high level.</div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
-          ${fg(esc(_rt(r,'controls'))+' <span class="fl-hint" title="What is actually in place now - None is an honest answer at the start. As the controls below are marked Complete they list here with the date they went in place; with your own words above, that is the reality today the inherent score is judged against.">(?)</span>', ta(r.id,'controls',r.controls,_rt(r,'controlsPh'))+_realityNowHTML(r))}
+          ${fg(esc(_rt(r,'controls'))+' <span class="fl-hint" title="What is actually in place now - None is an honest answer at the start. The first time a control below is marked Complete this box is rewritten with the controls in place and the date each went in; from then on the lines follow the control table and anything you add underneath stays. This is the reality the inherent score is judged against.">(?)</span>', ta(r.id,'controls',r.controls,_rt(r,'controlsPh')))}
         </div>
         <div class="field-grid" style="margin-bottom:12px;">
           ${fg(esc(_rt(r,'controlLevel'))+' <span class="fl-hint" title="'+esc(_rt(r,'controlLevelHint'))+'">(?)</span>', `<select${dis} onchange="updateRiskField('${r.id}','controlLevel',this.value)"><option value="">- Select -</option>${CONTROL_LEVELS.map(c=>`<option value="${c.k}"${r.controlLevel===c.k?' selected':''}>${esc(_controlLevelLabelFor(r,c.k))}</option>`).join('')}</select>`)}
         </div>
         <div class="risk-rating-row" style="flex-direction:column;align-items:stretch;gap:10px;">
           <label class="field-label" style="margin:0;">${esc(_rt(r,'rating'))} ${rateHint}</label>
-          <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:2px 0 4px;">Controlled is the score, not the tick. When every action and control on this risk is closed, Compass prompts you to re-score it as it stands now; at or below the residual target the risk reads controlled as reasonably practicable everywhere. The old score stays in the history and the risk stays on the profile; once it is controlled, set the date its controls are next reviewed - the risk shows that date, and when it passes it shows Review due here, on the register and on your Actions tab.</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:2px 0 4px;">Controlled is the score, not the tick. The score cannot be moved to read controlled while a control or an action on this risk is still open - close the work first. When every action and control on this risk is closed, Compass prompts you to re-score it as it stands now; at or below the residual target the risk reads controlled as reasonably practicable everywhere. The old score stays in the history and the risk stays on the profile; once it is controlled, set the date its controls are next reviewed - the risk shows that date, and when it passes it shows Review due here, on the register and on your Actions tab.</div>
           <div class="rating-trio">
             ${ratingBox(r,'Inherent','rt-current','likelihood','severity')}
           </div>
@@ -21783,7 +21824,7 @@ function buildRiskProfileReportPDF(){
         .map(dm=>dm.label.split(' (')[0]+' '+r.impacts[dm.k]).join(', ');
       field('Business impact', imp || r.businessImpact);
       field('Controls (risk assessment)', _riskControlsText(r).rows.join('\n'));
-      field(_rt(r,'controls'), [String(r.controls||'').trim()].concat(_realityNow(r).map(l=>l.desc+' (in place since '+(l.date?fd(l.date):'date not recorded')+')')).filter(Boolean).join('\n'));
+      field(_rt(r,'controls'), r.controls);
       field(_rt(r,'controlLevel'), _controlLevelLabelFor(r, r.controlLevel));
       field('Controls status',
         _pdfCtl==='In place'?(_riskReviewDue(r)?'Controlled - review due: the review date has passed - review the controls and the score, then set the next date':'Controlled as reasonably practicable - at or beyond the residual target')

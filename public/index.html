@@ -17807,7 +17807,7 @@ function _journeyMilestones(r){
   const managed=(plan.k==='managed' && r.reviewed && !!sc.rating) || (plan.k==='accepted' && !!sc.rating);
   const m=[];
   m.push({ done:true, label:'Identified', when:(r.createdAt||'').slice(0,10),
-    text:(r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':r.suggestedBy==='judgement'?'Raised from the consultant judgement (Assurance)':('Added by '+(r.createdBy||'the team'))) });
+    text:(r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':r.suggestedBy==='judgement'?'Raised from the consultant judgement (six HSG65 areas)':('Added by '+(r.createdBy||'the team'))) });
   const _tgt=_riskTarget(r);
   const _hist=Array.isArray(r.scoreHistory)?r.scoreHistory:[];
   m.push({ done:!!sc.rating&&impactsRated, label:'Assessed', when:'',
@@ -20110,7 +20110,7 @@ function setJudgementNote(domId, note){
 function _renderMaturityAssessment(dis){
   _judgeMigrateLoose();
   const doms=_maturityDomains(); const j=_judgeState();
-  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Your professional judgement of the six HSG65 areas - <b>words, not scores</b>. Mark each Weak, Developing, Adequate or Strong with a one-line reason; the app spells out what that word means in this area. <b>Adequate has a bar</b>: it is in place, written down, and you have seen the evidence. A business on its way there is <b>Developing</b>, not Adequate. There is no middle box on purpose, so each area gets a decision: below the line or above it. Weak and Developing both raise an action on the execution plan. This feeds your audit narrative and review; it is never turned into a number. The measured position lives above: H&S Control Maturity, graded on recorded facts.</div>`;
+  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Your professional judgement of the six HSG65 areas - <b>words, not scores</b>. Mark each Weak, Developing, Adequate or Strong with a one-line reason; the app spells out what that word means in this area. <b>Adequate has a bar</b>: it is in place, written down, and you have seen the evidence. A business on its way there is <b>Developing</b>, not Adequate. There is no middle box on purpose, so each area gets a decision: below the line or above it. Weak and Developing both belong on the risk profile - Raise action puts the area there as a risk (once) and raises the action from it onto the execution plan, so it is scored, controlled and reviewed like every other risk. This feeds your audit narrative and review; it is never turned into a number. The measured position lives above: H&S Control Maturity, graded on recorded facts.</div>`;
   return note + doms.map((d,idx)=>{
     const cur=j[d.id]||{};
     const lv=JUDGEMENT_LEVELS.find(x=>x.k===cur.level);
@@ -21304,7 +21304,7 @@ let _riskSelKey = '';   // last rendered "risk|tab" - same view keeps its panel 
 // Summary tab and beside the reviewed tick, one derivation for both.
 function _rpProvenanceBadge(r){
   if(typeof _discIsOrphan==='function' && _discIsOrphan(r)) return '<span class="badge" style="background:#FEF3C7;color:#B45309;font-weight:700;" title="The discovery answers that suggested this theme have been withdrawn - remove it or keep it as your own judgement">⚠ discovery no longer supports this</span>';
-  if(!r.reviewed && r.suggestedBy==='judgement') return '<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;" title="Raised from the consultant judgement of this HSG65 area on the Assurance tab">from the consultant judgement</span>';
+  if(!r.reviewed && r.suggestedBy==='judgement') return '<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;" title="Raised from the consultant judgement of this HSG65 area - the Consultant judgement section on the Risk profile tab">from the consultant judgement</span>';
   if(!r.reviewed && r.suggestedBy==='discovery') return '<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;">suggested by discovery</span>';
   return '';
 }

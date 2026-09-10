@@ -3246,6 +3246,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .act-table input,.act-table select,.act-table textarea,.assur-table input,.assur-table select{width:100%;padding:5px 6px;font-size:12px;box-sizing:border-box;}
     .act-table textarea{font-family:inherit;line-height:1.4;min-height:34px;resize:vertical;}
     .act-table td{word-break:break-word;overflow-wrap:anywhere;}
+    .act-table.act-ctl th:first-child,.act-table.act-ctl td:first-child{width:46%;}
+    .rp-pd{display:inline-block;margin-left:5px;padding:0 5px;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);border:1px solid var(--border);border-radius:3px;vertical-align:1px;}
     .linked-row textarea{width:100%;padding:6px 8px;font-size:12px;box-sizing:border-box;font-family:inherit;line-height:1.4;min-height:34px;resize:vertical;}
     .act-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;display:inline-block;}
     .st-notstarted{background:#9CA3AF22;color:#6B7280;} .st-inprogress{background:#F59E0B22;color:#B45309;}
@@ -15017,17 +15019,17 @@ function _syncBodyScroll(){
 // ── Energy-source hazard model (AHS-authored, per the energy-damage model - Haddon; HSE guidance) ──
 // A hazard is an energy source: harm happens on the unplanned release of, or unwanted contact with, that energy.
 const ENERGY_SOURCES = [
-  { k:'gravity',     label:'Gravity',     color:'#2563EB', def:'A person or object falling, or being struck by a falling mass.' },
-  { k:'motion',      label:'Motion',      color:'#0891B2', def:'Moving vehicles, equipment or materials - and body movement when lifting, bending or straining.' },
-  { k:'mechanical',  label:'Mechanical',  color:'#7C3AED', def:'Moving parts of machinery - rotation, cutting, crushing, entanglement.' },
-  { k:'electrical',  label:'Electrical',  color:'#EAB308', def:'Electric charge - shock, arc or burn from wiring, equipment, static or storage.' },
+  { k:'gravity',     label:'Gravity / falls',     color:'#2563EB', def:'A person or object falling, or being struck by a falling mass.' },
+  { k:'motion',      label:'Movement / vehicles',      color:'#0891B2', def:'Moving vehicles, equipment or materials - and body movement when lifting, bending or straining.' },
+  { k:'mechanical',  label:'Machinery',  color:'#7C3AED', def:'Moving parts of machinery - rotation, cutting, crushing, entanglement.' },
+  { k:'electrical',  label:'Electricity',  color:'#EAB308', def:'Electric charge - shock, arc or burn from wiring, equipment, static or storage.' },
   { k:'pressure',    label:'Pressure',    color:'#DB2777', def:'Compressed gas or liquid, or vacuum - rupture, release or injection.' },
-  { k:'temperature', label:'Temperature', color:'#DC2626', def:'Hot or cold - surfaces, flame, steam, friction, and heat or cold stress from the environment.' },
-  { k:'chemical',    label:'Chemical',    color:'#D97706', def:'Substances that harm by reaction or exposure - toxics, corrosives, flammables, dusts, fumes, asbestos.' },
+  { k:'temperature', label:'Fire, heat & cold', color:'#DC2626', def:'Hot or cold - surfaces, flame, steam, friction, and heat or cold stress from the environment.' },
+  { k:'chemical',    label:'Chemicals & dust',    color:'#D97706', def:'Substances that harm by reaction or exposure - toxics, corrosives, flammables, dusts, fumes, asbestos.' },
   { k:'biological',  label:'Biological',  color:'#059669', def:'Living organisms - bacteria, viruses, animals, insects, contaminated water.' },
-  { k:'radiation',   label:'Radiation',   color:'#65A30D', def:'Emitted energy - sunlight, welding arc, lasers, X-rays.' },
-  { k:'sound',       label:'Sound',       color:'#475569', def:'Noise and vibration energy transmitted through air or structure.' },
-  { k:'psychosocial',label:'Psychosocial',color:'#9333EA', def:'Human-factors hazard - stress, workload, violence, fatigue, bullying. Not a physical energy, but recorded here as the hazard source for psychosocial risks.' }
+  { k:'radiation',   label:'Radiation / sunlight',   color:'#65A30D', def:'Emitted energy - sunlight, welding arc, lasers, X-rays.' },
+  { k:'sound',       label:'Noise & vibration',       color:'#475569', def:'Noise and vibration energy transmitted through air or structure.' },
+  { k:'psychosocial',label:'People / stress & violence',color:'#9333EA', def:'Human-factors hazard - stress, workload, violence, fatigue, bullying. Not a physical energy, but recorded here as the hazard source for psychosocial risks.' }
 ];
 function _energyLabel(k){ const e=ENERGY_SOURCES.find(x=>x.k===k); return e?e.label:k; }
 function _energyColor(k){ const e=ENERGY_SOURCES.find(x=>x.k===k); return e?e.color:'#9CA3AF'; }
@@ -15088,8 +15090,8 @@ const RISK_TERMS={
   hs:{
     category:'Macro category', activity:'Risk title',
     activityPh:'What we are talking about, e.g. fire breaking out on site or at the premises',
-    assoc:'Associated risk', assocPh:'Where it bites in the work, e.g. the petrol tank catching fire in the van after refuelling the strimmer',
-    assocHint:'The task-level scenario this risk shows up in. The macro category is the hazard, the title is the risk, this is where it happens in the work - it never changes the title.',
+    assoc:'Hazard / Associated risk', assocPh:'Tick the hazard above, then say where it bites in the work, e.g. the petrol tank catching fire in the van after refuelling the strimmer',
+    assocHint:'Identify the hazard first - tick what could cause harm - then describe the risk as people understand it: the task-level scenario where it bites. The macro category is the hazard family, the title is the risk, this is where it happens - it never changes the title.',
     persons:'Persons at risk', personsDigest:'Who is at risk',
     harm:'How might they be harmed', harmPh:'e.g. Fatality, major injury, occupational ill health, stress-related illness',
     controls:'Reality today - what actually exists', controlsPh:'What is actually in place now - None is an honest answer',
@@ -18190,16 +18192,16 @@ function _riskActionsHTML(r, dis, which){
           : (dis?'':`<button type="button" class="btn btn-ghost btn-xs no-print" style="color:#B45309;padding:1px 6px;" title="No evidence linked yet - add the document that shows how this is now managed" onclick="_promptActionEvidenceById('${r.id}','${a.id}')">＋📎</button>`))
       : '';
     return `<tr>
-      <td><textarea${dis} rows="2" placeholder="Action description" oninput="updateRiskAction('${r.id}','${a.id}','desc',this.value)">${esc(a.desc||'')}</textarea></td>
+      <td><textarea${dis} rows="2" placeholder="${which==='ctl'?'High level control - in risk-assessment language':'Action description'}" oninput="updateRiskAction('${r.id}','${a.id}','desc',this.value)">${esc(a.desc||'')}</textarea></td>
       <td><input type="text"${dis} value="${esc(a.owner||'')}" placeholder="Owner / role" oninput="updateRiskAction('${r.id}','${a.id}','owner',this.value)"></td>
       <td><input type="date"${dis} value="${esc(a.due||'')}" onchange="updateRiskAction('${r.id}','${a.id}','due',this.value)"></td>
       <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','status',this.value)">${stOpts(a.status||'Not started')}</select><div class="act-status ${_actionStatusClass(st)}" id="actst-${r.id}-${a.id}" style="margin-top:4px;"><span>${st}</span>${evHtml}</div></td>
-      <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','priority',this.value)"><option value="">-</option>${prOpts(a.priority||'')}</select></td>
+      ${which==='ctl'?'':`<td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','priority',this.value)"><option value="">-</option>${prOpts(a.priority||'')}</select></td>`}
       ${dis?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs" title="Delete action" onclick="deleteRiskAction('${r.id}','${a.id}')">${_ic('trash',13)}</button></td>`}
     </tr>`;
   }).join('');
-  return `<table class="act-table"><thead><tr><th>Action</th><th>Owner</th><th>Target date</th><th>Status</th><th>Priority</th>${dis?'':'<th></th>'}</tr></thead>
-    <tbody>${body || `<tr><td colspan="${dis?5:6}" style="color:var(--text-muted);">${which==='ctl'?'No controls listed yet - add them below.':which==='plan'?'Nothing raised to the plan yet.':'No actions yet.'}</td></tr>`}</tbody></table>
+  return `<table class="act-table${which==='ctl'?' act-ctl':''}"><thead><tr><th>${which==='ctl'?'High level control':'Action'}</th><th>Owner</th><th>Target date</th><th>Status</th>${which==='ctl'?'':'<th>Priority</th>'}${dis?'':'<th style="width:34px;"></th>'}</tr></thead>
+    <tbody>${body || `<tr><td colspan="${(which==='ctl'?4:5)+(dis?0:1)}" style="color:var(--text-muted);">${which==='ctl'?'No controls listed yet - add them below.':which==='plan'?'Nothing raised to the plan yet.':'No actions yet.'}</td></tr>`}</tbody></table>
     ${dis?'':(which==='ctl'
       ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-outline btn-xs no-print" onclick="addRiskControl('${r.id}')">＋ Add control</button>${_raStartBtnHTML(r)}</div>`
       : `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">${_riskRaisePillHTML(r)}${_riskPlanState(r).k==='accepted'?'':`<button class="btn btn-ghost btn-xs no-print" title="If the current controls are sufficient and no further action is justified, formally accept this risk - recorded with who and why on the acceptance register" onclick="openAcceptRisk('${r.id}')">≈ Accept this risk</button>`}</div>`)}`;
@@ -20817,7 +20819,7 @@ function _riskDisplayOrder(){
 // ── Split-view detail tabs. Summary reads the risk back as a one-screen
 //    report; the other four are the same editing fields as before, grouped
 //    so no tab is more than about a screen tall. ──
-const RP_TABS = [['summary','Summary'],['identify','Identify'],['people','People & impact'],['rating','Controls & rating'],['actions','Actions & evidence']];
+const RP_TABS = [['summary','Summary'],['identify','Identify'],['people','People & impact'],['rating','Controls & rating'],['actions','Action delegation & timescale']];
 // ── THE RISK JOURNEY TABS (Simon, 2026-09-03): the four working tabs are
 //    numbered steps whose dots read straight off recorded facts - grey not
 //    started, amber started, green done - and a prompt line names the next
@@ -20852,7 +20854,7 @@ function _rpProvenanceBadge(r){
 // The Summary tab: presentation only - every fact on it is edited on the other tabs.
 function _rpDigestHTML(r){
   const filled = !!((r.activity||r.hazard||(r.assocRisk&&String(r.assocRisk).trim())) || (r.harm&&String(r.harm).trim()) || (r.controls&&String(r.controls).trim()) || _riskScore(r).rating);
-  if(!filled) return `<div class="empty" style="padding:26px 10px;"><h4>Nothing recorded on this risk yet</h4><p>Work through the Identify, People &amp; impact, Controls &amp; rating and Actions &amp; evidence tabs - this page then reads the risk back as a one-screen summary.</p></div>`;
+  if(!filled) return `<div class="empty" style="padding:26px 10px;"><h4>Nothing recorded on this risk yet</h4><p>Work through the Identify, People &amp; impact, Controls &amp; rating and Action delegation &amp; timescale tabs - this page then reads the risk back as a one-screen summary.</p></div>`;
   const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due)).filter(a=>!a.hideFromPlan);   // the summary shows what is RAISED - controls stay on tab 3
   const openActs=acts.filter(a=>{ const st=_actionStatus(a); return st!=='Complete'&&st!=='Accepted'; });
   const trendC = r.trend==='Increasing' ? '#DC2626' : r.trend==='Reducing' ? '#16A34A' : 'var(--text-muted)';
@@ -20887,13 +20889,13 @@ function _rpDigestHTML(r){
       <div class="dg-cell" onclick="_riskDetailTab('identify')" style="cursor:pointer;" title="Click to edit on 1 · Identify"><h5>Where</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${whereBits.join('')||'<span style="color:var(--text-muted);font-size:12px;">Organisation-wide</span>'}</div></div>
       <div class="dg-cell" onclick="_riskDetailTab('people')" style="cursor:pointer;" title="Click to edit on 2 · People & impact"><h5>Business impact${imMax?` <span class="dg-chip">worst ${imMax} / 5</span>`:''}</h5><p>${imTxt}</p></div>
     </div>
-    <div class="dg-acts" onclick="_riskDetailTab('actions')" style="cursor:pointer;" title="Click to work the plan on 4 · Actions & evidence">
+    <div class="dg-acts" onclick="_riskDetailTab('actions')" style="cursor:pointer;" title="Click to work the plan on 4 · Action delegation & timescale">
       <div class="dg-ah"><span>${esc(_rt(r,'plan'))}</span><span>${acts.length?(openActs.length? openActs.length+' open · '+acts.length+' total' : 'all closed · '+acts.length+' total'):''}</span></div>
-      ${actRows || `<div class="dg-act" style="color:var(--text-muted);">Nothing raised yet - raise actions on 4 · Actions &amp; evidence.</div>`}
+      ${actRows || `<div class="dg-act" style="color:var(--text-muted);">Nothing raised yet - raise actions on 4 · Action delegation &amp; timescale.</div>`}
     </div>
-    <div class="dg-cell" style="margin-bottom:13px;cursor:pointer;" onclick="_riskDetailTab('actions')" title="Click to link evidence on 4 · Actions & evidence"><h5>Evidence behind this</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${links.length?links.map(l=>`<span class="dg-chip" title="${esc(l.url||'')}">📄 ${esc(l.ref||l.url)}</span>`).join(''):'<span style="color:var(--text-muted);font-size:12px;">No linked assessments recorded.</span>'}</div></div>
+    <div class="dg-cell" style="margin-bottom:13px;cursor:pointer;" onclick="_riskDetailTab('actions')" title="Click to link evidence on 4 · Action delegation & timescale"><h5>Evidence behind this</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${links.length?links.map(l=>`<span class="dg-chip" title="${esc(l.url||'')}">📄 ${esc(l.ref||l.url)}</span>`).join(''):'<span style="color:var(--text-muted);font-size:12px;">No linked assessments recorded.</span>'}</div></div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);">
-      ${r.reviewed?'<span style="color:#16A34A;font-weight:700;">✓ Reviewed and complete</span>':'<span>Not yet marked reviewed - the tick is on the Actions &amp; evidence tab</span>'}
+      ${r.reviewed?'<span style="color:#16A34A;font-weight:700;">✓ Reviewed and complete</span>':'<span>Not yet marked reviewed - the tick is on the Action delegation &amp; timescale tab</span>'}
       ${prov}
       ${updLine?`<span style="margin-left:auto;">Updated ${updLine}</span>`:''}
     </div>
@@ -21113,7 +21115,7 @@ function renderRiskProfile(){
     const dotC= st==='done'?'#16A34A': st==='part'?'#F59E0B': st==='none'?'var(--border)':'';
     const n=_RISK_STEP_N[t[0]];
     const tip= st==='done'?'Step complete': st==='part'?'Started - more to fill in': st==='none'?'Not started yet':'';
-    return `<button type="button" role="tab" aria-selected="${_riskSelTab===t[0]?'true':'false'}" class="${_riskSelTab===t[0]?'on':''}" onclick="_riskDetailTab('${t[0]}')"${tip?` title="${tip}"`:''}>${dotC?`<i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dotC};margin-right:6px;vertical-align:1px;"></i>`:''}${n?(n+' \u00b7 '):''}${t[1]}</button>`;
+    return `<button type="button" role="tab" aria-selected="${_riskSelTab===t[0]?'true':'false'}" class="${_riskSelTab===t[0]?'on':''}" onclick="_riskDetailTab('${t[0]}')"${tip?` title="${tip}"`:''}>${dotC?`<i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dotC};margin-right:6px;vertical-align:1px;"></i>`:''}${n?(n+' \u00b7 '):''}${t[1]}${t[0]==='rating'?' <span class="rp-pd">Plan</span>':t[0]==='actions'?' <span class="rp-pd">Do</span>':''}</button>`;
   }).join('');
 
   // The four editing tabs reuse the exact field blocks the old long card had,
@@ -21131,12 +21133,11 @@ function renderRiskProfile(){
           ${fg(_rt(r,'activity'), `<input type="text"${dis} id="ractf-${r.id}" value="${esc(r.activity)}" placeholder="${esc(_rt(r,'activityPh'))}" oninput="updateRiskField('${r.id}','activity',this.value)">`)}
         </div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
-          ${fg(esc(_rt(r,'assoc'))+' <span class="fl-hint" title="'+esc(_rt(r,'assocHint'))+'">(?)</span>', ta(r.id,'assocRisk',r.assocRisk||'',_rt(r,'assocPh')))}
+          <div class="field-group"><label class="field-label">${esc(_rt(r,'assoc'))} <span class="fl-hint" title="${esc(_rt(r,'assocHint'))}">(?)</span></label>
+            ${_riskMode(r)==='ops' ? '' : `<div style="font-size:11px;font-weight:600;color:var(--text-muted);margin:2px 0 4px;">Hazard - what could cause harm (tick all that apply)</div><div class="chip-wrap" id="renergy-${r.id}" style="margin-bottom:8px;">${ENERGY_SOURCES.map(e=>`<button type="button" class="chip${(r.energy||[]).includes(e.k)?' on':''}"${dis} title="${esc(e.def)}" onclick="toggleEnergy('${r.id}','${e.k}')">${esc(e.label)}</button>`).join('')}</div>`}
+            ${ta(r.id,'assocRisk',r.assocRisk||'',_rt(r,'assocPh'))}
+          </div>
         </div>
-        ${_riskMode(r)==='ops' ? '' : `<div style="margin-bottom:12px;">
-          <label class="field-label">Energy source(s) - how the harm is released <span class="fl-hint" title="A hazard is usually an energy source: harm happens when energy is released or contacted (energy-damage model - Haddon; HSE). Tick the energies this activity carries. For a non-physical hazard (stress, violence, fatigue) tick Psychosocial. Leave blank if none apply.">(?)</span></label>
-          <div class="chip-wrap" id="renergy-${r.id}">${ENERGY_SOURCES.map(e=>`<button type="button" class="chip${(r.energy||[]).includes(e.k)?' on':''}"${dis} title="${esc(e.def)}" onclick="toggleEnergy('${r.id}','${e.k}')">${e.label}</button>`).join('')}</div>
-        </div>`}
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 13px;border:1px solid ${_riskFlagOn(r)?'#DC2626':'var(--border)'};border-radius:10px;background:${_riskFlagOn(r)?'#DC26260d':'transparent'};">
           <label style="font-size:13.5px;font-weight:700;color:${_riskFlagOn(r)?'#DC2626':'var(--text)'};display:flex;align-items:center;gap:9px;cursor:pointer;">
             <input type="checkbox"${dis} ${_riskFlagOn(r)?'checked':''} onchange="setSif('${r.id}',this.checked)"> ${esc(_rt(r,'flag'))}
@@ -21160,6 +21161,14 @@ function renderRiskProfile(){
           ${fg('Impact summary <span class="fl-hint" title="Written for you from the ratings above in plain standard wording. Type your own to override it; clear the box to go back to the automatic wording.">(?)</span>', `<textarea${dis} rows="1" id="rbi-${r.id}" placeholder="Rates itself from the impact scores above" oninput="updateRiskField('${r.id}','businessImpact',this.value)">${esc(r.businessImpact)}</textarea>`)}
         </div>`;
     if(_riskSelTab==='rating') return `
+        <div class="rp-ctx" onclick="_riskDetailTab('identify')" style="cursor:pointer;margin-bottom:10px;padding:9px 12px;border:1px solid var(--border);border-left:3px solid ${_macroColour(_riskMacroOf(r))};border-radius:8px;background:var(--muted-bg);" title="Click to edit on 1 · Identify">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;${String(r.assocRisk||'').trim()?'margin-bottom:5px;':''}">
+            ${_riskMacroOf(r)?`<span class="rc-chip" style="background:${_macroColour(_riskMacroOf(r))}1a;color:${_macroColour(_riskMacroOf(r))};">${esc(_macroName(_riskMacroOf(r)))}</span>`:''}
+            ${(r.energy||[]).map(k=>`<span class="rc-chip" style="background:${_energyColor(k)}1a;color:${_energyColor(k)};">${esc(_energyLabel(k))}</span>`).join('')}
+          </div>
+          ${String(r.assocRisk||'').trim()?`<div style="font-size:12.5px;line-height:1.45;"><span style="font-size:11px;color:var(--text-muted);">${esc(_rt(r,'assoc'))} · </span><b>${esc(String(r.assocRisk).trim())}</b></div>`:`<div style="font-size:11.5px;color:var(--text-muted);">No hazard or associated risk recorded yet - click to add it on 1 · Identify.</div>`}
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">PLAN - this tab is the higher level of risk control, in risk-assessment language: what we can see is wrong and what should be in place. Scoring the risk sets its priority and frames how it is delegated and delivered; the actions on 4 · Do put each control in place.</div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
           ${fg(_rt(r,'controls'), ta(r.id,'controls',r.controls,_rt(r,'controlsPh')))}
         </div>
@@ -21188,6 +21197,7 @@ function renderRiskProfile(){
     return `
         <div style="margin:0 0 14px;">
           <label class="field-label">Raised to the action plan <span class="fl-hint" title="The actions are the policy, process and procedure machinery that puts each control in place and keeps it there - roles delegated to named people, a process on a cycle, a provider that notifies, a named keeper. Every row here is on the client execution plan, linked back to this risk.">(?)</span></label>
+            <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:2px 0 8px;">DO - the policy, process and procedure machinery that puts each control in place. Owner and date are the delegation and the timescale: this is telling someone exactly what to do to fix it.</div>
           <div style="font-size:11.5px;color:var(--text-muted);margin:2px 0 8px;">Everything here is on the client execution plan, carrying this risk as its source.</div>
           ${_riskActionsHTML(r,dis,'plan')}
         </div>
@@ -21499,7 +21509,7 @@ function buildRiskProfileReportPDF(){
       if(_riskFlagOn(r)) field(_riskMode(r)==='ops'?'Business-critical':'SIF flag', _riskMode(r)==='ops'?'YES - worst case would seriously damage the business':'YES - can kill or seriously injure (independent of likelihood)');
       if(_riskMode(r)==='ops') field('Risk type','Operational');
       field('Macro category', _riskMacroOf(r)?_macroName(_riskMacroOf(r)):'');
-      field('Energy source(s)', (r.energy||[]).map(_energyLabel).join(', '));
+      field('Hazard', (r.energy||[]).map(_energyLabel).join(', '));
       field('Business area', r.area);
       field(_rt(r,'persons'), (r.personsAtRisk||[]).join(', '));
       field(_rt(r,'assoc'), r.assocRisk);

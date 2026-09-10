@@ -15471,7 +15471,7 @@ function _execActions(){
     completedDate:a.completedDate||'', completedBy:a.completedBy||'',
     acceptDate:a.acceptDate||'', acceptedBy:a.acceptedBy||'',
     resolvedDate:(a.completedDate||a.acceptDate||''), resolvedBy:(a.completedBy||a.acceptedBy||''),
-    raisedAt:(a.createdAt?a.createdAt.slice(0,10):''), raisedBy:a.createdBy||'', top5:(a.top5||'') }); };
+    raisedAt:(a.createdAt?a.createdAt.slice(0,10):''), raisedBy:a.createdBy||'', top5:(a.top5||''), duty:(a.reqLabel||'') }); };
   _allRiskActions().forEach(x=>{ if(x.a.hideFromPlan) return; if(!(x.a.desc||x.a.owner||x.a.due)) return;
     norm('Risk profile', x.r.activity||x.r.hazard||'Risk', {t:'risk', a:x.r.id, b:x.a.id}, x.a); });
   (typeof _allMgmtActions==='function'?_allMgmtActions():[]).forEach(x=>{ if(x.act&&x.act.hideFromPlan) return;
@@ -15844,6 +15844,7 @@ function _epWhatHTML(a){
   try{ if(_rkR&&_rkR.controls) ctx=' \u00b7 current controls: '+String(_rkR.controls).slice(0,140); }catch(e){}
   return '<div style="border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:9px 12px;margin:4px 0 8px;">'
     +(_rkR?'<div class="ep-risk-line" style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:5px;cursor:pointer;" onclick="_gotoRisk(\''+_rkR.id+'\')" title="Open this risk in the Risk profile">'+esc(_rkR.activity||_rkR.hazard||'Risk')+' \u2192'+_macroTagHTML(_rkR)+'</div>':'')
+    +(a.duty?'<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:5px;">Legal duty: '+esc(a.duty)+'</div>':'')
     +'<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:3px;">What to do</div>'
     +'<div style="font-size:13px;font-weight:600;">'+esc(a.desc||'(no description yet - open the source and write it)')+'</div>'
     +'<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">From: '+esc(a.source)+((a.sourceLabel&&!_rkR)?(' \u00b7 '+esc(a.sourceLabel)):'')+(a.priority?(' \u00b7 priority '+esc(a.priority)):'')+esc(ctx)+'</div></div>';
@@ -15886,7 +15887,7 @@ function openEpXFPop(ev, col){
 
 function renderExecPlan(){
   const root=document.getElementById('execPlanRoot'); if(!root) return;
-  _judgeMigrateLoose();
+  _judgeMigrateLoose(); _reqMigrateToRisks();
   updateActionBadges();
   const dis=_roLocked()?' disabled':'';
   const acts=_execActions();
@@ -17807,7 +17808,7 @@ function _journeyMilestones(r){
   const managed=(plan.k==='managed' && r.reviewed && !!sc.rating) || (plan.k==='accepted' && !!sc.rating);
   const m=[];
   m.push({ done:true, label:'Identified', when:(r.createdAt||'').slice(0,10),
-    text:(r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':r.suggestedBy==='judgement'?'Raised from the consultant judgement (six HSG65 areas)':('Added by '+(r.createdBy||'the team'))) });
+    text:(r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':r.suggestedBy==='judgement'?'Raised from the consultant judgement (six HSG65 areas)':r.suggestedBy==='legal'?'Raised from the Legal duties assessment':('Added by '+(r.createdBy||'the team'))) });
   const _tgt=_riskTarget(r);
   const _hist=Array.isArray(r.scoreHistory)?r.scoreHistory:[];
   m.push({ done:!!sc.rating&&impactsRated, label:'Assessed', when:'',
@@ -18896,13 +18897,13 @@ function _apGotoRisk(riskId){ switchTab('risk'); setTimeout(()=>{ try{ if(typeof
 // once it has been added to the plan (no duplicates).
 let _apGapCache={};
 function _apGaps(){
-  _judgeMigrateLoose();
+  _judgeMigrateLoose(); _reqMigrateToRisks();
   const gaps=[];
   // Management-system gaps: any assessed requirement line that is not fully Met.
   (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{
     _reqMigrateActions(it);
     const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
-    if(st && st.label!=='Met' && !it.actions.some(a=>a.desc&&String(a.desc).trim()&&!a.deleted)){
+    if(st && st.label!=='Met' && !_reqItemActions(it).some(a=>a.desc&&String(a.desc).trim()&&!a.deleted)){
       const what=(it.requirement&&it.requirement.trim())||(sec.heading||'Requirement');
       gaps.push({ srcKey:'req:'+it.id, desc:what, due:it.dueDate||'', priority: st.label==='Not in place'?'High':'Medium',
         context:(sec.heading||'Legal duties')+' ('+st.label+')', note:'From the Legal duties assessment: '+(sec.heading||'')+(it.requirement?(': '+it.requirement):'') });
@@ -18926,6 +18927,16 @@ function _apGaps(){
 function addGapToPlan(srcKey){
   if(_blockIfReadOnly()) return;
   const g=_apGapCache[srcKey]; if(!g) return;
+  if(String(srcKey).indexOf('req:')===0){
+    const iid=String(srcKey).slice(4); let sec=null, it=null;
+    (S.requirements||[]).some(s=>{ const f=(s.items||[]).find(x=>x.id===iid); if(f){ sec=s; it=f; return true; } return false; });
+    if(!sec||!it) return;
+    const had=!!_reqRiskOf(sec.id); const r=_reqRiskEnsure(sec); if(!r) return;
+    _reqAddRiskAction(r, sec, it, g.desc||'', { due:g.due||'', priority:g.priority||'' });
+    saveData(); renderActionPlanTab(); if(typeof _refreshActionViews==='function') _refreshActionViews();
+    if(typeof showToast==='function') showToast(had?'\u2713 Action added to this duty area\u2019s risk - it is on the plan from there':'\u2713 On the risk profile as a risk - the action is on the plan from there','success',6000);
+    return;
+  }
   if(String(srcKey).indexOf('mat:')===0){
     const dom=String(srcKey).slice(4); const had=!!_judgeRiskOf(dom);
     const r=_judgeRiskEnsure(dom); if(!r) return;
@@ -19001,6 +19012,86 @@ function _reqAddAction(it, desc){
   const act={ id:_reqUid('act'), desc:String(desc||'').trim(), owner:'', due:'', status:'Not started', priority:'', log:[] };
   if(typeof _stamp==='function') _stamp(act,'created');
   it.actions.push(act); return act;
+}
+// ── The legal-duties route (Simon, 2026-09-10, "same as maturity"): one risk
+//    per Legal duties section (r.reqKey), under Competence & legal duties;
+//    every action raised from a line lives on that risk and reaches the plan
+//    from there. it.actions is legacy storage only - readers go through
+//    _reqItemActions(it), which returns the line's rows wherever they live. ──
+function _reqRiskOf(secId){ return (S.riskProfile||[]).find(r=>r && r.reqKey==='req|'+secId) || null; }
+function _reqRiskTitle(sec){
+  const h=String((sec&&sec.heading)||'').replace(/\s*-\s*what you must have in place\s*$/i,'').trim();
+  return (sec&&sec.legal) ? ((h||'Legal essentials')+' - duties not yet in place') : ((h||'Legal duties')+' - legal duties not yet met');
+}
+function _reqRiskEnsure(sec){
+  if(!sec) return null;
+  const have=_reqRiskOf(sec.id); if(have) return have;
+  const gaps=(sec.items||[]).filter(it=>{ const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null; return st && (st.label==='Gap'||st.label==='Not in place'); }).map(it=>String(it.requirement||'').trim()).filter(Boolean);
+  const assoc=(sec.citation?('Duty: '+sec.citation+'. '):'')+(gaps.length?('Assessed as not met: '+gaps.slice(0,4).join('; ')+(gaps.length>4?(' and '+(gaps.length-4)+' more'):'')+'.'):'');
+  const r={ id:'risk_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), reqKey:'req|'+sec.id,
+    activity:_reqRiskTitle(sec), hazard:'', assocRisk:assoc, category:'Legal / Regulatory', area:'Business', macroKey:'management', pdca:'', energy:[], sif:'', controlLevel:'',
+    reviewed:false, reviewDue:'', personsAtRisk:['Employees'], harm:'', businessImpact:'', impacts:{}, impactNotes:{}, controls:'',
+    likelihood:'', severity:'', targetL:'', targetS:'', trend:'', actions:[], linked:[], furtherActions:'', suggestedBy:'legal' };
+  _stamp(r,'created');
+  if(!Array.isArray(S.riskProfile)) S.riskProfile=[];
+  S.riskProfile.push(r);
+  return r;
+}
+function _reqAddRiskAction(r, sec, it, desc, o){
+  o=o||{}; if(!r||!sec||!it) return null;
+  if(!Array.isArray(r.actions)) r.actions=[];
+  const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
+  const pr=String(o.priority||'')||(st&&st.label==='Not in place'?'High':(st&&st.label==='Gap'?'Medium':''));
+  const a={ id:_reqUid('act'), desc:String(desc||'').trim(), owner:String(o.owner||'').trim(), due:String(o.due||''), status:'Not started', priority:pr, log:[],
+    reqKey:'req|'+sec.id, reqItem:it.id, reqLabel:String(it.requirement||sec.heading||'').slice(0,120) };
+  _stamp(a,'created'); r.actions.push(a); r.raised=(r.raised||0)+1; _stamp(r,'updated');
+  it.raised=(it.raised||0)+1; _stamp(it,'updated');
+  return a;
+}
+function _reqItemActions(it){
+  if(!it) return [];
+  const own=Array.isArray(it.actions)?it.actions:[];
+  const held=[];
+  (S.riskProfile||[]).forEach(r=>{ if(r&&r.reqKey) (r.actions||[]).forEach(a=>{ if(a&&a.reqItem===it.id) held.push(a); }); });
+  return own.concat(held);
+}
+function _reqActionRef(sec, it, a){
+  if(a && a.reqItem){ const r=(S.riskProfile||[]).find(x=>(x.actions||[]).indexOf(a)>=0); if(r) return {t:'risk',a:r.id,b:a.id}; }
+  return {t:'mgmt',a:sec.id,b:it.id,c:a.id};
+}
+function _reqMigrateToRisks(){
+  if(_roLocked()) return 0;
+  let n=0;
+  (S.requirements||[]).forEach(sec=>{
+    (sec.items||[]).forEach(it=>{
+      _reqMigrateActions(it);
+      const live=(it.actions||[]).filter(a=>a && !a.deleted && a.desc && String(a.desc).trim());
+      if(!live.length) return;
+      const r=_reqRiskEnsure(sec); if(!r) return;
+      const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
+      const prBase=st&&st.label==='Not in place'?'High':(st&&st.label==='Gap'?'Medium':'');
+      live.forEach(a=>{ if(!a.priority) a.priority=prBase; a.reqKey='req|'+sec.id; a.reqItem=it.id; a.reqLabel=String(it.requirement||sec.heading||'').slice(0,120); a.movedFrom='req:'+it.id; r.actions.push(a); n++; });
+      it.actions=(it.actions||[]).filter(a=>live.indexOf(a)<0);
+      r.raised=(r.raised||0)+live.length; _stamp(r,'updated'); _stamp(it,'updated');
+    });
+  });
+  if(Array.isArray(S.actionPlan)){
+    const moved=[];
+    S.actionPlan.forEach(a=>{
+      if(!a || a.deleted || !a.srcKey || String(a.srcKey).indexOf('req:')!==0) return;
+      const iid=String(a.srcKey).slice(4); let sec=null, it=null;
+      (S.requirements||[]).some(s=>{ const f=(s.items||[]).find(x=>x.id===iid); if(f){ sec=s; it=f; return true; } return false; });
+      if(!sec||!it) return;
+      const r=_reqRiskEnsure(sec); if(!r) return;
+      const row={ id:a.id, desc:a.desc||'', owner:a.owner||'', due:a.due||'', status:a.status||'Not started', priority:a.priority||'', reqKey:'req|'+sec.id, reqItem:it.id, reqLabel:String(it.requirement||sec.heading||'').slice(0,120), movedFrom:'plan:'+a.id };
+      ['completedDate','completedBy','acceptDate','acceptedBy','createdAt','createdBy','updatedAt','updatedBy','top5','note','log'].forEach(k=>{ if(a[k]!==undefined && a[k]!=='' && a[k]!==null) row[k]=a[k]; });
+      if(!Array.isArray(r.actions)) r.actions=[];
+      r.actions.push(row); r.raised=(r.raised||0)+1; _stamp(r,'updated'); moved.push(a); n++;
+    });
+    if(moved.length) S.actionPlan=S.actionPlan.filter(a=>moved.indexOf(a)<0);
+  }
+  if(n){ saveData(); if(typeof showToast==='function') showToast(n+' legal-duties action'+(n!==1?'s':'')+' moved onto the risk profile - one risk per duty area, worked like the rest','info',6000); }
+  return n;
 }
 function _allMgmtActions(){
   const out=[];
@@ -21040,7 +21131,7 @@ async function buildExecPlanFormPDF(){
     y-=12;
     byMonth[k].forEach(a=>{
       const aLines=wrap(a.desc||'(no description)',font,8.2,AW);
-      const srcLines=a.sourceLabel?wrap(a.source+' - '+a.sourceLabel,font,6.8,AW):[];
+      const srcLines=a.sourceLabel?wrap(a.source+' - '+a.sourceLabel+(a.duty?(' - '+a.duty):''),font,6.8,AW):[];
       const oLines=wrap(a.owner||'-',font,7.5,OW);
       const contentH=aLines.length*10.4+srcLines.length*8.4;
       const rh=Math.max(contentH,oLines.length*9.5,22)+8;
@@ -21304,6 +21395,7 @@ let _riskSelKey = '';   // last rendered "risk|tab" - same view keeps its panel 
 // Summary tab and beside the reviewed tick, one derivation for both.
 function _rpProvenanceBadge(r){
   if(typeof _discIsOrphan==='function' && _discIsOrphan(r)) return '<span class="badge" style="background:#FEF3C7;color:#B45309;font-weight:700;" title="The discovery answers that suggested this theme have been withdrawn - remove it or keep it as your own judgement">⚠ discovery no longer supports this</span>';
+  if(!r.reviewed && r.suggestedBy==='legal') return '<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;" title="Raised from the Legal duties assessment - one risk per duty area">from the legal duties assessment</span>';
   if(!r.reviewed && r.suggestedBy==='judgement') return '<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;" title="Raised from the consultant judgement of this HSG65 area - the Consultant judgement section on the Risk profile tab">from the consultant judgement</span>';
   if(!r.reviewed && r.suggestedBy==='discovery') return '<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;">suggested by discovery</span>';
   return '';
@@ -23254,13 +23346,13 @@ function raiseReqGapAction(sid, iid){
   // free-form S.actionPlan row. The dedupe only knew about its own store, so
   // using both put the same piece of work on the execution plan twice, under
   // the same title, with two owners and two due dates to chase.
-  const dup=(it.actions||[]).some(_open) || (S.actionPlan||[]).some(_open);
+  const dup=_reqItemActions(it).some(_open) || (S.actionPlan||[]).some(_open);
   if(dup){ showToast('An open action for this gap already exists on the execution plan','info'); return; }
-  const act=_reqAddAction(it, title);
+  const r=_reqRiskEnsure(s); if(!r) return;
+  const act=_reqAddRiskAction(r, s, it, title);
   act.detail=open.map(x=>x.c);
   if(open.length) _logAdd(act,'comment','To resolve:\n'+open.map(x=>'• '+x.c).join('\n'));
-  it.raised=(it.raised||0)+1;
-  _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+  saveData(); _keepScroll(renderRequirements); if(typeof _refreshActionViews==='function') _refreshActionViews();
   try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
   showToast('✓ "'+title+'" raised - open ▸ Activity on the execution plan to see what needs doing','success',);
 }
@@ -23302,7 +23394,7 @@ function removeRiskDerivedItem(duty){
   const key=String(duty||'').trim().toLowerCase();
   const it=(sec.items||[]).find(i=>i.riskDerived && (i.citation||'').trim().toLowerCase()===key);
   if(!it){ showToast('That register item was added manually - remove it from the register itself','info'); return; }
-  const worked=(it.actions||[]).some(a=>!a.deleted&&a.desc) || it.reviewed || Object.keys(it.crit||{}).length;
+  const worked=_reqItemActions(it).some(a=>!a.deleted&&a.desc) || it.reviewed || Object.keys(it.crit||{}).length;
   if(worked && !confirm('This register item already has work recorded on it (criteria, actions or a sign-off).\n\nRemove it anyway?')) return;
   sec.items=(sec.items||[]).filter(i=>i.id!==it.id);
   saveData(); _keepScroll(renderRequirements); showToast('Removed from the register','success');
@@ -23709,21 +23801,22 @@ function raiseReqAction(sectionId, itemId){
   const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
   const it = (s.items||[]).find(i => i.id === itemId); if(!it) return;
   openRaiseActionBox({ source:'Legal duties \u00b7 '+String(it.requirement||s.heading||'').slice(0,60), onSave:function(v){
-    const act=_reqAddAction(it, v.desc);
-    if(act){ if(v.owner) act.owner=v.owner; if(v.due) act.due=v.due; }
-    it.raised=(it.raised||0)+1;
-    _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+    const had=!!_reqRiskOf(s.id);
+    const r=_reqRiskEnsure(s); if(!r) return;
+    _reqAddRiskAction(r, s, it, v.desc, { owner:v.owner, due:v.due });
+    saveData(); _keepScroll(renderRequirements);
+    if(typeof _refreshActionViews==='function') _refreshActionViews();
     try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
-    if(typeof showToast==='function') showToast('\u2713 Action added to the plan - set a target date','success');
+    if(typeof showToast==='function') showToast(had?'\u2713 Action added to this duty area\u2019s risk - it is on the client execution plan from there':('\u2713 '+_reqRiskTitle(s)+' is now a risk on the risk profile and the action is on the plan from there - score it in the modal like the rest'),'success',6000);
   }});
 }
 // (Per-criterion "Raise" removed - the gap is raised per ITEM via raiseReqGapAction:
 //  the item title becomes the action and the open criteria its detail.)
 // Shared renderer: an item's list of actions (status + remove) + Add action.
 function _mgmtActionsListHTML(sec, it, ro){
-  const acts=(it.actions||[]).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted);
+  const acts=_reqItemActions(it).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted);
   const ss='font-size:12px;padding:4px 7px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;';
-  const rows=acts.map(act=>{ const ref=encodeURIComponent(JSON.stringify({t:'mgmt',a:sec.id,b:it.id,c:act.id})); const stt=_actionStatus({status:act.status,due:act.due}); const rag=(typeof _actionRag==='function')?_actionRag(act.due,stt):'grey'; const rc=(typeof RAG_COLOR!=='undefined'&&RAG_COLOR[rag])||'#9CA3AF';
+  const rows=acts.map(act=>{ const ref=encodeURIComponent(JSON.stringify(_reqActionRef(sec,it,act))); const stt=_actionStatus({status:act.status,due:act.due}); const rag=(typeof _actionRag==='function')?_actionRag(act.due,stt):'grey'; const rc=(typeof RAG_COLOR!=='undefined'&&RAG_COLOR[rag])||'#9CA3AF';
     return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0;">
       <span style="width:9px;height:9px;border-radius:50%;background:${rc};flex:0 0 auto;"></span>
       <span style="flex:1;min-width:120px;font-size:12.5px;">${esc(act.desc)}</span>
@@ -23863,6 +23956,7 @@ function buildPolicyPDF(){
 function renderRequirements(){
   const cont = document.getElementById('requirementsContainer');
   if(!cont) return;
+  _reqMigrateToRisks();
   _renderPolicyDoc();
   const ro = _roLocked();
   // Legal essentials are statutory - always keep the full catalogue present (self-heal),
@@ -24035,7 +24129,7 @@ function buildManagementSystemReportPDF(){
   REQ_STAGES.concat(['__other']).forEach(stage=>{
     const grp = stage==='__other' ? secs.filter(s=>!REQ_STAGES.includes(s.stage)) : secs.filter(s=>s.stage===stage);
     grp.forEach(sec=>{ (sec.items||[]).forEach(it=>{ _reqMigrateActions(it); const s2=_reqItemStatus(it); if(s2 && (s2.label==='Gap'||s2.label==='Not in place')){
-      const acts=(it.actions||[]).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted);
+      const acts=_reqItemActions(it).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted);
       const dues=acts.map(a=>a.due).filter(Boolean).sort(); const due=it.dueDate||dues[0]||'';
       const overdue = due && new Date(due) < new Date();
       actRows.push([
@@ -28509,7 +28603,7 @@ function buildFeedbackReportPDF(){
   } else K.text('No critical or high risks recorded.', 9.5, {color:GREY});
   // Management system gaps (table)
   K.section('Legal duty gaps', AMBER);
-  const gapRows=[]; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ _reqMigrateActions(it); if(_reqItemAssessed(it)&&!_reqItemMet(it)) gapRows.push([{text:(it.requirement||'requirement'), bold:true},{text:s.heading||'-', color:GREY},{text:((it.actions||[]).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted).map(a=>a.desc).join('; '))||'-', color:GREY}]); }));
+  const gapRows=[]; (S.requirements||[]).forEach(s=>(s.items||[]).forEach(it=>{ _reqMigrateActions(it); if(_reqItemAssessed(it)&&!_reqItemMet(it)) gapRows.push([{text:(it.requirement||'requirement'), bold:true},{text:s.heading||'-', color:GREY},{text:(_reqItemActions(it).filter(a=>a.desc&&String(a.desc).trim()&&!a.deleted).map(a=>a.desc).join('; '))||'-', color:GREY}]); }));
   if(gapRows.length){ K.table([{header:'REQUIREMENT',w:78},{header:'DUTY AREA',w:52},{header:'ACTION',w:48}], gapRows, {headFill:AMBER, headText:[255,255,255]}); }
   else K.text('No legal duty gaps recorded.', 9.5, {color:GREY});
   // Monitoring picture (tiles)
@@ -28800,7 +28894,7 @@ function _bsrData(){
     const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
     if(!st) return;
     const name=(sec.heading||'Legal duty')+(it.requirement?(': '+String(it.requirement).slice(0,80)):'');
-    const act=(it.action&&String(it.action).trim())||((it.actions||[]).filter(a=>!a.deleted&&a.desc&&_actionStatus(a)!=='Complete'&&_actionStatus(a)!=='Accepted').map(a=>a.desc)[0])||'';
+    const act=(it.action&&String(it.action).trim())||(_reqItemActions(it).filter(a=>!a.deleted&&a.desc&&_actionStatus(a)!=='Complete'&&_actionStatus(a)!=='Accepted').map(a=>a.desc)[0])||'';
     if(st.label==='Not in place'){
       reds.push({ issue:name,
         found:'Assessed as not in place on the Legal duties tab',
@@ -30521,7 +30615,7 @@ function _importHeld(k){
         items++;
         if(it.reviewed) approved++;
         var cs=it.critState||it.criteriaState||{}; ticks+=Object.keys(cs).length;
-        acts+=((it.actions||[]).filter(function(a){ return a && !a.deleted; })).length;
+        acts+=(_reqItemActions(it).filter(function(a){ return a && !a.deleted; })).length;
       }); });
       if(!items) return '';
       var bits=[items+' item'+(items!==1?'s':'')];

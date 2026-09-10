@@ -15886,6 +15886,7 @@ function openEpXFPop(ev, col){
 
 function renderExecPlan(){
   const root=document.getElementById('execPlanRoot'); if(!root) return;
+  _judgeMigrateLoose();
   updateActionBadges();
   const dis=_roLocked()?' disabled':'';
   const acts=_execActions();
@@ -17806,7 +17807,7 @@ function _journeyMilestones(r){
   const managed=(plan.k==='managed' && r.reviewed && !!sc.rating) || (plan.k==='accepted' && !!sc.rating);
   const m=[];
   m.push({ done:true, label:'Identified', when:(r.createdAt||'').slice(0,10),
-    text:(r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':('Added by '+(r.createdBy||'the team'))) });
+    text:(r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':r.suggestedBy==='judgement'?'Raised from the consultant judgement (Assurance)':('Added by '+(r.createdBy||'the team'))) });
   const _tgt=_riskTarget(r);
   const _hist=Array.isArray(r.scoreHistory)?r.scoreHistory:[];
   m.push({ done:!!sc.rating&&impactsRated, label:'Assessed', when:'',
@@ -18895,6 +18896,7 @@ function _apGotoRisk(riskId){ switchTab('risk'); setTimeout(()=>{ try{ if(typeof
 // once it has been added to the plan (no duplicates).
 let _apGapCache={};
 function _apGaps(){
+  _judgeMigrateLoose();
   const gaps=[];
   // Management-system gaps: any assessed requirement line that is not fully Met.
   (S.requirements||[]).forEach(sec=>(sec.items||[]).forEach(it=>{
@@ -18911,7 +18913,7 @@ function _apGaps(){
     _maturityDomains().forEach(d=>{
       // Anything below the Adequate bar earns an action; Weak outranks Developing.
       const _jl=((_judgeState()[d.id]||{}).level)||'';
-      if(JUDGE_BELOW_BAR.includes(_jl)){
+      if(JUDGE_BELOW_BAR.includes(_jl) && !_judgeRiskOf(d.id)){
         const _word=_jl.charAt(0).toUpperCase()+_jl.slice(1);
         gaps.push({ srcKey:'mat:'+d.id, desc:'Strengthen '+d.name+((_judgeState()[d.id]||{}).note?(' - '+(_judgeState()[d.id]||{}).note):''), due:'', priority:(_jl==='weak'?'High':'Medium'), context:'Judged '+_word+': '+d.name, note:'Consultant judgement: '+_word });
       }
@@ -18924,6 +18926,14 @@ function _apGaps(){
 function addGapToPlan(srcKey){
   if(_blockIfReadOnly()) return;
   const g=_apGapCache[srcKey]; if(!g) return;
+  if(String(srcKey).indexOf('mat:')===0){
+    const dom=String(srcKey).slice(4); const had=!!_judgeRiskOf(dom);
+    const r=_judgeRiskEnsure(dom); if(!r) return;
+    _judgeAddAction(r, dom, { desc:g.desc||'', priority:g.priority||'' });
+    saveData(); renderActionPlanTab(); if(typeof _refreshActionViews==='function') _refreshActionViews();
+    if(typeof showToast==='function') showToast(had?'✓ Action added to this area’s risk - it is on the plan from there':'✓ On the risk profile as a risk - the action is on the plan from there','success',6000);
+    return;
+  }
   // The mirror of the guard in raiseReqGapAction: an action raised on the item
   // itself already puts this gap on the execution plan, so adding it again here
   // would list the same work twice.
@@ -20098,15 +20108,15 @@ function setJudgementNote(domId, note){
   scheduleAutoSave();
 }
 function _renderMaturityAssessment(dis){
+  _judgeMigrateLoose();
   const doms=_maturityDomains(); const j=_judgeState();
   const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Your professional judgement of the six HSG65 areas - <b>words, not scores</b>. Mark each Weak, Developing, Adequate or Strong with a one-line reason; the app spells out what that word means in this area. <b>Adequate has a bar</b>: it is in place, written down, and you have seen the evidence. A business on its way there is <b>Developing</b>, not Adequate. There is no middle box on purpose, so each area gets a decision: below the line or above it. Weak and Developing both raise an action on the execution plan. This feeds your audit narrative and review; it is never turned into a number. The measured position lives above: H&S Control Maturity, graded on recorded facts.</div>`;
   return note + doms.map((d,idx)=>{
     const cur=j[d.id]||{};
     const lv=JUDGEMENT_LEVELS.find(x=>x.k===cur.level);
     const chip=lv?`<span style="font-size:12.5px;color:${lv.colour};font-weight:700;">${lv.label}</span>`:'<span style="font-size:11px;color:var(--text-muted);">not judged</span>';
-    const raiseBtn = dis ? '' : (_judgeActionOpen(d.id)
-      ? `<button class="btn btn-ghost btn-xs no-print" style="margin-left:auto;color:var(--success);font-weight:700;" title="An action for this area is open on the client execution plan - click to open the plan" onclick="switchTab('execplan')">✓ In the execution plan</button>`
-      : `<button class="btn btn-outline btn-xs no-print" style="margin-left:auto;" title="Raise an improvement action for this area onto the client execution plan" onclick="openMaturityAction('${d.id}')">↗ Raise action</button>`);
+    const jr=_judgeRiskOf(d.id), jOpen=jr?_judgeActionOpen(d.id):false;
+    const raiseBtn = dis ? '' : `<span style="margin-left:auto;display:inline-flex;gap:6px;align-items:center;">${jr?`<button class="btn btn-ghost btn-xs no-print" style="color:${jOpen?'var(--success)':'var(--text-muted)'};font-weight:700;" title="This area is a risk on the risk profile${jOpen?' with an action open on the client execution plan':''} - click to open it" onclick="_apGotoRisk('${jr.id}')">✓ On the risk profile</button>`:''}<button class="btn btn-outline btn-xs no-print" title="${jr?'Raise another action from this area’s risk onto the client execution plan':'Puts this area on the risk profile as a risk and raises the action from it onto the client execution plan - the same route every other risk takes'}" onclick="openMaturityAction('${d.id}')">↗ Raise action</button></span>`;
     const head=`<div class="prof-domain-head"><span class="pdh-badge" style="background:${d.badge};">${idx+1}</span><h4>${idx+1}. ${esc(d.name)}</h4>${chip}${raiseBtn}</div>`;
     const btns=JUDGEMENT_LEVELS.map(x=>{
       const dsc=_judgeDescriptor(d.id,x.k);
@@ -20132,16 +20142,72 @@ function _renderMaturityAssessment(dis){
 // ── Raise a maturity-improvement action (modal, same overlay pattern as the
 //    rest of the app). Pre-filled from the domain's weakest scored items so
 //    the action says WHAT to improve, not just "improve leadership". ──
-function _judgeActionOpen(domId){
-  const d=_maturityDomains().find(x=>x.id===domId);
-  return (S.actionPlan||[]).some(function(a){
-    if(!a || a.deleted) return false;
-    const st=(typeof _actionStatus==='function')?_actionStatus(a):(a.status||'Not started');
-    if(st==='Complete'||st==='Accepted') return false;
-    if(a.judgeKey==='judge|'+domId) return true;
-    // actions raised before the key existed
-    return a.source==='Maturity' && !!d && a.sourceLabel===d.name;
+// ── The maturity route (Simon, 2026-09-10): an HSG65 area the consultant
+//    raises from becomes ONE risk on the risk profile (r.judgeKey) and every
+//    action for that area is raised from that risk, so it reaches the client
+//    execution plan the way every other risk's action does - and can never be
+//    on the plan twice. The Assurance button and the Actions-tab gaps list
+//    both come through here. ──
+const _JUDGE_AREA={ leadership:'Business', contractor:'Operations', ohealth:'People', opcontrol:'Operations', assurance:'Business', resilience:'Business' };
+function _judgeRiskOf(domId){ return (S.riskProfile||[]).find(r=>r && r.judgeKey==='judge|'+domId) || null; }
+function _judgeRiskTitle(d, level){
+  const w=level?(level.charAt(0).toUpperCase()+level.slice(1)):'';
+  return d.name+(w?(' judged '+w):' - consultant judgement');
+}
+function _judgeRiskEnsure(domId){
+  const d=_maturityDomains().find(x=>x.id===domId); if(!d) return null;
+  const have=_judgeRiskOf(domId); if(have) return have;
+  const lvl=String(((_judgeState()[domId])||{}).level||'');
+  const r={ id:'risk_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), judgeKey:'judge|'+domId,
+    activity:_judgeRiskTitle(d,lvl), hazard:'', assocRisk:_judgeDescriptor(domId,lvl)||'',
+    category:'Legal / Regulatory', area:_JUDGE_AREA[domId]||'Business', macroKey:'management', pdca:'', energy:[], sif:'', controlLevel:'',
+    reviewed:false, reviewDue:'', personsAtRisk:['Employees'], harm:'', businessImpact:'', impacts:{}, impactNotes:{}, controls:'',
+    likelihood:'', severity:'', targetL:'', targetS:'', trend:'', actions:[], linked:[], furtherActions:'', suggestedBy:'judgement' };
+  _stamp(r,'created');
+  if(!Array.isArray(S.riskProfile)) S.riskProfile=[];
+  S.riskProfile.push(r);
+  return r;
+}
+function _judgeAddAction(r, domId, v){
+  if(!r) return null; v=v||{};
+  if(!Array.isArray(r.actions)) r.actions=[];
+  const a={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:String(v.desc||'').trim(), owner:String(v.owner||'').trim(), due:String(v.due||''),
+    status:'Not started', priority:String(v.priority||''), judgeKey:'judge|'+domId };
+  _stamp(a,'created'); r.actions.push(a); r.raised=(r.raised||0)+1; _stamp(r,'updated');
+  return a;
+}
+// Loose maturity actions from before this route (source Maturity, judgeKey,
+// or a gaps-list mat: key) move onto their area's risk, status and stamps
+// intact, and leave the plan's loose list - one place, once.
+function _judgeDomOfLoose(a){
+  if(!a) return '';
+  if(a.judgeKey && String(a.judgeKey).indexOf('judge|')===0) return String(a.judgeKey).slice(6);
+  if(a.srcKey && String(a.srcKey).indexOf('mat:')===0) return String(a.srcKey).slice(4);
+  if(a.source==='Maturity'){ const d=_maturityDomains().find(x=>x.name===a.sourceLabel); return d?d.id:''; }
+  return '';
+}
+function _judgeMigrateLoose(){
+  if(_roLocked() || !Array.isArray(S.actionPlan)) return 0;
+  const moved=[];
+  S.actionPlan.forEach(a=>{
+    if(!a || a.deleted) return;
+    const dom=_judgeDomOfLoose(a); if(!dom) return;
+    const r=_judgeRiskEnsure(dom); if(!r) return;
+    const row={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:a.desc||'', owner:a.owner||'', due:a.due||'', status:a.status||'Not started', priority:a.priority||'', judgeKey:'judge|'+dom, movedFrom:a.id };
+    ['completedDate','completedBy','acceptDate','acceptedBy','createdAt','createdBy','updatedAt','updatedBy','top5','note','log'].forEach(k=>{ if(a[k]!==undefined && a[k]!=='' && a[k]!==null) row[k]=a[k]; });
+    if(!Array.isArray(r.actions)) r.actions=[];
+    r.actions.push(row); r.raised=(r.raised||0)+1; _stamp(r,'updated');
+    moved.push(a);
   });
+  if(!moved.length) return 0;
+  S.actionPlan=S.actionPlan.filter(a=>moved.indexOf(a)<0);
+  saveData();
+  if(typeof showToast==='function') showToast(moved.length+' maturity action'+(moved.length!==1?'s':'')+' moved onto the risk profile - each area is now a risk, worked like the rest','info',6000);
+  return moved.length;
+}
+function _judgeActionOpen(domId){
+  const r=_judgeRiskOf(domId); if(!r) return false;
+  return (r.actions||[]).some(a=>a && !a.deleted && !a.hideFromPlan && (a.desc||a.owner||a.due) && _actionStatus(a)!=='Complete' && _actionStatus(a)!=='Accepted');
 }
 function openMaturityAction(domId){
   if(_blockIfReadOnly()) return;
@@ -20153,7 +20219,7 @@ function openMaturityAction(domId){
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
   ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:540px;width:100%;padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.35);">
     <div style="font-weight:800;font-size:15px;margin-bottom:4px;">Raise a maturity action - ${esc(d.name)}</div>
-    <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Lands on the client execution plan like every other action${jj.level?(' · this area is currently judged <b>'+jj.level+'</b>'):''}. Edit the wording freely.</div>
+    <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Goes on the risk profile as a risk for this area (once) and the action is raised from it onto the client execution plan - the same route every other risk takes${jj.level?(' · this area is currently judged <b>'+jj.level+'</b>'):''}. Edit the wording freely.</div>
     <div class="field-group"><label class="field-label">What needs doing</label>
       <textarea id="maDesc" rows="3" style="width:100%;">${esc(desc)}</textarea></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px;margin-top:10px;">
@@ -20174,19 +20240,13 @@ function confirmMaturityAction(domId){
   const d=_maturityDomains().find(x=>x.id===domId); if(!d) return;
   const desc=String((document.getElementById('maDesc')||{}).value||'').trim();
   if(!desc){ showToast('Say what needs doing first','info'); return; }
-  if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
-  const it={ id:_reqUid('act'), desc:desc,
-    owner:String((document.getElementById('maOwner')||{}).value||'').trim(),
-    due:String((document.getElementById('maDue')||{}).value||''),
-    status:'Not started',
-    priority:String((document.getElementById('maPriority')||{}).value||'Medium'),
-    source:'Maturity', sourceLabel:d.name, judgeKey:'judge|'+domId };
-  if(typeof _stamp==='function') _stamp(it,'created');
-  S.actionPlan.push(it);
+  const had=!!_judgeRiskOf(domId);
+  const r=_judgeRiskEnsure(domId); if(!r) return;
+  _judgeAddAction(r, domId, { desc, owner:(document.getElementById('maOwner')||{}).value, due:(document.getElementById('maDue')||{}).value, priority:(document.getElementById('maPriority')||{}).value||'Medium' });
   saveData(); _refreshActionViews();
   const ov=document.getElementById('matActionOv'); if(ov) ov.remove();
   try{ if(typeof _keepScroll==='function' && typeof renderRiskReview==='function') _keepScroll(renderRiskReview); }catch(e){}
-  showToast('✓ Added to the execution plan - set or adjust the target date there','success');
+  showToast(had?'✓ Action added to this area’s risk - it is on the client execution plan from there':('✓ '+d.name+' is now a risk on the risk profile and the action is on the plan from there - score it in the modal like the rest'),'success',6000);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -21244,6 +21304,7 @@ let _riskSelKey = '';   // last rendered "risk|tab" - same view keeps its panel 
 // Summary tab and beside the reviewed tick, one derivation for both.
 function _rpProvenanceBadge(r){
   if(typeof _discIsOrphan==='function' && _discIsOrphan(r)) return '<span class="badge" style="background:#FEF3C7;color:#B45309;font-weight:700;" title="The discovery answers that suggested this theme have been withdrawn - remove it or keep it as your own judgement">⚠ discovery no longer supports this</span>';
+  if(!r.reviewed && r.suggestedBy==='judgement') return '<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;" title="Raised from the consultant judgement of this HSG65 area on the Assurance tab">from the consultant judgement</span>';
   if(!r.reviewed && r.suggestedBy==='discovery') return '<span class="badge" style="background:#EEF2FF;color:#3730A3;font-weight:700;">suggested by discovery</span>';
   return '';
 }

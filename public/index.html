@@ -3366,8 +3366,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rp-name::placeholder{color:var(--text-muted);font-weight:600;}
     .rp-name:hover{border-bottom-color:var(--border);}
     .rp-name:focus{outline:none;border-bottom-color:var(--accent);}
-    .rp-tabs{display:flex;gap:2px;overflow-x:auto;margin-top:9px;}
-    .rp-tabs button{border:none;background:none;border-bottom:2.5px solid transparent;padding:9px 12px;font-family:'Inter',sans-serif;font-size:12.8px;font-weight:600;color:var(--text-muted);cursor:pointer;white-space:nowrap;}
+    .rp-tabs{display:flex;flex-wrap:wrap;gap:2px;overflow:visible;margin-top:9px;}
+    .rp-tabs button{border:none;background:none;border-bottom:2.5px solid transparent;padding:9px 12px;font-family:'Inter',sans-serif;font-size:12.8px;font-weight:600;color:var(--text-muted);cursor:pointer;white-space:normal;text-align:left;}
     .rp-tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:700;}
     .rp-body{overflow-y:auto;padding:15px 16px 18px;flex:1 1 auto;}
     .rp-flash{animation:rcFlash 1.6s ease-out;}
@@ -3375,6 +3375,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rp-digest .dg-flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:11px 13px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);}
     .dg-narr{font-size:13.5px;line-height:1.65;margin:13px 0 0;}
     .dg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin:13px 0;}
+    .dg-grid.dg-two{grid-template-columns:minmax(180px,1fr) minmax(0,2fr);}
+    @media (max-width:560px){ .dg-grid.dg-two{grid-template-columns:1fr;} }
+    .dg-acts.dg-ctl{border-color:#2563EB66;}
+    .dg-acts.dg-ctl .dg-ah{background:#2563EB12;color:#1D4ED8;}
+    .dg-acts.dg-ctl .dg-act{border-top-color:#2563EB33;}
     .dg-cell{border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:0;}
     .dg-cell h5{margin:0 0 7px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);}
     .dg-cell p{margin:0;font-size:12.5px;line-height:1.5;}
@@ -20855,22 +20860,25 @@ function _rpProvenanceBadge(r){
 function _rpDigestHTML(r){
   const filled = !!((r.activity||r.hazard||(r.assocRisk&&String(r.assocRisk).trim())) || (r.harm&&String(r.harm).trim()) || (r.controls&&String(r.controls).trim()) || _riskScore(r).rating);
   if(!filled) return `<div class="empty" style="padding:26px 10px;"><h4>Nothing recorded on this risk yet</h4><p>Work through the Identify, People &amp; impact, Controls &amp; rating and Action delegation &amp; timescale tabs - this page then reads the risk back as a one-screen summary.</p></div>`;
-  const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due)).filter(a=>!a.hideFromPlan);   // the summary shows what is RAISED - controls stay on tab 3
+  const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due)).filter(a=>!a.hideFromPlan);   // the Do: what is raised to the plan
   const openActs=acts.filter(a=>{ const st=_actionStatus(a); return st!=='Complete'&&st!=='Accepted'; });
   const trendC = r.trend==='Increasing' ? '#DC2626' : r.trend==='Reducing' ? '#16A34A' : 'var(--text-muted)';
   const cl=_controlLevelLabel(r.controlLevel);
   const narr=[];
-  // Two distinct lines, labelled, each editing where it lives: the associated
-  // risk on 1 · Identify, the harm on 2 · People & impact.
-  if(r.assocRisk&&String(r.assocRisk).trim()) narr.push('<div onclick="_riskDetailTab(\'identify\')" style="cursor:pointer;margin-bottom:3px;" title="Click to edit on 1 · Identify"><span style="font-size:11px;color:var(--text-muted);">'+esc(_rt(r,'assoc'))+' · </span><b>'+esc(String(r.assocRisk).trim())+'</b></div>');
+  // One narrative line - the harm, editing on 2 · People & impact. The hazard
+  // and associated risk have their own box below.
   if(r.harm&&String(r.harm).trim()){ const h=esc(String(r.harm).trim()); narr.push('<div onclick="_riskDetailTab(\'people\')" style="cursor:pointer;" title="Click to edit on 2 · People & impact"><span style="font-size:11px;color:var(--text-muted);">'+esc(_rt(r,'harm'))+' · </span>'+h+'</div>'); }
-  // Controls stay OFF the summary (Simon) - they live on 3 · Controls & rating.
+  // The high level controls (tab 3, the Plan) show in their own container
+  // above the actions (tab 4, the Do) - tinted so the two levels never blur.
   const personsTxt=(r.personsAtRisk||[]).length ? r.personsAtRisk.map(p=>'<span class="dg-chip">'+esc(p)+'</span>').join('') : '<span style="color:var(--text-muted);font-size:12px;">Not recorded yet</span>';
-  const whereBits=[];
-  if(r.area) whereBits.push('<span class="dg-chip">'+esc(r.area)+'</span>');
-  const ul=_riskUnitLabel(r); if(ul) whereBits.push('<span class="dg-chip">'+esc(ul)+'</span>');
-  const imMax=_impactMax(r);
-  const imTxt=(r.businessImpact&&String(r.businessImpact).trim()) ? esc(r.businessImpact) : (_impactSummaryText(r) ? esc(_impactSummaryText(r)) : '<span style="color:var(--text-muted);">Not rated yet</span>');
+  const hazChips=(r.energy||[]).map(k=>'<span class="dg-chip" style="background:'+_energyColor(k)+'1a;color:'+_energyColor(k)+';">'+esc(_energyLabel(k))+'</span>').join('');
+  const assocTxt=String(r.assocRisk||'').trim();
+  const ctls=(r.actions||[]).filter(a=>!a.deleted && a.hideFromPlan && (a.desc||a.owner||a.due));
+  const ctlRows=ctls.map(a=>{
+    const st=_actionStatus(a);
+    const c = st==='Complete'?'#16A34A': st==='Accepted'?'#6B7280': st==='Overdue'?'#DC2626':'#2563EB';
+    return `<div class="dg-act"><span class="dot" style="background:${c};" title="${st}"></span><span style="min-width:0;">${esc(a.desc||'(no description yet)')}</span><span class="who">${esc(a.owner||'')}</span><span class="dg-due">${a.due?fmtDate(a.due):(st==='Not started'?'':st)}</span></div>`;
+  }).join('');
   const actRows=acts.map(a=>{
     const st=_actionStatus(a);
     const done=(st==='Complete'||st==='Accepted');
@@ -20884,13 +20892,16 @@ function _rpDigestHTML(r){
     <div class="dg-flow" onclick="_riskDetailTab('rating')" style="cursor:pointer;" title="Click to edit the scores on 3 · Controls & rating">${_riskFlowHTML(r)}${r.trend?`<span class="dg-chip" style="margin-left:auto;color:${trendC};">Trend: ${esc(r.trend)}</span>`:''}</div>
     ${_scoreHistoryHTML(r)}
     ${narr.length?`<div class="dg-narr">${narr.join('')}</div>`:''}
-    <div class="dg-grid">
+    <div class="dg-grid dg-two">
       <div class="dg-cell" onclick="_riskDetailTab('people')" style="cursor:pointer;" title="Click to edit on 2 · People & impact"><h5>${esc(_rt(r,'personsDigest'))}</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${personsTxt}</div></div>
-      <div class="dg-cell" onclick="_riskDetailTab('identify')" style="cursor:pointer;" title="Click to edit on 1 · Identify"><h5>Where</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${whereBits.join('')||'<span style="color:var(--text-muted);font-size:12px;">Organisation-wide</span>'}</div></div>
-      <div class="dg-cell" onclick="_riskDetailTab('people')" style="cursor:pointer;" title="Click to edit on 2 · People & impact"><h5>Business impact${imMax?` <span class="dg-chip">worst ${imMax} / 5</span>`:''}</h5><p>${imTxt}</p></div>
+      <div class="dg-cell dg-haz" onclick="_riskDetailTab('identify')" style="cursor:pointer;" title="Click to edit on 1 · Identify"><h5>${esc(_rt(r,'assoc'))}</h5>${hazChips?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">${hazChips}</div>`:''}<p>${assocTxt?esc(assocTxt):'<span style="color:var(--text-muted);">Not recorded yet - tick the hazard and describe the risk on 1 · Identify</span>'}</p></div>
+    </div>
+    <div class="dg-acts dg-ctl" onclick="_riskDetailTab('rating')" style="cursor:pointer;" title="Click to edit the high level controls on 3 · Controls & rating (Plan)">
+      <div class="dg-ah"><span>High level controls <span class="rp-pd">Plan</span></span><span>${ctls.length?(ctls.length+' in the control table'):''}</span></div>
+      ${ctlRows || `<div class="dg-act" style="color:var(--text-muted);">No high level controls yet - add them on 3 · Controls &amp; rating.</div>`}
     </div>
     <div class="dg-acts" onclick="_riskDetailTab('actions')" style="cursor:pointer;" title="Click to work the plan on 4 · Action delegation & timescale">
-      <div class="dg-ah"><span>${esc(_rt(r,'plan'))}</span><span>${acts.length?(openActs.length? openActs.length+' open · '+acts.length+' total' : 'all closed · '+acts.length+' total'):''}</span></div>
+      <div class="dg-ah"><span>${esc(_rt(r,'plan'))} <span class="rp-pd">Do</span></span><span>${acts.length?(openActs.length? openActs.length+' open · '+acts.length+' total' : 'all closed · '+acts.length+' total'):''}</span></div>
       ${actRows || `<div class="dg-act" style="color:var(--text-muted);">Nothing raised yet - raise actions on 4 · Action delegation &amp; timescale.</div>`}
     </div>
     <div class="dg-cell" style="margin-bottom:13px;cursor:pointer;" onclick="_riskDetailTab('actions')" title="Click to link evidence on 4 · Action delegation & timescale"><h5>Evidence behind this</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${links.length?links.map(l=>`<span class="dg-chip" title="${esc(l.url||'')}">📄 ${esc(l.ref||l.url)}</span>`).join(''):'<span style="color:var(--text-muted);font-size:12px;">No linked assessments recorded.</span>'}</div></div>
@@ -21237,7 +21248,7 @@ function renderRiskProfile(){
   let modal='';
   if(_riskModalOpen && selR){
     modal = `<div id="riskModalOverlay" class="no-print" onmousedown="this._downSelf=(event.target===this)" onclick="if(this._downSelf&&event.target===this)_riskCloseModal();this._downSelf=false;" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9980;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;">
-    <div style="max-width:840px;width:100%;margin:auto 0;background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.4);height:calc(100vh - 40px);max-height:calc(100vh - 40px);display:flex;flex-direction:column;overflow:hidden;">
+    <div style="max-width:1180px;width:100%;margin:auto 0;background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.4);height:calc(100vh - 40px);max-height:calc(100vh - 40px);display:flex;flex-direction:column;overflow:hidden;">
       <div class="rp-head" style="padding:12px 16px 0;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <button type="button" class="btn btn-outline btn-xs no-print" title="Previous risk in the list" onclick="_riskModalStep(-1)">‹</button>

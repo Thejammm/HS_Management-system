@@ -21005,7 +21005,7 @@ function _riskTableRowsHTML(){
       const open=_macroIsOpen(g.k) || g.list.some(rr=>rr.id===_riskMacroLast);
       const head='<tr class="rpt-macro'+(g.allAt?' rpt-mac-at':'')+(open?' rpt-mac-open':' rpt-mac-closed')+'" onclick="_macroToggle(\''+g.k+'\')" title="Click to expand or collapse this category">'
         +'<td colspan="6" style="font-weight:700;"><span class="rpt-mac-chev" style="display:inline-block;width:14px;color:var(--text-muted);">'+(open?'\u25be':'\u25b8')+'</span><span class="rpt-mac-name">'+esc(g.name)+'</span>'+((g.k&&!_roLocked())?' <button type="button" class="btn btn-ghost btn-xs no-print" style="padding:1px 6px;font-size:11px;" onclick="_macroRenameStart(event,\''+g.k+'\')" title="Rename this macro category - the high level label, the detail stays on each risk">\u270e</button>':'')+'</td>'
-        +'<td colspan="2" style="text-align:right;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(g.atT?'#15803d':'var(--text-muted)')+';">'
+        +'<td colspan="2" style="text-align:left;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(g.atT?'#15803d':'var(--text-muted)')+';">'
         +((g.k&&g.worst)?_riskPrioBadge(g.worst,null)+' ':'')+esc(g.roll)+'</td></tr>';
       return head+(open?_riskRowHTML(g.list):'');
     }).join('');

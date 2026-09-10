@@ -10564,6 +10564,7 @@ function migrateLoadedState(){
     if(r.furtherActions === undefined) r.furtherActions = '';
     if(r.assocRisk === undefined) r.assocRisk = '';
     if(r.macroKey === undefined) r.macroKey = '';
+    if(r.reviewDue === undefined) r.reviewDue = '';
     const wordToNum = { Low:'2', Moderate:'3', High:'4' };
     if(typeof r.likelihood === 'string' && wordToNum[r.likelihood]) r.likelihood = wordToNum[r.likelihood];
     if((r.severity === undefined || r.severity === '') && wordToNum[r.priority]) r.severity = wordToNum[r.priority];
@@ -14991,33 +14992,33 @@ function _riskControlsText(r){
   const box=String((r&&r.controls)||'').trim();
   return { rows, box, text: rows.length?rows.join('; '):box };
 }
-// The maintain loop: a standing control (control table, In place) carries a
-// Review by date. When it passes, the control is "review due" and the risk
-// reads "Controlled - review due" - still controlled, amber wording - until
-// the consultant confirms it and re-arms the date (12 months on).
-function _ctlReviewDue(a){ if(!a||a.deleted||!a.hideFromPlan||a.status!=='Complete'||!a.due) return false; const d=new Date(a.due+'T23:59:59'); return !isNaN(d) && d < new Date(); }
-function _riskReviewDue(r){ return !!(r&&Array.isArray(r.actions)&&r.actions.some(_ctlReviewDue)); }
-function _ctlReviewed(rid, aid){
+// The maintain loop: once a risk is controlled, one Review due date on its
+// control table says when its controls are next reviewed. In date, the risk
+// stays controlled and shows the date; passed, it reads "Controlled - review
+// due" (amber) everywhere until reviewed - a new date in the modal, or
+// Reviewed - re-arm on the Actions tab (12 months on).
+function _riskReviewDue(r){ if(!r||!r.reviewDue) return false; const d=new Date(r.reviewDue+'T23:59:59'); return !isNaN(d) && d < new Date(); }
+function _riskReviewed(rid){
   if(_blockIfReadOnly()) return;
-  const r=(S.riskProfile||[]).find(x=>x.id===rid); const a=r&&(r.actions||[]).find(x=>x.id===aid); if(!a) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
   const d=new Date(); d.setMonth(d.getMonth()+12); const next=d.toISOString().slice(0,10);
-  a.status='Complete'; a.due=next;
-  _logAdd(a,'reviewed','Control reviewed - still in place; next review '+fmtDate(next));
-  if(typeof _stamp==='function') _stamp(a,'updated');
+  if(!Array.isArray(r.reviewHistory)) r.reviewHistory=[];
+  r.reviewHistory.push({ at:new Date().toISOString().slice(0,10), by:_actor().name, was:r.reviewDue||'', next });
+  r.reviewDue=next;
+  if(typeof _stamp==='function') _stamp(r,'updated');
   saveData(); _refreshActionViews();
   showToast('\u2713 Reviewed - next review '+fmtDate(next),'success');
 }
-// Every control in place across the profile, with its review state: due
-// (date passed), soon (within 60 days), noDate, or in date.
+// Every risk with a review date: due (passed), soon (within 60 days), in date.
 function _maintainRows(){
   const out=[]; const soonBy=new Date(); soonBy.setDate(soonBy.getDate()+60);
-  (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>{
-    if(a.deleted||!a.hideFromPlan||!String(a.desc||'').trim()||a.status!=='Complete') return;
-    const due=_ctlReviewDue(a); let soon=false;
-    if(!due&&a.due){ const d=new Date(a.due+'T23:59:59'); soon=!isNaN(d)&&d<=soonBy; }
-    out.push({ r, a, due, soon, noDate:!a.due });
-  }));
-  out.sort((x,y)=>(y.due-x.due)||(y.soon-x.soon)||String(x.a.due||'9999').localeCompare(String(y.a.due||'9999')));
+  (S.riskProfile||[]).forEach(r=>{
+    if(!r.reviewDue) return;
+    const due=_riskReviewDue(r); let soon=false;
+    if(!due){ const d=new Date(r.reviewDue+'T23:59:59'); soon=!isNaN(d)&&d<=soonBy; }
+    out.push({ r, due, soon, controlled:_riskControlStatus(r)==='In place' });
+  });
+  out.sort((x,y)=>(y.due-x.due)||(y.soon-x.soon)||String(x.r.reviewDue).localeCompare(String(y.r.reviewDue)));
   return out;
 }
 // A risk is "complete" when its key fields are filled in (shows a green tick when minimised).
@@ -17159,7 +17160,7 @@ function updateRiskField(id, field, value){
     if(lt) lt.textContent = value || (r.hazard || 'New risk');
   }
   // Hazard type / area / PDCA change the summary chips + colour band - re-render to refresh them.
-  if(field === 'category' || field === 'area' || field === 'pdca'){ _keepScroll(renderRiskProfile); return; }
+  if(field === 'category' || field === 'area' || field === 'pdca' || field === 'reviewDue'){ _keepScroll(renderRiskProfile); return; }
   if(field === 'trend') _renderRiskDashboard();
   // Overtyping the impact summary switches auto-write off; clearing it back on.
   if(field === 'businessImpact'){ r.biAuto = String(value).trim()==='' ? true : false; if(r.biAuto){ r.businessImpact=_impactSummaryText(r); const f=document.getElementById('rbi-'+id); if(f&&document.activeElement!==f){ f.value=r.businessImpact; _agrow(f); } } }
@@ -17762,7 +17763,7 @@ function renderRiskJourney(){
     const _atT=!!(g&&g.atTarget);
     const _bc=_atT?'#16A34A':(_RISK_PRIO_COLOR[x.sc.priority]||'#9CA3AF');
     const _wa=_atT?'24':(({Critical:'2E',High:'24',Medium:'1C',Low:'14'})[x.sc.priority]||'12');
-    const _cel=_atT?(_riskReviewDue(r)?'<span class="badge" style="border-color:#D97706;color:#B45309;background:#D9770614;font-weight:700;">Controlled - review due</span>':'<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;">Controlled as reasonably practicable \u2713</span>'):'';
+    const _cel=_atT?('<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;">Controlled as reasonably practicable \u2713</span>'+(r.reviewDue?(_riskReviewDue(r)?'<span class="badge" style="border-color:#D97706;color:#B45309;background:#D9770614;font-weight:700;">Review due '+esc(fmtDate(r.reviewDue))+'</span>':'<span class="badge badge-muted">Review '+esc(fmtDate(r.reviewDue))+'</span>'):'')):'';
     const _w0='linear-gradient(100deg,'+_bc+_wa+','+_bc+'08 62%,transparent)';
     const _w1='linear-gradient(100deg,'+_bc+'3D,'+_bc+'12 62%,transparent)';
     const hint=(!signed && g && g.tgtPct===null)
@@ -18218,7 +18219,6 @@ function _riskActionsHTML(r, dis, which){
   const prOpts=(cur)=>['Critical','High','Medium','Low'].map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
   const body = acts.map(a=>{
     const st=_actionStatus(a);
-    const rvd=(which==='ctl')&&_ctlReviewDue(a);
     const evd=_actionEvidence(r, a.id);
     const evHtml=(st==='Complete'||st==='Accepted')
       ? (evd.length
@@ -18229,12 +18229,12 @@ function _riskActionsHTML(r, dis, which){
       <td><textarea${dis} rows="2" placeholder="${which==='ctl'?'High level control - in risk-assessment language':'Action description'}" oninput="updateRiskAction('${r.id}','${a.id}','desc',this.value)">${esc(a.desc||'')}</textarea></td>
       <td><input type="text"${dis} value="${esc(a.owner||'')}" placeholder="Owner / role" oninput="updateRiskAction('${r.id}','${a.id}','owner',this.value)"></td>
       <td><input type="date"${dis} value="${esc(a.due||'')}" onchange="updateRiskAction('${r.id}','${a.id}','due',this.value)"></td>
-      <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','status',this.value)">${stOpts(a.status||'Not started')}</select><div class="act-status ${rvd?'':_actionStatusClass(st)}" id="actst-${r.id}-${a.id}" style="margin-top:4px;${rvd?'color:#B45309;font-weight:700;':''}"><span>${rvd?'Review due':st}</span>${evHtml}</div></td>
+      <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','status',this.value)">${stOpts(a.status||'Not started')}</select><div class="act-status ${_actionStatusClass(st)}" id="actst-${r.id}-${a.id}" style="margin-top:4px;"><span>${st}</span>${evHtml}</div></td>
       ${which==='ctl'?'':`<td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','priority',this.value)"><option value="">-</option>${prOpts(a.priority||'')}</select></td>`}
       ${dis?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs" title="Delete action" onclick="deleteRiskAction('${r.id}','${a.id}')">${_ic('trash',13)}</button></td>`}
     </tr>`;
   }).join('');
-  return `<table class="act-table${which==='ctl'?' act-ctl':''}"><thead><tr><th>${which==='ctl'?'High level control':'Action'}</th><th>Owner</th><th>${which==='ctl'?'Review by':'Target date'}</th><th>Status</th>${which==='ctl'?'':'<th>Priority</th>'}${dis?'':'<th style="width:34px;"></th>'}</tr></thead>
+  return `<table class="act-table${which==='ctl'?' act-ctl':''}"><thead><tr><th>${which==='ctl'?'High level control':'Action'}</th><th>Owner</th><th>Target date</th><th>Status</th>${which==='ctl'?'':'<th>Priority</th>'}${dis?'':'<th style="width:34px;"></th>'}</tr></thead>
     <tbody>${body || `<tr><td colspan="${(which==='ctl'?4:5)+(dis?0:1)}" style="color:var(--text-muted);">${which==='ctl'?'No controls listed yet - add them below.':which==='plan'?'Nothing raised to the plan yet.':'No actions yet.'}</td></tr>`}</tbody></table>
     ${dis?'':(which==='ctl'
       ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-outline btn-xs no-print" onclick="addRiskControl('${r.id}')">＋ Add control</button>${_raStartBtnHTML(r)}</div>`
@@ -18641,7 +18641,7 @@ function insertLibraryRisk(key, quiet){
   const t=HAZARD_LIBRARY.find(x=>x.key===key); if(!t) return;
   const _ht=_hazardType(t.category, t.hazard);
   const entry={ id:'risk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), libKey:t.key,
-    category:_ht, area:_libArea(t.key), pdca:'', energy:(_HTYPE_ENERGY[_ht]||[]).slice(), sif:'', controlLevel:'', reviewed:false, activity:t.activity, hazard:t.hazard, assocRisk:'', macroKey:'', personsAtRisk:(t.persons||[]).slice(),
+    category:_ht, area:_libArea(t.key), pdca:'', energy:(_HTYPE_ENERGY[_ht]||[]).slice(), sif:'', controlLevel:'', reviewed:false, activity:t.activity, hazard:t.hazard, assocRisk:'', macroKey:'', reviewDue:'', personsAtRisk:(t.persons||[]).slice(),
     harm:t.harm, businessImpact:'', impacts:Object.assign({}, (typeof _LIB_IMPACTS!=='undefined'&&_LIB_IMPACTS[t.key])||{}), impactNotes:{}, controls:'',
     likelihood:String(t.l), severity:String(t.s), targetL:'', targetS:'', trend:t.trend,
     // Seeded Simon's way: the measures land in the CONTROL TABLE
@@ -18932,17 +18932,16 @@ function renderActionPlanTab(){
   const mgmtCard = mgmtActs.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Actions from the legal duties</h3><span class="badge badge-muted">${mgmtActs.length}</span></div>
     <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">These come from the action recorded on each legal-duties requirement line. Update status here as you work through them; edit the detail on the Legal duties tab. Use ✕ to remove one added by mistake (it stays there).</div>
     <div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Action</th><th>Duty</th><th>Owner</th><th>Target</th><th>Priority</th><th>Status</th>${ro?'':'<th></th>'}</tr></thead><tbody>${mgmtRows}</tbody></table></div></div></div>` : '';
-  // Standing controls to maintain: every control in place across the risk
-  // profile with its Review by date - review due first, then due within 60
-  // days, the rest behind a toggle. Reviewed - re-arm confirms the control
-  // and sets the next review 12 months on. These never enter the client plan.
+  // Risk reviews: every risk with a review date - due first, then within 60
+  // days, the rest behind a toggle. Open the risk to review the controls and
+  // the score and set the next date, or Reviewed - re-arm if nothing changed.
   const mrows=_maintainRows();
   const mdue=mrows.filter(m=>m.due), msoon=mrows.filter(m=>!m.due&&m.soon), mrest=mrows.filter(m=>!m.due&&!m.soon);
   const mrow=(m)=>`<div class="ap-maint" style="display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--border);padding:7px 0;font-size:12.5px;">
-      <span style="min-width:0;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${m.due?'#D97706':(m.soon?'#F59E0B':(m.noDate?'#9CA3AF':'#16A34A'))};margin-right:8px;vertical-align:middle;"></span>${esc(m.a.desc)} <span style="color:var(--text-muted);font-size:11.5px;">- ${esc(String(m.r.activity||m.r.hazard||'Risk').slice(0,60))}</span></span>
-      <span style="flex:0 0 auto;display:flex;align-items:center;gap:8px;font-size:11.5px;color:${m.due?'#B45309':'var(--text-muted)'};font-weight:${m.due?'700':'400'};white-space:nowrap;">${m.due?'Review due '+fmtDate(m.a.due):(m.noDate?'No review date':'Review by '+fmtDate(m.a.due))}${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="_ctlReviewed('${m.r.id}','${m.a.id}')" title="Confirms the control is still in place and sets the next review 12 months on">Reviewed - re-arm</button>`}<button class="btn btn-ghost btn-xs no-print" onclick="_gotoRisk('${m.r.id}')" title="Open the risk">\u2192</button></span></div>`;
-  const maintainCard = mrows.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Standing controls to maintain</h3><span class="badge badge-muted">${mdue.length?(mdue.length+' review due'):'all in date'}</span></div>
-    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">The controls in place across the risk profile, each with its Review by date. When a date passes the control shows Review due here and on its risk; Reviewed - re-arm confirms it is still in place and sets the next review 12 months on. These never enter the client execution plan.</div>
+      <span style="min-width:0;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${m.due?'#D97706':(m.soon?'#F59E0B':'#16A34A')};margin-right:8px;vertical-align:middle;"></span><b>${esc(m.r.activity||m.r.hazard||'Risk')}</b>${_macroTagHTML(m.r)}${m.controlled?'':' <span style="color:var(--text-muted);font-size:11.5px;">- not currently at its residual target</span>'}</span>
+      <span style="flex:0 0 auto;display:flex;align-items:center;gap:8px;font-size:11.5px;color:${m.due?'#B45309':'var(--text-muted)'};font-weight:${m.due?'700':'400'};white-space:nowrap;">${m.due?'Review due '+fmtDate(m.r.reviewDue):'Review '+fmtDate(m.r.reviewDue)}<button class="btn btn-ghost btn-xs no-print" onclick="_gotoRisk('${m.r.id}')" title="Open the risk - review the controls and the score, then set the next date">Open \u2192</button>${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="_riskReviewed('${m.r.id}')" title="Nothing changed - confirms the review and sets the next date 12 months on">Reviewed - re-arm</button>`}</span></div>`;
+  const maintainCard = mrows.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Risk reviews</h3><span class="badge badge-muted">${mdue.length?(mdue.length+' review due'):'all in date'}</span></div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Each controlled risk carries the date its controls are next reviewed. When it passes the risk shows Review due here, on the register and in its modal. Open it, review the controls and the score, set the next date - or Reviewed - re-arm if nothing changed (12 months on). Reviews never enter the client execution plan.</div>
     ${mdue.map(mrow).join('')}${msoon.map(mrow).join('')}
     ${mrest.length?`<div style="margin-top:6px;font-size:11.5px;color:var(--text-muted);">${mrest.length} more in date <button class="btn btn-ghost btn-xs no-print" onclick="toggleApHidden()">${_apShowHidden?'Hide':'Show'}</button></div>${_apShowHidden?mrest.map(mrow).join(''):''}`:''}
     </div></div>` : '';
@@ -21248,7 +21247,7 @@ function _riskRowHTML(rows){
       +'<td style="text-align:center;">'+(_riskFlagOn(r)?('<span style="color:'+(ops?'#7C3AED':'#DC2626')+';font-weight:800;" title="'+esc(_rt(r,'flagChipTitle'))+'">\u26a0</span>'):'')+'</td>'
       +'<td>'+_riskPrioBadge(sc.priority,null)+'</td>'
       +'<td style="text-align:center;font-weight:800;">'+(sc.rating||'-')+'</td>'
-      +'<td><span style="display:inline-flex;align-items:flex-start;gap:6px;font-size:12px;font-weight:600;"><i style="width:9px;height:9px;border-radius:50%;background:'+cdot+';display:inline-block;flex:0 0 auto;margin-top:4px;"></i><span>'+cword+'</span></span></td>'
+      +'<td><span style="display:inline-flex;align-items:flex-start;gap:6px;font-size:12px;font-weight:600;"><i style="width:9px;height:9px;border-radius:50%;background:'+cdot+';display:inline-block;flex:0 0 auto;margin-top:4px;"></i><span>'+cword+'</span></span>'+((ctl==='In place'&&r.reviewDue&&!rvd)?'<div style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">review '+esc(fmtDate(r.reviewDue))+'</div>':'')+'</td>'
       +'</tr>'; }).join('');
 }
 function _riskOpenModal(id){ const _r=(S.riskProfile||[]).find(x=>x.id===id); if(_r) _riskModeFilter=_riskMode(_r); _riskSel=id; _riskMacroLast=id; _riskSelTab='summary'; _riskModalOpen=true; const sec=document.getElementById('wfRegister'); if(sec&&!sec.open) sec.open=true; _keepScroll(renderRiskProfile); }
@@ -21421,12 +21420,17 @@ function renderRiskProfile(){
         </div>
         <div class="risk-rating-row" style="flex-direction:column;align-items:stretch;gap:10px;">
           <label class="field-label" style="margin:0;">${esc(_rt(r,'rating'))} ${rateHint}</label>
-          <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:2px 0 4px;">Controlled is the score, not the tick. When every action and control on this risk is closed, Compass prompts you to re-score it as it stands now; at or below the residual target the risk reads controlled as reasonably practicable everywhere. The old score stays in the history, the risk stays on the profile, and each control keeps a Review by date - when it passes, the control shows Review due and lands on your Actions tab.</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:2px 0 4px;">Controlled is the score, not the tick. When every action and control on this risk is closed, Compass prompts you to re-score it as it stands now; at or below the residual target the risk reads controlled as reasonably practicable everywhere. The old score stays in the history and the risk stays on the profile; once it is controlled, set the date its controls are next reviewed - the risk shows that date, and when it passes it shows Review due here, on the register and on your Actions tab.</div>
           <div class="rating-trio">
             ${ratingBox(r,'Inherent','rt-current','likelihood','severity')}
           </div>
           <div style="margin:4px 0 2px;background:var(--surface,#fff);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
-            <label class="field-label">Control table <span class="fl-hint" title="The controls this risk runs on, in risk-assessment language - trained competent persons, edge protection, permits - the starting point for the task risk assessments. Each owned here with a Review by date; they stay on the risk and NEVER enter the action plan. Once a control is in place (Complete) its review date keeps it maintained - when the date passes the control shows Review due and lands on your Actions tab.">(?)</span></label>
+            <label class="field-label">Control table <span class="fl-hint" title="The controls this risk runs on, in risk-assessment language - trained competent persons, edge protection, permits - the starting point for the task risk assessments. Each owned and dated here; they stay on the risk and NEVER enter the action plan.">(?)</span></label>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 8px;font-size:12px;">
+              <label style="font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;">Review due</label>
+              <input type="date"${dis} value="${esc(r.reviewDue||'')}" onchange="updateRiskField('${r.id}','reviewDue',this.value)" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">
+              <span style="color:var(--text-muted);">${r.reviewDue?(_riskReviewDue(r)?'<b style="color:#B45309;">Review due</b> - review the controls and the score, then set the next date':'Next review '+esc(fmtDate(r.reviewDue))):'Once the risk is controlled, set the date its controls are next reviewed - it stays controlled and shows the date'}</span>
+            </div>
             ${_riskActionsHTML(r,dis,'ctl')}
           </div>
           <div class="rating-trio">
@@ -21492,7 +21496,7 @@ function renderRiskProfile(){
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
           <input class="rp-name" id="ract-${selR.id}" value="${esc(selR.activity||'')}" placeholder="Name the risk - what we are talking about"${ro?' disabled':''} oninput="updateRiskField('${selR.id}','activity',this.value)" title="The risk's title. Typing here and the Risk title field on the Identify tab are the same thing.">
           <span style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
-            ${_riskControlStatus(selR)==='In place'?(_riskReviewDue(selR)?'<span class="badge" style="border-color:#D97706;color:#B45309;background:#D9770614;font-weight:700;white-space:nowrap;">Controlled - review due</span>':'<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;white-space:nowrap;">Controlled as reasonably practicable \u2713</span>'):''}
+            ${_riskControlStatus(selR)==='In place'?('<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;white-space:nowrap;">Controlled as reasonably practicable \u2713</span>'+(selR.reviewDue?(_riskReviewDue(selR)?'<span class="badge" style="border-color:#D97706;color:#B45309;background:#D9770614;font-weight:700;white-space:nowrap;">Review due '+esc(fmtDate(selR.reviewDue))+'</span>':'<span class="badge badge-muted" style="white-space:nowrap;">Review '+esc(fmtDate(selR.reviewDue))+'</span>'):'')):''}
             <span id="rprio-${selR.id}">${_riskPrioBadge(selSc.priority, selSc.rating)}</span>
             ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete this risk" onclick="deleteRiskEntry('${selR.id}')">${_ic('trash',14)}</button>`}
           </span>
@@ -21765,10 +21769,11 @@ function buildRiskProfileReportPDF(){
       field(_rt(r,'controls'), r.controls);
       field(_rt(r,'controlLevel'), _controlLevelLabelFor(r, r.controlLevel));
       field('Controls status',
-        _pdfCtl==='In place'?(_riskReviewDue(r)?'Controlled - review due: a standing control has passed its review-by date':'Controlled as reasonably practicable - at or beyond the residual target')
+        _pdfCtl==='In place'?(_riskReviewDue(r)?'Controlled - review due: the review date has passed - review the controls and the score, then set the next date':'Controlled as reasonably practicable - at or beyond the residual target')
         :(_pdfCtl==='Partial'?'No residual target set - set the line the controls are working to'
         :'Uncontrolled - above the residual target, or not yet scored'),
         _pdfCtl==='In place'?(_riskReviewDue(r)?[180,83,9]:[22,131,71]):(_pdfCtl==='Partial'?[180,83,9]:[185,28,28]));
+      if(r.reviewDue&&!_riskReviewDue(r)) field('Next review', fd(r.reviewDue));
       const plan=_riskPlanState(r), tgtP=_riskTarget(r);
       const fmtR=(s)=> s.rating ? (s.l+'x'+s.s+'='+s.rating+' ('+s.priority+')') : '-';
       field('Risk rating', 'Inherent '+fmtR(sc)+((tgtP.rating&&plan.k!=='managed')?('  >  Projected '+fmtR(tgtP)):'')+'  >  '+plan.label.replace('✓ ',''));

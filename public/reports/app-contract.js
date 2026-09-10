@@ -201,12 +201,12 @@ export const MACRO_OF_THEME = {
   competence: 'management', contractor: 'management', compliance: 'management', dutyholder: 'management', designrisk: 'management', licence: 'management',
   financial: 'business', continuity: 'business', keypeople: 'business', contractloss: 'business', information: 'business'
 };
-// ── Review due - verbatim port of the app's _riskReviewDue: a standing control
-//    (hideFromPlan, Complete) whose Review by date has passed. The app compares
-//    against the end of the due day; here the ISO date against today. ──
+// ── Review due - verbatim port of the app's _riskReviewDue: the risk's own
+//    review date (set once it is controlled) has passed. The app compares
+//    against the end of that day; here the ISO date against today. ──
 export function reviewDueOf(r, opts = {}) {
   const today = opts.today || new Date().toISOString().slice(0, 10);
-  return !!(r && Array.isArray(r.actions) && r.actions.some(a => a && !a.deleted && a.hideFromPlan && a.status === 'Complete' && a.due && String(a.due) < today));
+  return !!(r && r.reviewDue && String(r.reviewDue) < today);
 }
 export function macroOf(r, state) {
   if (!r) return '';

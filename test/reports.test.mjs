@@ -449,13 +449,12 @@ test('ladder and twin panels carry the macro tag', () => {
   assert.ok(twin.includes('r-mac">Work at height'), 'twin row carries the tag');
 });
 
-test('review due: a standing control past its Review by date on a controlled risk', () => {
-  const ctl = { id: 'c1', desc: 'Trained fire wardens', status: 'Complete', hideFromPlan: true, due: '2026-06-01' };
-  const risk = { id: 'r1', activity: 'Fire breaking out', likelihood: '2', severity: '3', targetL: '2', targetS: '3', actions: [ctl, { id: 'p1', desc: 'Policy written', status: 'Complete' }] };
+test('review due: the risk-level review date has passed on a controlled risk', () => {
+  const risk = { id: 'r1', activity: 'Fire breaking out', likelihood: '2', severity: '3', targetL: '2', targetS: '3', reviewDue: '2026-06-01', actions: [{ id: 'p1', desc: 'Policy written', status: 'Complete' }] };
   assert.equal(reviewDueOf(risk, { today: '2026-08-18' }), true, 'past the date: due');
   assert.equal(reviewDueOf(risk, { today: '2026-05-01' }), false, 'before the date: not due');
-  assert.equal(reviewDueOf({ actions: [Object.assign({}, ctl, { status: 'In progress' })] }, { today: '2026-08-18' }), false, 'only a control in place can be review due');
-  assert.equal(reviewDueOf({ actions: [Object.assign({}, ctl, { hideFromPlan: false })] }, { today: '2026-08-18' }), false, 'plan actions never count');
+  assert.equal(reviewDueOf(risk, { today: '2026-06-01' }), false, 'the day itself is not yet due');
+  assert.equal(reviewDueOf({ reviewDue: '' }, { today: '2026-08-18' }), false, 'no date, never due');
   const B = boardModelOf({ riskProfile: [risk] }, { today: '2026-08-18' });
   assert.equal(B.rows[0].atTarget, true); assert.equal(B.rows[0].reviewDue, true, 'the board row carries the flag');
   const above = boardModelOf({ riskProfile: [Object.assign({}, risk, { likelihood: '4' })] }, { today: '2026-08-18' });

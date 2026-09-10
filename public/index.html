@@ -2887,6 +2887,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ckb-tog{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--text);cursor:pointer;}
 .ckb-tog input{width:16px;height:16px;cursor:pointer;}
 .ckb-move{display:flex;gap:2px;flex:0 0 auto;}
+    .rmv{display:inline-flex;flex-direction:column;gap:2px;align-items:center;}
+    .rmv-btn{border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:9px;line-height:1;padding:2px 5px;cursor:pointer;}
+    .rmv-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+    .rmv-btn:disabled{opacity:.25;cursor:default;}
+    .act-table th.act-mv,.act-table td.act-mv{width:28px;padding:4px 3px;text-align:center;font-size:9px;}
 .ckb-foot{margin-top:8px;padding-top:12px;border-top:1px solid var(--border);}
     .ckb-filter{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;margin-top:8px;padding-top:9px;border-top:1px solid var(--border);}
     .ckb-filter label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);}
@@ -3269,7 +3274,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .lib-item .li-meta{font-size:11.5px;color:var(--text-muted);}
     .gap-flag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#B45309;background:#F59E0B1a;border:1px solid #F59E0B55;border-radius:11px;padding:2px 9px;}
     .linked-list{display:flex;flex-direction:column;gap:6px;}
-    .linked-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;}
+    .linked-row{display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;align-items:center;}
     @media(max-width:640px){.linked-row{grid-template-columns:1fr;}}
     .unit-breakdown{margin-top:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);overflow:hidden;}
     .ub-head{padding:11px 14px;font-weight:700;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;}
@@ -18264,6 +18269,34 @@ function _impactRowsHTML(r, dis){
 }
 
 // Repeatable, owned, dated action sub-records (spec #3).
+// ── Row order (Simon): one little up/down control, the same on every table in
+//    the risk modal. The order it sets is the order the tables, the reports and
+//    the plan print in, so it is worth setting. ──
+function _rowMoveHTML(upCall, downCall, first, last){
+  const b=(call,off,glyph,tip)=>'<button type="button" class="rmv-btn"'+(off?' disabled':'')+(off?'':' title="'+tip+'" onclick="'+call+'"')+'>'+glyph+'</button>';
+  return '<span class="rmv">'+b(upCall,first,'\u2191','Move up')+b(downCall,last,'\u2193','Move down')+'</span>';
+}
+// Both tables are views of the one r.actions array, so a row only ever moves
+// past its own kind - a control never jumps into the plan rows.
+function _riskActionMove(rid, aid, dir, which){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r||!Array.isArray(r.actions)) return;
+  const peers=r.actions.map((a,i)=>({a,i})).filter(x=>!x.a.deleted && (which==='ctl' ? !!x.a.hideFromPlan : which==='plan' ? !x.a.hideFromPlan : true));
+  const at=peers.findIndex(x=>x.a.id===aid); if(at<0) return;
+  const to=at+(dir<0?-1:1); if(to<0||to>=peers.length) return;
+  const i=peers[at].i, j=peers[to].i;
+  const t=r.actions[i]; r.actions[i]=r.actions[j]; r.actions[j]=t;
+  _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
+  if(typeof _refreshActionViews==='function') _refreshActionViews();
+}
+function _riskLinkMove(rid, lid, dir){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r||!Array.isArray(r.linked)) return;
+  const at=r.linked.findIndex(l=>l.id===lid); if(at<0) return;
+  const to=at+(dir<0?-1:1); if(to<0||to>=r.linked.length) return;
+  const t=r.linked[at]; r.linked[at]=r.linked[to]; r.linked[to]=t;
+  _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
+}
 function addRiskAction(id){
   if(_blockIfReadOnly()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
@@ -18327,7 +18360,7 @@ function _riskActionsHTML(r, dis, which){
   const acts=(r.actions||[]).filter(a=>!a.deleted).filter(a=> which==='ctl' ? !!a.hideFromPlan : which==='plan' ? !a.hideFromPlan : true);
   const stOpts=(cur)=>RISK_ACTION_STATUS.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
   const prOpts=(cur)=>['Critical','High','Medium','Low'].map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
-  const body = acts.map(a=>{
+  const body = acts.map((a,_ix)=>{
     const st=_actionStatus(a);
     const evd=_actionEvidence(r, a.id);
     const evHtml=(st==='Complete'||st==='Accepted')
@@ -18341,11 +18374,12 @@ function _riskActionsHTML(r, dis, which){
       <td><input type="date"${dis} value="${esc(a.due||'')}" onchange="updateRiskAction('${r.id}','${a.id}','due',this.value)"></td>
       <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','status',this.value)">${stOpts(a.status||'Not started')}</select><div class="act-status ${_actionStatusClass(st)}" id="actst-${r.id}-${a.id}" style="margin-top:4px;"><span>${st}</span>${evHtml}</div></td>
       ${which==='ctl'?'':`<td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','priority',this.value)"><option value="">-</option>${prOpts(a.priority||'')}</select></td>`}
+      ${dis?'':`<td class="act-mv">${_rowMoveHTML(`_riskActionMove('${r.id}','${a.id}',-1,'${which||'all'}')`,`_riskActionMove('${r.id}','${a.id}',1,'${which||'all'}')`,_ix===0,_ix===acts.length-1)}</td>`}
       ${dis?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs" title="Delete action" onclick="deleteRiskAction('${r.id}','${a.id}')">${_ic('trash',13)}</button></td>`}
     </tr>`;
   }).join('');
-  return `<table class="act-table${which==='ctl'?' act-ctl':''}"><thead><tr><th>${which==='ctl'?'High level control':'Action'}</th><th>Owner</th><th>Target date</th><th>Status</th>${which==='ctl'?'':'<th>Priority</th>'}${dis?'':'<th style="width:34px;"></th>'}</tr></thead>
-    <tbody>${body || `<tr><td colspan="${(which==='ctl'?4:5)+(dis?0:1)}" style="color:var(--text-muted);">${which==='ctl'?'No controls listed yet - add them below.':which==='plan'?'Nothing raised to the plan yet.':'No actions yet.'}</td></tr>`}</tbody></table>
+  return `<table class="act-table${which==='ctl'?' act-ctl':''}"><thead><tr><th>${which==='ctl'?'High level control':'Action'}</th><th>Owner</th><th>Target date</th><th>Status</th>${which==='ctl'?'':'<th>Priority</th>'}${dis?'':'<th class="act-mv" title="Move a row up or down - the order here is the order it prints in">Order</th><th style="width:34px;"></th>'}</tr></thead>
+    <tbody>${body || `<tr><td colspan="${(which==='ctl'?4:5)+(dis?0:2)}" style="color:var(--text-muted);">${which==='ctl'?'No controls listed yet - add them below.':which==='plan'?'Nothing raised to the plan yet.':'No actions yet.'}</td></tr>`}</tbody></table>
     ${dis?'':(which==='ctl'
       ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-outline btn-xs no-print" onclick="addRiskControl('${r.id}')">＋ Add control</button>${_raStartBtnHTML(r)}</div>`
       : `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">${_riskRaisePillHTML(r)}${_riskPlanState(r).k==='accepted'?'':`<button class="btn btn-ghost btn-xs no-print" title="If the current controls are sufficient and no further action is justified, formally accept this risk - recorded with who and why on the acceptance register" onclick="openAcceptRisk('${r.id}')">≈ Accept this risk</button>`}</div>`)}`;
@@ -18428,12 +18462,13 @@ function updateRiskLink(rid, lid, field, value){
 }
 function _riskLinksHTML(r, dis){
   const ls=r.linked||[];
-  const rows=ls.map(l=>{
+  const rows=ls.map((l,_lx)=>{
     const act=l.actionId ? (r.actions||[]).find(a=>a.id===l.actionId) : null;
     const tag=act?`<div style="font-size:11px;color:#16A34A;font-weight:700;margin:5px 0 2px;">📎 Evidence for action: ${esc((act.desc||'').slice(0,70))||'(action)'} · ${_actionStatus(act)}</div>`:'';
     return `${tag}<div class="linked-row">
     <textarea${dis} rows="2" placeholder="e.g. Fire Risk Assessment, COSHH assessment, asbestos survey, training record" oninput="updateRiskLink('${r.id}','${l.id}','ref',this.value)">${esc(l.ref||'')}</textarea>
     <input type="text"${dis} value="${esc(l.url||'')}" placeholder="Optional file path / URL" oninput="updateRiskLink('${r.id}','${l.id}','url',this.value)">
+    ${dis?'':_rowMoveHTML(`_riskLinkMove('${r.id}','${l.id}',-1)`,`_riskLinkMove('${r.id}','${l.id}',1)`,_lx===0,_lx===ls.length-1)}
     ${dis?'':`<button class="btn btn-ghost btn-xs" title="Remove" onclick="deleteRiskLink('${r.id}','${l.id}')">${_ic('trash',13)}</button>`}
   </div>`;}).join('');
   return `<div class="linked-list">${rows||`<div style="font-size:12px;color:var(--text-muted);">No linked assessments recorded.</div>`}</div>

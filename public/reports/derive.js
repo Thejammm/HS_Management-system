@@ -7,7 +7,7 @@
 // from the app itself) and scripts/check-app-report-consistency.mjs diffs the
 // two implementations on a seeded edge-case state - run it before deploying
 // anything that touches either side.
-import { sifOf, worstSeverityOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf, top5Of, top5MonthOf, top5PrevMonthOf } from './app-contract.js';
+import { sifOf, worstSeverityOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf, top5Of, top5MonthOf, top5PrevMonthOf, reviewDueOf } from './app-contract.js';
 export { sifOf, worstSeverityOf, controlStatusOf, MATURITY_DOMAINS, HOLD_STATES, HOLD_ORDER, holdOf, holdSummaryOf, planStateOf, docFor, trainingRowsOf, top5Of, top5MonthOf, top5PrevMonthOf };
 
 // ── Tier banding ──
@@ -135,7 +135,7 @@ export function boardModelOf(state, opts = {}) {
     const dep = journeyDepCountsOf(r);
     return { id: r.id, name: String(r.activity || r.hazard || 'Unnamed risk'),
              tier: now ? tierFor(now.score, bands) : null, score: now ? now.score : null,
-             unc: dep.ctl === 'None', part: dep.ctl === 'Partial', atTarget: !!(g && g.atTarget), gauge: g, dep };
+             unc: dep.ctl === 'None', part: dep.ctl === 'Partial', atTarget: !!(g && g.atTarget), reviewDue: !!(g && g.atTarget) && reviewDueOf(r, opts), gauge: g, dep };
   });
   const total = rows.length;
   const unc = rows.filter(z => z.unc).length;

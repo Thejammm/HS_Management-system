@@ -10,7 +10,8 @@ import url from 'node:url';
 import { tierFor, bandsFrom, noneOrCount, countPhrase, isAre, hasHave, deriveBoard, deriveBoardExtras, residualOf } from '../public/reports/derive.js';
 import { reportHTML, paginateRows } from '../public/reports/engine.js';
 import { matrix5x5, journeyStrip, twinPanels, riskLadder } from '../public/reports/blocks.js';
-import { docFor, trainingRowsOf, macroOf, MACRO_OF_THEME, MACRO_LABELS } from '../public/reports/app-contract.js';
+import { docFor, trainingRowsOf, macroOf, MACRO_OF_THEME, MACRO_LABELS, reviewDueOf } from '../public/reports/app-contract.js';
+import { boardModelOf } from '../public/reports/derive.js';
 import { REPORTS, BOARD_SECTIONS, buildReport, getReportFormat, setReportFormat } from '../public/reports/templates/index.js';
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
@@ -446,4 +447,24 @@ test('ladder and twin panels carry the macro tag', () => {
   assert.ok(lad.includes('r-mac">Fire &amp; explosion'), 'ladder chip carries the tag');
   const twin = twinPanels({ left: { title: 'L', rows: [{ name: 'X', band: 'HIGH', bandColour: '#EA580C', word: 'needs attention', atTarget: false, macro: 'Work at height' }] }, right: { title: 'R', rows: [] } });
   assert.ok(twin.includes('r-mac">Work at height'), 'twin row carries the tag');
+});
+
+test('review due: a standing control past its Review by date on a controlled risk', () => {
+  const ctl = { id: 'c1', desc: 'Trained fire wardens', status: 'Complete', hideFromPlan: true, due: '2026-06-01' };
+  const risk = { id: 'r1', activity: 'Fire breaking out', likelihood: '2', severity: '3', targetL: '2', targetS: '3', actions: [ctl, { id: 'p1', desc: 'Policy written', status: 'Complete' }] };
+  assert.equal(reviewDueOf(risk, { today: '2026-08-18' }), true, 'past the date: due');
+  assert.equal(reviewDueOf(risk, { today: '2026-05-01' }), false, 'before the date: not due');
+  assert.equal(reviewDueOf({ actions: [Object.assign({}, ctl, { status: 'In progress' })] }, { today: '2026-08-18' }), false, 'only a control in place can be review due');
+  assert.equal(reviewDueOf({ actions: [Object.assign({}, ctl, { hideFromPlan: false })] }, { today: '2026-08-18' }), false, 'plan actions never count');
+  const B = boardModelOf({ riskProfile: [risk] }, { today: '2026-08-18' });
+  assert.equal(B.rows[0].atTarget, true); assert.equal(B.rows[0].reviewDue, true, 'the board row carries the flag');
+  const above = boardModelOf({ riskProfile: [Object.assign({}, risk, { likelihood: '4' })] }, { today: '2026-08-18' });
+  assert.equal(above.rows[0].reviewDue, false, 'review due only decorates a controlled risk');
+});
+
+test('ladder and twin panels render review due in amber wording', () => {
+  const lad = riskLadder({ rungs: [{ band: 'Low', colour: '#16A34A', sub: '', range: '', chips: [{ name: 'Fire', dot: '#D97706', reviewDue: true }] }], unrated: [] });
+  assert.ok(lad.includes('color:#B45309') && lad.includes('controlled - review due'), 'ladder chip amber, key names the state');
+  const twin = twinPanels({ left: { title: 'L', rows: [{ name: 'Fire', band: 'LOW', bandColour: '#16A34A', word: 'controlled - review due', atTarget: true, reviewDue: true }] }, right: { title: 'R', rows: [] } });
+  assert.ok(twin.includes('color:#B45309') && twin.includes('controlled - review due'), 'twin row amber');
 });

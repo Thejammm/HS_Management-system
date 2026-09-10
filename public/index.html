@@ -14226,7 +14226,7 @@ function _boardModel(){
   const rows=(S.riskProfile||[]).map(r=>{
     const sc=_riskScore(r); const hold=_riskHold(r); const g=_journeyGauge(r); const dep=_journeyDepCounts(r);
     return { r, id:r.id, name:String(r.activity||r.hazard||'Unnamed risk'), sc, hold, g, dep,
-      unc: dep.ctl==='None', part: dep.ctl==='Partial', atTarget: !!(g&&g.atTarget) };
+      unc: dep.ctl==='None', part: dep.ctl==='Partial', atTarget: !!(g&&g.atTarget), reviewDue: !!(g&&g.atTarget)&&_riskReviewDue(r) };
   });
   const total=rows.length;
   const unc=rows.filter(z=>z.unc).length;
@@ -14469,9 +14469,9 @@ const COCKPIT_WIDGETS = {
       if(!B.total) return '<div class="ckx-panel"><h4>Risk ladder</h4><div class="ck-pending">No risks recorded yet.</div></div>';
       // Plain lines, no borders (Simon: the pills looked infantile): the wash
       // carries the level, the dot carries the controls judgement.
-      const chip=z=>'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':(z.part?'No target set':'Controlled as reasonably practicable'))+' - click to open" '
-        +'style="all:unset;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;max-width:100%;color:'+(z.unc||z.part?'var(--text)':'#16A34A')+';padding:2px 0;">'
-        +'<span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':'#16A34A'))+';"></span><span>'+esc(z.name)+_macroTagHTML(z.r)+'</span></button>';
+      const chip=z=>'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':(z.part?'No target set':(z.reviewDue?'Controlled - review due':'Controlled as reasonably practicable')))+' - click to open" '
+        +'style="all:unset;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;max-width:100%;color:'+(z.unc||z.part?'var(--text)':(z.reviewDue?'#B45309':'#16A34A'))+';padding:2px 0;">'
+        +'<span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':(z.reviewDue?'#D97706':'#16A34A')))+';"></span><span>'+esc(z.name)+_macroTagHTML(z.r)+'</span></button>';
       // A real ladder: the rails run unbroken down the left (tinted with each
       // band's colour, so the ladder itself grades red to green), the rung is
       // a solid bar between them, and an empty rung says so. Each band label
@@ -14510,6 +14510,7 @@ const COCKPIT_WIDGETS = {
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#DC2626;margin-right:5px;"></span>uncontrolled</span>'
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#F59E0B;margin-right:5px;"></span>no residual target set</span>'
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#16A34A;margin-right:5px;"></span>controlled as reasonably practicable</span>'
+        +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#D97706;margin-right:5px;"></span>controlled - review due</span>'
         +'<span>Select a risk to open it.</span></div></div>';
     } },
   boardFive: { id:'boardFive', label:'Putting us at risk today', group:'Board', render:x=>{
@@ -14522,15 +14523,16 @@ const COCKPIT_WIDGETS = {
       const _chosenIds=new Set(); (S.riskProfile||[]).forEach(rr=>{ if((rr.actions||[]).some(a=>!a.deleted&&a.top5===_m5)) _chosenIds.add(rr.id); });
       const chosen=H.rows.filter(z=>_chosenIds.has(z.id)).sort(_holdWorstFirst).slice(0,5);
       const topIds=top.map(z=>z.id), choIds=chosen.map(z=>z.id);
-      const word=z=>{ const bz=B.rows.find(b=>b.id===z.id); return (bz&&bz.atTarget)?'controlled as reasonably practicable':(z.breach?'needs attention':z.hold.label.toLowerCase()); };
+      const word=z=>{ const bz=B.rows.find(b=>b.id===z.id); return (bz&&bz.atTarget)?(bz.reviewDue?'controlled - review due':'controlled as reasonably practicable'):(z.breach?'needs attention':z.hold.label.toLowerCase()); };
       const atT=z=>{ const bz=B.rows.find(b=>b.id===z.id); return !!(bz&&bz.atTarget); };
+      const rvd=z=>{ const bz=B.rows.find(b=>b.id===z.id); return !!(bz&&bz.atTarget&&bz.reviewDue); };
       const fr=(z,i,other)=>{ const c=_RISK_PRIO_COLOR[z.band]||'#9CA3AF';
         return '<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0;'+(i?'border-top:1px solid var(--border);':'')+'">'
         +'<span style="flex:0 0 16px;text-align:center;font-weight:800;color:var(--text-muted);font-size:12px;">'+(i+1)+'</span>'
         +'<span style="flex:0 0 12px;color:'+(other.includes(z.id)?'#7C3AED':'transparent')+';font-weight:800;" title="On both lists">\u25cf</span>'
-        +'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left;font-weight:600;color:'+(atT(z)?'#16A34A':'var(--text)')+';">'+esc(z.name)+_macroTagHTML(z.r)+'</button>'
+        +'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left;font-weight:600;color:'+(rvd(z)?'#B45309':(atT(z)?'#16A34A':'var(--text)'))+';">'+esc(z.name)+_macroTagHTML(z.r)+'</button>'
         +'<span style="flex:0 0 auto;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;background:'+c+';">'+(z.band||'-').toUpperCase()+'</span>'
-        +'<span style="flex:0 0 auto;font-size:10.5px;color:'+(atT(z)?'#16A34A':'var(--text-muted)')+';font-weight:'+(atT(z)?'700':'400')+';">'+word(z)+'</span></div>'; };
+        +'<span style="flex:0 0 auto;font-size:10.5px;color:'+(rvd(z)?'#B45309':(atT(z)?'#16A34A':'var(--text-muted)'))+';font-weight:'+(atT(z)?'700':'400')+';">'+word(z)+'</span></div>'; };
       return '<div class="ckx-panel"><h4>Putting us at risk today</h4>'
         +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">'
         +'<div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;"><div style="font-size:12px;font-weight:700;margin-bottom:6px;">Highest-rated risks</div>'
@@ -14988,6 +14990,35 @@ function _riskControlsText(r){
   const rows=(r&&Array.isArray(r.actions)?r.actions:[]).filter(a=>a&&!a.deleted&&a.hideFromPlan&&String(a.desc||'').trim()).map(a=>String(a.desc).trim());
   const box=String((r&&r.controls)||'').trim();
   return { rows, box, text: rows.length?rows.join('; '):box };
+}
+// The maintain loop: a standing control (control table, In place) carries a
+// Review by date. When it passes, the control is "review due" and the risk
+// reads "Controlled - review due" - still controlled, amber wording - until
+// the consultant confirms it and re-arms the date (12 months on).
+function _ctlReviewDue(a){ if(!a||a.deleted||!a.hideFromPlan||a.status!=='Complete'||!a.due) return false; const d=new Date(a.due+'T23:59:59'); return !isNaN(d) && d < new Date(); }
+function _riskReviewDue(r){ return !!(r&&Array.isArray(r.actions)&&r.actions.some(_ctlReviewDue)); }
+function _ctlReviewed(rid, aid){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===rid); const a=r&&(r.actions||[]).find(x=>x.id===aid); if(!a) return;
+  const d=new Date(); d.setMonth(d.getMonth()+12); const next=d.toISOString().slice(0,10);
+  a.status='Complete'; a.due=next;
+  _logAdd(a,'reviewed','Control reviewed - still in place; next review '+fmtDate(next));
+  if(typeof _stamp==='function') _stamp(a,'updated');
+  saveData(); _refreshActionViews();
+  showToast('\u2713 Reviewed - next review '+fmtDate(next),'success');
+}
+// Every control in place across the profile, with its review state: due
+// (date passed), soon (within 60 days), noDate, or in date.
+function _maintainRows(){
+  const out=[]; const soonBy=new Date(); soonBy.setDate(soonBy.getDate()+60);
+  (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>{
+    if(a.deleted||!a.hideFromPlan||!String(a.desc||'').trim()||a.status!=='Complete') return;
+    const due=_ctlReviewDue(a); let soon=false;
+    if(!due&&a.due){ const d=new Date(a.due+'T23:59:59'); soon=!isNaN(d)&&d<=soonBy; }
+    out.push({ r, a, due, soon, noDate:!a.due });
+  }));
+  out.sort((x,y)=>(y.due-x.due)||(y.soon-x.soon)||String(x.a.due||'9999').localeCompare(String(y.a.due||'9999')));
+  return out;
 }
 // A risk is "complete" when its key fields are filled in (shows a green tick when minimised).
 function _riskComplete(r){
@@ -17731,7 +17762,7 @@ function renderRiskJourney(){
     const _atT=!!(g&&g.atTarget);
     const _bc=_atT?'#16A34A':(_RISK_PRIO_COLOR[x.sc.priority]||'#9CA3AF');
     const _wa=_atT?'24':(({Critical:'2E',High:'24',Medium:'1C',Low:'14'})[x.sc.priority]||'12');
-    const _cel=_atT?'<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;">Controlled as reasonably practicable \u2713</span>':'';
+    const _cel=_atT?(_riskReviewDue(r)?'<span class="badge" style="border-color:#D97706;color:#B45309;background:#D9770614;font-weight:700;">Controlled - review due</span>':'<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;">Controlled as reasonably practicable \u2713</span>'):'';
     const _w0='linear-gradient(100deg,'+_bc+_wa+','+_bc+'08 62%,transparent)';
     const _w1='linear-gradient(100deg,'+_bc+'3D,'+_bc+'12 62%,transparent)';
     const hint=(!signed && g && g.tgtPct===null)
@@ -18187,6 +18218,7 @@ function _riskActionsHTML(r, dis, which){
   const prOpts=(cur)=>['Critical','High','Medium','Low'].map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
   const body = acts.map(a=>{
     const st=_actionStatus(a);
+    const rvd=(which==='ctl')&&_ctlReviewDue(a);
     const evd=_actionEvidence(r, a.id);
     const evHtml=(st==='Complete'||st==='Accepted')
       ? (evd.length
@@ -18197,12 +18229,12 @@ function _riskActionsHTML(r, dis, which){
       <td><textarea${dis} rows="2" placeholder="${which==='ctl'?'High level control - in risk-assessment language':'Action description'}" oninput="updateRiskAction('${r.id}','${a.id}','desc',this.value)">${esc(a.desc||'')}</textarea></td>
       <td><input type="text"${dis} value="${esc(a.owner||'')}" placeholder="Owner / role" oninput="updateRiskAction('${r.id}','${a.id}','owner',this.value)"></td>
       <td><input type="date"${dis} value="${esc(a.due||'')}" onchange="updateRiskAction('${r.id}','${a.id}','due',this.value)"></td>
-      <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','status',this.value)">${stOpts(a.status||'Not started')}</select><div class="act-status ${_actionStatusClass(st)}" id="actst-${r.id}-${a.id}" style="margin-top:4px;"><span>${st}</span>${evHtml}</div></td>
+      <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','status',this.value)">${stOpts(a.status||'Not started')}</select><div class="act-status ${rvd?'':_actionStatusClass(st)}" id="actst-${r.id}-${a.id}" style="margin-top:4px;${rvd?'color:#B45309;font-weight:700;':''}"><span>${rvd?'Review due':st}</span>${evHtml}</div></td>
       ${which==='ctl'?'':`<td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','priority',this.value)"><option value="">-</option>${prOpts(a.priority||'')}</select></td>`}
       ${dis?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs" title="Delete action" onclick="deleteRiskAction('${r.id}','${a.id}')">${_ic('trash',13)}</button></td>`}
     </tr>`;
   }).join('');
-  return `<table class="act-table${which==='ctl'?' act-ctl':''}"><thead><tr><th>${which==='ctl'?'High level control':'Action'}</th><th>Owner</th><th>Target date</th><th>Status</th>${which==='ctl'?'':'<th>Priority</th>'}${dis?'':'<th style="width:34px;"></th>'}</tr></thead>
+  return `<table class="act-table${which==='ctl'?' act-ctl':''}"><thead><tr><th>${which==='ctl'?'High level control':'Action'}</th><th>Owner</th><th>${which==='ctl'?'Review by':'Target date'}</th><th>Status</th>${which==='ctl'?'':'<th>Priority</th>'}${dis?'':'<th style="width:34px;"></th>'}</tr></thead>
     <tbody>${body || `<tr><td colspan="${(which==='ctl'?4:5)+(dis?0:1)}" style="color:var(--text-muted);">${which==='ctl'?'No controls listed yet - add them below.':which==='plan'?'Nothing raised to the plan yet.':'No actions yet.'}</td></tr>`}</tbody></table>
     ${dis?'':(which==='ctl'
       ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-outline btn-xs no-print" onclick="addRiskControl('${r.id}')">＋ Add control</button>${_raStartBtnHTML(r)}</div>`
@@ -18900,11 +18932,24 @@ function renderActionPlanTab(){
   const mgmtCard = mgmtActs.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Actions from the legal duties</h3><span class="badge badge-muted">${mgmtActs.length}</span></div>
     <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">These come from the action recorded on each legal-duties requirement line. Update status here as you work through them; edit the detail on the Legal duties tab. Use ✕ to remove one added by mistake (it stays there).</div>
     <div style="overflow-x:auto;"><table class="act-table"><thead><tr><th>Action</th><th>Duty</th><th>Owner</th><th>Target</th><th>Priority</th><th>Status</th>${ro?'':'<th></th>'}</tr></thead><tbody>${mgmtRows}</tbody></table></div></div></div>` : '';
-  // Combined "removed from this plan" list (risk + management system), recoverable.
-  const hiddenAll = hiddenActs.map(x=>({kind:'risk', a:x.r.id, b:x.a.id, desc:x.a.desc, src:(x.r.activity||x.r.hazard||'Risk')}))
-    .concat(hiddenMgmt.map(x=>({kind:'mgmt', a:x.secId, b:x.id, desc:x.desc, src:x.source})));
-  const hiddenBlock = hiddenAll.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-body"><div style="font-size:11px;color:var(--text-muted);">${hiddenAll.length} action${hiddenAll.length!==1?'s':''} removed from this plan (still on the source). <button class="btn btn-ghost btn-xs no-print" onclick="toggleApHidden()">${_apShowHidden?'Hide':'Show'}</button></div>
-    ${_apShowHidden?`<div style="margin-top:4px;">${hiddenAll.map(h=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--border);padding:6px 0;font-size:12px;color:var(--text-muted);"><span>${esc(h.desc||'(no description)')} <span style="opacity:.7;">- ${esc(String(h.src).slice(0,30))}</span></span>${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="${h.kind==='risk'?`restoreRiskActionToPlan('${h.a}','${h.b}')`:`restoreMgmtActionToPlan('${h.a}','${h.b}')`}">Restore</button>`}</div>`).join('')}</div>`:''}</div></div>` : '';
+  // Standing controls to maintain: every control in place across the risk
+  // profile with its Review by date - review due first, then due within 60
+  // days, the rest behind a toggle. Reviewed - re-arm confirms the control
+  // and sets the next review 12 months on. These never enter the client plan.
+  const mrows=_maintainRows();
+  const mdue=mrows.filter(m=>m.due), msoon=mrows.filter(m=>!m.due&&m.soon), mrest=mrows.filter(m=>!m.due&&!m.soon);
+  const mrow=(m)=>`<div class="ap-maint" style="display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--border);padding:7px 0;font-size:12.5px;">
+      <span style="min-width:0;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${m.due?'#D97706':(m.soon?'#F59E0B':(m.noDate?'#9CA3AF':'#16A34A'))};margin-right:8px;vertical-align:middle;"></span>${esc(m.a.desc)} <span style="color:var(--text-muted);font-size:11.5px;">- ${esc(String(m.r.activity||m.r.hazard||'Risk').slice(0,60))}</span></span>
+      <span style="flex:0 0 auto;display:flex;align-items:center;gap:8px;font-size:11.5px;color:${m.due?'#B45309':'var(--text-muted)'};font-weight:${m.due?'700':'400'};white-space:nowrap;">${m.due?'Review due '+fmtDate(m.a.due):(m.noDate?'No review date':'Review by '+fmtDate(m.a.due))}${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="_ctlReviewed('${m.r.id}','${m.a.id}')" title="Confirms the control is still in place and sets the next review 12 months on">Reviewed - re-arm</button>`}<button class="btn btn-ghost btn-xs no-print" onclick="_gotoRisk('${m.r.id}')" title="Open the risk">\u2192</button></span></div>`;
+  const maintainCard = mrows.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Standing controls to maintain</h3><span class="badge badge-muted">${mdue.length?(mdue.length+' review due'):'all in date'}</span></div>
+    <div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">The controls in place across the risk profile, each with its Review by date. When a date passes the control shows Review due here and on its risk; Reviewed - re-arm confirms it is still in place and sets the next review 12 months on. These never enter the client execution plan.</div>
+    ${mdue.map(mrow).join('')}${msoon.map(mrow).join('')}
+    ${mrest.length?`<div style="margin-top:6px;font-size:11.5px;color:var(--text-muted);">${mrest.length} more in date <button class="btn btn-ghost btn-xs no-print" onclick="toggleApHidden()">${_apShowHidden?'Hide':'Show'}</button></div>${_apShowHidden?mrest.map(mrow).join(''):''}`:''}
+    </div></div>` : '';
+  // Legal-duties actions removed from this plan stay recoverable.
+  const hiddenMgmtAll = hiddenMgmt.map(x=>({kind:'mgmt', a:x.secId, b:x.id, desc:x.desc, src:x.source}));
+  const hiddenBlock = maintainCard + (hiddenMgmtAll.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-body"><div style="font-size:11px;color:var(--text-muted);">${hiddenMgmtAll.length} legal-duties action${hiddenMgmtAll.length!==1?'s':''} removed from this plan (still on the source).</div>
+    <div style="margin-top:4px;">${hiddenMgmtAll.map(h=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--border);padding:6px 0;font-size:12px;color:var(--text-muted);"><span>${esc(h.desc||'(no description)')} <span style="opacity:.7;">- ${esc(String(h.src).slice(0,30))}</span></span>${ro?'':`<button class="btn btn-ghost btn-xs no-print" onclick="restoreMgmtActionToPlan('${h.a}','${h.b}')">Restore</button>`}</div>`).join('')}</div></div></div>` : '');
   // Open gaps from the management system + maturity, offered as one-click actions.
   const gaps=_apGaps();
   const gapCard = gaps.length ? `<div class="card" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Suggested from gaps</h3><span class="badge badge-muted">${gaps.length}</span></div>
@@ -18960,7 +19005,7 @@ function renderActionPlanTab(){
   root.innerHTML = `<div class="card no-print" style="margin-bottom:18px;"><div class="card-band"><h3><span class="dot">●</span> Action plan</h3></div>
       <div class="card-body"><div style="font-size:13px;color:var(--text-muted);line-height:1.5;">Everything that needs doing for this client in one place. It closes the loop: risks and gaps generate actions, you work them through, and the Action Plan report is your record of what you have delivered.</div></div></div>
     ${stats}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 6px;"><span style="font-size:12px;font-weight:600;color:var(--text-muted);">Report:</span><button class="btn btn-ghost btn-sm no-print" onclick="downloadExecPlanReport()">⭳ Client execution plan PDF</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 6px;"><span style="font-size:12px;font-weight:600;color:var(--text-muted);">Report:</span><button class="btn btn-ghost btn-sm no-print" onclick="downloadExecPlanReport()">⭳ Client execution plan PDF</button>${ro?'':`<button class="btn btn-ghost btn-sm no-print" onclick="importExecPlanPDF()" title="Load the execution plan the client sent back - their ticks, statuses and notes land on the plan with a log entry. A status already further on in Compass is never wound back.">⇪ Import returned plan</button><input type="file" id="epImportFile" accept="application/pdf" style="display:none;" onchange="_epImportFile(this.files[0])">`}</div>
     ${riskCard}
     ${mgmtCard}
     ${hiddenBlock}
@@ -20628,6 +20673,58 @@ async function openBoardReportPrint(){
 }
 function downloadBoardReport(){ if(!(S.riskProfile||[]).length){ showToast('Add at least one risk first','info'); return; } try{ buildBoardReport(); showToast('✓ Board report created','success'); }catch(e){ console.error('Board report failed',e); showToast('Could not build the report - see console','error'); } }
 function downloadActionPlanReport(){ if(!(S.riskProfile||[]).length){ showToast('Add at least one risk first','info'); return; } try{ buildActionPlanReport(); showToast('✓ Action plan created','success'); }catch(e){ console.error('Action plan failed',e); showToast('Could not build the plan - see console','error'); } }
+// The return trip for the fillable plan: the client's ticks, statuses and
+// notes land on the actions with a log entry. A status already further on in
+// Compass is never wound back - the app's record wins, and the skip is
+// reported. Field names carry the action id (ep_<id>_done|status|notes).
+function importExecPlanPDF(){ if(_blockIfReadOnly()) return; const inp=document.getElementById('epImportFile'); if(inp){ inp.value=''; inp.click(); } }
+async function _epImportFile(file){
+  if(!file) return; if(_blockIfReadOnly()) return;
+  if(!window.PDFLib){ showToast('The PDF reader is not loaded - refresh and try again','error'); return; }
+  try{
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    const res=await _epApplyImport(bytes);
+    showToast('\u2713 Returned plan imported - '+res.applied+' action'+(res.applied!==1?'s':'')+' updated'+(res.skipped?(', '+res.skipped+' left as Compass had '+(res.skipped!==1?'them':'it')):'')+(res.notes?(', '+res.notes+' client note'+(res.notes!==1?'s':'')+' logged'):''),'success',7000);
+  }catch(e){ console.error('Execution plan import failed',e); showToast('Could not read that PDF - is it the plan Compass produced?','error'); }
+}
+function _epActionById(fid){
+  const same=(id)=>String(id||'').replace(/[^a-z0-9_]/gi,'_')===fid;
+  let hit=null;
+  (S.riskProfile||[]).some(r=>(r.actions||[]).some(a=>{ if(!a.deleted&&same(a.id)){ hit=a; return true; } return false; }));
+  if(hit) return hit;
+  (S.requirements||[]).some(sec=>(sec.items||[]).some(it=>(it.actions||[]).some(a=>{ if(!a.deleted&&same(a.id)){ hit=a; return true; } return false; })));
+  if(hit) return hit;
+  return (S.actionPlan||[]).find(a=>!a.deleted&&same(a.id))||null;
+}
+async function _epApplyImport(bytes){
+  const L=window.PDFLib;
+  const doc=await L.PDFDocument.load(bytes,{ignoreEncryption:true});
+  const form=doc.getForm();
+  const RANK={'Not started':0,'In progress':1,'Complete':2,'Accepted':3};
+  const seen={}; let applied=0, skipped=0, notes=0;
+  form.getFields().forEach(f=>{
+    const m=/^ep_(.+)_(done|status|notes)$/.exec(f.getName()); if(!m) return;
+    let v=null;
+    try{ if(f instanceof L.PDFCheckBox) v=f.isChecked(); else if(f instanceof L.PDFDropdown) v=(f.getSelected()||[])[0]||''; else if(f instanceof L.PDFTextField) v=f.getText()||''; }catch(e){ return; }
+    (seen[m[1]]=seen[m[1]]||{})[m[2]]=v;
+  });
+  Object.keys(seen).forEach(fid=>{
+    const o=_epActionById(fid); if(!o) return; const got=seen[fid];
+    let want=null;
+    if(got.done===true) want='Complete'; else if(typeof got.status==='string'&&got.status&&RANK[got.status]!=null) want=got.status;
+    if(want){
+      const cur=o.status||'Not started';
+      if((RANK[want]||0)>(RANK[cur]||0)){
+        o.status=want; _stampActionCompletion(o,want);
+        _logAdd(o,(want==='Complete'?'completed':'status'),(want==='Complete'?'Marked complete':'Status set to '+want)+' - from the returned execution plan');
+        if(typeof _stamp==='function') _stamp(o,'updated'); applied++;
+      } else if(want!==cur) skipped++;
+    }
+    if(typeof got.notes==='string'&&got.notes.trim()){ _logAdd(o,'comment','Client note: '+got.notes.trim()); notes++; }
+  });
+  saveData(); _refreshActionViews();
+  return { applied, skipped, notes };
+}
 async function downloadExecPlanReport(){
   const client=(_consultantView&&_consultantView.name)||(S.branding&&S.branding.name)||'Client';
   const safe=client.replace(/[^a-z0-9]+/gi,'-').toLowerCase();
@@ -21141,8 +21238,8 @@ function _riskTableRowsHTML(){
 function _riskRowHTML(rows){
   return rows.map(r=>{
     const sc=_riskScore(r); const ops=_riskMode(r)==='ops'; const mk=_riskMacroOf(r); const cc=_macroColour(mk);
-    const ctl=_riskControlStatus(r); const cdot=ctl==='None'?'#DC2626':(ctl==='Partial'?'#F59E0B':'#16A34A');
-    const cword=ctl==='None'?'uncontrolled':(ctl==='Partial'?'no target set':'controlled as reasonably practicable');
+    const ctl=_riskControlStatus(r); const rvd=ctl==='In place'&&_riskReviewDue(r); const cdot=ctl==='None'?'#DC2626':(ctl==='Partial'?'#F59E0B':(rvd?'#D97706':'#16A34A'));
+    const cword=ctl==='None'?'uncontrolled':(ctl==='Partial'?'no target set':(rvd?'controlled - review due':'controlled as reasonably practicable'));
     return '<tr class="rpt-row'+(ctl==='In place'?' rpt-atline':'')+'" onclick="_riskOpenModal(\''+r.id+'\')" title="'+(ctl==='In place'?'Controlled as reasonably practicable - open this risk. Esc brings you straight back':'Open this risk - Esc brings you straight back')+'">'
       +'<td onclick="event.stopPropagation()" style="white-space:nowrap;">'+RISK_MODES.map(m=>'<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:'+(_riskMode(r)===m.k?'700':'400')+';color:'+(_riskMode(r)===m.k?m.colour:'var(--text-muted)')+';cursor:pointer;line-height:1.5;"><input type="radio" name="kind_'+r.id+'" '+(_riskMode(r)===m.k?'checked':'')+' onchange="setRiskMode(\''+r.id+'\',\''+m.k+'\')" style="accent-color:'+m.colour+';width:12px;height:12px;cursor:pointer;">'+(m.k==='hs'?'H&S':'Ops')+'</label>').join('')+'</td>'
       +'<td style="font-weight:700;">'+esc(r.activity||r.hazard||'New risk')+(r.reviewed?' <span style="color:#16A34A;font-weight:700;font-size:11px;" title="Reviewed and completed">\u2713</span>':'')+'</td>'
@@ -21324,11 +21421,12 @@ function renderRiskProfile(){
         </div>
         <div class="risk-rating-row" style="flex-direction:column;align-items:stretch;gap:10px;">
           <label class="field-label" style="margin:0;">${esc(_rt(r,'rating'))} ${rateHint}</label>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:2px 0 4px;">Controlled is the score, not the tick. When every action and control on this risk is closed, Compass prompts you to re-score it as it stands now; at or below the residual target the risk reads controlled as reasonably practicable everywhere. The old score stays in the history, the risk stays on the profile, and each control keeps a Review by date - when it passes, the control shows Review due and lands on your Actions tab.</div>
           <div class="rating-trio">
             ${ratingBox(r,'Inherent','rt-current','likelihood','severity')}
           </div>
           <div style="margin:4px 0 2px;background:var(--surface,#fff);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
-            <label class="field-label">Control table <span class="fl-hint" title="The controls this risk runs on, in risk-assessment language - trained competent persons, edge protection, permits - the starting point for the task risk assessments. Each owned and dated here; they stay on the risk and NEVER enter the action plan.">(?)</span></label>
+            <label class="field-label">Control table <span class="fl-hint" title="The controls this risk runs on, in risk-assessment language - trained competent persons, edge protection, permits - the starting point for the task risk assessments. Each owned here with a Review by date; they stay on the risk and NEVER enter the action plan. Once a control is in place (Complete) its review date keeps it maintained - when the date passes the control shows Review due and lands on your Actions tab.">(?)</span></label>
             ${_riskActionsHTML(r,dis,'ctl')}
           </div>
           <div class="rating-trio">
@@ -21394,7 +21492,7 @@ function renderRiskProfile(){
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
           <input class="rp-name" id="ract-${selR.id}" value="${esc(selR.activity||'')}" placeholder="Name the risk - what we are talking about"${ro?' disabled':''} oninput="updateRiskField('${selR.id}','activity',this.value)" title="The risk's title. Typing here and the Risk title field on the Identify tab are the same thing.">
           <span style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
-            ${_riskControlStatus(selR)==='In place'?'<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;white-space:nowrap;">Controlled as reasonably practicable \u2713</span>':''}
+            ${_riskControlStatus(selR)==='In place'?(_riskReviewDue(selR)?'<span class="badge" style="border-color:#D97706;color:#B45309;background:#D9770614;font-weight:700;white-space:nowrap;">Controlled - review due</span>':'<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;white-space:nowrap;">Controlled as reasonably practicable \u2713</span>'):''}
             <span id="rprio-${selR.id}">${_riskPrioBadge(selSc.priority, selSc.rating)}</span>
             ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete this risk" onclick="deleteRiskEntry('${selR.id}')">${_ic('trash',14)}</button>`}
           </span>
@@ -21667,10 +21765,10 @@ function buildRiskProfileReportPDF(){
       field(_rt(r,'controls'), r.controls);
       field(_rt(r,'controlLevel'), _controlLevelLabelFor(r, r.controlLevel));
       field('Controls status',
-        _pdfCtl==='In place'?'Controlled as reasonably practicable - at or beyond the residual target'
+        _pdfCtl==='In place'?(_riskReviewDue(r)?'Controlled - review due: a standing control has passed its review-by date':'Controlled as reasonably practicable - at or beyond the residual target')
         :(_pdfCtl==='Partial'?'No residual target set - set the line the controls are working to'
         :'Uncontrolled - above the residual target, or not yet scored'),
-        _pdfCtl==='In place'?[22,131,71]:(_pdfCtl==='Partial'?[180,83,9]:[185,28,28]));
+        _pdfCtl==='In place'?(_riskReviewDue(r)?[180,83,9]:[22,131,71]):(_pdfCtl==='Partial'?[180,83,9]:[185,28,28]));
       const plan=_riskPlanState(r), tgtP=_riskTarget(r);
       const fmtR=(s)=> s.rating ? (s.l+'x'+s.s+'='+s.rating+' ('+s.priority+')') : '-';
       field('Risk rating', 'Inherent '+fmtR(sc)+((tgtP.rating&&plan.k!=='managed')?('  >  Projected '+fmtR(tgtP)):'')+'  >  '+plan.label.replace('✓ ',''));
@@ -28529,7 +28627,7 @@ function _bsrData(){
   const nextRev=(S.riskDoc&&S.riskDoc.nextReview)?fmtDate(S.riskDoc.nextReview):'the agreed review cycle';
   const _alarp=(S.riskProfile||[]).filter(r=>_riskControlStatus(r)==='In place');
   if(_alarp.length) greens.push({ issue:_alarp.length+' risk'+(_alarp.length!==1?'s':'')+' controlled as reasonably practicable',
-    found:'at or beyond the residual target the controls were set to reach'+(_alarp.length<=6?(': '+_alarp.map(r=>String(r.activity||r.hazard||'risk').slice(0,44)+(_riskMacroOf(r)?(' ('+_macroName(_riskMacroOf(r))+')'):'')).join('; ')):''),
+    found:'at or beyond the residual target the controls were set to reach'+(_alarp.length<=6?(': '+_alarp.map(r=>String(r.activity||r.hazard||'risk').slice(0,44)+(_riskMacroOf(r)?(' ('+_macroName(_riskMacroOf(r))+')'):'')+(_riskReviewDue(r)?' - review due':'')).join('; ')):''),
     due:nextRev });
   if(H.held) greens.push({ issue:H.held+' of '+H.total+' risks identified', found:'controls recorded and plans delivered, signed off or defensibly accepted', due:nextRev });
   const rg=(typeof _reqGaps==='function')?_reqGaps():{gaps:0,assessed:0};

@@ -15021,6 +15021,23 @@ function _maintainRows(){
   out.sort((x,y)=>(y.due-x.due)||(y.soon-x.soon)||String(x.r.reviewDue).localeCompare(String(y.r.reviewDue)));
   return out;
 }
+// Now in place: the controls marked Complete, each with the date it went in
+// - the auto-written half of "reality today" (the consultant's own words are
+// the other half). One derivation for the modal, the PDF and the summary.
+function _realityNow(r){
+  return (r&&Array.isArray(r.actions)?r.actions:[]).filter(a=>a&&!a.deleted&&a.hideFromPlan&&a.status==='Complete'&&String(a.desc||'').trim())
+    .map(a=>({ desc:String(a.desc).trim(), date:a.completedDate||'' }))
+    .sort((x,y)=>String(x.date||'9999').localeCompare(String(y.date||'9999')));
+}
+function _realityNowHTML(r){
+  const lines=_realityNow(r);
+  return '<div style="margin-top:6px;border-top:1px dashed var(--border);padding-top:6px;">'
+    +'<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:3px;">Now in place</div>'
+    +(lines.length
+      ? lines.map(l=>'<div style="font-size:12.5px;line-height:1.5;">'+esc(l.desc)+' <i style="color:var(--text-muted);">- in place since '+esc(l.date?fmtDate(l.date):'date not recorded')+'</i></div>').join('')
+      : '<div style="font-size:11.5px;color:var(--text-muted);">Nothing in place yet - as the controls below are marked Complete they appear here with the date, and this becomes the reality today that the next score is judged against.</div>')
+    +'</div>';
+}
 // A risk is "complete" when its key fields are filled in (shows a green tick when minimised).
 function _riskComplete(r){
   return !!(r && (r.activity||r.hazard) && r.likelihood && r.severity && _riskControlsText(r).text);
@@ -21101,7 +21118,7 @@ function _rpDigestHTML(r){
   const ctlRows=ctls.map(a=>{
     const st=_actionStatus(a);
     const c = st==='Complete'?'#16A34A': st==='Accepted'?'#6B7280': st==='Overdue'?'#DC2626':'#2563EB';
-    return `<div class="dg-act"><span class="dot" style="background:${c};" title="${st}"></span><span style="min-width:0;">${esc(a.desc||'(no description yet)')}</span><span class="who">${esc(a.owner||'')}</span><span class="dg-due">${a.due?fmtDate(a.due):(st==='Not started'?'':st)}</span></div>`;
+    return `<div class="dg-act"><span class="dot" style="background:${c};" title="${st}"></span><span style="min-width:0;">${esc(a.desc||'(no description yet)')}</span><span class="who">${esc(a.owner||'')}</span><span class="dg-due">${st==='Complete'?('in place since '+(a.completedDate?fmtDate(a.completedDate):'?')):(a.due?fmtDate(a.due):(st==='Not started'?'':st))}</span></div>`;
   }).join('');
   const actRows=acts.map(a=>{
     const st=_actionStatus(a);
@@ -21413,7 +21430,7 @@ function renderRiskProfile(){
         </div>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">These risks/controls are associated to the risk and never enter the client’s execution plan, they are to introduce policy/process/procedure to control the hazard at high level.</div>
         <div class="field-grid cols-1" style="margin-bottom:12px;">
-          ${fg(_rt(r,'controls'), ta(r.id,'controls',r.controls,_rt(r,'controlsPh')))}
+          ${fg(esc(_rt(r,'controls'))+' <span class="fl-hint" title="What is actually in place now - None is an honest answer at the start. As the controls below are marked Complete they list here with the date they went in place; with your own words above, that is the reality today the inherent score is judged against.">(?)</span>', ta(r.id,'controls',r.controls,_rt(r,'controlsPh'))+_realityNowHTML(r))}
         </div>
         <div class="field-grid" style="margin-bottom:12px;">
           ${fg(esc(_rt(r,'controlLevel'))+' <span class="fl-hint" title="'+esc(_rt(r,'controlLevelHint'))+'">(?)</span>', `<select${dis} onchange="updateRiskField('${r.id}','controlLevel',this.value)"><option value="">- Select -</option>${CONTROL_LEVELS.map(c=>`<option value="${c.k}"${r.controlLevel===c.k?' selected':''}>${esc(_controlLevelLabelFor(r,c.k))}</option>`).join('')}</select>`)}
@@ -21766,7 +21783,7 @@ function buildRiskProfileReportPDF(){
         .map(dm=>dm.label.split(' (')[0]+' '+r.impacts[dm.k]).join(', ');
       field('Business impact', imp || r.businessImpact);
       field('Controls (risk assessment)', _riskControlsText(r).rows.join('\n'));
-      field(_rt(r,'controls'), r.controls);
+      field(_rt(r,'controls'), [String(r.controls||'').trim()].concat(_realityNow(r).map(l=>l.desc+' (in place since '+(l.date?fd(l.date):'date not recorded')+')')).filter(Boolean).join('\n'));
       field(_rt(r,'controlLevel'), _controlLevelLabelFor(r, r.controlLevel));
       field('Controls status',
         _pdfCtl==='In place'?(_riskReviewDue(r)?'Controlled - review due: the review date has passed - review the controls and the score, then set the next date':'Controlled as reasonably practicable - at or beyond the residual target')

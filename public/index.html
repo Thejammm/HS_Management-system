@@ -21371,11 +21371,26 @@ function _macroHeadHTML(g){
     +'<span style="margin-left:auto;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(g.atT?'#15803d':'var(--text-muted)')+';">'+((g.k&&g.worst)?_riskPrioBadge(g.worst,null)+' ':'')+esc(g.roll)+'</span></div>';
 }
 function _macroIsOpen(k){ return !!_riskMacroOpen[k||'_'] || !!_riskSearch; }
-function _macroToggle(k){ const key=k||'_'; _riskMacroOpen[key]=!_riskMacroOpen[key]; _keepScroll(renderRiskProfile); }
+function _macroToggle(k){
+  const key=k||'_';
+  // The category holding the risk you last opened is pinned open so the row is
+  // still there when the modal closes. The toggle now reads what is actually
+  // on screen - the same test the row renderer makes - and sets the opposite,
+  // instead of blind-flipping a stored flag that said "closed" while the pin
+  // held the category open. Clicking the header also says you are done with
+  // that risk, so the pin is released (Simon, 2026-09-10: "the people and
+  // wellbeing line doesnt collapse after i have expanded it").
+  const g=_riskMacroGroups(_riskVisibleRows()).find(x=>(x.k||'_')===key);
+  const pinned=!!(g && _riskMacroLast && g.list.some(rr=>rr.id===_riskMacroLast));
+  const shown=_macroIsOpen(key) || pinned;
+  if(pinned) _riskMacroLast=null;
+  _riskMacroOpen[key]=!shown;
+  _keepScroll(renderRiskProfile);
+}
 var _journeyMacroClosed={};
 function _journeyMacroOpen(k){ return !_journeyMacroClosed[k||'_']; }
 function _journeyMacroToggle(k){ const key=k||'_'; _journeyMacroClosed[key]=!_journeyMacroClosed[key]; renderRiskJourney(); }
-function _macroExpandAll(on){ _riskMacroOpen={}; if(on){ _riskMacroGroups(S.riskProfile||[]).forEach(g=>{ _riskMacroOpen[g.k||'_']=true; }); } _keepScroll(renderRiskProfile); }
+function _macroExpandAll(on){ _riskMacroOpen={}; if(on){ _riskMacroGroups(S.riskProfile||[]).forEach(g=>{ _riskMacroOpen[g.k||'_']=true; }); } else { _riskMacroLast=null; } _keepScroll(renderRiskProfile); }
 function setRiskGroupMode(m){ _riskGroupMode=m; _keepScroll(renderRiskProfile); }
 function _riskMacroOf(r){
   if(!r) return '';

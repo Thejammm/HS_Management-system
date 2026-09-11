@@ -10648,6 +10648,10 @@ function migrateLoadedState(){
         // Stage 2: backfill the verified statutory citation for known duty
         // headings (only if the section doesn't already carry one).
         if(!sec.citation && _REQ_CITATION_BY_HEADING[sec.heading]) sec.citation = _REQ_CITATION_BY_HEADING[sec.heading];
+        // The policy line was seeded as "Health & Safety Policy"; it is the
+        // statement of intent and its parts, so the seeded wording catches up
+        // (a line the consultant has reworded is left alone).
+        (sec.items||[]).forEach(it=>{ if(it && it.legalKey==='policy' && String(it.requirement||'').trim()==='Health & Safety Policy') it.requirement='Health & Safety Policy Statement of Intent'; });
         if(sec.stage === 'Act') hasAct = true;
       }
     });
@@ -23355,7 +23359,7 @@ function _seedRequirements(){
 // ── Legal essentials catalogue - what a business must have in place to trade.
 // Verified citations. threshold: 'all' | 'written5' | 'record5' (the 5-employee test).
 const LEGAL_ESSENTIALS = [
-  { key:'policy', title:'Health & Safety Policy', citation:'HSWA 1974 s.2(3)', threshold:'written5',
+  { key:'policy', title:'Health & Safety Policy Statement of Intent', citation:'HSWA 1974 s.2(3)', threshold:'written5',
     why:'A written statement of how the business manages health and safety - the intent, who is responsible, and the arrangements for the main risks.',
     criteria:['Part 1 - Statement of intent: signed and dated by the most senior person, reviewed at least annually','Part 1 - commits to protecting employees and others, meeting legal duties and providing resources','Part 2 - Responsibilities: names who is responsible for health & safety, top to bottom (including the competent person)','Part 2 - sets out employees\' own responsibilities','Part 3 - Arrangements: the practical systems for the significant risks (risk assessment, training, first aid, fire, accidents, consultation, PPE)','Brought to the attention of, and understood by, all employees'] },
   { key:'riskassessments', title:'Risk assessments', citation:'MHSWR 1999 reg 3', threshold:'record5',

@@ -15728,6 +15728,98 @@ function deleteExecAction(refStr){
   saveData(); _refreshActionViews(); if(typeof renderReview==='function') _keepScroll(renderReview);
   if(typeof showToast==='function') showToast('Action deleted','info');
 }
+// ── The recycle bin (Simon, 2026-09-11): anything deleted from the app goes
+//    here first, with who removed it and when. The consultant sees it on the
+//    Review tab and has the last word - restore it where it came from, or
+//    remove it for good. Actions keep their own tombstone trail below. ──
+function _binState(){ if(!Array.isArray(S.recycleBin)) S.recycleBin=[]; return S.recycleBin; }
+// where: {arr:'documents'} a top-level list | {arr:'cpd', sub:'items'} a list
+// on a state object | {coll:'riskProfile', id, arr:'linked'} a list on a record
+function _binArr(where){
+  if(!where) return null;
+  if(where.coll){
+    const coll=S[where.coll]; if(!Array.isArray(coll)) return null;
+    const p=coll.find(x=>x&&x.id===where.id); if(!p) return null;
+    if(!Array.isArray(p[where.arr])) p[where.arr]=[];
+    return p[where.arr];
+  }
+  if(where.sub){
+    const o=S[where.arr]; if(!o||typeof o!=='object') return null;
+    if(!Array.isArray(o[where.sub])) o[where.sub]=[];
+    return o[where.sub];
+  }
+  if(!Array.isArray(S[where.arr])) S[where.arr]=[];
+  return S[where.arr];
+}
+function _binPush(kind, label, obj, where, note){
+  if(!obj) return null;
+  let copy=null; try{ copy=JSON.parse(JSON.stringify(obj)); }catch(e){ return null; }
+  const arr=_binArr(where);
+  const e={ id:'bin_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    kind:String(kind||'record'), label:String(label||'(no name)').slice(0,160), note:String(note||''),
+    at:new Date().toISOString().slice(0,10),
+    by:(typeof _actor==='function'?(_actor().name||''):''), byId:(typeof _actor==='function'?(_actor().id||''):''),
+    role:(typeof _actorRole==='function'?_actorRole():''),
+    where:where, idx:(arr?arr.findIndex(x=>x&&obj&&x.id===obj.id):-1), payload:copy };
+  _binState().push(e);
+  return e;
+}
+const _BIN_KIND={ risk:'Risk', reqline:'Legal duty line', reqsection:'Duty heading', document:'Document',
+  link:'Linked evidence', raentry:'Risk assessment register entry', incident:'Incident', decision:'Decision',
+  siteinsp:'Site inspection', unit:'Business unit', assurance:'Assurance measure', cpd:'CPD item',
+  membership:'Membership', toolbox:'Toolbox talk', ohrecord:'Health surveillance record',
+  supplier:'Supply chain partner', building:'Building safety job', briefing:'Briefing record', record:'Record' };
+function _binLabel(e){ return (_BIN_KIND[e&&e.kind]||'Record'); }
+function restoreBinItem(binId){
+  if(typeof _isConsultantish==='function' && !_isConsultantish()){ showToast('Only the consultant can restore a deleted record.','info'); return; }
+  const e=_binState().find(x=>x.id===binId); if(!e) return;
+  const arr=_binArr(e.where);
+  if(!arr){ showToast('The place this came from is no longer there - restore that first.','info'); return; }
+  if(e.payload && e.payload.id && arr.some(x=>x&&x.id===e.payload.id)){
+    S.recycleBin=_binState().filter(x=>x.id!==binId); saveData();
+    showToast('That record is already back - taken off the deleted list.','info');
+    if(typeof renderReview==='function') _keepScroll(renderReview);
+    return;
+  }
+  let copy=null; try{ copy=JSON.parse(JSON.stringify(e.payload)); }catch(err){ return; }
+  copy.restoredBy=(typeof _actor==='function'?(_actor().name||''):'');
+  copy.restoredAt=new Date().toISOString().slice(0,10);
+  const at=(e.idx>=0 && e.idx<=arr.length)?e.idx:arr.length;
+  arr.splice(at,0,copy);
+  S.recycleBin=_binState().filter(x=>x.id!==binId);
+  saveData();
+  try{ if(typeof _rerenderEverything==='function') _rerenderEverything(); }catch(err){}
+  if(typeof renderReview==='function') _keepScroll(renderReview);
+  showToast('\u2713 '+_binLabel(e)+' restored','success');
+}
+function purgeBinItem(binId){
+  if(typeof _isConsultantish==='function' && !_isConsultantish()){ showToast('Only the consultant can remove a record permanently.','info'); return; }
+  const e=_binState().find(x=>x.id===binId); if(!e) return;
+  if(!confirm('Remove this from the app permanently?\n\n"'+(e.label||'record')+'"\n\nThis cannot be undone.')) return;
+  S.recycleBin=_binState().filter(x=>x.id!==binId);
+  saveData(); if(typeof renderReview==='function') _keepScroll(renderReview);
+  showToast('Permanently removed','info');
+}
+function _binHTML(){
+  if(typeof _isConsultantish==='function' && !_isConsultantish()) return '';
+  const list=_binState().slice().sort((a,b)=>String(b.at||'').localeCompare(String(a.at||'')));
+  if(!list.length) return '';
+  const rows=list.map(e=>{
+    const who=esc(e.by||'someone'); const role=e.role?(' ('+esc(_roleLabel(e.role))+')'):''; const when=e.at?(' on '+fmtDate(e.at)):'';
+    const gone=!_binArr(e.where);
+    return '<div style="display:flex;gap:12px;align-items:flex-start;border:1px solid var(--danger-brd);border-left:4px solid var(--danger);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--danger-bg);">'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-weight:600;font-size:13.5px;">'+esc(e.label||'(no name)')+'</div>'
+      +'<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">'+esc(_binLabel(e))+' &middot; <strong style="color:var(--danger);">deleted by '+who+role+when+'</strong>'
+      +(e.note?(' &middot; '+esc(e.note)):'')+(gone?' &middot; <em>the place it came from is gone</em>':'')+'</div></div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0;">'
+      +'<button class="btn btn-outline btn-xs no-print" onclick="restoreBinItem(\''+e.id+'\')">Restore</button>'
+      +'<button class="btn btn-ghost btn-xs no-print" onclick="purgeBinItem(\''+e.id+'\')">Delete from app</button>'
+      +'</div></div>';
+  }).join('');
+  return '<div class="card" style="margin-top:18px;border-left:3px solid var(--danger);"><div class="card-band"><h3><span class="dot" style="color:var(--danger);">\u25cf</span> Recently deleted (consultant only)</h3><span class="badge badge-muted">'+list.length+'</span></div>'
+    +'<div class="card-body"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Everything a client (or you) removed from the app - risks, duty lines, documents, register records. They are out of the client\u2019s views but nothing is gone until you say so: restore one back where it came from, or remove it for good.</div>'+rows+'</div></div>';
+}
 // Every action that has been deleted (tombstoned), across all three sources,
 // each with a ref back to its origin so the consultant can act on it.
 function _deletedActions(){
@@ -17236,6 +17328,7 @@ function deleteRiskEntry(id){
     const _h=_reqSecOfItem(String(_lr.reqKey).slice(5));
     if(_h){ _h.it.riskDismissed=true; if(_h.it.raised) _h.it.raised=0; _stamp(_h.it,'updated'); }
   }
+  _binPush('risk', (_lr&&(_lr.activity||_lr.hazard))||'Risk', _lr, {arr:'riskProfile'}, _live?(_live+' action'+(_live!==1?'s':'')+' went with it'):'');
   S.riskProfile = (S.riskProfile||[]).filter(r => r.id !== id);
   if(_riskSel === id) _riskSel = null;   // the render picks the first visible row
   saveData();
@@ -17348,6 +17441,7 @@ function deleteUnit(id){
   const u=_units().find(x=>x.id===id); if(!u) return;
   const n=(S.riskProfile||[]).filter(r=>_riskUnits(r).includes(id)).length;
   if(!confirm('Remove the business unit "'+u.name+'"?'+(n?('\n\n'+n+' risk'+(n!==1?'s are':' is')+' tagged to it. They are not deleted - they become organisation-wide.'):''))) return;
+  _binPush('unit', u.name||'Business unit', u, {arr:'units'}, n?(n+' risk'+(n!==1?'s were':' was')+' tagged to it'):'');
   S.units=_units().filter(x=>x.id!==id);
   (S.riskProfile||[]).forEach(r=>{ if(Array.isArray(r.units)) r.units=r.units.filter(x=>x!==id); });
   if(_riskFilter.unit===id) _riskFilter.unit='';
@@ -18477,6 +18571,8 @@ function addRiskLink(id){
 function deleteRiskLink(rid, lid){
   if(_blockIfReadOnly()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
+  const _l=(r.linked||[]).find(x=>x.id===lid);
+  _binPush('link', (_l&&(_l.ref||_l.url))||'Linked evidence', _l, {coll:'riskProfile', id:rid, arr:'linked'}, r.activity||r.hazard||'');
   r.linked=(r.linked||[]).filter(l=>l.id!==lid); _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile);
 }
 function updateRiskLink(rid, lid, field, value){
@@ -18606,7 +18702,7 @@ const BRIEFING_TYPES=['Daily briefing','Toolbox talk','Project briefing','Safety
 function _consultState(){ if(!S.consultation||typeof S.consultation!=='object') S.consultation={briefings:[]}; if(!Array.isArray(S.consultation.briefings)) S.consultation.briefings=[]; return S.consultation; }
 function addBriefing(){ if(_blockIfReadOnly()) return; const b={ id:_reqUid('brf'), date:new Date().toISOString().slice(0,10), type:'Daily briefing', topic:'', led:'', attendees:'', feedback:'', ref:'', signedBy:'', signedAt:'' }; if(typeof _stamp==='function') _stamp(b,'created'); _consultState().briefings.unshift(b); saveData(); _renderRiskDocControl(); }
 function updateBriefing(id,f,v){ if(_roLocked()) return; const b=_consultState().briefings.find(x=>x.id===id); if(!b) return; b[f]=v; if(typeof _stamp==='function') _stamp(b,'updated'); scheduleAutoSave(); }
-function deleteBriefing(id){ if(_blockIfReadOnly()) return; if(!confirm('Delete this briefing record?')) return; const c=_consultState(); c.briefings=c.briefings.filter(x=>x.id!==id); saveData(); _renderRiskDocControl(); }
+function deleteBriefing(id){ if(_blockIfReadOnly()) return; if(!confirm('Delete this briefing record?')) return; const c=_consultState(); const _b=(c.briefings||[]).find(x=>x.id===id); _binPush('briefing', (_b&&(_b.topic||_b.type))||'Briefing record', _b, {arr:'consultation', sub:'briefings'}); c.briefings=c.briefings.filter(x=>x.id!==id); saveData(); _renderRiskDocControl(); }
 function signBriefing(id){ if(_blockIfReadOnly()) return; const b=_consultState().briefings.find(x=>x.id===id); if(!b) return; const u=(typeof Auth!=='undefined'&&Auth.user)?Auth.user():null; b.signedBy=(u&&(u.name||u.email))||'Signed'; b.signedAt=new Date().toISOString().slice(0,10); if(typeof _stamp==='function') _stamp(b,'updated'); saveData(); _renderRiskDocControl(); }
 function _renderRiskDocControl(){
   const el=document.getElementById('riskDocControl'); if(!el) return;
@@ -19481,6 +19577,8 @@ function addAssurRow(kind){
 function deleteAssurRow(kind, id){
   if(_blockIfReadOnly()) return;
   if(!S.riskAssurance||!Array.isArray(S.riskAssurance[kind])) return;
+  const _ar=S.riskAssurance[kind].find(r=>r.id===id);
+  _binPush('assurance', (_ar&&(_ar.measure||_ar.name||_ar.what))||'Assurance measure', _ar, {arr:'riskAssurance', sub:kind}, kind);
   S.riskAssurance[kind]=S.riskAssurance[kind].filter(r=>r.id!==id); saveData(); _renderAssurance();
 }
 function updateAssurRow(kind, id, field, value){
@@ -19611,7 +19709,8 @@ function updateSiteInsp(id, field, value, live){
 function deleteSiteInsp(id){
   if(_blockIfReadOnly()) return;
   const r=_siteInspState().find(x=>x.id===id);
-  if(!confirm('Delete this inspection record?'+(r&&r.site?('\n\n"'+r.site+'"'):'')+'\n\nThis cannot be undone.')) return;
+  if(!confirm('Delete this inspection record?'+(r&&r.site?('\n\n"'+r.site+'"'):'')+'\n\nIt moves to Recently deleted on the consultant\u2019s Review tab.')) return;
+  _binPush('siteinsp', (r&&(r.site||r.ref))||'Site inspection', r, {arr:'siteInspections'});
   S.siteInspections=_siteInspState().filter(x=>x.id!==id); saveData(); _keepScroll(renderSiteInsp);
 }
 function _updateSiteInspBadge(){
@@ -23742,6 +23841,7 @@ function addReqSection(){
 function deleteReqSection(id){
   if(_blockIfReadOnly()) return;
   if(!confirm('Delete this duty heading and its requirement lines?')) return;
+  _binPush('reqsection', ((S.requirements||[]).find(s=>s.id===id)||{}).heading||'Duty heading', (S.requirements||[]).find(s=>s.id===id), {arr:'requirements'});
   S.requirements = (S.requirements||[]).filter(s => s.id !== id);
   saveData(); renderRequirements();
 }
@@ -23762,6 +23862,8 @@ function addReqLine(sectionId){
 function deleteReqLine(sectionId, itemId){
   if(_blockIfReadOnly()) return;
   const s = (S.requirements||[]).find(x => x.id === sectionId); if(!s) return;
+  const _it=(s.items||[]).find(i => i.id === itemId);
+  _binPush('reqline', (_it&&_it.requirement)||'Requirement line', _it, {coll:'requirements', id:sectionId, arr:'items'}, s.heading||'');
   s.items = (s.items||[]).filter(i => i.id !== itemId);
   saveData(); renderRequirements();
 }
@@ -24907,6 +25009,7 @@ function deleteRaRegEntry(id){
   if(_roLocked()) return;
   const list=_raRegState(); const i=list.findIndex(e=>e.id===id); if(i<0) return;
   if(!confirm('Remove "'+(list[i].title||'this risk assessment')+'" from the register?\n\nThis removes the register entry only, not the PDF itself.')) return;
+  _binPush('raentry', list[i].title||'Risk assessment', list[i], {arr:'raRegister'});
   list.splice(i,1); saveData(); renderRaRegister();
 }
 function updateRaRegField(id, field, val){
@@ -26095,6 +26198,7 @@ function deleteIncident(id){
     ? 'This incident raised actions into the execution plan - those actions stay on the plan. Delete the incident record itself?'
     : 'Delete this incident record?';
   if(!confirm(msg)) return;
+  _binPush('incident', (it.what||it.type||'Incident')+(it.date?(' - '+fmtDate(it.date)):''), it, {arr:'incidents'});
   S.incidents=_incidents().filter(x=>x.id!==id); saveData(); _renderIncidents();
 }
 function raiseIncidentAction(id){
@@ -26265,6 +26369,7 @@ function deleteDecision(id){
     ? 'This decision raised actions into the execution plan - those actions stay on the plan. Delete the decision record itself?'
     : 'Delete this decision record?';
   if(!confirm(msg)) return;
+  _binPush('decision', (d.what||d.forum||'Decision')+(d.date?(' - '+fmtDate(d.date)):''), d, {arr:'decisions'});
   S.decisions=_decisions().filter(x=>x.id!==id); saveData(); _renderDecisions();
 }
 // A decision becomes work the same way an incident does - explicitly, so the
@@ -26444,6 +26549,7 @@ function deleteSupplyPartner(id){
   if(_blockIfReadOnly()) return;
   const p=_supply().find(x=>x.id===id); if(!p) return;
   if(!confirm('Remove "'+(p.name||'this partner')+'" from the supply chain register?'+(p.raised?'\n\nAny actions raised from it stay on the plan.':''))) return;
+  _binPush('supplier', p.name||'Supply chain partner', p, {arr:'supplyChain'});
   S.supplyChain=_supply().filter(x=>x.id!==id); saveData(); _renderSupply();
 }
 function addSupplyEvent(id){
@@ -26661,6 +26767,7 @@ function deleteOhRecord(id){
   if(_blockIfReadOnly()) return;
   const r=_ohRecords().find(x=>x.id===id); if(!r) return;
   if(!confirm('Remove this surveillance record'+(r.person?(' for '+r.person):'')+'?\n\nHealth records are usually kept for many years - remove only a record entered in error.')) return;
+  _binPush('ohrecord', (r.person||'Health surveillance record')+(r.type?(' - '+r.type):''), r, {arr:'healthSurveillance'});
   S.healthSurveillance=_ohRecords().filter(x=>x.id!==id); saveData(); _renderOh();
 }
 // Chase the ones that have fallen due, or the outcomes that need something done.
@@ -26917,6 +27024,7 @@ function deleteBsJob(id){
   if(_blockIfReadOnly()) return;
   const b=_bsJobs().find(x=>x.id===id); if(!b) return;
   if(!confirm('Remove "'+(b.name||'this building')+'" from the building safety register?'+(b.raised?'\n\nAny actions raised from it stay on the plan.':''))) return;
+  _binPush('building', b.name||'Building safety job', b, {arr:'buildingSafety'});
   S.buildingSafety=_bsJobs().filter(x=>x.id!==id); saveData(); _renderBs();
 }
 function addBsEvent(id){
@@ -27418,6 +27526,7 @@ function deleteDocument(id){
   if(_blockIfReadOnly()) return;
   const doc = (S.documents||[]).find(d=>d.id===id);
   if(!confirm(`Delete "${doc?doc.name:'this document'}" from the register?`)) return;
+  _binPush('document', (doc&&(doc.name||doc.title))||'Document', doc, {arr:'documents'});
   S.documents = (S.documents||[]).filter(d=>d.id!==id);
   saveData();
   renderDocuments();
@@ -28151,6 +28260,7 @@ function deleteMembership(id){
   if(_blockIfReadOnly()) return;
   const m=_memberships().find(x=>x.id===id); if(!m) return;
   if(!confirm('Remove "'+(m.name||'this membership')+'" from the register?')) return;
+  _binPush('membership', m.name||'Membership', m, {arr:'memberships'});
   S.memberships=_memberships().filter(x=>x.id!==id); saveData(); _renderMemberships();
 }
 function _renderMemberships(){
@@ -28643,6 +28753,7 @@ function renderReview(){
     </div>
     ${_reviewActionsHTML()}
     ${_completedHistoryHTML()}
+    ${_binHTML()}
     ${_deletedActionsHTML()}
     <div class="card"><div class="card-band"><h3><span class="dot">●</span> Quality rating</h3></div>
       <div class="card-body">
@@ -30169,6 +30280,7 @@ function updateCpdItem(id,f,v){ if(_roLocked()) return; const it=_cpdState().ite
 function deleteCpdItem(id){
   if(_blockIfReadOnly()) return; const it=_cpdState().items.find(x=>x.id===id); if(!it) return;
   if(!confirm('Remove "'+(it.title||'this item')+'" from the CPD library?')) return;
+  _binPush('cpd', it.title||'CPD item', it, {arr:'cpd', sub:'items'});
   S.cpd.items=_cpdState().items.filter(x=>x.id!==id); saveData(); renderCPD();
 }
 function updateCpdField(f,v){ if(_roLocked()) return; _cpdState()[f]=v; scheduleAutoSave(); }
@@ -30736,7 +30848,8 @@ function exportEverything(){
 var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
-  'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance','buildingSafety','memberships'];
+  'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance','buildingSafety','memberships',
+  'recycleBin'];   // the consultant's deleted-record trail is part of the client's record
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

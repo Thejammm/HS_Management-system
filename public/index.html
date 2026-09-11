@@ -15732,6 +15732,13 @@ function deleteExecAction(refStr){
 //    here first, with who removed it and when. The consultant sees it on the
 //    Review tab and has the last word - restore it where it came from, or
 //    remove it for good. Actions keep their own tombstone trail below. ──
+// Who deleted it, in plain words: the role only earns its brackets when it
+// adds something the name has not already said (an offline copy has neither).
+function _binWho(by, role){
+  const name=String(by||'').trim()||'someone';
+  const lab=(role&&role!=='offline'&&typeof _roleLabel==='function')?String(_roleLabel(role)||'').trim():'';
+  return esc(name)+((lab && name.toLowerCase().indexOf(lab.toLowerCase())<0)?(' ('+esc(lab)+')'):'');
+}
 function _binState(){ if(!Array.isArray(S.recycleBin)) S.recycleBin=[]; return S.recycleBin; }
 // where: {arr:'documents'} a top-level list | {arr:'cpd', sub:'items'} a list
 // on a state object | {coll:'riskProfile', id, arr:'linked'} a list on a record
@@ -15805,7 +15812,7 @@ function _binHTML(){
   const list=_binState().slice().sort((a,b)=>String(b.at||'').localeCompare(String(a.at||'')));
   if(!list.length) return '';
   const rows=list.map(e=>{
-    const who=esc(e.by||'someone'); const role=e.role?(' ('+esc(_roleLabel(e.role))+')'):''; const when=e.at?(' on '+fmtDate(e.at)):'';
+    const who=_binWho(e.by, e.role); const role=''; const when=e.at?(' on '+fmtDate(e.at)):'';
     const gone=!_binArr(e.where);
     return '<div style="display:flex;gap:12px;align-items:flex-start;border:1px solid var(--danger-brd);border-left:4px solid var(--danger);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--danger-bg);">'
       +'<div style="flex:1;min-width:0;">'
@@ -15859,7 +15866,7 @@ function _deletedActionsHTML(){
   if(typeof _isConsultantish==='function' && !_isConsultantish()) return '';
   const list=_deletedActions(); if(!list.length) return '';
   const rows=list.map(x=>{ const a=x.a; const rf=encodeURIComponent(JSON.stringify(x.ref));
-    const who=esc(a.deletedBy||'someone'); const role=a.deletedRole?(' ('+esc(_roleLabel(a.deletedRole))+')'):''; const when=a.deletedAt?(' on '+fmtDate(a.deletedAt)):'';
+    const who=_binWho(a.deletedBy, a.deletedRole); const role=''; const when=a.deletedAt?(' on '+fmtDate(a.deletedAt)):'';
     return `<div style="display:flex;gap:12px;align-items:flex-start;border:1px solid var(--danger-brd);border-left:4px solid var(--danger);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--danger-bg);">
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;font-size:13.5px;">${esc(a.desc||'(no description)')}</div>

@@ -212,6 +212,16 @@ export function reviewDueOf(r, opts = {}) {
 }
 export function macroOf(r, state) {
   if (!r) return '';
+  // a legal-duties risk groups under its duty area: 'legal:<sectionId>', named
+  // from the Legal duties section heading as it stands (mirror of the app's
+  // _macroExtraName); a tenant rename of that key still wins
+  const mk = String(r.macroKey || '');
+  if (mk.indexOf('legal:') === 0) {
+    const o = state && state.macroNames && state.macroNames[mk];
+    if (o) return o;
+    const s = ((state && state.requirements) || []).find(x => x && String(x.id) === mk.slice(6));
+    return s ? (String(s.heading || '').replace(/\s*-\s*what you must have in place\s*$/i, '').trim() || 'Legal duties') : 'Legal duties';
+  }
   const k = (r.macroKey && MACRO_LABELS[r.macroKey]) ? r.macroKey : (MACRO_OF_THEME[r.libKey] || '');
   if (!k) return '';
   const o = state && state.macroNames && state.macroNames[k];

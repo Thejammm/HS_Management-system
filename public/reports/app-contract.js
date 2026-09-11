@@ -188,7 +188,9 @@ export const MACRO_LABELS = {
   plant: 'Plant, equipment & electricity', health: 'Hazardous substances & health',
   construction: 'Construction & confined spaces', ergonomics: 'Manual handling & ergonomics',
   people: 'People & wellbeing', premises: 'Premises & environment',
-  management: 'Competence & legal duties', business: 'Business continuity'
+  management: 'Competence & legal duties', business: 'Business continuity',
+  hsg65: 'Consultant judgement (HSG65)',   // no library theme behind these two - the app's _MACRO_EXTRA:
+  legal: 'Legal duties'                    // one risk per judged HSG65 area / per Legal duties section
 };
 export const MACRO_OF_THEME = {
   fire: 'fire', workatheight: 'height', transport: 'transport', roadrisk: 'transport',

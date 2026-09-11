@@ -17214,7 +17214,18 @@ function addRiskEntry(){
 
 function deleteRiskEntry(id){
   if(_blockIfReadOnly()) return;
-  if(!confirm('Delete this risk entry?')) return;
+  const _lr=(S.riskProfile||[]).find(r => r.id === id);
+  const _live=_lr?(_lr.actions||[]).filter(a=>a && !a.deleted && (a.desc||a.owner||a.due)).length:0;
+  if(!confirm('Delete this risk entry?'+(_live?('\n\nIts '+_live+' action'+(_live!==1?'s go':' goes')+' with it.'):''))) return;
+  if(_lr && _lr.reqKey){
+    // stays binned for the gap lines that are there now; a new gap line places it again
+    const _ls=(S.requirements||[]).find(s => s && String(s.id) === String(_lr.reqKey).slice(4));
+    if(_ls){
+      const gapIds=(_ls.items||[]).filter(it=>{ const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null; return st && (st.label==='Gap'||st.label==='Not in place'); }).map(it=>it.id).filter(Boolean);
+      _ls.riskDismissed={ at:new Date().toISOString().slice(0,10), lines:gapIds };
+      (_ls.items||[]).forEach(it=>{ if(it.raised) it.raised=0; });
+    }
+  }
   S.riskProfile = (S.riskProfile||[]).filter(r => r.id !== id);
   if(_riskSel === id) _riskSel = null;   // the render picks the first visible row
   saveData();
@@ -17226,6 +17237,8 @@ function updateRiskField(id, field, value){
   const r = (S.riskProfile||[]).find(x => x.id === id);
   if(!r) return;
   r[field] = value;
+  if(field === 'assocRisk') r.assocAuto = false;   // typed over - the auto-written text stops following the lines
+  if(field === 'activity') r.titleAuto = false;
   _stamp(r, 'updated');
   scheduleAutoSave();
   // Live recompute rating + priority without a full re-render (keeps input focus)
@@ -18931,7 +18944,7 @@ function addGapToPlan(srcKey){
     const iid=String(srcKey).slice(4); let sec=null, it=null;
     (S.requirements||[]).some(s=>{ const f=(s.items||[]).find(x=>x.id===iid); if(f){ sec=s; it=f; return true; } return false; });
     if(!sec||!it) return;
-    const had=!!_reqRiskOf(sec.id); const r=_reqRiskEnsure(sec); if(!r) return;
+    const had=!!_reqRiskOf(sec.id); const r=_reqRiskEnsure(sec, true); if(!r) return;
     _reqAddRiskAction(r, sec, it, g.desc||'', { due:g.due||'', priority:g.priority||'' });
     saveData(); renderActionPlanTab(); if(typeof _refreshActionViews==='function') _refreshActionViews();
     if(typeof showToast==='function') showToast(had?'\u2713 Action added to this duty area\u2019s risk - it is on the plan from there':'\u2713 On the risk profile as a risk - the action is on the plan from there','success',6000);
@@ -19019,23 +19032,58 @@ function _reqAddAction(it, desc){
 //    from there. it.actions is legacy storage only - readers go through
 //    _reqItemActions(it), which returns the line's rows wherever they live. ──
 function _reqRiskOf(secId){ return (S.riskProfile||[]).find(r=>r && r.reqKey==='req|'+secId) || null; }
+function _reqSecState(sec){
+  const items=(sec&&sec.items)||[];
+  const sts=items.map(it=>(typeof _reqItemStatus==='function')?_reqItemStatus(it):null).filter(Boolean);
+  if(sts.some(st=>st.label==='Gap'||st.label==='Not in place')) return 'gap';
+  return sts.length ? 'met' : 'blank';
+}
 function _reqRiskTitle(sec){
   const h=String((sec&&sec.heading)||'').replace(/\s*-\s*what you must have in place\s*$/i,'').trim();
-  return (sec&&sec.legal) ? ((h||'Legal essentials')+' - duties not yet in place') : ((h||'Legal duties')+' - legal duties not yet met');
+  const st=_reqSecState(sec);
+  if(sec&&sec.legal) return (h||'Legal essentials')+(st==='gap'?' - duties not yet in place':st==='met'?' - duties in place':'');
+  return (h||'Legal duties')+(st==='gap'?' - legal duties not yet met':st==='met'?' - legal duties in place':' - legal duties');
 }
-function _reqRiskEnsure(sec){
-  if(!sec) return null;
+// Who may place risks on the profile: not a read-only consultant view, not
+// the employee view or role - the same people who may edit the profile.
+function _profileWritable(){
+  return !(_roLocked() || (typeof _empView==='function' && _empView()) || (typeof _actorRole==='function' && _actorRole()==='employee'));
+}
+function _reqSecGap(sec){ return (sec&&sec.items||[]).some(it=>{ const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null; return st && (st.label==='Gap'||st.label==='Not in place'); }); }
+// The auto-written associated risk: the citation and the lines not yet met.
+function _reqRiskAssoc(sec){
+  const gaps=(sec&&sec.items||[]).filter(it=>{ const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null; return st && (st.label==='Gap'||st.label==='Not in place'); }).map(it=>String(it.requirement||'').trim()).filter(Boolean);
+  const duty=(sec&&sec.citation)?('Duty: '+sec.citation+'. '):'';
+  if(gaps.length) return duty+'Assessed as not met: '+gaps.slice(0,4).join('; ')+(gaps.length>4?(' and '+(gaps.length-4)+' more'):'')+'.';
+  if(_reqSecState(sec)==='met') return duty+'Every assessed line is met - keep it under review.';
+  return duty.trim();
+}
+// Nothing of the consultant's on it yet - safe to take off the profile again.
+function _reqRiskEnsure(sec, explicit){
+  if(!sec || !sec.id) return null;
+  if(explicit && sec.riskDismissed) delete sec.riskDismissed;   // raising from a line is a decision - the risk comes back
   const have=_reqRiskOf(sec.id); if(have) return have;
-  const gaps=(sec.items||[]).filter(it=>{ const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null; return st && (st.label==='Gap'||st.label==='Not in place'); }).map(it=>String(it.requirement||'').trim()).filter(Boolean);
-  const assoc=(sec.citation?('Duty: '+sec.citation+'. '):'')+(gaps.length?('Assessed as not met: '+gaps.slice(0,4).join('; ')+(gaps.length>4?(' and '+(gaps.length-4)+' more'):'')+'.'):'');
-  const r={ id:'risk_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), reqKey:'req|'+sec.id,
-    activity:_reqRiskTitle(sec), hazard:'', assocRisk:assoc, category:'Legal / Regulatory', area:'Business', macroKey:'management', pdca:'', energy:[], sif:'', controlLevel:'',
+  // a section that came back under a new id (re-seeded or re-imported) takes
+  // its own risk back rather than getting a twin
+  const heading=String(sec.heading||'').trim();
+  const orphan=heading ? (S.riskProfile||[]).find(r=>r && r.suggestedBy==='legal' && !r.reqKey && r.reqHeading===heading) : null;
+  if(orphan){ orphan.reqKey='req|'+sec.id; _stamp(orphan,'updated'); return orphan; }
+  const r={ id:'risk_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), reqKey:'req|'+sec.id, reqHeading:heading,
+    activity:_reqRiskTitle(sec), titleAuto:true, hazard:'', assocRisk:_reqRiskAssoc(sec), assocAuto:true, category:'Legal / Regulatory', area:'Business', macroKey:'legal', macroRefiled:true, pdca:'', energy:[], sif:'', controlLevel:'',
     reviewed:false, reviewDue:'', personsAtRisk:['Employees'], harm:'', businessImpact:'', impacts:{}, impactNotes:{}, controls:'',
     likelihood:'', severity:'', targetL:'', targetS:'', trend:'', actions:[], linked:[], furtherActions:'', suggestedBy:'legal' };
   _stamp(r,'created');
   if(!Array.isArray(S.riskProfile)) S.riskProfile=[];
   S.riskProfile.push(r);
   return r;
+}
+// A binned risk stays binned for the gap lines that were there at the time;
+// a NEW line assessed as a gap places it again.
+function _reqDismissedCovers(sec){
+  const d=sec&&sec.riskDismissed; if(!d) return false;
+  const lines=Array.isArray(d.lines)?d.lines:[];
+  const gapIds=(sec.items||[]).filter(it=>{ const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null; return st && (st.label==='Gap'||st.label==='Not in place'); }).map(it=>it.id).filter(Boolean);
+  return gapIds.every(id=>lines.indexOf(id)>=0);
 }
 function _reqAddRiskAction(r, sec, it, desc, o){
   o=o||{}; if(!r||!sec||!it) return null;
@@ -19060,14 +19108,18 @@ function _reqActionRef(sec, it, a){
   return {t:'mgmt',a:sec.id,b:it.id,c:a.id};
 }
 function _reqMigrateToRisks(){
-  if(_roLocked()) return 0;
-  let n=0;
+  if(!_profileWritable()) return 0;
+  let n=0, made=0, changed=false;
+  const secOf=(id)=>(S.requirements||[]).find(s=>s && String(s.id)===String(id));
   (S.requirements||[]).forEach(sec=>{
+    // a duty area with a line assessed Gap or Not in place IS a risk - placed
+    // as soon as any view renders, unless the consultant deleted it (dismissed)
+    if(sec.id && _reqSecGap(sec) && !_reqDismissedCovers(sec) && !_reqRiskOf(sec.id)){ const before=(S.riskProfile||[]).length; if(_reqRiskEnsure(sec) && (S.riskProfile||[]).length>before) made++; }   // an adopted orphan is not a placement
     (sec.items||[]).forEach(it=>{
       _reqMigrateActions(it);
       const live=(it.actions||[]).filter(a=>a && !a.deleted && a.desc && String(a.desc).trim());
       if(!live.length) return;
-      const r=_reqRiskEnsure(sec); if(!r) return;
+      const r=_reqRiskEnsure(sec, true); if(!r) return;
       const st=(typeof _reqItemStatus==='function')?_reqItemStatus(it):null;
       const prBase=st&&st.label==='Not in place'?'High':(st&&st.label==='Gap'?'Medium':'');
       live.forEach(a=>{ if(!a.priority) a.priority=prBase; a.reqKey='req|'+sec.id; a.reqItem=it.id; a.reqLabel=String(it.requirement||sec.heading||'').slice(0,120); a.movedFrom='req:'+it.id; r.actions.push(a); n++; });
@@ -19082,7 +19134,7 @@ function _reqMigrateToRisks(){
       const iid=String(a.srcKey).slice(4); let sec=null, it=null;
       (S.requirements||[]).some(s=>{ const f=(s.items||[]).find(x=>x.id===iid); if(f){ sec=s; it=f; return true; } return false; });
       if(!sec||!it) return;
-      const r=_reqRiskEnsure(sec); if(!r) return;
+      const r=_reqRiskEnsure(sec, true); if(!r) return;
       const row={ id:a.id, desc:a.desc||'', owner:a.owner||'', due:a.due||'', status:a.status||'Not started', priority:a.priority||'', reqKey:'req|'+sec.id, reqItem:it.id, reqLabel:String(it.requirement||sec.heading||'').slice(0,120), movedFrom:'plan:'+a.id };
       ['completedDate','completedBy','acceptDate','acceptedBy','createdAt','createdBy','updatedAt','updatedBy','top5','note','log'].forEach(k=>{ if(a[k]!==undefined && a[k]!=='' && a[k]!==null) row[k]=a[k]; });
       if(!Array.isArray(r.actions)) r.actions=[];
@@ -19090,8 +19142,28 @@ function _reqMigrateToRisks(){
     });
     if(moved.length) S.actionPlan=S.actionPlan.filter(a=>moved.indexOf(a)<0);
   }
-  if(n){ saveData(); if(typeof showToast==='function') showToast(n+' legal-duties action'+(n!==1?'s':'')+' moved onto the risk profile - one risk per duty area, worked like the rest','info',6000); }
-  return n;
+  // keep the legal risks honest: re-file ONCE (risks made before the Legal
+  // duties macro existed), let a risk whose section is gone stand on its own
+  // (frozen, ready to be adopted back), and keep the auto-written title and
+  // associated risk following the lines until the consultant types over them.
+  // Nothing is ever removed here - a risk leaves the profile only by the bin.
+  (S.riskProfile||[]).forEach(r=>{
+    if(!r || !r.reqKey) return;
+    const sec=secOf(String(r.reqKey).slice(4));
+    if(!sec){ delete r.reqKey; changed=true; return; }
+    if(r.suggestedBy==='legal' && !r.macroRefiled){ if(r.macroKey==='management') r.macroKey='legal'; r.macroRefiled=true; changed=true; }
+    const hd=String(sec.heading||'').trim(); if(hd && r.reqHeading!==hd){ r.reqHeading=hd; changed=true; }   // follows a rename; backfills older risks
+    if(r.titleAuto){ const t=_reqRiskTitle(sec); if(t!==String(r.activity||'')){ r.activity=t; changed=true; } }
+    if(r.assocAuto){ const t=_reqRiskAssoc(sec); if(t!==String(r.assocRisk||'')){ r.assocRisk=t; changed=true; } }
+  });
+  if(n||made||changed){
+    saveData();
+    const bits=[];
+    if(made) bits.push(made+' duty area'+(made!==1?'s':'')+' placed on the risk profile under Legal duties');
+    if(n) bits.push(n+' legal-duties action'+(n!==1?'s':'')+' moved onto the risk profile');
+    if(bits.length && typeof showToast==='function') showToast(bits.join(' - ')+(made||n?' - worked like every other risk':''),'info',6000);
+  }
+  return n;   // actions moved - placements and re-files are reported, not counted
 }
 function _allMgmtActions(){
   const out=[];
@@ -20250,8 +20322,8 @@ function _judgeRiskEnsure(domId){
   const have=_judgeRiskOf(domId); if(have) return have;
   const lvl=String(((_judgeState()[domId])||{}).level||'');
   const r={ id:'risk_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), judgeKey:'judge|'+domId,
-    activity:_judgeRiskTitle(d,lvl), hazard:'', assocRisk:_judgeDescriptor(domId,lvl)||'',
-    category:'Legal / Regulatory', area:_JUDGE_AREA[domId]||'Business', macroKey:'management', pdca:'', energy:[], sif:'', controlLevel:'',
+    activity:_judgeRiskTitle(d,lvl), titleAuto:true, hazard:'', assocRisk:_judgeDescriptor(domId,lvl)||'', assocAuto:true,
+    category:'Legal / Regulatory', area:_JUDGE_AREA[domId]||'Business', macroKey:'hsg65', macroRefiled:true, pdca:'', energy:[], sif:'', controlLevel:'',
     reviewed:false, reviewDue:'', personsAtRisk:['Employees'], harm:'', businessImpact:'', impacts:{}, impactNotes:{}, controls:'',
     likelihood:'', severity:'', targetL:'', targetS:'', trend:'', actions:[], linked:[], furtherActions:'', suggestedBy:'judgement' };
   _stamp(r,'created');
@@ -20278,13 +20350,26 @@ function _judgeDomOfLoose(a){
   return '';
 }
 function _judgeMigrateLoose(){
-  if(_roLocked() || !Array.isArray(S.actionPlan)) return 0;
+  if(!_profileWritable()) return 0;
+  // the auto-written title and descriptor follow the judgement until typed over
+  let followed=false;
+  (S.riskProfile||[]).forEach(r=>{
+    if(!r || !r.judgeKey) return;
+    const dom=String(r.judgeKey).slice(6); const d=_maturityDomains().find(x=>x.id===dom); if(!d) return;
+    const lvl=String(((_judgeState()[dom])||{}).level||'');
+    // risks made before the judgement macro existed re-file under it, once
+    if(r.suggestedBy==='judgement' && !r.macroRefiled){ if(r.macroKey==='management') r.macroKey='hsg65'; r.macroRefiled=true; followed=true; }
+    if(r.titleAuto){ const t=_judgeRiskTitle(d,lvl); if(t!==String(r.activity||'')){ r.activity=t; followed=true; } }
+    if(r.assocAuto && lvl){ const t=_judgeDescriptor(dom,lvl)||''; if(t!==String(r.assocRisk||'')){ r.assocRisk=t; followed=true; } }   // a cleared judgement keeps the last words
+  });
+  if(followed) saveData();
+  if(!Array.isArray(S.actionPlan)) return 0;
   const moved=[];
   S.actionPlan.forEach(a=>{
     if(!a || a.deleted) return;
     const dom=_judgeDomOfLoose(a); if(!dom) return;
     const r=_judgeRiskEnsure(dom); if(!r) return;
-    const row={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:a.desc||'', owner:a.owner||'', due:a.due||'', status:a.status||'Not started', priority:a.priority||'', judgeKey:'judge|'+dom, movedFrom:a.id };
+    const row={ id:a.id, desc:a.desc||'', owner:a.owner||'', due:a.due||'', status:a.status||'Not started', priority:a.priority||'', judgeKey:'judge|'+dom, movedFrom:a.id };
     ['completedDate','completedBy','acceptDate','acceptedBy','createdAt','createdBy','updatedAt','updatedBy','top5','note','log'].forEach(k=>{ if(a[k]!==undefined && a[k]!=='' && a[k]!==null) row[k]=a[k]; });
     if(!Array.isArray(r.actions)) r.actions=[];
     r.actions.push(row); r.raised=(r.raised||0)+1; _stamp(r,'updated');
@@ -21479,13 +21564,16 @@ function _riskVisibleRows(){
     return true;
   });
 }
-function _macroColour(k){ return ({ fire:'#DC2626', height:'#EA580C', transport:'#7C3AED', plant:'#2563EB', health:'#0891B2', construction:'#B45309', ergonomics:'#059669', people:'#DB2777', premises:'#0EA5E9', management:'#4B5563', business:'#6D28D9' })[k]||'#9CA3AF'; }
+// Macro categories that no library theme carries - the legal-duties risks
+// (one per Legal duties section) sit under their own heading (Simon).
+const _MACRO_EXTRA={ hsg65:'Consultant judgement (HSG65)', legal:'Legal duties' };
+function _macroColour(k){ return ({ fire:'#DC2626', height:'#EA580C', transport:'#7C3AED', plant:'#2563EB', health:'#0891B2', construction:'#B45309', ergonomics:'#059669', people:'#DB2777', premises:'#0EA5E9', management:'#4B5563', business:'#6D28D9', hsg65:'#4338CA', legal:'#0F766E' })[k]||'#9CA3AF'; }
 function _macroTagHTML(r){
   const k=_riskMacroOf(r); if(!k) return '';
   const c=_macroColour(k);
   return '<span class="mac-tag" style="display:inline-block;margin-left:6px;padding:0 6px;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:'+c+';border:1px solid '+c+'55;border-radius:3px;vertical-align:middle;white-space:nowrap;">'+esc(_macroName(k))+'</span>';
 }
-function _macroName(k){ const o=(S.macroNames||{})[k]; if(o) return o; const t=HAZARD_LIBRARY.find(x=>x.macroKey===k); return t?(t.macro||k):k; }
+function _macroName(k){ const o=(S.macroNames||{})[k]; if(o) return o; if(_MACRO_EXTRA[k]) return _MACRO_EXTRA[k]; const t=HAZARD_LIBRARY.find(x=>x.macroKey===k); return t?(t.macro||k):k; }
 function _macroRenameStart(ev,k){
   if(ev&&ev.stopPropagation) ev.stopPropagation();
   if(_blockIfReadOnly()) return;
@@ -21497,7 +21585,7 @@ function _macroRenameStart(ev,k){
 function _macroRenameCommit(k,v){
   v=String(v||'').trim();
   S.macroNames=S.macroNames||{};
-  const t=HAZARD_LIBRARY.find(x=>x.macroKey===k); const def=t?(t.macro||''):'';
+  const t=HAZARD_LIBRARY.find(x=>x.macroKey===k); const def=t?(t.macro||''):(_MACRO_EXTRA[k]||'');
   if(!v||v===def) delete S.macroNames[k]; else S.macroNames[k]=v;
   saveData(); _keepScroll(renderRiskProfile);
 }
@@ -21548,11 +21636,11 @@ function _macroExpandAll(on){ _riskMacroOpen={}; if(on){ _riskMacroGroups(S.risk
 function setRiskGroupMode(m){ _riskGroupMode=m; _keepScroll(renderRiskProfile); }
 function _riskMacroOf(r){
   if(!r) return '';
-  if(r.macroKey&&HAZARD_LIBRARY.some(t=>t.macroKey===r.macroKey)) return r.macroKey;
+  if(r.macroKey&&(_MACRO_EXTRA[r.macroKey]||HAZARD_LIBRARY.some(t=>t.macroKey===r.macroKey))) return r.macroKey;
   const t=r.libKey?HAZARD_LIBRARY.find(x=>x.key===r.libKey):null;
   return (t&&t.macroKey)||'';
 }
-function _macroKeys(){ const seen=[]; HAZARD_LIBRARY.forEach(t=>{ if(t.macroKey&&!seen.includes(t.macroKey)) seen.push(t.macroKey); }); return seen; }
+function _macroKeys(){ const seen=[]; HAZARD_LIBRARY.forEach(t=>{ if(t.macroKey&&!seen.includes(t.macroKey)) seen.push(t.macroKey); }); Object.keys(_MACRO_EXTRA).forEach(k=>{ if(!seen.includes(k)) seen.push(k); }); return seen; }
 function _riskTableRowsHTML(){
   const rows=_riskVisibleRows();
   if(!rows.length) return '<tr><td colspan="8" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
@@ -21610,6 +21698,7 @@ function _riskBindKeys(){
 function renderRiskProfile(){
   const cont = document.getElementById('riskContainer');
   if(!cont) return;
+  _judgeMigrateLoose(); _reqMigrateToRisks();
   const ro   = _roLocked();
   const all  = _riskDisplayOrder();
   const badge = document.getElementById('riskCountBadge');
@@ -23348,7 +23437,7 @@ function raiseReqGapAction(sid, iid){
   // the same title, with two owners and two due dates to chase.
   const dup=_reqItemActions(it).some(_open) || (S.actionPlan||[]).some(_open);
   if(dup){ showToast('An open action for this gap already exists on the execution plan','info'); return; }
-  const r=_reqRiskEnsure(s); if(!r) return;
+  const r=_reqRiskEnsure(s, true); if(!r) return;
   const act=_reqAddRiskAction(r, s, it, title);
   act.detail=open.map(x=>x.c);
   if(open.length) _logAdd(act,'comment','To resolve:\n'+open.map(x=>'• '+x.c).join('\n'));
@@ -23802,7 +23891,7 @@ function raiseReqAction(sectionId, itemId){
   const it = (s.items||[]).find(i => i.id === itemId); if(!it) return;
   openRaiseActionBox({ source:'Legal duties \u00b7 '+String(it.requirement||s.heading||'').slice(0,60), onSave:function(v){
     const had=!!_reqRiskOf(s.id);
-    const r=_reqRiskEnsure(s); if(!r) return;
+    const r=_reqRiskEnsure(s, true); if(!r) return;
     _reqAddRiskAction(r, s, it, v.desc, { owner:v.owner, due:v.due });
     saveData(); _keepScroll(renderRequirements);
     if(typeof _refreshActionViews==='function') _refreshActionViews();
@@ -24058,6 +24147,7 @@ function renderRequirements(){
         </h3>
         ${sec.citation?`<span class="badge badge-accent" title="Statutory basis (verified against primary legislation) - click to read it on legislation.gov.uk" style="font-size:11px;">${_legLink(sec.citation)}</span>`:''}
         ${stageControl}
+        ${(function(){ const _rr=(typeof _reqRiskOf==='function')?_reqRiskOf(sec.id):null; return _rr?`<button type="button" class="btn btn-ghost btn-xs no-print" style="color:var(--success);font-weight:700;" title="This duty area is a risk on the risk profile under Legal duties - click to open it" onclick="_apGotoRisk('${_rr.id}')">✓ On the risk profile</button>`:''; })()}
         ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete duty heading" onclick="deleteReqSection('${sec.id}')">${_ic('trash',14)}</button>`}
       </div>
       <div class="card-body">

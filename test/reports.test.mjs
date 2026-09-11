@@ -438,6 +438,8 @@ test('macroOf: theme category, direct placement, tenant rename, none', () => {
   assert.equal(macroOf({ libKey: 'fire' }, {}), 'Fire & explosion');
   assert.equal(macroOf({ libKey: 'roadrisk' }, {}), 'Transport & driving');
   assert.equal(macroOf({ libKey: 'fire', macroKey: 'height' }, {}), 'Work at height');
+  assert.equal(macroOf({ macroKey: 'legal' }, {}), 'Legal duties', 'the legal-duties macro has no theme but is a real category');
+  assert.equal(macroOf({ macroKey: 'hsg65' }, {}), 'Consultant judgement (HSG65)', 'so is the judgement macro');
   assert.equal(macroOf({ libKey: 'fire' }, { macroNames: { fire: 'Burning' } }), 'Burning');
   assert.equal(macroOf({}, {}), '');
 });

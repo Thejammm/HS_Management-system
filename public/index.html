@@ -10642,19 +10642,20 @@ function migrateLoadedState(){
   // heading, else default to Plan. Append the Act duty if the cycle has no Act.
   if(S.requirements.length){
     let hasAct = false;
+    const _polRevertedBefore=!!S._polLineReverted;
     S.requirements.forEach(sec => {
       if(sec && typeof sec === 'object'){
         if(!sec.stage) sec.stage = _REQ_STAGE_BY_HEADING[sec.heading] || 'Plan';
         // Stage 2: backfill the verified statutory citation for known duty
         // headings (only if the section doesn't already carry one).
         if(!sec.citation && _REQ_CITATION_BY_HEADING[sec.heading]) sec.citation = _REQ_CITATION_BY_HEADING[sec.heading];
-        // The policy line was seeded as "Health & Safety Policy"; it is the
-        // statement of intent and its parts, so the seeded wording catches up
-        // (a line the consultant has reworded is left alone).
-        (sec.items||[]).forEach(it=>{ if(it && it.legalKey==='policy' && String(it.requirement||'').trim()==='Health & Safety Policy') it.requirement='Health & Safety Policy Statement of Intent'; });
+        // A wording change on 2026-09-11 renamed this line by mistake; put it
+        // back, once, so a deliberate rename later is never overwritten.
+        if(!S._polLineReverted){ (sec.items||[]).forEach(it=>{ if(it && it.legalKey==='policy' && String(it.requirement||'').trim()==='Health & Safety Policy Statement of Intent') it.requirement='Health & Safety Policy'; }); }
         if(sec.stage === 'Act') hasAct = true;
       }
     });
+    if(!_polRevertedBefore) S._polLineReverted=1;   // the one-shot above has now run
     if(!hasAct){
       const act = REQ_DUTY_SEED.find(d => d.stage === 'Act');
       if(act) S.requirements.push({ id:_reqUid('reqsec'), heading:act.heading, stage:'Act', citation:act.citation, items:[] });
@@ -23359,7 +23360,7 @@ function _seedRequirements(){
 // ── Legal essentials catalogue - what a business must have in place to trade.
 // Verified citations. threshold: 'all' | 'written5' | 'record5' (the 5-employee test).
 const LEGAL_ESSENTIALS = [
-  { key:'policy', title:'Health & Safety Policy Statement of Intent', citation:'HSWA 1974 s.2(3)', threshold:'written5',
+  { key:'policy', title:'Health & Safety Policy', citation:'HSWA 1974 s.2(3)', threshold:'written5',
     why:'A written statement of how the business manages health and safety - the intent, who is responsible, and the arrangements for the main risks.',
     criteria:['Part 1 - Statement of intent: signed and dated by the most senior person, reviewed at least annually','Part 1 - commits to protecting employees and others, meeting legal duties and providing resources','Part 2 - Responsibilities: names who is responsible for health & safety, top to bottom (including the competent person)','Part 2 - sets out employees\' own responsibilities','Part 3 - Arrangements: the practical systems for the significant risks (risk assessment, training, first aid, fire, accidents, consultation, PPE)','Brought to the attention of, and understood by, all employees'] },
   { key:'riskassessments', title:'Risk assessments', citation:'MHSWR 1999 reg 3', threshold:'record5',
@@ -24057,7 +24058,7 @@ function _renderPolicyDoc(){
   const md=ppl.find(p=>/director|owner|principal|managing/i.test(p.role||''))||ppl[0]||null;
   const _keep=_detailsSnapshot(el);
   el.innerHTML=`<details class="coll" data-keep="msPolicy" style="margin-bottom:14px;">
-    <summary><h3>Health &amp; safety policy</h3><span class="badge ${pd.signedDate?'':'badge-muted'}" ${pd.signedDate?'style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;"':''} title="${pd.signedDate?'The policy statement has been signed and dated - the signature block on the policy PDF is complete':'The written policy is only complete once the statement of intent is signed and dated by the person at the top - fill in the signature fields inside'}">${pd.signedDate?('✓ signed '+fmtDate(pd.signedDate)):'statement awaiting signature'}</span></summary>
+    <summary><h3>Health &amp; safety policy statement of intent</h3><span class="badge ${pd.signedDate?'':'badge-muted'}" ${pd.signedDate?'style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;"':''} title="${pd.signedDate?'The policy statement has been signed and dated - the signature block on the policy PDF is complete':'The written policy is only complete once the statement of intent is signed and dated by the person at the top - fill in the signature fields inside'}">${pd.signedDate?('✓ signed '+fmtDate(pd.signedDate)):'statement awaiting signature'}</span></summary>
     <div class="coll-body">
       <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">The statutory written policy (required in writing with five or more employees, HSWA 1974 s.2(3)). Part 1 below is the statement of intent - it must be signed and dated by the person at the top, and that is what the pill above tracks. Responsibilities come from Company setup; the arrangements section is composed from this client's own risk profile, monitoring and registers when the PDF is generated - a hand-over document for the client.</div>
       <div class="field-group"><label class="field-label">Statement of general policy</label>

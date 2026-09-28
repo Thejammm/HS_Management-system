@@ -11,7 +11,8 @@
     "check:consistency": "node scripts/check-app-report-consistency.mjs",
     "check:masthead": "node scripts/check-report-masthead-fit.mjs",
     "check": "npm run check:consistency && npm run check:masthead && npm run check:overflow",
-    "check:overflow": "node scripts/check-report-page-overflow.mjs"
+    "check:overflow": "node scripts/check-report-page-overflow.mjs",
+    "test:ui": "node test/ui/register.test.mjs && node test/ui/cockpit.test.mjs"
   },
   "engines": {
     "node": ">=18"

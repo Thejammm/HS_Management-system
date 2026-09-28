@@ -380,10 +380,42 @@ export function holdSummaryOf(state, tierOfRisk, opts = {}) {
 // The app's version prefers the client display name for the reference code;
 // the server passes it via opts.clientName (the tenant name).
 // ══════════════════════════════════════════════════════════════
+// ── What keeps a completed action in place - verbatim port of the app's
+//    _embedLines. Four homes, each already owning the record: a document
+//    (Documents), a routine (Assurance records), a briefing (Sign-off
+//    register), a named person (Company personnel). "Nothing recurring" is
+//    a recorded answer, not a blank. ──
+export const EMBED_HOMES = { doc: 'Documents', routine: 'Assurance records', brief: 'Sign-off register', owner: 'Company personnel' };
+const embedDate = (s) => {
+  if (!s) return '-';
+  try { return new Date(s + (String(s).length === 10 ? 'T12:00:00' : '')).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+  catch (e) { return String(s); }
+};
+// ── Which kind of risk this is, and therefore what the fatal-potential flag
+//    MEANS - verbatim port of the app's _riskMode / RISK_TEXT flagChipTitle.
+//    A business-continuity risk scored on impact is not a risk that can kill
+//    anyone, and a report that says it can is not one a client will trust. ──
+export function modeOf(r) { return (r && r.mode === 'ops') ? 'ops' : 'hs'; }
+export function sifWordOf(r) { return modeOf(r) === 'ops' ? 'business-critical' : 'could kill or seriously injure'; }
+
+export function embedOf(o) { return (o && o.embed && typeof o.embed === 'object') ? o.embed : null; }
+export function embedIsSet(o) { const e = embedOf(o); return !!(e && (e.none || e.doc || e.routine || e.brief || e.owner)); }
+export function embedLinesOf(o) {
+  const e = embedOf(o); if (!e) return [];
+  if (e.none) return [{ label: 'One-off', text: 'Nothing recurring - the action stands on its own.' }];
+  const out = [];
+  if (e.doc) out.push({ label: 'Document', text: e.doc.name + (e.doc.path ? (' - ' + e.doc.path) : ''), home: EMBED_HOMES.doc });
+  if (e.routine) out.push({ label: 'Routine', text: e.routine.item + (e.routine.frequency ? (' - ' + e.routine.frequency.toLowerCase()) : '') + (e.routine.owner ? (', ' + e.routine.owner) : '') + (e.routine.due ? (', next due ' + embedDate(e.routine.due)) : ''), home: EMBED_HOMES.routine });
+  if (e.brief) out.push({ label: 'Briefed', text: e.brief.title + (e.brief.type ? (' (' + e.brief.type.toLowerCase() + ')') : '') + (e.brief.date ? (' - ' + embedDate(e.brief.date)) : ''), home: EMBED_HOMES.brief });
+  if (e.owner) out.push({ label: 'Owned by', text: e.owner.name + (e.owner.role ? (' - ' + e.owner.role) : ''), home: EMBED_HOMES.owner });
+  return out;
+}
+
 export const REPORT_DOC_CODES = {
   companyProfile: 'CP', policySignoff: 'PSO', boardReport: 'BR', riskProfile: 'RP',
   actionPlan: 'AP', executionPlan: 'EP', completedActions: 'CA', actionArchive: 'AA',
   managementSystem: 'MS', raRegister: 'RAR', riskAcceptance: 'RAC', audit: 'AUD',
+  managementPlan: 'MP',
   siteInspections: 'SIT', feedback: 'CR', cas: 'CAS', acp: 'ACP', policy: 'POL',
   incidents: 'INC', consultation: 'CCR', trainingMatrix: 'TCR', assuranceMonthly: 'MAR',
 };

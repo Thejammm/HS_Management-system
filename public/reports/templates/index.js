@@ -7,6 +7,7 @@
 // use getReportFormat/setReportFormat, no new storage.
 import { buildBoardReport, BOARD_SECTIONS } from './board-report.js';
 import { buildRiskAssessment } from './risk-assessment.js';
+import { buildManagementPlan } from './management-plan.js';
 export { BOARD_SECTIONS };
 
 // Per-tenant section choice for the board report, same storage pattern as the
@@ -37,6 +38,15 @@ export const REPORTS = {
       { id: 'brief',  title: 'Brief - editorial' },
     ],
     build: (state, opts) => buildRiskAssessment(state, opts),
+  },
+  'management-plan': {
+    id: 'management-plan',
+    title: 'Health & Safety Management Plan',
+    formats: [
+      { id: 'signal', title: 'Signal - with cover, for issuing', default: true },
+      { id: 'brief',  title: 'Brief - no cover, for filing' },
+    ],
+    build: (state, opts) => buildManagementPlan(state, opts),
   },
   // audit and action-plan port next - add entries here; the engine needs no changes.
 };

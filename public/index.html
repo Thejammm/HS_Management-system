@@ -14923,6 +14923,13 @@ function renderReports(){
       icon:svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
       desc:'The client execution plan as a fillable PDF: every action to do, grouped by month, with a tick box and a notes line against each - the client ticks off what is done, notes the evidence, saves the file and sends it back.',
       tags:['Client','Fillable','By month'] },
+    { title:'H&S Management Plan', accent:'#1E3A5F', tint:'#E6EBF2', fn:'openManagementPlanPrint()',
+      meta:(function(){ try{ const n=(S.riskProfile||[]).length; if(!n) return 'Build the risk profile first';
+        const e=(typeof _embedStats==='function')?_embedStats():{done:0,held:0};
+        return n+' risk'+(n!==1?'s':'')+(e.done?(' \u00b7 '+e.held+' of '+e.done+' delivered actions held'):''); }catch(e){ return 'From the whole system'; } })(),
+      icon:svg('<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>'),
+      desc:'The whole journey in one document, in the clause order an auditor reads: what this business carries, who is answerable, what we found, how each risk is managed and what keeps it in place, the checks that prove it, and the plan from here. Built from the live system - nothing is typed for it.',
+      tags:['Issue to the client','Audit-ready','Whole system'] },
     { title:'Completed Actions', accent:'#16A34A', tint:'#E7F6EE', fn:'downloadCompletedActionsReport()', meta:(_execActions().filter(a=>a.status==='Complete').length+' completed'),
       icon:svg('<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>'),
       desc:'The delivered-work history - actions completed, grouped by month, for the period you pick on the Action Plan tab (month / quarter / year / all).',
@@ -21033,6 +21040,7 @@ const REPORT_DOCS = [
   { key:'discovery',        title:'Discovery Questionnaire',      code:'DQ'  },
   { key:'policySignoff',    title:'Policy Acknowledgement',       code:'PSO' },
   { key:'boardReport',      title:'Board Report',                 code:'BR'  },
+  { key:'managementPlan',   title:'H&S Management Plan',          code:'MP'  },
   { key:'bizStatus',        title:'Business Status Report',       code:'BSR' },
   { key:'decisions',        title:'Management Decisions',         code:'MD'  },
   { key:'riskProfile',      title:'Risk Profile',                 code:'RP'  },
@@ -21580,23 +21588,34 @@ function setBoardSection(id, hide){
 }
 async function openBoardReportPrint(){
   try{ if(new URLSearchParams(location.search).get('report')==='legacy'){ downloadBoardReport(); return; } }catch(e){}
+  return _openEngineReport('board-report','Board report', downloadBoardReport);
+}
+// The management plan: the whole journey in one document, for issuing.
+async function openManagementPlanPrint(){
+  if(!(S.riskProfile||[]).length){ showToast('Build the risk profile first - the plan reports it','info'); return; }
+  return _openEngineReport('management-plan','H&S management plan', null);
+}
+// Any report the engine knows: the server renders the SAME template + CSS
+// through headless Chromium and hands back a real PDF, with the in-browser
+// print dialog as the fallback when signed out or the renderer is down.
+async function _openEngineReport(reportId, label, legacyFallback){
   // First choice: the server renders the SAME template + CSS through headless
   // Chromium and hands back a real PDF file - identical look, selectable text,
   // same click-to-download behaviour as every other report. Falls back to the
   // in-browser print dialog when signed out or the renderer is unavailable.
   if(typeof Auth!=='undefined' && Auth.isSignedIn() && Auth.activeTenantId()){
     try{
-      showToast('Building the board report…','info');
-      const r = await fetch('/api/reports/pdf?report=board-report&tenantId='+encodeURIComponent(Auth.activeTenantId()), { credentials:'include' });
+      showToast('Building the '+label.toLowerCase()+'\u2026','info');
+      const r = await fetch('/api/reports/pdf?report='+encodeURIComponent(reportId)+'&tenantId='+encodeURIComponent(Auth.activeTenantId()), { credentials:'include' });
       if(r.ok){
         const blob = await r.blob();
         const cd = r.headers.get('Content-Disposition')||'';
         const m = cd.match(/filename="([^"]+)"/);
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = (m && m[1]) || 'board-report.pdf';
+        a.download = (m && m[1]) || (reportId+'.pdf');
         a.click(); URL.revokeObjectURL(a.href);
-        showToast('✓ Board report downloaded','success');
+        showToast('✓ '+label+' downloaded','success');
         return;
       }
       console.warn('Server PDF unavailable ('+r.status+') - falling back to print.');
@@ -21606,11 +21625,12 @@ async function openBoardReportPrint(){
   try{
     const [tpl, eng] = await Promise.all([ import('/reports/templates/index.js'), import('/reports/engine.js') ]);
     const tenantName = (_consultantView&&_consultantView.name) || (typeof _cockpitClientName==='function'?_cockpitClientName():'') || '';
-    const report = tpl.buildReport(S, 'board-report', { tenant:{ name:tenantName } });
+    const report = tpl.buildReport(S, reportId, { tenant:{ name:tenantName } });
     await eng.printReport(report);
   }catch(e){
-    console.error('Report layer unavailable - using the legacy board report:', e);
-    downloadBoardReport();
+    console.error('Report layer unavailable for '+reportId+':', e);
+    if(typeof legacyFallback==='function') legacyFallback();
+    else showToast('The report layer could not be loaded - refresh and try again','error');
   }
 }
 function downloadBoardReport(){ if(!(S.riskProfile||[]).length){ showToast('Add at least one risk first','info'); return; } try{ buildBoardReport(); showToast('✓ Board report created','success'); }catch(e){ console.error('Board report failed',e); showToast('Could not build the report - see console','error'); } }

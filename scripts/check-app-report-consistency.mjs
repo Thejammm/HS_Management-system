@@ -31,6 +31,7 @@ const repo = path.resolve(here, '..');
 const puppeteer = require(path.join(repo, 'node_modules', 'puppeteer-core'));
 const { deriveBoard, deriveBoardExtras, boardModelOf } = await import(url.pathToFileURL(path.join(repo, 'public', 'reports', 'derive.js')));
 const contract = await import(url.pathToFileURL(path.join(repo, 'public', 'reports', 'app-contract.js')));
+const planDerive = await import(url.pathToFileURL(path.join(repo, 'public', 'reports', 'plan-derive.js')));
 
 const TODAY = new Date().toISOString().slice(0, 10);
 // Edge cases on purpose: severity-4 SIF (the live bug), explicit sif:false
@@ -123,6 +124,18 @@ const app = await page.evaluate((STATE) => {
     board: (function () { const B = _boardModel(); return { total: B.total, unc: B.unc, part: B.part, inplace: B.inplace, atTgt: B.atTgt, dep: B.dep, rated: B.rated, fillPct: B.fillPct, tgtPct: B.tgtPct, nowBand: B.nowBand || null, overdue: B.overdue,
       rows: B.rows.map(z => ({ id: z.id, tier: z.sc.priority || null, unc: z.unc, part: z.part, atTarget: z.atTarget })) }; })(),
     liveDomains: PROF_LIBRARY.domains.filter(d => d.type === 'maturity').map(d => ({ id: d.id, name: d.name, items: d.items.map(it => ({ id: it.id, crit: !!it.crit })) })),
+    // What keeps a completed action in place: the management plan prints these
+    // sentences verbatim, so the screen and the paper have to speak them the
+    // same way (Simon, 2026-09-28 - the plan is the client's copy of this).
+    keptLines: [
+      { embed: { doc:{name:'Fire evacuation procedure v1',path:''}, routine:{item:'Fire drill and alarm test',frequency:'6-monthly',owner:'Dee Marsh',due:'2027-02-28'}, brief:{title:'Fire evacuation',type:'Procedure',date:'2026-08-28'}, owner:{name:'Dee Marsh',role:'Fire warden'} } },
+      { embed: { none:true } },
+      {},
+    ].map(o => _embedLines(o).map(l => l.label + '|' + l.text)),
+    // And the flag wording, which must change with the kind of risk.
+    sifWords: [ _rt({}, 'flagChipTitle'), _rt({ mode:'ops' }, 'flagChipTitle') ],
+    // Every non-inspection action, as the execution plan aggregates them.
+    execCount: _execActions().length,
   };
 }, STATE);
 await browser.close();
@@ -171,6 +184,19 @@ eq('doc control: risk profile row', dcPick(app.docRisk), dcPick(contract.docFor(
 eq('contract: hold states', app.liveHoldStates, contract.HOLD_STATES);
 eq('contract: hold order', app.liveHoldOrder, contract.HOLD_ORDER);
 eq('contract: maturity domains/items', app.liveDomains, contract.MATURITY_DOMAINS);
+// Kept in place: the app's sentences and the report's, word for word.
+eq('kept in place: sentences', app.keptLines,
+  [
+    { embed: { doc:{name:'Fire evacuation procedure v1',path:''}, routine:{item:'Fire drill and alarm test',frequency:'6-monthly',owner:'Dee Marsh',due:'2027-02-28'}, brief:{title:'Fire evacuation',type:'Procedure',date:'2026-08-28'}, owner:{name:'Dee Marsh',role:'Fire warden'} } },
+    { embed: { none:true } },
+    {},
+  ].map(o => contract.embedLinesOf(o).map(l => l.label + '|' + l.text)));
+// A business risk is never described as one that can kill someone.
+eq('flag wording follows the kind of risk',
+  app.sifWords.map(t => /business/i.test(t) ? 'business-critical' : 'could kill or seriously injure'),
+  [contract.sifWordOf({}), contract.sifWordOf({ mode: 'ops' })]);
+// The management plan counts the same plan the execution plan does.
+eq('plan actions (all sources)', app.execCount, planDerive.planActionsOf(STATE).length);
 
 // The director's risk picture: the board pages must count exactly as the cockpit does.
 const BM = boardModelOf(STATE, { today: TODAY });

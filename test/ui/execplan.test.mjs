@@ -19,6 +19,7 @@ const PLAN = () => {
   by('v2').actions.push({ id: 'v2a1', desc: 'Buy a proper roof-edge system', owner: 'Ash', due: '2027-02-01', status: 'In progress', priority: 'High' });
   by('v2').actions.push({ id: 'v2a2', desc: 'Brief the survey team on fragile roofs', owner: 'Ash', due: '2026-08-01', status: 'Complete', completedDate: '2026-08-02', completedBy: 'Ash' });
   by('v3').actions.push({ id: 'v3a1', desc: 'Write the driving-for-work policy', owner: 'Bev', due: '2026-07-01', status: 'Complete', completedDate: '2026-07-04', completedBy: 'Bev' });
+  by('v4').actions.push({ id: 'v4a1', desc: 'Re-lay the stores racking', owner: 'Dee', due: '2026-10-15', status: 'Not started', priority: 'Medium' });
   by('v5').actions.push({ id: 'v5a1', desc: 'Sign the second key customer', owner: 'Simon', due: '2026-01-31', status: 'Not started', priority: 'Critical' });
   return rs;
 };
@@ -110,6 +111,72 @@ await wait(page, 450);
   R.ok(t.themeTitle && t.monthTitle && t.months && t.themesGone, 'switching to Target date gives the month-by-month plan back');
   R.ok(t.labels.length >= 3, 'and every dated line still names its theme above the action (' + t.labels.length + ' labelled)');
   R.ok(t.backToTheme && /Risk theme/.test(t.on || ''), 'the switch says which reading is on, and goes back');
+}
+
+// ── the marker beside each action is the band of its risk, never a status ──
+{
+  const t = await page.evaluate(() => {
+    const cell = (d) => {
+      const rows = [...document.querySelectorAll('#epYearCard tr')];
+      const tr = rows.find(r => r.cells && r.cells[1] && r.cells[1].textContent.indexOf(d) >= 0);
+      const m = tr ? tr.cells[0].querySelector('span') : null;
+      return { has: !!(m && m.classList.contains('ep-band')), colour: m ? m.style.background : '', tip: m ? (m.getAttribute('title') || '') : '(no cell)' };
+    };
+    const band = (d) => _epBandOf(_execActions().find(a => a.desc.indexOf(d) === 0));
+    // the fixture's fire risk is 5x5 Critical, manual handling 2x3 Medium
+    return { fire: cell('Write the fire'), fireBand: band('Write the fire'),
+      hand: cell('Re-lay the stores racking'), handBand: band('Re-lay the stores racking'),
+      free: cell('Renew the employers'), freeBand: band('Renew the employers'),
+      header: (document.querySelector('#epYearCard thead th') || {}).textContent,
+      // the band the marker shows is the register's own score, not a second opinion
+      agrees: _epBandOf(_execActions().find(a => a.desc.indexOf('Write the fire') === 0))
+        === _riskScore(S.riskProfile.find(r => r.id === 'v1')).priority };
+  });
+  R.ok(/Band/.test(t.header || ''), 'the first column says what it is (' + t.header + ')');
+  R.ok(t.fire.has && t.fire.colour === 'rgb(220, 38, 38)' && t.fireBand === 'Critical',
+    'a Critical action is marked in the Critical colour (' + t.fireBand + ')');
+  R.ok(t.hand.has && t.hand.colour === 'rgb(245, 158, 11)' && t.handBand === 'Medium',
+    'a Medium action is marked in the Medium colour (' + t.handBand + ')');
+  R.ok(t.agrees, 'the band is the register\'s own score, not a second opinion');
+  R.ok(!t.free.has && /not tied to a rated risk/i.test(t.free.tip),
+    'an action with no rated risk behind it is left unmarked, and says why on hover');
+}
+
+// ── a Low risk is left blank on purpose, so nothing reads as finished ──
+{
+  const t = await page.evaluate(() => {
+    const r = S.riskProfile.find(x => x.id === 'v4');
+    r.likelihood = '1'; r.severity = '1';                 // make it Low
+    renderExecPlan();
+    const rows = [...document.querySelectorAll('#epYearCard tr')];
+    const tr = rows.find(x => x.cells && x.cells[1] && x.cells[1].textContent.indexOf('Re-lay the stores racking') >= 0);
+    const m = tr ? tr.cells[0].querySelector('span') : null;
+    const out = { band: _riskScore(r).priority, marked: !!(m && m.classList.contains('ep-band')),
+      tip: m ? (m.getAttribute('title') || '') : '', anyGreen: [...document.querySelectorAll('#epYearCard .ep-band')].some(x => /22, 163, 74/.test(x.style.background)) };
+    r.likelihood = '2'; r.severity = '3'; renderExecPlan();
+    return out;
+  });
+  R.ok(t.band === 'Low' && !t.marked, 'a Low risk gets no mark at all');
+  R.ok(/marked blank on purpose/i.test(t.tip), 'and says why: ' + t.tip.slice(0, 74));
+  R.ok(!t.anyGreen, 'no green appears on the plan, so a mark can never be misread as done');
+}
+
+// ── lateness moved to the date, where it belongs ──
+{
+  const t = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('#epYearCard tr')];
+    const find = (d) => rows.find(r => r.cells && r.cells[1] && r.cells[1].textContent.indexOf(d) >= 0);
+    const dateOf = (tr) => tr ? tr.querySelector('input[type="date"]') : null;
+    const late = dateOf(find('Sign the second key customer'));      // due 2026-01-31, overdue
+    const ok = dateOf(find('Service the extinguishers'));           // 2027-03-01, on track
+    // read the inline style text: a var() border never surfaces on el.style.borderColor
+    return { lateBorder: late ? (late.getAttribute('style') || '') : '', lateWeight: late ? late.style.fontWeight : '',
+      lateTip: late ? (late.getAttribute('title') || '') : '',
+      okBorder: ok ? (ok.getAttribute('style') || '') : '', okTip: ok ? (ok.getAttribute('title') || '') : '' };
+  });
+  R.ok(/#DC2626/i.test(t.lateBorder) && t.lateWeight === '700' && /Overdue/.test(t.lateTip),
+    'an overdue action shows it on its target date, not on a dot at the far left');
+  R.ok(/var\(--border\)/.test(t.okBorder) && /On track/.test(t.okTip), 'an action on track leaves its date plain');
 }
 
 // ── "Work on this": one button from the plan to where the work is done ──

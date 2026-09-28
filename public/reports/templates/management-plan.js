@@ -72,7 +72,7 @@ export function buildManagementPlan(state, opts = {}) {
             cols: [{ header: 'Section', w: '9%' }, { header: 'Theme', w: '33%' }, { header: 'Risks', w: '9%' },
                    { header: 'Worst band', w: '15%' }, { header: 'Controlled', w: '18%' }, { header: 'Flagged', w: '16%' }],
             rows: themeRows,
-            footnote: 'A theme is a high level category of risk; every action in this plan belongs to one of them, and each has its own lettered section in part 4. Flagged means the worst credible outcome is death or serious injury - or, for a business risk, damage the business would struggle to recover from.' }
+            footnote: 'A theme is a high level category of risk; every action in this plan belongs to one of them, and each has its own lettered section in part 4 - the same letter that starts every risk reference in it. Flagged means the worst credible outcome is death or serious injury - or, for a business risk, damage the business would struggle to recover from.' }
         : none('No risks recorded yet. The risk profile is built first; this plan then reports it.'),
       { type: 'soWhat', text: P.rows.length
         ? (countPhrase(P.themes.length, 'risk theme is', 'risk themes are') + ' carried by this business, and '
@@ -244,7 +244,7 @@ export function buildManagementPlan(state, opts = {}) {
     return t ? Object.assign({}, c, { band: { letter: t.letter, name: t.name, meta: t.meta + ' \u00b7 continued' } }) : c;
   });
   const themeTables = (slice, last) => ([{ type: 'planRisk', rows: banded(slice),
-    footnote: last ? '"As found" is the score before the plan moved it; where it matches "now", the risk has not been re-scored yet. "Target" is where the plan is written to reach. Scores are likelihood multiplied by severity, each judged from 1 to 5, so 25 is the worst case and 1 the least.' : undefined }]);
+    footnote: last ? 'A risk reference is its theme letter and its own number - the number is given once and never reused, so it always means the same risk. "As found" is the score before the plan moved it; where it matches "now", the risk has not been re-scored yet. "Target" is where the plan is written to reach. Scores are likelihood multiplied by severity, each judged from 1 to 5, so 25 is the worst case and 1 the least.' : undefined }]);
   const opPages = P.rows.length ? slices.map((slice, i) => ({
     label: 'Managed' + (slices.length > 1 ? ' ' + (i + 1) : ''),
     blocks: [

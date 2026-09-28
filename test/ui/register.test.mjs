@@ -181,13 +181,35 @@ await openRegister(page);
     const refs = S.riskProfile.map(r => r.ref);
     const head = [...document.querySelectorAll('table.rpt thead th')].map(x => x.textContent.trim());
     const cells = [...document.querySelectorAll('#rpTbody tr.rpt-row')].map(tr => tr.cells[1].textContent.trim());
-    return { refs, head, cells, seq: S.riskRefSeq,
-      order: refs.join(',') === S.riskProfile.map((r, i) => 'R-' + String(i + 1).padStart(3, '0')).join(',') };
+    return { refs, head, cells, seq: S.riskRefSeq, letters: S.macroLetters,
+      nos: S.riskProfile.map(r => r.refNo),
+      // the fixture's unrated risk has no macro category, so it is the X
+      unlettered: S.riskProfile.filter(r => !_riskMacroOf(r)).map(r => r.ref) };
   });
-  R.ok(t.refs.every(x => /^R-\d{3}$/.test(x)), 'every risk gets a reference in the agreed shape (' + t.refs.join(' ') + ')');
-  R.ok(t.order, 'assigned in the order they became risks, not by score or theme');
-  R.ok(t.head[1] === 'Ref' && t.cells.every(c => /^R-\d{3}$/.test(c)), 'the register shows it in its own column');
+  R.ok(t.refs.every(x => /^[A-Z]{1,2}-\d{3}$/.test(x)), 'a reference is a theme letter and a number (' + t.refs.join(' ') + ')');
+  R.ok(t.nos.join(',') === t.nos.map((_, i) => i + 1).join(','), 'the numbers run in the order the risks were added');
+  R.ok(t.head[1] === 'Ref' && t.cells.every(c => /^[A-Z]{1,2}-\d{3}$/.test(c)), 'the register shows it in its own column');
   R.ok(t.seq === t.refs.length, 'the sequence is kept on the client as a high-water mark (' + t.seq + ')');
+  R.ok(t.unlettered.every(x => /^X-/.test(x)), 'a risk with no category yet carries X until one is set (' + t.unlettered.join(' ') + ')');
+  R.ok(new Set(Object.values(t.letters)).size === Object.keys(t.letters).length && !Object.values(t.letters).includes('X'),
+    'each theme has its own letter, and none of them is X (' + Object.values(t.letters).sort().join(' ') + ')');
+}
+
+// ── the letter follows the theme, and is not the theme's place in the list ──
+{
+  const t = await page.evaluate(() => {
+    const r = S.riskProfile.find(x => x.id === 'v6');        // the unrated, uncategorised one
+    const before = r.ref;
+    updateRiskField('v6', 'macroKey', 'fire');               // put it under Fire & explosion
+    const fireLetter = (S.macroLetters || {}).fire;
+    const after = r.ref;
+    const fireMate = S.riskProfile.find(x => x.id === 'v1'); // already a Fire risk
+    return { before, after, fireLetter, sameLetter: after.charAt(0) === fireMate.ref.charAt(0),
+      numberHeld: after.split('-')[1] === before.split('-')[1] };
+  });
+  R.ok(/^X-/.test(t.before) && t.after.charAt(0) === t.fireLetter, 'giving a risk its category gives it that theme\'s letter (' + t.before + ' to ' + t.after + ')');
+  R.ok(t.sameLetter, 'two risks in the same theme share the letter');
+  R.ok(t.numberHeld, 'and the number - the part that identifies it - did not change');
 }
 
 // ── the whole point: re-scoring re-sorts the register, the references do not move ──
@@ -220,10 +242,12 @@ await openRegister(page);
     restoreBinItem(gone ? gone.id : 'x');
     const back = S.riskProfile.find(r => r.id === 'v3');
     _riskCloseModal();
-    return { top, goneRef, newRef, restored: back ? back.ref : '', clash: newRef === goneRef };
+    const no = (x) => String(x || '').split('-')[1] || '';
+    return { top, goneRef, newRef, restored: back ? back.ref : '',
+      clash: no(newRef) === no(goneRef), newNo: no(newRef), restoredNo: no(back ? back.ref : '') };
   });
-  R.ok(!t.clash && t.newRef === 'R-007', 'a new risk takes the next number, never a deleted one (' + t.newRef + ', not ' + t.goneRef + ')');
-  R.ok(t.restored === t.goneRef, 'and restoring from the bin brings its own reference back (' + t.restored + ')');
+  R.ok(!t.clash && t.newNo === '007', 'a new risk takes the next number, never a deleted one (' + t.newRef + ', not ' + t.goneRef + ')');
+  R.ok(t.restoredNo === '003' && t.restored === t.goneRef, 'and restoring from the bin brings its own reference back (' + t.restored + ')');
 }
 
 await R.done(browser, errors);

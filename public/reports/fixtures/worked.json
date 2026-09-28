@@ -1,4 +1,12 @@
 {
+ "macroLetters": {
+  "fire": "A",
+  "transport": "B",
+  "height": "C",
+  "health": "D",
+  "ergonomics": "E",
+  "people": "F"
+ },
  "company": {
   "legalName": "Heavyweight Motor and Transport Services Limited",
   "employees": "24",
@@ -30,6 +38,7 @@
  "riskProfile": [
   {
    "id": "h0",
+   "refNo": 1,
    "activity": "Fire breaking out at the premises during hot work in the vehicle workshop",
    "libKey": "fire",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -86,10 +95,11 @@
      }
     }
    ],
-   "ref": "R-001"
+   "ref": "A-001"
   },
   {
    "id": "h1",
+   "refNo": 2,
    "activity": "A serious road collision while driving for work, including the grey fleet",
    "libKey": "roadrisk",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -152,10 +162,11 @@
      }
     }
    ],
-   "ref": "R-002"
+   "ref": "B-002"
   },
   {
    "id": "h2",
+   "refNo": 3,
    "activity": "A fall from height working on vehicle roofs and from the mezzanine store",
    "libKey": "workatheight",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -189,10 +200,11 @@
      "completedDate": ""
     }
    ],
-   "ref": "R-003"
+   "ref": "C-003"
   },
   {
    "id": "h3",
+   "refNo": 4,
    "activity": "Asbestos disturbance during intrusive survey work in pre-2000 buildings",
    "libKey": "asbestos",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -255,10 +267,11 @@
      }
     }
    ],
-   "ref": "R-004"
+   "ref": "D-004"
   },
   {
    "id": "h4",
+   "refNo": 5,
    "activity": "Manual handling injury moving stock, wheels and archive boxes between bays",
    "libKey": "manualhandling",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -315,10 +328,11 @@
      }
     }
    ],
-   "ref": "R-005"
+   "ref": "E-005"
   },
   {
    "id": "h5",
+   "refNo": 6,
    "activity": "Aggression and violence from passengers on assisted travel runs",
    "libKey": "violence",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -358,10 +372,11 @@
      "completedDate": ""
     }
    ],
-   "ref": "R-006"
+   "ref": "F-006"
   },
   {
    "id": "h6",
+   "refNo": 7,
    "activity": "Exposure to welding fume, brake dust and solvents in the workshop",
    "libKey": "fire",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -418,10 +433,11 @@
      }
     }
    ],
-   "ref": "R-007"
+   "ref": "A-007"
   },
   {
    "id": "h7",
+   "refNo": 8,
    "activity": "Contact with moving machinery on the tyre and brake bays",
    "libKey": "roadrisk",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -484,10 +500,11 @@
      }
     }
    ],
-   "ref": "R-008"
+   "ref": "B-008"
   },
   {
    "id": "h8",
+   "refNo": 9,
    "activity": "Electrical injury from live testing and from the fixed installation",
    "libKey": "workatheight",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -521,10 +538,11 @@
      "completedDate": ""
     }
    ],
-   "ref": "R-009"
+   "ref": "C-009"
   },
   {
    "id": "h9",
+   "refNo": 10,
    "activity": "Lone working on call-outs and out-of-hours recovery",
    "libKey": "asbestos",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -587,10 +605,11 @@
      }
     }
    ],
-   "ref": "R-010"
+   "ref": "D-010"
   },
   {
    "id": "h10",
+   "refNo": 11,
    "activity": "Slips, trips and falls on the yard and in the wash bay",
    "libKey": "manualhandling",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -647,10 +666,11 @@
      }
     }
    ],
-   "ref": "R-011"
+   "ref": "E-011"
   },
   {
    "id": "h11",
+   "refNo": 12,
    "activity": "Losing the key passenger transport contract",
    "libKey": "violence",
    "mode": "ops",
@@ -691,10 +711,11 @@
      "completedDate": ""
     }
    ],
-   "ref": "R-012"
+   "ref": "F-012"
   },
   {
    "id": "h12",
+   "refNo": 13,
    "activity": "Noise and hand-arm vibration from workshop power tools",
    "libKey": "fire",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -751,10 +772,11 @@
      }
     }
    ],
-   "ref": "R-013"
+   "ref": "A-013"
   },
   {
    "id": "h13",
+   "refNo": 14,
    "activity": "Legionella risk from the wash bay and the building water system",
    "libKey": "roadrisk",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -817,10 +839,11 @@
      }
     }
    ],
-   "ref": "R-014"
+   "ref": "B-014"
   },
   {
    "id": "h14",
+   "refNo": 15,
    "activity": "A workplace transport strike between vehicles and pedestrians in the yard",
    "libKey": "workatheight",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -854,10 +877,11 @@
      "completedDate": ""
     }
    ],
-   "ref": "R-015"
+   "ref": "C-015"
   },
   {
    "id": "h15",
+   "refNo": 16,
    "activity": "Failure to maintain statutory examination of lifting equipment",
    "libKey": "asbestos",
    "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
@@ -920,7 +944,7 @@
      }
     }
    ],
-   "ref": "R-016"
+   "ref": "D-016"
   }
  ],
  "actionPlan": [
@@ -1252,6 +1276,5 @@
    "actual": "",
    "outcome": ""
   }
- ],
- "riskRefSeq": 16
+ ]
 }

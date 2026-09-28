@@ -224,6 +224,24 @@ export function reviewDueOf(r, opts = {}) {
   const today = opts.today || new Date().toISOString().slice(0, 10);
   return !!(r && r.reviewDue && String(r.reviewDue) < today);
 }
+// The macro KEY behind a risk (the label is macroOf) - verbatim port of the
+// app's _riskMacroOf, so the report can look a theme up in the tenant's own
+// letter store rather than making a letter up from a sort order.
+export function macroKeyOf(r) {
+  if (!r) return '';
+  const mk = String(r.macroKey || '');
+  if (mk && (mk.indexOf('legal:') === 0 || MACRO_LABELS[mk])) return mk;
+  return MACRO_OF_THEME[r.libKey] || '';
+}
+// The letter that theme carries on this client. Allocated once by the app when
+// the theme first appeared and then frozen, so it is not a position and does
+// not shuffle. X means a risk with no category yet.
+export function macroLetterOf(state, key) {
+  if (!key) return 'X';
+  const store = (state && state.macroLetters && typeof state.macroLetters === 'object') ? state.macroLetters : {};
+  return store[key] ? String(store[key]) : 'X';
+}
+
 export function macroOf(r, state) {
   if (!r) return '';
   // a legal-duties risk groups under its duty area: 'legal:<sectionId>', named

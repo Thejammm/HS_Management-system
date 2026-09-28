@@ -295,42 +295,61 @@ test('a risk already at its planned target says so instead of a worse number', (
 // ── Simon, 2026-09-28: number the risks. Two labels doing two jobs - a
 //    reference that belongs to the risk for life, and a section letter that
 //    belongs to this issue of the document.
-test('every risk prints its own reference, straight from the app', () => {
+// the app allocates a letter per theme and composes <letter>-<number>
+const LETTERED = () => {
   const s = STATE();
-  s.riskProfile.forEach((r, i) => { r.ref = 'R-' + String(i + 1).padStart(3, '0'); });
-  const html = reportHTML(buildReport(s, 'management-plan', OPTS));
-  ['R-001', 'R-002', 'R-003'].forEach(ref =>
+  s.macroLetters = { fire: 'A', height: 'B', business: 'C' };
+  s.riskProfile.forEach((r, i) => {
+    const k = { r1: 'A', r2: 'B', r3: 'C' }[r.id] || 'X';
+    r.refNo = i + 1; r.ref = k + '-' + String(i + 1).padStart(3, '0');
+  });
+  return s;
+};
+
+test('every risk prints its own reference, straight from the app', () => {
+  const html = reportHTML(buildReport(LETTERED(), 'management-plan', OPTS));
+  ['A-001', 'B-002', 'C-003'].forEach(ref =>
     assert.match(html, new RegExp('<span class="r-mp-ref">' + ref + '</span>'), 'card carries ' + ref));
   // the report only ever reads it - a risk with no reference prints no chip
   const none = reportHTML(buildReport(STATE(), 'management-plan', OPTS));
   assert.doesNotMatch(none, /r-mp-ref/, 'nothing invented for a risk that has no reference yet');
 });
 
-test('the sections are lettered, and each band says what is under it', () => {
-  const s = STATE();
-  s.riskProfile.forEach((r, i) => { r.ref = 'R-' + String(i + 1).padStart(3, '0'); });
+test('the band letter is the theme\'s own, so it matches the references under it', () => {
+  const s = LETTERED();
   const P = deriveManagementPlan(s, { today: TODAY });
-  assert.deepEqual(P.themes.map(t => t.letter), ['A', 'B', 'C'], 'A, B, C in the order the sections print');
-  assert.match(P.themes[0].meta, /^\d+ risk/, 'the band counts its risks: ' + P.themes[0].meta);
+  const fire = P.themes.find(t => /Fire/.test(t.name));
+  assert.equal(fire.letter, 'A', 'the band reads the letter the app gave that theme');
+  assert.equal(fire.rows[0].ref.charAt(0), fire.letter, 'and every reference beneath it starts with the same letter');
+  assert.match(fire.meta, /^\d+ risk/, 'the band counts its risks: ' + fire.meta);
   const html = reportHTML(buildReport(s, 'management-plan', OPTS));
   assert.match(html, /<span class="r-mp-bandl">A<\/span>/);
   assert.match(html, /<span class="r-mp-bandl">B<\/span>/);
-  // and section 1 forecasts where each theme will be found
-  assert.match(html, /Section<\/th>/);
+  assert.match(html, /Section<\/th>/, 'section 1 forecasts where each theme will be found');
 });
 
-test('a section letter is positional, a reference is not', () => {
-  const s = STATE();
-  s.riskProfile.forEach((r, i) => { r.ref = 'R-' + String(i + 1).padStart(3, '0'); });
+// ── the point of a theme letter rather than a section number ────────────────
+test('re-scoring re-orders the sections and moves no letter and no reference', () => {
+  const s = LETTERED();
   const before = deriveManagementPlan(s, { today: TODAY });
-  const fireBefore = before.themes.find(t => /Fire/.test(t.name));
-  // push the work-at-height risk to Critical: it overtakes and the letters shuffle
+  const orderBefore = before.themes.map(t => t.letter).join('');
+  // push work at height to Critical: it overtakes fire and the sections re-order
   s.riskProfile[1].likelihood = '5'; s.riskProfile[1].severity = '5';
   const after = deriveManagementPlan(s, { today: TODAY });
-  const fireAfter = after.themes.find(t => /Fire/.test(t.name));
-  assert.notEqual(fireBefore.letter, fireAfter.letter, 'the section letter moved with the re-sort');
-  assert.equal(before.rows.find(r => r.id === 'r1').ref, after.rows.find(r => r.id === 'r1').ref,
-    'and every reference stayed exactly where it was');
+  const orderAfter = after.themes.map(t => t.letter).join('');
+  assert.notEqual(orderBefore, orderAfter, 'the sections print in a different order (' + orderBefore + ' then ' + orderAfter + ')');
+  assert.equal(before.themes.find(t => /Fire/.test(t.name)).letter,
+    after.themes.find(t => /Fire/.test(t.name)).letter, 'but Fire keeps its letter');
+  before.rows.forEach(r => assert.equal(r.ref, after.rows.find(x => x.id === r.id).ref,
+    'and every reference is unchanged: ' + r.ref));
+});
+
+test('a risk with no category yet carries X, not a letter it has not earned', () => {
+  const s = LETTERED();
+  s.riskProfile.push({ id: 'r9', activity: 'Not yet categorised', likelihood: '2', severity: '2', refNo: 9, ref: 'X-009', actions: [] });
+  const html = reportHTML(buildReport(s, 'management-plan', OPTS));
+  assert.match(html, /<span class="r-mp-ref">X-009<\/span>/);
+  assert.match(html, /<span class="r-mp-bandl">X<\/span>/, 'and sits in the X section until it is given one');
 });
 
 test('a theme carried over a page break gets its band again, marked continued', () => {

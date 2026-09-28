@@ -40,7 +40,7 @@ export const HEAVY = (() => {
   const risks = NAMES.map((n, i) => {
     const done = i % 3 !== 2;
     const r = {
-      id: 'h' + i, ref: 'R-' + String(i + 1).padStart(3, '0'), activity: n, libKey: ['fire', 'roadrisk', 'workatheight', 'asbestos', 'manualhandling', 'violence'][i % 6],
+      id: 'h' + i, refNo: i + 1, activity: n, libKey: ['fire', 'roadrisk', 'workatheight', 'asbestos', 'manualhandling', 'violence'][i % 6],
       mode: i === 11 ? 'ops' : undefined,
       assocRisk: 'The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.',
       likelihood: String((i % 4) + 1), severity: String(((i + 2) % 4) + 2),
@@ -60,7 +60,15 @@ export const HEAVY = (() => {
       owner: { name: ['Dee Marsh', 'Bev Hall', 'S Archer'][i % 3], role: ['Fire warden', 'Transport manager', 'Managing Director'][i % 3] } };
     return r;
   });
+  // Letters and references exactly as the app allocates them: a letter per
+  // theme on first appearance (skipping X), then <letter>-<number>.
+  const KEYOF = { fire:'fire', roadrisk:'transport', workatheight:'height', asbestos:'health', manualhandling:'ergonomics', violence:'people', contractloss:'business' };
+  const LETTERS = {}; const used = new Set();
+  const nextLetter = () => { for (let i = 0; i < 26; i++) { const c = String.fromCharCode(65 + i); if (c !== 'X' && !used.has(c)) return c; } return 'X'; };
+  risks.forEach(r => { const k = KEYOF[r.libKey] || ''; if (!k || LETTERS[k]) return; const c = nextLetter(); LETTERS[k] = c; used.add(c); });
+  risks.forEach(r => { const k = KEYOF[r.libKey] || ''; r.ref = (LETTERS[k] || 'X') + '-' + String(r.refNo).padStart(3, '0'); });
   return {
+    macroLetters: LETTERS,
     company: { legalName: 'Heavyweight Motor and Transport Services Limited', employees: '24', siteCount: '2',
       sector: 'Vehicle repair and passenger transport',
       description: 'A vehicle workshop, a tyre and brake centre and an assisted passenger transport service operating from two sites.',

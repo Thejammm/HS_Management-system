@@ -17570,6 +17570,8 @@ function updateRiskField(id, field, value){
   r[field] = value;
   if(field === 'assocRisk') r.assocAuto = false;   // typed over - the auto-written text stops following the lines
   if(field === 'activity') r.titleAuto = false;
+  // giving a risk its macro category gives it the theme's letter at once
+  if(field === 'macroKey' || field === 'libKey'){ try{ _riskRefsEnsure(); }catch(e){} }
   _stamp(r, 'updated');
   scheduleAutoSave();
   // Live recompute rating + priority without a full re-render (keeps input focus)
@@ -22262,28 +22264,61 @@ function setRiskGroupMode(m){ _riskGroupMode=m; _keepScroll(renderRiskProfile); 
 // not free its number, so a reference always means the same risk for ever
 // (Simon, 2026-09-28). Restoring from the bin brings the number back with
 // it, because the number lives on the risk object.
-function _riskRefFmt(n){ n=parseInt(n,10)||0; return 'R-'+(n<1000?String(n).padStart(3,'0'):String(n)); }
+// X is not allocated: it is what a risk with no category yet carries.
+const MACRO_LETTER_SKIP='X';
+function _macroLetterStore(){ if(!S.macroLetters || typeof S.macroLetters!=='object') S.macroLetters={}; return S.macroLetters; }
+// Read only - never allocates, so it is safe inside a render.
+function _macroLetterRead(k){ if(!k) return MACRO_LETTER_SKIP; const v=_macroLetterStore()[k]; return v?String(v):MACRO_LETTER_SKIP; }
+function _macroLetterNext(used){
+  for(let i=0;i<26;i++){ const c=String.fromCharCode(65+i); if(c!==MACRO_LETTER_SKIP && !used.has(c)) return c; }
+  for(let i=0;i<26;i++){ for(let j=0;j<26;j++){ const c=String.fromCharCode(65+i)+String.fromCharCode(65+j); if(!used.has(c)) return c; } }
+  return MACRO_LETTER_SKIP;
+}
+// Allocate a letter to any theme that has not got one, in the order the
+// themes first appear on this client's register. Once given it never moves,
+// which is the whole difference between this and a section number.
+function _macroLettersEnsure(){
+  const store=_macroLetterStore();
+  const used=new Set(Object.keys(store).map(k=>String(store[k])));
+  let made=0;
+  (S.riskProfile||[]).forEach(r=>{ const k=_riskMacroOf(r); if(!k || store[k]) return;
+    const c=_macroLetterNext(used); store[k]=c; used.add(c); made++; });
+  return made;
+}
+function _riskRefFmt(k,n){ n=parseInt(n,10)||0; return _macroLetterRead(k)+'-'+(n<1000?String(n).padStart(3,'0'):String(n)); }
 function _riskRefOf(r){ return (r && r.ref) ? String(r.ref) : ''; }
+function _riskRefNo(r){ if(!r) return 0; const v=parseInt(r.refNo,10); if(v>0) return v;
+  const m=/-(\d+)$/.exec(String(r.ref||'')); return m?(parseInt(m[1],10)||0):0; }
 function _riskRefSeq(){
   let seq=parseInt(S.riskRefSeq,10); if(!(seq>0)) seq=0;
   // self-heal: never hand out a number an existing risk already carries
-  (S.riskProfile||[]).forEach(r=>{ const m=/^R-(\d+)$/.exec(String((r&&r.ref)||'')); if(m){ const v=parseInt(m[1],10)||0; if(v>seq) seq=v; } });
-  (S.recycleBin||[]).forEach(e=>{ const m=/^R-(\d+)$/.exec(String((e&&e.payload&&e.payload.ref)||'')); if(m){ const v=parseInt(m[1],10)||0; if(v>seq) seq=v; } });
+  (S.riskProfile||[]).forEach(r=>{ const v=_riskRefNo(r); if(v>seq) seq=v; });
+  (S.recycleBin||[]).forEach(e=>{ const v=_riskRefNo(e&&e.payload); if(v>seq) seq=v; });
   return seq;
 }
 // Give a reference to anything that has not got one, in the order the risks
 // were added - which is when they became risks. A no-op once they all have.
 function _riskRefsEnsure(){
   if(!Array.isArray(S.riskProfile) || !S.riskProfile.length) return 0;
-  let seq=_riskRefSeq(), made=0;
-  S.riskProfile.forEach(r=>{ if(r && !_riskRefOf(r)){ seq++; r.ref=_riskRefFmt(seq); made++; } });
-  if(made){ S.riskRefSeq=seq; }
-  return made;
+  _macroLettersEnsure();
+  let seq=_riskRefSeq(), made=0, moved=0;
+  S.riskProfile.forEach(r=>{
+    if(!r) return;
+    // the NUMBER is the identity - given once, never reissued, never changed
+    let no=_riskRefNo(r);
+    if(!no){ no=++seq; made++; }
+    if(r.refNo!==no) r.refNo=no;
+    // the LETTER is where it sits today, so it follows a re-categorisation
+    const want=_riskRefFmt(_riskMacroOf(r), no);
+    if(r.ref!==want){ r.ref=want; moved++; }
+  });
+  if(seq>(parseInt(S.riskRefSeq,10)||0)) S.riskRefSeq=seq;
+  return made+moved;
 }
 // The small grey reference chip, wherever a risk is named.
 function _riskRefChip(r, style){
   const ref=_riskRefOf(r); if(!ref) return '';
-  return '<span class="risk-ref"'+(style?(' style="'+style+'"'):'')+' title="This risk\u2019s reference. It never changes and is never reused, so it means the same risk on every document.">'+esc(ref)+'</span>';
+  return '<span class="risk-ref"'+(style?(' style="'+style+'"'):'')+' title="This risk\u2019s reference: the letter is its risk theme, the number is the risk itself. The number is given once and never reused, so it always means this risk.">'+esc(ref)+'</span>';
 }
 function _riskMacroOf(r){
   if(!r) return '';
@@ -22567,7 +22602,7 @@ function renderRiskProfile(){
     : { cat:'Macro', flag:'SIF' };
   const table=`<div style="overflow-x:auto;"><table class="rpt"><colgroup><col style="width:64px"><col style="width:52px"><col><col style="width:16%"><col style="width:12%"><col style="width:44px"><col style="width:84px"><col style="width:56px"><col style="width:15%"></colgroup><thead><tr>
       <th title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
-      <th title="Each risk keeps one reference for life - it is never changed and never reused, so it means the same risk on every document.">Ref</th>
+      <th title="The letter is the risk theme, the number is the risk. A number is given once and never reused, so a reference always resolves to the same risk.">Ref</th>
       <th>Risk title</th>
       <th>${_hh.cat}</th><th>Business area</th>
       <th style="text-align:center;" title="Worst case: could kill or seriously injure (H&amp;S) / business-critical (operational)">${_hh.flag}</th>

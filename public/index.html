@@ -3277,6 +3277,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rating-trio{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;}
     .rt-box{flex:1 1 150px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 12px;}
     .rt-box.rt-current{background:var(--accent-light);border-color:var(--accent);}
+    .rt-override{margin-top:8px;padding:7px 10px;border:1px solid #B4530955;border-left:3px solid #B45309;background:#B4530910;font-size:12px;color:#B45309;font-weight:600;}
     .rt-box .rt-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);margin-bottom:6px;}
     .rt-box .rt-selects{display:flex;gap:6px;}
     .rt-box .rt-selects select{padding:6px 7px;font-size:12px;flex:1;min-width:0;}
@@ -18480,7 +18481,32 @@ function _riskScoreGate(r, patch){
   if(_riskControlStatus(next)!=='In place') return '';
   const w=_riskOpenWork(r); if(!w.total) return '';
   const parts=[]; if(w.controls) parts.push(w.controls+' control'+(w.controls!==1?'s':'')); if(w.actions) parts.push(w.actions+' action'+(w.actions!==1?'s':''));
-  return 'Not yet - '+parts.join(' and ')+' still open on this risk. Close the work first; the score can only read controlled once it is done.';
+  return parts.join(' and ')+' still open on this risk, so this score would say it is controlled before the work is done.';
+}
+// The gate is a question, not a wall. Only the consultant knows whether the
+// number in front of them is a shortcut or a slip, so it asks - and writes
+// down that it was asked, because a score set ahead of the evidence is a
+// thing an auditor is entitled to see.
+function _riskScoreAllow(r, gate){
+  if(!gate) return true;
+  const ok = (typeof confirm==='function') ? confirm(gate
+    + '\n\nChange it anyway?\n\nUse this to correct a mistake. The override is recorded against the risk.') : false;
+  if(!ok) return false;
+  const w=_riskOpenWork(r);
+  const bits=[]; if(w.controls) bits.push(w.controls+' control'+(w.controls!==1?'s':'')); if(w.actions) bits.push(w.actions+' action'+(w.actions!==1?'s':''));
+  r.scoreOverride={ at:new Date().toISOString().slice(0,10),
+    by:(typeof _actor==='function'?(_actor().name||''):''),
+    open:bits.join(' and ') };
+  return true;
+}
+// Shown on the rating tab while the work it got ahead of is still open. Once
+// that work closes the score has earned itself and the note retires.
+function _riskOverrideHTML(r){
+  const o=r&&r.scoreOverride; if(!o) return '';
+  if(!_riskOpenWork(r).total) return '';
+  return '<div class="rt-override">Score set ahead of the work on '+esc(fmtDate(o.at))
+    +(o.by?(' by '+esc(o.by)):'')+(o.open?(', with '+esc(o.open)+' still open'):'')
+    +'. It reads as controlled from that date; closing the work clears this note.</div>';
 }
 function _riskFlowHTML(r){
   const cur=_riskScore(r), tgt=_riskTarget(r);
@@ -18492,7 +18518,7 @@ function _riskFlowHTML(r){
   const projHtml=(tgt.rating && plan.k!=='managed' && plan.k!=='accepted')
     ? `<span class="rf-arrow">→</span><span title="Projected once the action plan is delivered: ${tgt.l} × ${tgt.s}" style="color:var(--text-muted);font-weight:400;">projected <strong style="color:${_RISK_PRIO_COLOR[tgt.priority]};">${tgt.rating}</strong></span>`
     : '';
-  return part(cur,'Inherent') + `<span class="rf-arrow">→</span>` + planHtml + projHtml;
+  return part(cur,'Current') + `<span class="rf-arrow">→</span>` + planHtml + projHtml;
 }
 // Every re-score is kept - the profile shows where the business WAS as well
 // as where it is now. Entries are pushed by the plan-delivered re-score.
@@ -18545,7 +18571,8 @@ function _saveRescore(rid){
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r){ if(ov) ov.remove(); return; }
   const L=parseInt((document.getElementById('rescoreL')||{}).value,10), Sv=parseInt((document.getElementById('rescoreS')||{}).value,10);
   if(!(L>=1&&L<=5&&Sv>=1&&Sv<=5)){ showToast('Pick both likelihood and severity','error'); return; }
-  const gate=_riskScoreGate(r, {likelihood:String(L), severity:String(Sv)}); if(gate){ showToast(gate,'error'); return; }
+  const gate=_riskScoreGate(r, {likelihood:String(L), severity:String(Sv)});
+  if(gate && !_riskScoreAllow(r, gate)) return;
   const old=_riskScore(r);
   if(old.rating && (old.l!==L || old.s!==Sv)){
     if(!Array.isArray(r.scoreHistory)) r.scoreHistory=[];
@@ -18562,8 +18589,16 @@ function _saveRescore(rid){
 function updateRiskRating(id, field, value, el){
   if(_roLocked()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
-  const gate=_riskScoreGate(r, {[field]:value}); if(gate){ if(el) el.value=r[field]||''; showToast(gate,'error'); return; }
-  r[field]=value; _stamp(r,'updated'); scheduleAutoSave();
+  const gate=_riskScoreGate(r, {[field]:value});
+  if(gate && !_riskScoreAllow(r, gate)){ if(el) el.value=r[field]||''; return; }
+  r[field]=value; _stamp(r,'updated');
+  if(gate){
+    // an override puts a new line on the card, so the card is redrawn whole
+    saveData(); _keepScroll(renderRiskProfile);
+    showToast('Score changed with '+(r.scoreOverride&&r.scoreOverride.open?r.scoreOverride.open:'work')+' still open - recorded on the risk','info',6000);
+    return;
+  }
+  scheduleAutoSave();
   const flow=document.getElementById('rflow-'+id); if(flow) flow.innerHTML=_riskFlowHTML(r);
   const sc=_riskScore(r);
   const rate=document.getElementById('rrate-'+id); if(rate) rate.innerHTML=_riskRatingText(r);
@@ -22545,10 +22580,11 @@ function renderRiskProfile(){
         </div>
         <div class="risk-rating-row" style="flex-direction:column;align-items:stretch;gap:10px;">
           <label class="field-label" style="margin:0;">${esc(_rt(r,'rating'))} ${rateHint}</label>
-          <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:2px 0 4px;">Controlled is the score, not the tick. The score cannot be moved to read controlled while a control or an action on this risk is still open - close the work first. When every action and control on this risk is closed, Compass prompts you to re-score it as it stands now; at or below the residual target the risk reads controlled as reasonably practicable everywhere. The old score stays in the history and the risk stays on the profile; once it is controlled, set the date its controls are next reviewed - the risk shows that date, and when it passes it shows Review due here, on the register and on your Actions tab.</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:2px 0 4px;">Controlled is the score, not the tick. <b>Current</b> is where this risk sits today, with what is actually in place - it is the number every screen and every report reads. If a score would read controlled while a control or an action on this risk is still open, Compass says so and asks before it takes it, and notes that it did; use that to correct a mistake, not to get ahead of the work. When every action and control on this risk is closed, Compass prompts you to re-score it as it stands now; at or below the residual target the risk reads controlled as reasonably practicable everywhere. The old score stays in the history and the risk stays on the profile; once it is controlled, set the date its controls are next reviewed - the risk shows that date, and when it passes it shows Review due here, on the register and on your Actions tab.</div>
           <div class="rating-trio">
-            ${ratingBox(r,'Inherent','rt-current','likelihood','severity')}
+            ${ratingBox(r,'Current','rt-current','likelihood','severity')}
           </div>
+          ${_riskOverrideHTML(r)}
           <div style="margin:4px 0 2px;background:var(--surface,#fff);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
             <label class="field-label">Control table <span class="fl-hint" title="The controls this risk runs on, in risk-assessment language - trained competent persons, edge protection, permits - the starting point for the task risk assessments. Each owned and dated here; they stay on the risk and NEVER enter the action plan.">(?)</span></label>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 8px;font-size:12px;">

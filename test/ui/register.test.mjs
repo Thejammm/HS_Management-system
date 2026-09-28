@@ -75,17 +75,51 @@ await wait(page, 450);
       ctlRow: !!ctl && /Fire risk assessment reviewed annually/.test([...ctl.querySelectorAll('textarea')].map(x => x.value).join(' ')),
       reviewDue: !!body.querySelector('input[type="date"][onchange*="reviewDue"]'),
       reality: !!body.querySelector('textarea[oninput*="controls"]'),
-      order: body.innerText.indexOf('INHERENT') < body.innerText.indexOf('Control table') };
-    // the gate: an open control and an open action means the score cannot read controlled
+      curBox: /CURRENT/.test(body.innerText) && !/INHERENT/.test(body.innerText),
+      order: body.innerText.indexOf('CURRENT') >= 0
+        && body.innerText.indexOf('CURRENT') < body.innerText.indexOf('Control table') };
+    // the gate: an open control and an open action means a controlled score is
+    // challenged. Declining leaves the score exactly where it was.
     S.riskProfile.find(r => r.id === 'v1').targetL = '2';
     S.riskProfile.find(r => r.id === 'v1').targetS = '3';
+    const realConfirm = window.confirm;
+    window.confirm = () => false;
     sel.value = '1'; sel.dispatchEvent(new Event('change'));
-    out.gated = S.riskProfile.find(r => r.id === 'v1').likelihood === '5' && /still open on this risk/.test(toast());
+    out.declined = S.riskProfile.find(r => r.id === 'v1').likelihood === '5';
+    out.asked = false;
+    window.confirm = (m) => { out.asked = /still open on this risk/.test(String(m)) && /Change it anyway/.test(String(m)); return true; };
+    sel.value = '1'; sel.dispatchEvent(new Event('change'));
+    const r1 = S.riskProfile.find(r => r.id === 'v1');
+    out.applied = r1.likelihood === '1';
+    out.recorded = !!(r1.scoreOverride && r1.scoreOverride.at && /control/.test(r1.scoreOverride.open || ''));
+    window.confirm = realConfirm;
     return out;
   });
   R.ok(t.ctlTable && t.ctlRow, 'tab 3 shows the control table with its high level controls');
-  R.ok(t.reality && t.reviewDue && t.order, 'reality today, the review due date and the order Inherent then Control table');
-  R.ok(t.gated, 'the score cannot be moved to read controlled while work is open');
+  R.ok(t.reality && t.reviewDue && t.order, 'reality today, the review due date and the order Current then Control table');
+  R.ok(t.curBox, 'the score box is called Current - it is where the risk sits today, not where it started');
+  R.ok(t.declined, 'a score that would read controlled while work is open is challenged, and saying no leaves it alone');
+  R.ok(t.asked, 'the challenge names what is still open and offers to change it anyway');
+  R.ok(t.applied, 'saying yes goes through - a mistake can be corrected');
+  R.ok(t.recorded, 'and the override is written on the risk, with what was open at the time');
+}
+
+// ── the override note shows while the work it got ahead of is still open ──
+{
+  const t = await page.evaluate(() => new Promise(res => {
+    const shown = () => /Score set ahead of the work/.test(document.getElementById('rpBody').innerText);
+    _riskDetailTab('rating');
+    setTimeout(() => {
+      const withOpen = shown();
+      // close everything on the risk: the score has earned itself, the note goes
+      const r = S.riskProfile.find(x => x.id === 'v1');
+      (r.actions || []).forEach(a => { a.status = 'Complete'; });
+      renderRiskProfile();
+      setTimeout(() => res({ withOpen, whenClosed: shown(), kept: !!r.scoreOverride }), 400);
+    }, 400);
+  }));
+  R.ok(t.withOpen, 'the risk says its score was set ahead of the work');
+  R.ok(!t.whenClosed && t.kept, 'once the work is closed the note retires, though the record stays on the risk');
 }
 
 // ── tab 4: the plan actions, and what reaches the execution plan ──

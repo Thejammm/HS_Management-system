@@ -14368,6 +14368,15 @@ const COCKPIT_WIDGETS = {
     } },
   kpiMgmtGaps:    { id:'kpiMgmtGaps', label:'Legal duty gaps', group:'KPI', render:x=>_ckKpi('Legal duty gaps', x.reqG.gaps, x.reqG.assessed+' assessed', x.reqG.gaps?'var(--warning)':'', 'requirements') },
   kpiCompleteness:{ id:'kpiCompleteness', label:'Assessment completeness', group:'KPI', render:x=>_ckKpi('Assessment completeness', x.RD.complete.clear+' of '+x.RD.complete.total, x.RD.complete.clear<x.RD.complete.total?'checks clear - click to see what\'s left':'checks clear', x.RD.complete.clear<x.RD.complete.total?'var(--warning)':'', '', 'openCompletenessModal()') },
+  kpiStatutory:   { id:'kpiStatutory', label:'Statutory compliance', group:'KPI', render:x=>{
+      // The twin of the training tile, and the same discipline: the register
+      // detail stays on Assurance records, the cockpit answers one question.
+      if(typeof _assuranceHas!=='function' || !_assuranceHas('statutory')) return _ckKpi('Statutory checks', '-', 'no register uploaded yet', '', 'monitoring');
+      const st=_assuranceState('statutory');
+      return st.red
+        ? _ckKpi('Statutory checks', st.red+' overdue', st.amber?(st.amber+' more due \u226460 days'):'examinations lapsed', 'var(--danger)', 'monitoring')
+        : _ckKpi('Statutory checks', 'Compliant', st.amber?(st.amber+' due \u226460 days'):'all in date', st.amber?'var(--warning)':'var(--success)', 'monitoring');
+    } },
   kpiInspections: { id:'kpiInspections', label:'Inspections', group:'KPI', render:x=>_ckKpi('Inspections', x.insps.length, x.signedOff+' signed off · '+x.awaiting+' awaiting', '', 'monthly') },
   kpiTraining:    { id:'kpiTraining', label:'Training compliance', group:'KPI', render:x=>{
       // High level ONLY, by design: the matrix detail (who, what, when) stays
@@ -17306,6 +17315,39 @@ const HAZARD_LIBRARY = [
   "macroKey": "management"
  },
  {
+  "key": "statutory",
+  "category": "Legal / Regulatory",
+  "activity": "Keeping statutory inspections and examinations in date",
+  "hazard": "Plant, equipment or premises kept in use past the date their statutory examination was due",
+  "persons": [
+   "Employees",
+   "Contractors",
+   "Members of the Public"
+  ],
+  "harm": "Failure of equipment or a system the law requires to be examined - and, because the examination itself is the duty, an offence whether or not anything fails.",
+  "controls": "A register of every statutory regime the business carries, with its frequency, who books it and when it is next due; competent inspection bodies engaged; reports and certificates kept; the register looked at before dates fall rather than after.",
+  "duty": "LOLER 1998; PUWER 1998; PSSR 2000; COSHH 2002; Electricity at Work Regulations 1989",
+  "inh": [
+   3,
+   4
+  ],
+  "l": 3,
+  "s": 4,
+  "trend": "Stable",
+  "measures": [
+   "Every statutory examination carried out on time by a competent person",
+   "Nothing kept in use once its examination has lapsed"
+  ],
+  "deliverables": [
+   "A register listing every statutory regime, its frequency and its next due date",
+   "A named person responsible for booking each examination before it falls due",
+   "Reports and certificates filed where they can be produced on request",
+   "The register reviewed on a rhythm, so nothing lapses unnoticed"
+  ],
+  "macro": "Competence & legal duties",
+  "macroKey": "management"
+ },
+ {
   "key": "compliance",
   "category": "Legal / Regulatory",
   "activity": "Keeping pace with legal and regulatory H&S duties",
@@ -19719,6 +19761,7 @@ function _reqActionRef(sec, it, a){
 function _reqMigrateToRisks(){
   if(!_profileWritable()) return 0;
   _riskRefsEnsure();   // a duty-line risk born here gets its reference too
+  try{ _assuranceSync(); }catch(e){}   // and each register's one risk stays true
   let n=0, made=0, changed=false;
   const movedRows=(a)=>['completedDate','completedBy','acceptDate','acceptedBy','createdAt','createdBy','updatedAt','updatedBy','top5','note','log'];
   // One-time: the first cut of this route made one risk per SECTION
@@ -26033,6 +26076,106 @@ function _syncTrainingAction(p, course, cell){
 }
 function _forEachTrainingDate(fn){ (_trainingData().people||[]).filter(p=>p.status==='active').forEach(p=>Object.entries(p.cells||{}).forEach(([c,cell])=>fn(p,c,cell))); }
 function _syncAllTrainingActions(){ _forEachTrainingDate(_syncTrainingAction); }
+// ── Assurance-driven risks: one register, one risk, one action ──────────
+// Simon's model (2026-09-28): the spreadsheet is the client's record and
+// stays the record. The app carries the overview - a single risk per
+// register, and a single action naming the count.
+const ASSURANCE_RISKS = {
+  training:  { libKey:'competence', label:'training matrix',     what:'certificate' },
+  statutory: { libKey:'statutory',  label:'statutory register',  what:'examination' }
+};
+// Has the client given us this register at all?
+function _assuranceHas(kind){
+  if(kind==='training') return !!(((_trainingData().people)||[]).filter(p=>p.status==='active').length);
+  return _regSections().some(s=>(s.items||[]).length);
+}
+// What is out of date in it, right now, and the soonest date driving that.
+function _assuranceState(kind){
+  let red=0, amber=0, next='';
+  const bump=(rag,date)=>{ if(rag!=='red' && rag!=='amber') return;
+    if(rag==='red') red++; else amber++;
+    if(date && (!next || String(date)<next)) next=String(date); };
+  if(kind==='training') _forEachTrainingDate((p,c,cell)=>{ if(cell&&cell.type==='date') bump(_trainingRag(cell.v), cell.v); });
+  else _regSections().forEach(s=>(s.items||[]).forEach(i=>bump(_regRag(i.dueDate), i.dueDate)));
+  return { red:red, amber:amber, next:next, total:red+amber };
+}
+function _assuranceRiskOf(kind){ return (S.riskProfile||[]).find(r=>r&&r.assuranceKey===kind)||null; }
+// The one risk this register drives - taken from the library the first time
+// the register arrives, or adopted if discovery already put it on the
+// profile. Tagged so it is never duplicated.
+function _assuranceRiskEnsure(kind){
+  const def=ASSURANCE_RISKS[kind]; if(!def) return null;
+  let r=_assuranceRiskOf(kind); if(r) return r;
+  r=(S.riskProfile||[]).find(x=>x&&x.libKey===def.libKey)
+    || (typeof insertLibraryRisk==='function' ? insertLibraryRisk(def.libKey, true) : null);
+  if(r){ r.assuranceKey=kind; try{ _riskRefsEnsure(); }catch(e){} }
+  return r||null;
+}
+// Individually raised renewals. While any are open THEY are the plan for
+// this register, so the summary action stands down.
+function _assuranceItemActions(kind){
+  const has=kind==='training'?(a=>!!a.trainingKey):(a=>!!a.regKey);
+  return (S.actionPlan||[]).filter(a=>a&&!a.deleted&&has(a)&&a.status!=='Complete'&&a.status!=='Accepted');
+}
+// A renewal that has been done closes its own action. This never creates -
+// raising individual renewals stays a deliberate choice - it only lets go,
+// which is what stops the plan silting up on a monthly re-upload.
+function _assuranceRetireDone(){
+  let n=0;
+  const close=(a,why)=>{ if(!a||a.deleted||a.status==='Complete'||a.status==='Accepted') return;
+    a.status='Complete'; if(typeof _stampActionCompletion==='function') _stampActionCompletion(a,'Complete');
+    if(typeof _logAdd==='function') _logAdd(a,'completed',why); n++; };
+  _forEachTrainingDate((p,c,cell)=>{
+    if(!cell||cell.type!=='date') return;
+    const rag=_trainingRag(cell.v); if(rag==='red'||rag==='amber') return;
+    close((S.actionPlan||[]).find(x=>x.trainingKey==='train|'+p.id+'|'+c), 'Closed by the matrix - '+c+' now runs to '+fmtDate(cell.v));
+  });
+  _regSections().forEach(s=>(s.items||[]).forEach(i=>{
+    const rag=_regRag(i.dueDate); if(rag==='red'||rag==='amber') return;
+    close((S.actionPlan||[]).find(x=>x.regKey==='reg|'+i.id), 'Closed by the register - next due '+fmtDate(i.dueDate));
+  }));
+  return n;
+}
+// Keep each register's single action true: raised while something is out of
+// date, worded with the count, and closed by itself the moment the register
+// comes back into date. That is what makes the monthly re-upload work.
+function _assuranceSync(){
+  if(typeof _profileWritable==='function' && !_profileWritable()) return 0;
+  let n=_assuranceRetireDone();
+  Object.keys(ASSURANCE_RISKS).forEach(kind=>{
+    if(!_assuranceHas(kind)) return;
+    const def=ASSURANCE_RISKS[kind];
+    const r=_assuranceRiskEnsure(kind); if(!r) return;
+    if(!Array.isArray(r.actions)) r.actions=[];
+    const st=_assuranceState(kind);
+    const perItem=_assuranceItemActions(kind).length;
+    let act=r.actions.find(a=>a&&!a.deleted&&a.assuranceKey===kind);
+    const open=!!(act && act.status!=='Complete' && act.status!=='Accepted');
+    if(st.total>0 && !perItem){
+      const bits=[]; if(st.red) bits.push(st.red+' out of date'); if(st.amber) bits.push(st.amber+' due within 60 days');
+      const desc='Bring the '+def.label+' back into date - '+bits.join(', ');
+      if(!act){
+        act={ id:_reqUid('act'), assuranceKey:kind, desc:desc, owner:'', due:st.next||'',
+          status:'Not started', priority:(st.red?'High':'Medium') };
+        if(typeof _stamp==='function') _stamp(act,'created');
+        r.actions.push(act); n++;
+      } else {
+        if(!open){ act.status='Not started'; act.completedDate=''; act.completedBy=''; n++; }   // it has slipped again
+        if(act.desc!==desc){ act.desc=desc; n++; }
+        if(!String(act.owner||'').trim()) act.due=st.next||act.due;   // until someone owns it, the date follows the register
+        act.priority=st.red?'High':'Medium';
+      }
+    } else if(open){
+      act.status='Complete';
+      if(typeof _stampActionCompletion==='function') _stampActionCompletion(act,'Complete');
+      if(typeof _logAdd==='function') _logAdd(act,'completed', perItem
+        ? ('Closed - '+perItem+' individual renewal'+(perItem!==1?'s':'')+' now carry this on the plan')
+        : ('Closed by the '+def.label+' - every '+def.what+' is back in date'));
+      n++;
+    }
+  });
+  return n;
+}
 function _trainingDueCount(){ const plan=S.actionPlan||[]; let n=0;
   _forEachTrainingDate((p,c,cell)=>{ if(cell&&cell.type==='date'){ const r=_trainingRag(cell.v); if(r==='red'||r==='amber'){ if(!plan.some(a=>a.trainingKey==='train|'+p.id+'|'+c)) n++; } } });
   return n; }

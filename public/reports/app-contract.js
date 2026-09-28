@@ -214,7 +214,7 @@ export const MACRO_OF_THEME = {
   manualhandling: 'ergonomics', dseoffice: 'ergonomics', peoplecare: 'ergonomics',
   ohwellbeing: 'people', violence: 'people', loneworking: 'people', vulnerable: 'people', safeguarding: 'people', publicsafety: 'people',
   premises: 'premises', environment: 'premises', outdoor: 'premises', weather: 'premises',
-  competence: 'management', contractor: 'management', compliance: 'management', dutyholder: 'management', designrisk: 'management', licence: 'management',
+  competence: 'management', contractor: 'management', compliance: 'management', statutory: 'management', dutyholder: 'management', designrisk: 'management', licence: 'management',
   financial: 'business', continuity: 'business', keypeople: 'business', contractloss: 'business', information: 'business'
 };
 // ── Review due - verbatim port of the app's _riskReviewDue: the risk's own

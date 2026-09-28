@@ -49,6 +49,8 @@ export async function seed(page, state, tab) {
     // riskRefSeq is per client: seeding a fresh client resets it, or every
     // suite in the same page would carry on numbering where the last left off.
     const blank = { riskProfile: [], actionPlan: [], requirements: [], documents: [], raRegister: [], recycleBin: [], riskRefSeq: 0, macroLetters: {},
+      // the client's own registers, or a fresh client inherits the last one's
+      trainingData: { sheets: [], people: [], filename: '' }, monitoring: { months: {}, meta: {}, regulatory: [], regSections: [] },
       incidents: [], decisions: [], siteInspections: [], units: [], memberships: [], healthSurveillance: [],
       supplyChain: [], buildingSafety: [] };
     Object.assign(S, blank, st || {});

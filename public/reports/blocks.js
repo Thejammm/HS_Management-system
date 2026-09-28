@@ -285,12 +285,13 @@ export function splitStrip({ lead, segments, notes }) {
 // The company journey: started -> now (fill, band colour) -> blue target
 // line -> fully controlled, with the counts and the improvement loop beneath.
 export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note, atLine, flagLabel, startPct, depPct, depCounts }) {
-  const line = (tgtPct == null) ? '' :
-    `<i class="r-jny-line" style="left:${tgtPct}%"></i><span class="r-jny-flag" style="left:${tgtPct}%;transform:translateX(-${tgtPct > 75 ? 100 : tgtPct < 15 ? 0 : 50}%)">${esc(flagLabel || 'TARGET · planned controls')}</span>`;
+  const line = (tgtPct == null) ? '' : `<i class="r-jny-line" style="left:${tgtPct}%"></i>`;
+  // the ends and the target sit together above the gauge
+  const ends = `<div class="r-jny-ends"><span>Baseline - as found</span>${tgtPct == null ? '' : `<span class="r-jny-flag" style="left:${tgtPct}%;transform:translateX(-${tgtPct > 75 ? 100 : tgtPct < 15 ? 0 : 50}%)">${esc(flagLabel || 'TARGET · planned controls')}</span>`}<span>Fully avoided</span></div>`;
   const start = (startPct == null) ? '' : `<i class="r-jny-start" style="left:${startPct}%" title="Inherent - where the book started"></i>`;
-  return `<div class="r-jny${tgtPct == null ? '' : ' r-jny-flagged'}">
+  return `<div class="r-jny${tgtPct == null ? '' : ' r-jny-flagged'}">${ends}
     <div class="r-jny-track"><i class="r-jny-fill" style="width:${Math.max(2, fillPct || 0)}%;background:${colour}"></i>${start}${line}</div>
-    <div class="r-jny-labs"><span>Baseline - as found</span><span class="r-jny-here" style="left:${fillPct > 0 ? fillPct : 50}%;transform:translateX(-${fillPct > 0 ? (fillPct > 75 ? 100 : fillPct < 15 ? 0 : 50) : 50}%);color:${fillPct > 0 ? colour : 'inherit'}">${fillPct > 0 ? 'Current position' : 'Not moved yet - the bar moves when a risk is re-scored'}</span><span>Fully avoided</span></div>
+    <div class="r-jny-labs"><span class="r-jny-here" style="left:${fillPct > 0 ? fillPct : 50}%;transform:translateX(-${fillPct > 0 ? (fillPct > 75 ? 100 : fillPct < 15 ? 0 : 50) : 50}%);color:${fillPct > 0 ? colour : 'inherit'}">${fillPct > 0 ? 'Current position' : 'Not moved yet - the bar moves when a risk is re-scored'}</span></div>
     ${atLine ? '<div class="r-jny-alarp">Controlled as reasonably practicable &#10003; - the position has reached the planned target line</div>' : ''}
     <div class="r-jny-counts">${counts.map(c => `<span><b${c.colour ? ` style="color:${c.colour}"` : ''}>${esc(c.value)}</b> ${esc(c.label)}</span>`).join('')}</div>
     ${depPct == null ? '' : `<div class="r-jny-dep"><div class="r-jny-deph">Plan delivered <i>what is in place now</i></div>

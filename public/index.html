@@ -3218,6 +3218,22 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     @keyframes epTick{to{stroke-dashoffset:0;}}
     @keyframes epFlash{0%{box-shadow:0 0 0 3px #16A34A;}100%{box-shadow:0 0 0 0 transparent;}}
     .ep-flash{animation:epFlash 1.4s ease-out;}
+    /* Work on this / group-by / theme blocks: square, flat, ruled (house style) */
+    .ep-work{flex:0 0 auto;background:var(--accent);border:1px solid var(--accent);color:#fff;font-family:inherit;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:5px 11px;cursor:pointer;}
+    .ep-work:hover{filter:brightness(1.1);}
+    .ep-gb-wrap{margin-left:auto;display:inline-flex;align-items:center;}
+    .ep-gb-lab{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-right:8px;}
+    .ep-gb{background:transparent;color:var(--text-muted);border:1px solid var(--border);border-right-width:0;font-family:inherit;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:5px 10px;cursor:pointer;}
+    .ep-gb:last-child{border-right-width:1px;}
+    .ep-gb.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+    .ep-theme{border:1px solid var(--border);border-left:4px solid var(--border);margin-bottom:16px;}
+    .ep-theme-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:9px 12px;background:var(--muted-bg);border-bottom:1px solid var(--border);}
+    .ep-theme-name{all:unset;cursor:pointer;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;}
+    .ep-theme-name:hover{text-decoration:underline;}
+    .ep-theme-od{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;}
+    .ep-theme-n{margin-left:auto;font-size:11.5px;font-weight:700;white-space:nowrap;}
+    .ep-theme-bar{height:5px;background:var(--border);}
+    .ep-theme-bar>i{display:block;height:5px;}
     /* Left column bounded (matrix/heat-map are compact) so a long caption can't blow it out and shove the right panel off-screen; both children can shrink. */
     .rp-grid2{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:16px;margin-bottom:18px;align-items:start;}
     .rp-grid2>*{min-width:0;}
@@ -15979,12 +15995,81 @@ function _execRiskOf(a){
   if(a.ref.t==='free'){ const fa=(S.actionPlan||[]).find(x=>x.id===a.ref.a); if(fa&&fa.riskId) return (S.riskProfile||[]).find(x=>x.id===fa.riskId)||null; }
   return null;
 }
+// Which high level (macro) risk theme an action belongs to. ONE derivation -
+// the register's: the risk behind the action, or the duty area it was raised
+// in (Simon, 2026-09-28: the plan "dont tie back to any of the high level
+// risk categories").
+function _epMacroOf(a){
+  const r=_execRiskOf(a); if(r) return _riskMacroOf(r);
+  if(a && a.ref && a.ref.t==='mgmt' && a.ref.a) return 'legal:'+a.ref.a;
+  return '';
+}
+function _epThemeName(a){ const k=_epMacroOf(a); return k?_macroName(k):''; }
+// The small uppercase theme label above an action, so a mixed list still ties
+// every line back to the category it moves.
+function _epThemeLabelHTML(a){
+  const k=_epMacroOf(a); if(!k) return '';
+  const c=_macroColour(k);
+  return '<div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:'+c+';margin-bottom:2px;">'+esc(_macroName(k))+'</div>';
+}
+// The plan grouped by theme. Totals count every action in the theme (done and
+// still open) so the bar reads honestly; list holds the open ones.
+function _epThemeGroups(){
+  const reg=_riskMacroGroups(S.riskProfile||[]);
+  const ord=new Map(); reg.forEach((g,i)=>ord.set(g.k,{i:i,g:g}));
+  const map=new Map();
+  _execActions().filter(_epXFPass).forEach(a=>{ const k=_epMacroOf(a); if(!map.has(k)) map.set(k,[]); map.get(k).push(a); });
+  return [...map.entries()].map(([k,mine])=>{
+    const shut=(x)=>x.status==='Complete'||x.status==='Accepted';
+    const list=mine.filter(x=>!shut(x));
+    const r=ord.get(k);
+    return { k:k, list:list, total:mine.length, done:mine.filter(shut).length,
+      overdue:list.filter(x=>x.rag==='red').length,
+      colour:k?_macroColour(k):'#9CA3AF',
+      name:k?_macroName(k):'Not tied to a risk theme yet',
+      riskLine:(k&&r)?((r.g.worst?(_riskPrioBadge(r.g.worst,null)+' '):'')+esc(r.g.roll)):'',
+      ord:r?r.i:(k?900:999) };
+  }).sort((a,b)=>(a.ord-b.ord)||String(a.name).localeCompare(String(b.name)));
+}
+// Clicking a theme name opens that category in the register, on its own.
+function _gotoRiskTheme(k){
+  _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };
+  _riskSearch=''; _riskModeFilter='all'; _riskGroupMode='macro'; _riskMacroLast=null;
+  _riskMacroOpen={}; if(k) _riskMacroOpen[k]=true; else _riskMacroOpen['_']=true;
+  switchTab('risk');
+  setTimeout(()=>{ const sec=document.getElementById('wfRegister'); if(sec && !sec.open) sec.open=true; renderRiskProfile(); },80);
+}
+// The duty line an action was raised on, on the Legal duties tab.
+function _gotoReqLine(itemId){
+  switchTab('requirements');
+  setTimeout(()=>{
+    const el=document.getElementById('reqline-'+itemId);
+    if(!el){ showToast('Opened Legal duties - the line is in this list','info'); return; }
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+    el.classList.remove('ep-flash'); void el.offsetWidth; el.classList.add('ep-flash');
+  },140);
+}
+// Where the work on this action is actually done - the one place to send the
+// consultant, named so the button can say it.
+function _epWorkTarget(a){
+  const r=_execRiskOf(a);
+  if(r) return { call:"_gotoRisk('"+r.id+"')", tip:'Open this risk in the risk register - its controls, its score and this action all live there' };
+  if(a && a.ref && a.ref.t==='mgmt' && a.ref.b) return { call:"_gotoReqLine('"+a.ref.b+"')", tip:'Open the duty line on the Legal duties tab, where this action was raised' };
+  return null;
+}
+function _epWorkBtnHTML(a){
+  const t=_epWorkTarget(a); if(!t) return '';
+  return '<button type="button" class="no-print ep-work" onclick="'+t.call+'" title="'+esc(t.tip)+'">Work on this \u2192</button>';
+}
 function _epWhatHTML(a){
   let ctx='';
   const _rkR=_execRiskOf(a);
   try{ if(_rkR&&_rkR.controls) ctx=' \u00b7 current controls: '+String(_rkR.controls).slice(0,140); }catch(e){}
+  const _btn=_epWorkBtnHTML(a);
   return '<div style="border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:9px 12px;margin:4px 0 8px;">'
-    +(_rkR?'<div class="ep-risk-line" style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:5px;cursor:pointer;" onclick="_gotoRisk(\''+_rkR.id+'\')" title="Open this risk in the Risk profile">'+esc(_rkR.activity||_rkR.hazard||'Risk')+' \u2192'+_macroTagHTML(_rkR)+'</div>':'')
+    +((_rkR||_btn)?('<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:5px;">'
+      +(_rkR?'<div class="ep-risk-line" style="font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;" onclick="_gotoRisk(\''+_rkR.id+'\')" title="Open this risk in the Risk profile">'+esc(_rkR.activity||_rkR.hazard||'Risk')+' \u2192'+_macroTagHTML(_rkR)+'</div>':'')
+      +'<span style="flex:1;min-width:0;"></span>'+_btn+'</div>'):'')
     +((a.duty && (!_rkR || String(_rkR.activity||'').trim()!==String(a.duty).trim()))?'<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:5px;">Legal duty: '+esc(a.duty)+'</div>':'')
     +'<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:3px;">What to do</div>'
     +'<div style="font-size:13px;font-weight:600;">'+esc(a.desc||'(no description yet - open the source and write it)')+'</div>'
@@ -16048,7 +16133,7 @@ function renderExecPlan(){
     return ev.length?`<button type="button" class="no-print" title="Linked evidence:\n${esc(ev.map(l=>'· '+(l.ref||l.url||'')).join('\n'))}\n\nClick to open this risk and its evidence" style="background:none;border:none;cursor:pointer;padding:0;color:#16A34A;font-weight:700;font-size:12px;" onclick="_gotoRisk('${a.ref.a}')">📎 ${ev.length}</button>`:''; };
   // One grid row per action - the CAS discipline: everything on one line,
   // only the action text wraps. The activity log opens as a full-width row.
-  const trow=(a)=>{ const c=RAG_COLOR[a.rag]||RAG_COLOR.grey; const rk=ref(a); const opn=_execRowOpen[rk]; const lc=_logCount(a);
+  const trow=(a,showTheme)=>{ const c=RAG_COLOR[a.rag]||RAG_COLOR.grey; const rk=ref(a); const opn=_execRowOpen[rk]; const lc=_logCount(a);
     // Celebration: an action whose risk sits at its residual target - the
     // work on that risk has delivered what it promised.
     const _rkR=_execRiskOf(a);
@@ -16057,7 +16142,7 @@ function renderExecPlan(){
     const resTip=closed?((a.status==='Accepted'?'Risk accepted':'Completed')+(a.resolvedDate?(' '+fmtDate(a.resolvedDate)):'')+(a.resolvedBy?(' by '+a.resolvedBy):'')):'';
     return `<tr style="border-top:1px solid var(--border);${_rkAt?'background:linear-gradient(100deg,#16A34A12,#16A34A05 62%,transparent);':''}">
       <td><span title="${a.rag==='red'?'Overdue':a.rag==='amber'?'Due this month / needs a date':a.rag==='grey'?'Risk accepted':'On track'}" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c};vertical-align:middle;"></span></td>
-      <td class="cas-req" style="font-weight:600;cursor:pointer;" onclick="toggleExecRow('${rk}')" title="Click to see exactly what to do, where it came from, and the activity log">${esc(a.desc||'(no description yet - add it in the source section)')}</td>
+      <td class="cas-req" style="font-weight:600;cursor:pointer;" onclick="toggleExecRow('${rk}')" title="Click to see exactly what to do, where it came from, and the activity log">${showTheme?_epThemeLabelHTML(a):''}${esc(a.desc||'(no description yet - add it in the source section)')}</td>
       <td title="${esc(a.source)}${a.sourceLabel?(' · '+esc(a.sourceLabel)):''}${_rkAt?' · controlled as reasonably practicable':''}">${_rkAt?`<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;" title="This risk is controlled as reasonably practicable">${esc(a.source)} \u2713</span>`:`<span class="badge badge-muted">${esc(a.source)}</span>`}</td>
       <td title="${esc(a.owner||'')}">${esc(a.owner||'-')}</td>
       <td>${esc(a.priority||'-')}</td>
@@ -16070,11 +16155,17 @@ function renderExecPlan(){
     </tr>${opn?`<tr><td></td><td colspan="8" style="white-space:normal;overflow:visible;">${resTip?`<div style="font-size:12px;color:#16A34A;font-weight:600;margin:2px 0 5px;">${esc(resTip)}</div>`:''}${_epWhatHTML(a)}${_actionLogPanelHTML(a)}</td></tr>`:''}`;
   };
   // The same colgroup on every list, so every column lines up everywhere.
-  const epTable=(list)=>list.length?`<div style="overflow-x:auto;"><table class="cas-grid ep-grid">
+  const epTable=(list,showTheme,noHead)=>list.length?`<div style="overflow-x:auto;"><table class="cas-grid ep-grid">
     <colgroup><col style="width:3.5%;"><col style="width:33%;"><col style="width:10.5%;"><col style="width:9%;"><col style="width:9%;"><col style="width:5.5%;"><col style="width:12%;"><col style="width:11%;"><col style="width:6.5%;"></colgroup>
-    <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;"><th></th><th>Action</th><th>${_epXFTh('Source','src')}</th><th>${_epXFTh('Owner','own')}</th><th>${_epXFTh('Priority','pri')}</th><th>Top 5</th><th>Target date</th><th>${_epXFTh('Status','sts')}</th><th></th></tr></thead>
-    <tbody>${list.map(trow).join('')}</tbody></table></div>`:'';
+    ${noHead?'':`<thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;"><th></th><th>Action</th><th>${_epXFTh('Source','src')}</th><th>${_epXFTh('Owner','own')}</th><th>${_epXFTh('Priority','pri')}</th><th>Top 5</th><th>Target date</th><th>${_epXFTh('Status','sts')}</th><th></th></tr></thead>`}
+    <tbody>${list.map(a=>trow(a,showTheme)).join('')}</tbody></table></div>`:'';
   const fOverdue=overdue.filter(_epXFPass), fDueThis=dueThis.filter(_epXFPass);
+  // Read the plan by theme or by date. A wall of instructions turns a client
+  // off; a theme block shows what part of the business is moving.
+  const gbChip=(k,label,tip)=>'<button type="button" class="no-print ep-gb'+(_epGroupBy===k?' on':'')+'" onclick="setEpGroupBy(\''+k+'\')" title="'+esc(tip)+'">'+esc(label)+'</button>';
+  const groupBy='<span class="no-print ep-gb-wrap"><span class="ep-gb-lab">Group by</span>'
+    +gbChip('theme','Risk theme','Read the plan by the high level risk category each action belongs to - what each part of the business is moving')
+    +gbChip('month','Target date','Read the plan as a delivery timeline, month by month')+'</span>';
   const fDelivered=delivered.filter(_epXFPass);
   const byMonth={};
   open.filter(_epXFPass).forEach(a=>{ const k=_actionMonthKey(a.due); (byMonth[k]=byMonth[k]||[]).push(a); });
@@ -16084,7 +16175,7 @@ function renderExecPlan(){
   // opens the place it is built from).
   const tile=(num,label,color,target)=>`<button type="button" class="ep-tile" onclick="_epJump('${target}')" title="See the actions behind this number" style="flex:1;min-width:110px;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center;background:var(--surface);cursor:pointer;font-family:inherit;"><div style="font-size:26px;font-weight:800;color:${color};line-height:1;">${num}</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">${label}</div></button>`;
   const focus = (fOverdue.length||fDueThis.length)
-    ? epTable(fOverdue.concat(fDueThis))
+    ? epTable(fOverdue.concat(fDueThis),true)
     : `<div class="ck-pending" style="padding:8px 0;">Nothing overdue or due this month${_epXFActive()&&(overdue.length||dueThis.length)?' matches the filters':''}.</div>`;
   root.innerHTML = `
     <div class="rep-hero"><h2>Client execution plan</h2><p>All actions from the risk profile, legal duties, assurance and accreditation - owned, dated and tracked. Traffic lights: <span style="color:${RAG_COLOR.red};font-weight:700;">overdue</span> &middot; <span style="color:${RAG_COLOR.amber};font-weight:700;">this month</span> &middot; <span style="color:${RAG_COLOR.green};font-weight:700;">on track</span>.</p></div>
@@ -16120,19 +16211,50 @@ function renderExecPlan(){
       <div class="card-body">${focus}</div>
     </div>
     <div class="card" id="epYearCard">
-      <div class="card-band"><h3><span class="dot">&#9679;</span> The full year - everything on your plan</h3></div>
+      <div class="card-band"><h3><span class="dot">&#9679;</span> ${_epGroupBy==='theme'?'Everything on your plan - by risk theme':'The full year - everything on your plan'}</h3>${groupBy}</div>
       <div class="card-body">
-        ${monthKeys.length ? monthKeys.map(k=>`<div style="margin-bottom:14px;"><div style="font-weight:700;font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;border-bottom:1.5px solid var(--border);padding-bottom:4px;">${monthName(k)} <span style="font-weight:600;">(${byMonth[k].length})</span></div>${epTable(byMonth[k])}</div>`).join('') : `<div class="ck-pending" style="padding:8px 0;">${open.length&&_epXFActive()?'Nothing on the plan matches the filters.':'No open actions yet. As actions are identified in your risk profile, legal duties, assurance and accreditation, they appear here to plan.'}</div>`}
+        ${_epGroupBy==='theme' ? _epThemeBodyHTML(epTable) : (monthKeys.length ? monthKeys.map(k=>`<div style="margin-bottom:14px;"><div style="font-weight:700;font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;border-bottom:1.5px solid var(--border);padding-bottom:4px;">${monthName(k)} <span style="font-weight:600;">(${byMonth[k].length})</span></div>${epTable(byMonth[k],true)}</div>`).join('') : `<div class="ck-pending" style="padding:8px 0;">${open.length&&_epXFActive()?'Nothing on the plan matches the filters.':'No open actions yet. As actions are identified in your risk profile, legal duties, assurance and accreditation, they appear here to plan.'}</div>`)}
       </div>
     </div>
     ${delivered.length?`<div class="card" id="epDeliveredCard" style="margin-top:18px;border-left:3px solid ${RAG_COLOR.green};">
       <div class="card-band"><h3><span class="dot" style="color:${RAG_COLOR.green};">●</span> Delivered - completed &amp; accepted</h3><span class="badge badge-muted">${delivered.length}</span></div>
       <div class="card-body">
         <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">The work the business has closed off - something to be proud of, and the evidence behind the way each risk is now managed. Nothing here is ever deleted.</div>
-        ${fDelivered.length?epTable(fDelivered.slice().sort((a,b)=>String(b.resolvedDate||'').localeCompare(String(a.resolvedDate||'')))):`<div class="ck-pending" style="padding:4px 0;">Nothing delivered matches the filters.</div>`}
+        ${fDelivered.length?epTable(fDelivered.slice().sort((a,b)=>String(b.resolvedDate||'').localeCompare(String(a.resolvedDate||''))),true):`<div class="ck-pending" style="padding:4px 0;">Nothing delivered matches the filters.</div>`}
       </div>
     </div>`:''}
     ${_deletedActionsHTML()}`;
+}
+// How the plan is read. View state only, never saved - like the column filters.
+var _epGroupBy='theme';
+function setEpGroupBy(m){ _epGroupBy=(m==='month')?'month':'theme'; renderExecPlan(); }
+// The plan by theme: one block per high level risk category, each showing how
+// much of its work is done. epTable is passed in so there is one table.
+function _epThemeBodyHTML(epTable){
+  const gs=_epThemeGroups();
+  const live=gs.filter(g=>g.list.length), shut=gs.filter(g=>!g.list.length && g.total);
+  if(!gs.length) return '<div class="ck-pending" style="padding:8px 0;">No actions yet. As actions are identified in your risk profile, legal duties, assurance and accreditation, they appear here under the risk theme they move.</div>';
+  const intro='<div style="font-size:12.5px;color:var(--text-muted);margin:-2px 0 14px;">Each block is one of the high level risk categories on your risk profile. The bar is how much of that theme is done, so you can see which part of the business is moving and which is not. Click a theme name to open it in the register.</div>';
+  const block=(g,i)=>{
+    const pct=g.total?Math.round(g.done/g.total*100):0;
+    return '<div class="ep-theme" style="border-left-color:'+g.colour+';">'
+      +'<div class="ep-theme-head">'
+      +'<button type="button" class="ep-theme-name" onclick="_gotoRiskTheme(\''+(g.k||'')+'\')" title="'+esc(g.k?('Open '+_macroName(g.k)+' in the risk register'):'Open the risk register')+'" style="color:'+g.colour+';">'+esc(g.name)+'</button>'
+      +(g.riskLine?'<span style="font-size:11.5px;color:var(--text-muted);">'+g.riskLine+'</span>':'')
+      +(g.overdue?'<span class="ep-theme-od" style="color:'+RAG_COLOR.red+';">'+g.overdue+' overdue</span>':'')
+      +'<span class="ep-theme-n" style="color:'+(g.done===g.total?'#15803d':'var(--text-muted)')+';">'+g.done+' of '+g.total+' done</span>'
+      +'</div>'
+      +'<div class="ep-theme-bar"><i style="width:'+pct+'%;background:'+(pct===100?'#16A34A':g.colour)+';"></i></div>'
+      +(g.list.length?epTable(g.list,false,i>0):'')
+      +'</div>';
+  };
+  const doneStrip=shut.length?('<div class="ep-theme" style="border-left-color:#16A34A;">'
+    +'<div class="ep-theme-head"><span style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#15803d;">Themes fully delivered</span>'
+    +'<span class="ep-theme-n" style="color:#15803d;">'+shut.length+'</span></div>'
+    +'<div style="padding:9px 12px;display:flex;gap:7px;flex-wrap:wrap;">'
+    +shut.map(g=>'<button type="button" class="no-print" onclick="_gotoRiskTheme(\''+(g.k||'')+'\')" title="Open this theme in the risk register" style="all:unset;cursor:pointer;font-size:11.5px;font-weight:700;border:1px solid #16A34A55;background:#16A34A14;color:#15803d;padding:4px 9px;">\u2713 '+esc(g.name)+' \u00b7 '+g.done+' of '+g.total+'</button>').join('')
+    +'</div></div>'):'';
+  return intro+(live.length?live.map((g,i)=>block(g,i)).join(''):'<div class="ck-pending" style="padding:8px 0 14px;">Nothing open'+(_epXFActive()?' matches the filters':' - every action on the plan is delivered')+'.</div>')+doneStrip;
 }
 // A plan tile always opens the list it counts: scroll there and flash it.
 function _epJump(id){
@@ -21391,7 +21513,8 @@ async function buildExecPlanFormPDF(){
     y-=12;
     byMonth[k].forEach(a=>{
       const aLines=wrap(a.desc||'(no description)',font,8.2,AW);
-      const srcLines=a.sourceLabel?wrap(a.source+' - '+a.sourceLabel+((a.duty&&String(a.duty).trim()!==String(a.sourceLabel).trim())?(' - '+a.duty):''),font,6.8,AW):[];
+      const _th=_epThemeName(a);
+      const srcLines=(a.sourceLabel||_th)?wrap((_th?(_th+' | '):'')+a.source+(a.sourceLabel?(' - '+a.sourceLabel):'')+((a.duty&&String(a.duty).trim()!==String(a.sourceLabel||'').trim())?(' - '+a.duty):''),font,6.8,AW):[];
       const oLines=wrap(a.owner||'-',font,7.5,OW);
       const contentH=aLines.length*10.4+srcLines.length*8.4;
       const rh=Math.max(contentH,oLines.length*9.5,22)+8;
@@ -21465,7 +21588,7 @@ function buildExecPlanReportPDF(){
     K.section(monthName(k)+'  ('+byMonth[k].length+')', NAVY);
     K.table(
       [{header:'ACTION',w:84},{header:'SOURCE',w:40},{header:'TARGET',w:22},{header:'STATUS',w:22}],
-      byMonth[k].map(a=>[ a.desc||'(no description)', {text:a.source+(a.sourceLabel?(' - '+a.sourceLabel):''), color:[120,120,120]}, {text:fd(a.due), color:a.rag==='red'?RED:[100,100,100]}, {text:a.status, bold:true, color:ragCol(a.rag)} ]),
+      byMonth[k].map(a=>[ a.desc||'(no description)', {text:(_epThemeName(a)?(_epThemeName(a)+' | '):'')+a.source+(a.sourceLabel?(' - '+a.sourceLabel):''), color:[120,120,120]}, {text:fd(a.due), color:a.rag==='red'?RED:[100,100,100]}, {text:a.status, bold:true, color:ragCol(a.rag)} ]),
       {headFill:NAVY, headText:[255,255,255]}
     );
   });
@@ -24350,7 +24473,7 @@ function renderRequirements(){
     const itemsHtml = items.length ? items.map(it => {
       const stt = _reqItemStatus(it);
       return `
-      <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;">
+      <div id="reqline-${it.id}" style="border:1.5px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:10px;">
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <span class="badge ${stt?stt.cls:'badge-muted'}" id="reqstatus-${it.id}" style="${stt?'':'display:none;'}">${stt?stt.label:''}</span>

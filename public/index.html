@@ -3236,6 +3236,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .ep-theme-bar>i{display:block;height:5px;}
     /* The band mark: square, so it is never read as the round status dot it replaced */
     .ep-band{display:inline-block;width:11px;height:11px;vertical-align:middle;}
+    .ep-ref{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.03em;padding:2px 5px;cursor:pointer;font-variant-numeric:tabular-nums;white-space:nowrap;}
+    .ep-ref:hover{border-color:var(--accent);color:var(--accent);}
+    .ep-ref-none{border-color:transparent;cursor:default;}
+    .ep-marks{margin-left:7px;display:inline-flex;gap:7px;vertical-align:middle;}
+    .ep-mark{font-size:10.5px;font-weight:700;color:var(--text-muted);white-space:nowrap;}
+    .ep-del{background:transparent;border:1px solid var(--danger-brd);color:var(--danger);font-family:inherit;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:5px 10px;cursor:pointer;flex:0 0 auto;}
+    .ep-del:hover{background:var(--danger);color:#fff;}
     /* The risk reference: quiet, monospaced-feeling, never competing with the title */
     .risk-ref{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted);white-space:nowrap;font-variant-numeric:tabular-nums;}
     /* Close-out: what keeps a finished action in place */
@@ -16062,9 +16069,28 @@ function _epBandMarkHTML(a){
   const c=_RISK_PRIO_COLOR[b]||'#9CA3AF';
   return '<span class="ep-band" title="'+esc(b)+' risk - the band of the risk this action belongs to" style="background:'+c+';"></span>';
 }
+// The reference of the risk this action is closing out - so five actions on
+// one risk read as five actions on one risk, at a glance (Simon).
+function _epRefOf(a){ const r=_execRiskOf(a); return r?_riskRefOf(r):''; }
+function _epRefCellHTML(a){
+  const r=_execRiskOf(a);
+  if(!r) return '<span class="ep-ref ep-ref-none" title="This action is not tied to a rated risk - it stands on its own">-</span>';
+  const ref=_riskRefOf(r); if(!ref) return '';
+  const tip=ref+' \u00b7 '+(r.activity||r.hazard||'Risk')+' - open it in the register';
+  return '<button type="button" class="ep-ref no-print" onclick="_gotoRisk(\''+r.id+'\')" title="'+esc(tip)+'">'+esc(ref)+'</button>';
+}
 function _epThemeName(a){ const k=_epMacroOf(a); return k?_macroName(k):''; }
 // The small uppercase theme label above an action, so a mixed list still ties
 // every line back to the category it moves.
+// What used to sit in the trailing column, now a quiet marker on the action
+// itself: how many activity entries there are, and the evidence paperclip.
+// The chip is passed in because the renderer already builds it.
+function _epRowMarksHTML(lc, evHTML){
+  if(!lc && !evHTML) return '';
+  return '<span class="ep-marks no-print">'
+    +(lc?('<span class="ep-mark" title="'+lc+' entr'+(lc!==1?'ies':'y')+' in the activity trail - click the action to read '+(lc!==1?'them':'it')+'">\u25cf '+lc+'</span>'):'')
+    +(evHTML||'')+'</span>';
+}
 function _epThemeLabelHTML(a){
   const k=_epMacroOf(a); if(!k) return '';
   const c=_macroColour(k);
@@ -16115,6 +16141,15 @@ function _epWorkTarget(a){
   if(a && a.ref && a.ref.t==='mgmt' && a.ref.b) return { call:"_gotoReqLine('"+a.ref.b+"')", tip:'Open the duty line on the Legal duties tab, where this action was raised' };
   return null;
 }
+// Removing a completed action is consultant-only and two-step. It belongs in
+// the opened row, where you have already stopped to look at what you are
+// removing - not on the list surface beside a date field.
+function _epDeleteBtnHTML(a){
+  const closed=(a.status==='Complete'||a.status==='Accepted');
+  if(!closed || _roLocked() || !_isConsultantish()) return '';
+  const rk=encodeURIComponent(JSON.stringify(a.ref));
+  return '<button type="button" class="no-print ep-del" onclick="deleteExecAction(\''+rk+'\')" title="Remove this completed action - step 1 of 2: it moves to your consultant-only Deleted actions area, and \u2019Delete from app\u2019 there removes it for good">Remove</button>';
+}
 function _epWorkBtnHTML(a){
   const t=_epWorkTarget(a); if(!t) return '';
   return '<button type="button" class="no-print ep-work" onclick="'+t.call+'" title="'+esc(t.tip)+'">Work on this \u2192</button>';
@@ -16139,7 +16174,7 @@ function _epWhatHTML(a){
   return '<div style="border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:9px 12px;margin:4px 0 8px;">'
     +((_rkR||_btn)?('<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:5px;">'
       +(_rkR?'<div class="ep-risk-line" style="font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;" onclick="_gotoRisk(\''+_rkR.id+'\')" title="Open this risk in the Risk profile">'+_riskRefChip(_rkR,'margin-right:6px;')+esc(_rkR.activity||_rkR.hazard||'Risk')+' \u2192'+_macroTagHTML(_rkR)+'</div>':'')
-      +'<span style="flex:1;min-width:0;"></span>'+_btn+'</div>'):'')
+      +'<span style="flex:1;min-width:0;"></span>'+_btn+_epDeleteBtnHTML(a)+'</div>'):'')
     +((a.duty && (!_rkR || String(_rkR.activity||'').trim()!==String(a.duty).trim()))?'<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:5px;">Legal duty: '+esc(a.duty)+'</div>':'')
     +'<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:3px;">What to do</div>'
     +'<div style="font-size:13px;font-weight:600;">'+esc(a.desc||'(no description yet - open the source and write it)')+'</div>'
@@ -16212,22 +16247,20 @@ function renderExecPlan(){
     const resTip=closed?((a.status==='Accepted'?'Risk accepted':'Completed')+(a.resolvedDate?(' '+fmtDate(a.resolvedDate)):'')+(a.resolvedBy?(' by '+a.resolvedBy):'')):'';
     return `<tr style="border-top:1px solid var(--border);${_rkAt?'background:linear-gradient(100deg,#16A34A12,#16A34A05 62%,transparent);':''}">
       <td>${_epBandMarkHTML(a)}</td>
-      <td class="cas-req" style="font-weight:600;cursor:pointer;" onclick="toggleExecRow('${rk}')" title="Click to see exactly what to do, where it came from, and the activity log">${showTheme?_epThemeLabelHTML(a):''}${esc(a.desc||'(no description yet - add it in the source section)')}</td>
+      <td>${_epRefCellHTML(a)}</td>
+      <td class="cas-req" style="font-weight:600;cursor:pointer;" onclick="toggleExecRow('${rk}')" title="Click to see exactly what to do, where it came from, and the activity log">${showTheme?_epThemeLabelHTML(a):''}${esc(a.desc||'(no description yet - add it in the source section)')}${_epRowMarksHTML(lc, closed?evChip(a):'')}</td>
       <td title="${esc(a.source)}${a.sourceLabel?(' · '+esc(a.sourceLabel)):''}${_rkAt?' · controlled as reasonably practicable':''}">${_rkAt?`<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;" title="This risk is controlled as reasonably practicable">${esc(a.source)} \u2713</span>`:`<span class="badge badge-muted">${esc(a.source)}</span>`}</td>
       <td title="${esc(a.owner||'')}">${esc(a.owner||'-')}</td>
       <td>${esc(a.priority||'-')}</td>
       <td style="text-align:center;">${dis?(a.top5===_top5Month()?'★':''):`<input type="checkbox" title="Mark this as one of the five priorities for ${_top5MonthLabel(_top5Month())} - they lead the board report and get checked off next month" ${a.top5===_top5Month()?'checked':''} onchange="toggleTop5('${rk}')" style="width:16px;height:16px;cursor:pointer;accent-color:#B45309;vertical-align:middle;">`}</td>
       <td><input type="date"${dis} value="${a.due||''}" onchange="updateExecAction('${rk}','due',this.value)" title="${a.rag==='red'?'Overdue':a.rag==='amber'?(a.due?'Due this month':'No target date set'):a.rag==='grey'?'Risk accepted':'On track'}" style="width:100%;font-size:12px;padding:3px 4px;border:1px solid ${a.rag==='red'?RAG_COLOR.red:a.rag==='amber'?RAG_COLOR.amber:'var(--border)'};border-radius:6px;background:${a.rag==='red'?RAG_COLOR.red+'14':a.rag==='amber'?RAG_COLOR.amber+'14':'transparent'};color:${a.rag==='red'?RAG_COLOR.red:'inherit'};font-weight:${a.rag==='red'?'700':'400'};"></td>
       <td title="${esc(resTip)}"><select${dis} onchange="updateExecAction('${rk}','status',this.value)" style="width:100%;font-size:12px;padding:4px 3px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select></td>
-      <td class="ep-act">
-        <button type="button" class="no-print" onclick="toggleExecRow('${rk}')" title="${opn?'Hide the activity log':'Activity log and notes'+(lc?(' ('+lc+')'):'')}" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:12px;font-weight:700;padding:0 2px;">${opn?'▾':'▸'}${lc?lc:''}</button>${closed?evChip(a):''}${(closed && !dis && _isConsultantish())?`<button type="button" class="no-print" onclick="deleteExecAction('${rk}')" title="Remove this completed action - step 1 of 2: it moves to your consultant-only Deleted actions area; 'Delete from app' there removes it permanently" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:20px;height:20px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;">✕</button>`:''}
-      </td>
     </tr>${opn?`<tr><td></td><td colspan="8" style="white-space:normal;overflow:visible;">${resTip?`<div style="font-size:12px;color:#16A34A;font-weight:600;margin:2px 0 5px;">${esc(resTip)}</div>`:''}${_epWhatHTML(a)}${_epKeptHTML(a)}${_actionLogPanelHTML(a)}</td></tr>`:''}`;
   };
   // The same colgroup on every list, so every column lines up everywhere.
   const epTable=(list,showTheme,noHead)=>list.length?`<div style="overflow-x:auto;"><table class="cas-grid ep-grid">
-    <colgroup><col style="width:4.5%;"><col style="width:32%;"><col style="width:10.5%;"><col style="width:9%;"><col style="width:9%;"><col style="width:5.5%;"><col style="width:12%;"><col style="width:11%;"><col style="width:6.5%;"></colgroup>
-    ${noHead?'':`<thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;"><th title="The band of the risk each action belongs to. Low risks are left unmarked.">Band</th><th>Action</th><th>${_epXFTh('Source','src')}</th><th>${_epXFTh('Owner','own')}</th><th>${_epXFTh('Priority','pri')}</th><th>Top 5</th><th>Target date</th><th>${_epXFTh('Status','sts')}</th><th></th></tr></thead>`}
+    <colgroup><col style="width:4.5%;"><col style="width:7%;"><col style="width:31.5%;"><col style="width:10%;"><col style="width:9%;"><col style="width:8.5%;"><col style="width:5.5%;"><col style="width:12%;"><col style="width:12%;"></colgroup>
+    ${noHead?'':`<thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;"><th title="The band of the risk each action belongs to. Low risks are left unmarked.">Band</th><th title="The reference of the risk this action closes out - actions sharing a reference are all on the same risk. Click one to open it.">Ref</th><th>Action</th><th>${_epXFTh('Source','src')}</th><th>${_epXFTh('Owner','own')}</th><th>${_epXFTh('Priority','pri')}</th><th>Top 5</th><th>Target date</th><th>${_epXFTh('Status','sts')}</th></tr></thead>`}
     <tbody>${list.map(a=>trow(a,showTheme)).join('')}</tbody></table></div>`:'';
   const fOverdue=overdue.filter(_epXFPass), fDueThis=dueThis.filter(_epXFPass);
   // Read the plan by theme or by date. A wall of instructions turns a client

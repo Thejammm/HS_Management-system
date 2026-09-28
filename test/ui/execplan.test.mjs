@@ -118,7 +118,7 @@ await wait(page, 450);
   const t = await page.evaluate(() => {
     const cell = (d) => {
       const rows = [...document.querySelectorAll('#epYearCard tr')];
-      const tr = rows.find(r => r.cells && r.cells[1] && r.cells[1].textContent.indexOf(d) >= 0);
+      const tr = rows.find(r => r.cells && r.cells[2] && r.cells[2].textContent.indexOf(d) >= 0);
       const m = tr ? tr.cells[0].querySelector('span') : null;
       return { has: !!(m && m.classList.contains('ep-band')), colour: m ? m.style.background : '', tip: m ? (m.getAttribute('title') || '') : '(no cell)' };
     };
@@ -149,7 +149,7 @@ await wait(page, 450);
     r.likelihood = '1'; r.severity = '1';                 // make it Low
     renderExecPlan();
     const rows = [...document.querySelectorAll('#epYearCard tr')];
-    const tr = rows.find(x => x.cells && x.cells[1] && x.cells[1].textContent.indexOf('Re-lay the stores racking') >= 0);
+    const tr = rows.find(x => x.cells && x.cells[2] && x.cells[2].textContent.indexOf('Re-lay the stores racking') >= 0);
     const m = tr ? tr.cells[0].querySelector('span') : null;
     const out = { band: _riskScore(r).priority, marked: !!(m && m.classList.contains('ep-band')),
       tip: m ? (m.getAttribute('title') || '') : '', anyGreen: [...document.querySelectorAll('#epYearCard .ep-band')].some(x => /22, 163, 74/.test(x.style.background)) };
@@ -165,7 +165,7 @@ await wait(page, 450);
 {
   const t = await page.evaluate(() => {
     const rows = [...document.querySelectorAll('#epYearCard tr')];
-    const find = (d) => rows.find(r => r.cells && r.cells[1] && r.cells[1].textContent.indexOf(d) >= 0);
+    const find = (d) => rows.find(r => r.cells && r.cells[2] && r.cells[2].textContent.indexOf(d) >= 0);
     const dateOf = (tr) => tr ? tr.querySelector('input[type="date"]') : null;
     const late = dateOf(find('Sign the second key customer'));      // due 2026-01-31, overdue
     const ok = dateOf(find('Service the extinguishers'));           // 2027-03-01, on track
@@ -177,6 +177,71 @@ await wait(page, 450);
   R.ok(/#DC2626/i.test(t.lateBorder) && t.lateWeight === '700' && /Overdue/.test(t.lateTip),
     'an overdue action shows it on its target date, not on a dot at the far left');
   R.ok(/var\(--border\)/.test(t.okBorder) && /On track/.test(t.okTip), 'an action on track leaves its date plain');
+}
+
+// ── the reference: five actions on one risk read as five actions on one risk ──
+{
+  const t = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('#epYearCard tr')].filter(r => r.cells && r.cells.length > 5);
+    const refOf = (d) => { const tr = rows.find(r => r.cells[2] && r.cells[2].textContent.indexOf(d) >= 0);
+      return tr ? tr.cells[1].textContent.trim() : '(row not found)'; };
+    const head = [...document.querySelectorAll('#epYearCard thead th')].map(x => x.textContent.trim());
+    return { head,
+      fire1: refOf('Write the fire'), fire2: refOf('Service the extinguishers'),
+      height: refOf('Buy a proper roof-edge'), free: refOf('Renew the employers'),
+      appRef: (S.riskProfile.find(r => r.id === 'v1') || {}).ref,
+      opens: (rows.find(r => r.cells[2] && r.cells[2].textContent.indexOf('Write the fire') >= 0)
+        .cells[1].querySelector('button') || {}).getAttribute
+        ? rows.find(r => r.cells[2] && r.cells[2].textContent.indexOf('Write the fire') >= 0)
+            .cells[1].querySelector('button').getAttribute('onclick') : '' };
+  });
+  R.ok(t.head[0] === 'Band' && t.head[1] === 'Ref' && t.head[2] === 'Action',
+    'Ref sits between Band and Action (' + t.head.slice(0, 3).join(' | ') + ')');
+  R.ok(t.fire1 === t.fire2 && t.fire1 === t.appRef,
+    'two actions on one risk carry the same reference, the register\'s own (' + t.fire1 + ')');
+  R.ok(t.height !== t.fire1, 'an action on a different risk carries a different one (' + t.height + ')');
+  R.ok(t.free === '-', 'an action with no risk behind it shows a dash, not a borrowed reference');
+  R.ok(/_gotoRisk\('v1'\)/.test(t.opens || ''), 'and the reference opens that risk in the register');
+}
+
+// ── the trailing arrow column is gone; nothing it held was lost ──
+{
+  const t = await page.evaluate(() => {
+    const head = [...document.querySelectorAll('#epYearCard thead th')].map(x => x.textContent.trim());
+    const rows = [...document.querySelectorAll('#epYearCard tr.no-such')];   // placeholder, keeps shape
+    // an action with a comment shows the count beside the action text instead
+    const a = _execActions().find(x => x.desc.indexOf('Write the fire') === 0);
+    const o = _execOrigin(a.ref);
+    _logAdd(o, 'comment', 'Draft with the fire officer');
+    _logAdd(o, 'comment', 'Second draft back');
+    renderExecPlan();
+    const tr = [...document.querySelectorAll('#epYearCard tr')]
+      .find(r => r.cells && r.cells[2] && r.cells[2].textContent.indexOf('Write the fire') >= 0);
+    return { head, lastEmpty: head[head.length - 1] === '', cols: head.length, rows: rows.length,
+      mark: tr ? (tr.cells[2].querySelector('.ep-mark') || {}).textContent || '' : '',
+      cells: tr ? tr.cells.length : 0 };
+  });
+  R.ok(!t.lastEmpty && t.cols === 9, 'the empty arrow column is gone and the header ends on Status (' + t.cols + ' columns)');
+  R.ok(t.cells === 9, 'every row matches the header');
+  R.ok(/2/.test(t.mark), 'the activity count moved beside the action it belongs to (' + t.mark.trim() + ')');
+}
+
+// ── removing a completed action moved into the opened row ──
+{
+  const t = await page.evaluate(() => new Promise(res => {
+    const a = _execActions().find(x => x.desc.indexOf('Write the fire') === 0);
+    const rk = encodeURIComponent(JSON.stringify(a.ref));
+    const o = _execOrigin(a.ref); o.status = 'Complete'; o.completedDate = '2026-09-01';
+    _execRowOpen = {}; _execRowOpen[rk] = true; renderExecPlan();
+    setTimeout(() => {
+      const openRow = document.querySelector('#epDeliveredCard .ep-del') || document.querySelector('#execPlanRoot .ep-del');
+      const onList = document.querySelector('#execPlanRoot tr.rpt-row .ep-del');
+      res({ inDrillIn: !!openRow, label: openRow ? openRow.textContent.trim() : '',
+        onList: !!onList, consultant: _isConsultantish() });
+    }, 500);
+  }));
+  R.ok(t.consultant && t.inDrillIn && /Remove/i.test(t.label), 'the consultant can still remove a completed action, from inside the opened row');
+  R.ok(!t.onList, 'and never from the list surface, beside a date field');
 }
 
 // ── "Work on this": one button from the plan to where the work is done ──

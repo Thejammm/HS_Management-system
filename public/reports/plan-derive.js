@@ -152,7 +152,7 @@ export function deriveManagementPlan(state, opts = {}) {
     controlled: list.filter(x => x.control === 'In place').length,
     held: list.filter(x => x.hold && x.hold.k === 'held').length,
     fatal: list.filter(x => x.fatal).length,
-  })).sort((a, b) => (rank[b.worst] || 0) - (rank[a.worst] || 0) || String(a.name).localeCompare(String(b.name)));
+  }));
   themes.forEach((t) => {
     // the letter the app gave this theme, not this theme's place in the list
     t.key = (t.rows[0] && t.rows[0].themeKey) || '';
@@ -160,6 +160,13 @@ export function deriveManagementPlan(state, opts = {}) {
     t.meta = t.rows.length + ' risk' + (t.rows.length !== 1 ? 's' : '')
       + ' \u00b7 ' + t.controlled + ' controlled'
       + (t.fatal ? (' \u00b7 ' + t.fatal + ' flagged worst case') : '');
+  });
+  // The letter IS the order, so the plan reads A, B, C down the page and has
+  // the same contents every issue (Simon, 2026-09-28). X - a risk with no
+  // category yet - always comes last, whatever letters are in use above it.
+  themes.sort((a, b) => {
+    if ((a.letter === 'X') !== (b.letter === 'X')) return a.letter === 'X' ? 1 : -1;
+    return a.letter.length - b.letter.length || a.letter.localeCompare(b.letter);
   });
 
   const closedActs = acts.filter(x => isClosed(x.a));

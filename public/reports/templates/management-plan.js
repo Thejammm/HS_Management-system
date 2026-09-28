@@ -25,8 +25,8 @@ import { deriveManagementPlan, fmtD } from '../plan-derive.js';
 // worked risk is three times the height of a bare one. The budget is what is
 // left of the page after that page's other blocks (the first also carries the
 // section title and the intro line). Proved by the overflow check.
-const PAGE_FIRST = 820;    // measured: 846px left on the first section-4 page
-const PAGE_CONT = 870;     // and 886px on a continuation
+const PAGE_FIRST = 840;    // measured: 846px left on the first section-4 page
+const PAGE_CONT = 886;     // and 886px on a continuation (less a band, below)
 const PAGE_TAIL = 100;     // the last one also carries the closing line and the footnote
 
 export function buildManagementPlan(state, opts = {}) {
@@ -72,7 +72,7 @@ export function buildManagementPlan(state, opts = {}) {
             cols: [{ header: 'Section', w: '9%' }, { header: 'Theme', w: '33%' }, { header: 'Risks', w: '9%' },
                    { header: 'Worst band', w: '15%' }, { header: 'Controlled', w: '18%' }, { header: 'Flagged', w: '16%' }],
             rows: themeRows,
-            footnote: 'A theme is a high level category of risk; every action in this plan belongs to one of them, and each has its own lettered section in part 4 - the same letter that starts every risk reference in it. Flagged means the worst credible outcome is death or serious injury - or, for a business risk, damage the business would struggle to recover from.' }
+            footnote: 'A theme is a high level category of risk; every action in this plan belongs to one of them, and each has its own lettered section in part 4, listed here in that order - the same letter that starts every risk reference in it. The worst band column is how serious the theme is; the letter is only where to find it. Flagged means the worst credible outcome is death or serious injury - or, for a business risk, damage the business would struggle to recover from.' }
         : none('No risks recorded yet. The risk profile is built first; this plan then reports it.'),
       { type: 'soWhat', text: P.rows.length
         ? (countPhrase(P.themes.length, 'risk theme is', 'risk themes are') + ' carried by this business, and '
@@ -250,7 +250,7 @@ export function buildManagementPlan(state, opts = {}) {
     blocks: [
       mast,
       i === 0 ? sec(4, 'How each risk is managed') : { type: 'titleBlock', kicker: 'Section 4 · continued', headline: 'How each risk is managed' },
-      ...(i === 0 ? [{ type: 'textBlock', body: 'One card per risk, in theme order, worst theme first. Each card runs top to bottom: what could happen, where the risk stands today, everything being done about it, what keeps it that way now the work is done, and what you can go and look at to check. Nothing is shortened - the detail is the point.' }] : []),
+      ...(i === 0 ? [{ type: 'textBlock', body: 'One card per risk, in section order A onwards. A section letter never changes, so this plan has the same contents page every issue. Nothing is shortened here - the detail is the point.' }] : []),
       ...themeTables(slice, i === slices.length - 1),
       ...(i === slices.length - 1 ? [{ type: 'soWhat', text: P.heldActs
         ? (P.heldActs + ' of ' + P.closedActs + ' completed action' + (P.closedActs !== 1 ? 's have' : ' has') + ' something recorded that keeps the control in place - a document, a routine, a briefing or a named person.')

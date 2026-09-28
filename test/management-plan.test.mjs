@@ -329,19 +329,30 @@ test('the band letter is the theme\'s own, so it matches the references under it
 });
 
 // ── the point of a theme letter rather than a section number ────────────────
-test('re-scoring re-orders the sections and moves no letter and no reference', () => {
+test('the sections read A, B, C and re-scoring does not move one of them', () => {
   const s = LETTERED();
   const before = deriveManagementPlan(s, { today: TODAY });
-  const orderBefore = before.themes.map(t => t.letter).join('');
-  // push work at height to Critical: it overtakes fire and the sections re-order
+  assert.deepEqual(before.themes.map(t => t.letter), ['A', 'B', 'C'], 'the letter is the order');
+  // push work at height to Critical - under the old worst-first order this
+  // would have jumped the queue and renumbered everything behind it
   s.riskProfile[1].likelihood = '5'; s.riskProfile[1].severity = '5';
   const after = deriveManagementPlan(s, { today: TODAY });
-  const orderAfter = after.themes.map(t => t.letter).join('');
-  assert.notEqual(orderBefore, orderAfter, 'the sections print in a different order (' + orderBefore + ' then ' + orderAfter + ')');
-  assert.equal(before.themes.find(t => /Fire/.test(t.name)).letter,
-    after.themes.find(t => /Fire/.test(t.name)).letter, 'but Fire keeps its letter');
+  assert.deepEqual(after.themes.map(t => t.letter), ['A', 'B', 'C'], 'and it still reads A, B, C');
+  assert.deepEqual(before.themes.map(t => t.name), after.themes.map(t => t.name), 'same contents page as last issue');
   before.rows.forEach(r => assert.equal(r.ref, after.rows.find(x => x.id === r.id).ref,
     'and every reference is unchanged: ' + r.ref));
+  // severity has not gone anywhere - section 1 still reports the worst band
+  assert.ok(after.themes.some(t => t.worst === 'Critical'), 'the worst band per theme is still derived');
+});
+
+test('a risk with no category sorts last, whatever letters are above it', () => {
+  const s = LETTERED();
+  s.macroLetters.people = 'Y';                     // a theme lettered after X
+  s.riskProfile.push({ id: 'r8', activity: 'A wellbeing risk', libKey: 'ohwellbeing', likelihood: '2', severity: '2', refNo: 8, ref: 'Y-008', actions: [] });
+  s.riskProfile.push({ id: 'r9', activity: 'Not yet categorised', likelihood: '2', severity: '2', refNo: 9, ref: 'X-009', actions: [] });
+  const P = deriveManagementPlan(s, { today: TODAY });
+  assert.equal(P.themes[P.themes.length - 1].letter, 'X', 'X is last even though Y sorts after it alphabetically');
+  assert.deepEqual(P.themes.map(t => t.letter), ['A', 'B', 'C', 'Y', 'X']);
 });
 
 test('a risk with no category yet carries X, not a letter it has not earned', () => {

@@ -84,19 +84,20 @@ test('every risk reaches section 4 with its controls, how it is held, and its pr
   assert.match(html, kept('Owned by', 'Dee Marsh - Fire warden'));
   // proof
   assert.match(html, /Fire risk assessment 2026/);
-  assert.match(html, /Signed for: Fire evacuation/);
+  assert.match(html, /Issued and signed for: Fire evacuation/);
 });
 
 test('a risk with the work still to do says so, rather than looking held', () => {
   const html = reportHTML(buildReport(STATE(), 'management-plan', OPTS));
-  assert.match(html, /1 action still to deliver/);
+  assert.match(html, /1 action is still to be delivered on this risk/);
+  assert.match(html, /Once it is closed out, what keeps it in place is recorded here/);
 });
 
 test('a delivered action with nothing recorded is called out, not glossed over', () => {
   const s = STATE();
   delete s.riskProfile[0].actions[0].embed;
   const html = reportHTML(buildReport(s, 'management-plan', OPTS));
-  assert.match(html, /Delivered, but nothing is recorded that keeps it in place/);
+  assert.match(html, /The work was delivered, but nothing is recorded that keeps it in place - so today it rests on people remembering/);
   assert.match(html, /1 action has been delivered, but nothing is yet recorded that keeps any of them in place/);
 });
 
@@ -203,15 +204,73 @@ test('a page of light risks holds more than a page of heavy ones', async () => {
   assert.ok(lightPages < heavyPages, 'thin rows pack tighter (' + lightPages + ' vs ' + heavyPages + ')');
 });
 
-test('long free text is summarised rather than left to fill the page', () => {
+// ── Simon, 2026-09-28: "put the items inside the box and arrange them in rows
+//    ... start new lines for new risks and controls ... dont worry about
+//    keeping it short, these are things that need detail." So the detail is
+//    kept in full; the only cap is a backstop so one card cannot be taller
+//    than the page that has to hold it.
+test('every control gets its own line, never a semicolon paragraph', () => {
   const s = STATE();
-  s.riskProfile[0].controls = 'A'.repeat(900);
-  s.riskProfile[0].assocRisk = 'B'.repeat(400);
+  s.riskProfile[0].controls = 'Hot work permit issued before any cutting; extinguishers serviced annually; '
+    + 'fire alarm tested weekly and the log signed; escape routes kept clear';
   const html = reportHTML(buildReport(s, 'management-plan', OPTS));
-  assert.doesNotMatch(html, /A{400}/, 'the control text is capped');
-  assert.doesNotMatch(html, /B{200}/, 'the associated risk is capped');
-  assert.match(html, /\.\.\./, 'and says it has been shortened');
-  assert.match(html, /the full text is in the risk assessment/);
+  ['Hot work permit issued before any cutting', 'extinguishers serviced annually',
+   'fire alarm tested weekly and the log signed', 'escape routes kept clear']
+    .forEach(c => assert.match(html, new RegExp('<li>' + c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '</li>'), 'own line: ' + c));
+  assert.doesNotMatch(html, /cutting; extinguishers/, 'the semicolons are gone, not printed');
+});
+
+test('a control table row is one control, and reaches the plan as one', () => {
+  const s = STATE();
+  s.riskProfile[0].controls = '';
+  s.riskProfile[0].actions.unshift(
+    { id: 'c1', desc: 'Hot work permit', hideFromPlan: true },
+    { id: 'c2', desc: 'Weekly alarm test', hideFromPlan: true });
+  const html = reportHTML(buildReport(s, 'management-plan', OPTS));
+  assert.match(html, /<li>Hot work permit<\/li>/);
+  assert.match(html, /<li>Weekly alarm test<\/li>/);
+  assert.doesNotMatch(html, /<li>Write the fire evacuation procedure<\/li>', a plan action is not a control/);
+});
+
+test('the detail is kept in full - only a runaway single entry is capped', () => {
+  const s = STATE();
+  s.riskProfile[0].controls = 'A normal control written out at the length a thorough consultant actually types it, '
+    + 'naming who does it, when they do it, and what they write down afterwards so it can be checked later';
+  const html = reportHTML(buildReport(s, 'management-plan', OPTS));
+  assert.match(html, /what they write down afterwards so it can be checked later/, 'a long but sane control is printed whole');
+  assert.doesNotMatch(html, /\.\.\./, 'and nothing is elided');
+  // the backstop: one absurd entry is cut so it cannot push a card off the page
+  const big = STATE();
+  big.riskProfile[0].controls = 'Z'.repeat(2000);
+  const h2 = reportHTML(buildReport(big, 'management-plan', OPTS));
+  assert.doesNotMatch(h2, /Z{400}/, 'a 2000-character entry is cut at the backstop');
+  assert.match(h2, /\.\.\./, 'and says it was cut');
+});
+
+test('the numbers are explained in a sentence a layman can read', () => {
+  const html = reportHTML(buildReport(STATE(), 'management-plan', OPTS));
+  assert.match(html, /Left alone this would sit at 20 out of 25\. With the controls below in place it sits at 10 - high\./);
+  assert.match(html, /With the controls below in place it sits at 12 out of 25 - high\. No target has been agreed for it yet\./);
+  const at = STATE();
+  at.riskProfile[0].targetL = '5'; at.riskProfile[0].targetS = '5';
+  assert.match(reportHTML(buildReport(at, 'management-plan', OPTS)),
+    /this risk is being carried as low as is reasonably practicable/);
+});
+
+test('every card reads in the same order, and a row with nothing in it is not printed', () => {
+  const s = STATE();
+  s.riskProfile[0].assocRisk = 'A fire starting in the workshop and spreading to the office';
+  const html = reportHTML(buildReport(s, 'management-plan', OPTS));
+  const labelsOf = (from, to) => [...html.slice(html.indexOf(from), html.indexOf(to))
+    .matchAll(/class="r-mp-lab">([^<]+)/g)].map(m => m[1]);
+  assert.deepEqual(labelsOf('Fire breaking out', 'A fall from height'),
+    ['What could happen', 'Where it stands', 'What we do about it', 'What keeps it that way', 'How you can check'],
+    'a risk with an associated risk carries all five rows, in order');
+  // the same risk with nothing in that box simply loses the row - no empty label
+  const bare = reportHTML(buildReport(STATE(), 'management-plan', OPTS));
+  const bareLabels = [...bare.slice(bare.indexOf('Fire breaking out'), bare.indexOf('A fall from height'))
+    .matchAll(/class="r-mp-lab">([^<]+)/g)].map(m => m[1]);
+  assert.deepEqual(bareLabels, ['Where it stands', 'What we do about it', 'What keeps it that way', 'How you can check']);
 });
 
 test('the flag is the worst case, not a contradiction of the band', () => {

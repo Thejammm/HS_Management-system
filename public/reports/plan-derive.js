@@ -8,7 +8,7 @@
 // does not (house rule: a report may never count differently from a screen).
 // ══════════════════════════════════════════════════════════════
 import { deriveBoard, bandsFrom, tierFor, residualOf, targetOf, inherentOf } from './derive.js';
-import { macroOf, controlsTextOf, controlStatusOf, holdOf, sifOf, sifWordOf, reviewDueOf, embedLinesOf, embedIsSet, HOLD_STATES } from './app-contract.js';
+import { macroOf, controlsTextOf, controlsListOf, controlStatusOf, holdOf, sifOf, sifWordOf, reviewDueOf, embedLinesOf, embedIsSet, HOLD_STATES } from './app-contract.js';
 
 const str = (v) => String(v == null ? '' : v).trim();
 const live = (a) => a && !a.deleted && !a.hideFromPlan && (a.desc || a.owner || a.due);
@@ -120,7 +120,7 @@ function riskRowOf(r, state, bands, acts, sign, opts) {
     assoc: str(r.assocRisk), area: str(r.area), theme: macroOf(r, state) || 'Not yet grouped',
     inherent: inh, residual: res, target: tgt, tier,
     targetTier: tgt ? tierFor(tgt.score, bands) : null,
-    control: controlStatusOf(r), controls: controlsTextOf(r),
+    control: controlStatusOf(r), controls: controlsTextOf(r), controlsList: controlsListOf(r),
     hold: hold, holdWord: (HOLD_STATES[hold.k] ? HOLD_STATES[hold.k].label : ''),
     fatal: sifOf(r), sifWord: sifWordOf(r), reviewed: !!r.reviewed, reviewDue: str(r.reviewDue), reviewOverdue: reviewDueOf(r, opts),
     actsTotal: mine.length, actsDone: done.length, actsOpen: open.length,

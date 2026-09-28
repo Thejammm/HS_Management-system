@@ -179,6 +179,20 @@ export function controlsTextOf(r) {
   return rows.length ? rows.join('; ') : box;
 }
 
+// The same controls, unjoined - so a report can give each one its own line
+// instead of a semicolon-separated paragraph (Simon, 2026-09-28: "start new
+// lines for new risks and controls"). A control table row is already one
+// control; free text is split where the consultant put the breaks.
+export function controlsListOf(r) {
+  const rows = (r && Array.isArray(r.actions) ? r.actions : [])
+    .filter(a => a && !a.deleted && a.hideFromPlan && String(a.desc || '').trim())
+    .map(a => String(a.desc).trim());
+  if (rows.length) return rows;
+  const box = String((r && r.controls) || '').trim();
+  if (!box) return [];
+  return box.split(/[;\n\r]+|\u2022/).map(t => t.trim().replace(/[.;,]+$/, '')).filter(Boolean);
+}
+
 // ── Macro category - mirror of the app's HAZARD_LIBRARY macroKey / macro
 //    labels (a test diffs the two). A library risk takes its theme's
 //    category; r.macroKey places any risk directly; state.macroNames carries

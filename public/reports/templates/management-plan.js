@@ -138,69 +138,81 @@ export function buildManagementPlan(state, opts = {}) {
   };
 
   // ── 4 · Operation: how each risk is managed ──────────────────
-  // The plan is the summary; the full wording lives in the app and in the risk
-  // assessment report. Capping here is what stops a page becoming a wall.
-  const clip = (s, max) => {
-    s = String(s || '').trim();
-    if (s.length <= max) return s;
-    const cut = s.slice(0, max);
-    const stop = Math.max(cut.lastIndexOf('; '), cut.lastIndexOf('. '), cut.lastIndexOf(', '));
-    return (stop > max * 0.6 ? cut.slice(0, stop) : cut.replace(/\s+\S*$/, '')) + '...';
+  // Nothing here is trimmed to fit. A management plan is read once and kept, so
+  // the detail IS the point (Simon: "dont worry about keeping it short ... it
+  // ends up as long as it ends up"). The only caps sit a long way past anything
+  // a consultant writes, and exist so one card can never be taller than the
+  // page that has to hold it.
+  const CAP_CONTROLS = 16, CAP_CONTROL_LEN = 320, CAP_PROOF = 10, CAP_PROOF_LEN = 220;
+  const cut = (t, max) => {
+    t = String(t || '').trim();
+    return t.length <= max ? t : (t.slice(0, max).replace(/\s+\S*$/, '') + '...');
   };
   const keptNote = (r) => {
-    if (r.actsDone) return 'Delivered, but nothing is recorded that keeps it in place.';
-    if (r.actsOpen) return r.actsOpen + ' action' + (r.actsOpen !== 1 ? 's' : '') + ' still to deliver.';
-    return 'Held by the controls above - no further work planned.';
+    if (r.actsDone) return 'The work was delivered, but nothing is recorded that keeps it in place - so today it rests on people remembering.';
+    if (r.actsOpen) return r.actsOpen + ' action' + (r.actsOpen !== 1 ? 's are' : ' is') + ' still to be delivered on this risk. Once ' + (r.actsOpen !== 1 ? 'they are' : 'it is') + ' closed out, what keeps it in place is recorded here.';
+    return 'Nothing further is planned: the controls above are what holds this risk.';
   };
-  const proofText = (r) => {
-    const bits = [];
-    if (r.evidence.length) bits.push(r.evidence.slice(0, 2).join('; '));
-    if (r.policies.length) bits.push('Signed for: ' + r.policies.slice(0, 2).join('; '));
-    if (r.reviewed) bits.push('Reviewed and signed off');
-    if (r.reviewDue) bits.push('Next review ' + fmtD(r.reviewDue));
-    return bits.length ? clip(bits.join(' · '), 150) : 'No evidence linked yet.';
+  // One line per piece of evidence - the things a reader can go and look at.
+  const proofList = (r) => {
+    const out = [];
+    r.evidence.slice(0, CAP_PROOF).forEach(e => out.push(cut(e, CAP_PROOF_LEN)));
+    r.policies.forEach(p => out.push('Issued and signed for: ' + cut(p, CAP_PROOF_LEN)));
+    if (r.reviewed) out.push('Reviewed and signed off by the consultant');
+    if (r.reviewDue) out.push('Next review due ' + fmtD(r.reviewDue) + (r.reviewOverdue ? ' - overdue' : ''));
+    if (r.control === 'In place') out.push('Recorded as controlled as far as is reasonably practicable');
+    return out.slice(0, CAP_PROOF + 4);
   };
-  // The score, in three honest numbers. "As found" is the score before the
-  // plan moved it (the app's own first recorded score); where it is the same
-  // as now, the risk has not been re-scored yet, and the plan says so rather
-  // than drawing a movement that never happened.
+  // The score, in three honest numbers. "As found" is the score before the plan
+  // moved it (the app's own first recorded score); where it is the same as now,
+  // the risk has not been re-scored yet, and the plan says so rather than
+  // drawing a movement that never happened.
   const n = (x) => (x && x.score) ? String(x.score) : '-';
+  const atTarget = (r) => !!(r.target && r.residual && r.residual.score <= r.target.score);
   const scoreHtml = (r) => {
     const col = r.tier ? (TIER_COLOURS[r.tier] || '') : '';
     return 'as found <b>' + n(r.inherent) + '</b> &rarr; now <b'
       + (col ? (' style="color:' + col + '"') : '') + '>' + n(r.residual) + '</b>'
-      + (r.target
-          ? ((r.residual && r.residual.score <= r.target.score)
-              ? ' &rarr; <b>at its planned target</b>'
-              : (' &rarr; target <b>' + n(r.target) + '</b>'))
-          : '');
+      + (r.target ? (atTarget(r) ? ' &rarr; <b>at its planned target</b>' : (' &rarr; target <b>' + n(r.target) + '</b>')) : '');
   };
-  // One card per risk. The theme rides on the card, the way it does on the
-  // execution plan, so the register reads in the same order on both.
+  // ...and what those numbers mean, for a reader who does not work in this
+  // every day. Five outcomes, each a plain sentence.
+  const standsSay = (r) => {
+    if (!r.residual) return 'This risk has not been scored yet, so there is no position to report.';
+    const now = r.residual.score, band = (r.tier || 'unrated').toLowerCase();
+    const moved = r.inherent && r.inherent.score > now;
+    const lead = moved
+      ? ('Left alone this would sit at ' + r.inherent.score + ' out of 25. With the controls below in place it sits at ' + now + ' - ' + band + '.')
+      : ('With the controls below in place it sits at ' + now + ' out of 25 - ' + band + '.');
+    if (!r.target) return lead + ' No target has been agreed for it yet.';
+    if (atTarget(r)) return lead + ' That is the level the plan was written to reach, so this risk is being carried as low as is reasonably practicable.';
+    return lead + ' The plan is written to bring it down to ' + r.target.score + '.';
+  };
+  // One card per risk, laid out as rows. The theme rides on the card, the way
+  // it does on the execution plan, so both read in the same order.
   const opCard = (x) => {
     const r = x.r;
-    return { theme: x.theme, name: r.name, assoc: clip(r.assoc, 110), tier: r.tier,
-      sif: r.fatal, sifWord: r.sifWord, scoreHtml: scoreHtml(r),
-      controls: clip(r.controls, 230) || 'None recorded.',
-      kept: r.kept.map(l => ({ label: l.label, text: clip(l.text, 130) })),
-      keptNote: keptNote(r), keptWarn: !!r.actsDone, proof: proofText(r) };
+    return { theme: x.theme, name: r.name, assoc: r.assoc, tier: r.tier,
+      sif: r.fatal, sifWord: r.sifWord, scoreHtml: scoreHtml(r), stands: standsSay(r),
+      controls: (r.controlsList || []).slice(0, CAP_CONTROLS).map(t => cut(t, CAP_CONTROL_LEN)),
+      kept: r.kept.map(l => ({ label: l.label, text: l.text })),
+      keptNote: keptNote(r), keptWarn: !!r.actsDone, proof: proofList(r) };
   };
-  // How tall a card will be, roughly, in px - the two columns sit side by side
-  // so the taller one sets the height. Only ever used to decide where a page
-  // ends; the overflow check proves the answer.
-  // Characters per line measured off the rendered card, not guessed: the name
-  // and the associated risk run the full card width, the two columns are half
-  // it, and a kept line loses its label gutter. Calibrated against real cards
-  // (144px thin, 228px full) - see test/ui/_cal_plan.mjs.
-  const lineCount = (s, per) => Math.max(1, Math.ceil(String(s || '').length / per));
+  // How tall a card will be, roughly, in px. Every row is full width behind a
+  // 108px label gutter, so one measure serves them all. Calibrated against
+  // rendered cards - see test/ui/_cal_plan.mjs.
+  const PER = 108;                    // characters per line in the value column
+  const LH = 15;                      // one line of 10px/1.5 text
+  const lineCount = (t, per) => Math.max(1, Math.ceil(String(t || '').length / (per || PER)));
+  const rowH = (lines) => 6 + Math.max(2, lines) * LH;
   const cardWeight = (c) => {
-    const head = 24 + 16 + lineCount(c.name, 100) * 14.5 + (c.assoc ? lineCount(c.assoc, 130) * 13.5 : 0) + 5;
-    const left = 11.5 + lineCount(c.controls, 66) * 13.5;
-    const right = 11.5 + (c.kept.length
-        ? c.kept.reduce((a, k) => a + lineCount(k.text, 56) * 13.5, 0)
-        : lineCount(c.keptNote, 66) * 13.5)
-      + 17.5 + lineCount(c.proof, 66) * 13.5;
-    return Math.round(head + Math.max(left, right));
+    let h = 29 + 16 + lineCount(c.name, 74) * 17 + 6;
+    if (c.assoc) h += rowH(lineCount(c.assoc));
+    h += rowH(1 + lineCount(c.stands));
+    h += rowH(c.controls.length ? c.controls.reduce((t, x) => t + lineCount(x, 100), 0) : 1);
+    h += rowH(c.kept.length ? c.kept.reduce((t, k) => t + lineCount(k.text, 92), 0) : lineCount(c.keptNote));
+    h += rowH(c.proof.length ? c.proof.reduce((t, x) => t + lineCount(x, 100), 0) : 1);
+    return Math.round(h);
   };
 
   // Flatten theme by theme, worst theme first, so the register reads in the
@@ -217,13 +229,13 @@ export function buildManagementPlan(state, opts = {}) {
     slices.push([slices[slices.length - 1].pop()]);
   }
   const themeTables = (slice, last) => ([{ type: 'planRisk', rows: slice,
-    footnote: last ? '"As found" is the score before the plan moved it; where it matches "now", the risk has not been re-scored yet. "Target" is where the plan is written to reach. Control wording is summarised here; the full text is in the risk assessment.' : undefined }]);
+    footnote: last ? '"As found" is the score before the plan moved it; where it matches "now", the risk has not been re-scored yet. "Target" is where the plan is written to reach. Scores are likelihood multiplied by severity, each judged from 1 to 5, so 25 is the worst case and 1 the least.' : undefined }]);
   const opPages = P.rows.length ? slices.map((slice, i) => ({
     label: 'Managed' + (slices.length > 1 ? ' ' + (i + 1) : ''),
     blocks: [
       mast,
       i === 0 ? sec(4, 'How each risk is managed') : { type: 'titleBlock', kicker: 'Section 4 · continued', headline: 'How each risk is managed' },
-      ...(i === 0 ? [{ type: 'textBlock', body: 'One card per risk, in theme order, worst theme first. The right-hand column is the part that matters once the work is done: what the business now does so it stays done, and the proof behind it.' }] : []),
+      ...(i === 0 ? [{ type: 'textBlock', body: 'One card per risk, in theme order, worst theme first. Each card runs top to bottom: what could happen, where the risk stands today, everything being done about it, what keeps it that way now the work is done, and what you can go and look at to check. Nothing is shortened - the detail is the point.' }] : []),
       ...themeTables(slice, i === slices.length - 1),
       ...(i === slices.length - 1 ? [{ type: 'soWhat', text: P.heldActs
         ? (P.heldActs + ' of ' + P.closedActs + ' completed action' + (P.closedActs !== 1 ? 's have' : ' has') + ' something recorded that keeps the control in place - a document, a routine, a briefing or a named person.')

@@ -326,33 +326,33 @@ export function riskLadder({ rungs, unrated }) {
 // text looks very busy"). Two wide columns read at a glance, and the things
 // that keep a risk in place get one labelled line each instead of a run-on.
 export function planRisk({ rows, footnote }) {
+  const row = (lab, sub, inner) => `<div class="r-mp-row">
+      <div class="r-mp-lab">${esc(lab)}${sub ? `<i>${esc(sub)}</i>` : ''}</div>
+      <div class="r-mp-val">${inner}</div>
+    </div>`;
+  const bullets = (list, empty, cls) => list && list.length
+    ? `<ul class="r-mp-list${cls ? ' ' + cls : ''}">${list.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`
+    : `<div class="r-mp-none">${esc(empty)}</div>`;
   const card = (r) => `<div class="r-mp">
-    <div class="r-mp-head">
+    <div class="r-mp-top">
       <span class="r-mp-theme">${esc(r.theme)}</span>
       ${tierWord(r.tier)}
       ${r.sif ? `<span class="r-mp-sif">worst case ${esc(r.sifWord)}</span>` : ''}
-      <span class="r-mp-score">${r.scoreHtml}</span>
     </div>
-    <div class="r-mp-name">${esc(r.name)}${r.assoc ? `<em>${esc(r.assoc)}</em>` : ''}</div>
-    <div class="r-mp-cols">
-      <div class="r-mp-col">
-        <div class="r-mp-lab">Controls in place</div>
-        <div>${esc(r.controls)}</div>
-      </div>
-      <div class="r-mp-col">
-        <div class="r-mp-lab">How it is kept in place</div>
-        ${r.kept && r.kept.length
-          ? `<ul class="r-mp-kept">${r.kept.map(k => `<li><i>${esc(k.label)}</i><span>${esc(k.text)}</span></li>`).join('')}</ul>`
-          : `<div class="r-mp-none${r.keptWarn ? ' r-mp-warn' : ''}">${esc(r.keptNote)}</div>`}
-        <div class="r-mp-lab">Proof</div>
-        <div class="r-mp-proof">${esc(r.proof)}</div>
-      </div>
-    </div>
+    <div class="r-mp-name">${esc(r.name)}</div>
+    ${r.assoc ? row('What could happen', '', `<div class="r-mp-say">${esc(r.assoc)}</div>`) : ''}
+    ${row('Where it stands', 'likelihood x severity',
+       `<div class="r-mp-score">${r.scoreHtml}</div><div class="r-mp-say">${esc(r.stands)}</div>`)}
+    ${row('What we do about it', 'controls in place', bullets(r.controls, 'Nothing is recorded yet.'))}
+    ${row('What keeps it that way', 'so it stays done',
+       r.kept && r.kept.length
+         ? `<div class="r-mp-kept">${r.kept.map(k => `<div><i>${esc(k.label)}</i><span>${esc(k.text)}</span></div>`).join('')}</div>`
+         : `<div class="r-mp-none${r.keptWarn ? ' r-mp-warn' : ''}">${esc(r.keptNote)}</div>`)}
+    ${row('How you can check', 'the evidence', bullets(r.proof, 'Nothing is linked to this risk yet.', 'r-mp-proof'))}
   </div>`;
   return `<div class="r-mps">${rows.map(card).join('')}</div>`
     + (footnote ? `<div class="r-footnote">${esc(footnote)}</div>` : '');
 }
-
 export function twinPanels({ left, right, footnote }) {
   const panel = (p) => `<div class="r-twin-panel"><div class="r-twin-title">${esc(p.title)}</div>
     ${p.rows.length ? p.rows.map((r, i) => `<div class="r-twin-row">

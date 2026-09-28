@@ -12,7 +12,7 @@
     "check:masthead": "node scripts/check-report-masthead-fit.mjs",
     "check": "npm run check:consistency && npm run check:masthead && npm run check:overflow",
     "check:overflow": "node scripts/check-report-page-overflow.mjs",
-    "test:ui": "node test/ui/register.test.mjs && node test/ui/cockpit.test.mjs && node test/ui/discovery.test.mjs && node test/ui/execplan.test.mjs"
+    "test:ui": "node test/ui/register.test.mjs && node test/ui/cockpit.test.mjs && node test/ui/discovery.test.mjs && node test/ui/execplan.test.mjs && node test/ui/closeout.test.mjs"
   },
   "engines": {
     "node": ">=18"

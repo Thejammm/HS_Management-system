@@ -14942,11 +14942,11 @@ function renderReports(){
       icon:svg('<path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/>'),
       desc:'The company at a glance - identity, scale, key people, sites, insurance cover and the organisation chart. Filled in on the Company setup tab; this prints it as a controlled document.',
       tags:['Identity','Key people','Hand-over'] },
-    { title:'Policy Acknowledgement', accent:'#0E8F7E', tint:'#E4F3F0', fn:'downloadSignoffSheets()',
+    { title:'Acknowledgement Register', accent:'#0E8F7E', tint:'#E4F3F0', fn:'downloadSignoffArchive()',
       meta:(function(){ const p=(typeof _psoState==='function')?_psoState():{staff:[],policies:[]}; return (p.staff||[]).length?((p.staff||[]).length+' staff · '+(p.policies||[]).length+' polic'+((p.policies||[]).length===1?'y':'ies')):'Set up on the Sign-off tab first'; })(),
       icon:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/>'),
-      desc:'Read-and-understood sheets - one per employee, listing the policies and procedures they sign against. Staff and policy lists live on the Sign-off tab.',
-      tags:['Sign-off','Per employee','Evidence'] },
+      desc:'The 12-month archive: the sign-off register as it stood today and every acknowledgement and withdrawal in the year before it, with the declarations in their words - produced from the trail. File it with the client\'s records once a year.',
+      tags:['Sign-off','12-month archive','Evidence'] },
     { title:'Discovery Questionnaire', accent:'#2563EB', tint:'#E7EEFB', fn:'downloadDiscoveryQuestionnaire()',
       meta:(function(){ try{ const st=_discStats(); return st.answered+' of '+st.total+' answered - '+(st.total-st.answered)+' for the client'; }catch(e){ return 'Run discovery first'; } })(),
       icon:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h3"/>'),
@@ -21376,7 +21376,7 @@ function _reportData(){
 const REPORT_DOCS = [
   { key:'companyProfile',   title:'Company Profile',              code:'CP'  },
   { key:'discovery',        title:'Discovery Questionnaire',      code:'DQ'  },
-  { key:'policySignoff',    title:'Policy Acknowledgement',       code:'PSO' },
+  { key:'policySignoff',    title:'Acknowledgement Register',     code:'PSO' },
   { key:'riskPathway',      title:'Risk Pathway',                 code:'RPW' },
   { key:'boardReport',      title:'Board Report',                 code:'BR'  },
   { key:'managementPlan',   title:'H&S Management Plan',          code:'MP'  },
@@ -28665,7 +28665,7 @@ function _psoSignedCount(polId){ const p=_psoState(); return p.staff.filter(st=>
 function _psoRiskName(id){ const r=(S.riskProfile||[]).find(x=>x.id===id); return r?(r.activity||r.hazard||'Risk'):''; }
 // One register, one purpose: the employee's declaration that they have read /
 // received and UNDERSTOOD whatever was delivered - a policy, a toolbox talk,
-// a training or CPD session, a briefing. The signed sheet is HR-file evidence.
+// a training or CPD session, a briefing. The trail is the evidence.
 const PSO_TYPES = ['Policy','Procedure','Risk assessment','Toolbox talk','Training / CPD','Briefing'];
 // ── Training-matrix lookup: when a staff name matches the training matrix,
 //    suggest the risk assessments they should sign for, worked out from the
@@ -28835,16 +28835,20 @@ function _psoPolicyLink(pol){
 }
 // The tick is the FACE of the trail, not the record. Rebuilt from it, so the
 // grid and the trail can never tell different stories.
-function _psoRebuildSigned(){
-  const p=_psoState(); const out={};
+// The grid as it stood on a day. No end = today. One derivation: the grid
+// the app shows and the register the archive prints come from this.
+function _psoSignedAsAt(end){
+  const out={}; const cut=end?(String(end).slice(0,10)+'T23:59:59.999Z'):'';
   _psoTrail().slice().sort((a,b)=>String(a.at||'').localeCompare(String(b.at||''))).forEach(e=>{
     if(!e||!e.staffId||!e.policyId) return;
+    if(cut && String(e.at||'')>cut) return;
     const k=e.staffId+'|'+e.policyId;
     if(e.kind==='acknowledged') out[k]=String(e.at||'').slice(0,10);
     else delete out[k];
   });
-  p.signed=out; return out;
+  return out;
 }
+function _psoRebuildSigned(){ const p=_psoState(); p.signed=_psoSignedAsAt(); return p.signed; }
 // Ticks made before the trail existed are brought in AS THEY ARE - marked,
 // so nobody reads a provenance into them that was never recorded.
 function _psoMigrateTrail(){
@@ -29006,7 +29010,7 @@ function openSignoffTrail(policyId){
   const rows=_psoTrail().filter(e=>e&&e.policyId===policyId)
     .sort((a,b)=>String(b.at||'').localeCompare(String(a.at||'')));
   const when=(iso)=>{ try{ return new Date(iso).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return String(iso||''); } };
-  const how={ 'in-person':'Recorded in the app', 'sheet':'Signed delivery sheet', 'link':'Acknowledged by link', 'unrecorded':'Method not recorded' };
+  const how=PSO_HOW;
   const body=rows.length?rows.map(e=>{
     const ack=e.kind==='acknowledged';
     return '<div class="pso-e'+(ack?'':' pso-e-w')+'">'
@@ -29033,6 +29037,7 @@ function openSignoffTrail(policyId){
     <div style="padding:14px 20px;max-height:62vh;overflow:auto;">${body}</div>
     <div style="padding:10px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);line-height:1.5;">${esc(SIGNOFF_LEGAL_BASIS)}</div>
     <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-outline btn-sm" onclick="downloadSignoffDeclaration('${policyId}')" title="This item as one PDF, laid out like the page the employee saw: the document, the declaration in their words, and everyone who confirmed it - when, how, and from what">\u2b73 Declaration record (PDF)</button>
       <button class="btn btn-ghost btn-sm" onclick="exportSignoffTrail()">\u2b73 Export the whole trail</button>
       <button class="btn btn-primary btn-sm" onclick="document.getElementById('psoTrailOv').remove()">Close</button>
     </div>
@@ -29059,10 +29064,13 @@ function exportSignoffTrail(){
 // come undone a year later. Policies, procedures and risk assessments are
 // reviewed and reissued, so those DO run out after 12 months.
 const PSO_ONCE_TYPES = ['Toolbox talk','Training / CPD','Briefing'];
+// How an acknowledgement was given - one wording, on the screen and on the paper.
+const PSO_HOW = { 'in-person':'Recorded in the app', 'sheet':'Signed delivery sheet', 'link':'Acknowledged by link', 'unrecorded':'Method not recorded' };
 function _psoTypeOnce(pol){ return !!pol && PSO_ONCE_TYPES.indexOf(String(pol.type||'Policy'))!==-1; }
-function _psoSignInfo(dt, pol){
+function _psoSignInfo(dt, pol, asAt){
   if(!dt) return { state:'none', label:'Not signed' };
-  const days=Math.floor((Date.now()-new Date(dt+'T00:00:00').getTime())/86400000);
+  const now=asAt?new Date(String(asAt).slice(0,10)+'T23:59:59').getTime():Date.now();   // the archive asks as at a day
+  const days=Math.floor((now-new Date(dt+'T00:00:00').getTime())/86400000);
   if(isNaN(days)) return { state:'none', label:'Not signed' };
   if(_psoTypeOnce(pol)) return { state:'ok', label:'Signed '+fmtDate(dt)+' - does not expire', once:true };
   if(days>365) return { state:'expired', label:'Signed '+fmtDate(dt)+' - EXPIRED (over 12 months), needs re-signing' };
@@ -29212,82 +29220,162 @@ function renderPolicySignoff(){
       <div class="card-body">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:12px;color:var(--text-muted);flex:1;">${comp.signed} of ${comp.total} acknowledgements recorded</span><span style="font-size:13px;font-weight:700;color:${cpc};">${comp.pct}%</span></div>
         <div style="height:8px;background:var(--muted-bg);border-radius:4px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${comp.pct}%;background:var(--success);"></div></div>
-        <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Tick a box to record an acknowledgement given in person - it goes on the trail with your name as the witness. <b>Policies, procedures and risk assessments last 12 months</b>, then the cell turns amber and they need re-signing; a talk or a month's learning, once confirmed, stays confirmed.${comp.expired?` <span style="color:#B45309;font-weight:700;">${comp.expired} signature${comp.expired!==1?'s':''} expired.</span>`:''}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Tick a box to record an acknowledgement given in person - it goes on the trail with your name as the witness. <b>Policies, procedures and risk assessments last 12 months</b>, then the cell turns amber and they need re-signing; a talk or a month's learning, once confirmed, stays confirmed. Once a year, produce the <b>12-month archive</b> - the register as it stood and every entry in the year - and file it with the client's records.${comp.expired?` <span style="color:#B45309;font-weight:700;">${comp.expired} signature${comp.expired!==1?'s':''} expired.</span>`:''}</div>
         ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" class="no-print">
           ${(!_tOnline())?'':`<button class="btn btn-outline btn-sm" onclick="_psoPullSignoffs(false)" title="Fetch anything employees have confirmed by link since you last looked. This happens on its own when you open the tab - this is for when you are waiting on someone.">↻ Check for replies${_psoOutstandingCount?(' ('+_psoOutstandingCount+' still out)'):''}</button>`}
           <button class="btn btn-ghost btn-sm" onclick="exportSignoffRegister()" title="The whole register as a CSV - opens straight in Excel to control updates">⭳ Export register (Excel/CSV)</button>
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('psoCsvInput').click()" title="Import an amended register back - matches by employee name + item title">⭱ Import register</button>
           <input type="file" id="psoCsvInput" accept=".csv,text/csv" style="display:none" onchange="importSignoffRegister(this)">
         </div>`}
+        ${_psoArchiveLineHTML(ro)}
         ${matrix}
       </div></div>
 `;
   _renderRiskDocControl();
 }
-function downloadSignoffSheets(){ try{ buildSignoffPDF(); showToast('✓ Sign-off sheets created','success'); }catch(e){ console.error('Sign-off PDF failed',e); showToast('Could not build the sheets - see console','error'); } }
-// One-page attendance sign-off for a single delivered item (toolbox talk,
-// training session, CPD, a reissued policy): everyone present signs one sheet.
-function downloadDeliverySheet(polId){
-  try{
-    const p=_psoState(); const pol=p.policies.find(x=>x.id===polId); if(!pol) return;
-    const client=(_consultantView&&_consultantView.name)||(S.company&&(S.company.tradingName||S.company.legalName))||(S.branding&&S.branding.name)||'Client';
-    const d=_docFor('policySignoff');
-    const NAVY=[30,58,95];
-    const K=_mkPdf('Delivery Sign-Off Sheet', client, d, (pol.type||'Policy')+' - sign to confirm you attended / received it and understood it.');
-    const { doc, ML, st } = K;
-    K.kv('Item', pol.title||'(untitled item)');
-    K.kv('Type', pol.type||'Policy');
-    if(pol.version) K.kv('Version', pol.version);
-    K.kv('Delivered on', pol.delivered?fmtDate(pol.delivered):'____________________');
-    K.kv('Delivered by', '____________________________________');
-    st.y+=2;
-    K.text('By signing below I confirm that I attended / received the item above, that I understood its content, and that I agree to work in accordance with it.', 9.5, {gap:3});
-    st.y+=2;
-    const staff=p.staff.filter(s=>s.name||s.role);
-    const blanks=Math.max(4, 14-staff.length);
-    const rows=staff.map(s=>[s.name||'', s.role||'', '', '']).concat(Array.from({length:blanks},()=>['','','','']));
-    K.table(
-      [{header:'NAME',w:52},{header:'JOB ROLE',w:40},{header:'SIGNATURE',w:56},{header:'DATE',w:22}],
-      rows, {headFill:NAVY, headText:[255,255,255]}
-    );
-    _pdfFooter(K, d, 'Delivery Sign-Off');
-    doc.save('delivery-signoff-'+String(pol.title||'item').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
-    showToast('✓ Delivery sheet created','success');
-  }catch(e){ console.error('Delivery sheet failed',e); showToast('Could not build the sheet - see console','error'); }
+// ── The paper: one record per item, one archive per year ──────
+// Both come off the trail and off nothing else. The blank sign-here sheets
+// they replace are gone: a link on a phone or a tick with a witness is how
+// anyone signs now, so the only thing worth printing is what was signed.
+function _psoDeviceOf(ua){
+  ua=String(ua||''); if(!ua) return '';
+  if(/iPhone/i.test(ua)) return 'iPhone'; if(/iPad/i.test(ua)) return 'iPad'; if(/Android/i.test(ua)) return 'Android';
+  if(/Windows/i.test(ua)) return 'Windows PC'; if(/Macintosh/i.test(ua)) return 'Mac'; return 'Other device';
 }
-function buildSignoffPDF(){
-  const p=_psoState();
-  const client=(_consultantView&&_consultantView.name)||(S.company&&(S.company.tradingName||S.company.legalName))||(S.branding&&S.branding.name)||'Client';
-  const d=_docFor('policySignoff');
-  const NAVY=[30,58,95];
-  const profVer=(S.riskDoc&&S.riskDoc.version)||'1.0';
-  const K=_mkPdf('Policy & Procedure Acknowledgement', client, d, 'Read & understood register - one sheet per employee.');
-  const { doc, ML, st } = K;
-  const staff=p.staff.filter(s=>s.name||s.role); const list=staff.length?staff:[{name:'',role:''}];
-  const sigLine=(label,x,w)=>{ doc.setDrawColor(180,185,192); doc.line(x,st.y+12,x+w,st.y+12); doc.setFontSize(8.5); doc.setTextColor(120,120,120); doc.text(label,x,st.y+16.5); };
-  list.forEach((s,idx)=>{
-    if(idx>0){ doc.addPage(); st.y=K.TOP; }
-    K.text('I confirm that I have received, read / attended and understood the items listed below (policies, procedures, toolbox talks, training and CPD), that I agree to comply with them, and that I understand the health and safety risks they control.', 9.5, {gap:3});
-    K.kv('Employee', s.name||'________________________________');
-    K.kv('Job role', s.role||'________________________________');
-    K.kv('Risk profile', 'v'+profVer);
-    st.y+=2;
-    K.table(
-      [{header:'#',w:8},{header:'ITEM',w:52},{header:'TYPE',w:20},{header:'VER',w:10},{header:'DELIVERED',w:20},{header:'CONTROLS (RISK PROFILE)',w:40},{header:'CURRENT STATUS',w:30}],
-      p.policies.map((pol,i)=>{ const ctrl=(pol.riskIds||[]).map(_psoRiskName).filter(Boolean).join(', ');
-        const info=s.id?_psoSignInfo(p.signed[s.id+'|'+pol.id],pol):{state:'none'};
-        const stTxt=info.state==='expired'?'EXPIRED - re-sign':(info.state==='ok'||info.state==='expiring')?('Signed '+fmtDate(p.signed[s.id+'|'+pol.id])):'To sign';
-        const stCol=info.state==='expired'?[180,83,9]:(info.state==='ok'||info.state==='expiring')?[22,120,60]:[110,110,110];
-        return [String(i+1), pol.title||'(untitled item)', {text:pol.type||'Policy',color:[110,110,110]}, {text:pol.version||'-',color:[110,110,110]}, {text:pol.delivered?fmtDate(pol.delivered):'-',color:[110,110,110]}, {text:ctrl||'-',color:[110,110,110]}, {text:stTxt,color:stCol,bold:info.state==='expired'}]; }),
-      {headFill:NAVY, headText:[255,255,255]}
-    );
-    K.text('Signatures are valid for 12 months from the date signed. Anything marked EXPIRED or To sign needs a fresh signature on this sheet.', 8.5, {color:[110,110,110], gap:2});
-    st.y+=8; K.ensure(24); sigLine('Employee signature',ML,72); sigLine('Date',ML+96,54);
-    st.y+=22; K.ensure(22); sigLine('Manager signature',ML,72); sigLine('Date',ML+96,54);
-    st.y+=22;
+function _psoDeclarationRecordData(polId){
+  const p=_psoState(); const pol=p.policies.find(x=>x.id===polId); if(!pol) return null;
+  const rows=_psoTrail().filter(e=>e&&e.policyId===polId).sort((a,b)=>String(a.at||'').localeCompare(String(b.at||'')));
+  const decls=[]; rows.forEach(e=>{ if(e.kind==='acknowledged'&&e.declaration&&decls.indexOf(e.declaration)===-1) decls.push(e.declaration); });
+  if(!decls.length) decls.push(_psoDeclarationFor(pol));
+  const signed=_psoRebuildSigned();
+  const ok=p.staff.filter(st=>{ const i=_psoSignInfo(signed[st.id+'|'+pol.id],pol); return i.state==='ok'||i.state==='expiring'; }).length;
+  return { pol:pol, link:_psoPolicyLink(pol), rows:rows, decls:decls, ok:ok, of:p.staff.length };
+}
+// Laid out like the page the employee saw: the document, where it lives,
+// the declaration in the words they confirmed, then everyone who did.
+function downloadSignoffDeclaration(polId){
+  try{
+    const D=_psoDeclarationRecordData(polId); if(!D){ showToast('That item is no longer on the register','error'); return; }
+    const pol=D.pol;
+    const client=(_consultantView&&_consultantView.name)||_cockpitClientName();
+    const d=_docFor('policySignoff');
+    const K=_mkPdf('Acknowledgement Record', client, d, pol.title+(pol.version?(' - version '+pol.version):''));
+    const NAVY=[30,58,95], GREY=[110,110,110], AMBER=[180,83,9];
+    K.kv('Document', pol.title||'(untitled)');
+    K.kv('Type', pol.type||'Policy');
+    K.kv('Version', pol.version||'');
+    K.kv('Issued', pol.delivered?fmtDate(pol.delivered):'');
+    K.kv('Issued by', pol.presenter||'');
+    K.kv('Where it lives', D.link||'Not recorded');
+    K.kv('Standing', D.ok+' of '+D.of+' confirmed as at '+fmtDate(new Date().toISOString().slice(0,10)));
+    if(pol.content){ K.section('What it covers', [71,85,105]); K.text(pol.content, 8.8, {gap:2.4}); }
+    K.section(D.decls.length>1?'Declarations':'Declaration', NAVY);
+    D.decls.forEach(function(t,i){ if(i) K.st.y+=2; K.text(t, 9.4, {gap:2.6}); });
+    K.st.y+=1;
+    K.text('Each person below confirmed the declaration above, in those words, at the time shown.', 8.4, {color:GREY, gap:3});
+    K.section('Who confirmed it', NAVY);
+    const when=function(iso){ try{ return new Date(iso).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return String(iso||''); } };
+    const rows=D.rows.map(function(e){
+      const ack=e.kind==='acknowledged';
+      const how=ack?(PSO_HOW[e.method]||e.method||''):('Withdrawn'+(e.reason?(' - '+e.reason):''));
+      const detail=ack?(e.method==='link'?[_psoDeviceOf(e.ua), e.ip].filter(Boolean).join(', '):(e.by?('Recorded by '+e.by):'')):(e.by?('By '+e.by):'');
+      const c=ack?undefined:AMBER;
+      return [{text:e.staffName||'',bold:true,color:c},{text:e.staffRole||'',color:c},{text:when(e.at),color:c},{text:how,color:c},{text:detail,color:c}];
+    });
+    if(rows.length) K.table([{header:'NAME',w:40},{header:'ROLE',w:30},{header:'WHEN',w:34},{header:'HOW',w:36},{header:'WITNESS / DEVICE',w:38}], rows, {headFill:NAVY, headText:[255,255,255]});
+    else K.text('Nobody has confirmed this yet.', 9.5, {color:GREY});
+    K.st.y+=2;
+    K.text('Nothing on this record is edited or removed. A withdrawal is a correction added to it, with its reason.', 8.4, {color:GREY, gap:3});
+    K.text(SIGNOFF_LEGAL_BASIS, 8, {color:GREY});
+    _pdfFooter(K, d, 'Acknowledgement Record');
+    K.doc.save('acknowledgement-record-'+String(pol.title||'item').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+new Date().toISOString().slice(0,10)+'.pdf');
+    showToast('✓ Acknowledgement record created','success');
+  }catch(e){ console.error('Acknowledgement record failed',e); showToast('Could not build the record - see console','error'); }
+}
+// The year, as a question put to the trail: how did the register stand on
+// this day, and what was recorded in the 12 months before it. Not a copy
+// kept somewhere - the same trail answers for any year you ask.
+function _psoArchiveData(end){
+  const p=_psoState(); end=String(end||new Date().toISOString().slice(0,10)).slice(0,10);
+  const s=new Date(end+'T12:00:00'); s.setFullYear(s.getFullYear()-1); s.setDate(s.getDate()+1);
+  const start=s.toISOString().slice(0,10);
+  const signed=_psoSignedAsAt(end);
+  const items=p.policies.filter(x=>String(x.title||'').trim() && (!x.delivered || String(x.delivered)<=end)).map(pol=>{
+    let ok=0, ex=0;
+    p.staff.forEach(st=>{ const i=_psoSignInfo(signed[st.id+'|'+pol.id], pol, end); if(i.state==='ok'||i.state==='expiring') ok++; else if(i.state==='expired') ex++; });
+    return { id:pol.id, title:pol.title, type:pol.type||'Policy', version:pol.version||'', delivered:pol.delivered||'', ok:ok, ex:ex, of:p.staff.length };
   });
-  _pdfFooter(K, d, 'Policy Acknowledgement');
-  doc.save('policy-signoff-'+client.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+  const entries=_psoTrail().filter(e=>e && String(e.at||'').slice(0,10)>=start && String(e.at||'').slice(0,10)<=end)
+    .sort((a,b)=>String(a.at||'').localeCompare(String(b.at||'')));
+  const decls=[], seen={};
+  entries.forEach(e=>{ if(e.kind!=='acknowledged'||!e.declaration) return; const k=e.policyId+'|'+e.declaration; if(seen[k]) return; seen[k]=1;
+    decls.push({ title:e.policyTitle||'', version:e.policyVersion||'', text:e.declaration }); });
+  return { start:start, end:end, items:items, entries:entries, decls:decls, staff:p.staff.length };
+}
+// The tracker: when the last one was produced, so the tab can say when the
+// next is due. Due a year after the last, or a year after the trail began.
+function _psoArchiveStatus(){
+  const p=_psoState(); const arch=(p.archives||[]).slice().sort((a,b)=>String(b.to||'').localeCompare(String(a.to||'')));
+  const last=arch[0]||null; const today=new Date().toISOString().slice(0,10);
+  const first=_psoTrail().map(e=>String((e&&e.at)||'').slice(0,10)).filter(Boolean).sort()[0]||'';
+  const plusYear=(day)=>{ const d=new Date(day+'T12:00:00'); d.setFullYear(d.getFullYear()+1); return d.toISOString().slice(0,10); };
+  const due=last?plusYear(last.to):(first?plusYear(first):'');
+  return { last:last, due:due, overdue:!!(due && due<today), nothing:!first };
+}
+function _psoArchiveLineHTML(ro){
+  if(ro) return '';
+  const a=_psoArchiveStatus(); const col=a.overdue?'#B45309':'var(--text-muted)';
+  const line=a.nothing?'Annual archive: nothing to archive yet.'
+    :(a.last?('✓ Annual archive last produced '+fmtDate(String(a.last.at).slice(0,10))+' (12 months to '+fmtDate(a.last.to)+(a.last.by?(', by '+esc(a.last.by)):'')+')'+(a.due?(' · next due '+fmtDate(a.due)):''))
+      :('Annual archive: not produced yet'+(a.due?(' · due '+fmtDate(a.due)):'')));
+  return '<div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;font-size:11.5px;color:'+col+';'+(a.overdue?'font-weight:700;':'')+'">'
+    +'<span style="flex:1;min-width:220px;">'+line+(a.overdue?' - overdue':'')+'</span>'
+    +'<input type="date" id="psoArchEnd" value="'+new Date().toISOString().slice(0,10)+'" title="The last day of the 12 months to archive" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;">'
+    +'<button class="btn btn-outline btn-sm" onclick="downloadSignoffArchive(document.getElementById(\'psoArchEnd\').value)" title="One PDF: the register as it stood on that day and every entry in the 12 months before it, produced from the trail. File it with the client\'s records once a year.">⭳ 12-month archive</button></div>';
+}
+function downloadSignoffArchive(endDate){
+  try{
+    const D=_psoArchiveData(endDate);
+    const p=_psoState();
+    const client=(_consultantView&&_consultantView.name)||_cockpitClientName();
+    const d=_docFor('policySignoff');
+    const K=_mkPdf('Acknowledgement Register', client, d, '12 months to '+fmtDate(D.end)+' - the register as it stood, and every entry in the period');
+    const NAVY=[30,58,95], GREY=[110,110,110], AMBER=[180,83,9], GREEN=[22,120,60];
+    K.kv('Period', fmtDate(D.start)+' to '+fmtDate(D.end));
+    K.kv('Employees on the register', String(D.staff));
+    K.kv('Items on the register', String(D.items.length));
+    K.kv('Entries in the period', String(D.entries.length));
+    K.section('The register as at '+fmtDate(D.end), NAVY);
+    if(D.items.length) K.table([{header:'DOCUMENT',w:56},{header:'TYPE',w:26},{header:'VERSION',w:16},{header:'ISSUED',w:22},{header:'CONFIRMED',w:22},{header:'STANDING',w:36}],
+      D.items.map(function(it){ const full=!!it.of&&it.ok===it.of;
+        const st=!it.of?'No employees':(full?'Everyone confirmed':(it.ex?(it.ex+' expired'):((it.of-it.ok)+' outstanding')));
+        return [{text:it.title,bold:true}, it.type, it.version||'-', it.delivered?fmtDate(it.delivered):'-', it.ok+' of '+it.of, {text:st, color:full?GREEN:(it.ok?AMBER:[150,150,150])}]; }),
+      {headFill:NAVY, headText:[255,255,255]});
+    else K.text('Nothing was on the register in this period.', 9.5, {color:GREY});
+    K.section('Everything recorded in the period', NAVY);
+    const when=function(iso){ try{ return new Date(iso).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return String(iso||''); } };
+    if(D.entries.length) K.table([{header:'WHEN',w:32},{header:'EMPLOYEE',w:38},{header:'DOCUMENT',w:52},{header:'ENTRY',w:24},{header:'HOW',w:32}],
+      D.entries.map(function(e){ const ack=e.kind==='acknowledged'; const c=ack?undefined:AMBER;
+        return [{text:when(e.at),color:c},{text:e.staffName||'',bold:true,color:c},{text:(e.policyTitle||'')+(e.policyVersion?(' v'+e.policyVersion):''),color:c},{text:ack?'Acknowledged':'Withdrawn',color:c},{text:ack?(PSO_HOW[e.method]||e.method||''):(e.reason||''),color:c}]; }),
+      {headFill:NAVY, headText:[255,255,255], fs:8});
+    else K.text('No entries were recorded in this period.', 9.5, {color:GREY});
+    if(D.decls.length){
+      K.section('The declarations they confirmed, in their words', [71,85,105]);
+      D.decls.forEach(function(x){ K.text((x.title||'')+(x.version?(' - version '+x.version):''), 8.8, {bold:true, gap:1.6}); K.text(x.text, 8.2, {color:[70,70,70], gap:3}); });
+    }
+    K.st.y+=2;
+    K.text('Produced from the acknowledgement trail, which is never edited or removed. The same trail produces this register for any period asked for.', 8.4, {color:GREY, gap:3});
+    K.text(SIGNOFF_LEGAL_BASIS, 8, {color:GREY});
+    _pdfFooter(K, d, 'Acknowledgement Register');
+    const slug=String(client||'client').replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+    K.doc.save('acknowledgement-register-'+slug+'-12m-to-'+D.end+'.pdf');
+    if(!_roLocked()){
+      if(!Array.isArray(p.archives)) p.archives=[];
+      p.archives.push({ at:new Date().toISOString(), from:D.start, to:D.end, by:(typeof _actor==='function'?(_actor().name||''):''), items:D.items.length, staff:D.staff, entries:D.entries.length });
+      saveData(); renderPolicySignoff();
+    }
+    showToast('✓ 12-month archive created - '+D.entries.length+' entr'+(D.entries.length===1?'y':'ies'),'success');
+  }catch(e){ console.error('Archive failed',e); showToast('Could not build the archive - see console','error'); }
 }
 
 // ══════════════════════════════════════════════════════════════

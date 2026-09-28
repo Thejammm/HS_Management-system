@@ -215,4 +215,46 @@ await wait(page, 400);
   R.ok(/1 still out/.test(t.txt), 'and it says how many are still out, so the button means something');
 }
 
+// ── the record and the archive come off the trail, and off nothing else ──
+//  Simon: "the trail need to export as a declaration the same or very
+//  similar to the sign web page ... we need to keep an archive tracker
+//  somewhere as a 12 month snap shot". Neither is a second store: both are
+//  questions put to the trail, so an earlier year answers just as well.
+{
+  const t = await page.evaluate(() => {
+    S.policySignoff = { policies: [
+        { id: 'p1', title: 'Fire Safety Policy', type: 'Policy', version: '3.1', delivered: '2026-08-12', riskIds: [] },
+        { id: 'p2', title: 'Slips, trips and falls', type: 'Toolbox talk', delivered: '2025-06-03', presenter: 'S Archer', content: '1. Spot it, stop it.', riskIds: [] } ],
+      staff: [{ id: 's1', name: 'Daniel Ashworth', role: 'Workshop Supervisor' }, { id: 's2', name: 'Chloe Barrett', role: 'Office Manager' }],
+      signed: {}, log: [], logMigrated: true, archives: [] };
+    _psoRecord('s1', 'p1', 'acknowledged', { inviteId: 'inv_1', at: '2026-08-20T09:41:00.000Z', method: 'link', staffName: 'Daniel J Ashworth', ip: '81.2.3.4', ua: 'Mozilla/5.0 (iPhone)' });
+    _psoRecord('s2', 'p1', 'acknowledged', { at: '2026-08-21T10:00:00.000Z', method: 'in-person' });
+    _psoRecord('s2', 'p1', 'withdrawn', { at: '2026-08-22T10:00:00.000Z', reason: 'Ticked against the wrong person' });
+    _psoRecord('s1', 'p2', 'acknowledged', { at: '2025-06-03T00:00:00.000Z', method: 'sheet', legacy: true });
+    _psoRebuildSigned();
+    const rec = _psoDeclarationRecordData('p1');
+    const arc = _psoArchiveData('2026-09-28');
+    const old = _psoArchiveData('2025-12-31');
+    // the PDFs build, and are named for what they are - save is caught, not run
+    const P = window.jspdf.jsPDF.API, orig = P.save; const names = []; P.save = function (nm) { names.push(nm); return this; };   // methods are copied from API onto each instance
+    downloadSignoffDeclaration('p1'); downloadSignoffArchive('2026-09-28');
+    P.save = orig;
+    const st = _psoArchiveStatus();
+    return { rec: { rows: rec.rows.length, decls: rec.decls, ok: rec.ok, of: rec.of },
+      arc: { start: arc.start, end: arc.end, items: arc.items.map(i => i.title + ':' + i.ok + '/' + i.of), entries: arc.entries.length, decls: arc.decls.length },
+      old: { items: old.items.map(i => i.title + ':' + i.ok + '/' + i.of), entries: old.entries.length },
+      names, archives: _psoState().archives.length, st, txt: document.getElementById('signoffContainer').innerText };
+  });
+  R.ok(t.rec.rows === 3 && t.rec.ok === 1 && t.rec.of === 2, 'the record holds every entry for the item - both confirmations and the withdrawal - and reads 1 of 2 standing');
+  R.ok(t.rec.decls.length === 1 && /version 3\.1/.test(t.rec.decls[0]), 'with the declaration in the words they confirmed');
+  R.ok(t.arc.start === '2025-09-29' && t.arc.end === '2026-09-28', 'the archive covers the 12 months to the day asked for (' + t.arc.start + ' to ' + t.arc.end + ')');
+  R.ok(t.arc.items.join('|') === 'Fire Safety Policy:1/2|Slips, trips and falls:1/2', 'the register as at that day, item by item (' + t.arc.items.join(', ') + ')');
+  R.ok(t.arc.entries === 3 && t.arc.decls === 1, 'and every entry in the period - the 2025 sheet falls outside it');
+  R.ok(t.old.items.join('|') === 'Slips, trips and falls:1/2' && t.old.entries === 1, 'ask for an earlier year and the same trail answers for it - the policy was not issued yet');
+  R.ok(/^acknowledgement-record-fire-safety-policy-/.test(t.names[0] || '') && /^acknowledgement-register-.*-12m-to-2026-09-28\.pdf$/.test(t.names[1] || ''),
+    'both PDFs build and are named for what they are (' + t.names.join(', ') + ')');
+  R.ok(t.archives === 1 && t.st.last && t.st.last.to === '2026-09-28' && t.st.due === '2027-09-28' && !t.st.overdue, 'producing the archive is logged, and the next is due a year on');
+  R.ok(/Annual archive last produced/.test(t.txt) && /12-month archive/.test(t.txt), 'the tab says when it was last produced and offers the next');
+}
+
 await R.done(browser, errors);

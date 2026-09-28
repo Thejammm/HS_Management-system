@@ -168,4 +168,51 @@ await wait(page, 400);
   R.ok(t.again, 'the invite id is what stops a reply being counted a second time');
 }
 
+// ── and it arrives on its own: opening the register is what pulls it back ──
+//  This is the check that was missing. The merge function existed and was
+//  correct, and nothing called it, so a confirmation reached the server and
+//  died there. Nothing below calls the pull by hand.
+{
+  const t = await page.evaluate(() => new Promise(res => {
+   try{
+    S.policySignoff = { policies: [{ id: 'p1', title: 'Fire Safety Policy', type: 'Policy', version: '3.1', delivered: '2026-08-12', riskIds: [] }],
+      staff: [{ id: 's1', name: 'Daniel Ashworth', role: 'Workshop Supervisor' },
+              { id: 's2', name: 'Chloe Barrett', role: 'Office Manager' }],
+      signed: {}, log: [], logMigrated: true };
+    // signed in to a tenant, with one invite confirmed and one still out
+    Auth.isSignedIn = () => true; Auth.activeTenantId = () => 'fairbank';
+    const future = new Date(Date.now() + 30 * 864e5).toISOString();
+    let calls = 0;
+    window._psoApi = async () => { calls++; return { ok: true, data: { invites: [
+      { id: 'inv_1', staff_id: 's1', policy_id: 'p1', signed_at: '2026-09-20T09:41:00.000Z',
+        signed_name: 'Daniel J Ashworth', declaration: 'I confirm that: ... version 3.1 ...',
+        policy_link: 'https://fairbank.sharepoint.com/fire.pdf',
+        signed_ip: '81.2.3.4', signed_ua: 'Mozilla/5.0 (iPhone)', expires_at: future },
+      { id: 'inv_2', staff_id: 's2', policy_id: 'p1', signed_at: null, expires_at: future } ] } }; };
+    window._psoPulledAt = 0; window._psoPulling = false;
+    renderPolicySignoff();
+    setTimeout(() => {
+      const txt = (document.getElementById('signoffContainer') || {}).innerText || '';
+      const first = calls;
+      // a second paint inside the minute must not go back to the server
+      renderPolicySignoff();
+      setTimeout(() => res({ trail: _psoTrail().length, calls: first, again: calls,
+        e: _psoTrailFor('s1', 'p1')[0] || {}, signed: _psoState().signed['s1|p1'],
+        out: (typeof _psoOutstandingCount==='undefined'?-1:_psoOutstandingCount), txt }), 250);
+    }, 500);
+   }catch(err){ res({ broke: String(err && err.message || err) }); }
+  }));
+  R.ok(!t.broke, 'the pull is wired up at all' + (t.broke ? ' - threw: ' + t.broke : ''));
+  R.ok(t.calls === 1, 'opening the register asks the server once, with nobody pressing anything');
+  R.ok(t.trail === 1 && t.e.method === 'link' && t.e.inviteId === 'inv_1',
+    'and the reply lands on the trail as an entry - this is where it lands');
+  R.ok(t.e.staffName === 'Daniel J Ashworth' && /iPhone/.test(t.e.ua || ''),
+    'carrying the name they typed and the device they used');
+  R.ok(t.signed === '2026-09-20', 'the grid reads signed from the day they signed');
+  R.ok(t.again === t.calls, 'painting again a moment later does not ask again (' + t.again + ' call)');
+  R.ok(t.out === 1, 'and it knows one person has not answered yet');
+  R.ok(/Check for replies/i.test(t.txt), 'there is a button to check, for when you are waiting on someone');
+  R.ok(/1 still out/.test(t.txt), 'and it says how many are still out, so the button means something');
+}
+
 await R.done(browser, errors);

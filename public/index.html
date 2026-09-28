@@ -28710,10 +28710,18 @@ function _psoMailto(policyId){
 }
 // Replies live in their own table until someone opens the register. This is
 // where they join the trail - as entries, never as a silent tick.
+// Guarded so renderPolicySignoff can ask every time it paints without
+// hammering the server: one at a time, and at most once a minute unless
+// Simon asked for it himself.
+var _psoPulling=false, _psoPulledAt=0, _psoOutstandingCount=0;
 async function _psoPullSignoffs(quiet){
-  if(!_tOnline()) return 0;
+  if(!_tOnline()){ if(!quiet) showToast('You are offline - replies come back when you reconnect','info'); return 0; }
+  if(_psoPulling) return 0;
+  if(quiet && (Date.now()-_psoPulledAt) < 60000) return 0;
+  _psoPulling=true;
+  try{
   const r=await _psoApi('/api/signoff/status');
-  if(!r.ok) return 0;
+  if(!r.ok){ if(!quiet) showToast('Could not reach the server to check','error'); return 0; }
   const have=new Set(_psoTrail().map(e=>e&&e.inviteId).filter(Boolean));
   let n=0;
   (r.data.invites||[]).forEach(inv=>{
@@ -28724,10 +28732,16 @@ async function _psoPullSignoffs(quiet){
       link:inv.policy_link, ip:inv.signed_ip, ua:inv.signed_ua });
     n++;
   });
-  if(n){ _psoRebuildSigned(); saveData(); renderPolicySignoff();
+  if(n){ _psoRebuildSigned(); saveData();
     showToast('\u2713 '+n+' acknowledgement'+(n!==1?'s':'')+' came back','success'); }
   else if(!quiet) showToast('Nothing new has come back yet','info');
+  // how many people are still sitting on a live link, so the button can say so
+  const was=_psoOutstandingCount;
+  _psoOutstandingCount=(r.data.invites||[]).filter(x=>x&&!x.signed_at&&new Date(x.expires_at)>new Date()).length;
+  // render INSIDE the guard - the nested quiet pull sees _psoPulling and stops
+  if(n || _psoOutstandingCount!==was) renderPolicySignoff();
   return n;
+  } finally { _psoPulling=false; _psoPulledAt=Date.now(); }
 }
 function openSignoffTrail(policyId){
   const p=_psoState();
@@ -28872,6 +28886,8 @@ function importSignoffRegister(inp){
 function renderPolicySignoff(){
   const cont=document.getElementById('signoffContainer'); if(!cont) return;
   try{ _psoMigrateTrail(); }catch(e){}
+  // Anything an employee confirmed by link since you last looked lands now.
+  try{ _psoPullSignoffs(true); }catch(e){}
   const p=_psoState(); const ro=_roLocked(); const dis=ro?' disabled':'';
   const risks=(S.riskProfile||[]);
   const inp='font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;';
@@ -28934,6 +28950,7 @@ function renderPolicySignoff(){
         <div style="height:8px;background:var(--muted-bg);border-radius:4px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${comp.pct}%;background:var(--success);"></div></div>
         <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Tick a box when the signed sheet comes back (dated today). The printed sheet stays the wet-ink evidence. <b>Signatures last 12 months</b> - after that the cell turns amber and needs re-signing, so weekly talks, monthly CPD and the annual policy review all cycle through honestly.${comp.expired?` <span style="color:#B45309;font-weight:700;">${comp.expired} signature${comp.expired!==1?'s':''} expired.</span>`:''}</div>
         ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" class="no-print">
+          ${(!_tOnline())?'':`<button class="btn btn-outline btn-sm" onclick="_psoPullSignoffs(false)" title="Fetch anything employees have confirmed by link since you last looked. This happens on its own when you open the tab - this is for when you are waiting on someone.">↻ Check for replies${_psoOutstandingCount?(' ('+_psoOutstandingCount+' still out)'):''}</button>`}
           <button class="btn btn-ghost btn-sm" onclick="exportSignoffRegister()" title="The whole register as a CSV - opens straight in Excel to control updates">⭳ Export register (Excel/CSV)</button>
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('psoCsvInput').click()" title="Import an amended register back - matches by employee name + item title">⭱ Import register</button>
           <input type="file" id="psoCsvInput" accept=".csv,text/csv" style="display:none" onchange="importSignoffRegister(this)">

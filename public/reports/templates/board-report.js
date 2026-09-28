@@ -913,7 +913,7 @@ export function buildBoardReport(state, opts = {}) {
       ? { type: 'journeyStrip', fillPct: B.fillPct, tgtPct: B.tgtPct,
           atLine: jAtLine,
           colour: jAtLine ? '#16A34A' : (TIER_COLOURS[B.nowBand] || '#b7b7ba'),
-          flagLabel: (B.rated - B.tgtSet) ? ('TARGET · if the ' + B.tgtSet + ' risk' + (B.tgtSet !== 1 ? 's' : '') + ' with a target hit it (' + (B.rated - B.tgtSet) + ' ha' + ((B.rated - B.tgtSet) !== 1 ? 've' : 's') + ' none)') : 'TARGET · every risk at its planned score',
+          flagLabel: (B.rated - B.tgtSet) ? ('Target line · drawn from the ' + B.tgtSet + ' risk' + (B.tgtSet !== 1 ? 's' : '') + ' with a planned score - ' + (B.rated - B.tgtSet) + ' of ' + B.rated + ' have none yet, so it moves as they are set') : 'Target line · every rated risk has a planned score',
           depPct: B.dep.total ? Math.round(B.dep.done / B.dep.total * 100) : null,
           depCounts: B.dep.total ? [
             { value: B.dep.done + ' of ' + B.dep.total, label: 'planned controls and actions in place', colour: (B.dep.done === B.dep.total) ? '#16A34A' : undefined },

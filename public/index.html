@@ -14371,8 +14371,8 @@ function _cockpitContext(){
 // own holds its current position, so it pulls the line back - say so rather
 // than showing a bare count that reads like progress (Simon, 2026-09-28).
 function _journeyTgtFlag(B){
-  if(!B || !B.tgtMissing) return 'TARGET \u00b7 every risk at its planned score';
-  return 'TARGET \u00b7 if the '+B.tgtSet+' risk'+(B.tgtSet!==1?'s':'')+' with a target hit it ('+B.tgtMissing+' ha'+(B.tgtMissing!==1?'ve':'s')+' none)';
+  if(!B || !B.tgtMissing) return 'Target line \u00b7 every rated risk has a planned score';
+  return 'Target line \u00b7 drawn from the '+B.tgtSet+' risk'+(B.tgtSet!==1?'s':'')+' with a planned score - '+B.tgtMissing+' of '+B.rated+' have none yet, so it moves as they are set';
 }
 function _boardModel(){
   const rows=(S.riskProfile||[]).map(r=>{
@@ -14612,21 +14612,23 @@ const COCKPIT_WIDGETS = {
       if(!B.rated) return '<div class="ckx-panel"><h4>Risk journey</h4><div class="ck-pending">Rate the risks (likelihood \u00d7 severity) to populate the company journey.</div></div>';
       const atLine=B.tgtPct!==null && B.fillPct>=B.tgtPct && B.rated>0 && B.tgtSet===B.rated;
       const col=atLine?'#16A34A':(_RISK_PRIO_COLOR[B.nowBand]||'#9CA3AF');
-      const line=B.tgtPct===null?'':'<div style="position:absolute;left:'+B.tgtPct+'%;top:-7px;bottom:-7px;width:4px;background:#2563EB;border-radius:2px;box-shadow:0 0 0 1.5px var(--surface,#fff);"></div>';
-      // The ends and the target read as one row above the gauge (Simon).
-      const ends='<div style="position:relative;height:15px;font-size:11px;color:var(--text-muted);">'
-        +'<span>Baseline - as found</span><span style="position:absolute;right:0;">Fully avoided</span>'
-        +(B.tgtPct===null?'':'<span style="position:absolute;left:'+B.tgtPct+'%;transform:translateX(-'+(B.tgtPct>75?'100':B.tgtPct<15?'0':'50')+'%);font-size:10.5px;font-weight:700;color:#2563EB;white-space:nowrap;">'+_journeyTgtFlag(B)+'</span>')
-        +'</div>';
+      const line=B.tgtPct===null?'':'<div style="position:absolute;left:'+B.tgtPct+'%;top:-3px;bottom:-3px;width:4px;background:#2563EB;border-radius:2px;box-shadow:0 0 0 1.5px var(--surface,#fff);"></div>';
+      // The two ends are the only things above the bar. The line gets an arrow
+      // in a row of its own beneath it, and the sentences sit left-aligned
+      // under that - nothing floats over anything (Simon, 2026-09-28).
+      const ends='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);height:15px;"><span>Baseline - as found</span><span>Fully avoided</span></div>';
+      const mark=(pct,c,t)=>'<span style="position:absolute;left:'+pct+'%;top:-1px;transform:translateX(-50%);font-size:10px;line-height:1;color:'+c+';" title="'+t+'">\u25b2</span>';
+      const marks='<div style="position:relative;height:11px;">'+(B.tgtPct===null?'':mark(B.tgtPct,'#2563EB','The target line'))+(B.fillPct>0?mark(B.fillPct,col,'Current position'):'')+'</div>';
+      const sent=(c,t)=>'<div style="font-size:11.5px;color:'+c+';font-weight:700;margin-top:2px;line-height:1.35;">'+t+'</div>';
       return '<div class="ckx-panel"><h4>Risk journey</h4>'
         +ends
-        +'<div style="position:relative;height:20px;background:var(--muted-bg);border-radius:10px;margin:2px 0 4px;">'
+        +'<div style="position:relative;height:20px;background:var(--muted-bg);border-radius:10px;margin:2px 0 0;">'
         +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+B.fillPct+'%;min-width:14px;background:'+col+';border-radius:'+(B.fillPct>=98?'10px':'10px 0 0 10px')+';"></div>'+line+'</div>'
-        +'<div style="position:relative;height:16px;font-size:11px;color:var(--text-muted);">'
-          +(B.fillPct>0
-            ? '<span style="position:absolute;left:'+B.fillPct+'%;transform:translateX(-'+(B.fillPct>75?'100':B.fillPct<15?'0':'50')+'%);font-weight:700;color:'+col+';">Current position</span>'
-            : '<span style="position:absolute;left:50%;transform:translateX(-50%);font-weight:700;">Not moved yet - the bar moves when a risk is re-scored</span>')
-          +'</div>'
+        +marks
+        +(B.tgtPct===null?'':sent('#2563EB','\u25b2 '+_journeyTgtFlag(B)))
+        +(B.fillPct>0
+            ? sent(col,'\u25b2 Current position \u00b7 '+(B.nowBand||'')+' - moved from the baseline as risks were re-scored')
+            : sent('var(--text-muted)','Not moved yet - the bar moves when a risk is re-scored'))
         +(atLine?'<div style="margin-top:8px;font-size:12.5px;font-weight:700;color:#16A34A;">Controlled as reasonably practicable \u2713 - the position has reached the planned target line</div>':'')
         +'<div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:8px;font-size:12.5px;color:var(--text-muted);">'
         +'<span><b style="font-size:16px;color:#2563EB;">'+B.atTgt+' of '+B.rated+'</b> rated risks at their planned target</span>'

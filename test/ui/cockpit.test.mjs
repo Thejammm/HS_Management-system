@@ -71,14 +71,17 @@ await wait(page, 700);
       onePop: new RegExp(B.atTgt + ' of ' + B.rated + ' rated risks at their planned target').test(txt) && new RegExp(B.notRated + ' not yet rated').test(txt),
       noMixed: !/of 4 risks at their planned target/.test(txt),
       // the flag explains what the line promises
-      flag: /TARGET · if the 2 risks with a target hit it \(1 has none\)/.test(txt),
+      flag: /Target line · drawn from the 2 risks with a planned score - 1 of 3 have none yet/.test(txt),
+      // the two ends are the only things on the row above the bar - the flag can no longer sit on top of them
+      endsClean: (function(){ const ends = panel.querySelector('.ckx-panel > div'); return !!ends && /^Baseline - as found\s*Fully avoided$/.test(ends.innerText.replace(/\s+/g, ' ').trim()); })(),
       // nothing re-scored, so the bar says so instead of floating a label
       notMoved: B.fillPct === 0 && /Not moved yet - the bar moves when a risk is re-scored/.test(txt) && !/Current position/.test(txt),
       // the second reading, which moves as work closes
       delivered: /PLAN DELIVERED/i.test(txt) && new RegExp(B.dep.done + ' of ' + B.dep.total + ' planned controls and actions in place').test(txt) };
   });
   R.ok(t.onePop && t.noMixed, 'the score reading counts rated risks only, and says how many are not rated');
-  R.ok(t.flag, 'the target flag says what the line promises when some risks have no target');
+  R.ok(t.flag, 'the target line says what it is drawn from when some risks have no planned score');
+  R.ok(t.endsClean, 'and nothing sits on the row above the bar but its two ends');
   R.ok(t.notMoved, 'with nothing re-scored the bar says so rather than floating a Current position label');
   R.ok(t.delivered, 'a second reading shows what is in place now (' + t.depPct + '%)');
 }

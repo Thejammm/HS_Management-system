@@ -70,9 +70,16 @@ export function signoffOf(state) {
 }
 
 export function briefingsOf(state) {
-  const d = (state && state.toolbox && Array.isArray(state.toolbox.deliveries)) ? state.toolbox.deliveries : [];
-  return d.filter(x => str(x.title)).map(x => ({ title: str(x.title), date: str(x.date), presenter: str(x.presenter),
-    signed: (x.attendees || []).filter(p => p.signed).length, of: (x.attendees || []).length }))
+  // Talks and briefings live on the sign-off register - one register, one
+  // trail. A talk is delivered on the day it was issued; signed = the
+  // people who have confirmed it, exactly as the grid counts them.
+  const p = (state && state.policySignoff) || {};
+  const policies = Array.isArray(p.policies) ? p.policies : [];
+  const staff = Array.isArray(p.staff) ? p.staff : [];
+  const signed = (p.signed && typeof p.signed === 'object') ? p.signed : {};
+  return policies.filter(x => str(x.title) && /^(Toolbox talk|Briefing)$/.test(str(x.type)))
+    .map(x => ({ title: str(x.title), date: str(x.delivered), presenter: str(x.presenter),
+      signed: staff.filter(st => signed[st.id + '|' + x.id]).length, of: staff.length }))
     .sort((a, b) => String(b.date).localeCompare(String(a.date)));
 }
 

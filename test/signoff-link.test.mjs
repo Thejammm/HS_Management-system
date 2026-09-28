@@ -101,6 +101,31 @@ test('an expired or unknown link fails kindly, and says what to do', () => {
   assert.match(routeSrc, /Already confirmed/, 'and a second visit says it is already done');
 });
 
+test('an invite can carry what was covered, and the page shows it', async () => {
+  // the column is ADDED to a table that already exists on the live server,
+  // not just declared for a fresh one
+  assert.match(schema, /ALTER TABLE signoff_invite ADD COLUMN IF NOT EXISTS content TEXT/, 'added to the existing table');
+  const { newDb } = need('pg-mem');
+  const db = newDb();
+  const pg = db.adapters.createPg();
+  const c = new pg.Client(); await c.connect();
+  await c.query(`CREATE TABLE tenants (id TEXT PRIMARY KEY, name TEXT NOT NULL)`);
+  await c.query(schema.slice(schema.indexOf('CREATE TABLE IF NOT EXISTS signoff_invite')));
+  await c.query(`INSERT INTO tenants (id,name) VALUES ('fairbank','Fairbank Fabrications Ltd')`);
+  await c.query(`INSERT INTO signoff_invite (id,tenant_id,token_hash,staff_id,policy_id,policy_title,content,expires_at)
+      VALUES ('i1','fairbank','h1','s1','p1','Slips, trips and falls','1. Most slips happen on a wet floor.', now() + interval '60 days')`);
+  const r = await c.query(`SELECT content FROM signoff_invite WHERE id='i1'`);
+  assert.match(r.rows[0].content, /wet floor/, 'and it reads back');
+  await c.end();
+  const invite = routeSrc.slice(routeSrc.indexOf("router.post('/invite'"), routeSrc.indexOf("router.get('/status'"));
+  assert.match(invite, /it\.content/, 'the route stores what it is given');
+  assert.match(invite, /slice\(0, 8000\)/, 'capped - a talk or a list of links, never a document');
+  const view = routeSrc.slice(routeSrc.indexOf("router.get('/view/:token'"));
+  assert.match(view, /What it covers/, 'the page shows it');
+  assert.match(view, /linkify/, 'with any links in it made tappable');
+  assert.match(view, /\$\{covered\}/, 'in the document card, above the declaration');
+});
+
 test('Compass mints and composes, it does not send', () => {
   // test the code, not the prose - the comments here talk ABOUT not sending mail
   const code = routeSrc.replace(/^\s*\/\/.*$/gm, '');

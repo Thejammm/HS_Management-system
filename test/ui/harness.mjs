@@ -52,7 +52,10 @@ export async function seed(page, state, tab) {
       // the client's own registers, or a fresh client inherits the last one's
       trainingData: { sheets: [], people: [], filename: '' }, monitoring: { months: {}, meta: {}, regulatory: [], regSections: [] },
       incidents: [], decisions: [], siteInspections: [], units: [], memberships: [], healthSurveillance: [],
-      supplyChain: [], buildingSafety: [] };
+      supplyChain: [], buildingSafety: [],
+      // the sign-off register and the two libraries that feed it
+      policySignoff: { policies: [], staff: [], signed: {}, log: [], logMigrated: true },
+      toolbox: { custom: [], deliveries: [], hidden: [] }, cpd: { items: [], log: [], issued: {}, intro: '' } };
     Object.assign(S, blank, st || {});
     if (typeof _riskSearch !== 'undefined') { _riskSearch = ''; _riskMacroOpen = {}; _riskMacroLast = null; _riskSel = null; _riskModalOpen = false; }
     if (typeof _riskModeFilter !== 'undefined') _riskModeFilter = 'all';

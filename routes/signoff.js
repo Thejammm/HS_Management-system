@@ -70,12 +70,14 @@ router.post('/invite', requireAuth, express.json({ limit: '1mb' }), async (req, 
         `INSERT INTO signoff_invite
            (id, tenant_id, token_hash, staff_id, staff_name, staff_role, policy_id,
             policy_title, policy_version, policy_issued, policy_link, declaration,
-            created_by, expires_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, now() + ($14 || ' days')::interval)`,
+            created_by, expires_at, content)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, now() + ($14 || ' days')::interval, $15)`,
         [id, tenantId, sha256(token), staffId, String(it.staffName || ''), String(it.staffRole || ''),
          policyId, String(it.policyTitle || ''), String(it.policyVersion || ''),
          String(it.policyIssued || ''), String(it.policyLink || ''), String(it.declaration || ''),
-         String(req.user.name || req.user.email || ''), String(days)]);
+         String(req.user.name || req.user.email || ''), String(days),
+         // what was covered - a talk's points or a month's learning, capped: never a document
+         String(it.content || '').slice(0, 8000)]);
       out.push({ id, staffId, policyId, url: (base || '') + '/s/' + token });
     }
     res.json({ ok: true, invites: out, expiresDays: days });
@@ -171,6 +173,10 @@ router.get('/view/:token', async (req, res) => {
     }
 
     const web = isWebLink(v.policy_link);
+    // A talk's points, or a month's learning with its links, carried on the
+    // invite itself so the page can show what was covered.
+    const linkify = (s) => esc(s).replace(/(https?:\/\/[^\s<]+)/g, (m) => '<a href="' + m + '" target="_blank" rel="noopener">' + m + '</a>');
+    const covered = v.content ? '<div class="lab">What it covers</div><div class="dec">' + linkify(v.content) + '</div>' : '';
     const where = v.policy_link
       ? (web
         ? `<a class="open" href="${esc(v.policy_link)}" target="_blank" rel="noopener">Open the document</a>`
@@ -184,6 +190,7 @@ router.get('/view/:token', async (req, res) => {
         <div class="doc">${esc(v.policy_title || 'Document')}</div>
         <div class="meta">${v.policy_version ? ('Version ' + esc(v.policy_version)) : 'No version given'}${v.policy_issued ? (' &middot; issued ' + esc(v.policy_issued)) : ''}</div>
         ${where}
+        ${covered}
       </div>
       <div class="card">
         <div class="lab">Declaration</div>

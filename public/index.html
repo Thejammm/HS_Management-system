@@ -3841,12 +3841,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
        TAB - CPD LIBRARY (webinars, guides, monthly staff prompt)
   ══════════════════════════════════════ -->
   <div id="tab-cpd" class="tab-panel">
-    <div class="rep-hero"><h2>CPD library</h2><p>The webinars, guides and short courses this client's people should work through, the monthly prompt that goes out to them, and the record you keep of both.</p></div>
+    <div class="rep-hero"><h2>CPD library</h2><p>The webinars, guides and short courses this client's people should work through, issued each month for sign-off as one item on the register - one link per person, and the trail says who confirmed it.</p></div>
     <div id="cpdContainer"></div>
   </div>
 
   <div id="tab-toolbox" class="tab-panel">
-    <div class="rep-hero"><h2>Toolbox talks</h2><p>The short talks you deliver on the floor or on site, the sheet you print to take out with you, and the record of who attended and signed for each one.</p></div>
+    <div class="rep-hero"><h2>Toolbox talks</h2><p>The short talks you deliver on the floor or on site, the sheet you print to take out with you, and one button to issue a talk for sign-off. Who heard it is recorded on the sign-off register, the same way as a policy.</p></div>
     <div id="toolboxContainer"></div>
   </div>
 
@@ -14986,11 +14986,6 @@ function renderReports(){
       icon:svg('<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>'),
       desc:'The month\'s assurance record to print and store: accidents, incidents and near misses, inspections and audits, and safety positives - plus that month\'s incident register and assurance visits. Pull back any of the last 12 saved months. Statutory inspections and the training matrix are not repeated here - they save as that month\'s spreadsheet.',
       tags:['Monthly','Store','12-month recall'] },
-    { title:'CPD Library & Prompt Record', accent:'#0D9488', tint:'#E6F4F2', fn:'downloadCpdReport()',
-      meta:(function(){ const c=(S.cpd&&S.cpd.items)||[]; const l=((S.cpd&&S.cpd.log)||[]).length; return c.length?(c.length+' item'+(c.length!==1?'s':'')+(l?(' · '+l+' prompt'+(l!==1?'s':'')+' sent'):'')):'Nothing in the library yet'; })(),
-      icon:svg('<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>'),
-      desc:'This month\'s CPD record: what is in the library, what was issued this month, and when the prompt went out to the staff. Print it monthly and keep it as the competence-development evidence.',
-      tags:['Monthly','CPD','Evidence'] },
     { title:'Legal Duties', accent:'#16A34A', tint:'#E7F6EE', fn:'downloadManagementSystemReport()', meta:mgmtMeta,
       icon:svg('<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>'),
       desc:'How the organisation meets its HSG65 duties, reported by exception - only what needs action, never empty scaffolding.',
@@ -21218,8 +21213,7 @@ const REPORT_DOCS = [
   { key:'riskAcceptance',   title:'Risk Acceptance Register',     code:'RAC' },
   { key:'audit',            title:'Health & Safety Audit',        code:'AUD' },
   { key:'assuranceMonthly', title:'Monthly Assurance Report',     code:'MAR' },
-  { key:'cpdLibrary',       title:'CPD Library & Prompt Record',   code:'CPD' },
-  { key:'toolboxTalks',     title:'Toolbox Talk Record',           code:'TBT' },
+  { key:'toolboxTalks',     title:'Toolbox Talk Sheet',            code:'TBT' },
   { key:'siteInspections',  title:'Process Assurance',            code:'SIT' },
   { key:'feedback',         title:'Consultant Review & Feedback', code:'CR'  },
   { key:'cas',              title:'CAS Submission Pack',           code:'CAS' },
@@ -25610,9 +25604,33 @@ function _raBriefFromRisk(r){
 function _raStartBtnHTML(r){
   if(_roLocked()) return '';
   const e=_raRegState().find(x=>x.riskId===r.id);
-  return e
+  return _riskSignoffBtnHTML(r)+' '+(e
     ? '<button type="button" class="btn btn-ghost btn-xs no-print" onclick="startRiskAssessment(\''+r.id+'\')" title="This risk already has a risk assessment on the register - open it">\u2713 On the RA register - open</button>'
-    : '<button type="button" class="btn btn-outline btn-xs no-print" onclick="startRiskAssessment(\''+r.id+'\')" title="Puts a risk assessment entry on the register pre-filled from this risk - the title, the associated risk, the harm and the controls above - as the starting point for whoever writes the task risk assessment">Start a risk assessment from this risk</button>';
+    : '<button type="button" class="btn btn-outline btn-xs no-print" onclick="startRiskAssessment(\''+r.id+'\')" title="Puts a risk assessment entry on the register pre-filled from this risk - the title, the associated risk, the harm and the controls above - as the starting point for whoever writes the task risk assessment">Start a risk assessment from this risk</button>');
+}
+// The RA, issued to the people who work under it. Same register, same
+// link, same trail as a policy - and tagged to this risk, so the plan can
+// show per risk who was told and who confirmed.
+function _riskSignoffBtnHTML(r){
+  const items=_psoItemsFrom('risk', r.id), last=items[0];
+  if(last){
+    const n=_psoSignedCount(last.id), of=_psoState().staff.length;
+    return '<button type="button" class="btn btn-ghost btn-xs no-print" onclick="issueRiskForSignoff(\''+r.id+'\')" title="Issued '+esc(fmtDate(last.delivered))+' - open it on the sign-off register and ask anyone outstanding by link">✓ RA signed '+n+' of '+of+'</button>';
+  }
+  return '<button type="button" class="btn btn-outline btn-xs no-print" onclick="issueRiskForSignoff(\''+r.id+'\')" title="Puts this risk assessment on the sign-off register, tagged to this risk, and makes a link for each person - or tick them in person. Same road as a policy.">✉ Issue RA for sign-off</button>';
+}
+// Issued once per version of the RA: if the register shows it was rewritten
+// after the last issue, that is a new round; otherwise reopen the last one.
+function issueRiskForSignoff(id){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
+  const e=_raRegState().find(x=>x.riskId===id)||{};
+  const have=_psoItemsFrom('risk', id)[0];
+  if(have && !(e.date && String(e.date)>String(have.delivered||''))){ _psoIssue(have); return; }
+  const title=String(e.title||'').trim()||('Risk assessment - '+(r.activity||r.hazard||'risk'));
+  const pol=_psoAddItem({ title:title, type:'Risk assessment', delivered:new Date().toISOString().slice(0,10),
+    riskIds:[id], link:String(e.location||''), source:{kind:'risk', id:id} });
+  _psoIssue(pol);
 }
 function startRiskAssessment(id){
   if(_blockIfReadOnly()) return;
@@ -28428,6 +28446,44 @@ function _psoState(){
   return p;
 }
 function _psoUid(pfx){ return pfx+'_'+Math.random().toString(36).slice(2,9); }
+// ── The one door in ───────────────────────────────────────────
+// A toolbox talk, a month's CPD, a risk assessment, a briefing filed from a
+// closed action: they all come through here, become an item on the register,
+// and take the same road from there - link or in-person, onto the trail.
+// Nothing signs anywhere else.
+function _psoAddItem(o){
+  const p=_psoState(); o=o||{};
+  // The same thing issued twice on the same day is a double-tap, not a repeat.
+  if(o.source&&o.source.id){
+    const dup=p.policies.find(x=>x.source&&x.source.kind===o.source.kind&&x.source.id===o.source.id&&(x.delivered||'')===(o.delivered||''));
+    if(dup) return dup;
+  }
+  const pol={ id:_psoUid('pol'), title:String(o.title||''), type:String(o.type||'Policy'), version:String(o.version||''),
+    delivered:String(o.delivered||''), riskIds:Array.isArray(o.riskIds)?o.riskIds.slice():[] };
+  if(o.content) pol.content=String(o.content).slice(0,8000);
+  if(o.presenter) pol.presenter=String(o.presenter);
+  if(o.link) pol.link=String(o.link);
+  if(o.notes) pol.notes=String(o.notes);
+  if(o.source) pol.source={ kind:String(o.source.kind||''), id:String(o.source.id||'') };
+  p.policies.push(pol);
+  return pol;
+}
+// Issue = it is on the register, you are looking at it, and if you are
+// online the links are one click away. Offline, the grid still works.
+function _psoIssue(pol){
+  saveData();
+  if(typeof _riskModalOpen!=='undefined' && _riskModalOpen && typeof _riskCloseModal==='function') _riskCloseModal();
+  if(typeof switchTab==='function') switchTab('signoff');
+  renderPolicySignoff();
+  if(_tOnline()) openSignoffSend(pol.id);
+  else showToast('✓ On the sign-off register - sign in to make links, or tick people in person','success');
+  return pol;
+}
+function _psoItemsFrom(kind, id){
+  return _psoState().policies.filter(x=>x.source&&x.source.kind===kind&&(!id||x.source.id===id))
+    .sort((a,b)=>String(b.delivered||'').localeCompare(String(a.delivered||'')));
+}
+function _psoSignedCount(polId){ const p=_psoState(); return p.staff.filter(st=>!!p.signed[st.id+'|'+polId]).length; }
 function _psoRiskName(id){ const r=(S.riskProfile||[]).find(x=>x.id===id); return r?(r.activity||r.hazard||'Risk'):''; }
 // One register, one purpose: the employee's declaration that they have read /
 // received and UNDERSTOOD whatever was delivered - a policy, a toolbox talk,
@@ -28530,13 +28586,32 @@ const SIGNOFF_LEGAL_BASIS = 'Kept as a record that health and safety information
   + 's.2(2)(c) and s.2(3); Management of Health and Safety at Work Regulations 1999 reg. 10. '
   + 'Consultation duties: Safety Representatives and Safety Committees Regulations 1977; '
   + 'Health and Safety (Consultation with Employees) Regulations 1996.';
+// A talk is attended, not read; learning is worked through. Same promise,
+// honest verb - the declaration has to describe what actually happened.
+const SIGNOFF_DECLARATION_TALK = [
+  'I confirm that:',
+  '· I attended {title}{issued}.',
+  '· I understood what was said, and what it requires me to do.',
+  '· I know who to ask if I am unsure about anything in it.',
+  '· I will follow it, and I will raise anything I believe is unsafe.'
+].join('\n');
+const SIGNOFF_DECLARATION_CPD = [
+  'I confirm that:',
+  '· I have worked through {title}{issued}.',
+  '· I understood it, and what it requires me to do.',
+  '· I know who to ask if I am unsure about anything in it.',
+  '· I will apply it, and I will raise anything I believe is unsafe.'
+].join('\n');
 function _psoDeclarationFor(pol){
   const v=String((pol&&pol.version)||'').trim();
   const d=String((pol&&pol.delivered)||'').trim();
-  return SIGNOFF_DECLARATION
+  const t=String((pol&&pol.type)||'Policy');
+  const talk=(t==='Toolbox talk'||t==='Briefing');
+  const tpl=talk?SIGNOFF_DECLARATION_TALK:(t==='Training / CPD'?SIGNOFF_DECLARATION_CPD:SIGNOFF_DECLARATION);
+  return tpl
     .replace('{title}', String((pol&&pol.title)||'this document'))
     .replace('{version}', v?(', version '+v):'')
-    .replace('{issued}', d?(', issued '+fmtDate(d)):'');
+    .replace('{issued}', d?(talk?(' on '+fmtDate(d)):(', issued '+fmtDate(d))):'');
 }
 // The trail. Append only - nothing in here is ever edited or removed.
 function _psoTrail(){ const p=_psoState(); if(!Array.isArray(p.log)) p.log=[]; return p.log; }
@@ -28564,6 +28639,7 @@ function _psoRecord(staffId, policyId, kind, opts){
     byRole:(typeof _actorRole==='function'?_actorRole():'') };
   if(opts.legacy) e.legacy=true;
   if(opts.at) e.at=opts.at;
+  if(opts.by) e.by=String(opts.by);   // a migrated sheet is witnessed by whoever gave the talk, not whoever ran the migration
   if(opts.inviteId) e.inviteId=String(opts.inviteId);   // so a reply is never merged twice
   if(opts.ip) e.ip=String(opts.ip);
   if(opts.ua) e.ua=String(opts.ua).slice(0,240);
@@ -28574,6 +28650,7 @@ function _psoRecord(staffId, policyId, kind, opts){
 // because Compass never holds the document itself.
 function _psoPolicyLink(pol){
   if(!pol) return '';
+  if(String(pol.link||'').trim()) return String(pol.link).trim();   // set when it was issued, or typed into the send modal
   const t=String(pol.title||'').trim().toLowerCase(); if(!t) return '';
   const d=(S.documents||[]).find(x=>String(x.name||'').trim().toLowerCase()===t);
   return d?String(d.link||''):'';
@@ -28621,9 +28698,9 @@ async function _psoApi(path, body){
 // Who still has not acknowledged this, so the default is the people who
 // actually need asking.
 function _psoOutstanding(policyId){
-  const p=_psoState();
+  const p=_psoState(); const pol=(p.policies||[]).find(x=>x.id===policyId);
   return (p.staff||[]).filter(st=>{ const v=p.signed[st.id+'|'+policyId];
-    return !v || _psoSignInfo(v).state==='expired'; });
+    return !v || _psoSignInfo(v,pol).state==='expired'; });
 }
 // The message a human sends. Plain text so it pastes into anything.
 function _psoMessageFor(pol, rows){
@@ -28659,6 +28736,7 @@ function openSignoffSend(policyId){
       <div class="pso-lab">Where the document lives</div>
       <input id="psoLink" value="${esc(link||'')}" placeholder="https://... or the folder path" style="width:100%;font-size:12.5px;padding:8px 10px;border:1px solid var(--border);background:var(--input-bg,transparent);color:inherit;font-family:inherit;">
       <div class="pso-note">${webby?'A web address - the link will open it for them.':'Not a web address, so it is shown as text telling them where to look. Paste a shared link (SharePoint, OneDrive) if you want it to open on a phone.'}</div>
+      ${pol.content?'<div class="pso-note">This item carries what was covered - the page shows it under the document line, so a link is optional.</div>':''}
       <div class="pso-lab">Who to ask</div>
       ${rowsHTML}
     </div>
@@ -28676,11 +28754,12 @@ async function _psoMintLinks(policyId){
   const link=String((ov.querySelector('#psoLink')||{}).value||'').trim();
   const picked=[...ov.querySelectorAll('input[data-staff]')].filter(x=>x.checked).map(x=>x.getAttribute('data-staff'));
   if(!picked.length){ showToast('Tick at least one person','info'); return; }
+  if(link && link!==String(pol.link||'')){ pol.link=link; saveData(); }   // remembered on the item, so the next round starts from it
   const dec=_psoDeclarationFor(pol);
   const items=picked.map(sid=>{ const st=(p.staff||[]).find(x=>x.id===sid)||{};
     return { staffId:sid, staffName:String(st.name||''), staffRole:String(st.role||''),
       policyId:policyId, policyTitle:String(pol.title||''), policyVersion:String(pol.version||''),
-      policyIssued:String(pol.delivered||''), policyLink:link, declaration:dec }; });
+      policyIssued:String(pol.delivered||''), policyLink:link, declaration:dec, content:String(pol.content||'') }; });
   showToast('Making the links\u2026','info');
   const r=await _psoApi('/api/signoff/invite', { items:items, base:location.origin });
   if(!r.ok){ showToast('Could not make the links ('+(r.data.error||r.status)+')','error'); return; }
@@ -28798,10 +28877,16 @@ function exportSignoffTrail(){
   a.click(); URL.revokeObjectURL(a.href);
   showToast('\u2713 Trail exported - '+rows.length+' entr'+(rows.length===1?'y':'ies'),'success');
 }
-function _psoSignInfo(dt){
+// Signed once, done for good: a talk attended or a webinar watched does not
+// come undone a year later. Policies, procedures and risk assessments are
+// reviewed and reissued, so those DO run out after 12 months.
+const PSO_ONCE_TYPES = ['Toolbox talk','Training / CPD','Briefing'];
+function _psoTypeOnce(pol){ return !!pol && PSO_ONCE_TYPES.indexOf(String(pol.type||'Policy'))!==-1; }
+function _psoSignInfo(dt, pol){
   if(!dt) return { state:'none', label:'Not signed' };
   const days=Math.floor((Date.now()-new Date(dt+'T00:00:00').getTime())/86400000);
   if(isNaN(days)) return { state:'none', label:'Not signed' };
+  if(_psoTypeOnce(pol)) return { state:'ok', label:'Signed '+fmtDate(dt)+' - does not expire', once:true };
   if(days>365) return { state:'expired', label:'Signed '+fmtDate(dt)+' - EXPIRED (over 12 months), needs re-signing' };
   if(days>335) return { state:'expiring', label:'Signed '+fmtDate(dt)+' - expires soon (12-month limit)' };
   return { state:'ok', label:'Signed '+fmtDate(dt) };
@@ -28813,7 +28898,7 @@ function toggleSignoff(staffId, policyId, checked){
     // Re-ticking inside the 12 months changes nothing - the entry already
     // stands. An expired one is a NEW acknowledgement, so a new entry.
     const cur=p.signed[k];
-    if(cur && _psoSignInfo(cur).state!=='expired') return;
+    if(cur && _psoSignInfo(cur,(p.policies||[]).find(x=>x.id===policyId)).state!=='expired') return;
     _psoRecord(staffId, policyId, 'acknowledged', { method:'in-person' });
   } else {
     // A withdrawal is a correction on the record, not a deletion. Without a
@@ -28828,7 +28913,7 @@ function toggleSignoff(staffId, policyId, checked){
   _psoRebuildSigned();
   saveData(); renderPolicySignoff();
 }
-function _psoCompliance(){ const p=_psoState(); const total=p.staff.length*p.policies.length; if(!total) return {pct:0,signed:0,total:0,expired:0}; let s=0, ex=0; p.staff.forEach(st=>p.policies.forEach(pol=>{ const info=_psoSignInfo(p.signed[st.id+'|'+pol.id]); if(info.state==='ok'||info.state==='expiring') s++; else if(info.state==='expired') ex++; })); return {pct:Math.round(s/total*100), signed:s, total:total, expired:ex}; }
+function _psoCompliance(){ const p=_psoState(); const total=p.staff.length*p.policies.length; if(!total) return {pct:0,signed:0,total:0,expired:0}; let s=0, ex=0; p.staff.forEach(st=>p.policies.forEach(pol=>{ const info=_psoSignInfo(p.signed[st.id+'|'+pol.id],pol); if(info.state==='ok'||info.state==='expiring') s++; else if(info.state==='expired') ex++; })); return {pct:Math.round(s/total*100), signed:s, total:total, expired:ex}; }
 // ── Register round-trip (control of updates): export the whole register as a
 // CSV (opens straight in Excel), amend or re-date it there, import it back.
 // Matching is by employee name + item title, so the file survives re-ordering.
@@ -28886,6 +28971,7 @@ function importSignoffRegister(inp){
 function renderPolicySignoff(){
   const cont=document.getElementById('signoffContainer'); if(!cont) return;
   try{ _psoMigrateTrail(); }catch(e){}
+  try{ _tbtMigrateDeliveries(); }catch(e){}   // talks signed for on paper before this register was the only place
   // Anything an employee confirmed by link since you last looked lands now.
   try{ _psoPullSignoffs(true); }catch(e){}
   const p=_psoState(); const ro=_roLocked(); const dis=ro?' disabled':'';
@@ -28900,7 +28986,7 @@ function renderPolicySignoff(){
         <select${dis} onchange="updateSignoffPolicy('${pol.id}','type',this.value)" style="flex:0 0 130px;${inp}" title="What kind of item this is">${PSO_TYPES.map(t=>`<option${(pol.type||'Policy')===t?' selected':''}>${t}</option>`).join('')}</select>
         <input value="${esc(pol.version||'')}" placeholder="Version"${dis} oninput="updateSignoffPolicy('${pol.id}','version',this.value)" style="flex:0 0 80px;${inp}">
         <input type="date" value="${esc(pol.delivered||'')}"${dis} onchange="updateSignoffPolicy('${pol.id}','delivered',this.value)" style="flex:0 0 135px;${inp}" title="When it was delivered / issued (talks, training, CPD)">
-        ${(ro||!_tOnline())?'':`<button class="btn btn-outline btn-xs no-print" onclick="openSignoffSend('${pol.id}')" title="Make a link for each employee - they read it and confirm on their phone, and it comes back onto the trail">✉ Ask by link</button>`}<button class="btn btn-ghost btn-xs no-print" onclick="openSignoffTrail('${pol.id}')" title="Every acknowledgement and every withdrawal recorded against this, with who, when, how and which version">≡ Trail${(function(){ const c=_psoTrail().filter(e=>e&&e.policyId===pol.id).length; return c?(' ('+c+')'):''; })()}</button>${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="downloadDeliverySheet('${pol.id}')" title="One-page attendance sign-off sheet for this item - everyone signs after the delivery">⭳ Delivery sheet</button>`}
+        ${(ro||!_tOnline())?'':`<button class="btn btn-outline btn-xs no-print" onclick="openSignoffSend('${pol.id}')" title="Make a link for each employee - they read it and confirm on their phone, and it comes back onto the trail">✉ Ask by link</button>`}<button class="btn btn-ghost btn-xs no-print" onclick="openSignoffTrail('${pol.id}')" title="Every acknowledgement and every withdrawal recorded against this, with who, when, how and which version">≡ Trail${(function(){ const c=_psoTrail().filter(e=>e&&e.policyId===pol.id).length; return c?(' ('+c+')'):''; })()}</button>
         ${ro?'':`<button class="btn btn-ghost btn-xs" onclick="removeSignoffPolicy('${pol.id}')" title="Remove">${_ic('trash',13)}</button>`}
       </div>
       <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12px;color:var(--accent);">Linked risks${tagged.length?(' ('+tagged.length+')'):''}</summary>
@@ -28926,7 +29012,7 @@ function renderPolicySignoff(){
   let matrix='';
   if(p.staff.length && p.policies.length){
     const head=`<tr><th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--surface);">Employee</th>${p.policies.map(pol=>`<th style="padding:6px 6px;font-size:10.5px;text-align:center;white-space:nowrap;">${esc((pol.title||'Policy').slice(0,20))}</th>`).join('')}<th style="padding:6px 8px;text-align:center;">%</th></tr>`;
-    const body=p.staff.map(s=>{ let sc=0; const cells=p.policies.map(pol=>{ const dt=p.signed[s.id+'|'+pol.id]; const info=_psoSignInfo(dt); const inDate=(info.state==='ok'||info.state==='expiring'); if(inDate) sc++;
+    const body=p.staff.map(s=>{ let sc=0; const cells=p.policies.map(pol=>{ const dt=p.signed[s.id+'|'+pol.id]; const info=_psoSignInfo(dt,pol); const inDate=(info.state==='ok'||info.state==='expiring'); if(inDate) sc++;
       const bg=info.state==='expired'?'background:#F59E0B22;':info.state==='expiring'?'background:#F59E0B11;':'';
       return `<td style="text-align:center;padding:3px;${bg}" title="${esc(info.label)}"><input type="checkbox" ${inDate?'checked':''}${dis} onchange="toggleSignoff('${s.id}','${pol.id}',this.checked)">${info.state==='expired'?'<div style="font-size:9px;color:#B45309;font-weight:700;line-height:1;">⚠ expired</div>':(info.state==='expiring'?'<div style="font-size:9px;color:#B45309;line-height:1;">renew soon</div>':'')}</td>`; }).join(''); const pct=p.policies.length?Math.round(sc/p.policies.length*100):0; return `<tr><td style="padding:5px 8px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--surface);">${esc(s.name||'(unnamed)')}</td>${cells}<td style="text-align:center;font-weight:700;color:${pct===100?'var(--success)':pct?'var(--warning)':'var(--text-muted)'};">${pct}%</td></tr>`; }).join('');
     matrix=`<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div>`;
@@ -28935,7 +29021,7 @@ function renderPolicySignoff(){
   cont.innerHTML=`
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Items to sign off - policies, toolbox talks, training &amp; CPD</h3><span class="badge badge-muted">${p.policies.length}</span></div>
       <div class="card-body">
-        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">One register, one purpose: the employee's declaration that they have received and <b>understood</b> what was delivered - a policy, a toolbox talk, a training or CPD session. The signed sheet files as HR evidence. Tag each item to the risks it controls - the golden thread to the risk profile.</div>
+        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">One register, one purpose: the employee's declaration that they have received and <b>understood</b> what was delivered - a policy, a toolbox talk, a training or CPD session. The trail is the evidence. Tag each item to the risks it controls - the golden thread to the risk profile.</div>
         ${polRows}
         ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-primary btn-sm no-print" onclick="addSignoffPolicy()">＋ Add item</button><button class="btn btn-ghost btn-sm no-print" onclick="seedCoreSignoffPolicies()" title="Start from a structured core-policy list, then edit to fit">＋ Seed core policies</button><button class="btn btn-ghost btn-sm no-print" onclick="addPoliciesFromDocuments()">＋ Pull from Documents</button></div>`}
       </div></div>
@@ -28948,7 +29034,7 @@ function renderPolicySignoff(){
       <div class="card-body">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:12px;color:var(--text-muted);flex:1;">${comp.signed} of ${comp.total} acknowledgements recorded</span><span style="font-size:13px;font-weight:700;color:${cpc};">${comp.pct}%</span></div>
         <div style="height:8px;background:var(--muted-bg);border-radius:4px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${comp.pct}%;background:var(--success);"></div></div>
-        <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Tick a box when the signed sheet comes back (dated today). The printed sheet stays the wet-ink evidence. <b>Signatures last 12 months</b> - after that the cell turns amber and needs re-signing, so weekly talks, monthly CPD and the annual policy review all cycle through honestly.${comp.expired?` <span style="color:#B45309;font-weight:700;">${comp.expired} signature${comp.expired!==1?'s':''} expired.</span>`:''}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Tick a box to record an acknowledgement given in person - it goes on the trail with your name as the witness. <b>Policies, procedures and risk assessments last 12 months</b>, then the cell turns amber and they need re-signing; a talk or a month's learning, once confirmed, stays confirmed.${comp.expired?` <span style="color:#B45309;font-weight:700;">${comp.expired} signature${comp.expired!==1?'s':''} expired.</span>`:''}</div>
         ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" class="no-print">
           ${(!_tOnline())?'':`<button class="btn btn-outline btn-sm" onclick="_psoPullSignoffs(false)" title="Fetch anything employees have confirmed by link since you last looked. This happens on its own when you open the tab - this is for when you are waiting on someone.">↻ Check for replies${_psoOutstandingCount?(' ('+_psoOutstandingCount+' still out)'):''}</button>`}
           <button class="btn btn-ghost btn-sm" onclick="exportSignoffRegister()" title="The whole register as a CSV - opens straight in Excel to control updates">⭳ Export register (Excel/CSV)</button>
@@ -28957,11 +29043,7 @@ function renderPolicySignoff(){
         </div>`}
         ${matrix}
       </div></div>
-    <div class="card"><div class="card-band"><h3><span class="dot">●</span> Print acknowledgement sheets</h3></div>
-      <div class="card-body" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;">
-        <div style="font-size:12.5px;color:var(--text-muted);flex:1;min-width:200px;">One page per employee, listing every policy with the risks it controls and a signature block. Print, get them signed, then record above.</div>
-        <button class="btn btn-primary btn-sm no-print" onclick="downloadSignoffSheets()"${p.staff.length&&p.policies.length?'':' disabled'}>⭳ Acknowledgement sheets PDF</button>
-      </div></div>`;
+`;
   _renderRiskDocControl();
 }
 function downloadSignoffSheets(){ try{ buildSignoffPDF(); showToast('✓ Sign-off sheets created','success'); }catch(e){ console.error('Sign-off PDF failed',e); showToast('Could not build the sheets - see console','error'); } }
@@ -29015,7 +29097,7 @@ function buildSignoffPDF(){
     K.table(
       [{header:'#',w:8},{header:'ITEM',w:52},{header:'TYPE',w:20},{header:'VER',w:10},{header:'DELIVERED',w:20},{header:'CONTROLS (RISK PROFILE)',w:40},{header:'CURRENT STATUS',w:30}],
       p.policies.map((pol,i)=>{ const ctrl=(pol.riskIds||[]).map(_psoRiskName).filter(Boolean).join(', ');
-        const info=s.id?_psoSignInfo(p.signed[s.id+'|'+pol.id]):{state:'none'};
+        const info=s.id?_psoSignInfo(p.signed[s.id+'|'+pol.id],pol):{state:'none'};
         const stTxt=info.state==='expired'?'EXPIRED - re-sign':(info.state==='ok'||info.state==='expiring')?('Signed '+fmtDate(p.signed[s.id+'|'+pol.id])):'To sign';
         const stCol=info.state==='expired'?[180,83,9]:(info.state==='ok'||info.state==='expiring')?[22,120,60]:[110,110,110];
         return [String(i+1), pol.title||'(untitled item)', {text:pol.type||'Policy',color:[110,110,110]}, {text:pol.version||'-',color:[110,110,110]}, {text:pol.delivered?fmtDate(pol.delivered):'-',color:[110,110,110]}, {text:ctrl||'-',color:[110,110,110]}, {text:stTxt,color:stCol,bold:info.state==='expired'}]; }),
@@ -31118,20 +31200,60 @@ function _tbtFiltered(){
     return (String(x.title||'')+' '+String(x.cat||'')+' '+(x.points||[]).join(' ')).toLowerCase().indexOf(q)>-1;
   }).sort((a,b)=> String(a.cat).localeCompare(String(b.cat)) || String(a.title).localeCompare(String(b.title)));
 }
-function _tbtDeliveriesFor(talkId){ return _tbtState().deliveries.filter(d=>d.talkId===talkId); }
-function _tbtLastDelivered(talkId){
-  const d=_tbtDeliveriesFor(talkId).map(x=>x.date).filter(Boolean).sort();
-  return d.length?d[d.length-1]:'';
+// Issued = on the sign-off register. The register is the only record of who
+// heard a talk; the library just remembers when it last went out.
+function _tbtIssuedFor(talkId){ return _psoItemsFrom('talk', talkId); }
+function _tbtLastIssued(talkId){ const l=_tbtIssuedFor(talkId); return l.length?String(l[0].delivered||''):''; }
+// The talk, as text, so the phone link can show what was covered. This is
+// the app's own catalogue, not a client document - it can travel.
+function _tbtContent(talk){
+  const L=[];
+  if(talk.why) L.push(String(talk.why), '');
+  (talk.points||[]).forEach((p,i)=>L.push((i+1)+'. '+p));
+  if((talk.ask||[]).length){ L.push('', 'Check you have it:'); (talk.ask||[]).forEach(q=>L.push('- '+q)); }
+  if(talk.legal) L.push('', String(talk.legal));
+  return L.join('\n');
 }
-function _tbtSignedCount(d){ return (d.attendees||[]).filter(a=>a.signed).length; }
-// Everyone we already know about, so nobody types a crew list twice.
-function _tbtKnownPeople(){
-  const out=[], seen={};
-  const add=(n,r)=>{ n=String(n||'').trim(); if(!n||seen[n.toLowerCase()]) return; seen[n.toLowerCase()]=1; out.push({name:n, role:String(r||'').trim()}); };
-  ((S.company&&S.company.personnel)||[]).forEach(p=>add(p.name, p.role||p.position));
-  try{ (_psoState().staff||[]).forEach(s=>add(s.name, s.role)); }catch(e){}
-  try{ ((S.trainingData&&S.trainingData.people)||[]).forEach(p=>add(((p.firstName||'')+' '+(p.lastName||'')).trim(), p.position)); }catch(e){}
-  return out;
+// One door: the talk becomes an item on the sign-off register and takes the
+// same road as a policy from there.
+function issueTalkForSignoff(talkId){
+  if(_blockIfReadOnly()) return;
+  const talk=_tbtTalk(talkId); if(!talk){ showToast('That talk is no longer in the library','error'); return; }
+  const pol=_psoAddItem({ title:talk.title, type:'Toolbox talk', delivered:new Date().toISOString().slice(0,10),
+    presenter:(typeof _actor==='function'?(_actor().name||''):''), content:_tbtContent(talk), source:{kind:'talk', id:talkId} });
+  _psoIssue(pol);
+}
+// Deliveries recorded before the register was the only place to sign are
+// brought across AS THEY WERE: one item per delivery, one legacy entry per
+// person who signed, dated the day they signed, witnessed by whoever gave
+// the talk. Nobody who did not sign is invented, and the old records are
+// kept, unread.
+function _tbtMigrateDeliveries(){
+  const t=_tbtState(); if(t.migratedAt) return 0;
+  const p=_psoState(); let n=0;
+  const staffFor=(name, role)=>{
+    const k=String(name||'').trim().toLowerCase(); if(!k) return null;
+    let st=p.staff.find(s=>String(s.name||'').trim().toLowerCase()===k);
+    if(!st){ st={ id:_psoUid('stf'), name:String(name).trim(), role:String(role||'').trim() }; p.staff.push(st); }
+    return st;
+  };
+  (t.deliveries||[]).forEach(d=>{
+    if(!d||!String(d.title||'').trim()) return;
+    const pol=_psoAddItem({ title:d.title, type:'Toolbox talk', delivered:d.date||'', presenter:d.presenter||'', notes:d.notes||'',
+      source:{kind:'delivery', id:d.id} });
+    (d.attendees||[]).forEach(a=>{
+      if(!a||!a.signed) return;
+      const st=staffFor(a.name, a.role); if(!st) return;
+      if(_psoTrailFor(st.id, pol.id).length) return;
+      const day=String(a.signedAt||d.date||'').slice(0,10);
+      _psoRecord(st.id, pol.id, 'acknowledged', { legacy:true, method:'sheet', at:day?(day+'T00:00:00.000Z'):undefined, staffName:st.name, by:d.presenter||'' });
+      n++;
+    });
+  });
+  t.migratedAt=new Date().toISOString();
+  _psoRebuildSigned();
+  if(n || (t.deliveries||[]).length) saveData();
+  return n;
 }
 function setTbtCat(v){ _tbtCat=v; renderToolbox(); }
 function setTbtQ(v){ _tbtQ=v; _keepScroll(renderToolbox); }
@@ -31172,74 +31294,29 @@ function restoreTbtHidden(){
   t.hidden=[]; saveData(); renderToolbox();
   showToast('✓ '+n+' talk'+(n!==1?'s':'')+' put back in the library','success');
 }
-// Record a delivery: the talk, when, who gave it, and the crew who were there.
-// Attendees start unsigned - ticking the box is the sign-off.
-function tbtRecordDelivery(talkId){
-  if(_blockIfReadOnly()) return;
-  const talk=_tbtTalk(talkId); if(!talk) return;
-  const people=_tbtKnownPeople();
-  const d={ id:_reqUid('tbd'), talkId:talkId, title:talk.title, cat:talk.cat,
-    date:new Date().toISOString().slice(0,10),
-    presenter:(typeof _actor==='function'?(_actor().name||''):''), notes:'',
-    attendees:people.map(p=>({ id:_reqUid('tba'), name:p.name, role:p.role, signed:false })) };
-  if(typeof _stamp==='function') _stamp(d,'created');
-  _tbtState().deliveries.unshift(d);
-  saveData(); _tbtOpen='del:'+d.id; renderToolbox();
-  showToast(people.length? ('✓ Delivery started with '+people.length+' name'+(people.length!==1?'s':'')+' - tick who signed')
-                         : '✓ Delivery started - add who attended','success');
-}
-function updateTbtDelivery(id,f,v){ if(_roLocked()) return; const d=_tbtState().deliveries.find(x=>x.id===id); if(!d) return; d[f]=v; scheduleAutoSave(); }
-function deleteTbtDelivery(id){
-  if(_blockIfReadOnly()) return;
-  const d=_tbtState().deliveries.find(x=>x.id===id); if(!d) return;
-  if(!confirm('Delete the delivery record for "'+(d.title||'this talk')+'" on '+fmtDate(d.date)+'?\n\nThis is the evidence that it was delivered.')) return;
-  S.toolbox.deliveries=_tbtState().deliveries.filter(x=>x.id!==id); saveData(); renderToolbox();
-}
-function addTbtAttendee(delId){
-  if(_blockIfReadOnly()) return;
-  const d=_tbtState().deliveries.find(x=>x.id===delId); if(!d) return;
-  d.attendees=d.attendees||[]; d.attendees.push({ id:_reqUid('tba'), name:'', role:'', signed:false });
-  saveData(); renderToolbox();
-}
-function updateTbtAttendee(delId,attId,f,v){
-  if(_roLocked()) return;
-  const d=_tbtState().deliveries.find(x=>x.id===delId); if(!d) return;
-  const a=(d.attendees||[]).find(x=>x.id===attId); if(!a) return;
-  a[f]=v;
-  if(f==='signed'){ a.signedAt=v?new Date().toISOString().slice(0,10):''; _keepScroll(renderToolbox); }
-  scheduleAutoSave();
-}
-function removeTbtAttendee(delId,attId){
-  if(_blockIfReadOnly()) return;
-  const d=_tbtState().deliveries.find(x=>x.id===delId); if(!d) return;
-  d.attendees=(d.attendees||[]).filter(x=>x.id!==attId); saveData(); renderToolbox();
-}
-function tbtSignAll(delId){
-  if(_blockIfReadOnly()) return;
-  const d=_tbtState().deliveries.find(x=>x.id===delId); if(!d) return;
-  const today=new Date().toISOString().slice(0,10);
-  (d.attendees||[]).forEach(a=>{ if(a.name && !a.signed){ a.signed=true; a.signedAt=today; } });
-  saveData(); renderToolbox();
-}
 
 function renderToolbox(){
   const el=document.getElementById('toolboxContainer'); if(!el) return;
+  try{ _tbtMigrateDeliveries(); }catch(e){ console.error('toolbox migration', e); }
   const t=_tbtState(), ro=_roLocked(), dis=ro?' disabled':'';
   const inp='width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;font-size:12.5px;';
   const talks=_tbtFiltered(), all=_tbtAllTalks();
   const cats='<option value="">All categories</option>'+TBT_CATEGORIES.map(c=>'<option'+(c===_tbtCat?' selected':'')+'>'+esc(c)+'</option>').join('');
 
   const talkRow=(x)=>{
-    const last=_tbtLastDelivered(x.id), nDel=_tbtDeliveriesFor(x.id).length, open=(_tbtOpen===x.id);
-    const body=open? '<tr><td colspan="6" style="padding:0 6px 12px;">'+talkBody(x)+'</td></tr>' : '';
+    const issued=_tbtIssuedFor(x.id), last=issued.length?issued[0]:null, open=(_tbtOpen===x.id);
+    const body=open? '<tr><td colspan="5" style="padding:0 6px 12px;">'+talkBody(x)+'</td></tr>' : '';
+    const lastCell = last
+      ? '<a href="javascript:void(0)" onclick="switchTab(\'signoff\')" title="On the sign-off register - who confirmed it is there" style="color:var(--success);text-decoration:none;">'+fmtDate(last.delivered)+' · '+_psoSignedCount(last.id)+' of '+_psoState().staff.length+' signed</a>'+(issued.length>1?('<span style="color:var(--text-muted);"> · '+issued.length+'×</span>'):'')
+      : '<span style="color:var(--text-muted);">never</span>';
     return '<tr style="border-top:1px solid var(--border);">'
       + '<td style="padding:7px 6px;"><a href="javascript:void(0)" onclick="tbtToggleOpen(\''+esc(x.id)+'\')" style="font-weight:600;color:inherit;text-decoration:none;">'+(open?'▾ ':'▸ ')+esc(x.title||'(untitled)')+'</a>'+(x.std?'':'<span class="badge badge-muted" style="margin-left:6px;">yours</span>')+'</td>'
       + '<td style="padding:7px 6px;color:var(--text-muted);white-space:nowrap;">'+esc(x.cat||'')+'</td>'
       + '<td style="padding:7px 6px;color:var(--text-muted);white-space:nowrap;">'+esc(String(x.mins||''))+' min</td>'
-      + '<td style="padding:7px 6px;white-space:nowrap;">'+(last? ('<span style="color:var(--success);">'+fmtDate(last)+'</span>') : '<span style="color:var(--text-muted);">never</span>')+(nDel>1?('<span style="color:var(--text-muted);"> · '+nDel+'×</span>'):'')+'</td>'
+      + '<td style="padding:7px 6px;white-space:nowrap;">'+lastCell+'</td>'
       + '<td style="padding:7px 6px;white-space:nowrap;text-align:right;">'
-        + '<button class="btn btn-outline btn-xs no-print" title="The talk plus a blank attendance sheet, ready to print and deliver" onclick="downloadTalkSheet(\''+esc(x.id)+'\')">⭳ Talk sheet</button> '
-        + (ro?'':'<button class="btn btn-primary btn-xs no-print" title="Record that you delivered this, and who signed" onclick="tbtRecordDelivery(\''+esc(x.id)+'\')">Record delivery</button> ')
+        + '<button class="btn btn-ghost btn-xs no-print" title="The talk as a sheet to read from on the floor" onclick="downloadTalkSheet(\''+esc(x.id)+'\')">⭳ Talk sheet</button> '
+        + (ro?'':'<button class="btn btn-primary btn-xs no-print" title="Puts this talk on the sign-off register, dated today, and makes a link for each person - or tick them in person. Same road as a policy." onclick="issueTalkForSignoff(\''+esc(x.id)+'\')">Issue for sign-off</button> ')
         + (ro?'':'<button class="btn btn-ghost btn-xs no-print" title="'+(x.std?'Hide from this client':'Delete this talk')+'" onclick="deleteTbtTalk(\''+esc(x.id)+'\')">'+_ic('trash',13)+'</button>')
       + '</td></tr>' + body;
   };
@@ -31266,88 +31343,40 @@ function renderToolbox(){
   };
 
   const head='<thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;font-size:10.5px;border-bottom:1.5px solid var(--border);"><tr>'
-    + '<th style="text-align:left;padding:6px;">Talk</th><th style="text-align:left;padding:6px;">Category</th><th style="text-align:left;padding:6px;">Length</th><th style="text-align:left;padding:6px;">Last delivered</th><th></th></tr></thead>';
+    + '<th style="text-align:left;padding:6px;">Talk</th><th style="text-align:left;padding:6px;">Category</th><th style="text-align:left;padding:6px;">Length</th><th style="text-align:left;padding:6px;">Last issued</th><th></th></tr></thead>';
   const table = talks.length
     ? '<div style="overflow-x:auto;" data-keepscroll="tbt-lib"><table style="border-collapse:collapse;font-size:12.5px;min-width:100%;">'+head+'<tbody>'+talks.map(talkRow).join('')+'</tbody></table></div>'
     : '<div class="ck-pending" style="padding:6px 0;">Nothing matches that filter.</div>';
 
-  // ── Deliveries and sign-off ──
-  const dels=t.deliveries.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-  const delBlock=(d)=>{
-    const att=d.attendees||[], nSigned=_tbtSignedCount(d), open=(_tbtOpen==='del:'+d.id);
-    const complete=att.length && nSigned===att.length;
-    const rows=att.map(a=>'<tr>'
-      + '<td style="padding:3px 6px;"><input'+dis+' value="'+esc(a.name||'')+'" placeholder="Name" oninput="updateTbtAttendee(\''+esc(d.id)+'\',\''+esc(a.id)+'\',\'name\',this.value)" style="'+inp+'"></td>'
-      + '<td style="padding:3px 6px;"><input'+dis+' value="'+esc(a.role||'')+'" placeholder="Job role" oninput="updateTbtAttendee(\''+esc(d.id)+'\',\''+esc(a.id)+'\',\'role\',this.value)" style="'+inp+'"></td>'
-      + '<td style="padding:3px 6px;white-space:nowrap;text-align:center;"><label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox"'+dis+(a.signed?' checked':'')+' onchange="updateTbtAttendee(\''+esc(d.id)+'\',\''+esc(a.id)+'\',\'signed\',this.checked)"> '+(a.signed?('<span style="color:var(--success);font-weight:600;">signed'+(a.signedAt?(' '+fmtDate(a.signedAt)):'')+'</span>'):'<span style="color:var(--text-muted);">not signed</span>')+'</label></td>'
-      + '<td style="padding:3px 6px;text-align:right;">'+(ro?'':'<button class="btn btn-ghost btn-xs no-print" onclick="removeTbtAttendee(\''+esc(d.id)+'\',\''+esc(a.id)+'\')" title="Remove">'+_ic('trash',12)+'</button>')+'</td>'
-      + '</tr>').join('');
-    const inner = open ? '<div style="margin-top:10px;">'
-      + '<div class="field-grid" style="margin-bottom:8px;">'
-      + '<div class="field-group"><label class="field-label">Delivered on</label><input type="date"'+dis+' value="'+esc(d.date||'')+'" onchange="updateTbtDelivery(\''+esc(d.id)+'\',\'date\',this.value)" style="'+inp+'"></div>'
-      + '<div class="field-group"><label class="field-label">Delivered by</label><input'+dis+' value="'+esc(d.presenter||'')+'" placeholder="Who gave the talk" oninput="updateTbtDelivery(\''+esc(d.id)+'\',\'presenter\',this.value)" style="'+inp+'"></div>'
-      + '</div>'
-      + '<div class="field-group" style="margin-bottom:10px;"><label class="field-label">Notes - questions raised, actions agreed</label><input'+dis+' value="'+esc(d.notes||'')+'" placeholder="Optional" oninput="updateTbtDelivery(\''+esc(d.id)+'\',\'notes\',this.value)" style="'+inp+'"></div>'
-      + (att.length? ('<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);font-size:10.5px;text-transform:uppercase;"><tr><th style="text-align:left;padding:4px 6px;">Name</th><th style="text-align:left;padding:4px 6px;">Job role</th><th style="text-align:center;padding:4px 6px;">Signed</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>')
-                   : '<div class="ck-pending" style="padding:4px 0;">Nobody added yet.</div>')
-      + (ro?'':'<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">'
-        + '<button class="btn btn-outline btn-sm no-print" onclick="addTbtAttendee(\''+esc(d.id)+'\')">＋ Add attendee</button>'
-        + (att.length&&!complete?'<button class="btn btn-ghost btn-sm no-print" onclick="tbtSignAll(\''+esc(d.id)+'\')" title="Tick everyone who has a name against them">Mark all signed</button>':'')
-        + '<button class="btn btn-outline btn-sm no-print" onclick="downloadTalkSheet(\''+esc(d.talkId)+'\',\''+esc(d.id)+'\')" title="The talk with this attendance list on it">⭳ Signed record</button>'
-        + '<button class="btn btn-ghost btn-sm no-print" onclick="deleteTbtDelivery(\''+esc(d.id)+'\')">'+_ic('trash',13)+' Delete record</button>'
-        + '</div>')
-      + '</div>' : '';
-    const pill = !att.length ? '<span class="badge badge-muted">nobody recorded</span>'
-      : complete ? '<span class="badge" style="background:rgba(22,120,60,.12);color:var(--success);">all '+att.length+' signed</span>'
-      : '<span class="badge" style="background:rgba(180,110,10,.14);color:var(--warning);">'+nSigned+' of '+att.length+' signed</span>';
-    return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;">'
-      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;">'
-      + '<a href="javascript:void(0)" onclick="tbtToggleOpen(\'del:'+esc(d.id)+'\')" style="font-weight:600;color:inherit;text-decoration:none;flex:1;min-width:180px;">'+(open?'▾ ':'▸ ')+esc(d.title||'(talk)')+' <span style="color:var(--text-muted);font-weight:400;">· '+(d.date?fmtDate(d.date):'no date')+(d.presenter?(' · '+esc(d.presenter)):'')+'</span></a>'
-      + pill + '</div>' + inner + '</div>';
-  };
-  const delList = dels.length ? dels.map(delBlock).join('')
-    : '<div class="ck-pending" style="padding:6px 0;">No talks delivered yet. Pick one from the library above, press Record delivery, and tick off who signed.</div>';
-
-  const nSignedTotal=dels.reduce((n,d)=>n+_tbtSignedCount(d),0);
   const hiddenBtn = (t.hidden.length && !ro) ? '<button class="btn btn-ghost btn-sm no-print" onclick="restoreTbtHidden()" title="Bring back the standard talks you have hidden">Restore '+t.hidden.length+' hidden</button>' : '';
+  const nIssued=_psoItemsFrom('talk').length+_psoItemsFrom('delivery').length;
 
   el.innerHTML =
     '<div class="card" style="margin-bottom:16px;">'
-  + '<div class="card-band"><h3><span class="dot">●</span> Toolbox talk library</h3><span class="badge badge-muted">'+all.length+' talk'+(all.length!==1?'s':'')+'</span></div>'
+  + '<div class="card-band"><h3><span class="dot">●</span> Toolbox talk library</h3><span class="badge badge-muted">'+all.length+' talk'+(all.length!==1?'s':'')+(nIssued?(' · '+nIssued+' issued'):'')+'</span></div>'
   + '<div class="card-body">'
-  + '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">Standard talks ready to deliver, plus any you write yourself. Open one to read it, download the talk sheet to take out with you, then record who it was delivered to and who signed.</div>'
+  + '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">Standard talks ready to deliver, plus any you write yourself. Open one to read it, print the talk sheet to take out with you, then <b>Issue for sign-off</b>: it goes on the sign-off register and everyone confirms it the same way they confirm a policy - by link on their phone, or ticked in person. Who heard it lives in one place: the register.</div>'
   + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
   + '<select onchange="setTbtCat(this.value)" style="flex:0 0 200px;'+inp+'" title="Filter by the kind of business">'+cats+'</select>'
   + '<input value="'+esc(_tbtQ||'')+'" placeholder="Search the talks" oninput="setTbtQ(this.value)" style="flex:1;min-width:160px;'+inp+'">'
   + '</div>'
   + table
-  + (ro?'':'<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="addTbtTalk()">＋ Write your own talk</button><button class="btn btn-outline btn-sm no-print" onclick="downloadToolboxReport()">⭳ Toolbox talk record</button>'+hiddenBtn+'</div>')
-  + '</div></div>'
-  + '<div class="card" style="margin-bottom:16px;">'
-  + '<div class="card-band"><h3><span class="dot">●</span> Delivery and sign-off</h3><span class="badge badge-muted">'+dels.length+' deliver'+(dels.length!==1?'ies':'y')+(nSignedTotal?(' · '+nSignedTotal+' signature'+(nSignedTotal!==1?'s':'')):'')+'</span></div>'
-  + '<div class="card-body">'
-  + '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">A talk nobody signed for is a talk you cannot evidence. Tick each person as they sign the sheet, or mark them all at once when the paper sheet comes back.</div>'
-  + delList
+  + (ro?'':'<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="addTbtTalk()">＋ Write your own talk</button>'+hiddenBtn+'</div>')
   + '</div></div>';
 }
 
-// The sheet you print and take out: the talk itself, then an attendance grid.
-// Pass a delivery id and the grid comes back filled in as the signed record.
-function downloadTalkSheet(talkId, delId){
+// The sheet you print and take out: the talk itself, to read from. Who heard
+// it is not on this sheet any more - that is the sign-off register's job.
+function downloadTalkSheet(talkId){
   try{
     const talk=_tbtTalk(talkId);
     if(!talk){ showToast('That talk is no longer in the library','error'); return; }
-    const del=delId? _tbtState().deliveries.find(x=>x.id===delId) : null;
     const client=(_consultantView&&_consultantView.name)||_cockpitClientName();
     const d=_docFor('toolboxTalks');
-    const signed=!!del;
-    const K=_mkPdf(signed?'Toolbox Talk - Signed Record':'Toolbox Talk', client, d,
-      talk.title+(talk.mins?('  -  about '+talk.mins+' minutes'):''));
+    const K=_mkPdf('Toolbox Talk', client, d, talk.title+(talk.mins?('  -  about '+talk.mins+' minutes'):''));
     const NAVY=[30,58,95], GREY=[110,110,110];
     K.kv('Talk', talk.title||'');
     K.kv('Category', talk.cat||'');
-    K.kv('Delivered on', del&&del.date? fmtDate(del.date) : '____________________');
-    K.kv('Delivered by', del&&del.presenter? del.presenter : '____________________________________');
     K.st.y+=2;
     if(talk.why){ K.text(talk.why, 10, {italic:true, color:GREY, gap:3}); K.st.y+=1; }
     K.section('The talk', NAVY);
@@ -31357,69 +31386,12 @@ function downloadTalkSheet(talkId, delId){
       (talk.ask||[]).forEach(function(q){ K.text('•  '+q, 9.8, {gap:2.6}); });
     }
     if(talk.legal){ K.st.y+=2; K.text(talk.legal, 9, {color:GREY, gap:3}); }
-    if(del&&del.notes){ K.section('Notes from the talk', [120,120,120]); K.text(del.notes, 9.8); }
-    K.section(signed?'Who attended and signed':'Attendance and sign-off', NAVY);
-    K.text('By signing below I confirm that I attended this talk, that I understood it, and that I will work in accordance with it.', 9.5, {gap:3});
-    K.st.y+=1;
-    let rows;
-    if(signed){
-      rows=(del.attendees||[]).filter(function(a){ return a.name; }).map(function(a){
-        return [a.name||'', a.role||'', a.signed?'Signed':'NOT SIGNED', a.signed&&a.signedAt?fmtDate(a.signedAt):(a.signed?fmtDate(del.date):'')]; });
-      if(!rows.length) rows=[['(nobody recorded)','','','']];
-    } else {
-      rows=Array.from({length:16},function(){ return ['','','','']; });
-    }
-    K.table([{header:'NAME',w:52},{header:'JOB ROLE',w:40},{header:'SIGNATURE',w:56},{header:'DATE',w:22}],
-      rows, {headFill:NAVY, headText:[255,255,255]});
-    _pdfFooter(K, d, signed?'Toolbox Talk - Signed Record':'Toolbox Talk');
-    K.doc.save('toolbox-talk-'+String(talk.title||'talk').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+(signed?('-signed-'+(del.date||'')):'')+'.pdf');
-    showToast(signed?'✓ Signed record created':'✓ Talk sheet created','success');
+    K.st.y+=3;
+    K.text('Who heard it is recorded on the sign-off register, not on this sheet: issue the talk for sign-off and each person confirms it by link, or is ticked in person.', 8.6, {color:GREY});
+    _pdfFooter(K, d, 'Toolbox Talk');
+    K.doc.save('toolbox-talk-'+String(talk.title||'talk').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
+    showToast('✓ Talk sheet created','success');
   }catch(e){ console.error('Talk sheet failed',e); showToast('Could not build the sheet - see console','error'); }
-}
-// The record: what has been delivered, to whom, and what is still outstanding.
-function downloadToolboxReport(){
-  try{
-    const t=_tbtState(), client=(_consultantView&&_consultantView.name)||_cockpitClientName();
-    const d=_docFor('toolboxTalks');
-    const K=_mkPdf('Toolbox Talk Record', client, d, 'What has been delivered, who signed for it, and what is still to do.');
-    const NAVY=[30,58,95], GREY=[110,110,110];
-    const dels=t.deliveries.slice().sort(function(a,b){ return String(b.date||'').localeCompare(String(a.date||'')); });
-    const nSigned=dels.reduce(function(n,x){ return n+_tbtSignedCount(x); },0);
-    const nPeople=dels.reduce(function(n,x){ return n+((x.attendees||[]).filter(function(a){ return a.name; }).length); },0);
-    K.section('Delivered', NAVY);
-    if(dels.length){
-      K.table([{header:'TALK',w:62},{header:'DATE',w:24},{header:'BY',w:32},{header:'SIGNED',w:24}],
-        dels.map(function(x){
-          const att=(x.attendees||[]).filter(function(a){ return a.name; });
-          const s=_tbtSignedCount(x);
-          return [x.title||'(talk)', x.date?fmtDate(x.date):'-', x.presenter||'-',
-            {text:att.length?(s+' of '+att.length):'-', color:(att.length&&s===att.length)?[22,120,60]:[180,110,10]}]; }));
-      K.st.y+=1;
-      K.text(dels.length+' talk'+(dels.length!==1?'s':'')+' delivered, '+nSigned+' of '+nPeople+' attendance'+(nPeople!==1?'s':'')+' signed.', 9.5, {color:GREY});
-    } else K.text('No toolbox talks have been recorded as delivered yet.', 9.5, {color:GREY});
-    dels.slice(0,12).forEach(function(x){
-      const att=(x.attendees||[]).filter(function(a){ return a.name; });
-      if(!att.length) return;
-      K.section(String(x.title||'Talk')+' - '+(x.date?fmtDate(x.date):'no date'), [71,85,105]);
-      K.table([{header:'NAME',w:56},{header:'JOB ROLE',w:48},{header:'SIGNED',w:38}],
-        att.map(function(a){ return [a.name, a.role||'-',
-          {text:a.signed?('Yes'+(a.signedAt?(' - '+fmtDate(a.signedAt)):'')):'Not signed', color:a.signed?[22,120,60]:[197,32,32]}]; }));
-      if(x.notes) K.text('Notes: '+x.notes, 9, {color:GREY});
-    });
-    const delivered={}; t.deliveries.forEach(function(x){ delivered[x.talkId]=1; });
-    const never=_tbtAllTalks().filter(function(x){ return !delivered[x.id]; });
-    if(never.length){
-      K.section('In the library, not yet delivered', [180,110,10]);
-      K.table([{header:'TALK',w:74},{header:'CATEGORY',w:44},{header:'MINS',w:20}],
-        never.slice(0,40).map(function(x){ return [x.title||'', {text:x.cat||'', color:GREY}, String(x.mins||'-')]; }));
-      if(never.length>40) K.text('and '+(never.length-40)+' more.', 9, {color:GREY});
-    }
-    K.st.y+=2;
-    K.text('Information, instruction and training are a legal duty (Health and Safety at Work etc. Act 1974, s.2(2)(c); Management of Health and Safety at Work Regulations 1999, reg 13). Toolbox talks are how that duty is met day to day; the signed sheets are the evidence that it was.', 8.6, {color:GREY});
-    _pdfFooter(K, d, 'Toolbox Talk Record');
-    K.doc.save('toolbox-talk-record-'+String(client).replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
-    showToast('✓ Toolbox talk record created','success');
-  }catch(e){ console.error('Toolbox report failed',e); showToast('Could not build the report - see console','error'); }
 }
 const CPD_TYPES = ['Webinar','PDF guide','Short course','Toolbox talk','Video','Other'];
 function _cpdState(){
@@ -31428,6 +31400,7 @@ function _cpdState(){
   if(!Array.isArray(S.cpd.log))   S.cpd.log=[];
   if(typeof S.cpd.recipients!=='string') S.cpd.recipients='';
   if(typeof S.cpd.intro!=='string') S.cpd.intro='';
+  if(!S.cpd.issued || typeof S.cpd.issued!=='object') S.cpd.issued={};   // month -> the register item it went out as
   return S.cpd;
 }
 function _cpdMonth(){ return new Date().toISOString().slice(0,7); }
@@ -31435,17 +31408,13 @@ function _cpdMonthLabel(k){ try{ return new Date(k+'-01T12:00:00').toLocaleDateS
 // Items marked for a month are what the prompt and the report lead on;
 // everything else stays in the library as the back catalogue.
 function _cpdThisMonth(month){ month=month||_cpdMonth(); return _cpdState().items.filter(i=>(i.month||'')===month); }
-function _cpdSentFor(month){ return _cpdState().log.find(x=>x.month===(month||_cpdMonth())) || null; }
-// Recipients: whatever is typed, else every email-looking contact already
-// recorded against this client's people.
-function _cpdRecipients(){
-  const typed=String(_cpdState().recipients||'').trim();
-  if(typed) return typed;
-  const found=[];
-  ((S.company&&S.company.personnel)||[]).forEach(p=>{ const c=String(p.contact||'').trim(); if(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c)) found.push(c); });
-  let nf=''; try{ nf=String((activeClientConfig()||{}).notifyEmail||'').trim(); }catch(e){}
-  if(nf && found.indexOf(nf)===-1) found.push(nf);
-  return found.join('; ');
+// Issued = one item on the sign-off register for the month, carrying the
+// month's learning as its content. One link per person per month.
+function _cpdIssuedFor(month){ const id=(_cpdState().issued||{})[month||_cpdMonth()]; return id?(_psoState().policies.find(x=>x.id===id)||null):null; }
+function _cpdContent(month, items){
+  const intro=String(_cpdState().intro||'').trim() || "Please work through this month's health and safety learning when you get a moment. It takes a few minutes and it counts towards your competence record.";
+  const lines=items.map(function(i,n){ return (n+1)+'. '+(i.title||'(untitled)')+' ('+(i.type||'Item')+(i.minutes?(', '+i.minutes+' min'):'')+')'+(i.url?('\n   '+i.url):'')+(i.notes?('\n   '+i.notes):''); });
+  return intro+'\n\n'+lines.join('\n\n');
 }
 function addCpdItem(){
   if(_blockIfReadOnly()) return;
@@ -31460,33 +31429,19 @@ function deleteCpdItem(id){
   S.cpd.items=_cpdState().items.filter(x=>x.id!==id); saveData(); renderCPD();
 }
 function updateCpdField(f,v){ if(_roLocked()) return; _cpdState()[f]=v; scheduleAutoSave(); }
-// Compose the month's prompt and hand it to the mail client. Nothing is sent
-// by the app, so the log records what was composed, when, and to whom.
-function cpdSendPrompt(){
+// One door: the month's learning becomes ONE item on the sign-off register
+// and takes the same road as a policy - link on the phone, or ticked in
+// person. Issued once; anything marked after that goes out next month.
+function issueCpdMonth(){
   if(_blockIfReadOnly()) return;
   const month=_cpdMonth(), items=_cpdThisMonth(month);
+  const have=_cpdIssuedFor(month);
+  if(have){ _psoIssue(have); return; }
   if(!items.length){ showToast('Mark at least one item for '+_cpdMonthLabel(month)+' first','info'); return; }
-  const to=_cpdRecipients();
-  if(!to){ showToast('Add the staff email addresses first (or a contact email on Company setup)','info'); return; }
-  const client=(typeof _cockpitClientName==='function'?_cockpitClientName():'')||'';
-  const intro=String(_cpdState().intro||'').trim() || "Please work through this month's health and safety learning when you get a moment. It takes a few minutes and it counts towards your competence record.";
-  const lines=items.map(function(i,n){ return (n+1)+'. '+(i.title||'(untitled)')+' ('+(i.type||'Item')+(i.minutes?(', '+i.minutes+' min'):'')+')'+(i.url?('\n   '+i.url):'')+(i.notes?('\n   '+i.notes):''); });
-  const body=intro+'\n\n'+lines.join('\n\n')+'\n\nAny questions, just ask.\n\n'+(client?(client+' health and safety'):'Health and safety');
-  const subject='H&S learning for '+_cpdMonthLabel(month);
-  _openMail('mailto:'+encodeURIComponent(to.replace(/;\s*/g,','))+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body));
-  const log=_cpdState().log, prev=log.find(x=>x.month===month);
-  const rec={ month:month, sentAt:new Date().toISOString().slice(0,10), to:to, count:items.length, by:(typeof _actor==='function'?_actor().name:'') };
-  if(prev) Object.assign(prev,rec); else log.push(rec);
-  saveData(); renderCPD();
-  showToast('✓ Prompt opened in your mail app and logged for '+_cpdMonthLabel(month),'success');
-}
-function cpdCopyPrompt(){
-  const month=_cpdMonth(), items=_cpdThisMonth(month);
-  if(!items.length){ showToast('Mark at least one item for this month first','info'); return; }
-  const lines=items.map(function(i,n){ return (n+1)+'. '+(i.title||'(untitled)')+' ('+(i.type||'Item')+(i.minutes?(', '+i.minutes+' min'):'')+')'+(i.url?(' - '+i.url):''); });
-  const txt=(String(_cpdState().intro||'').trim()||"This month's health and safety learning:")+'\n\n'+lines.join('\n');
-  try{ navigator.clipboard.writeText(txt); showToast('✓ Copied - paste it wherever your staff read notices','success'); }
-  catch(e){ showToast('Could not copy - select the text in the preview instead','error'); }
+  const pol=_psoAddItem({ title:'H&S learning - '+_cpdMonthLabel(month), type:'Training / CPD', delivered:new Date().toISOString().slice(0,10),
+    presenter:(typeof _actor==='function'?(_actor().name||''):''), content:_cpdContent(month, items), source:{kind:'cpd', id:month} });
+  _cpdState().issued[month]=pol.id;
+  _psoIssue(pol);
 }
 function _cpdRowHTML(i, ro, dis, inp){
   const openBtn = i.url ? '<a class="btn btn-ghost btn-xs no-print" href="'+esc(i.url)+'" target="_blank" rel="noopener">Open</a>' : '';
@@ -31505,26 +31460,32 @@ function _cpdRowHTML(i, ro, dis, inp){
 function renderCPD(){
   const el=document.getElementById('cpdContainer'); if(!el) return;
   const c=_cpdState(), ro=_roLocked(), dis=ro?' disabled':'';
-  const month=_cpdMonth(), thisMonth=_cpdThisMonth(month), sent=_cpdSentFor(month);
+  const month=_cpdMonth(), thisMonth=_cpdThisMonth(month), issued=_cpdIssuedFor(month);
   const inp='width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;font-size:12.5px;';
   const items=c.items.slice().sort(function(a,b){ return String(b.month||'').localeCompare(String(a.month||'')) || String(b.added||'').localeCompare(String(a.added||'')); });
   const head='<thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;font-size:10.5px;border-bottom:1.5px solid var(--border);"><tr><th style="text-align:left;padding:6px;">Title</th><th style="text-align:left;padding:6px;">Type</th><th style="text-align:left;padding:6px;">Link / where filed</th><th style="text-align:left;padding:6px;">Mins</th><th style="text-align:left;padding:6px;">Month</th><th style="text-align:left;padding:6px;">Note</th><th></th></tr></thead>';
   const table = items.length
     ? '<div style="overflow-x:auto;" data-keepscroll="cpd-lib"><table style="border-collapse:collapse;font-size:12px;min-width:100%;">'+head+'<tbody>'+items.map(function(i){ return _cpdRowHTML(i, ro, dis, inp); }).join('')+'</tbody></table></div>'
     : '<div class="ck-pending" style="padding:6px 0;">Nothing in the library yet. Add the webinars and guides you want this client\'s people to work through.</div>';
-  const nRecip = sent ? String(sent.to||'').split(/[;,]/).filter(function(x){ return x.trim(); }).length : 0;
-  const sentLine = sent
-    ? '<span style="color:var(--success);font-weight:700;">✓ Prompt sent '+fmtDate(sent.sentAt)+'</span> <span style="color:var(--text-muted);">to '+nRecip+' recipient'+(nRecip!==1?'s':'')+', '+sent.count+' item'+(sent.count!==1?'s':'')+'</span>'
-    : '<span style="color:var(--warning);font-weight:700;">Not sent yet for '+_cpdMonthLabel(month)+'</span>';
-  const logRows=c.log.slice().sort(function(a,b){ return String(b.month).localeCompare(String(a.month)); }).slice(0,12)
-    .map(function(x){ return '<tr><td style="padding:4px 6px;">'+_cpdMonthLabel(x.month)+'</td><td style="padding:4px 6px;">'+fmtDate(x.sentAt)+'</td><td style="padding:4px 6px;">'+x.count+'</td><td style="padding:4px 6px;color:var(--text-muted);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(x.to||'')+'">'+esc(x.to||'')+'</td></tr>'; }).join('');
-  const libTools = ro ? '' : '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="addCpdItem()">＋ Add item</button><button class="btn btn-outline btn-sm no-print" onclick="downloadCpdReport()">⭳ Monthly CPD report</button></div>';
-  const promptTools = ro ? '' : '<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="cpdSendPrompt()"'+(thisMonth.length?'':' disabled')+'>✉ Open this month\'s prompt</button><button class="btn btn-ghost btn-sm no-print" onclick="cpdCopyPrompt()"'+(thisMonth.length?'':' disabled')+'>⧉ Copy the text</button></div>';
+  const nStaff=_psoState().staff.length, nSigned=issued?_psoSignedCount(issued.id):0;
+  const sentLine = issued
+    ? '<span style="color:var(--success);font-weight:700;">✓ Issued '+fmtDate(issued.delivered)+'</span> <span style="color:var(--text-muted);">· '+nSigned+' of '+nStaff+' confirmed · on the sign-off register</span>'
+    : '<span style="color:var(--warning);font-weight:700;">Not issued yet for '+_cpdMonthLabel(month)+'</span>';
+  // Prompts emailed before acknowledgement by link existed. Kept as they
+  // were - a prompt is not a confirmation, so they never join the register.
+  const oldLog=(c.log||[]).slice().sort(function(a,b){ return String(b.month).localeCompare(String(a.month)); }).slice(0,12);
+  const logRows=oldLog.map(function(x){ const nTo=String(x.to||'').split(/[;,]/).filter(function(s){ return s.trim(); }).length; return '<tr><td style="padding:4px 6px;">'+_cpdMonthLabel(x.month)+'</td><td style="padding:4px 6px;">'+fmtDate(x.sentAt)+'</td><td style="padding:4px 6px;">'+x.count+'</td><td style="padding:4px 6px;color:var(--text-muted);">'+nTo+' recipient'+(nTo!==1?'s':'')+'</td></tr>'; }).join('');
+  const libTools = ro ? '' : '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="addCpdItem()">＋ Add item</button></div>';
+  const promptTools = ro ? '' : '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    + (issued
+      ? '<button class="btn btn-primary btn-sm no-print" onclick="issueCpdMonth()" title="Open it on the sign-off register and make links for anyone who has not confirmed yet">✉ Ask by link</button><button class="btn btn-ghost btn-sm no-print" onclick="switchTab(\'signoff\')">Open the register</button>'
+      : '<button class="btn btn-primary btn-sm no-print" onclick="issueCpdMonth()"'+(thisMonth.length?'':' disabled')+' title="Puts this month\'s learning on the sign-off register as one item and makes a link for each person - or tick them in person. Same road as a policy.">Issue for sign-off</button>')
+    + '</div>';
   const thisLine = thisMonth.length
     ? ("This month's items: " + thisMonth.map(function(i){ return esc(i.title||'(untitled)'); }).join(' · '))
     : 'No items are marked for this month yet - set the month on the items above.';
   const logBlock = logRows
-    ? '<div style="margin-top:14px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:6px;">Prompts sent</div><div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);font-size:10.5px;text-transform:uppercase;"><tr><th style="text-align:left;padding:4px 6px;">Month</th><th style="text-align:left;padding:4px 6px;">Sent</th><th style="text-align:left;padding:4px 6px;">Items</th><th style="text-align:left;padding:4px 6px;">To</th></tr></thead><tbody>'+logRows+'</tbody></table></div></div>'
+    ? '<div style="margin-top:14px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:6px;">Prompts emailed before acknowledgement by link</div><div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);font-size:10.5px;text-transform:uppercase;"><tr><th style="text-align:left;padding:4px 6px;">Month</th><th style="text-align:left;padding:4px 6px;">Sent</th><th style="text-align:left;padding:4px 6px;">Items</th><th style="text-align:left;padding:4px 6px;">To</th></tr></thead><tbody>'+logRows+'</tbody></table></div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">A prompt is not a confirmation, so these stay here as history and never join the register.</div></div>'
     : '';
   el.innerHTML =
     '<div class="card" style="margin-bottom:16px;">'
@@ -31534,56 +31495,15 @@ function renderCPD(){
   + table + libTools
   + '</div></div>'
   + '<div class="card" style="margin-bottom:16px;">'
-  + '<div class="card-band"><h3><span class="dot">●</span> Monthly prompt to staff</h3><span class="badge badge-muted">'+_cpdMonthLabel(month)+'</span></div>'
+  + '<div class="card-band"><h3><span class="dot">●</span> This month, issued for sign-off</h3><span class="badge badge-muted">'+_cpdMonthLabel(month)+'</span></div>'
   + '<div class="card-body">'
-  + '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">The reminder that goes out to everyone each month. Compass opens it in your mail app - it never sends mail itself - and records that it went out so the report can evidence it.</div>'
+  + '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">The month\'s learning goes out as <b>one item on the sign-off register</b>. Each person gets their own link, reads what is listed, and confirms - or you tick them in person. What comes back is on the register and on the trail, the same as a policy. Compass never sends the message itself.</div>'
   + '<div style="margin-bottom:10px;">'+sentLine+'</div>'
-  + '<div class="field-grid cols-1" style="margin-bottom:8px;"><div class="field-group"><label class="field-label">Send to</label><input'+dis+' value="'+esc(c.recipients||'')+'" placeholder="'+esc(_cpdRecipients()||'name@company.co.uk; another@company.co.uk')+'" oninput="updateCpdField(\'recipients\',this.value)"></div></div>'
   + '<div class="field-grid cols-1" style="margin-bottom:10px;"><div class="field-group"><label class="field-label">Opening line (optional)</label><input'+dis+' value="'+esc(c.intro||'')+'" placeholder="Please work through this month\'s health and safety learning..." oninput="updateCpdField(\'intro\',this.value)"></div></div>'
   + '<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">'+thisLine+'</div>'
   + promptTools + logBlock
   + '</div></div>';
 }
-// The monthly record: what is in the library, what went out this month, and
-// the prompt history. A controlled document like every other report.
-function downloadCpdReport(){
-  try{
-    const month=_cpdMonth(), c=_cpdState(), items=_cpdThisMonth(month), sent=_cpdSentFor(month);
-    const client=(_consultantView&&_consultantView.name)||_cockpitClientName();
-    const d=_docFor('cpdLibrary');
-    const K=_mkPdf('CPD Library & Prompt Record', client, d, _cpdMonthLabel(month)+' - the learning issued this month, the library behind it, and the prompt record.');
-    const NAVY=[30,58,95], GREY=[110,110,110];
-    K.section('Issued this month - '+_cpdMonthLabel(month), NAVY);
-    if(items.length){
-      K.table([{header:'ITEM',w:64},{header:'TYPE',w:26},{header:'MINS',w:16},{header:'WHERE',w:48}],
-        items.map(function(i){ return [i.title||'(untitled)', i.type||'-', i.minutes||'-', {text:i.url||'-', color:GREY}]; }));
-    } else K.text('No items were marked for this month.', 9.5, {color:GREY});
-    K.section('Prompt to staff', [13,148,136]);
-    if(sent){
-      K.kv('Sent', fmtDate(sent.sentAt)+(sent.by?(' by '+sent.by):''));
-      K.kv('Recipients', String(sent.to||'-'));
-      K.kv('Items issued', String(sent.count));
-    } else K.text('No prompt has been recorded for '+_cpdMonthLabel(month)+' yet.', 9.5, {color:GREY});
-    K.section('The library', [71,85,105]);
-    const all=c.items.slice().sort(function(a,b){ return String(b.month||'').localeCompare(String(a.month||'')); });
-    if(all.length){
-      K.table([{header:'ITEM',w:58},{header:'TYPE',w:24},{header:'MONTH',w:22},{header:'NOTE',w:50}],
-        all.map(function(i){ return [i.title||'(untitled)', i.type||'-', i.month?_cpdMonthLabel(i.month):'back catalogue', {text:i.notes||'-', color:GREY}]; }));
-    } else K.text('The library is empty.', 9.5, {color:GREY});
-    if(c.log.length){
-      K.section('Prompt history', [120,120,120]);
-      K.table([{header:'MONTH',w:34},{header:'SENT',w:30},{header:'ITEMS',w:16},{header:'TO',w:74}],
-        c.log.slice().sort(function(a,b){ return String(b.month).localeCompare(String(a.month)); }).slice(0,12)
-          .map(function(x){ return [_cpdMonthLabel(x.month), fmtDate(x.sentAt), String(x.count), {text:String(x.to||'-'), color:GREY}]; }));
-    }
-    K.st.y+=2;
-    K.text('Competence is a legal duty (MHSWR 1999 reg 13; HSWA 1974 s.2(2)(c)). This record shows the learning made available and the prompt that went out; the training matrix holds the formal courses and their expiry dates.', 8.5, {color:GREY});
-    _pdfFooter(K, d, 'CPD Library & Prompt Record');
-    K.doc.save('cpd-record-'+month+'-'+String(client).replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
-    showToast('✓ CPD record created','success');
-  }catch(e){ console.error('CPD report failed',e); showToast('Could not build the report - see console','error'); }
-}
-
 function showToast(msg,type='success'){
   const t = document.getElementById('toast');
   if(!t) return;

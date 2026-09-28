@@ -152,3 +152,6 @@ CREATE TABLE IF NOT EXISTS signoff_invite (
   signed_ua      TEXT
 );
 CREATE INDEX IF NOT EXISTS signoff_invite_tenant_idx ON signoff_invite(tenant_id);
+-- What was covered, carried on the invite so the page can show it: a talk's
+-- points, or a month's learning with its links. Capped in the route; never a document.
+ALTER TABLE signoff_invite ADD COLUMN IF NOT EXISTS content TEXT NOT NULL DEFAULT '';

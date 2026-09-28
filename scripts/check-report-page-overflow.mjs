@@ -68,7 +68,11 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new'
 const page = await browser.newPage();
 await page.emulateMediaType('print');
 
-const STATES = { empty: fixture('empty'), typical: fixture('typical'), oversized: fixture('oversized'), longnames };
+// 'worked' is a client with the boxes actually filled in - long control text,
+// close-out records, evidence and policies. The three original fixtures have
+// short cells, which is why this check passed while the management plan was
+// running 700px past its own footer (Simon caught it, not the check).
+const STATES = { empty: fixture('empty'), typical: fixture('typical'), oversized: fixture('oversized'), worked: fixture('worked'), longnames };
 let bad = 0, pagesChecked = 0;
 for (const reportId of Object.keys(REPORTS)) {
   for (const f of (REPORTS[reportId].formats || [{ id: undefined }])) {

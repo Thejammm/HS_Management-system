@@ -320,6 +320,39 @@ export function riskLadder({ rungs, unrated }) {
 
 // Two ranked lists side by side (top five by size, and the chosen five);
 // the purple dot marks a risk on both.
+// ── The management plan's register: ONE CARD PER RISK ──────────────────
+// Five narrow columns turned every sentence into a two-word-per-line wall and
+// made a row three times taller than it needed to be (Simon, 2026-09-28: "the
+// text looks very busy"). Two wide columns read at a glance, and the things
+// that keep a risk in place get one labelled line each instead of a run-on.
+export function planRisk({ rows, footnote }) {
+  const card = (r) => `<div class="r-mp">
+    <div class="r-mp-head">
+      <span class="r-mp-theme">${esc(r.theme)}</span>
+      ${tierWord(r.tier)}
+      ${r.sif ? `<span class="r-mp-sif">worst case ${esc(r.sifWord)}</span>` : ''}
+      <span class="r-mp-score">${r.scoreHtml}</span>
+    </div>
+    <div class="r-mp-name">${esc(r.name)}${r.assoc ? `<em>${esc(r.assoc)}</em>` : ''}</div>
+    <div class="r-mp-cols">
+      <div class="r-mp-col">
+        <div class="r-mp-lab">Controls in place</div>
+        <div>${esc(r.controls)}</div>
+      </div>
+      <div class="r-mp-col">
+        <div class="r-mp-lab">How it is kept in place</div>
+        ${r.kept && r.kept.length
+          ? `<ul class="r-mp-kept">${r.kept.map(k => `<li><i>${esc(k.label)}</i><span>${esc(k.text)}</span></li>`).join('')}</ul>`
+          : `<div class="r-mp-none${r.keptWarn ? ' r-mp-warn' : ''}">${esc(r.keptNote)}</div>`}
+        <div class="r-mp-lab">Proof</div>
+        <div class="r-mp-proof">${esc(r.proof)}</div>
+      </div>
+    </div>
+  </div>`;
+  return `<div class="r-mps">${rows.map(card).join('')}</div>`
+    + (footnote ? `<div class="r-footnote">${esc(footnote)}</div>` : '');
+}
+
 export function twinPanels({ left, right, footnote }) {
   const panel = (p) => `<div class="r-twin-panel"><div class="r-twin-title">${esc(p.title)}</div>
     ${p.rows.length ? p.rows.map((r, i) => `<div class="r-twin-row">
@@ -336,7 +369,7 @@ const BLOCKS = {
   masthead, titleBlock, kpiStrip, decisionsPanel, dataTable, dualBar, planBar, gapBars, matrix5x5,
   distributionBars, hierarchyStrip, statementPanel, tagList, stepScale,
   signoffGrid, soWhat, pageFooter, textBlock, coverBlock,
-  splitStrip, journeyStrip, riskLadder, twinPanels,
+  splitStrip, journeyStrip, riskLadder, twinPanels, planRisk,
 };
 
 // Render one block descriptor {type, ...props} to HTML.

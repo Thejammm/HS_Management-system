@@ -17,12 +17,17 @@
 // through the shared contract, so the plan and the screens can never disagree.
 // ══════════════════════════════════════════════════════════════
 import { countPhrase, noneOrCount, docFor, producerOf, TIER_COLOURS } from '../derive.js';
-import { esc, tierWord } from '../blocks.js';
-import { paginateRows } from '../engine.js';
+import { tierWord } from '../blocks.js';
+import { packRows } from '../engine.js';
 import { deriveManagementPlan, fmtD } from '../plan-derive.js';
 
-const RISKS_FIRST = 8;      // the section-4 page that also carries the intro
-const RISKS_CONT = 11;
+// Section 4 packs by estimated card height, not by a row count: a fully
+// worked risk is three times the height of a bare one. The budget is what is
+// left of the page after that page's other blocks (the first also carries the
+// section title and the intro line). Proved by the overflow check.
+const PAGE_FIRST = 820;    // measured: 846px left on the first section-4 page
+const PAGE_CONT = 870;     // and 886px on a continuation
+const PAGE_TAIL = 100;     // the last one also carries the closing line and the footnote
 
 export function buildManagementPlan(state, opts = {}) {
   const P = deriveManagementPlan(state, opts);
@@ -133,66 +138,92 @@ export function buildManagementPlan(state, opts = {}) {
   };
 
   // ── 4 · Operation: how each risk is managed ──────────────────
-  const opCols = [
-    { header: 'Risk, and where it sits', w: '28%' },
-    { header: 'Score', w: '12%' },
-    { header: 'Controls in place', w: '22%' },
-    { header: 'How it is kept in place', w: '24%' },
-    { header: 'Proof', w: '14%' },
-  ];
-  const keptText = (r) => {
-    if (r.kept.length) return r.kept.map(l => l.label + ': ' + l.text).join(' · ');
+  // The plan is the summary; the full wording lives in the app and in the risk
+  // assessment report. Capping here is what stops a page becoming a wall.
+  const clip = (s, max) => {
+    s = String(s || '').trim();
+    if (s.length <= max) return s;
+    const cut = s.slice(0, max);
+    const stop = Math.max(cut.lastIndexOf('; '), cut.lastIndexOf('. '), cut.lastIndexOf(', '));
+    return (stop > max * 0.6 ? cut.slice(0, stop) : cut.replace(/\s+\S*$/, '')) + '...';
+  };
+  const keptNote = (r) => {
     if (r.actsDone) return 'Delivered, but nothing is recorded that keeps it in place.';
     if (r.actsOpen) return r.actsOpen + ' action' + (r.actsOpen !== 1 ? 's' : '') + ' still to deliver.';
     return 'Held by the controls above - no further work planned.';
   };
   const proofText = (r) => {
     const bits = [];
-    if (r.evidence.length) bits.push(r.evidence.slice(0, 3).join('; '));
+    if (r.evidence.length) bits.push(r.evidence.slice(0, 2).join('; '));
     if (r.policies.length) bits.push('Signed for: ' + r.policies.slice(0, 2).join('; '));
     if (r.reviewed) bits.push('Reviewed and signed off');
     if (r.reviewDue) bits.push('Next review ' + fmtD(r.reviewDue));
-    return bits.length ? bits.join(' · ') : 'No evidence linked yet.';
+    return bits.length ? clip(bits.join(' · '), 150) : 'No evidence linked yet.';
   };
   // The score, in three honest numbers. "As found" is the score before the
   // plan moved it (the app's own first recorded score); where it is the same
   // as now, the risk has not been re-scored yet, and the plan says so rather
   // than drawing a movement that never happened.
   const n = (x) => (x && x.score) ? String(x.score) : '-';
-  const scoreCell = (r) => {
+  const scoreHtml = (r) => {
     const col = r.tier ? (TIER_COLOURS[r.tier] || '') : '';
-    return { html: '<span style="white-space:nowrap">as found <b>' + n(r.inherent) + '</b></span><br>'
-      + '<span style="white-space:nowrap">now <b' + (col ? (' style="color:' + col + '"') : '') + '>' + n(r.residual) + '</b></span>'
-      + (r.target ? ('<br><span style="white-space:nowrap;opacity:.7">target ' + n(r.target) + '</span>') : '') };
+    return 'as found <b>' + n(r.inherent) + '</b> &rarr; now <b'
+      + (col ? (' style="color:' + col + '"') : '') + '>' + n(r.residual) + '</b>'
+      + (r.target
+          ? ((r.residual && r.residual.score <= r.target.score)
+              ? ' &rarr; <b>at its planned target</b>'
+              : (' &rarr; target <b>' + n(r.target) + '</b>'))
+          : '');
   };
-  // The theme rides on the risk, the way it does on the execution plan, so one
-  // column header serves the whole page instead of one per theme.
-  const opRow = (x) => {
+  // One card per risk. The theme rides on the card, the way it does on the
+  // execution plan, so the register reads in the same order on both.
+  const opCard = (x) => {
     const r = x.r;
-    return [
-      { html: '<i style="font-style:normal;font-size:6.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.65">' + esc(x.theme) + '</i><br>'
-          + '<b>' + esc(r.name) + '</b>' + (r.assoc ? ('<br>' + esc(r.assoc)) : '') + '<br>' + tierWord(r.tier)
-          + (r.fatal ? (' <b style="color:#DC2626">' + esc(r.sifWord) + '</b>') : '') },
-      scoreCell(r),
-      r.controls || 'None recorded.',
-      { text: keptText(r), colour: r.kept.length ? '#166534' : (r.actsDone ? '#B45309' : undefined), bold: !!r.kept.length },
-      proofText(r),
-    ];
+    return { theme: x.theme, name: r.name, assoc: clip(r.assoc, 110), tier: r.tier,
+      sif: r.fatal, sifWord: r.sifWord, scoreHtml: scoreHtml(r),
+      controls: clip(r.controls, 230) || 'None recorded.',
+      kept: r.kept.map(l => ({ label: l.label, text: clip(l.text, 130) })),
+      keptNote: keptNote(r), keptWarn: !!r.actsDone, proof: proofText(r) };
+  };
+  // How tall a card will be, roughly, in px - the two columns sit side by side
+  // so the taller one sets the height. Only ever used to decide where a page
+  // ends; the overflow check proves the answer.
+  // Characters per line measured off the rendered card, not guessed: the name
+  // and the associated risk run the full card width, the two columns are half
+  // it, and a kept line loses its label gutter. Calibrated against real cards
+  // (144px thin, 228px full) - see test/ui/_cal_plan.mjs.
+  const lineCount = (s, per) => Math.max(1, Math.ceil(String(s || '').length / per));
+  const cardWeight = (c) => {
+    const head = 24 + 16 + lineCount(c.name, 100) * 14.5 + (c.assoc ? lineCount(c.assoc, 130) * 13.5 : 0) + 5;
+    const left = 11.5 + lineCount(c.controls, 66) * 13.5;
+    const right = 11.5 + (c.kept.length
+        ? c.kept.reduce((a, k) => a + lineCount(k.text, 56) * 13.5, 0)
+        : lineCount(c.keptNote, 66) * 13.5)
+      + 17.5 + lineCount(c.proof, 66) * 13.5;
+    return Math.round(head + Math.max(left, right));
   };
 
   // Flatten theme by theme, worst theme first, so the register reads in the
   // same order as the risk register and the execution plan.
   const flat = [];
-  P.themes.forEach(t => t.rows.forEach(r => flat.push({ theme: t.name, t, r })));
-  const slices = paginateRows(flat, RISKS_FIRST, RISKS_CONT);
-  const themeTables = (slice, last) => ([{ type: 'dataTable', cols: opCols, rows: slice.map(opRow),
-    footnote: last ? '"As found" is the score before the plan moved it; where it matches "now", the risk has not been re-scored yet. "Target" is where the plan is written to reach.' : undefined }]);
+  P.themes.forEach(t => t.rows.forEach(r => flat.push(opCard({ theme: t.name, r }))));
+  const slices = packRows(flat, cardWeight, PAGE_FIRST, PAGE_CONT);
+  // The packer cannot know which page ends up last, and that one also carries
+  // the closing line and the footnote - so if the tail no longer fits, the
+  // final card moves to a page of its own rather than into the footer.
+  const weighs = (sl) => sl.reduce((a, c) => a + cardWeight(c), 0);
+  while (slices.length > 1 && slices[slices.length - 1].length > 1
+    && weighs(slices[slices.length - 1]) > PAGE_CONT - PAGE_TAIL) {
+    slices.push([slices[slices.length - 1].pop()]);
+  }
+  const themeTables = (slice, last) => ([{ type: 'planRisk', rows: slice,
+    footnote: last ? '"As found" is the score before the plan moved it; where it matches "now", the risk has not been re-scored yet. "Target" is where the plan is written to reach. Control wording is summarised here; the full text is in the risk assessment.' : undefined }]);
   const opPages = P.rows.length ? slices.map((slice, i) => ({
     label: 'Managed' + (slices.length > 1 ? ' ' + (i + 1) : ''),
     blocks: [
       mast,
       i === 0 ? sec(4, 'How each risk is managed') : { type: 'titleBlock', kicker: 'Section 4 · continued', headline: 'How each risk is managed' },
-      ...(i === 0 ? [{ type: 'textBlock', body: 'One line per risk, in theme order, worst theme first. The fourth column is the part that matters once the work is done: what the business now does so it stays done.' }] : []),
+      ...(i === 0 ? [{ type: 'textBlock', body: 'One card per risk, in theme order, worst theme first. The right-hand column is the part that matters once the work is done: what the business now does so it stays done, and the proof behind it.' }] : []),
       ...themeTables(slice, i === slices.length - 1),
       ...(i === slices.length - 1 ? [{ type: 'soWhat', text: P.heldActs
         ? (P.heldActs + ' of ' + P.closedActs + ' completed action' + (P.closedActs !== 1 ? 's have' : ' has') + ' something recorded that keeps the control in place - a document, a routine, a briefing or a named person.')

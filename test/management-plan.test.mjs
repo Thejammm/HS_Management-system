@@ -75,11 +75,13 @@ test('every risk reaches section 4 with its controls, how it is held, and its pr
   assert.match(html, /A fall from height on vehicle roofs/);
   assert.match(html, /Losing the key transport contract/);
   assert.match(html, /Extinguishers serviced annually/);
-  // the four kinds of holding, in the app's own words
-  assert.match(html, /Document: Fire evacuation procedure v1/);
-  assert.match(html, /Routine: Fire drill and alarm test - 6-monthly, Dee Marsh, next due 28 Feb 2027/);
-  assert.match(html, /Briefed: Fire evacuation \(procedure\)/);
-  assert.match(html, /Owned by: Dee Marsh - Fire warden/);
+  // the four kinds of holding, each on its own labelled line, in the app's words
+  const kept = (label, text) => new RegExp('<i>' + label + '</i><span>'
+    + text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '</span>');
+  assert.match(html, kept('Document', 'Fire evacuation procedure v1'));
+  assert.match(html, kept('Routine', 'Fire drill and alarm test - 6-monthly, Dee Marsh, next due 28 Feb 2027'));
+  assert.match(html, kept('Briefed', 'Fire evacuation (procedure) - 28 Aug 2026'));
+  assert.match(html, kept('Owned by', 'Dee Marsh - Fire warden'));
   // proof
   assert.match(html, /Fire risk assessment 2026/);
   assert.match(html, /Signed for: Fire evacuation/);
@@ -166,6 +168,66 @@ test('the legal duties assessment is reported, gaps included', () => {
   assert.equal(P.duties.gaps, 1);
   const html = reportHTML(buildReport(STATE(), 'management-plan', OPTS));
   assert.match(html, /Health and safety essentials/);
+});
+
+// ── Simon, 2026-09-28: "the content bleeds into the footer ... the text looks
+//    very busy and its not even completed yet". Both came from packing section
+//    4 by a fixed row count into five narrow columns. These pin the fix; the
+//    page-overflow check (now sweeping the 'worked' fixture) proves the pixels.
+test('a fully worked client never gets more on a page than the page can hold', async () => {
+  const worked = JSON.parse((await import('node:fs')).readFileSync(
+    path.join(here, '..', 'public', 'reports', 'fixtures', 'worked.json'), 'utf8'));
+  const rep = buildReport(worked, 'management-plan', OPTS);
+  const managed = rep.pages.filter(p => /^Managed/.test(p.label));
+  assert.ok(managed.length > 1, 'a 16-risk client needs more than one page for section 4');
+  // no page may carry more cards than its budget - the packer's own contract
+  managed.forEach((p, i) => {
+    const block = p.blocks.find(b => b.type === 'planRisk');
+    assert.ok(block && block.rows.length, 'page ' + (i + 1) + ' of section 4 has cards');
+    assert.ok(block.rows.length <= 8, 'page ' + (i + 1) + ' is not overstuffed (' + block.rows.length + ')');
+  });
+  // every risk still appears exactly once, nothing dropped by the packing
+  const seen = managed.flatMap(p => (p.blocks.find(b => b.type === 'planRisk') || { rows: [] }).rows.map(r => r.name));
+  assert.equal(seen.length, worked.riskProfile.length);
+  assert.equal(new Set(seen).size, seen.length, 'no risk is printed twice');
+});
+
+test('a page of light risks holds more than a page of heavy ones', async () => {
+  const worked = JSON.parse((await import('node:fs')).readFileSync(
+    path.join(here, '..', 'public', 'reports', 'fixtures', 'worked.json'), 'utf8'));
+  // strip every card down to nothing and the same risks must need fewer pages
+  const light = JSON.parse(JSON.stringify(worked));
+  light.riskProfile.forEach(r => { r.controls = 'Guarded'; r.assocRisk = ''; r.linked = []; (r.actions || []).forEach(a => { delete a.embed; }); });
+  const heavyPages = buildReport(worked, 'management-plan', OPTS).pages.filter(p => /^Managed/.test(p.label)).length;
+  const lightPages = buildReport(light, 'management-plan', OPTS).pages.filter(p => /^Managed/.test(p.label)).length;
+  assert.ok(lightPages < heavyPages, 'thin rows pack tighter (' + lightPages + ' vs ' + heavyPages + ')');
+});
+
+test('long free text is summarised rather than left to fill the page', () => {
+  const s = STATE();
+  s.riskProfile[0].controls = 'A'.repeat(900);
+  s.riskProfile[0].assocRisk = 'B'.repeat(400);
+  const html = reportHTML(buildReport(s, 'management-plan', OPTS));
+  assert.doesNotMatch(html, /A{400}/, 'the control text is capped');
+  assert.doesNotMatch(html, /B{200}/, 'the associated risk is capped');
+  assert.match(html, /\.\.\./, 'and says it has been shortened');
+  assert.match(html, /the full text is in the risk assessment/);
+});
+
+test('the flag is the worst case, not a contradiction of the band', () => {
+  const s = STATE();
+  s.riskProfile[1].likelihood = '1'; s.riskProfile[1].severity = '5';   // Low band, still fatal
+  const html = reportHTML(buildReport(s, 'management-plan', OPTS));
+  assert.match(html, /worst case could kill or seriously injure/);
+  assert.doesNotMatch(html, /r-mp-sif">could kill/, 'never printed bare beside a Low band');
+});
+
+test('a risk already at its planned target says so instead of a worse number', () => {
+  const s = STATE();
+  s.riskProfile[0].targetL = '5'; s.riskProfile[0].targetS = '5';       // target 25, now 10
+  const html = reportHTML(buildReport(s, 'management-plan', OPTS));
+  assert.match(html, /at its planned target/);
+  assert.doesNotMatch(html, /target <b>25<\/b>/);
 });
 
 test('the brief format drops the cover but keeps every section', () => {

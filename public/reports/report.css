@@ -41,7 +41,11 @@
 .r-masthead { display:flex; justify-content:space-between; align-items:baseline;
   border-bottom:1px solid var(--r-ink); padding-bottom:6px; margin-bottom:2px; }
 .r-mast-org { font-family:'Inter'; font-weight:600; font-size:15px; text-transform:uppercase; letter-spacing:.04em; }
-.r-mast-meta { font-size:7.5px; color:var(--r-muted); display:flex; gap:12px; }
+.r-mast-meta { font-size:7.5px; color:var(--r-muted); display:flex; gap:12px;
+  flex:0 0 auto; }
+/* each item stays on one line: a long client name should push the block, not
+   break "REF AHS-HEAV-MP" across two rows */
+.r-mast-meta > span { white-space:nowrap; }
 
 /* ── Title block ── */
 .r-kicker { font-size:8px; color:var(--r-accent); margin:6px 0 4px; }
@@ -85,6 +89,39 @@
 .r-table tr { break-inside:avoid; page-break-inside:avoid; }
 .r-al-right { text-align:right; }
 .r-footnote { font-size:9.5px; color:var(--r-muted); margin-top:4px; }
+
+/* ── Management plan register: one card per risk. Two wide columns, because
+      five narrow ones made every sentence a wall. flex:0 0 auto so an
+      overlong page OVERFLOWS visibly and the overflow check can catch it,
+      rather than being silently squeezed to fit. ── */
+.r-mps { flex:0 0 auto; }
+.r-mp { border:1px solid var(--r-hair); border-left:2px solid var(--r-hair2);
+  padding:7px 9px 8px; margin-bottom:7px; break-inside:avoid; page-break-inside:avoid; }
+.r-mp:last-child { margin-bottom:0; }
+.r-mp-head { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:3px; }
+.r-mp-theme { font-family:'Inter',Arial,sans-serif; font-size:6.5px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.16em; color:var(--r-muted); }
+.r-mp-sif { font-size:7px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--r-crit); }
+.r-mp-score { margin-left:auto; font-size:9px; color:var(--r-muted); white-space:nowrap; }
+.r-mp-score b { color:var(--r-ink); font-weight:700; }
+.r-mp-name { font-size:11px; font-weight:700; line-height:1.3; margin-bottom:5px; }
+.r-mp-name em { display:block; font-style:normal; font-weight:400; font-size:9.5px;
+  line-height:1.4; color:var(--r-muted); margin-top:1px; }
+.r-mp-cols { display:flex; gap:16px; align-items:flex-start; }
+.r-mp-col { flex:1; min-width:0; font-size:9.5px; line-height:1.42; }
+.r-mp-lab { font-family:'Inter',Arial,sans-serif; font-size:6.5px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.16em; color:var(--r-muted); margin-bottom:2px; }
+.r-mp-col > * + .r-mp-lab { margin-top:6px; }
+.r-mp-kept { list-style:none; margin:0; padding:0; }
+.r-mp-kept li { display:flex; gap:6px; color:#166534; }
+.r-mp-kept li + li { margin-top:1px; }
+.r-mp-kept li i { flex:0 0 46px; font-family:'Inter',Arial,sans-serif; font-style:normal;
+  font-size:6.5px; font-weight:600; text-transform:uppercase; letter-spacing:.1em;
+  color:var(--r-muted); padding-top:2.5px; }
+.r-mp-kept li span { flex:1; min-width:0; }
+.r-mp-none { color:var(--r-muted); }
+.r-mp-warn { color:#B45309; font-weight:600; }
+.r-mp-proof { color:var(--r-muted); }
 
 /* ── Tier word + swatch ── */
 .r-tier { display:inline-flex; align-items:center; gap:4px; font-weight:600; font-size:9.5px; text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; }

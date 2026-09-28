@@ -40,6 +40,23 @@ export function paginateRows(rows, rowsPerFirst, rowsPerCont) {
   return out;
 }
 
+// Pack rows onto pages by their ESTIMATED HEIGHT rather than a fixed count.
+// A register row with every field filled in is three times the height of an
+// empty one, so a fixed count either runs off the page or leaves it half
+// blank - both of which Simon caught on the management plan. weightOf returns
+// roughly-px; the budgets are what is left after that page's other blocks.
+export function packRows(rows, weightOf, firstBudget, contBudget) {
+  if (!rows.length) return [[]];
+  const out = []; let page = [], left = firstBudget;
+  rows.forEach(r => {
+    const w = Math.max(1, weightOf(r));
+    if (page.length && w > left) { out.push(page); page = []; left = contBudget; }
+    page.push(r); left -= w;
+  });
+  if (page.length) out.push(page);
+  return out;
+}
+
 // Render into the page and open the print dialog. Cleans itself up afterwards.
 export async function printReport(report, opts = {}) {
   ensureCss();

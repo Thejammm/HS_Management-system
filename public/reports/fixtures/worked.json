@@ -1,0 +1,1240 @@
+{
+ "company": {
+  "legalName": "Heavyweight Motor and Transport Services Limited",
+  "employees": "24",
+  "siteCount": "2",
+  "sector": "Vehicle repair and passenger transport",
+  "description": "A vehicle workshop, a tyre and brake centre and an assisted passenger transport service operating from two sites.",
+  "personnel": [
+   {
+    "name": "S Archer",
+    "role": "Managing Director",
+    "contact": "simon@example.com"
+   },
+   {
+    "name": "Dee Marsh",
+    "role": "Fire warden and first aider",
+    "contact": ""
+   },
+   {
+    "name": "Bev Hall",
+    "role": "Transport manager",
+    "contact": ""
+   }
+  ]
+ },
+ "policyDoc": {
+  "signedDate": "2026-04-02",
+  "signedBy": "S Archer"
+ },
+ "riskProfile": [
+  {
+   "id": "h0",
+   "activity": "Fire breaking out at the premises during hot work in the vehicle workshop",
+   "libKey": "fire",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "1",
+   "severity": "4",
+   "scoreHistory": [],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": true,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishe",
+   "linked": [
+    {
+     "id": "e0",
+     "ref": "Risk assessment 1 rev B, filed in the H&S folder",
+     "actionId": "ha0"
+    },
+    {
+     "id": "f0",
+     "ref": "Inspection record 1 signed by the supervisor",
+     "actionId": "ha0"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha0",
+     "desc": "Write, issue and brief the procedure covering fire breaking out at the premises during hot work in the vehicle workshop",
+     "owner": "Dee Marsh",
+     "due": "2026-01-15",
+     "status": "Complete",
+     "completedDate": "2026-08-20",
+     "embed": {
+      "at": "2026-08-28",
+      "by": "Dee Marsh",
+      "doc": {
+       "name": "Procedure 1 - Fire breaking out at the premises during v1",
+       "path": "S:\\HS\\procedures\\proc-1.pdf"
+      },
+      "routine": {
+       "item": "Check and record fire breaking out at the premises during hot",
+       "frequency": "Monthly",
+       "owner": "Dee Marsh",
+       "due": "2027-01-01"
+      },
+      "brief": {
+       "title": "Briefing on Fire breaking out at the premises during hot",
+       "type": "Procedure",
+       "date": "2026-08-28"
+      },
+      "owner": {
+       "name": "Dee Marsh",
+       "role": "Fire warden"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h1",
+   "activity": "A serious road collision while driving for work, including the grey fleet",
+   "libKey": "roadrisk",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "2",
+   "severity": "5",
+   "scoreHistory": [
+    {
+     "at": "2026-01-01",
+     "l": "4",
+     "s": "5"
+    }
+   ],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": false,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishers serviced annually and checked monthly on the walkaround; fire alarm tested we",
+   "linked": [
+    {
+     "id": "e1",
+     "ref": "Risk assessment 2 rev B, filed in the H&S folder",
+     "actionId": "ha1"
+    },
+    {
+     "id": "f1",
+     "ref": "Inspection record 2 signed by the supervisor",
+     "actionId": "ha1"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha1",
+     "desc": "Write, issue and brief the procedure covering a serious road collision while driving for work, including the grey fleet",
+     "owner": "Bev Hall",
+     "due": "2026-02-15",
+     "status": "Complete",
+     "completedDate": "2026-08-21",
+     "embed": {
+      "at": "2026-08-28",
+      "by": "Dee Marsh",
+      "doc": {
+       "name": "Procedure 2 - A serious road collision while driving f v1",
+       "path": "S:\\HS\\procedures\\proc-2.pdf"
+      },
+      "routine": {
+       "item": "Check and record a serious road collision while driving for w",
+       "frequency": "Quarterly",
+       "owner": "Bev Hall",
+       "due": "2027-02-01"
+      },
+      "brief": {
+       "title": "Briefing on A serious road collision while driving for w",
+       "type": "Procedure",
+       "date": "2026-08-28"
+      },
+      "owner": {
+       "name": "Bev Hall",
+       "role": "Transport manager"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h2",
+   "activity": "A fall from height working on vehicle roofs and from the mezzanine store",
+   "libKey": "workatheight",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "3",
+   "severity": "2",
+   "scoreHistory": [],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": false,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishers serviced annually and checked monthly on the walkaround; fire alarm tested weekly and the log signed; escape routes kept clear and checked on every inspectio",
+   "linked": [
+    {
+     "id": "e2",
+     "ref": "Risk assessment 3 rev B, filed in the H&S folder",
+     "actionId": "ha2"
+    },
+    {
+     "id": "f2",
+     "ref": "Inspection record 3 signed by the supervisor",
+     "actionId": "ha2"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha2",
+     "desc": "Write, issue and brief the procedure covering a fall from height working on vehicle roofs and from the mezzanine store",
+     "owner": "S Archer",
+     "due": "2026-03-15",
+     "status": "In progress",
+     "completedDate": ""
+    }
+   ]
+  },
+  {
+   "id": "h3",
+   "activity": "Asbestos disturbance during intrusive survey work in pre-2000 buildings",
+   "libKey": "asbestos",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "4",
+   "severity": "3",
+   "scoreHistory": [
+    {
+     "at": "2026-01-01",
+     "l": "4",
+     "s": "5"
+    }
+   ],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": false,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishers serviced annually and checked monthly on the walkaround; fire alarm tested weekly and the log signed; escape routes kept clear and checked on every inspection.",
+   "linked": [
+    {
+     "id": "e3",
+     "ref": "Risk assessment 4 rev B, filed in the H&S folder",
+     "actionId": "ha3"
+    },
+    {
+     "id": "f3",
+     "ref": "Inspection record 4 signed by the supervisor",
+     "actionId": "ha3"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha3",
+     "desc": "Write, issue and brief the procedure covering asbestos disturbance during intrusive survey work in pre-2000 buildings",
+     "owner": "Dee Marsh",
+     "due": "2026-04-15",
+     "status": "Complete",
+     "completedDate": "2026-08-23",
+     "embed": {
+      "at": "2026-08-28",
+      "by": "Dee Marsh",
+      "doc": {
+       "name": "Procedure 4 - Asbestos disturbance during intrusive su v1",
+       "path": "S:\\HS\\procedures\\proc-4.pdf"
+      },
+      "routine": {
+       "item": "Check and record asbestos disturbance during intrusive survey",
+       "frequency": "Annual",
+       "owner": "Dee Marsh",
+       "due": "2027-04-01"
+      },
+      "brief": {
+       "title": "Briefing on Asbestos disturbance during intrusive survey",
+       "type": "Procedure",
+       "date": "2026-08-28"
+      },
+      "owner": {
+       "name": "Dee Marsh",
+       "role": "Fire warden"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h4",
+   "activity": "Manual handling injury moving stock, wheels and archive boxes between bays",
+   "libKey": "manualhandling",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "1",
+   "severity": "4",
+   "scoreHistory": [],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": true,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishe",
+   "linked": [
+    {
+     "id": "e4",
+     "ref": "Risk assessment 5 rev B, filed in the H&S folder",
+     "actionId": "ha4"
+    },
+    {
+     "id": "f4",
+     "ref": "Inspection record 5 signed by the supervisor",
+     "actionId": "ha4"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha4",
+     "desc": "Write, issue and brief the procedure covering manual handling injury moving stock, wheels and archive boxes between bays",
+     "owner": "Bev Hall",
+     "due": "2026-05-15",
+     "status": "Complete",
+     "completedDate": "2026-08-24",
+     "embed": {
+      "at": "2026-08-28",
+      "by": "Dee Marsh",
+      "doc": {
+       "name": "Procedure 5 - Manual handling injury moving stock, whe v1",
+       "path": "S:\\HS\\procedures\\proc-5.pdf"
+      },
+      "routine": {
+       "item": "Check and record manual handling injury moving stock, wheels ",
+       "frequency": "Monthly",
+       "owner": "Bev Hall",
+       "due": "2027-05-01"
+      },
+      "brief": {
+       "title": "Briefing on Manual handling injury moving stock, wheels ",
+       "type": "Procedure",
+       "date": "2026-08-28"
+      },
+      "owner": {
+       "name": "Bev Hall",
+       "role": "Transport manager"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h5",
+   "activity": "Aggression and violence from passengers on assisted travel runs",
+   "libKey": "violence",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "2",
+   "severity": "5",
+   "scoreHistory": [
+    {
+     "at": "2026-01-01",
+     "l": "4",
+     "s": "5"
+    }
+   ],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": false,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishers serviced annually and checked monthly on the walkaround; fire alarm tested we",
+   "linked": [
+    {
+     "id": "e5",
+     "ref": "Risk assessment 6 rev B, filed in the H&S folder",
+     "actionId": "ha5"
+    },
+    {
+     "id": "f5",
+     "ref": "Inspection record 6 signed by the supervisor",
+     "actionId": "ha5"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha5",
+     "desc": "Write, issue and brief the procedure covering aggression and violence from passengers on assisted travel runs",
+     "owner": "S Archer",
+     "due": "2026-06-15",
+     "status": "In progress",
+     "completedDate": ""
+    }
+   ]
+  },
+  {
+   "id": "h6",
+   "activity": "Exposure to welding fume, brake dust and solvents in the workshop",
+   "libKey": "fire",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "3",
+   "severity": "2",
+   "scoreHistory": [],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": false,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishers serviced annually and checked monthly on the walkaround; fire alarm tested weekly and the log signed; escape routes kept clear and checked on every inspectio",
+   "linked": [
+    {
+     "id": "e6",
+     "ref": "Risk assessment 7 rev B, filed in the H&S folder",
+     "actionId": "ha6"
+    },
+    {
+     "id": "f6",
+     "ref": "Inspection record 7 signed by the supervisor",
+     "actionId": "ha6"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha6",
+     "desc": "Write, issue and brief the procedure covering exposure to welding fume, brake dust and solvents in the workshop",
+     "owner": "Dee Marsh",
+     "due": "2026-07-15",
+     "status": "Complete",
+     "completedDate": "2026-08-26",
+     "embed": {
+      "at": "2026-08-28",
+      "by": "Dee Marsh",
+      "doc": {
+       "name": "Procedure 7 - Exposure to welding fume, brake dust and v1",
+       "path": "S:\\HS\\procedures\\proc-7.pdf"
+      },
+      "routine": {
+       "item": "Check and record exposure to welding fume, brake dust and sol",
+       "frequency": "6-monthly",
+       "owner": "Dee Marsh",
+       "due": "2027-07-01"
+      },
+      "brief": {
+       "title": "Briefing on Exposure to welding fume, brake dust and sol",
+       "type": "Procedure",
+       "date": "2026-08-28"
+      },
+      "owner": {
+       "name": "Dee Marsh",
+       "role": "Fire warden"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h7",
+   "activity": "Contact with moving machinery on the tyre and brake bays",
+   "libKey": "roadrisk",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "4",
+   "severity": "3",
+   "scoreHistory": [
+    {
+     "at": "2026-01-01",
+     "l": "4",
+     "s": "5"
+    }
+   ],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": false,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishers serviced annually and checked monthly on the walkaround; fire alarm tested weekly and the log signed; escape routes kept clear and checked on every inspection.",
+   "linked": [
+    {
+     "id": "e7",
+     "ref": "Risk assessment 8 rev B, filed in the H&S folder",
+     "actionId": "ha7"
+    },
+    {
+     "id": "f7",
+     "ref": "Inspection record 8 signed by the supervisor",
+     "actionId": "ha7"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha7",
+     "desc": "Write, issue and brief the procedure covering contact with moving machinery on the tyre and brake bays",
+     "owner": "Bev Hall",
+     "due": "2026-08-15",
+     "status": "Complete",
+     "completedDate": "2026-08-27",
+     "embed": {
+      "at": "2026-08-28",
+      "by": "Dee Marsh",
+      "doc": {
+       "name": "Procedure 8 - Contact with moving machinery on the tyr v1",
+       "path": "S:\\HS\\procedures\\proc-8.pdf"
+      },
+      "routine": {
+       "item": "Check and record contact with moving machinery on the tyre an",
+       "frequency": "Annual",
+       "owner": "Bev Hall",
+       "due": "2027-08-01"
+      },
+      "brief": {
+       "title": "Briefing on Contact with moving machinery on the tyre an",
+       "type": "Procedure",
+       "date": "2026-08-28"
+      },
+      "owner": {
+       "name": "Bev Hall",
+       "role": "Transport manager"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h8",
+   "activity": "Electrical injury from live testing and from the fixed installation",
+   "libKey": "workatheight",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "1",
+   "severity": "4",
+   "scoreHistory": [],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": true,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishe",
+   "linked": [
+    {
+     "id": "e8",
+     "ref": "Risk assessment 9 rev B, filed in the H&S folder",
+     "actionId": "ha8"
+    },
+    {
+     "id": "f8",
+     "ref": "Inspection record 9 signed by the supervisor",
+     "actionId": "ha8"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha8",
+     "desc": "Write, issue and brief the procedure covering electrical injury from live testing and from the fixed installation",
+     "owner": "S Archer",
+     "due": "2026-01-15",
+     "status": "In progress",
+     "completedDate": ""
+    }
+   ]
+  },
+  {
+   "id": "h9",
+   "activity": "Lone working on call-outs and out-of-hours recovery",
+   "libKey": "asbestos",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "2",
+   "severity": "5",
+   "scoreHistory": [
+    {
+     "at": "2026-01-01",
+     "l": "4",
+     "s": "5"
+    }
+   ],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": false,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishers serviced annually and checked monthly on the walkaround; fire alarm tested we",
+   "linked": [
+    {
+     "id": "e9",
+     "ref": "Risk assessment 10 rev B, filed in the H&S folder",
+     "actionId": "ha9"
+    },
+    {
+     "id": "f9",
+     "ref": "Inspection record 10 signed by the supervisor",
+     "actionId": "ha9"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha9",
+     "desc": "Write, issue and brief the procedure covering lone working on call-outs and out-of-hours recovery",
+     "owner": "Dee Marsh",
+     "due": "2026-02-15",
+     "status": "Complete",
+     "completedDate": "2026-08-20",
+     "embed": {
+      "at": "2026-08-28",
+      "by": "Dee Marsh",
+      "doc": {
+       "name": "Procedure 10 - Lone working on call-outs and out-of-hou v1",
+       "path": "S:\\HS\\procedures\\proc-10.pdf"
+      },
+      "routine": {
+       "item": "Check and record lone working on call-outs and out-of-hours r",
+       "frequency": "Quarterly",
+       "owner": "Dee Marsh",
+       "due": "2027-01-01"
+      },
+      "brief": {
+       "title": "Briefing on Lone working on call-outs and out-of-hours r",
+       "type": "Procedure",
+       "date": "2026-08-28"
+      },
+      "owner": {
+       "name": "Dee Marsh",
+       "role": "Fire warden"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h10",
+   "activity": "Slips, trips and falls on the yard and in the wash bay",
+   "libKey": "manualhandling",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "3",
+   "severity": "2",
+   "scoreHistory": [],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": false,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishers serviced annually and checked monthly on the walkaround; fire alarm tested weekly and the log signed; escape routes kept clear and checked on every inspectio",
+   "linked": [
+    {
+     "id": "e10",
+     "ref": "Risk assessment 11 rev B, filed in the H&S folder",
+     "actionId": "ha10"
+    },
+    {
+     "id": "f10",
+     "ref": "Inspection record 11 signed by the supervisor",
+     "actionId": "ha10"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha10",
+     "desc": "Write, issue and brief the procedure covering slips, trips and falls on the yard and in the wash bay",
+     "owner": "Bev Hall",
+     "due": "2026-03-15",
+     "status": "Complete",
+     "completedDate": "2026-08-21",
+     "embed": {
+      "at": "2026-08-28",
+      "by": "Dee Marsh",
+      "doc": {
+       "name": "Procedure 11 - Slips, trips and falls on the yard and i v1",
+       "path": "S:\\HS\\procedures\\proc-11.pdf"
+      },
+      "routine": {
+       "item": "Check and record slips, trips and falls on the yard and in th",
+       "frequency": "6-monthly",
+       "owner": "Bev Hall",
+       "due": "2027-02-01"
+      },
+      "brief": {
+       "title": "Briefing on Slips, trips and falls on the yard and in th",
+       "type": "Procedure",
+       "date": "2026-08-28"
+      },
+      "owner": {
+       "name": "Bev Hall",
+       "role": "Transport manager"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h11",
+   "activity": "Losing the key passenger transport contract",
+   "libKey": "violence",
+   "mode": "ops",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "4",
+   "severity": "3",
+   "scoreHistory": [
+    {
+     "at": "2026-01-01",
+     "l": "4",
+     "s": "5"
+    }
+   ],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": false,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishers serviced annually and checked monthly on the walkaround; fire alarm tested weekly and the log signed; escape routes kept clear and checked on every inspection.",
+   "linked": [
+    {
+     "id": "e11",
+     "ref": "Risk assessment 12 rev B, filed in the H&S folder",
+     "actionId": "ha11"
+    },
+    {
+     "id": "f11",
+     "ref": "Inspection record 12 signed by the supervisor",
+     "actionId": "ha11"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha11",
+     "desc": "Write, issue and brief the procedure covering losing the key passenger transport contract",
+     "owner": "S Archer",
+     "due": "2026-04-15",
+     "status": "In progress",
+     "completedDate": ""
+    }
+   ]
+  },
+  {
+   "id": "h12",
+   "activity": "Noise and hand-arm vibration from workshop power tools",
+   "libKey": "fire",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "1",
+   "severity": "4",
+   "scoreHistory": [],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": true,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishe",
+   "linked": [
+    {
+     "id": "e12",
+     "ref": "Risk assessment 13 rev B, filed in the H&S folder",
+     "actionId": "ha12"
+    },
+    {
+     "id": "f12",
+     "ref": "Inspection record 13 signed by the supervisor",
+     "actionId": "ha12"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha12",
+     "desc": "Write, issue and brief the procedure covering noise and hand-arm vibration from workshop power tools",
+     "owner": "Dee Marsh",
+     "due": "2026-05-15",
+     "status": "Complete",
+     "completedDate": "2026-08-23",
+     "embed": {
+      "at": "2026-08-28",
+      "by": "Dee Marsh",
+      "doc": {
+       "name": "Procedure 13 - Noise and hand-arm vibration from worksh v1",
+       "path": "S:\\HS\\procedures\\proc-13.pdf"
+      },
+      "routine": {
+       "item": "Check and record noise and hand-arm vibration from workshop p",
+       "frequency": "Monthly",
+       "owner": "Dee Marsh",
+       "due": "2027-04-01"
+      },
+      "brief": {
+       "title": "Briefing on Noise and hand-arm vibration from workshop p",
+       "type": "Procedure",
+       "date": "2026-08-28"
+      },
+      "owner": {
+       "name": "Dee Marsh",
+       "role": "Fire warden"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h13",
+   "activity": "Legionella risk from the wash bay and the building water system",
+   "libKey": "roadrisk",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "2",
+   "severity": "5",
+   "scoreHistory": [
+    {
+     "at": "2026-01-01",
+     "l": "4",
+     "s": "5"
+    }
+   ],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": false,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishers serviced annually and checked monthly on the walkaround; fire alarm tested we",
+   "linked": [
+    {
+     "id": "e13",
+     "ref": "Risk assessment 14 rev B, filed in the H&S folder",
+     "actionId": "ha13"
+    },
+    {
+     "id": "f13",
+     "ref": "Inspection record 14 signed by the supervisor",
+     "actionId": "ha13"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha13",
+     "desc": "Write, issue and brief the procedure covering legionella risk from the wash bay and the building water system",
+     "owner": "Bev Hall",
+     "due": "2026-06-15",
+     "status": "Complete",
+     "completedDate": "2026-08-24",
+     "embed": {
+      "at": "2026-08-28",
+      "by": "Dee Marsh",
+      "doc": {
+       "name": "Procedure 14 - Legionella risk from the wash bay and th v1",
+       "path": "S:\\HS\\procedures\\proc-14.pdf"
+      },
+      "routine": {
+       "item": "Check and record legionella risk from the wash bay and the bu",
+       "frequency": "Quarterly",
+       "owner": "Bev Hall",
+       "due": "2027-05-01"
+      },
+      "brief": {
+       "title": "Briefing on Legionella risk from the wash bay and the bu",
+       "type": "Procedure",
+       "date": "2026-08-28"
+      },
+      "owner": {
+       "name": "Bev Hall",
+       "role": "Transport manager"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h14",
+   "activity": "A workplace transport strike between vehicles and pedestrians in the yard",
+   "libKey": "workatheight",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "3",
+   "severity": "2",
+   "scoreHistory": [],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": false,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishers serviced annually and checked monthly on the walkaround; fire alarm tested weekly and the log signed; escape routes kept clear and checked on every inspectio",
+   "linked": [
+    {
+     "id": "e14",
+     "ref": "Risk assessment 15 rev B, filed in the H&S folder",
+     "actionId": "ha14"
+    },
+    {
+     "id": "f14",
+     "ref": "Inspection record 15 signed by the supervisor",
+     "actionId": "ha14"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha14",
+     "desc": "Write, issue and brief the procedure covering a workplace transport strike between vehicles and pedestrians in the yard",
+     "owner": "S Archer",
+     "due": "2026-07-15",
+     "status": "In progress",
+     "completedDate": ""
+    }
+   ]
+  },
+  {
+   "id": "h15",
+   "activity": "Failure to maintain statutory examination of lifting equipment",
+   "libKey": "asbestos",
+   "assocRisk": "The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.",
+   "likelihood": "4",
+   "severity": "3",
+   "scoreHistory": [
+    {
+     "at": "2026-01-01",
+     "l": "4",
+     "s": "5"
+    }
+   ],
+   "targetL": "2",
+   "targetS": "4",
+   "reviewed": false,
+   "reviewDue": "2027-03-01",
+   "controls": "Hot work permit issued and countersigned by the workshop supervisor before any cutting, grinding or welding; extinguishers serviced annually and checked monthly on the walkaround; fire alarm tested weekly and the log signed; escape routes kept clear and checked on every inspection.",
+   "linked": [
+    {
+     "id": "e15",
+     "ref": "Risk assessment 16 rev B, filed in the H&S folder",
+     "actionId": "ha15"
+    },
+    {
+     "id": "f15",
+     "ref": "Inspection record 16 signed by the supervisor",
+     "actionId": "ha15"
+    }
+   ],
+   "actions": [
+    {
+     "id": "ha15",
+     "desc": "Write, issue and brief the procedure covering failure to maintain statutory examination of lifting equipment",
+     "owner": "Dee Marsh",
+     "due": "2026-08-15",
+     "status": "Complete",
+     "completedDate": "2026-08-26",
+     "embed": {
+      "at": "2026-08-28",
+      "by": "Dee Marsh",
+      "doc": {
+       "name": "Procedure 16 - Failure to maintain statutory examinatio v1",
+       "path": "S:\\HS\\procedures\\proc-16.pdf"
+      },
+      "routine": {
+       "item": "Check and record failure to maintain statutory examination of",
+       "frequency": "Annual",
+       "owner": "Dee Marsh",
+       "due": "2027-07-01"
+      },
+      "brief": {
+       "title": "Briefing on Failure to maintain statutory examination of",
+       "type": "Procedure",
+       "date": "2026-08-28"
+      },
+      "owner": {
+       "name": "Dee Marsh",
+       "role": "Fire warden"
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "actionPlan": [
+  {
+   "id": "fa1",
+   "desc": "Renew the employers liability certificate and display it",
+   "owner": "Bev Hall",
+   "due": "2027-01-31",
+   "status": "Not started",
+   "source": "Assurance"
+  }
+ ],
+ "requirements": [
+  {
+   "id": "sc1",
+   "heading": "Health and safety essentials",
+   "items": [
+    {
+     "id": "q1",
+     "requirement": "A written health and safety policy",
+     "present": "Yes",
+     "adequate": "Yes",
+     "reviewed": true,
+     "actions": []
+    },
+    {
+     "id": "q2",
+     "requirement": "First aid needs assessed",
+     "present": "No",
+     "adequate": "",
+     "actions": []
+    }
+   ]
+  }
+ ],
+ "monitoring": {
+  "regSections": [
+   {
+    "id": "ms1",
+    "name": "Ongoing controls",
+    "items": [
+     {
+      "id": "mi0",
+      "item": "Check and record fire breaking out at the premises during hot",
+      "frequency": "Monthly",
+      "resultDate": "2026-08-28",
+      "dueDate": "2027-01-01",
+      "notes": "Owner: Dee Marsh. Kept in place from a completed plan action."
+     },
+     {
+      "id": "mi1",
+      "item": "Check and record a serious road collision while driving for w",
+      "frequency": "Quarterly",
+      "resultDate": "2026-08-28",
+      "dueDate": "2027-02-01",
+      "notes": "Owner: Bev Hall. Kept in place from a completed plan action."
+     },
+     {
+      "id": "mi2",
+      "item": "Check and record asbestos disturbance during intrusive survey",
+      "frequency": "Annual",
+      "resultDate": "2026-08-28",
+      "dueDate": "2027-04-01",
+      "notes": "Owner: Dee Marsh. Kept in place from a completed plan action."
+     },
+     {
+      "id": "mi3",
+      "item": "Check and record manual handling injury moving stock, wheels ",
+      "frequency": "Monthly",
+      "resultDate": "2026-08-28",
+      "dueDate": "2027-05-01",
+      "notes": "Owner: Bev Hall. Kept in place from a completed plan action."
+     },
+     {
+      "id": "mi4",
+      "item": "Check and record exposure to welding fume, brake dust and sol",
+      "frequency": "6-monthly",
+      "resultDate": "2026-08-28",
+      "dueDate": "2027-07-01",
+      "notes": "Owner: Dee Marsh. Kept in place from a completed plan action."
+     },
+     {
+      "id": "mi5",
+      "item": "Check and record contact with moving machinery on the tyre an",
+      "frequency": "Annual",
+      "resultDate": "2026-08-28",
+      "dueDate": "2027-08-01",
+      "notes": "Owner: Bev Hall. Kept in place from a completed plan action."
+     },
+     {
+      "id": "mi6",
+      "item": "Check and record lone working on call-outs and out-of-hours r",
+      "frequency": "Quarterly",
+      "resultDate": "2026-08-28",
+      "dueDate": "2027-01-01",
+      "notes": "Owner: Dee Marsh. Kept in place from a completed plan action."
+     },
+     {
+      "id": "mi7",
+      "item": "Check and record slips, trips and falls on the yard and in th",
+      "frequency": "6-monthly",
+      "resultDate": "2026-08-28",
+      "dueDate": "2027-02-01",
+      "notes": "Owner: Bev Hall. Kept in place from a completed plan action."
+     },
+     {
+      "id": "mi8",
+      "item": "Check and record noise and hand-arm vibration from workshop p",
+      "frequency": "Monthly",
+      "resultDate": "2026-08-28",
+      "dueDate": "2027-04-01",
+      "notes": "Owner: Dee Marsh. Kept in place from a completed plan action."
+     },
+     {
+      "id": "mi9",
+      "item": "Check and record legionella risk from the wash bay and the bu",
+      "frequency": "Quarterly",
+      "resultDate": "2026-08-28",
+      "dueDate": "2027-05-01",
+      "notes": "Owner: Bev Hall. Kept in place from a completed plan action."
+     },
+     {
+      "id": "mi10",
+      "item": "Check and record failure to maintain statutory examination of",
+      "frequency": "Annual",
+      "resultDate": "2026-08-28",
+      "dueDate": "2027-07-01",
+      "notes": "Owner: Dee Marsh. Kept in place from a completed plan action."
+     }
+    ]
+   }
+  ]
+ },
+ "policySignoff": {
+  "policies": [
+   {
+    "id": "pp0",
+    "title": "Procedure 1 - Fire breaking out at the premises ",
+    "type": "Procedure",
+    "version": "1",
+    "delivered": "2026-08-28",
+    "riskIds": [
+     "h0"
+    ]
+   },
+   {
+    "id": "pp1",
+    "title": "Procedure 2 - A serious road collision while dri",
+    "type": "Procedure",
+    "version": "1",
+    "delivered": "2026-08-28",
+    "riskIds": [
+     "h1"
+    ]
+   },
+   {
+    "id": "pp2",
+    "title": "Procedure 3 - A fall from height working on vehi",
+    "type": "Procedure",
+    "version": "1",
+    "delivered": "2026-08-28",
+    "riskIds": [
+     "h2"
+    ]
+   },
+   {
+    "id": "pp3",
+    "title": "Procedure 4 - Asbestos disturbance during intrus",
+    "type": "Procedure",
+    "version": "1",
+    "delivered": "2026-08-28",
+    "riskIds": [
+     "h3"
+    ]
+   },
+   {
+    "id": "pp4",
+    "title": "Procedure 5 - Manual handling injury moving stoc",
+    "type": "Procedure",
+    "version": "1",
+    "delivered": "2026-08-28",
+    "riskIds": [
+     "h4"
+    ]
+   },
+   {
+    "id": "pp5",
+    "title": "Procedure 6 - Aggression and violence from passe",
+    "type": "Procedure",
+    "version": "1",
+    "delivered": "2026-08-28",
+    "riskIds": [
+     "h5"
+    ]
+   },
+   {
+    "id": "pp6",
+    "title": "Procedure 7 - Exposure to welding fume, brake du",
+    "type": "Procedure",
+    "version": "1",
+    "delivered": "2026-08-28",
+    "riskIds": [
+     "h6"
+    ]
+   },
+   {
+    "id": "pp7",
+    "title": "Procedure 8 - Contact with moving machinery on t",
+    "type": "Procedure",
+    "version": "1",
+    "delivered": "2026-08-28",
+    "riskIds": [
+     "h7"
+    ]
+   },
+   {
+    "id": "pp8",
+    "title": "Procedure 9 - Electrical injury from live testin",
+    "type": "Procedure",
+    "version": "1",
+    "delivered": "2026-08-28",
+    "riskIds": [
+     "h8"
+    ]
+   }
+  ],
+  "staff": [
+   {
+    "id": "st1",
+    "name": "Dee Marsh"
+   },
+   {
+    "id": "st2",
+    "name": "Bev Hall"
+   },
+   {
+    "id": "st3",
+    "name": "Ash Novak"
+   }
+  ],
+  "signed": {
+   "st1|pp0": true,
+   "st2|pp0": true,
+   "st2|pp1": true
+  }
+ },
+ "documents": [
+  {
+   "id": "dd0",
+   "name": "Procedure 1 - Fire breaking out at the premi v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd1",
+   "name": "Procedure 2 - A serious road collision while v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd2",
+   "name": "Procedure 3 - A fall from height working on  v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd3",
+   "name": "Procedure 4 - Asbestos disturbance during in v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd4",
+   "name": "Procedure 5 - Manual handling injury moving  v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd5",
+   "name": "Procedure 6 - Aggression and violence from p v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd6",
+   "name": "Procedure 7 - Exposure to welding fume, brak v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd7",
+   "name": "Procedure 8 - Contact with moving machinery  v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd8",
+   "name": "Procedure 9 - Electrical injury from live te v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd9",
+   "name": "Procedure 10 - Lone working on call-outs and  v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd10",
+   "name": "Procedure 11 - Slips, trips and falls on the  v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd11",
+   "name": "Procedure 12 - Losing the key passenger trans v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd12",
+   "name": "Procedure 13 - Noise and hand-arm vibration f v1",
+   "category": "Procedure"
+  },
+  {
+   "id": "dd13",
+   "name": "Procedure 14 - Legionella risk from the wash  v1",
+   "category": "Procedure"
+  }
+ ],
+ "siteInspections": [
+  {
+   "type": "Workshop inspection",
+   "planned": "2026-06-01",
+   "actual": "2026-06-03",
+   "outcome": "Completed"
+  },
+  {
+   "type": "Yard and transport inspection",
+   "planned": "2026-12-01",
+   "actual": "",
+   "outcome": ""
+  }
+ ]
+}

@@ -2,7 +2,7 @@
 // Proves the engine is template-agnostic: no engine changes were needed.
 import { deriveBoard, countPhrase, TIER_COLOURS, docFor } from '../derive.js';
 import { tierWord, dualBar } from '../blocks.js';
-import { paginateRows } from '../engine.js';
+import { packRows } from '../engine.js';
 import { residualOf, targetOf, tierFor, bandsFrom, producerOf } from '../derive.js';
 import { controlsTextOf } from '../app-contract.js';
 
@@ -44,7 +44,12 @@ export function buildRiskAssessment(state, opts = {}) {
     r.controls,
   ]);
 
-  const slices = paginateRows(rows, 12, 15);
+  // Packed by estimated height, not a row count: a worked client's rows are
+  // twice the height of a fixture's, and twelve of them ran 109px past the
+  // page edge. Caught by the 'worked' fixture added 2026-09-28.
+  const ln = (t, per) => Math.max(1, Math.ceil(String(t || '').length / per));
+  const rowWeight = (r) => 9 + Math.max(2, ln(r.name, 30), ln(r.assoc, 25), ln(r.controls, 39)) * 14;
+  const slices = packRows(rows, rowWeight, 620, 840);
   const pages = [
     {
       label: 'Summary', cover: format === 'signal', blocks: [

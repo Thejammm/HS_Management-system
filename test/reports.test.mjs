@@ -235,7 +235,7 @@ test('no long dashes anywhere in the rendered report', () => {
 test('no unrendered values reach any report', () => {
   for (const reportId of Object.keys(REPORTS)) {
     for (const f of (REPORTS[reportId].formats || [{ id: undefined }])) {
-      for (const fx of ['empty', 'typical', 'oversized']) {
+      for (const fx of ['empty', 'typical', 'oversized', 'worked']) {
         const html = reportHTML(buildReport(fixture(fx), reportId, { ...OPTS, format: f.id }));
         const seen = html.replace(/<[^>]*>/g, ' ');   // what a reader actually sees
         const where = reportId + '/' + (f.id || 'default') + '/' + fx;

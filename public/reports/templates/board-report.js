@@ -913,11 +913,14 @@ export function buildBoardReport(state, opts = {}) {
       ? { type: 'journeyStrip', fillPct: B.fillPct, tgtPct: B.tgtPct,
           atLine: jAtLine,
           colour: jAtLine ? '#16A34A' : (TIER_COLOURS[B.nowBand] || '#b7b7ba'),
-          flagLabel: (B.tgtSet < B.rated) ? ('TARGET · ' + B.tgtSet + ' of ' + B.rated + ' risks have set theirs') : 'TARGET · planned controls',
+          flagLabel: (B.rated - B.tgtSet) ? ('TARGET · if the ' + B.tgtSet + ' risk' + (B.tgtSet !== 1 ? 's' : '') + ' with a target hit it (' + (B.rated - B.tgtSet) + ' ha' + ((B.rated - B.tgtSet) !== 1 ? 've' : 's') + ' none)') : 'TARGET · every risk at its planned score',
+          depPct: B.dep.total ? Math.round(B.dep.done / B.dep.total * 100) : null,
+          depCounts: B.dep.total ? [
+            { value: B.dep.done + ' of ' + B.dep.total, label: 'planned controls and actions in place', colour: (B.dep.done === B.dep.total) ? '#16A34A' : undefined },
+            { value: String(B.overdue), label: countPhrase(B.overdue, 'action overdue', 'actions overdue').replace(/^\d+ /, ''), colour: B.overdue ? '#DC2626' : undefined } ] : null,
           counts: [
-            { value: B.atTgt + ' of ' + B.total, label: 'risks at their planned target', colour: '#2563EB' },
-            { value: B.dep.done + ' of ' + B.dep.total, label: 'planned controls and actions in place' },
-            { value: String(B.overdue), label: countPhrase(B.overdue, 'action overdue', 'actions overdue').replace(/^\d+ /, ''), colour: B.overdue ? '#DC2626' : undefined } ],
+            { value: B.atTgt + ' of ' + B.rated, label: 'rated risks at their planned target', colour: '#2563EB' } ]
+            .concat((B.total - B.rated) ? [{ value: String(B.total - B.rated), label: 'not yet rated' }] : []),
           note: B.tgtPct == null ? 'No projected scores set yet - the blue target line appears once they are.' : undefined,
           loop: 'When every risk reaches its target, review sets stronger controls and a new target. Continuous improvement is the operating cycle.' }
       : { type: 'textBlock', title: 'Risk journey', body: 'Rate the risks (likelihood × severity) and the company journey draws itself.' });

@@ -14246,6 +14246,13 @@ function _cockpitContext(){
 //    uncontrolled = the 1-Uncontrolled hold state, bands = likelihood x
 //    severity, targets = the projected scores, progress = the same dependent
 //    count as the risk pathway. Nothing here derives anything twice. ──
+// What the blue target line actually promises. A risk with no target of its
+// own holds its current position, so it pulls the line back - say so rather
+// than showing a bare count that reads like progress (Simon, 2026-09-28).
+function _journeyTgtFlag(B){
+  if(!B || !B.tgtMissing) return 'TARGET \u00b7 every risk at its planned score';
+  return 'TARGET \u00b7 if the '+B.tgtSet+' risk'+(B.tgtSet!==1?'s':'')+' with a target hit it ('+B.tgtMissing+' ha'+(B.tgtMissing!==1?'ve':'s')+' none)';
+}
 function _boardModel(){
   const rows=(S.riskProfile||[]).map(r=>{
     const sc=_riskScore(r); const hold=_riskHold(r); const g=_journeyGauge(r); const dep=_journeyDepCounts(r);
@@ -14270,7 +14277,8 @@ function _boardModel(){
   // the line's honesty depends on how many commitments are real - counted
   // here and said out loud on the flag.
   let tgtSet=0; rated.forEach(z=>{ if(z.g.tgt.rating) tgtSet++; });
-  return { rows, total, unc, part, inplace:total-unc-part, atTgt, dep, rated:rated.length, tgtSet, fillPct, tgtPct, nowBand, overdue:_overdueActionCount() };
+  const depPct = dep.total ? Math.max(0,Math.min(100,Math.round(dep.done/dep.total*100))) : null;
+  return { rows, total, unc, part, inplace:total-unc-part, atTgt, dep, depPct, rated:rated.length, notRated:total-rated.length, tgtSet, tgtMissing:rated.length-tgtSet, fillPct, tgtPct, nowBand, overdue:_overdueActionCount() };
 }
 // The chosen five: the company's pick of what to work on now (quick wins
 // welcome) - the one fact on this picture the app did not already hold.
@@ -14475,16 +14483,32 @@ const COCKPIT_WIDGETS = {
       const atLine=B.tgtPct!==null && B.fillPct>=B.tgtPct && B.rated>0 && B.tgtSet===B.rated;
       const col=atLine?'#16A34A':(_RISK_PRIO_COLOR[B.nowBand]||'#9CA3AF');
       const line=B.tgtPct===null?'':'<div style="position:absolute;left:'+B.tgtPct+'%;top:-7px;bottom:-7px;width:4px;background:#2563EB;border-radius:2px;box-shadow:0 0 0 1.5px var(--surface,#fff);"></div>'
-        +'<div style="position:absolute;left:'+B.tgtPct+'%;top:-23px;transform:translateX(-'+(B.tgtPct>75?'100':B.tgtPct<15?'0':'50')+'%);font-size:10.5px;font-weight:700;color:#2563EB;white-space:nowrap;">'+(B.tgtSet<B.rated?('TARGET \u00b7 '+B.tgtSet+' of '+B.rated+' risks have set theirs'):'TARGET \u00b7 planned controls')+'</div>';
+        +'<div style="position:absolute;left:'+B.tgtPct+'%;top:-23px;transform:translateX(-'+(B.tgtPct>75?'100':B.tgtPct<15?'0':'50')+'%);font-size:10.5px;font-weight:700;color:#2563EB;white-space:nowrap;">'+_journeyTgtFlag(B)+'</div>';
       return '<div class="ckx-panel"><h4>Risk journey</h4>'
         +'<div style="position:relative;height:20px;background:var(--muted-bg);border-radius:10px;margin:'+(B.tgtPct===null?'8':'26')+'px 0 4px;">'
         +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+B.fillPct+'%;min-width:14px;background:'+col+';border-radius:'+(B.fillPct>=98?'10px':'10px 0 0 10px')+';"></div>'+line+'</div>'
-        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);"><span>Baseline - as found</span><span style="font-weight:700;color:'+col+';">Current position</span><span>Fully avoided</span></div>'
+        +'<div style="position:relative;height:16px;font-size:11px;color:var(--text-muted);">'
+          +'<span>Baseline - as found</span><span style="position:absolute;right:0;">Fully avoided</span>'
+          +(B.fillPct>0
+            ? '<span style="position:absolute;left:'+B.fillPct+'%;transform:translateX(-'+(B.fillPct>75?'100':B.fillPct<15?'0':'50')+'%);font-weight:700;color:'+col+';">Current position</span>'
+            : '<span style="position:absolute;left:50%;transform:translateX(-50%);font-weight:700;">Not moved yet - the bar moves when a risk is re-scored</span>')
+          +'</div>'
         +(atLine?'<div style="margin-top:8px;font-size:12.5px;font-weight:700;color:#16A34A;">Controlled as reasonably practicable \u2713 - the position has reached the planned target line</div>':'')
-        +'<div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--text-muted);">'
-        +'<span><b style="font-size:16px;color:#2563EB;">'+B.atTgt+' of '+B.total+'</b> risks at their planned target</span>'
-        +'<span><b style="font-size:16px;color:var(--text);">'+B.dep.done+' of '+B.dep.total+'</b> planned controls and actions in place</span>'
-        +(B.overdue?('<span><b style="font-size:16px;color:#DC2626;">'+B.overdue+'</b> action'+(B.overdue!==1?'s':'')+' overdue</span>'):'<span style="align-self:center;">nothing overdue</span>')+'</div>'
+        +'<div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:8px;font-size:12.5px;color:var(--text-muted);">'
+        +'<span><b style="font-size:16px;color:#2563EB;">'+B.atTgt+' of '+B.rated+'</b> rated risks at their planned target</span>'
+        +(B.notRated?('<span style="align-self:center;">'+B.notRated+' not yet rated</span>'):'')+'</div>'
+        // The second reading (Simon, 2026-09-28): what is actually in place.
+        // This one moves the moment a control or an action closes, so a
+        // working session shows progress the score journey cannot show until
+        // the risk is re-scored.
+        +(B.dep.total?('<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">'
+          +'<div style="display:flex;align-items:baseline;gap:8px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);">Plan delivered<span style="font-weight:600;letter-spacing:0;text-transform:none;">what is in place now</span></div>'
+          +'<div style="position:relative;height:12px;background:var(--muted-bg);border-radius:6px;margin:5px 0 5px;">'
+            +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+B.depPct+'%;'+(B.dep.done?'min-width:10px;':'')+'background:'+(B.depPct>=100?'#16A34A':'#0E8F7E')+';border-radius:'+(B.depPct>=98?'6px':'6px 0 0 6px')+';"></div></div>'
+          +'<div style="display:flex;gap:22px;flex-wrap:wrap;font-size:12.5px;color:var(--text-muted);">'
+          +'<span><b style="font-size:16px;color:'+(B.depPct>=100?'#16A34A':'var(--text)')+';">'+B.dep.done+' of '+B.dep.total+'</b> planned controls and actions in place</span>'
+          +(B.overdue?('<span><b style="font-size:16px;color:#DC2626;">'+B.overdue+'</b> action'+(B.overdue!==1?'s':'')+' overdue</span>'):'<span style="align-self:center;">nothing overdue</span>')
+          +'</div></div>'):'')
         +(B.tgtPct===null?'<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">No projected scores set yet - add them on the risk cards and the blue target line appears.</div>':'')
         +'<div style="margin-top:12px;padding:8px 13px;border-left:3px solid #16A34A;background:#16A34A0d;border-radius:0 8px 8px 0;font-size:12px;color:var(--text-muted);">When every risk reaches its target, review sets stronger controls and a new target. Continuous improvement is the operating cycle.</div></div>';
     } },

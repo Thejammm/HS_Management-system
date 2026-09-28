@@ -52,6 +52,58 @@ await wait(page, 700);
 await seed(page, { company: { legalName: 'Fineline Group Ltd', employees: '38' }, riskProfile: risks }, 'cockpit');
 await wait(page, 700);
 
+// ── the risk journey: two readings, one population, an honest target flag ──
+{
+  const t = await page.evaluate(() => {
+    // nothing re-scored, one risk without a target, some work done
+    S.riskProfile = [
+      { id: 'j1', activity: 'Fire', likelihood: '5', severity: '5', targetL: '2', targetS: '3', actions: [{ id: 'ja1', desc: 'One', status: 'Complete' }, { id: 'ja2', desc: 'Two', status: 'Not started' }] },
+      { id: 'j2', activity: 'Falls', likelihood: '4', severity: '5', actions: [] },
+      { id: 'j3', activity: 'Driving', likelihood: '3', severity: '4', targetL: '2', targetS: '2', actions: [{ id: 'ja3', desc: 'Three', status: 'Complete' }] },
+      { id: 'j4', activity: 'Not yet scored', actions: [] }];
+    renderCockpit();
+    const B = _boardModel();
+    const panel = [...document.querySelectorAll('.ckx-panel')].find(p => /Risk journey/.test(p.textContent));
+    const txt = panel.innerText.replace(/\s+/g, ' ');
+    const here = panel.querySelector('.ckx-panel span[style*="Current position"]');
+    return { txt, fillPct: B.fillPct, depPct: B.depPct, rated: B.rated, notRated: B.notRated,
+      // one population: the score reading counts rated risks and says how many are not
+      onePop: new RegExp(B.atTgt + ' of ' + B.rated + ' rated risks at their planned target').test(txt) && new RegExp(B.notRated + ' not yet rated').test(txt),
+      noMixed: !/of 4 risks at their planned target/.test(txt),
+      // the flag explains what the line promises
+      flag: /TARGET · if the 2 risks with a target hit it \(1 has none\)/.test(txt),
+      // nothing re-scored, so the bar says so instead of floating a label
+      notMoved: B.fillPct === 0 && /Not moved yet - the bar moves when a risk is re-scored/.test(txt) && !/Current position/.test(txt),
+      // the second reading, which moves as work closes
+      delivered: /PLAN DELIVERED/i.test(txt) && new RegExp(B.dep.done + ' of ' + B.dep.total + ' planned controls and actions in place').test(txt) };
+  });
+  R.ok(t.onePop && t.noMixed, 'the score reading counts rated risks only, and says how many are not rated');
+  R.ok(t.flag, 'the target flag says what the line promises when some risks have no target');
+  R.ok(t.notMoved, 'with nothing re-scored the bar says so rather than floating a Current position label');
+  R.ok(t.delivered, 'a second reading shows what is in place now (' + t.depPct + '%)');
+}
+
+// ── the delivered bar moves when work closes; the score bar does not ──
+{
+  const t = await page.evaluate(() => {
+    const before = _boardModel();
+    S.riskProfile.find(r => r.id === 'j1').actions.find(a => a.id === 'ja2').status = 'Complete';
+    renderCockpit();
+    const after = _boardModel();
+    // and the score bar moves only on a re-score
+    S.riskProfile.find(r => r.id === 'j1').scoreHistory = [{ at: '2026-09-01', l: 5, s: 5 }];
+    S.riskProfile.find(r => r.id === 'j1').likelihood = '2'; S.riskProfile.find(r => r.id === 'j1').severity = '3';
+    renderCockpit();
+    const rescored = _boardModel();
+    const panel = [...document.querySelectorAll('.ckx-panel')].find(p => /Risk journey/.test(p.textContent));
+    return { depMoved: after.depPct > before.depPct, scoreStill: after.fillPct === before.fillPct,
+      scoreMoved: rescored.fillPct > after.fillPct,
+      hereShown: /Current position/.test(panel.innerText) };
+  });
+  R.ok(t.depMoved && t.scoreStill, 'closing an action moves the delivered bar and leaves the score journey where it was');
+  R.ok(t.scoreMoved && t.hereShown, 're-scoring moves the score journey, and Current position appears on it');
+}
+
 // ── the other three board widgets ──
 {
   const t = await page.evaluate(() => {

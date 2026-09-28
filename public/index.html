@@ -4433,6 +4433,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                 <label class="field-label">Your practice descriptor <span class="fl-hint" title="The short line printed after your practice name in the report footer. Leave it blank to print the name on its own.">(?)</span></label>
                 <input type="text" id="brandProducerLine" placeholder="e.g. Health, safety &amp; environmental advisers" oninput="updateBrandPreview()">
               </div>
+              <div class="field-group">
+                <label class="field-label">Certificate signatory <span class="fl-hint" title="Printed under the signature line on CPD certificates of attendance - name and post-nominals.">(?)</span></label>
+                <input type="text" id="brandCertSignatory" placeholder="e.g. Simon Archer CMIOSH CMaPS MCABE" oninput="updateBrandPreview()">
+              </div>
+              <div class="field-group">
+                <label class="field-label">Signatory role <span class="fl-hint" title="The line under the signatory's name on certificates.">(?)</span></label>
+                <input type="text" id="brandCertSignatoryRole" placeholder="e.g. Managing Director, Archer Health &amp; Safety" oninput="updateBrandPreview()">
+              </div>
             </div>
           </div>
 
@@ -5479,6 +5487,7 @@ let S = {
     name:      'AHS Compliance Consulting',
     producer:     'AHS Compliance Consulting',                 // printed in every report footer
     producerLine: 'Health, safety & environmental advisers',
+    certSignatory: '', certSignatoryRole: '',              // printed on CPD certificates of attendance
     tagline:   'Health & Safety Consultancy',
     website:   '',
     phone:     '',
@@ -8573,6 +8582,8 @@ function populateBrandingForm(){
   sv('brandTagline', b.tagline);
   sv('brandProducer',     b.producer     !== undefined ? b.producer     : 'AHS Compliance Consulting');
   sv('brandProducerLine', b.producerLine !== undefined ? b.producerLine : 'Health, safety & environmental advisers');
+  sv('brandCertSignatory', b.certSignatory||'');
+  sv('brandCertSignatoryRole', b.certSignatoryRole||'');
   sv('brandWebsite', b.website);
   sv('brandPhone',   b.phone);
   sv('brandEmail',   b.email);
@@ -8619,6 +8630,8 @@ function flushBranding(){
   const tagline   = readText('brandTagline');
   const producer     = readText('brandProducer');
   const producerLine = readText('brandProducerLine');
+  const certSignatory = readText('brandCertSignatory');
+  const certSignatoryRole = readText('brandCertSignatoryRole');
   const website   = readText('brandWebsite');
   const phone     = readText('brandPhone');
   const email     = readText('brandEmail');
@@ -8632,6 +8645,8 @@ function flushBranding(){
   // report with no producer named on it at all.
   if(producer     !== undefined) S.branding.producer     = producer || S.branding.producer || 'AHS Compliance Consulting';
   if(producerLine !== undefined) S.branding.producerLine = producerLine;   // typed-empty is valid
+  if(certSignatory !== undefined) S.branding.certSignatory = certSignatory;
+  if(certSignatoryRole !== undefined) S.branding.certSignatoryRole = certSignatoryRole;
   if(website   !== undefined) S.branding.website   = website;     // typed-empty is valid
   if(phone     !== undefined) S.branding.phone     = phone;
   if(email     !== undefined) S.branding.email     = email;
@@ -14045,6 +14060,7 @@ function _newClientBranding(){
   return { name:'', tagline:b.tagline||'', website:b.website||'', phone:b.phone||'', email:b.email||'',
            producer:b.producer||'AHS Compliance Consulting',
            producerLine:(b.producerLine!==undefined?b.producerLine:'Health, safety & environmental advisers'),
+           certSignatory:b.certSignatory||'', certSignatoryRole:b.certSignatoryRole||'', certSignature:b.certSignature||'',
            primary:b.primary||'#757575', accent:b.accent||'#4BBFD6', textColor:b.textColor||'#3a3a3a',
            logoB64:b.logoB64||'', logoPdfB64:b.logoPdfB64||'', logoFormat:b.logoFormat||'', logoW:b.logoW||0, logoH:b.logoH||0 };
 }
@@ -29024,6 +29040,7 @@ function openSignoffTrail(policyId){
         +(e.legacy?' \u00b7 recorded before this trail existed':''))+'</div>'
       +(e.policyLink?('<div class="pso-e-meta">Document: '+esc(e.policyLink)+'</div>'):'')
       +(e.reason?('<div class="pso-e-why">Reason: '+esc(e.reason)+'</div>'):'')
+      +_certEntryHTML(e, pol)
       +(e.declaration?('<pre class="pso-e-dec">'+esc(e.declaration)+'</pre>'):'')
       +'</div>';
   }).join(''):'<div style="font-size:12.5px;color:var(--text-muted);">Nothing recorded against this yet.</div>';
@@ -29037,6 +29054,7 @@ function openSignoffTrail(policyId){
     <div style="padding:14px 20px;max-height:62vh;overflow:auto;">${body}</div>
     <div style="padding:10px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);line-height:1.5;">${esc(SIGNOFF_LEGAL_BASIS)}</div>
     <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;">
+      ${_certBulkBtnHTML(pol)}
       <button class="btn btn-outline btn-sm" onclick="downloadSignoffDeclaration('${policyId}')" title="This item as one PDF, laid out like the page the employee saw: the document, the declaration in their words, and everyone who confirmed it - when, how, and from what">\u2b73 Declaration record (PDF)</button>
       <button class="btn btn-ghost btn-sm" onclick="exportSignoffTrail()">\u2b73 Export the whole trail</button>
       <button class="btn btn-primary btn-sm" onclick="document.getElementById('psoTrailOv').remove()">Close</button>
@@ -29175,6 +29193,7 @@ function renderPolicySignoff(){
         ${(ro||!_tOnline())?'':`<button class="btn btn-outline btn-xs no-print" onclick="openSignoffSend('${pol.id}')" title="Make a link for each employee - they read it and confirm on their phone, and it comes back onto the trail">✉ Ask by link</button>`}<button class="btn btn-ghost btn-xs no-print" onclick="openSignoffTrail('${pol.id}')" title="Every acknowledgement and every withdrawal recorded against this, with who, when, how and which version">≡ Trail${(function(){ const c=_psoTrail().filter(e=>e&&e.policyId===pol.id).length; return c?(' ('+c+')'):''; })()}</button>
         ${ro?'':`<button class="btn btn-ghost btn-xs" onclick="removeSignoffPolicy('${pol.id}')" title="Remove">${_ic('trash',13)}</button>`}
       </div>
+      ${pol.type==='Training / CPD'?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px;"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);flex:0 0 auto;" title="What the certificate of attendance says under the name">On the certificate</span><input value="${esc(pol.certLine||'')}" placeholder="attended... e.g. a one-hour continuing professional development session"${dis} oninput="updateSignoffPolicy('${pol.id}','certLine',this.value)" style="flex:2;min-width:220px;${inp}"><input value="${esc(pol.certStrap||'')}" placeholder="Strapline (optional) e.g. Legislation, risk assessment, policy, process and procedure"${dis} oninput="updateSignoffPolicy('${pol.id}','certStrap',this.value)" style="flex:2;min-width:220px;${inp}"></div>`:''}
       <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12px;color:var(--accent);">Linked risks${tagged.length?(' ('+tagged.length+')'):''}</summary>
         <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;">${riskChecks}</div>
       </details>
@@ -29332,6 +29351,136 @@ function _psoArchiveLineHTML(ro){
     +'<span style="flex:1;min-width:220px;">'+line+(a.overdue?' - overdue':'')+'</span>'
     +'<input type="date" id="psoArchEnd" value="'+new Date().toISOString().slice(0,10)+'" title="The last day of the 12 months to archive" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;">'
     +'<button class="btn btn-outline btn-sm" onclick="downloadSignoffArchive(document.getElementById(\'psoArchEnd\').value)" title="One PDF: the register as it stood on that day and every entry in the 12 months before it, produced from the trail. File it with the client\'s records once a year.">⭳ 12-month archive</button></div>';
+}
+// ── Certificates ──────────────────────────────────────────────
+// Simon, 2026-09-28: "this is one of my certificates i issue for cpd and
+// training - can you bring the issue of these into the flow when cpd or
+// training is signed off". Once a person has confirmed a Training / CPD
+// item, their certificate is one click from the trail, in the layout the
+// hand-issued ones use: certificate of attendance, name, session, delivered
+// on that date by the practice working alongside the client, signed,
+// numbered. The number is given once and kept, so a reprint is the same
+// certificate. Nothing here is a document Compass holds - it is produced
+// from the trail entry, every time.
+const CERT_TYPES=['Training / CPD'];
+function _certCanIssue(pol){ return !!pol && CERT_TYPES.indexOf(String(pol.type||''))!==-1; }
+function _certList(){ const p=_psoState(); if(!Array.isArray(p.certificates)) p.certificates=[]; return p.certificates; }
+function _certFor(entryId){ return _certList().find(c=>c&&c.entryId===entryId)||null; }
+// <prefix>-<yyyymmdd>-<nn>: the date is the session's; the number runs per day.
+function _certNextRef(pol){
+  const br=(S.branding||{}); const prefix=String(br.certPrefix||'AHS-CPD').trim()||'AHS-CPD';
+  const day=String((pol&&pol.delivered)||new Date().toISOString().slice(0,10)).slice(0,10).replace(/-/g,'');
+  const head=prefix+'-'+day+'-';
+  let n=0; _certList().forEach(c=>{ if(String(c.ref||'').indexOf(head)===0){ const k=parseInt(String(c.ref).slice(head.length),10); if(k>n) n=k; } });
+  return head+String(n+1).padStart(2,'0');
+}
+// Who can be issued one: each person the grid reads as signed, on their
+// latest acknowledgement. A withdrawn confirmation earns nothing.
+function _certEligible(policyId){
+  const p=_psoState(); const pol=p.policies.find(x=>x.id===policyId); if(!_certCanIssue(pol)) return [];
+  const signed=_psoRebuildSigned(); const out=[];
+  p.staff.forEach(st=>{ if(!signed[st.id+'|'+policyId]) return;
+    const acks=_psoTrailFor(st.id, policyId).filter(e=>e.kind==='acknowledged'); if(acks.length) out.push(acks[acks.length-1]); });
+  return out;
+}
+function _certRecordFor(e, pol){
+  let c=_certFor(e.id);
+  if(!c){ c={ id:'crt_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ref:_certNextRef(pol), entryId:e.id, staffId:e.staffId, policyId:e.policyId,
+    name:String(e.staffName||''), title:String(pol.title||''), issuedAt:new Date().toISOString(), by:(typeof _actor==='function'?(_actor().name||''):'') };
+    _certList().push(c); }
+  return c;
+}
+function _certData(e, pol, c){
+  const br=(S.branding||{});
+  const client=(_consultantView&&_consultantView.name)||(S.company&&(S.company.tradingName||S.company.legalName))||br.name||'the client';
+  return { ref:c.ref, name:String(e.staffName||''), line:String(pol.certLine||'').trim()||'a continuing professional development session',
+    title:String(pol.title||''), strap:String(pol.certStrap||'').trim(),
+    date:String(pol.delivered||String(e.at||'').slice(0,10)).slice(0,10), producer:String(br.producer||'AHS Compliance Consulting'),
+    client:String(client), signatory:String(br.certSignatory||(typeof _actor==='function'?(_actor().name||''):'')||''), role:String(br.certSignatoryRole||''),
+    sig:String(br.certSignature||''), logo:String(br.logoPdfB64||br.logoB64||''), logoFmt:String(br.logoFormat||'PNG') };
+}
+// One landscape page, in the layout the hand-issued ones use.
+function _certDraw(doc, o){
+  const A=_pdfAscii, W=297, H=210, TEAL=[75,191,214], INK=[29,31,32], MUT=[106,108,110], HAIR=[212,212,215];
+  const cx=W/2;
+  doc.setDrawColor(HAIR[0],HAIR[1],HAIR[2]); doc.setLineWidth(0.6); doc.rect(10,10,W-20,H-20,'S');
+  doc.setLineWidth(0.25); doc.rect(13,13,W-26,H-26,'S');
+  // the practice mark: the uploaded logo if there is one, else the ring
+  let y=30, logoOk=false;
+  if(o.logo){ try{ doc.addImage(o.logo, String(o.logoFmt||'PNG').toUpperCase()==='JPEG'?'JPEG':'PNG', cx-9, y-8, 18, 18, undefined, 'FAST'); logoOk=true; }catch(err){ logoOk=false; } }
+  if(!logoOk){ doc.setLineWidth(0.9); doc.setDrawColor(TEAL[0],TEAL[1],TEAL[2]); doc.circle(cx, y, 7, 'S'); doc.circle(cx, y, 3.8, 'S'); doc.setDrawColor(150,154,160); doc.line(cx, y, cx+6.2, y-5.4); doc.setLineWidth(0.2); }
+  y+=16;
+  doc.setFont('helvetica','bolditalic'); doc.setFontSize(16); doc.setTextColor(INK[0],INK[1],INK[2]); doc.text(A(o.producer), cx, y, {align:'center'});
+  y+=7; doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(MUT[0],MUT[1],MUT[2]); doc.text(A('C O N T I N U I N G   P R O F E S S I O N A L   D E V E L O P M E N T'), cx, y, {align:'center'});
+  y+=16; doc.setFont('helvetica','normal'); doc.setFontSize(13); doc.setTextColor(TEAL[0],TEAL[1],TEAL[2]); doc.text(A('C E R T I F I C A T E   O F   A T T E N D A N C E'), cx, y, {align:'center'});
+  y+=6; doc.setDrawColor(HAIR[0],HAIR[1],HAIR[2]); doc.setLineWidth(0.3); doc.line(cx-16, y, cx+16, y);
+  y+=12; doc.setFont('helvetica','italic'); doc.setFontSize(10.5); doc.setTextColor(MUT[0],MUT[1],MUT[2]); doc.text(A('This is to certify that'), cx, y, {align:'center'});
+  y+=14; doc.setFont('helvetica','bold'); doc.setFontSize(30); doc.setTextColor(INK[0],INK[1],INK[2]); doc.text(A(o.name||'(name)'), cx, y, {align:'center'});
+  y+=7; doc.line(cx-60, y, cx+60, y);
+  y+=11; doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(MUT[0],MUT[1],MUT[2]); doc.text(A('attended '+o.line), cx, y, {align:'center'});
+  y+=11; doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(INK[0],INK[1],INK[2]); doc.text(A(o.title||'(session)'), cx, y, {align:'center'});
+  if(o.strap){ y+=7; doc.setFont('helvetica','italic'); doc.setFontSize(10.5); doc.setTextColor(MUT[0],MUT[1],MUT[2]); doc.text(A(o.strap), cx, y, {align:'center'}); }
+  y+=12; doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(MUT[0],MUT[1],MUT[2]);
+  doc.text(A('Delivered on '+(o.date?new Date(o.date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'')+' by '+o.producer+','), cx, y, {align:'center'});
+  y+=6; doc.text(A('working alongside '+o.client+'.'), cx, y, {align:'center'});
+  // the signature block, bottom left
+  const sx=28, sy=170;
+  if(o.sig){ try{ const m=String(o.sig).match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/i); if(m) doc.addImage(m[2], m[1].toLowerCase()==='png'?'PNG':'JPEG', sx, sy-22, 50, 20, undefined, 'FAST'); }catch(err){} }
+  doc.setDrawColor(INK[0],INK[1],INK[2]); doc.setLineWidth(0.5); doc.line(sx, sy, sx+95, sy); doc.setLineWidth(0.2);
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(INK[0],INK[1],INK[2]); doc.text(A(o.signatory||o.producer), sx, sy+6);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(MUT[0],MUT[1],MUT[2]);
+  if(o.role) doc.text(A(o.role), sx, sy+11);
+  doc.text(A('Presenter'), sx, sy+(o.role?16:11));
+  // in conjunction with the client, bottom right
+  const rx=W-28;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(MUT[0],MUT[1],MUT[2]); doc.text(A('I N   C O N J U N C T I O N   W I T H'), rx, sy-4, {align:'right'});
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(INK[0],INK[1],INK[2]); doc.text(A(o.client), rx, sy+4, {align:'right'});
+  // the number, at the foot
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(MUT[0],MUT[1],MUT[2]);
+  doc.text(A('Certificate '+o.ref+'  -  Retain as evidence of continuing professional development'), cx, H-16, {align:'center'});
+}
+function _certPdf(){ const { jsPDF } = window.jspdf; return new jsPDF({orientation:'landscape',unit:'mm',format:'a4'}); }
+function issueCertificate(entryId){
+  try{
+    const e=_psoTrail().find(x=>x&&x.id===entryId); if(!e||e.kind!=='acknowledged'){ showToast('Only a confirmed entry earns a certificate','info'); return; }
+    const pol=_psoState().policies.find(x=>x.id===e.policyId);
+    if(!_certCanIssue(pol)){ showToast('Certificates are for Training / CPD items','info'); return; }
+    if(_roLocked()){ showToast('Read-only - certificates are issued by the consultant','info'); return; }
+    const c=_certRecordFor(e, pol);
+    const doc=_certPdf(); _certDraw(doc, _certData(e, pol, c));
+    doc.save('certificate-'+String(e.staffName||'name').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+c.ref+'.pdf');
+    saveData();
+    const ov=document.getElementById('psoTrailOv'); if(ov){ ov.remove(); openSignoffTrail(e.policyId); }
+    showToast('✓ Certificate '+c.ref+' issued to '+(e.staffName||''),'success');
+  }catch(err){ console.error('Certificate failed',err); showToast('Could not build the certificate - see console','error'); }
+}
+// Everyone confirmed, one PDF, a page each. Numbers already given are kept.
+function issueCertificates(policyId){
+  try{
+    const pol=_psoState().policies.find(x=>x.id===policyId); if(!_certCanIssue(pol)) return;
+    if(_roLocked()){ showToast('Read-only - certificates are issued by the consultant','info'); return; }
+    const list=_certEligible(policyId);
+    if(!list.length){ showToast('Nobody has confirmed this yet','info'); return; }
+    const doc=_certPdf();
+    list.forEach((e,i)=>{ if(i) doc.addPage(); const c=_certRecordFor(e, pol); _certDraw(doc, _certData(e, pol, c)); });
+    doc.save('certificates-'+String(pol.title||'item').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+new Date().toISOString().slice(0,10)+'.pdf');
+    saveData();
+    const ov=document.getElementById('psoTrailOv'); if(ov){ ov.remove(); openSignoffTrail(policyId); }
+    showToast('✓ '+list.length+' certificate'+(list.length!==1?'s':'')+' issued','success');
+  }catch(err){ console.error('Certificates failed',err); showToast('Could not build the certificates - see console','error'); }
+}
+// On the trail: the number if one has been issued, the button if not.
+function _certEntryHTML(e, pol){
+  if(!e||e.kind!=='acknowledged'||!_certCanIssue(pol)) return '';
+  const c=_certFor(e.id);
+  if(c) return '<div class="pso-e-meta">Certificate <b>'+esc(c.ref)+'</b> issued '+esc(fmtDate(String(c.issuedAt||'').slice(0,10)))+(c.by?(' by '+esc(c.by)):'')
+    +(_roLocked()?'':' <button class="btn btn-ghost btn-xs no-print" onclick="issueCertificate(\''+esc(e.id)+'\')" title="Print it again - the same certificate, the same number">⭳ again</button>')+'</div>';
+  return _roLocked()?'':'<div class="pso-e-meta"><button class="btn btn-outline btn-xs no-print" onclick="issueCertificate(\''+esc(e.id)+'\')" title="Certificate of attendance for this person - numbered, and kept on the record">⭳ Certificate</button></div>';
+}
+function _certBulkBtnHTML(pol){
+  if(!_certCanIssue(pol)||_roLocked()) return '';
+  const el=_certEligible(pol.id); const n=el.length, have=el.filter(e=>!!_certFor(e.id)).length;
+  return '<button class="btn btn-outline btn-sm" onclick="issueCertificates(\''+esc(pol.id)+'\')" title="One PDF, a certificate a page, for everyone who has confirmed - numbers already given are kept">⭳ Certificates for everyone confirmed ('+n+(have?(', '+have+' issued'):'')+')</button>';
 }
 function downloadSignoffArchive(endDate){
   try{

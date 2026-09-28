@@ -151,4 +151,51 @@ await wait(page, 300);
   R.ok(t.rounds === 2 && t.rounds2 === 2, 'an RA rewritten after it was issued goes out again as a new round - once');
 }
 
+// ── a certificate, once they have confirmed ──
+//  Simon, 2026-09-28, with one of his own attached: "can you bring the issue
+//  of these into the flow when cpd or training is signed off".
+{
+  const t = await page.evaluate(() => {
+    S.branding = Object.assign({}, S.branding, { producer: 'Archer Health & Safety', certSignatory: 'Simon Archer CMIOSH CMaPS MCABE', certSignatoryRole: 'Managing Director, Archer Health & Safety' });
+    S.company = { legalName: 'Fineline Architectural Design' };
+    S.policySignoff = { policies: [
+        { id: 'p1', title: 'Health and Safety Essentials', type: 'Training / CPD', delivered: '2026-09-16', certLine: 'a one-hour continuing professional development session', certStrap: 'Legislation, risk assessment, policy, process and procedure', riskIds: [] },
+        { id: 'p2', title: 'Fire Safety Policy', type: 'Policy', version: '3.1', delivered: '2026-08-12', riskIds: [] } ],
+      staff: [{ id: 's1', name: 'Sophie Boyes', role: 'Architect' }, { id: 's2', name: 'Chloe Barrett', role: 'Office Manager' }], signed: {}, log: [], logMigrated: true, certificates: [] };
+    const e1 = _psoRecord('s1', 'p1', 'acknowledged', { method: 'link', at: '2026-09-17T08:10:00.000Z' });
+    _psoRecord('s1', 'p2', 'acknowledged', { method: 'in-person' });
+    _psoRebuildSigned();
+    // catch how each PDF is saved (save is copied from API onto each instance) and what each certificate is drawn from
+    const P = window.jspdf.jsPDF.API; const names = [], drawn = []; const oS = P.save, oD = window._certDraw;
+    P.save = function (nm) { names.push(nm); return this; };
+    window._certDraw = function (doc, o) { drawn.push(o); return oD(doc, o); };
+    issueCertificate(e1.id);
+    const first = _psoState().certificates.slice();
+    issueCertificate(e1.id);                                   // again: the same number, no second record
+    _psoRecord('s2', 'p1', 'acknowledged', { method: 'in-person' }); _psoRebuildSigned();
+    issueCertificates('p1');                                   // everyone confirmed: Sophie keeps -01, Chloe gets -02
+    P.save = oS; window._certDraw = oD;
+    const certs = _psoState().certificates;
+    openSignoffTrail('p1'); const ov1 = document.getElementById('psoTrailOv'); const t1 = ov1 ? ov1.innerText : ''; if (ov1) ov1.remove();
+    openSignoffTrail('p2'); const ov2 = document.getElementById('psoTrailOv'); const t2 = ov2 ? ov2.innerText : ''; if (ov2) ov2.remove();
+    renderPolicySignoff(); const reg = document.getElementById('signoffContainer').innerHTML;
+    return { names, d: drawn[0] || {}, pages: drawn.length, first: first.map(c => c.ref), certs: certs.map(c => c.ref + ':' + c.name), t1, t2,
+      certInputs: (reg.match(/'certLine'/g) || []).length };
+  });
+  R.ok(t.first.length === 1 && t.first[0] === 'AHS-CPD-20260916-01', 'a confirmed CPD entry earns a numbered certificate: ' + t.first[0]);
+  R.ok(/^certificate-sophie-boyes-AHS-CPD-20260916-01\.pdf$/.test(t.names[0] || ''), 'named for the person and the number (' + t.names[0] + ')');
+  R.ok(t.d.name === 'Sophie Boyes' && t.d.title === 'Health and Safety Essentials' && t.d.line === 'a one-hour continuing professional development session' && /^Legislation, risk assessment/.test(t.d.strap),
+    'it carries the name, the session, and the two certificate lines');
+  R.ok(t.d.date === '2026-09-16' && t.d.producer === 'Archer Health & Safety' && t.d.client === 'Fineline Architectural Design',
+    'delivered on the session date by the practice, working alongside the client');
+  R.ok(t.d.signatory === 'Simon Archer CMIOSH CMaPS MCABE' && t.d.role === 'Managing Director, Archer Health & Safety', 'signed by the practice signatory, from branding');
+  R.ok(t.d.ref === 'AHS-CPD-20260916-01' && t.pages === 4, 'and numbered - four pages drawn in all: one, the reprint, and the batch of two');
+  R.ok(t.names.length === 3 && t.names[1] === t.names[0], 'printing it again gives the same certificate, the same number');
+  R.ok(t.certs.length === 2 && t.certs[0] === 'AHS-CPD-20260916-01:Sophie Boyes' && t.certs[1] === 'AHS-CPD-20260916-02:Chloe Barrett', 'everyone confirmed: the second person gets the next number, the first keeps hers');
+  R.ok(/^certificates-health-and-safety-essentials-/.test(t.names[2] || ''), 'one PDF for the batch');
+  R.ok(/Certificate AHS-CPD-20260916-01 issued/.test(t.t1) && /Certificates for everyone confirmed \(2, 2 issued\)/.test(t.t1), 'the trail shows the number against each person, and offers the batch');
+  R.ok(!/Certificate/.test(t.t2), 'a policy earns no certificate');
+  R.ok(t.certInputs === 1, 'the certificate lines are editable on the CPD item, and only there');
+}
+
 await R.done(browser, errors);

@@ -950,7 +950,7 @@ export function buildBoardReport(state, opts = {}) {
       do {
         if (_used >= LAD_LINES) _pushSlice();
         const take = chips.splice(0, Math.max(1, Math.min(chips.length, LAD_LINES - _used)));
-        _cur.push({ band: r.band + (first ? '' : ' (cont.)'), colour: r.colour, sub: first ? r.sub : '', range: first ? r.range : '', chips: take });
+        _cur.push({ band: r.band + (first ? '' : ' (cont.)'), colour: r.colour, sub: first ? r.sub : '', range: first ? r.range : '', count: first ? r.chips.length : '', chips: take });
         _used += Math.max(1, take.length);
         first = false;
       } while (chips.length);

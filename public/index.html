@@ -3236,6 +3236,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .ep-theme-bar>i{display:block;height:5px;}
     /* The band mark: square, so it is never read as the round status dot it replaced */
     .ep-band{display:inline-block;width:11px;height:11px;vertical-align:middle;}
+    /* A register line that no longer applies says why, on its face */
+    .reg-na{font-size:10.5px;font-weight:400;color:#6B7280;margin-top:2px;}
     .ep-ref{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.03em;padding:2px 5px;cursor:pointer;font-variant-numeric:tabular-nums;white-space:nowrap;}
     .ep-ref:hover{border-color:var(--accent);color:var(--accent);}
     .ep-ref-none{border-color:transparent;cursor:default;}
@@ -25268,8 +25270,59 @@ function _regNextDue(lastDone, freq){
   if(a[0]==='d') d.setDate(d.getDate()+a[1]); else if(a[0]==='m') d.setMonth(d.getMonth()+a[1]); else d.setFullYear(d.getFullYear()+a[1]);
   return d.toISOString().slice(0,10);
 }
-function _regCounts(){ let overdue=0,soon=0,total=0; _regSections().forEach(s=>(s.items||[]).forEach(r=>{ if(!(r.item&&String(r.item).trim())) return; total++; const g=_regRag(r.dueDate); if(g==='red') overdue++; else if(g==='amber') soon++; })); return {overdue,soon,total}; }
-function _regSecCounts(s){ let overdue=0,soon=0; (s.items||[]).forEach(r=>{ const g=_regRag(r.dueDate); if(g==='red') overdue++; else if(g==='amber') soon++; }); return {overdue,soon}; }
+// ── No longer applies ───────────────────────────────────────────────────
+// The only honest way out of a statutory examination that is not doing it:
+// the thing has gone, or is out of use, or is covered by another line. It
+// needs a reason, because that reason is what an auditor asks for.
+function _regNAKey(sec, it){ return String((it&&it.sheet)||(sec&&sec.name)||'')+'|'+String((it&&it.item)||'').trim().toLowerCase(); }
+function _regNAMap(){ if(!S.monitoring||typeof S.monitoring!=='object') S.monitoring={};
+  if(!S.monitoring.regNA||typeof S.monitoring.regNA!=='object') S.monitoring.regNA={}; return S.monitoring.regNA; }
+function _regIsNA(it){ return !!(it && it.na && String(it.na.reason||'').trim()); }
+// ONE derivation for where a register line stands. 'na' is its own state -
+// never green, because green would claim it is in date, and it is not in
+// the register at all any more.
+function _regItemRag(it){ return _regIsNA(it) ? 'na' : _regRag(it&&it.dueDate); }
+// Marks are kept apart from the items, because an upload replaces the items
+// wholesale and the reason must outlive that.
+function _regNAApply(){
+  const map=_regNAMap(); let n=0;
+  _regSections().forEach(sec=>(sec.items||[]).forEach(it=>{
+    const m=map[_regNAKey(sec,it)];
+    if(m && !_regIsNA(it)){ it.na={ at:m.at, by:m.by, reason:m.reason }; n++; }
+  }));
+  return n;
+}
+function regMarkNA(secId, id){
+  if(_blockIfReadOnly()) return;
+  const sec=_regSection(secId); if(!sec) return;
+  const it=(sec.items||[]).find(x=>x.id===id); if(!it) return;
+  const why=(typeof prompt==='function')
+    ? prompt('Why does "'+(it.item||'this item')+'" no longer apply?\n\ne.g. disposed of, out of service, covered by another line.\nThis is the record an auditor will ask for.','')
+    : '';
+  if(why===null) return;
+  if(!String(why).trim()){ showToast('A reason is needed - without it this is just an item nobody did','info'); return; }
+  it.na={ at:new Date().toISOString().slice(0,10),
+    by:(typeof _actor==='function'?(_actor().name||''):''), reason:String(why).trim() };
+  _regNAMap()[_regNAKey(sec,it)]=Object.assign({}, it.na);
+  // anything already raised for it comes back off the plan
+  if(typeof _retireActionsFor==='function') _retireActionsFor('regKey','reg|'+it.id);
+  _stamp(it,'updated'); saveData(); renderMonitoring();
+  if(typeof _refreshActionViews==='function') _refreshActionViews();
+  showToast('\u2713 Marked as no longer applying - it leaves the overdue count','success');
+}
+function regClearNA(secId, id){
+  if(_blockIfReadOnly()) return;
+  const sec=_regSection(secId); if(!sec) return;
+  const it=(sec.items||[]).find(x=>x.id===id); if(!it) return;
+  delete it.na; delete _regNAMap()[_regNAKey(sec,it)];
+  _stamp(it,'updated'); saveData(); renderMonitoring();
+  if(typeof _refreshActionViews==='function') _refreshActionViews();
+  showToast('Back in the register - it counts again','info');
+}
+// A count of what no longer applies rides with the rest, because an item
+// taken out of the register is a thing a reader is entitled to see.
+function _regCounts(){ let overdue=0,soon=0,total=0,na=0; _regSections().forEach(s=>(s.items||[]).forEach(r=>{ if(!(r.item&&String(r.item).trim())) return; const g=_regItemRag(r); if(g==='na'){ na++; return; } total++; if(g==='red') overdue++; else if(g==='amber') soon++; })); return {overdue,soon,total,na}; }
+function _regSecCounts(s){ let overdue=0,soon=0; (s.items||[]).forEach(r=>{ const g=_regItemRag(r); if(g==='red') overdue++; else if(g==='amber') soon++; }); return {overdue,soon}; }
 function _regItemInPlan(id){ return (S.actionPlan||[]).some(a=>a.regKey==='reg|'+id); }
 function _regDateChange(secId,id,field,value){
   if(_roLocked()) return;
@@ -25301,7 +25354,7 @@ function raiseRegItemAction(secId,id){
 // ── Bulk: raise every overdue / due-soon statutory item into the plan (deduped) ──
 function _statDueCount(){
   const plan=S.actionPlan||[]; let n=0;
-  _regSections().forEach(s=>(s.items||[]).forEach(r=>{ const rag=_regRag(r.dueDate); if((rag==='red'||rag==='amber') && !plan.some(a=>a.regKey==='reg|'+r.id)) n++; }));
+  _regSections().forEach(s=>(s.items||[]).forEach(r=>{ const rag=_regItemRag(r); if((rag==='red'||rag==='amber') && !plan.some(a=>a.regKey==='reg|'+r.id)) n++; }));
   return n;
 }
 function raiseStatutoryDue(){
@@ -25309,7 +25362,7 @@ function raiseStatutoryDue(){
   if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
   let n=0;
   _regSections().forEach(s=>(s.items||[]).forEach(r=>{
-    const rag=_regRag(r.dueDate); if(rag!=='red'&&rag!=='amber') return;
+    const rag=_regItemRag(r); if(rag!=='red'&&rag!=='amber') return;
     const key='reg|'+r.id; if(S.actionPlan.some(a=>a.regKey===key)) return;
     // An ongoing control put here by an action close-out is not a statutory
     // inspection, and the client reads this line - so it says what it is.
@@ -25410,7 +25463,9 @@ async function _statutoryApplyParsed(parsed, fname, buf){
   S.monitoring.regSections=Object.keys(bySheet).map(name=>({ id:_reqUid('regsec'), name,
     items:bySheet[name].map(it=>({ id:_reqUid('reg'), sheet:it.sheet, row:it.row, item:it.item, area:it.area, frequency:it.frequency, resultDate:it.resultDate, dueDate:it.dueDate, result:it.result, certRef:it.certRef, notes:it.notes })) }));
   S.monitoring.regSeeded=true; S.monitoring.statFile=fname;
+  const back=_regNAApply();   // the reasons outlive the replace
   saveData(); renderMonitoring();
+  if(back) showToast(back+' item'+(back!==1?'s':'')+' still marked as no longer applying','info',5000);
   showToast('✓ Imported '+parsed.items.length+' statutory items from '+fname,'success');
 }
 async function statutoryExportXlsx(){
@@ -26096,7 +26151,7 @@ function _assuranceState(kind){
     if(rag==='red') red++; else amber++;
     if(date && (!next || String(date)<next)) next=String(date); };
   if(kind==='training') _forEachTrainingDate((p,c,cell)=>{ if(cell&&cell.type==='date') bump(_trainingRag(cell.v), cell.v); });
-  else _regSections().forEach(s=>(s.items||[]).forEach(i=>bump(_regRag(i.dueDate), i.dueDate)));
+  else _regSections().forEach(s=>(s.items||[]).forEach(i=>bump(_regItemRag(i), i.dueDate)));
   return { red:red, amber:amber, next:next, total:red+amber };
 }
 function _assuranceRiskOf(kind){ return (S.riskProfile||[]).find(r=>r&&r.assuranceKey===kind)||null; }
@@ -26131,7 +26186,7 @@ function _assuranceRetireDone(){
     close((S.actionPlan||[]).find(x=>x.trainingKey==='train|'+p.id+'|'+c), 'Closed by the matrix - '+c+' now runs to '+fmtDate(cell.v));
   });
   _regSections().forEach(s=>(s.items||[]).forEach(i=>{
-    const rag=_regRag(i.dueDate); if(rag==='red'||rag==='amber') return;
+    const rag=_regItemRag(i); if(rag==='red'||rag==='amber') return;
     close((S.actionPlan||[]).find(x=>x.regKey==='reg|'+i.id), 'Closed by the register - next due '+fmtDate(i.dueDate));
   }));
   return n;
@@ -26212,7 +26267,7 @@ function importStatutoryCSV(text){
     else { sec.items.push({ id:_reqUid('reg'), item:item, area:area, frequency:frequency, dueDate:nextDue, resultDate:lastDone, result:result, certRef:certRef, notes:notes }); }
     added++;
   }
-  S.monitoring.regSeeded=true; saveData(); renderMonitoring();
+  S.monitoring.regSeeded=true; _regNAApply(); saveData(); renderMonitoring();
   showToast('✓ Imported '+added+' statutory item'+(added!==1?'s':'')+' into the regulatory tracker','success');
 }
 function importTrainingCSV(text){
@@ -26376,7 +26431,7 @@ function _impApply(){
       if(it){ it.area=rec.area||it.area; it.frequency=rec.frequency||it.frequency; it.dueDate=rec.nextDue||it.dueDate; it.resultDate=rec.lastDone||it.resultDate; it.result=rec.result||it.result; it.certRef=rec.certRef||it.certRef; it.notes=rec.notes||it.notes; }
       else { sec.items.push({ id:_reqUid('reg'), item:rec.item, area:rec.area, frequency:rec.frequency, dueDate:rec.nextDue, resultDate:rec.lastDone, result:rec.result, certRef:rec.certRef, notes:rec.notes }); } });
     const m=_impWiz.map; const p={}; ['section','item','area','frequency','lastDone','nextDue','result','certRef','notes'].forEach(f=>{ if(m[f]!=null&&m[f]>-1) p[f]=_impWiz.headers[m[f]]; }); _importProfiles().statutory=p;
-    S.monitoring.regSeeded=true; saveData(); renderMonitoring();
+    S.monitoring.regSeeded=true; _regNAApply(); saveData(); renderMonitoring();
     showToast('✓ Imported '+recs.length+' statutory item'+(recs.length!==1?'s':''),'success');
   }
   closeImportWizard();
@@ -27990,22 +28045,24 @@ function renderMonitoring(){
 
   // Regulatory tracker card - named sections, each with its own statutory items
   const regSecs = _regSections();
-  const _RRAGC={red:'#DC2626',amber:'#F59E0B',green:'#16A34A',grey:'#9CA3AF'};
+  const _RRAGC={red:'#DC2626',amber:'#F59E0B',green:'#16A34A',grey:'#9CA3AF',na:'#6B7280'};
   const _rfmt=(s)=>{ try{ return s? new Date(String(s)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}):''; }catch(e){ return ''; } };
   // One compact row per item - the whole register reads like the training
   // matrix. Click a row to edit everything in one modal (regEditItem).
   const itemRow = (secId, r) => {
-    const g=_regRag(r.dueDate); const gl={red:'Overdue',amber:'Due soon',green:'In date',grey:'No due date'}[g];
+    const g=_regItemRag(r); const gl={red:'Overdue',amber:'Due soon',green:'In date',grey:'No due date',na:'No longer applies'}[g];
     const inPlan=_regItemInPlan(r.id);
     const td=(v)=>`<td style="padding:5px 6px;color:${v?'inherit':'var(--text-muted)'};">${esc(v||'-')}</td>`;
     return `<tr${ro?'':` style="cursor:pointer;" title="Click to edit" onclick="regEditItem('${secId}','${r.id}')"`}>
-      <td style="padding:5px 8px;font-weight:600;">${esc(r.item||'(unnamed)')}${r.notes?` <span title="${esc(r.notes)}" style="color:var(--text-muted);font-weight:400;">✎</span>`:''}</td>
+      <td style="padding:5px 8px;font-weight:600;">${esc(r.item||'(unnamed)')}${r.notes?` <span title="${esc(r.notes)}" style="color:var(--text-muted);font-weight:400;">✎</span>`:''}${g==='na'?`<div class="reg-na">No longer applies - ${esc(r.na.reason)}${r.na.by?(' ('+esc(r.na.by)+', '+esc(fmtDate(r.na.at))+')'):''}</div>`:''}</td>
       ${td(r.area)}${td(r.frequency)}
       <td style="padding:5px 6px;text-align:center;white-space:nowrap;">${r.resultDate?_rfmt(r.resultDate):'-'}</td>
       <td style="padding:5px 6px;text-align:center;"><span title="${gl}" style="display:inline-block;min-width:58px;padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:600;color:#fff;background:${_RRAGC[g]};">${r.dueDate?_rfmt(r.dueDate):gl}</span></td>
       <td style="padding:5px 6px;text-align:center;">${r.result?`<span class="badge ${r.result==='Pass'?'badge-success':'badge-danger'}">${esc(r.result)}</span>`:'-'}</td>
       ${td(r.certRef)}
-      ${ro?'':`<td style="white-space:nowrap;text-align:right;" onclick="event.stopPropagation();">${(g==='red'||g==='amber')?(inPlan?'<span style="font-size:10.5px;font-weight:700;color:var(--success);">✓ in plan</span> ':`<button class="btn btn-ghost btn-xs no-print" title="Raise into the plan" onclick="raiseRegItemAction('${secId}','${r.id}')">↗ plan</button>`):''}<button class="btn btn-ghost btn-xs no-print" title="Delete item" onclick="deleteRegItem('${secId}','${r.id}')">${_ic('trash',13)}</button></td>`}
+      ${ro?'':`<td style="white-space:nowrap;text-align:right;" onclick="event.stopPropagation();">${(g==='red'||g==='amber')?(inPlan?'<span style="font-size:10.5px;font-weight:700;color:var(--success);">✓ in plan</span> ':`<button class="btn btn-ghost btn-xs no-print" title="Raise into the plan" onclick="raiseRegItemAction('${secId}','${r.id}')">↗ plan</button>`):''}${g==='na'
+        ?`<button class="btn btn-ghost btn-xs no-print" title="Put it back in the register - it counts again" onclick="regClearNA('${secId}','${r.id}')">↺ back in</button>`
+        :`<button class="btn btn-ghost btn-xs no-print" title="This examination no longer applies - disposed of, out of service, or covered by another line. A reason is required." onclick="regMarkNA('${secId}','${r.id}')">n/a</button>`}<button class="btn btn-ghost btn-xs no-print" title="Delete item" onclick="deleteRegItem('${secId}','${r.id}')">${_ic('trash',13)}</button></td>`}
     </tr>`;
   };
   const sectionBlock = (s) => {

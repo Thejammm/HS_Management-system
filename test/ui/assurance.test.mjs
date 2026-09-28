@@ -118,7 +118,83 @@ await wait(page, 250);
   R.ok(/now runs to/.test(t.why), 'with the new date on the record: ' + t.why);
 }
 
+// ── "no longer applies": the only honest way out of an examination ──────────
+//    Simon, 2026-09-28: "i dont know what to do with the ones that i choose
+//    not to add". You do not decline a statutory examination - you establish
+//    that it no longer applies, and you say why.
+await seed(page, { company: { legalName: 'Fairbank Fabrications Ltd' } }, 'risk');
+await load([far, far, far], [past, past]);
+await wait(page, 300);
+{
+  const t = await page.evaluate(() => {
+    const before = _assuranceState('statutory');
+    const beforeDue = _statDueCount();
+    window.prompt = () => '';                                  // a reason is required
+    regMarkNA('rs1', 'reg1');
+    const refused = !_regIsNA((_regSections()[0].items || []).find(i => i.id === 'reg1'));
+    window.prompt = () => 'Crane disposed of, June 2026';
+    regMarkNA('rs1', 'reg1');
+    const it = (_regSections()[0].items || []).find(i => i.id === 'reg1');
+    return { before, beforeDue, refused,
+      na: _regIsNA(it), rag: _regItemRag(it), reason: (it.na || {}).reason, by: (it.na || {}).by, at: (it.na || {}).at,
+      after: _assuranceState('statutory'), afterDue: _statDueCount(), counts: _regCounts() };
+  });
+  R.ok(t.refused, 'no reason, no mark - an item nobody did is not an item that does not apply');
+  R.ok(t.na && t.rag === 'na' && /Crane disposed of/.test(t.reason || ''), 'with a reason it is marked, and the reason is kept (' + t.reason + ')');
+  R.ok(!!t.at && t.by !== undefined, 'dated and attributed, because that is what gets asked for');
+  R.ok(t.before.red === 2 && t.after.red === 1, 'it leaves the overdue count (' + t.before.red + ' to ' + t.after.red + ')');
+  R.ok(t.beforeDue === 2 && t.afterDue === 1, 'and the raise no longer offers it (' + t.beforeDue + ' to ' + t.afterDue + ')');
+  R.ok(t.counts.na === 1 && t.counts.total === 1, 'the register still counts it as set aside, so it is not hidden (' + t.counts.na + ' set aside of ' + (t.counts.total + t.counts.na) + ')');
+}
+
+// ── raise them all: every remaining due item, one click, no picking ──
+{
+  const t = await page.evaluate(() => {
+    raiseStatutoryDue();
+    const raised = (S.actionPlan || []).filter(a => a.regKey && a.status !== 'Complete' && a.status !== 'Accepted');
+    return { n: raised.length, descs: raised.map(a => a.desc),
+      naRaised: raised.some(a => a.regKey === 'reg|reg1'),
+      due: _statDueCount() };
+  });
+  R.ok(t.n === 1 && t.due === 0, 'the button raises every item still counting, in one go (' + t.n + ')');
+  R.ok(!t.naRaised, 'and never one that no longer applies');
+}
+
+// ── the reason survives the next upload, which replaces the whole register ──
+{
+  const t = await page.evaluate(() => {
+    // the client re-uploads: a brand new set of item ids, same item names
+    S.monitoring.regSections = [{ id: 'rs9', name: 'Plant & Equipment', items: [
+      { id: 'regX', sheet: 'Plant & Equipment', item: 'Overhead crane thorough examination', frequency: '12-monthly', dueDate: '2026-01-15' },
+      { id: 'regY', sheet: 'Plant & Equipment', item: 'Lifting accessories thorough examination', frequency: '6-monthly', dueDate: '2026-01-15' } ] }];
+    const beforeApply = _regItemRag((_regSections()[0].items || [])[0]);
+    const back = _regNAApply();
+    const it = (_regSections()[0].items || [])[0];
+    return { beforeApply, back, rag: _regItemRag(it), reason: (it.na || {}).reason,
+      state: _assuranceState('statutory') };
+  });
+  R.ok(t.beforeApply === 'red', 'a fresh upload brings the item back as overdue, with a new id');
+  R.ok(t.back === 1 && t.rag === 'na' && /Crane disposed of/.test(t.reason || ''),
+    'and the reason is put back on it, matched by name: ' + t.reason);
+  R.ok(t.state.red === 1, 'so the count is right straight after the upload, not wrong until someone notices');
+}
+
+// ── putting it back ──
+{
+  const t = await page.evaluate(() => {
+    const id = (_regSections()[0].items || [])[0].id;
+    regClearNA(_regSections()[0].id, id);
+    const it = (_regSections()[0].items || [])[0];
+    return { rag: _regItemRag(it), mapped: Object.keys(S.monitoring.regNA || {}).length, red: _assuranceState('statutory').red };
+  });
+  R.ok(t.rag === 'red' && t.red === 2, 'putting it back in makes it count again');
+  R.ok(t.mapped === 0, 'and the mark is gone for good, so the next upload does not resurrect it');
+}
+
 // ── the cockpit answers one question per register ──
+await seed(page, { company: { legalName: 'Fairbank Fabrications Ltd' } }, 'risk');
+await load([past, far, far], [past, soon]);
+await wait(page, 300);
 {
   const t = await page.evaluate(() => {
     switchTab('cockpit');

@@ -3257,6 +3257,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .pso-e-meta{font-size:11.5px;color:var(--text-muted);margin-top:2px;overflow-wrap:anywhere;}
     .pso-e-why{font-size:12px;color:#B45309;font-weight:600;margin-top:3px;}
     .pso-e-dec{font-size:11.5px;line-height:1.5;margin:6px 0 0;padding:7px 9px;background:var(--muted-bg);white-space:pre-wrap;font-family:inherit;overflow-wrap:anywhere;}
+    .pso-lab{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:14px 0 5px;}
+    .pso-lab:first-child{margin-top:0;}
+    .pso-note{font-size:11.5px;color:var(--text-muted);margin-top:5px;line-height:1.5;}
+    .pso-pick{display:flex;gap:9px;align-items:center;padding:6px 9px;border:1px solid var(--border);border-bottom:0;font-size:13px;cursor:pointer;}
+    .pso-pick:last-of-type{border-bottom:1px solid var(--border);}
+    .pso-pick input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;}
+    .pso-pick i{font-style:normal;color:var(--text-muted);font-size:11.5px;}
+    .pso-pick b{margin-left:auto;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);white-space:nowrap;}
+    .pso-link{display:flex;gap:7px;align-items:center;margin-bottom:5px;}
+    .pso-link span{flex:0 0 140px;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .pso-link input{flex:1;min-width:0;font-size:11.5px;padding:6px 8px;border:1px solid var(--border);background:var(--muted-bg);color:inherit;font-family:inherit;}
     /* Close-out: what keeps a finished action in place */
     .emb-wrap{margin-top:14px;}
     .emb-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-top:14px;}
@@ -28542,17 +28553,20 @@ function _psoRecord(staffId, policyId, kind, opts){
   const pol=(p.policies||[]).find(x=>x.id===policyId)||{};
   const e={ id:'sgn_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     at:new Date().toISOString(), kind:kind,
-    staffId:staffId, staffName:String(st.name||''), staffRole:String(st.role||''),
+    staffId:staffId, staffName:String(opts.staffName||st.name||''), staffRole:String(st.role||''),
     policyId:policyId, policyTitle:String(pol.title||''), policyType:String(pol.type||''),
     policyVersion:String(pol.version||''), policyIssued:String(pol.delivered||''),
     policyLink:String(opts.link||_psoPolicyLink(pol)||''),
-    declaration:(kind==='acknowledged')?_psoDeclarationFor(pol):'',
+    declaration:(kind==='acknowledged')?String(opts.declaration||_psoDeclarationFor(pol)):'',
     method:String(opts.method||'in-person'),
     reason:String(opts.reason||''),
     by:(typeof _actor==='function'?(_actor().name||''):''),
     byRole:(typeof _actorRole==='function'?_actorRole():'') };
   if(opts.legacy) e.legacy=true;
   if(opts.at) e.at=opts.at;
+  if(opts.inviteId) e.inviteId=String(opts.inviteId);   // so a reply is never merged twice
+  if(opts.ip) e.ip=String(opts.ip);
+  if(opts.ua) e.ua=String(opts.ua).slice(0,240);
   _psoTrail().push(e);
   return e;
 }
@@ -28595,6 +28609,126 @@ function _psoMigrateTrail(){
   return n;
 }
 // The trail for one policy, read back the way it would be produced.
+// ── Acknowledgement by link ─────────────────────────────────────────────
+async function _psoApi(path, body){
+  const tid=Auth.activeTenantId(); const sep=path.includes('?')?'&':'?';
+  const opt={ credentials:'include' };
+  if(body!==undefined){ opt.method='POST'; opt.headers={'Content-Type':'application/json'}; opt.body=JSON.stringify(body); }
+  const r=await fetch(path+sep+'tenantId='+encodeURIComponent(tid), opt);
+  let j=null; try{ j=await r.json(); }catch(e){}
+  return { ok:r.ok, status:r.status, data:j||{} };
+}
+// Who still has not acknowledged this, so the default is the people who
+// actually need asking.
+function _psoOutstanding(policyId){
+  const p=_psoState();
+  return (p.staff||[]).filter(st=>{ const v=p.signed[st.id+'|'+policyId];
+    return !v || _psoSignInfo(v).state==='expired'; });
+}
+// The message a human sends. Plain text so it pastes into anything.
+function _psoMessageFor(pol, rows){
+  const org=(typeof _cockpitClientName==='function'?_cockpitClientName():'')||'your employer';
+  const head=(pol.title||'a document')+(pol.version?(' (version '+pol.version+')'):'');
+  const lines=['Please read '+head+' and confirm you have done so.','',
+    'Tap your own link below. It takes a moment and it only needs doing once.',''];
+  rows.forEach(r=>lines.push((r.name||'')+': '+r.url));
+  lines.push('', 'This is a record '+org+' keeps to show that health and safety information has been given to employees.');
+  return lines.join('\n');
+}
+function openSignoffSend(policyId){
+  if(_blockIfReadOnly()) return;
+  if(!_tOnline()){ alert('Sign in first - the links are minted on the server.'); return; }
+  const p=_psoState(); const pol=(p.policies||[]).find(x=>x.id===policyId); if(!pol) return;
+  const out=_psoOutstanding(policyId);
+  const link=_psoPolicyLink(pol);
+  const webby=/^https?:\/\//i.test(String(link||'').trim());
+  const ov=document.createElement('div'); ov.id='psoSendOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;';
+  const rowsHTML=(p.staff||[]).map(st=>{
+    const outstanding=out.some(x=>x.id===st.id);
+    return '<label class="pso-pick"><input type="checkbox" data-staff="'+esc(st.id)+'"'+(outstanding?' checked':'')+'>'
+      +'<span>'+esc(st.name||'(no name)')+(st.role?(' <i>'+esc(st.role)+'</i>'):'')+'</span>'
+      +'<b>'+(outstanding?'needs asking':'already acknowledged')+'</b></label>';
+  }).join('')||'<div style="font-size:12.5px;color:var(--text-muted);">No employees on the register yet - add them first.</div>';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);max-width:680px;width:100%;margin:auto 0;box-shadow:0 18px 60px rgba(0,0,0,.35);">
+    <div style="padding:16px 20px;border-bottom:1.5px solid var(--border);">
+      <div style="font-weight:800;font-size:15px;">Ask for acknowledgement</div>
+      <div style="font-size:12.5px;color:var(--text-muted);margin-top:3px;">${esc(pol.title||'(untitled)')}${pol.version?(' \u00b7 version '+esc(pol.version)):' \u00b7 no version set'}. Compass makes a link each; you send them by email or WhatsApp.</div>
+    </div>
+    <div style="padding:14px 20px;max-height:56vh;overflow:auto;" id="psoSendBody">
+      <div class="pso-lab">Where the document lives</div>
+      <input id="psoLink" value="${esc(link||'')}" placeholder="https://... or the folder path" style="width:100%;font-size:12.5px;padding:8px 10px;border:1px solid var(--border);background:var(--input-bg,transparent);color:inherit;font-family:inherit;">
+      <div class="pso-note">${webby?'A web address - the link will open it for them.':'Not a web address, so it is shown as text telling them where to look. Paste a shared link (SharePoint, OneDrive) if you want it to open on a phone.'}</div>
+      <div class="pso-lab">Who to ask</div>
+      ${rowsHTML}
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('psoSendOv').remove()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="_psoMintLinks('${policyId}')">Make the links</button>
+    </div>
+  </div>`;
+  if(typeof _backdropClose==='function') _backdropClose(ov, ()=>ov.remove());
+  document.body.appendChild(ov);
+}
+async function _psoMintLinks(policyId){
+  const ov=document.getElementById('psoSendOv'); if(!ov) return;
+  const p=_psoState(); const pol=(p.policies||[]).find(x=>x.id===policyId); if(!pol) return;
+  const link=String((ov.querySelector('#psoLink')||{}).value||'').trim();
+  const picked=[...ov.querySelectorAll('input[data-staff]')].filter(x=>x.checked).map(x=>x.getAttribute('data-staff'));
+  if(!picked.length){ showToast('Tick at least one person','info'); return; }
+  const dec=_psoDeclarationFor(pol);
+  const items=picked.map(sid=>{ const st=(p.staff||[]).find(x=>x.id===sid)||{};
+    return { staffId:sid, staffName:String(st.name||''), staffRole:String(st.role||''),
+      policyId:policyId, policyTitle:String(pol.title||''), policyVersion:String(pol.version||''),
+      policyIssued:String(pol.delivered||''), policyLink:link, declaration:dec }; });
+  showToast('Making the links\u2026','info');
+  const r=await _psoApi('/api/signoff/invite', { items:items, base:location.origin });
+  if(!r.ok){ showToast('Could not make the links ('+(r.data.error||r.status)+')','error'); return; }
+  const rows=(r.data.invites||[]).map(inv=>{ const st=(p.staff||[]).find(x=>x.id===inv.staffId)||{};
+    return { name:String(st.name||''), url:inv.url }; });
+  const msg=_psoMessageFor(pol, rows);
+  const body=ov.querySelector('#psoSendBody');
+  body.innerHTML='<div class="pso-lab">'+rows.length+' link'+(rows.length!==1?'s':'')+' - they expire in '+(r.data.expiresDays||60)+' days</div>'
+    +rows.map(x=>'<div class="pso-link"><span>'+esc(x.name)+'</span>'
+      +'<input readonly value="'+esc(x.url)+'" onclick="this.select()">'
+      +'<button class="btn btn-ghost btn-xs" onclick="_psoCopy(this.previousElementSibling.value,this)">Copy</button></div>').join('')
+    +'<div class="pso-lab">The message</div><textarea id="psoMsg" rows="8" style="width:100%;font-size:12px;padding:9px;border:1px solid var(--border);background:var(--input-bg,transparent);color:inherit;font-family:inherit;">'+esc(msg)+'</textarea>'
+    +'<div class="pso-note">Compass does not send this - copy it into your email or WhatsApp. Each person should get their own link, not the whole list, unless you are posting it to a group.</div>';
+  ov.querySelector('.btn-primary').outerHTML='<button class="btn btn-ghost btn-sm" onclick="_psoCopy(document.getElementById(\'psoMsg\').value,this)">Copy the message</button>'
+    +'<button class="btn btn-primary btn-sm" onclick="_psoMailto(\''+policyId+'\')">Open in email</button>';
+  showToast('\u2713 '+rows.length+' link'+(rows.length!==1?'s':'')+' made','success');
+}
+function _psoCopy(text, btn){
+  try{ navigator.clipboard.writeText(text); }catch(e){}
+  if(btn){ const was=btn.textContent; btn.textContent='Copied'; setTimeout(()=>{ btn.textContent=was; },1200); }
+}
+function _psoMailto(policyId){
+  const p=_psoState(); const pol=(p.policies||[]).find(x=>x.id===policyId)||{};
+  const msg=(document.getElementById('psoMsg')||{}).value||'';
+  const subj='Please confirm you have read '+(pol.title||'this document')+(pol.version?(' (version '+pol.version+')'):'');
+  location.href='mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(msg);
+}
+// Replies live in their own table until someone opens the register. This is
+// where they join the trail - as entries, never as a silent tick.
+async function _psoPullSignoffs(quiet){
+  if(!_tOnline()) return 0;
+  const r=await _psoApi('/api/signoff/status');
+  if(!r.ok) return 0;
+  const have=new Set(_psoTrail().map(e=>e&&e.inviteId).filter(Boolean));
+  let n=0;
+  (r.data.invites||[]).forEach(inv=>{
+    if(!inv.signed_at || have.has(inv.id)) return;
+    _psoRecord(inv.staff_id, inv.policy_id, 'acknowledged', {
+      inviteId:inv.id, at:new Date(inv.signed_at).toISOString(), method:'link',
+      staffName:inv.signed_name||inv.staff_name, declaration:inv.declaration,
+      link:inv.policy_link, ip:inv.signed_ip, ua:inv.signed_ua });
+    n++;
+  });
+  if(n){ _psoRebuildSigned(); saveData(); renderPolicySignoff();
+    showToast('\u2713 '+n+' acknowledgement'+(n!==1?'s':'')+' came back','success'); }
+  else if(!quiet) showToast('Nothing new has come back yet','info');
+  return n;
+}
 function openSignoffTrail(policyId){
   const p=_psoState();
   const pol=(p.policies||[]).find(x=>x.id===policyId); if(!pol) return;
@@ -28750,7 +28884,7 @@ function renderPolicySignoff(){
         <select${dis} onchange="updateSignoffPolicy('${pol.id}','type',this.value)" style="flex:0 0 130px;${inp}" title="What kind of item this is">${PSO_TYPES.map(t=>`<option${(pol.type||'Policy')===t?' selected':''}>${t}</option>`).join('')}</select>
         <input value="${esc(pol.version||'')}" placeholder="Version"${dis} oninput="updateSignoffPolicy('${pol.id}','version',this.value)" style="flex:0 0 80px;${inp}">
         <input type="date" value="${esc(pol.delivered||'')}"${dis} onchange="updateSignoffPolicy('${pol.id}','delivered',this.value)" style="flex:0 0 135px;${inp}" title="When it was delivered / issued (talks, training, CPD)">
-        <button class="btn btn-ghost btn-xs no-print" onclick="openSignoffTrail('${pol.id}')" title="Every acknowledgement and every withdrawal recorded against this, with who, when, how and which version">≡ Trail${(function(){ const c=_psoTrail().filter(e=>e&&e.policyId===pol.id).length; return c?(' ('+c+')'):''; })()}</button>${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="downloadDeliverySheet('${pol.id}')" title="One-page attendance sign-off sheet for this item - everyone signs after the delivery">⭳ Delivery sheet</button>`}
+        ${(ro||!_tOnline())?'':`<button class="btn btn-outline btn-xs no-print" onclick="openSignoffSend('${pol.id}')" title="Make a link for each employee - they read it and confirm on their phone, and it comes back onto the trail">✉ Ask by link</button>`}<button class="btn btn-ghost btn-xs no-print" onclick="openSignoffTrail('${pol.id}')" title="Every acknowledgement and every withdrawal recorded against this, with who, when, how and which version">≡ Trail${(function(){ const c=_psoTrail().filter(e=>e&&e.policyId===pol.id).length; return c?(' ('+c+')'):''; })()}</button>${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="downloadDeliverySheet('${pol.id}')" title="One-page attendance sign-off sheet for this item - everyone signs after the delivery">⭳ Delivery sheet</button>`}
         ${ro?'':`<button class="btn btn-ghost btn-xs" onclick="removeSignoffPolicy('${pol.id}')" title="Remove">${_ic('trash',13)}</button>`}
       </div>
       <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12px;color:var(--accent);">Linked risks${tagged.length?(' ('+tagged.length+')'):''}</summary>

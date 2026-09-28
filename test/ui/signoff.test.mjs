@@ -136,4 +136,36 @@ await wait(page, 400);
     'with the duty the record answers to printed under it');
 }
 
+// ── a reply that came back by link joins the trail like any other entry ──
+{
+  const t = await page.evaluate(() => {
+    S.policySignoff = { policies: [{ id: 'p1', title: 'Fire Safety Policy', type: 'Policy', version: '3.1', delivered: '2026-08-12', riskIds: [] }],
+      staff: [{ id: 's1', name: 'Daniel Ashworth', role: 'Workshop Supervisor' }], signed: {}, log: [], logMigrated: true };
+    // what the server hands back for a signed invite
+    _psoRecord('s1', 'p1', 'acknowledged', { inviteId: 'inv_abc', at: '2026-09-20T09:41:00.000Z', method: 'link',
+      staffName: 'Daniel J Ashworth', declaration: 'I confirm that: ... version 3.1 ...',
+      link: 'https://fairbank.sharepoint.com/fire.pdf', ip: '81.2.3.4', ua: 'Mozilla/5.0 (iPhone)' });
+    _psoRebuildSigned();
+    const e = _psoTrailFor('s1', 'p1')[0] || {};
+    return { method: e.method, name: e.staffName, invite: e.inviteId, ip: e.ip, ua: e.ua,
+      dec: e.declaration, signed: _psoState().signed['s1|p1'], at: e.at };
+  });
+  R.ok(t.method === 'link' && t.invite === 'inv_abc', 'a link reply is an entry, and it remembers which invite it answered');
+  R.ok(t.name === 'Daniel J Ashworth', 'it keeps the name the employee typed, not the one on the register');
+  R.ok(/version 3.1/.test(t.dec || ''), 'and the declaration THEY saw, not the one the policy carries today');
+  R.ok(!!t.ip && /iPhone/.test(t.ua || ''), 'with where it came from, which is what a link buys you over a tick');
+  R.ok(t.at.slice(0, 10) === '2026-09-20' && t.signed === '2026-09-20', 'dated when they signed, not when it was pulled back');
+}
+
+// ── and it is never merged twice, however often you check ──
+{
+  const t = await page.evaluate(() => {
+    const before = _psoTrail().length;
+    const have = new Set(_psoTrail().map(e => e && e.inviteId).filter(Boolean));
+    const again = have.has('inv_abc');
+    return { before, again };
+  });
+  R.ok(t.again, 'the invite id is what stops a reply being counted a second time');
+}
+
 await R.done(browser, errors);

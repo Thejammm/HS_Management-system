@@ -53,7 +53,10 @@ app.use('/api/statutory', require('./routes/statutory'));
 app.use('/api/linked', require('./routes/linked'));   // server-to-server pull from linked apps
 app.use('/api/reports', require('./routes/reports'));  // server-side PDF for the shared report layer
 app.use('/api/cas', require('./routes/cas'));          // CAS question-set Excel export
-app.use('/api/offline', require('./routes/offline'));  // pairing + pull/push for the PC-held offline copy
+app.use('/api/offline', require('./routes/offline'));
+app.use('/api/signoff', require('./routes/signoff'));  // acknowledgement by link - /s/:token is public
+// The short public link an employee actually opens. No session, no cookie.
+app.get('/s/:token', (req, res, next) => { req.url = '/view/' + encodeURIComponent(req.params.token); require('./routes/signoff')(req, res, next); });  // pairing + pull/push for the PC-held offline copy
 
 // 404 for any unknown /api/* path (don't fall through to the SPA)
 app.use('/api', (_req, res) => {

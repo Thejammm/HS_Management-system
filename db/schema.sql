@@ -121,3 +121,34 @@ CREATE TABLE IF NOT EXISTS statutory_workbook (
 -- lets the PC-held file:// copy pull and push tenant state without cookies.
 -- Added via ALTER so existing databases pick it up on deploy.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS offline_token_hash TEXT;
+
+-- ── Acknowledgement by link ──────────────────────────────────────────────
+-- One row per (employee × document) invitation. The token is given out once
+-- and only its SHA-256 is kept, exactly as the offline pairing token is.
+--
+-- A signature lands HERE and nowhere else: the public endpoint never touches
+-- app_state. The app merges signed rows into the acknowledgement trail when a
+-- consultant next opens the register, so a public route can never write a
+-- tenant's whole state.
+CREATE TABLE IF NOT EXISTS signoff_invite (
+  id             TEXT PRIMARY KEY,
+  tenant_id      TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  token_hash     TEXT NOT NULL UNIQUE,
+  staff_id       TEXT NOT NULL,
+  staff_name     TEXT NOT NULL DEFAULT '',
+  staff_role     TEXT NOT NULL DEFAULT '',
+  policy_id      TEXT NOT NULL,
+  policy_title   TEXT NOT NULL DEFAULT '',
+  policy_version TEXT NOT NULL DEFAULT '',
+  policy_issued  TEXT NOT NULL DEFAULT '',
+  policy_link    TEXT NOT NULL DEFAULT '',
+  declaration    TEXT NOT NULL DEFAULT '',   -- verbatim, so it can never be rewritten later
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by     TEXT NOT NULL DEFAULT '',
+  expires_at     TIMESTAMPTZ NOT NULL,
+  signed_at      TIMESTAMPTZ,
+  signed_name    TEXT,
+  signed_ip      TEXT,
+  signed_ua      TEXT
+);
+CREATE INDEX IF NOT EXISTS signoff_invite_tenant_idx ON signoff_invite(tenant_id);

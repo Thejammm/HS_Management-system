@@ -3247,6 +3247,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .ep-del:hover{background:var(--danger);color:#fff;}
     /* The risk reference: quiet, monospaced-feeling, never competing with the title */
     .risk-ref{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted);white-space:nowrap;font-variant-numeric:tabular-nums;}
+    /* The acknowledgement trail: one entry, never edited, never removed */
+    .pso-e{border:1px solid var(--border);border-left:3px solid #16A34A;padding:8px 11px;margin-bottom:8px;}
+    .pso-e-w{border-left-color:#B45309;background:#B4530908;}
+    .pso-e-top{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;font-size:13px;}
+    .pso-e-role{font-size:11.5px;color:var(--text-muted);}
+    .pso-e-kind{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);}
+    .pso-e-at{margin-left:auto;font-size:11.5px;color:var(--text-muted);white-space:nowrap;}
+    .pso-e-meta{font-size:11.5px;color:var(--text-muted);margin-top:2px;overflow-wrap:anywhere;}
+    .pso-e-why{font-size:12px;color:#B45309;font-weight:600;margin-top:3px;}
+    .pso-e-dec{font-size:11.5px;line-height:1.5;margin:6px 0 0;padding:7px 9px;background:var(--muted-bg);white-space:pre-wrap;font-family:inherit;overflow-wrap:anywhere;}
     /* Close-out: what keeps a finished action in place */
     .emb-wrap{margin-top:14px;}
     .emb-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-top:14px;}
@@ -28492,6 +28502,154 @@ function addStaffFromTraining(){ if(_roLocked()) return; const p=_psoState(); co
 // A signature lasts 12 MONTHS. After that it shows amber and needs re-signing,
 // so the weekly talks / monthly CPD / annual policy review cycle stays honest
 // instead of one tick lasting forever.
+// ── The declaration ─────────────────────────────────────────────────────
+// What the employee is actually agreeing to. Kept here so one wording is
+// used everywhere, and stored VERBATIM on every entry so a change to it can
+// never rewrite what someone agreed to in the past.
+const SIGNOFF_DECLARATION = [
+  'I confirm that:',
+  '\u00b7 I have been given access to {title}{version}{issued}.',
+  '\u00b7 I have read it, and I understand what it requires me to do.',
+  '\u00b7 I know who to ask if I am unsure about anything in it.',
+  '\u00b7 I will follow it, and I will raise anything I believe is unsafe.'
+].join('\n');
+// Why the record is kept. Printed with the trail, not with each entry.
+const SIGNOFF_LEGAL_BASIS = 'Kept as a record that health and safety information has been '
+  + 'provided to employees and brought to their notice - Health and Safety at Work etc. Act 1974 '
+  + 's.2(2)(c) and s.2(3); Management of Health and Safety at Work Regulations 1999 reg. 10. '
+  + 'Consultation duties: Safety Representatives and Safety Committees Regulations 1977; '
+  + 'Health and Safety (Consultation with Employees) Regulations 1996.';
+function _psoDeclarationFor(pol){
+  const v=String((pol&&pol.version)||'').trim();
+  const d=String((pol&&pol.delivered)||'').trim();
+  return SIGNOFF_DECLARATION
+    .replace('{title}', String((pol&&pol.title)||'this document'))
+    .replace('{version}', v?(', version '+v):'')
+    .replace('{issued}', d?(', issued '+fmtDate(d)):'');
+}
+// The trail. Append only - nothing in here is ever edited or removed.
+function _psoTrail(){ const p=_psoState(); if(!Array.isArray(p.log)) p.log=[]; return p.log; }
+function _psoTrailFor(staffId, policyId){
+  return _psoTrail().filter(e=>e && e.staffId===staffId && e.policyId===policyId)
+    .sort((a,b)=>String(a.at||'').localeCompare(String(b.at||'')));
+}
+// One entry. Everything it needs to stand on its own later, because the
+// policy, the person and the wording can all change after the fact.
+function _psoRecord(staffId, policyId, kind, opts){
+  opts=opts||{};
+  const p=_psoState();
+  const st=(p.staff||[]).find(x=>x.id===staffId)||{};
+  const pol=(p.policies||[]).find(x=>x.id===policyId)||{};
+  const e={ id:'sgn_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    at:new Date().toISOString(), kind:kind,
+    staffId:staffId, staffName:String(st.name||''), staffRole:String(st.role||''),
+    policyId:policyId, policyTitle:String(pol.title||''), policyType:String(pol.type||''),
+    policyVersion:String(pol.version||''), policyIssued:String(pol.delivered||''),
+    policyLink:String(opts.link||_psoPolicyLink(pol)||''),
+    declaration:(kind==='acknowledged')?_psoDeclarationFor(pol):'',
+    method:String(opts.method||'in-person'),
+    reason:String(opts.reason||''),
+    by:(typeof _actor==='function'?(_actor().name||''):''),
+    byRole:(typeof _actorRole==='function'?_actorRole():'') };
+  if(opts.legacy) e.legacy=true;
+  if(opts.at) e.at=opts.at;
+  _psoTrail().push(e);
+  return e;
+}
+// Where the document actually lives - the Documents register holds the link,
+// because Compass never holds the document itself.
+function _psoPolicyLink(pol){
+  if(!pol) return '';
+  const t=String(pol.title||'').trim().toLowerCase(); if(!t) return '';
+  const d=(S.documents||[]).find(x=>String(x.name||'').trim().toLowerCase()===t);
+  return d?String(d.link||''):'';
+}
+// The tick is the FACE of the trail, not the record. Rebuilt from it, so the
+// grid and the trail can never tell different stories.
+function _psoRebuildSigned(){
+  const p=_psoState(); const out={};
+  _psoTrail().slice().sort((a,b)=>String(a.at||'').localeCompare(String(b.at||''))).forEach(e=>{
+    if(!e||!e.staffId||!e.policyId) return;
+    const k=e.staffId+'|'+e.policyId;
+    if(e.kind==='acknowledged') out[k]=String(e.at||'').slice(0,10);
+    else delete out[k];
+  });
+  p.signed=out; return out;
+}
+// Ticks made before the trail existed are brought in AS THEY ARE - marked,
+// so nobody reads a provenance into them that was never recorded.
+function _psoMigrateTrail(){
+  const p=_psoState(); if(!Array.isArray(p.log)) p.log=[];
+  if(p.logMigrated) return 0;
+  let n=0;
+  Object.keys(p.signed||{}).forEach(k=>{
+    const dt=p.signed[k]; if(!dt) return;
+    const bits=String(k).split('|'); if(bits.length!==2) return;
+    if(_psoTrailFor(bits[0],bits[1]).length) return;
+    _psoRecord(bits[0], bits[1], 'acknowledged',
+      { legacy:true, method:'unrecorded', at:String(dt)+'T00:00:00.000Z' });
+    n++;
+  });
+  p.logMigrated=true;
+  if(n) saveData();
+  return n;
+}
+// The trail for one policy, read back the way it would be produced.
+function openSignoffTrail(policyId){
+  const p=_psoState();
+  const pol=(p.policies||[]).find(x=>x.id===policyId); if(!pol) return;
+  const rows=_psoTrail().filter(e=>e&&e.policyId===policyId)
+    .sort((a,b)=>String(b.at||'').localeCompare(String(a.at||'')));
+  const when=(iso)=>{ try{ return new Date(iso).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return String(iso||''); } };
+  const how={ 'in-person':'Recorded in the app', 'sheet':'Signed delivery sheet', 'link':'Acknowledged by link', 'unrecorded':'Method not recorded' };
+  const body=rows.length?rows.map(e=>{
+    const ack=e.kind==='acknowledged';
+    return '<div class="pso-e'+(ack?'':' pso-e-w')+'">'
+      +'<div class="pso-e-top"><b>'+esc(e.staffName||'(no name)')+'</b>'
+      +(e.staffRole?('<span class="pso-e-role">'+esc(e.staffRole)+'</span>'):'')
+      +'<span class="pso-e-kind">'+(ack?'Acknowledged':'Withdrawn')+'</span>'
+      +'<span class="pso-e-at">'+esc(when(e.at))+'</span></div>'
+      +'<div class="pso-e-meta">'+esc((how[e.method]||e.method||'')
+        +(e.policyVersion?(' \u00b7 version '+e.policyVersion):' \u00b7 no version recorded')
+        +(e.by?(' \u00b7 entered by '+e.by):'')
+        +(e.legacy?' \u00b7 recorded before this trail existed':''))+'</div>'
+      +(e.policyLink?('<div class="pso-e-meta">Document: '+esc(e.policyLink)+'</div>'):'')
+      +(e.reason?('<div class="pso-e-why">Reason: '+esc(e.reason)+'</div>'):'')
+      +(e.declaration?('<pre class="pso-e-dec">'+esc(e.declaration)+'</pre>'):'')
+      +'</div>';
+  }).join(''):'<div style="font-size:12.5px;color:var(--text-muted);">Nothing recorded against this yet.</div>';
+  const ov=document.createElement('div'); ov.id='psoTrailOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);max-width:760px;width:100%;margin:auto 0;box-shadow:0 18px 60px rgba(0,0,0,.35);">
+    <div style="padding:16px 20px;border-bottom:1.5px solid var(--border);">
+      <div style="font-weight:800;font-size:15px;">Acknowledgement trail</div>
+      <div style="font-size:12.5px;color:var(--text-muted);margin-top:3px;">${esc(pol.title||'(untitled)')}${pol.version?(' \u00b7 version '+esc(pol.version)):''} \u00b7 ${rows.length} entr${rows.length===1?'y':'ies'}. Nothing here is ever edited or removed.</div>
+    </div>
+    <div style="padding:14px 20px;max-height:62vh;overflow:auto;">${body}</div>
+    <div style="padding:10px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);line-height:1.5;">${esc(SIGNOFF_LEGAL_BASIS)}</div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="exportSignoffTrail()">\u2b73 Export the whole trail</button>
+      <button class="btn btn-primary btn-sm" onclick="document.getElementById('psoTrailOv').remove()">Close</button>
+    </div>
+  </div>`;
+  if(typeof _backdropClose==='function') _backdropClose(ov, ()=>ov.remove());
+  document.body.appendChild(ov);
+}
+// The whole trail as a file, because the moment it matters is the moment
+// somebody outside the business asks for it.
+function exportSignoffTrail(){
+  const rows=_psoTrail().slice().sort((a,b)=>String(a.at||'').localeCompare(String(b.at||'')));
+  const q=(v)=>'"'+String(v==null?'':v).replace(/"/g,'""').replace(/\r?\n/g,' ')+'"';
+  const head=['When','Employee','Role','Entry','Document','Type','Version','Issued','Document location','How','Declaration','Reason','Entered by','Role of entrant','Recorded before this trail existed'];
+  const body=rows.map(e=>[e.at,e.staffName,e.staffRole,e.kind,e.policyTitle,e.policyType,e.policyVersion,e.policyIssued,e.policyLink,e.method,e.declaration,e.reason,e.by,e.byRole,e.legacy?'yes':''].map(q).join(','));
+  const csv=[head.map(q).join(','),...body,'',q(SIGNOFF_LEGAL_BASIS)].join('\r\n');
+  const name=((typeof _cockpitClientName==='function'?_cockpitClientName():'')||'client').replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download='acknowledgement-trail-'+name+'-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(a.href);
+  showToast('\u2713 Trail exported - '+rows.length+' entr'+(rows.length===1?'y':'ies'),'success');
+}
 function _psoSignInfo(dt){
   if(!dt) return { state:'none', label:'Not signed' };
   const days=Math.floor((Date.now()-new Date(dt+'T00:00:00').getTime())/86400000);
@@ -28500,11 +28658,28 @@ function _psoSignInfo(dt){
   if(days>335) return { state:'expiring', label:'Signed '+fmtDate(dt)+' - expires soon (12-month limit)' };
   return { state:'ok', label:'Signed '+fmtDate(dt) };
 }
-function toggleSignoff(staffId, policyId, checked){ if(_roLocked()) return; const p=_psoState(); const k=staffId+'|'+policyId;
-  // Re-ticking an expired signature re-signs it TODAY (the old date is replaced).
-  if(checked){ const cur=p.signed[k]; p.signed[k]=(cur && _psoSignInfo(cur).state!=='expired') ? cur : new Date().toISOString().slice(0,10); }
-  else { delete p.signed[k]; }
-  saveData(); renderPolicySignoff(); }
+function toggleSignoff(staffId, policyId, checked){
+  if(_roLocked()) return;
+  const p=_psoState(); const k=staffId+'|'+policyId;
+  if(checked){
+    // Re-ticking inside the 12 months changes nothing - the entry already
+    // stands. An expired one is a NEW acknowledgement, so a new entry.
+    const cur=p.signed[k];
+    if(cur && _psoSignInfo(cur).state!=='expired') return;
+    _psoRecord(staffId, policyId, 'acknowledged', { method:'in-person' });
+  } else {
+    // A withdrawal is a correction on the record, not a deletion. Without a
+    // reason it is just a tick that vanished, which is what we are fixing.
+    const why=(typeof prompt==='function')
+      ? prompt('Why is this acknowledgement being withdrawn?\n\ne.g. ticked in error, wrong person, superseded by a new version.\nThe original entry stays on the record either way.','')
+      : '';
+    if(why===null) { renderPolicySignoff(); return; }
+    if(!String(why).trim()){ showToast('A reason is needed - the trail has to say why it changed','info'); renderPolicySignoff(); return; }
+    _psoRecord(staffId, policyId, 'withdrawn', { reason:String(why).trim() });
+  }
+  _psoRebuildSigned();
+  saveData(); renderPolicySignoff();
+}
 function _psoCompliance(){ const p=_psoState(); const total=p.staff.length*p.policies.length; if(!total) return {pct:0,signed:0,total:0,expired:0}; let s=0, ex=0; p.staff.forEach(st=>p.policies.forEach(pol=>{ const info=_psoSignInfo(p.signed[st.id+'|'+pol.id]); if(info.state==='ok'||info.state==='expiring') s++; else if(info.state==='expired') ex++; })); return {pct:Math.round(s/total*100), signed:s, total:total, expired:ex}; }
 // ── Register round-trip (control of updates): export the whole register as a
 // CSV (opens straight in Excel), amend or re-date it there, import it back.
@@ -28562,6 +28737,7 @@ function importSignoffRegister(inp){
 }
 function renderPolicySignoff(){
   const cont=document.getElementById('signoffContainer'); if(!cont) return;
+  try{ _psoMigrateTrail(); }catch(e){}
   const p=_psoState(); const ro=_roLocked(); const dis=ro?' disabled':'';
   const risks=(S.riskProfile||[]);
   const inp='font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;';
@@ -28574,7 +28750,7 @@ function renderPolicySignoff(){
         <select${dis} onchange="updateSignoffPolicy('${pol.id}','type',this.value)" style="flex:0 0 130px;${inp}" title="What kind of item this is">${PSO_TYPES.map(t=>`<option${(pol.type||'Policy')===t?' selected':''}>${t}</option>`).join('')}</select>
         <input value="${esc(pol.version||'')}" placeholder="Version"${dis} oninput="updateSignoffPolicy('${pol.id}','version',this.value)" style="flex:0 0 80px;${inp}">
         <input type="date" value="${esc(pol.delivered||'')}"${dis} onchange="updateSignoffPolicy('${pol.id}','delivered',this.value)" style="flex:0 0 135px;${inp}" title="When it was delivered / issued (talks, training, CPD)">
-        ${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="downloadDeliverySheet('${pol.id}')" title="One-page attendance sign-off sheet for this item - everyone signs after the delivery">⭳ Delivery sheet</button>`}
+        <button class="btn btn-ghost btn-xs no-print" onclick="openSignoffTrail('${pol.id}')" title="Every acknowledgement and every withdrawal recorded against this, with who, when, how and which version">≡ Trail${(function(){ const c=_psoTrail().filter(e=>e&&e.policyId===pol.id).length; return c?(' ('+c+')'):''; })()}</button>${ro?'':`<button class="btn btn-outline btn-xs no-print" onclick="downloadDeliverySheet('${pol.id}')" title="One-page attendance sign-off sheet for this item - everyone signs after the delivery">⭳ Delivery sheet</button>`}
         ${ro?'':`<button class="btn btn-ghost btn-xs" onclick="removeSignoffPolicy('${pol.id}')" title="Remove">${_ic('trash',13)}</button>`}
       </div>
       <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12px;color:var(--accent);">Linked risks${tagged.length?(' ('+tagged.length+')'):''}</summary>

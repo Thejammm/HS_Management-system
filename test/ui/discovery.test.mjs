@@ -80,6 +80,23 @@ R.ok(!chg.before.visible && chg.after.visible && chg.after.total > chg.before.to
 R.ok(chg.answer === true && chg.firedAsbestos, 'answering it fires the theme it should');
 R.ok(chg.addedAsbestos, 'Build profile then adds that risk: ' + chg.addedNames.join(' | '));
 
+// ── and it shows them, rather than leaving them in shut categories ──
+{
+  const t = await page.evaluate(() => new Promise(res => {
+    const G = (fn) => () => { try { fn(); } catch (e) { res({ ERR: String((e && e.message) || e) }); } };
+    switchTab('risk');
+    setTimeout(G(() => {
+      res({ rows: document.querySelectorAll('#rpTbody tr.rpt-row').length,
+        groups: document.querySelectorAll('#rpTbody tr.rpt-macro').length,
+        shut: document.querySelectorAll('#rpTbody tr.rpt-macro.rpt-mac-closed').length,
+        risks: S.riskProfile.length,
+        registerOpen: !!(document.getElementById('wfRegister') || {}).open });
+    }), 600);
+  }));
+  R.ok(t.rows === t.risks && t.rows > 0, 'every risk Build added is on screen, not behind a collapsed category (' + t.rows + ' of ' + t.risks + ')');
+  R.ok(t.shut === 0 && t.registerOpen, 'the register and all ' + t.groups + ' categories are open for the review that follows');
+}
+
 // ── and an answer can be changed or taken back at any time ──
 const undo = await page.evaluate(() => {
   _discSet('b_survey_pre2000', true);   // clicking the same answer again clears it

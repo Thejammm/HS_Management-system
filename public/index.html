@@ -17347,6 +17347,7 @@ function addRiskEntry(){
   _riskSel = entry.id; _riskSelTab = 'identify';   // select the new risk, straight onto the first editing tab
   _riskModalOpen = true;                           // and open it in the modal, already speaking its kind's language
   _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };   // a filter must never hide the risk just added
+  _macroOpenForRisk(entry);                        // nor a collapsed category
   saveData();
   renderRiskProfile();
   const _nrInp=document.getElementById('ract-'+entry.id); if(_nrInp && _nrInp.tagName==='INPUT') _nrInp.focus();
@@ -18964,6 +18965,7 @@ function insertLibraryRisk(key, quiet){
   if(!quiet){
     _riskSel = entry.id; _riskSelTab = 'summary';   // show what was just added, ready to review
     _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };
+    _macroOpenForRisk(entry);
     saveData(); renderRiskProfile(); showToast('✓ Added "'+t.activity+'" - review and agree the suggested rating','success');
   }
   return entry;
@@ -21834,6 +21836,13 @@ function _macroToggle(k){
 var _journeyMacroClosed={};
 function _journeyMacroOpen(k){ return !_journeyMacroClosed[k||'_']; }
 function _journeyMacroToggle(k){ const key=k||'_'; _journeyMacroClosed[key]=!_journeyMacroClosed[key]; renderRiskJourney(); }
+// A risk you have just created is never hidden: open the register and the
+// category it landed in, so the new row is on screen (Simon, 2026-09-28).
+function _macroOpenForRisk(r){
+  if(!r) return;
+  _riskMacroOpen[_riskMacroOf(r)||'_']=true;
+  const sec=document.getElementById('wfRegister'); if(sec && !sec.open) sec.open=true;
+}
 function _macroExpandAll(on){ _riskMacroOpen={}; if(on){ _riskMacroGroups(S.riskProfile||[]).forEach(g=>{ _riskMacroOpen[g.k||'_']=true; }); } else { _riskMacroLast=null; } _keepScroll(renderRiskProfile); }
 function setRiskGroupMode(m){ _riskGroupMode=m; _keepScroll(renderRiskProfile); }
 function _riskMacroOf(r){
@@ -23151,8 +23160,12 @@ function buildProfileFromDiscovery(){
   if(!confirm('Build the risk profile from discovery?\n\nThis adds '+sug.size+' suggested theme'+(sug.size!==1?'s':'')+' from the library, pre-scored with suggested ratings and marked for your review:\n\n• '+names.slice(0,14).join('\n• ')+(names.length>14?('\n… and '+(names.length-14)+' more'):'')+'\n\nNothing existing is changed - you review and agree each rating with the client.')) return;
   let n=0;
   sug.forEach((firedBy,k)=>{ const e=insertLibraryRisk(k, true); if(e){ e.suggestedBy='discovery'; e.suggestedFrom=firedBy; if(!e.assocRisk) e.assocRisk=_discAssocText(firedBy); n++; } });
-  saveData(); renderRiskProfile(); renderRiskReview();
-  showToast('✓ Added '+n+' suggested theme'+(n!==1?'s':'')+' - review and agree each rating','success');
+  saveData();
+  // Reviewing what was just added is the next thing the consultant does, so
+  // the register and every category open rather than sitting shut.
+  const _reg=document.getElementById('wfRegister'); if(_reg) _reg.open=true;
+  _macroExpandAll(true); renderRiskReview();
+  showToast('✓ Added '+n+' suggested theme'+(n!==1?'s':'')+' - shown below, review and agree each rating','success');
 }
 // ── Reverse sync: things change. A discovery-suggested theme whose supporting
 //    answers have all been withdrawn (flipped to no, or unset) is "orphaned".

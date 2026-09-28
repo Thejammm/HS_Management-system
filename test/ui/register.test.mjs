@@ -132,6 +132,28 @@ await wait(page, 300);
   R.ok(t.restored, 'restoring it puts the risk back whole');
 }
 
+// ── a risk you just added is never hidden inside a collapsed category ──
+{
+  const t = await page.evaluate(() => new Promise(res => {
+    const G = (fn) => () => { try { fn(); } catch (e) { res({ ERR: String((e && e.message) || e) }); } };
+    _macroExpandAll(false);                      // the tidy default: everything shut
+    const shutBefore = document.querySelectorAll('#rpTbody tr.rpt-row').length;
+    addRiskEntry();
+    setTimeout(G(() => {
+      _riskCloseModal();
+      setTimeout(G(() => {
+        const rows = [...document.querySelectorAll('#rpTbody tr.rpt-row')];
+        const open = [...document.querySelectorAll('#rpTbody tr.rpt-macro.rpt-mac-open')].length;
+        res({ shutBefore, onScreen: rows.length, isNew: rows.some(r => /New risk/.test(r.cells[1].textContent)),
+          onlyItsOwn: open === 1, registerOpen: !!(document.getElementById('wfRegister') || {}).open });
+      }), 500);
+    }), 600);
+  }));
+  // its category also holds the fixture's unrated risk, so expect that row too
+  R.ok(t.shutBefore === 0 && t.onScreen > 0 && t.isNew, 'from a fully collapsed register, a new risk still appears on screen');
+  R.ok(t.onlyItsOwn && t.registerOpen, 'only the category it landed in opens, and the register opens with it');
+}
+
 // ── the register survives an empty client ──
 await seed(page, { riskProfile: [] }, 'risk');
 {

@@ -3620,6 +3620,35 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rpt-band:hover td{background:var(--muted-bg);}
     .rpt-band-n{font-weight:600;color:var(--text-muted);letter-spacing:0;text-transform:none;margin-left:8px;font-size:11px;}
     .rpt-band-empty td{padding:6px 10px 8px;font-size:11.5px;color:var(--text-muted);border-top:0;}
+    /* ── The risk pathway: six stations, one colour per risk ── */
+    .pw-card{border-radius:4px;margin-bottom:10px;transition:background .15s;}
+    .pw-sum{padding:12px 16px;cursor:pointer;list-style:none;}
+    .pw-sum::-webkit-details-marker{display:none;}
+    .pw-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+    .pw-title{font-weight:700;font-size:13.5px;flex:1;min-width:200px;}
+    .pw-flag{font-weight:400;font-size:11px;color:var(--text-muted);}
+    .pw-why{font-size:10.5px;font-weight:700;color:#DC2626;}
+    .pw-strip{display:flex;align-items:flex-start;margin:10px 0 2px;}
+    .pw-node{display:flex;flex-direction:column;align-items:center;gap:3px;width:60px;flex:0 0 auto;}
+    .pw-dot{width:20px;height:20px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:var(--surface,#fff);flex:0 0 auto;}
+    .pw-lab{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+    .pw-link{flex:1;height:2px;margin-top:9px;min-width:10px;}
+    .pw-body{padding:6px 18px 12px;border-top:1px dashed var(--border);}
+    .pw-st{padding:8px 0;border-bottom:1px solid var(--border);}
+    .pw-st:last-child{border-bottom:none;}
+    .pw-sthead{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:4px;flex-wrap:wrap;}
+    .pw-sthead .pw-dot{width:18px;height:18px;font-size:10px;}
+    .pw-stsum{font-size:12px;font-weight:600;}
+    .pw-line{display:flex;align-items:baseline;gap:8px;font-size:12.5px;padding:3px 6px 3px 26px;line-height:1.4;}
+    .pw-ldot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;position:relative;top:-1px;}
+    .pw-ltxt{flex:1;min-width:0;overflow-wrap:anywhere;}
+    .pw-lmeta{display:block;font-size:11px;color:var(--text-muted);}
+    .pw-lat{flex:0 0 auto;font-size:11px;color:var(--text-muted);white-space:nowrap;}
+    .pw-lhome{flex:0 0 auto;font-size:10px;color:var(--text-muted);border:1px solid var(--border);padding:1px 6px;white-space:nowrap;}
+    .pw-recent{background:rgba(75,191,214,.10);}
+    .pw-period{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin-bottom:8px;}
+    .pw-good{font-size:12.5px;line-height:1.5;padding:9px 12px;border:1px solid var(--border);border-left:3px solid var(--accent);background:var(--muted-bg);}
+    @media (max-width:640px){ .pw-lab{display:none;} .pw-node{width:26px;} .pw-lhome{display:none;} }
     .jny-band{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);border-top:3px solid var(--accent);padding:8px 0 4px;margin:14px 0 6px;}
   </style>
   <!-- Combined risk panel: matrix + H&S control maturity in one frame.
@@ -15021,6 +15050,11 @@ function renderReports(){
       icon:svg('<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>'),
       desc:'Who is trained in what, with completion and expiry status per person per course - the competence evidence behind the risk profile (MHSWR 1999 reg 13).',
       tags:['Competence','Expiry RAG','Matrix'] },
+    { title:'Risk Pathway', accent:'#0E8F7E', tint:'#E4F3F0', fn:'downloadPathwayReport()',
+      meta:(function(){ try{ const ps=(S.riskProfile||[]).map(_pathwayOf); const d=ps.filter(p=>p.overall.state==='done').length, l=ps.filter(p=>p.overall.state==='late').length; return ps.length?(d+' signed off \u00b7 '+(ps.length-d-l)+' in progress \u00b7 '+l+' need attention'):'No risks yet'; }catch(e){ return ''; } })(),
+      icon:svg('<path d="M4 19h16"/><path d="M4 15l4-4 4 3 4-6 4 2"/><circle cx="8" cy="11" r="1.5"/><circle cx="12" cy="14" r="1.5"/><circle cx="16" cy="8" r="1.5"/><circle cx="20" cy="10" r="1.5"/>'),
+      desc:'Every risk walked through its six stations - identified, assessed, controls, actions, kept in place, signed off - each line in the words it was recorded in, with where it lives. This period\'s progress on the front: the good work, and what is still to do.',
+      tags:['Pathway','Period review','Client-facing'] },
   ];
   const dl = svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>');
   const card = (r) => `<div class="rep-card" style="--rep:${r.accent};--rep-tint:${r.tint};">
@@ -18215,126 +18249,269 @@ function _journeyDepCounts(r){
   const done=acts.filter(a=>{const st=_actionStatus(a);return st==='Complete'||st==='Accepted';}).length+(ctl==='In place'?1:0);
   return { acts, ctl, done, total };
 }
-function _journeyDepsHTML(r){
-  const {acts, ctl, done, total}=_journeyDepCounts(r);
-  if(!total) return '<div style="font-size:12px;color:var(--text-muted);">No controls or actions recorded. Record the controls in place and plan owned, dated actions, or formally accept the risk.</div>';
-    const dot=(kind,ch)=>'<span style="width:17px;height:17px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;'
-    +(kind==='done'?'background:#16A34A;color:#fff;':kind==='late'?'background:#DC2626;color:#fff;':kind==='part'?'background:#F59E0B;color:#fff;':'background:transparent;border:1.7px solid var(--border);color:var(--text-muted);')+'">'+ch+'</span>';
-  const row=(d,txt,meta,late)=>'<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;padding:3px 0;min-width:0;">'+d
-    +'<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+txt+'</span>'
-    +'<span style="margin-left:auto;flex:0 0 auto;font-size:11px;'+(late?'color:#DC2626;font-weight:700;':'color:var(--text-muted);')+'">'+meta+'</span></div>';
-  const rows=[];
-  {
-    const c=_riskControlsText(r).text;
-    const shown=c?(esc(c.slice(0,90))+(c.length>90?'\u2026':'')):esc(_controlLevelLabelFor(r,r.controlLevel)||'');
-    if(ctl==='In place')      rows.push(row(dot('done','\u2713'),'Controls in place: '+shown,'at target',false));
-    else if(ctl==='Partial')  rows.push(row(dot('part','~'),(c?'Controls recorded: '+shown:'No controls recorded'),'no residual target set',false));
-    else if(c)                rows.push(row(dot('open',''),'Controls recorded: '+shown,'above target',false));
-    else if(acts.length)      rows.push(row(dot('open',''),'No controls recorded','not recorded',true));
-  }
-  acts.forEach(a=>{
-    const st=_actionStatus(a);
-    const isDone=st==='Complete'||st==='Accepted';
-    const late=st==='Overdue';
-    const meta=[st,a.owner?esc(a.owner):'',a.due?fmtDate(a.due):''].filter(Boolean).join(' \u00b7 ');
-    rows.push(row(dot(isDone?'done':(late?'late':'open'), isDone?'\u2713':(late?'!':'')), esc(a.desc||'(action)'), meta, late));
-  });
-  return '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:600;margin-bottom:4px;">Controls and actions \u00b7 '+done+' of '+total+' in place</div>'+rows.join('');
-}
-var _journeyFilter='all';
-function _journeyMilestones(r){
-  const sc=_riskScore(r);
-  const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due));
-  const closed=acts.filter(a=>{ const st=_actionStatus(a); return st==='Complete'||st==='Accepted'; });
-  const plan=_riskPlanState(r);
-  const evid=(r.linked||[]).filter(l=>l.actionId);
-  const impactsRated=RISK_IMPACT_DIMS.some(d=>parseInt((r.impacts||{})[d.k],10)>0);
-  // Signed off = the plan actually delivered (and reviewed), or the risk was
-  // FORMALLY accepted. Having no actions never counts - see _riskPlanState.
-  const managed=(plan.k==='managed' && r.reviewed && !!sc.rating) || (plan.k==='accepted' && !!sc.rating);
-  const m=[];
-  m.push({ done:true, label:'Identified', when:(r.createdAt||'').slice(0,10),
-    text:(r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':r.suggestedBy==='judgement'?'Raised from the consultant judgement (six HSG65 areas)':r.suggestedBy==='legal'?'Raised from the Legal duties assessment':('Added by '+(r.createdBy||'the team'))) });
-  const _tgt=_riskTarget(r);
-  const _hist=Array.isArray(r.scoreHistory)?r.scoreHistory:[];
-  m.push({ done:!!sc.rating&&impactsRated, label:'Assessed', when:'',
-    text: sc.rating ? ('Rated '+sc.rating+' ('+sc.priority+')'+((_tgt.rating&&plan.k!=='managed'&&plan.k!=='accepted')?(' · projected '+_tgt.rating+' after the plan'):'')+(r.businessImpact?('. '+r.businessImpact):'')) : 'Not yet rated - score likelihood × severity and the business impacts' });
-  m.push({ done:acts.length>0, label:'Action planned', when:'',
-    text: acts.length ? (acts.length+' action'+(acts.length!==1?'s':'')+': '+acts.map(a=>(a.desc||'(action)').slice(0,60)+(a.owner?(' - '+a.owner+(a.due?(', due '+a.due):'')):'')).join('; ')) : 'No owned, dated actions yet' });
-  m.push({ done:acts.length>0&&closed.length===acts.length, label:'Delivered', when:'',
-    text: closed.length ? (closed.map(a=>(a.desc||'(action)').slice(0,50)+' - '+_actionStatus(a)+((a.completedDate||a.acceptDate)?(' '+(a.completedDate||a.acceptDate)):'')).join('; ')+(evid.length?('. Evidence: '+evid.map(l=>l.ref||l.url).join(', ')):'')) : (acts.length?'Plan in progress - '+closed.length+' of '+acts.length+' closed':'Waiting on the action plan') });
-  m.push({ done:managed, label:'Signed off', when:'',
-    text: managed ? (plan.k==='accepted'
-        ? ('Formally accepted with the current controls - who and why are on the risk acceptance register'+(r.trend?(' · trend '+r.trend):''))
-        : ('This is now how the company manages this risk'+(_hist.length?(' - the score moved from '+(_hist[0].l*_hist[0].s)+' to '+(sc.rating||'-')+' as the plan delivered'):'')+(r.controls?(': '+String(r.controls).slice(0,140)):'')+(evid.length?(' · '+evid.length+' piece'+(evid.length!==1?'s':'')+' of evidence on file'):'')+(r.trend?(' · trend '+r.trend):'')))
-      : (plan.k==='managed'?'Plan delivered - tick "reviewed and completed" on the risk to sign it off':(plan.k==='none'?'No actions planned - plan the work, or formally accept the risk with a reason':'The plan is still being delivered')) });
-  return m;
-}
 function _journeyOpenRisk(id){ _gotoRisk(id); }   // same jump as the review tab - one derivation
-function setJourneyFilter(v){ _journeyFilter=v; renderRiskJourney(); }
+// ══════════════════════════════════════════════════════════════
+//  THE RISK PATHWAY (Simon, 2026-09-28): "a simple way to see what's been
+//  done or what hasn't ... the same wording from where the content comes
+//  from so it can be tracked back ... a visual path ... the colour coding
+//  should reflect this ... look at these at the end of a period and see the
+//  good work we have done, and get a report from it."
+//
+//  Six stations, in the order the journey model and the management plan
+//  use. Every line on a station is the app's own words for the thing - the
+//  risk as written, the control-table row as written, the action as it
+//  reads on the execution plan, the close-out sentence as filed - never a
+//  summary of it, and each says where it lives. ONE derivation: the screen,
+//  the period figures and the report all draw from _pathwayOf.
+// ══════════════════════════════════════════════════════════════
+const PW_COLOUR={ done:'#16A34A', part:'#F59E0B', late:'#DC2626', open:'#9CA3AF' };
+const PW_WORD={ done:'Done', part:'In progress', late:'Needs attention', open:'Not started' };
+var _journeyFilter='all', _pathwayDays=90, _pathwayOpenAll=null;
+function _pwActionState(a){ const st=_actionStatus(a); return (st==='Complete'||st==='Accepted')?'done':(st==='Overdue'?'late':(st==='In progress'?'part':'open')); }
+function _pwLine(text, meta, state, at, home){ return { text:String(text||''), meta:String(meta||''), state:state||'open', at:String(at||'').slice(0,10), home:home||'' }; }
+// The plan actions that belong to this risk - control-table rows raised to
+// the plan, and Actions-tab items linked to it - read back through the
+// execution plan's own normaliser, so status and wording are the plan's.
+function _pwPlanActions(r){
+  return _execActions().filter(a=>{
+    if(!a.ref) return false;
+    if(a.ref.t==='risk') return a.ref.a===r.id;
+    if(a.ref.t==='free'){ const o=_execOrigin(a.ref); return !!(o&&o.riskId===r.id); }
+    return false;
+  });
+}
+function _pathwayOf(r){
+  const sc=_riskScore(r), tgt=_riskTarget(r), plan=_riskPlanState(r), ctl=_riskControlStatus(r);
+  const live=a=>a&&!a.deleted&&(a.desc||a.owner||a.due);
+  const ctlRows=(r.actions||[]).filter(live).filter(a=>a.hideFromPlan);
+  const acts=_pwPlanActions(r);
+  const S6=[];
+  // 1 · Identified - the risk, in the words it was written in
+  {
+    const L=[];
+    L.push(_pwLine(r.activity||r.hazard||'New risk', 'the risk, as written', 'done', r.createdAt, 'Risk profile'));
+    if(String(r.assocRisk||'').trim()) L.push(_pwLine(String(r.assocRisk).trim(), _rt(r,'assoc'), 'done', '', 'Risk profile'));
+    if(String(r.harm||'').trim()) L.push(_pwLine(String(r.harm).trim(), _rt(r,'harm'), 'done', '', 'Risk profile'));
+    if((r.personsAtRisk||[]).length) L.push(_pwLine(r.personsAtRisk.join(', '), _rt(r,'persons'), 'done', '', 'Risk profile'));
+    const origin=r.suggestedBy==='discovery'?'Raised by the discovery questionnaire':r.suggestedBy==='judgement'?'Raised from the consultant judgement (six HSG65 areas)':r.suggestedBy==='legal'?'Raised from the Legal duties assessment':('Added by '+(r.createdBy||'the team'));
+    S6.push({ k:'identified', label:'Identified', state:'done', summary:origin+(r.createdAt?(' · '+fmtDate(String(r.createdAt).slice(0,10))):''), lines:L });
+  }
+  // 2 · Assessed - the score, the residual target, the worst case
+  {
+    const L=[]; let st='open', sum='Not yet rated - score likelihood × severity on the risk card';
+    if(sc.rating){
+      L.push(_pwLine('Likelihood '+sc.l+' × Severity '+sc.s+' = '+sc.rating+' · '+sc.priority, 'current score', 'done', '', 'Risk profile · Controls & rating'));
+      if(tgt.rating) L.push(_pwLine('Residual target '+tgt.rating+' · '+tgt.priority, 'the score the controls are written to reach', 'done', '', 'Risk profile · Controls & rating'));
+      else L.push(_pwLine('No residual target set', 'set the line on the risk card, so "controlled" has a meaning', 'part', '', 'Risk profile · Controls & rating'));
+      if(_riskFlagOn(r)) L.push(_pwLine(_riskMode(r)==='ops'?'Business-critical':'Could kill or seriously injure', 'worst credible outcome', 'done', '', 'Risk profile'));
+      if(r.controlLevel) L.push(_pwLine(_controlLevelLabelFor(r,r.controlLevel), 'best achievable control level', 'done', '', 'Risk profile · Controls & rating'));
+      if(String(r.businessImpact||'').trim()) L.push(_pwLine(String(r.businessImpact).trim(), 'business impact', 'done', '', 'Risk profile · People & impact'));
+      (Array.isArray(r.scoreHistory)?r.scoreHistory:[]).forEach((h,i,arr)=>{ const nx=arr[i+1]; const to=nx?(nx.l*nx.s):sc.rating;
+        L.push(_pwLine('Score moved from '+(h.l*h.s)+' to '+to+(h.note?(' - '+h.note):''), 'score history', 'done', h.at, 'Risk profile')); });
+      st=tgt.rating?'done':'part';
+      sum='Rated '+sc.rating+' ('+sc.priority+')'+(tgt.rating?(' · target '+tgt.rating+' ('+tgt.priority+')'):' · no residual target yet');
+    } else L.push(_pwLine('Not yet rated', 'likelihood × severity', 'open', '', 'Risk profile · Controls & rating'));
+    S6.push({ k:'assessed', label:'Assessed', state:st, summary:sum, lines:L });
+  }
+  // 3 · Controls - the control table, row by row, as written
+  {
+    const L=[];
+    if(String(r.controls||'').trim()) L.push(_pwLine(String(r.controls).trim(), 'controls in place, as recorded on the risk', ctl==='In place'?'done':'part', '', 'Risk profile · Controls & rating'));
+    ctlRows.forEach(a=>{ const st=_actionStatus(a);
+      L.push(_pwLine(a.desc||'(control)', [st, a.owner||'', a.due?('due '+fmtDate(a.due)):''].filter(Boolean).join(' · '), _pwActionState(a), a.completedDate||a.acceptDate||'', 'Risk profile · Control table')); });
+    let st, sum;
+    if(!sc.rating){ st='open'; sum='Waiting on the score'; }
+    else if(ctl==='In place'){ st='done'; sum='At the residual target - controlled as reasonably practicable'; }
+    else if(L.some(l=>l.state==='late')){ st='late'; sum='A control is overdue'; }
+    else if(ctl==='Partial'){ st='part'; sum='Scored, but no residual target set yet'; }
+    else if(ctlRows.length){ st='part'; sum='Above the residual target - '+ctlRows.filter(a=>_pwActionState(a)==='done').length+' of '+ctlRows.length+' controls in place'; }
+    else if(L.length){ st='part'; sum='Above the residual target'; }
+    else { st='open'; sum='No controls recorded yet'; }
+    if(!L.length) L.push(ctl==='In place'
+      ? _pwLine('At the residual target, but no control rows written down', 'write the controls that got it there on the control table, so the plan can show how it is held', 'part', '', 'Risk profile · Control table')
+      : _pwLine('No controls recorded', 'add the control table rows on the risk card', 'open', '', 'Risk profile · Control table'));
+    S6.push({ k:'controls', label:'Controls', state:st, summary:sum, lines:L });
+  }
+  // 4 · Actions - the plan, as it reads on the execution plan
+  {
+    const L=acts.map(a=>_pwLine(a.desc||'(action)',
+      [a.status, a.owner||'', a.due?('due '+fmtDate(a.due)):'', a.resolvedDate?('closed '+fmtDate(a.resolvedDate)+(a.resolvedBy?(' by '+a.resolvedBy):'')):''].filter(Boolean).join(' · '),
+      (a.status==='Complete'||a.status==='Accepted')?'done':(a.status==='Overdue'?'late':(a.status==='In progress'?'part':'open')), a.resolvedDate, 'Client execution plan'));
+    const closed=L.filter(l=>l.state==='done').length;
+    let st, sum;
+    if(!acts.length){ st='open'; sum='No actions planned'+(plan.k==='accepted'?'':' - plan the work, or formally accept the risk with a reason'); L.push(_pwLine('No actions on the plan for this risk', '', 'open', '', 'Client execution plan')); }
+    else if(closed===acts.length){ st='done'; sum='All '+acts.length+' action'+(acts.length!==1?'s':'')+' closed'; }
+    else if(L.some(l=>l.state==='late')){ st='late'; sum=L.filter(l=>l.state==='late').length+' overdue · '+closed+' of '+acts.length+' closed'; }
+    else { st='part'; sum=closed+' of '+acts.length+' closed'; }
+    S6.push({ k:'actions', label:'Actions', state:st, summary:sum, lines:L });
+  }
+  // 5 · Kept in place - what each closed piece of work left behind, as filed
+  {
+    const L=[]; let need=0, have=0;
+    const closed=[];
+    ctlRows.forEach(a=>{ if(_pwActionState(a)==='done') closed.push({ o:a, desc:a.desc }); });
+    acts.forEach(a=>{ if(a.status==='Complete'||a.status==='Accepted'){ const o=_execOrigin(a.ref); if(o) closed.push({ o:o, desc:a.desc }); } });
+    closed.forEach(x=>{ need++; const lines=_embedLines(x.o); const e=_embedOf(x.o)||{};
+      if(lines.length){ have++; lines.forEach(l=>L.push(_pwLine(l.label+': '+l.text, 'from "'+String(x.desc||'').slice(0,80)+'"', 'done', e.at, l.home||''))); }
+      else L.push(_pwLine('Not recorded yet - "'+String(x.desc||'(action)')+'"', 'record how it is kept in place, on the execution plan', 'part', '', 'Client execution plan')); });
+    (r.linked||[]).filter(l=>l.ref||l.url).forEach(l=>L.push(_pwLine('Evidence: '+(l.ref||l.url), (l.url&&l.ref)?l.url:'', 'done', '', 'Risk profile · evidence')));
+    const ra=(typeof _psoItemsFrom==='function')?_psoItemsFrom('risk', r.id)[0]:null;
+    if(ra){ const n=_psoSignedCount(ra.id), of=_psoState().staff.length;
+      L.push(_pwLine('Risk assessment issued for sign-off - '+n+' of '+of+' confirmed', 'issued '+fmtDate(ra.delivered), (of&&n===of)?'done':'part', ra.delivered, 'Sign-off register')); }
+    let st, sum;
+    if(!need){ st='open'; sum='Nothing delivered yet'; if(!L.length) L.push(_pwLine('Nothing to hold in place yet - it follows the actions', '', 'open', '', 'Client execution plan')); }
+    else if(have===need){ st='done'; sum='Everything delivered is held - '+have+' of '+need+' recorded'; }
+    else { st='part'; sum=have+' of '+need+' delivered piece'+(need!==1?'s':'')+' of work recorded as held'; }
+    S6.push({ k:'kept', label:'Kept in place', state:st, summary:sum, lines:L });
+  }
+  // 6 · Signed off - reviewed and completed, or formally accepted; and kept reviewed
+  {
+    const L=[];
+    const managed=(plan.k==='managed' && !!r.reviewed && !!sc.rating) || (plan.k==='accepted' && !!sc.rating);
+    const revDue=_riskReviewDue(r);
+    if(plan.k==='accepted') L.push(_pwLine('Formally accepted with the current controls', 'who and why are on the risk acceptance register', 'done', acts.map(a=>a.acceptDate).filter(Boolean).sort().pop()||'', 'Risk acceptance register'));
+    if(r.reviewed) L.push(_pwLine('Reviewed and completed', 'the tick on the risk card', 'done', '', 'Risk profile'));
+    (Array.isArray(r.reviewHistory)?r.reviewHistory:[]).forEach(h=>L.push(_pwLine('Controls reviewed'+(h.by?(' by '+h.by):'')+(h.next?(' - next '+fmtDate(h.next)):''), 'review', 'done', h.at, 'Actions · Maintain')));
+    if(r.reviewDue) L.push(_pwLine(revDue?('Review was due '+fmtDate(r.reviewDue)):('Next review '+fmtDate(r.reviewDue)), revDue?'overdue':'in date', revDue?'late':'done', '', 'Risk profile · Control table'));
+    if(r.trend) L.push(_pwLine('Trend: '+r.trend, '', 'done', '', 'Risk profile'));
+    let st, sum;
+    if(managed && revDue){ st='late'; sum='Signed off, but the review is overdue'; }
+    else if(managed){ st='done'; sum=plan.k==='accepted'?'Formally accepted - this is how the company manages this risk':'This is now how the company manages this risk'; }
+    else if(plan.k==='managed'){ st='part'; sum='Plan delivered - tick "reviewed and completed" on the risk to sign it off'; if(!L.length) L.push(_pwLine('Waiting for the reviewed-and-completed tick', '', 'part', '', 'Risk profile')); }
+    else { st='open'; sum=plan.k==='none'?'No plan and not accepted':'Follows the plan'; if(!L.length) L.push(_pwLine('Follows the plan', '', 'open', '', 'Client execution plan')); }
+    S6.push({ k:'signed', label:'Signed off', state:st, summary:sum, lines:L });
+  }
+  // The whole path, in one colour: red if anything needs attention, green
+  // once signed off, amber while the work is moving, grey before it starts.
+  const hold=_riskHold(r), breach=_holdBreach(sc.priority, hold);
+  const done=S6.filter(s=>s.state==='done').length;
+  let ov;
+  if(S6.some(s=>s.state==='late')) ov={ state:'late', label:'Needs attention' };
+  else if(S6[5].state==='done') ov={ state:'done', label:plan.k==='accepted'?'≈ Accepted':'✓ Signed off' };
+  else if(breach) ov={ state:'late', label:'Needs attention first' };
+  else if(done>=2||S6.some(s=>s.state==='part')) ov={ state:'part', label:'In progress · '+done+' of 6' };
+  else ov={ state:'open', label:'Being assessed' };
+  ov.colour=PW_COLOUR[ov.state]; ov.done=done; ov.reason=breach?((hold.reasons||[])[0]||breach):'';
+  const mk=_riskMacroOf(r);
+  return { r:r, ref:_riskRefOf(r), title:r.activity||r.hazard||'New risk', theme:mk, themeName:mk?_macroName(mk):'', sc:sc, stations:S6, overall:ov, plan:plan };
+}
+// "This period": every dated line that was done on or after the start date.
+function _pathwaySince(){ const d=new Date(); d.setDate(d.getDate()-_pathwayDays); return d.toISOString().slice(0,10); }
+function _pathwayPeriodStats(paths, since){
+  const c={ found:0, scored:0, controls:0, actions:0, kept:0, signed:0, risks:{} };
+  paths.forEach(p=>p.stations.forEach(s=>s.lines.forEach(l=>{
+    if(!l.at || l.at<since || l.state!=='done') return;
+    if(s.k==='identified') c.found++; else if(s.k==='assessed') c.scored++; else if(s.k==='controls') c.controls++;
+    else if(s.k==='actions') c.actions++; else if(s.k==='kept') c.kept++; else if(s.k==='signed') c.signed++; else return;
+    c.risks[p.r.id]=1; })));
+  c.risks=Object.keys(c.risks).length; c.total=c.found+c.scored+c.controls+c.actions+c.kept+c.signed;
+  return c;
+}
+function _pathwayStripHTML(P){
+  const dot=(s,big)=>'<span class="pw-dot" style="'+(s.state==='open'?('border-color:'+PW_COLOUR[s.state]+';color:'+PW_COLOUR[s.state]+';'):('background:'+PW_COLOUR[s.state]+';border-color:'+PW_COLOUR[s.state]+';color:#fff;'))+'">'+(s.state==='done'?'✓':s.state==='late'?'!':s.state==='part'?'◐':'')+'</span>';
+  return '<div class="pw-strip">'+P.stations.map((s,i)=>{
+    const c=PW_COLOUR[s.state];
+    const link=i?('<span class="pw-link" style="background:'+(s.state==='open'?'var(--border)':c)+';"></span>'):'';
+    return link+'<span class="pw-node" title="'+esc(s.label+' - '+PW_WORD[s.state]+': '+s.summary)+'">'+dot(s)+'<span class="pw-lab" style="color:'+(s.state==='open'?'var(--text-muted)':c)+';">'+esc(s.label)+'</span></span>';
+  }).join('')+'</div>';
+}
+function _pathwayStationsHTML(P, since){
+  return '<div class="pw-stations">'+P.stations.map(s=>{
+    const c=PW_COLOUR[s.state];
+    const lines=s.lines.map(l=>{ const lc=PW_COLOUR[l.state||'open']; const recent=!!(l.at&&since&&l.at>=since);
+      return '<div class="pw-line'+(recent?' pw-recent':'')+'"><span class="pw-ldot" style="background:'+lc+';"></span><span class="pw-ltxt">'+esc(l.text)+(l.meta?('<span class="pw-lmeta">'+esc(l.meta)+'</span>'):'')+'</span>'
+        +(l.at?('<span class="pw-lat"'+(recent?' style="color:var(--accent);font-weight:700;"':'')+'>'+esc(fmtDate(l.at))+'</span>'):'')
+        +(l.home?('<span class="pw-lhome" title="Where this is recorded">'+esc(l.home)+'</span>'):'')+'</div>'; }).join('');
+    return '<div class="pw-st"><div class="pw-sthead"><span class="pw-dot" style="'+(s.state==='open'?('border-color:'+c+';color:'+c+';'):('background:'+c+';border-color:'+c+';color:#fff;'))+'">'+(s.state==='done'?'✓':s.state==='late'?'!':s.state==='part'?'◐':'')+'</span><b>'+esc(s.label)+'</b><span class="pw-stsum" style="color:'+c+';">'+esc(s.summary)+'</span></div>'+lines+'</div>';
+  }).join('')+'</div>';
+}
+function _pathwayCardHTML(P, since){
+  const r=P.r, ov=P.overall;
+  const wash='linear-gradient(100deg,'+ov.colour+'1c,'+ov.colour+'06 62%,transparent)';
+  const why=(ov.state==='late'&&ov.reason&&!P.stations.some(s=>s.state==='late'))?'<span class="pw-why">'+esc(ov.reason)+'</span>':'';
+  return '<details class="card pw-card"'+(_pathwayOpenAll===true?' open':'')+' style="border-left:4px solid '+ov.colour+';background:'+wash+';">'
+    +'<summary class="pw-sum"><div class="pw-head">'+_riskRefChip(r)+'<span class="pw-title">'+esc(P.title)+(_riskFlagOn(r)?(' <span class="pw-flag">'+(_riskMode(r)==='ops'?'business-critical':'could kill or seriously injure')+'</span>'):'')+'</span>'
+    +_riskPrioBadge(P.sc.priority,P.sc.rating)+'<span class="badge" style="border-color:'+ov.colour+';color:'+ov.colour+';background:'+ov.colour+'1a;font-weight:700;">'+esc(ov.label)+'</span>'+why+'</div>'
+    +_pathwayStripHTML(P)+_journeyBarHTML(r)+'</summary>'
+    +'<div class="pw-body">'+_pathwayStationsHTML(P, since)
+    +(_empView()?'':'<button class="btn btn-outline btn-xs no-print" style="margin-top:10px;" onclick="_journeyOpenRisk(\''+r.id+'\')">Open in risk profile →</button>')+'</div></details>';
+}
 function renderRiskJourney(){
   const el=document.getElementById('journeyRoot'); if(!el) return;
-  const all=_riskDisplayOrder();
-  const enriched=all.map(r=>({ r, m:_journeyMilestones(r), sc:_riskScore(r), plan:_riskPlanState(r) }));
-  const managedN=enriched.filter(x=>x.m[4].done).length;
-  const planN=enriched.filter(x=>!x.m[4].done && x.m[2].done).length;
-  const earlyN=enriched.length-managedN-planN;
-  // Same order as the Risk profile tab (shared _riskDisplayOrder) - the two
-  // pages must read as one list.
-  const rows=enriched.filter(x=> _journeyFilter==='managed' ? x.m[4].done : _journeyFilter==='open' ? !x.m[4].done : true);
-  const tile=(n,lab,c)=>`<div class="ckx-kpi" style="cursor:default;"><div style="font-size:24px;font-weight:800;color:${c};">${n}</div><div style="font-size:12px;color:var(--text-muted);">${lab}</div></div>`;
-  const fbtn=(v,lab)=>`<button class="btn ${_journeyFilter===v?'btn-primary':'btn-outline'} btn-xs" onclick="setJourneyFilter('${v}')">${lab}</button>`;
-  const card=(x)=>{
-    const r=x.r;
-    const htC=_catColour(r.category);
-    const hold=_riskHold(r);
-    const breach=_holdBreach(x.sc.priority, hold);
-    const signed=x.m[4].done;
-    const state = signed
-      ? `<span class="badge" style="border-color:${x.plan.colour};color:${x.plan.colour};background:${x.plan.colour}1a;">${x.plan.k==='accepted'?'\u2248 Accepted':'\u2713 Signed off'}</span>`
-      : (breach ? `<span style="font-size:10.5px;font-weight:700;color:#DC2626;">NEEDS ATTENTION FIRST \u00b7 ${esc(hold.reasons[0]||breach)}</span>`
-                : `<span class="badge" style="border-color:${x.plan.colour};color:${x.plan.colour};background:${x.plan.colour}1a;">${x.plan.label}</span>`);
-    const g=_journeyGauge(r);
-    // The ladder wash, on the pathway (Simon: same effect here): each card
-    // sweeps its band colour, deepens on hover, opens below as before.
-    const _atT=!!(g&&g.atTarget);
-    const _bc=_atT?'#16A34A':(_RISK_PRIO_COLOR[x.sc.priority]||'#9CA3AF');
-    const _wa=_atT?'24':(({Critical:'2E',High:'24',Medium:'1C',Low:'14'})[x.sc.priority]||'12');
-    const _cel=_atT?('<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;">Controlled as reasonably practicable \u2713</span>'+(r.reviewDue?(_riskReviewDue(r)?'<span class="badge" style="border-color:#D97706;color:#B45309;background:#D9770614;font-weight:700;">Review due '+esc(fmtDate(r.reviewDue))+'</span>':'<span class="badge badge-muted">Review '+esc(fmtDate(r.reviewDue))+'</span>'):'')):'';
-    const _w0='linear-gradient(100deg,'+_bc+_wa+','+_bc+'08 62%,transparent)';
-    const _w1='linear-gradient(100deg,'+_bc+'3D,'+_bc+'12 62%,transparent)';
-    const hint=(!signed && g && g.tgtPct===null)
-      ? '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">No projected score set - add it on the risk card and the blue target line appears here.</div>'
-      : '';
-    return `<details class="card" style="border-left:4px solid ${_bc};border-radius:4px;margin-bottom:10px;background:${_w0};transition:background .15s;" onmouseover="this.style.background='${_w1}'" onmouseout="this.style.background='${_w0}'">
-      <summary style="padding:12px 16px 12px;cursor:pointer;">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <span style="font-weight:700;font-size:13.5px;flex:1;min-width:200px;">${esc(r.activity||r.hazard||'New risk')}${_riskSif(r)?' <span style="font-weight:400;font-size:11px;color:var(--text-muted);">could kill or seriously injure</span>':''}</span>
-          ${_cel}
-          ${_riskPrioBadge(x.sc.priority,x.sc.rating)}
-          ${state}
-        </div>
-        ${_journeyBarHTML(r)}
-      </summary>
-      <div style="padding:10px 18px 12px;border-top:1px dashed var(--border);">
-        ${_journeyDepsHTML(r)}
-        ${signed?`<div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.45;">${esc(x.m[4].text)}</div>`:''}
-        ${hint}
-        ${_scoreHistoryHTML(r)}
-        ${_empView()?'':`<button class="btn btn-outline btn-xs no-print" style="margin-top:10px;" onclick="_journeyOpenRisk('${r.id}')">Open in risk profile \u2192</button>`}
-      </div>
-    </details>`;
-  };
-  el.innerHTML = `<div class="card" style="margin-bottom:14px;">
-      <div class="card-band"><h3><span class="dot">●</span> Risk pathway</h3></div>
-      <div class="card-body">
-        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Every risk, from identified to signed off - a risk never leaves the profile. Each bar runs from the <b>inherent score</b> towards <b>fully avoided - no risk remains</b>: the fill is the current score, and the <span style="color:#2563EB;font-weight:700;">blue line</span> marks the residual target. At or beyond the line the risk is controlled as reasonably practicable; review then sets the next, stronger target. Open a risk for the detail.</div>
-        <div class="ckx-kpis" style="margin-bottom:12px;">${tile(managedN,'Signed off','#16A34A')}${tile(planN,'Plan in progress','#F59E0B')}${tile(earlyN,'Being assessed','#9CA3AF')}</div>
-        <div style="display:flex;gap:8px;" class="no-print">${fbtn('all','All ('+enriched.length+')')}${fbtn('open','In progress ('+(enriched.length-managedN)+')')}${fbtn('managed','Signed off ('+managedN+')')}</div>
-      </div>
-    </div>
-    ${rows.length ? (_riskGroupMode==='macro' ? _riskMacroGroups(rows,x=>x.r).map((g,i,arr)=>((i===0||arr[i-1].origin!==g.origin)?'<div class="jny-band">'+esc(_ORIGIN_LABEL[g.origin])+'</div>':'')+_macroHeadHTML(g)+(_journeyMacroOpen(g.k)?g.list.map(card).join(''):'')).join('') : rows.map(card).join('')) : `<div class="card"><div class="card-body"><div class="empty"><h4>No risks ${_journeyFilter==='managed'?'signed off yet':'to show'}</h4><p>${_journeyFilter==='managed'?'Deliver an action plan and tick the risk as reviewed, and it will appear here.':'Build the risk profile first - the journey writes itself from there.'}</p></div></div></div>`}`;
+  try{ _riskRefsEnsure(); }catch(e){}
+  const since=_pathwaySince();
+  const paths=_riskDisplayOrder().map(_pathwayOf);
+  const nDone=paths.filter(p=>p.overall.state==='done').length, nLate=paths.filter(p=>p.overall.state==='late').length;
+  const nMoving=paths.length-nDone-nLate;
+  const rows=paths.filter(p=> _journeyFilter==='done'?p.overall.state==='done' : _journeyFilter==='late'?p.overall.state==='late' : _journeyFilter==='open'?(p.overall.state==='part'||p.overall.state==='open') : true);
+  const st=_pathwayPeriodStats(paths, since);
+  const perLbl=_pathwayDays===365?'12 months':(_pathwayDays+' days');
+  const tile=(n,lab,c,v)=>'<div class="ckx-kpi" style="cursor:pointer;'+(_journeyFilter===v?('outline:2px solid '+c+';'):'')+'" onclick="setJourneyFilter(\''+v+'\')" title="Show only these"><div style="font-size:24px;font-weight:800;color:'+c+';">'+n+'</div><div style="font-size:12px;color:var(--text-muted);">'+lab+'</div></div>';
+  const pbtn=(d)=>'<button class="btn '+(_pathwayDays===d?'btn-primary':'btn-outline')+' btn-xs" onclick="setPathwayPeriod('+d+')">'+(d===365?'12 months':(d+' days'))+'</button>';
+  const bits=[ st.found?(st.found+' risk'+(st.found!==1?'s':'')+' identified'):'', st.scored?(st.scored+' score'+(st.scored!==1?'s':'')+' moved'):'',
+    st.controls?(st.controls+' control'+(st.controls!==1?'s':'')+' put in place'):'', st.actions?(st.actions+' action'+(st.actions!==1?'s':'')+' closed'):'',
+    st.kept?(st.kept+' thing'+(st.kept!==1?'s':'')+' filed to keep the work in place'):'', st.signed?(st.signed+' review'+(st.signed!==1?'s':'')+' or sign-off'+(st.signed!==1?'s':'')):'' ].filter(Boolean);
+  const good=st.total
+    ? '<b>In the last '+perLbl+':</b> '+bits.join(' · ')+' - across '+st.risks+' risk'+(st.risks!==1?'s':'')+'. Dated lines from this period are marked in <span style="color:var(--accent);font-weight:700;">teal</span> below.'
+    : 'Nothing dated in the last '+perLbl+' - pick a longer period, or this is where the work starts.';
+  el.innerHTML='<div class="card" style="margin-bottom:14px;"><div class="card-band"><h3><span class="dot">●</span> Risk pathway</h3>'
+    +(_empView()?'':'<button class="btn btn-outline btn-sm no-print" onclick="downloadPathwayReport()" title="Every risk, station by station, in the words it was recorded in - what has been done and what has not, with this period\'s progress on the front">⭳ Pathway report</button>')+'</div>'
+    +'<div class="card-body">'
+    +'<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Every risk walks the same six stations - <b>identified, assessed, controls, actions, kept in place, signed off</b>. Open one and each station shows what was recorded, in the words it was recorded in, and where it lives. Green is done, amber is in progress, red needs attention, grey has not started. The bar under each strip is the score: from the inherent score towards fully avoided, the <span style="color:#2563EB;font-weight:700;">blue line</span> being the residual target.</div>'
+    +'<div class="ckx-kpis" style="margin-bottom:12px;">'+tile(nDone,'Signed off',PW_COLOUR.done,'done')+tile(nMoving,'In progress',PW_COLOUR.part,'open')+tile(nLate,'Needs attention',PW_COLOUR.late,'late')+tile(paths.length,'All risks','var(--text)','all')+'</div>'
+    +'<div class="pw-period no-print"><span>Progress this period:</span>'+pbtn(30)+pbtn(90)+pbtn(180)+pbtn(365)+'<span style="margin-left:auto;display:flex;gap:6px;"><button class="btn btn-ghost btn-xs" onclick="pathwayToggleAll(true)">Expand all</button><button class="btn btn-ghost btn-xs" onclick="pathwayToggleAll(false)">Collapse all</button></span></div>'
+    +'<div class="pw-good">'+good+'</div>'
+    +'</div></div>'
+    +(rows.length
+      ? (_riskGroupMode==='macro'
+          ? _riskMacroGroups(rows,p=>p.r).map((g,i,arr)=>((i===0||arr[i-1].origin!==g.origin)?('<div class="jny-band">'+esc(_ORIGIN_LABEL[g.origin])+'</div>'):'')+_macroHeadHTML(g)+(_journeyMacroOpen(g.k)?g.list.map(p=>_pathwayCardHTML(p, since)).join(''):'')).join('')
+          : rows.map(p=>_pathwayCardHTML(p, since)).join(''))
+      : '<div class="card"><div class="card-body"><div class="empty"><h4>No risks '+(_journeyFilter==='done'?'signed off':_journeyFilter==='late'?'needing attention':_journeyFilter==='open'?'in progress':'yet')+'</h4><p>'+(paths.length?'Change the filter above.':'Add risks to the profile and their pathway appears here.')+'</p></div></div></div>');
 }
+function setJourneyFilter(v){ _journeyFilter=(_journeyFilter===v&&v!=='all')?'all':v; renderRiskJourney(); }
+function setPathwayPeriod(d){ _pathwayDays=d; renderRiskJourney(); }
+function pathwayToggleAll(open){ _pathwayOpenAll=!!open; document.querySelectorAll('#journeyRoot details.pw-card').forEach(d=>{ d.open=!!open; }); }
+// The report: the same six stations, the same words, on paper - with this
+// period's progress on the front. Off _pathwayOf and nothing else.
+function downloadPathwayReport(){
+  try{
+    const client=(_consultantView&&_consultantView.name)||_cockpitClientName();
+    const d=_docFor('riskPathway');
+    const since=_pathwaySince();
+    const paths=_riskDisplayOrder().map(_pathwayOf);
+    const st=_pathwayPeriodStats(paths, since);
+    const perLbl=_pathwayDays===365?'12 months':(_pathwayDays+' days');
+    const K=_mkPdf('Risk Pathway', client, d, 'What has been done and what has not - every risk, station by station, in the words it was recorded in.');
+    const NAVY=[30,58,95], GREY=[110,110,110];
+    const RGB={ done:[22,163,74], part:[217,119,6], late:[220,38,38], open:[120,128,140] };
+    const nDone=paths.filter(p=>p.overall.state==='done').length, nLate=paths.filter(p=>p.overall.state==='late').length;
+    K.tiles([{num:nDone,label:'Signed off',color:RGB.done},{num:paths.length-nDone-nLate,label:'In progress',color:RGB.part},{num:nLate,label:'Needs attention',color:RGB.late},{num:paths.length,label:'Risks on the profile',color:NAVY}],{cols:4});
+    K.section('Progress in the last '+perLbl+' - from '+fmtDate(since), [13,148,136]);
+    if(st.total) K.tiles([{num:st.found,label:'Risks identified',color:NAVY},{num:st.scored,label:'Scores moved',color:NAVY},{num:st.controls,label:'Controls in place',color:RGB.done},{num:st.actions,label:'Actions closed',color:RGB.done},{num:st.kept,label:'Filed to keep in place',color:RGB.done},{num:st.signed,label:'Reviews / sign-offs',color:RGB.done}],{cols:6,h:22});
+    else K.text('Nothing dated in this period.', 9.5, {color:GREY});
+    K.text('Lines marked * below were recorded in this period.', 8.6, {color:GREY, gap:3});
+    const WORD={ done:'done', part:'in progress', late:'NEEDS ATTENTION', open:'not started' };
+    _riskMacroGroups(paths, p=>p.r).forEach(g=>{
+      const letter=(g.k&&typeof _macroLetterRead==='function')?_macroLetterRead(g.k):'';
+      K.section((letter?(letter+' - '):'')+g.name+'  -  '+g.roll, NAVY);
+      g.list.forEach(P=>{
+        K.st.y+=1;
+        K.kv('Risk', (P.ref?(P.ref+' - '):'')+P.title+'  -  '+(P.sc.priority?(P.sc.priority+' '+P.sc.rating):'not rated')+'  -  '+String(P.overall.label).replace(/^[✓≈] /,''));
+        K.kv('Path', P.stations.map(s=>s.label+': '+WORD[s.state]).join('  |  '));
+        const rows=[];
+        P.stations.forEach(s=>{ s.lines.forEach((l,i)=>{ const c=RGB[l.state||'open']; const rec=!!(l.at&&l.at>=since);
+          rows.push([ i===0?{text:s.label,bold:true,color:RGB[s.state]}:'', {text:(rec?'* ':'')+l.text+(l.meta?('  ('+l.meta+')'):''), color:c}, {text:l.at?fmtDate(l.at):'', color:c}, {text:l.home||'', color:[140,140,140]} ]); }); });
+        K.table([{header:'STATION',w:26},{header:'WHAT, IN THE WORDS IT WAS RECORDED IN',w:104},{header:'WHEN',w:22},{header:'WHERE IT LIVES',w:26}], rows, {fs:8});
+      });
+    });
+    K.st.y+=2;
+    K.text('Green is done, amber is in progress, red needs attention, grey has not started. Every line is read from where it was recorded - the risk profile, the control table, the execution plan, the close-out record, the sign-off register - never rewritten for this report.', 8.4, {color:GREY});
+    _pdfFooter(K, d, 'Risk Pathway');
+    K.doc.save('risk-pathway-'+String(client||'client').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+new Date().toISOString().slice(0,10)+'.pdf');
+    showToast('✓ Pathway report created','success');
+  }catch(e){ console.error('Pathway report failed',e); showToast('Could not build the report - see console','error'); }
+}
+
 
 // ══════════════════════════════════════════════════════════════
 //  COMPLETENESS DRILL-DOWN - click the cockpit completeness tile
@@ -21200,6 +21377,7 @@ const REPORT_DOCS = [
   { key:'companyProfile',   title:'Company Profile',              code:'CP'  },
   { key:'discovery',        title:'Discovery Questionnaire',      code:'DQ'  },
   { key:'policySignoff',    title:'Policy Acknowledgement',       code:'PSO' },
+  { key:'riskPathway',      title:'Risk Pathway',                 code:'RPW' },
   { key:'boardReport',      title:'Board Report',                 code:'BR'  },
   { key:'managementPlan',   title:'H&S Management Plan',          code:'MP'  },
   { key:'bizStatus',        title:'Business Status Report',       code:'BSR' },

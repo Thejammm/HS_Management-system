@@ -23,10 +23,11 @@ const CHROME = (() => {
   return found;
 })();
 
-// Open the app with a clean slate. `file` defaults to the deployed copy, so
-// the suite always tests what ships; pass a path to test a work copy.
+// Open the app with a clean slate. It tests what ships (public/index.html)
+// unless COMPASS_APP points somewhere else, which is how a change is proved
+// before it is promoted.
 export async function openApp(opts = {}) {
-  const file = opts.file || APP;
+  const file = opts.file || process.env.COMPASS_APP || APP;
   if (!fs.existsSync(file)) { console.error('X App not found: ' + file); process.exit(2); }
   const browser = await puppeteer.launch({ executablePath: CHROME, args: ['--headless=new', '--disable-gpu'], defaultViewport: { width: opts.width || 1366, height: opts.height || 950 } });
   const page = await browser.newPage();

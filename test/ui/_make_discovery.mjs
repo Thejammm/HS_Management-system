@@ -16,6 +16,11 @@ const OUT = path.join(OUT_DIR, 'Testing_Client_discovery_questionnaire_COMPLETED
 // an office. The same shape as Easy Travel, so the test rehearses tomorrow.
 const SECTORS = ['motor', 'transportsvc', 'office'];
 const ANSWERS = {
+  // business profile - who they are and who they affect
+  b_survey_pre2000: false, b_dutyholder: false, b_design: false, b_domestic: true,
+  b_public: true, b_manufacture: false, b_warehouse: false, b_retail: true, b_food: false,
+  b_care: false, b_passengers: true, b_atrisk: true, b_events: false,
+  b_contractdep: true, b_licence: true,
   o_height: true, o_driving: true, o_confined: false, o_livesites: false, o_manual: true,
   o_lone: true, o_outdoor: true, o_hotwork: true, o_chemicals: true, o_dust: true,
   o_noise: true, o_vibration: true, o_elecwork: false, o_water: false, o_transport: true,

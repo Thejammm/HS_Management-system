@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
 
@@ -61,7 +62,9 @@ test('the plan is registered and offers the picker contract', () => {
 
 test('it reads in the clause order an auditor follows', () => {
   const rep = buildReport(STATE(), 'management-plan', OPTS);
-  const labels = rep.pages.map(p => p.label);
+  // section 4 takes as many pages as the detail needs, so collapse them
+  const labels = rep.pages.map(p => String(p.label).replace(/^Managed.*/, 'Managed'))
+    .filter((l, i, a) => l !== 'Managed' || a[i - 1] !== 'Managed');
   assert.deepEqual(labels, ['Cover', 'Context', 'Leadership', 'Planning', 'Managed', 'Support', 'Checking', 'Improvement', 'Declaration']);
   const html = reportHTML(rep);
   ['What this business does', 'Who is answerable', 'What we found', 'How each risk is managed',
@@ -287,6 +290,61 @@ test('a risk already at its planned target says so instead of a worse number', (
   const html = reportHTML(buildReport(s, 'management-plan', OPTS));
   assert.match(html, /at its planned target/);
   assert.doesNotMatch(html, /target <b>25<\/b>/);
+});
+
+// ── Simon, 2026-09-28: number the risks. Two labels doing two jobs - a
+//    reference that belongs to the risk for life, and a section letter that
+//    belongs to this issue of the document.
+test('every risk prints its own reference, straight from the app', () => {
+  const s = STATE();
+  s.riskProfile.forEach((r, i) => { r.ref = 'R-' + String(i + 1).padStart(3, '0'); });
+  const html = reportHTML(buildReport(s, 'management-plan', OPTS));
+  ['R-001', 'R-002', 'R-003'].forEach(ref =>
+    assert.match(html, new RegExp('<span class="r-mp-ref">' + ref + '</span>'), 'card carries ' + ref));
+  // the report only ever reads it - a risk with no reference prints no chip
+  const none = reportHTML(buildReport(STATE(), 'management-plan', OPTS));
+  assert.doesNotMatch(none, /r-mp-ref/, 'nothing invented for a risk that has no reference yet');
+});
+
+test('the sections are lettered, and each band says what is under it', () => {
+  const s = STATE();
+  s.riskProfile.forEach((r, i) => { r.ref = 'R-' + String(i + 1).padStart(3, '0'); });
+  const P = deriveManagementPlan(s, { today: TODAY });
+  assert.deepEqual(P.themes.map(t => t.letter), ['A', 'B', 'C'], 'A, B, C in the order the sections print');
+  assert.match(P.themes[0].meta, /^\d+ risk/, 'the band counts its risks: ' + P.themes[0].meta);
+  const html = reportHTML(buildReport(s, 'management-plan', OPTS));
+  assert.match(html, /<span class="r-mp-bandl">A<\/span>/);
+  assert.match(html, /<span class="r-mp-bandl">B<\/span>/);
+  // and section 1 forecasts where each theme will be found
+  assert.match(html, /Section<\/th>/);
+});
+
+test('a section letter is positional, a reference is not', () => {
+  const s = STATE();
+  s.riskProfile.forEach((r, i) => { r.ref = 'R-' + String(i + 1).padStart(3, '0'); });
+  const before = deriveManagementPlan(s, { today: TODAY });
+  const fireBefore = before.themes.find(t => /Fire/.test(t.name));
+  // push the work-at-height risk to Critical: it overtakes and the letters shuffle
+  s.riskProfile[1].likelihood = '5'; s.riskProfile[1].severity = '5';
+  const after = deriveManagementPlan(s, { today: TODAY });
+  const fireAfter = after.themes.find(t => /Fire/.test(t.name));
+  assert.notEqual(fireBefore.letter, fireAfter.letter, 'the section letter moved with the re-sort');
+  assert.equal(before.rows.find(r => r.id === 'r1').ref, after.rows.find(r => r.id === 'r1').ref,
+    'and every reference stayed exactly where it was');
+});
+
+test('a theme carried over a page break gets its band again, marked continued', () => {
+  const worked = JSON.parse(fs.readFileSync(
+    path.join(here, '..', 'public', 'reports', 'fixtures', 'worked.json'), 'utf8'));
+  const rep = buildReport(worked, 'management-plan', OPTS);
+  const managed = rep.pages.filter(p => /^Managed/.test(p.label));
+  managed.forEach((p, i) => {
+    const rows = p.blocks.find(b => b.type === 'planRisk').rows;
+    assert.ok(rows[0].band, 'page ' + (i + 1) + ' of section 4 opens on a section band, never a bare card');
+  });
+  const conts = managed.flatMap(p => p.blocks.find(b => b.type === 'planRisk').rows)
+    .filter(r => r.band && / continued$/.test(r.band.meta));
+  assert.ok(conts.length >= 1, 'a theme that spans a page break says continued (' + conts.length + ')');
 });
 
 test('the brief format drops the cover but keeps every section', () => {

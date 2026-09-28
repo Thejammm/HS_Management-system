@@ -40,7 +40,7 @@ export const HEAVY = (() => {
   const risks = NAMES.map((n, i) => {
     const done = i % 3 !== 2;
     const r = {
-      id: 'h' + i, activity: n, libKey: ['fire', 'roadrisk', 'workatheight', 'asbestos', 'manualhandling', 'violence'][i % 6],
+      id: 'h' + i, ref: 'R-' + String(i + 1).padStart(3, '0'), activity: n, libKey: ['fire', 'roadrisk', 'workatheight', 'asbestos', 'manualhandling', 'violence'][i % 6],
       mode: i === 11 ? 'ops' : undefined,
       assocRisk: 'The specific scenario this shows up in on site, written out at the length a consultant actually types it into the box.',
       likelihood: String((i % 4) + 1), severity: String(((i + 2) % 4) + 2),

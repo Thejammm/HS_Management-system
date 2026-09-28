@@ -8,7 +8,7 @@
 // does not (house rule: a report may never count differently from a screen).
 // ══════════════════════════════════════════════════════════════
 import { deriveBoard, bandsFrom, tierFor, residualOf, targetOf, inherentOf } from './derive.js';
-import { macroOf, controlsTextOf, controlsListOf, controlStatusOf, holdOf, sifOf, sifWordOf, reviewDueOf, embedLinesOf, embedIsSet, HOLD_STATES } from './app-contract.js';
+import { macroOf, riskRefOf, controlsTextOf, controlsListOf, controlStatusOf, holdOf, sifOf, sifWordOf, reviewDueOf, embedLinesOf, embedIsSet, HOLD_STATES } from './app-contract.js';
 
 const str = (v) => String(v == null ? '' : v).trim();
 const live = (a) => a && !a.deleted && !a.hideFromPlan && (a.desc || a.owner || a.due);
@@ -116,7 +116,7 @@ function riskRowOf(r, state, bands, acts, sign, opts) {
   const policies = sign.rows.filter(p => p.riskIds.indexOf(r.id) >= 0).map(p => p.title);
   const hold = holdOf(r, { today: opts.today });
   return {
-    id: r.id, name: str(r.activity || r.hazard) || 'Unnamed risk',
+    id: r.id, ref: riskRefOf(r), name: str(r.activity || r.hazard) || 'Unnamed risk',
     assoc: str(r.assocRisk), area: str(r.area), theme: macroOf(r, state) || 'Not yet grouped',
     inherent: inh, residual: res, target: tgt, tier,
     targetTier: tgt ? tierFor(tgt.score, bands) : null,
@@ -145,6 +145,14 @@ export function deriveManagementPlan(state, opts = {}) {
   const rank = { Critical: 4, High: 3, Medium: 2, Low: 1 };
   const byTheme = new Map();
   rows.forEach(x => { if (!byTheme.has(x.theme)) byTheme.set(x.theme, []); byTheme.get(x.theme).push(x); });
+  // Section letters A, B, C ... AA - the document's own framing, assigned by
+  // position, which is exactly what a section number is. The risk references
+  // beneath them never move.
+  const letter = (i) => {
+    let s = '', x = i;
+    do { s = String.fromCharCode(65 + (x % 26)) + s; x = Math.floor(x / 26) - 1; } while (x >= 0);
+    return s;
+  };
   const themes = [...byTheme.entries()].map(([name, list]) => ({
     name, rows: list,
     worst: list.reduce((w, x) => ((rank[x.tier] || 0) > (rank[w] || 0)) ? x.tier : w, null),
@@ -152,6 +160,12 @@ export function deriveManagementPlan(state, opts = {}) {
     held: list.filter(x => x.hold && x.hold.k === 'held').length,
     fatal: list.filter(x => x.fatal).length,
   })).sort((a, b) => (rank[b.worst] || 0) - (rank[a.worst] || 0) || String(a.name).localeCompare(String(b.name)));
+  themes.forEach((t, i) => {
+    t.letter = letter(i);
+    t.meta = t.rows.length + ' risk' + (t.rows.length !== 1 ? 's' : '')
+      + ' \u00b7 ' + t.controlled + ' controlled'
+      + (t.fatal ? (' \u00b7 ' + t.fatal + ' flagged worst case') : '');
+  });
 
   const closedActs = acts.filter(x => isClosed(x.a));
   const openActs = acts.filter(x => !isClosed(x.a));

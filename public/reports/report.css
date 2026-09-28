@@ -104,6 +104,19 @@
   text-transform:uppercase; letter-spacing:.16em; color:var(--r-muted); }
 .r-mp-sif { font-size:7px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--r-crit); }
 .r-mp-name { font-size:13px; font-weight:700; line-height:1.28; margin-bottom:6px; }
+/* The reference belongs to the risk and never changes; the section letter
+   belongs to this issue of the document. Two labels, deliberately unalike. */
+.r-mp-ref { font-family:'Inter',Arial,sans-serif; font-size:9px; font-weight:700;
+  letter-spacing:.06em; color:var(--r-ink); font-variant-numeric:tabular-nums;
+  border:1px solid var(--r-hair2); padding:0 4px; }
+.r-mp-band { display:flex; align-items:baseline; gap:10px; margin:14px 0 8px;
+  padding:5px 0 5px; border-top:1.5px solid var(--r-ink); border-bottom:1px solid var(--r-hair); }
+.r-mps > .r-mp-band:first-child { margin-top:0; }
+.r-mp-bandl { font-family:'Inter',Arial,sans-serif; font-size:15px; font-weight:700;
+  letter-spacing:.02em; line-height:1; }
+.r-mp-bandn { font-family:'Inter',Arial,sans-serif; font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.16em; }
+.r-mp-bandm { margin-left:auto; font-size:9px; color:var(--r-muted); white-space:nowrap; }
 
 .r-mp-row { display:flex; gap:12px; align-items:flex-start;
   padding:5px 0 0; border-top:1px solid var(--r-hair); }

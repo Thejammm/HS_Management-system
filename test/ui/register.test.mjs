@@ -16,7 +16,8 @@ await openRegister(page);
     return { bands: [...body.querySelectorAll('tr.rpt-band')].map(x => x.textContent.replace(/\s+/g, ' ').trim()),
       groups: [...body.querySelectorAll('tr.rpt-macro .rpt-mac-name')].map(x => x.textContent.trim()),
       rows: [...body.querySelectorAll('tr.rpt-row')].length,
-      titles: [...body.querySelectorAll('tr.rpt-row')].map(x => x.cells[1].textContent.trim()),
+      titles: [...body.querySelectorAll('tr.rpt-row')].map(x => x.cells[2].textContent.trim()),   // cells[1] is the Ref column
+      refs: [...body.querySelectorAll('tr.rpt-row')].map(x => x.cells[1].textContent.trim()),
       headers: [...document.querySelectorAll('#rpTbody')].length ? [...document.querySelectorAll('table thead th')].map(x => x.textContent.trim()).filter(Boolean) : [] };
   });
   R.ok(t.bands.length === 3 && /^Risk profile/.test(t.bands[0]) && /^Legal duties/.test(t.bands[1]) && /^Company maturity/.test(t.bands[2]),
@@ -144,7 +145,7 @@ await wait(page, 300);
       setTimeout(G(() => {
         const rows = [...document.querySelectorAll('#rpTbody tr.rpt-row')];
         const open = [...document.querySelectorAll('#rpTbody tr.rpt-macro.rpt-mac-open')].length;
-        res({ shutBefore, onScreen: rows.length, isNew: rows.some(r => /New risk/.test(r.cells[1].textContent)),
+        res({ shutBefore, onScreen: rows.length, isNew: rows.some(r => /New risk/.test(r.cells[2].textContent)),
           onlyItsOwn: open === 1, registerOpen: !!(document.getElementById('wfRegister') || {}).open });
       }), 500);
     }), 600);
@@ -166,6 +167,63 @@ await seed(page, { riskProfile: [] }, 'risk');
     return el ? el.textContent.replace(/\s+/g, ' ').trim() : '(nothing rendered)';
   });
   R.ok(/No risks|add from the library|No risks match/i.test(t), 'an empty profile says so rather than showing a broken table');
+}
+
+// ── The risk reference: R-001, and it never moves ──────────────────────────
+//    Simon, 2026-09-28: an ascending position number would have been a trap,
+//    because the register re-sorts by theme and band on every re-score. These
+//    pin the thing that makes the reference worth having.
+await seed(page, { riskProfile: RISKS() }, 'risk');
+await openRegister(page);
+{
+  const t = await page.evaluate(() => {
+    _riskRefsEnsure();
+    const refs = S.riskProfile.map(r => r.ref);
+    const head = [...document.querySelectorAll('table.rpt thead th')].map(x => x.textContent.trim());
+    const cells = [...document.querySelectorAll('#rpTbody tr.rpt-row')].map(tr => tr.cells[1].textContent.trim());
+    return { refs, head, cells, seq: S.riskRefSeq,
+      order: refs.join(',') === S.riskProfile.map((r, i) => 'R-' + String(i + 1).padStart(3, '0')).join(',') };
+  });
+  R.ok(t.refs.every(x => /^R-\d{3}$/.test(x)), 'every risk gets a reference in the agreed shape (' + t.refs.join(' ') + ')');
+  R.ok(t.order, 'assigned in the order they became risks, not by score or theme');
+  R.ok(t.head[1] === 'Ref' && t.cells.every(c => /^R-\d{3}$/.test(c)), 'the register shows it in its own column');
+  R.ok(t.seq === t.refs.length, 'the sequence is kept on the client as a high-water mark (' + t.seq + ')');
+}
+
+// ── the whole point: re-scoring re-sorts the register, the references do not move ──
+{
+  const t = await page.evaluate(() => {
+    const before = [...document.querySelectorAll('#rpTbody tr.rpt-row')].map(tr => tr.cells[1].textContent.trim());
+    const r = S.riskProfile.find(x => x.id === 'v4');       // Medium, near the bottom
+    const was = r.ref;
+    r.likelihood = '5'; r.severity = '5';                   // now Critical, jumps up the list
+    _macroExpandAll(true);
+    const after = [...document.querySelectorAll('#rpTbody tr.rpt-row')].map(tr => tr.cells[1].textContent.trim());
+    return { was, now: r.ref, moved: before.join() !== after.join(),
+      position: { before: before.indexOf(was), after: after.indexOf(was) } };
+  });
+  R.ok(t.moved && t.position.before !== t.position.after, 'a re-score moves the risk up the register (' + t.position.before + ' to ' + t.position.after + ')');
+  R.ok(t.was === t.now, 'and its reference is exactly where it was - which an ascending number could not do');
+}
+
+// ── a deleted reference is never handed to a different risk ──
+{
+  const t = await page.evaluate(() => {
+    const top = S.riskProfile.map(r => r.ref).sort().pop();
+    deleteRiskEntry('v3');
+    const gone = (S.recycleBin || [])[0];
+    const goneRef = gone && gone.payload ? gone.payload.ref : '';
+    addRiskEntry();
+    const fresh = S.riskProfile[S.riskProfile.length - 1];
+    const newRef = fresh.ref;
+    // and restoring brings the old number back with the risk
+    restoreBinItem(gone ? gone.id : 'x');
+    const back = S.riskProfile.find(r => r.id === 'v3');
+    _riskCloseModal();
+    return { top, goneRef, newRef, restored: back ? back.ref : '', clash: newRef === goneRef };
+  });
+  R.ok(!t.clash && t.newRef === 'R-007', 'a new risk takes the next number, never a deleted one (' + t.newRef + ', not ' + t.goneRef + ')');
+  R.ok(t.restored === t.goneRef, 'and restoring from the bin brings its own reference back (' + t.restored + ')');
 }
 
 await R.done(browser, errors);

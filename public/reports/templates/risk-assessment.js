@@ -4,7 +4,7 @@ import { deriveBoard, countPhrase, TIER_COLOURS, docFor } from '../derive.js';
 import { tierWord, dualBar } from '../blocks.js';
 import { packRows } from '../engine.js';
 import { residualOf, targetOf, tierFor, bandsFrom, producerOf } from '../derive.js';
-import { controlsTextOf } from '../app-contract.js';
+import { controlsTextOf, riskRefOf } from '../app-contract.js';
 
 export function buildRiskAssessment(state, opts = {}) {
   const D = deriveBoard(state, opts);
@@ -22,6 +22,7 @@ export function buildRiskAssessment(state, opts = {}) {
   const rows = (Array.isArray(state.riskProfile) ? state.riskProfile : []).map(r => {
     const res = residualOf(r), tgt = targetOf(r);
     return {
+      ref: riskRefOf(r),
       name: String(r.activity || r.hazard || 'Unnamed risk'),
       assoc: String(r.assocRisk || ''),
       residual: res, projected: tgt,
@@ -31,14 +32,15 @@ export function buildRiskAssessment(state, opts = {}) {
   }).sort((a, b) => ((b.residual && b.residual.score) || 0) - ((a.residual && a.residual.score) || 0));
 
   const cols = [
-    { header: 'Risk title', w: '22%' },
-    { header: 'Associated risk', w: '18%' },
-    { header: 'Score - now → after controls (of 25)', w: '22%' },
+    { header: 'Ref', w: '7%' },
+    { header: 'Risk title', w: '20%' },
+    { header: 'Associated risk', w: '16%' },
+    { header: 'Score - now → after controls (of 25)', w: '21%' },
     { header: 'Band', w: '10%' },
-    { header: 'Controls', w: '28%' },
+    { header: 'Controls', w: '26%' },
   ];
   const rowFor = r => ([
-    r.name, r.assoc,
+    r.ref, r.name, r.assoc,
     { html: dualBar({ residual: r.residual, projected: r.projected, tier: r.tier }) },
     { html: tierWord(r.tier) },
     r.controls,
@@ -48,7 +50,8 @@ export function buildRiskAssessment(state, opts = {}) {
   // twice the height of a fixture's, and twelve of them ran 109px past the
   // page edge. Caught by the 'worked' fixture added 2026-09-28.
   const ln = (t, per) => Math.max(1, Math.ceil(String(t || '').length / per));
-  const rowWeight = (r) => 9 + Math.max(2, ln(r.name, 30), ln(r.assoc, 25), ln(r.controls, 39)) * 14;
+  // the Ref column narrowed the rest, so a line holds fewer characters now
+  const rowWeight = (r) => 9 + Math.max(2, ln(r.name, 27), ln(r.assoc, 22), ln(r.controls, 35)) * 14;
   const slices = packRows(rows, rowWeight, 620, 840);
   const pages = [
     {

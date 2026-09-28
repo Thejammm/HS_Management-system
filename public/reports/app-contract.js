@@ -409,6 +409,10 @@ const embedDate = (s) => {
 //    MEANS - verbatim port of the app's _riskMode / RISK_TEXT flagChipTitle.
 //    A business-continuity risk scored on impact is not a risk that can kill
 //    anyone, and a report that says it can is not one a client will trust. ──
+// The risk's own reference - R-001, assigned by the app when the risk was
+// created and never changed. The report only ever reads it.
+export function riskRefOf(r) { return (r && r.ref) ? String(r.ref) : ''; }
+
 export function modeOf(r) { return (r && r.mode === 'ops') ? 'ops' : 'hs'; }
 export function sifWordOf(r) { return modeOf(r) === 'ops' ? 'business-critical' : 'could kill or seriously injure'; }
 

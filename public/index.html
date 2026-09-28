@@ -3236,6 +3236,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .ep-theme-bar>i{display:block;height:5px;}
     /* The band mark: square, so it is never read as the round status dot it replaced */
     .ep-band{display:inline-block;width:11px;height:11px;vertical-align:middle;}
+    /* The risk reference: quiet, monospaced-feeling, never competing with the title */
+    .risk-ref{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted);white-space:nowrap;font-variant-numeric:tabular-nums;}
     /* Close-out: what keeps a finished action in place */
     .emb-wrap{margin-top:14px;}
     .emb-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-top:14px;}
@@ -10498,6 +10500,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Migrate loaded state from older save formats. Idempotent - safe to call on already-current state.
 function migrateLoadedState(){
+  // Risks that pre-date references get them in the order they were added -
+  // which is the order they became risks.
+  try{ _riskRefsEnsure(); }catch(e){}
   // v3 → v4: introduce S.inspectionTypes registry
   if(!S.inspectionTypes || typeof S.inspectionTypes !== 'object'){
     S.inspectionTypes = buildDefaultInspectionTypes();
@@ -16132,7 +16137,7 @@ function _epWhatHTML(a){
   const _btn=_epWorkBtnHTML(a);
   return '<div style="border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:9px 12px;margin:4px 0 8px;">'
     +((_rkR||_btn)?('<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:5px;">'
-      +(_rkR?'<div class="ep-risk-line" style="font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;" onclick="_gotoRisk(\''+_rkR.id+'\')" title="Open this risk in the Risk profile">'+esc(_rkR.activity||_rkR.hazard||'Risk')+' \u2192'+_macroTagHTML(_rkR)+'</div>':'')
+      +(_rkR?'<div class="ep-risk-line" style="font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;" onclick="_gotoRisk(\''+_rkR.id+'\')" title="Open this risk in the Risk profile">'+_riskRefChip(_rkR,'margin-right:6px;')+esc(_rkR.activity||_rkR.hazard||'Risk')+' \u2192'+_macroTagHTML(_rkR)+'</div>':'')
       +'<span style="flex:1;min-width:0;"></span>'+_btn+'</div>'):'')
     +((a.duty && (!_rkR || String(_rkR.activity||'').trim()!==String(a.duty).trim()))?'<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:5px;">Legal duty: '+esc(a.duty)+'</div>':'')
     +'<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:3px;">What to do</div>'
@@ -17533,6 +17538,7 @@ function addRiskEntry(){
   _riskSel = entry.id; _riskSelTab = 'identify';   // select the new risk, straight onto the first editing tab
   _riskModalOpen = true;                           // and open it in the modal, already speaking its kind's language
   _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };   // a filter must never hide the risk just added
+  _riskRefsEnsure();                               // it gets its reference the moment it exists
   _macroOpenForRisk(entry);                        // nor a collapsed category
   saveData();
   renderRiskProfile();
@@ -19346,6 +19352,7 @@ function insertLibraryRisk(key, quiet){
   if(!quiet){
     _riskSel = entry.id; _riskSelTab = 'summary';   // show what was just added, ready to review
     _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };
+    _riskRefsEnsure();
     _macroOpenForRisk(entry);
     saveData(); renderRiskProfile(); showToast('✓ Added "'+t.activity+'" - review and agree the suggested rating','success');
   }
@@ -19641,6 +19648,7 @@ function _reqActionRef(sec, it, a){
 }
 function _reqMigrateToRisks(){
   if(!_profileWritable()) return 0;
+  _riskRefsEnsure();   // a duty-line risk born here gets its reference too
   let n=0, made=0, changed=false;
   const movedRows=(a)=>['completedDate','completedBy','acceptDate','acceptedBy','createdAt','createdBy','updatedAt','updatedBy','top5','note','log'];
   // One-time: the first cut of this route made one risk per SECTION
@@ -21786,7 +21794,8 @@ async function buildExecPlanFormPDF(){
     byMonth[k].forEach(a=>{
       const aLines=wrap(a.desc||'(no description)',font,8.2,AW);
       const _th=_epThemeName(a);
-      const srcLines=(a.sourceLabel||_th)?wrap((_th?(_th+' | '):'')+a.source+(a.sourceLabel?(' - '+a.sourceLabel):'')+((a.duty&&String(a.duty).trim()!==String(a.sourceLabel||'').trim())?(' - '+a.duty):''),font,6.8,AW):[];
+      const _rr=_execRiskOf(a); const _rf=_rr?(_riskRefOf(_rr)+' '):'';
+      const srcLines=(a.sourceLabel||_th)?wrap((_th?(_th+' | '):'')+a.source+(a.sourceLabel?(' - '+_rf+a.sourceLabel):'')+((a.duty&&String(a.duty).trim()!==String(a.sourceLabel||'').trim())?(' - '+a.duty):''),font,6.8,AW):[];
       const oLines=wrap(a.owner||'-',font,7.5,OW);
       const contentH=aLines.length*10.4+srcLines.length*8.4;
       const rh=Math.max(contentH,oLines.length*9.5,22)+8;
@@ -21865,7 +21874,7 @@ function buildExecPlanReportPDF(){
       [{header:'ACTION',w:74},{header:'BAND',w:12},{header:'SOURCE',w:38},{header:'TARGET',w:22},{header:'STATUS',w:22}],
       byMonth[k].map(a=>{ const _b=_epBandOf(a); return [ a.desc||'(no description)',
         (_b&&_b!=='Low')?{text:_b, bold:true, color:_pdfRgb(_RISK_PRIO_COLOR[_b])}:{text:_b||'', color:[140,140,140]},
-        {text:(_epThemeName(a)?(_epThemeName(a)+' | '):'')+a.source+(a.sourceLabel?(' - '+a.sourceLabel):''), color:[120,120,120]},
+        {text:(_epThemeName(a)?(_epThemeName(a)+' | '):'')+a.source+(a.sourceLabel?(' - '+(function(){ const _r=_execRiskOf(a); return _r?(_riskRefOf(_r)+' '):''; })()+a.sourceLabel):''), color:[120,120,120]},
         {text:fd(a.due), color:a.rag==='red'?RED:[100,100,100]}, {text:a.status, bold:true, color:ragCol(a.rag)} ]; }),
       {headFill:NAVY, headText:[255,255,255]}
     );
@@ -22247,6 +22256,35 @@ function _macroOpenForRisk(r){
 }
 function _macroExpandAll(on){ _riskMacroOpen={}; if(on){ _riskMacroGroups(S.riskProfile||[]).forEach(g=>{ _riskMacroOpen[g.k||'_']=true; }); } else { _riskMacroLast=null; } _keepScroll(renderRiskProfile); }
 function setRiskGroupMode(m){ _riskGroupMode=m; _keepScroll(renderRiskProfile); }
+// ── The risk reference ─────────────────────────────────────────────────
+// R-001, per client, assigned when the risk is created and never changed.
+// The sequence is a HIGH-WATER MARK, never a count: deleting a risk does
+// not free its number, so a reference always means the same risk for ever
+// (Simon, 2026-09-28). Restoring from the bin brings the number back with
+// it, because the number lives on the risk object.
+function _riskRefFmt(n){ n=parseInt(n,10)||0; return 'R-'+(n<1000?String(n).padStart(3,'0'):String(n)); }
+function _riskRefOf(r){ return (r && r.ref) ? String(r.ref) : ''; }
+function _riskRefSeq(){
+  let seq=parseInt(S.riskRefSeq,10); if(!(seq>0)) seq=0;
+  // self-heal: never hand out a number an existing risk already carries
+  (S.riskProfile||[]).forEach(r=>{ const m=/^R-(\d+)$/.exec(String((r&&r.ref)||'')); if(m){ const v=parseInt(m[1],10)||0; if(v>seq) seq=v; } });
+  (S.recycleBin||[]).forEach(e=>{ const m=/^R-(\d+)$/.exec(String((e&&e.payload&&e.payload.ref)||'')); if(m){ const v=parseInt(m[1],10)||0; if(v>seq) seq=v; } });
+  return seq;
+}
+// Give a reference to anything that has not got one, in the order the risks
+// were added - which is when they became risks. A no-op once they all have.
+function _riskRefsEnsure(){
+  if(!Array.isArray(S.riskProfile) || !S.riskProfile.length) return 0;
+  let seq=_riskRefSeq(), made=0;
+  S.riskProfile.forEach(r=>{ if(r && !_riskRefOf(r)){ seq++; r.ref=_riskRefFmt(seq); made++; } });
+  if(made){ S.riskRefSeq=seq; }
+  return made;
+}
+// The small grey reference chip, wherever a risk is named.
+function _riskRefChip(r, style){
+  const ref=_riskRefOf(r); if(!ref) return '';
+  return '<span class="risk-ref"'+(style?(' style="'+style+'"'):'')+' title="This risk\u2019s reference. It never changes and is never reused, so it means the same risk on every document.">'+esc(ref)+'</span>';
+}
 function _riskMacroOf(r){
   if(!r) return '';
   if(r.macroKey&&(_macroExtraName(r.macroKey)||HAZARD_LIBRARY.some(t=>t.macroKey===r.macroKey))) return r.macroKey;
@@ -22259,7 +22297,7 @@ function _macroKeys(){ const seen=[]; HAZARD_LIBRARY.forEach(t=>{ if(t.macroKey&
   return seen; }
 function _riskTableRowsHTML(){
   const rows=_riskVisibleRows();
-  if(!rows.length) return '<tr><td colspan="8" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
+  if(!rows.length) return '<tr><td colspan="9" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
   if(_riskGroupMode==='macro'){
     // The macro layer: ONE grouping derivation (_riskMacroGroups) presented as
     // header rows here, headings on the pathway, subheads in the PDF.
@@ -22267,7 +22305,7 @@ function _riskTableRowsHTML(){
     const groupHTML=(g)=>{
       const open=_macroIsOpen(g.k) || g.list.some(rr=>rr.id===_riskMacroLast);
       const head='<tr class="rpt-macro'+(g.allAt?' rpt-mac-at':'')+(open?' rpt-mac-open':' rpt-mac-closed')+'" onclick="_macroToggle(\''+g.k+'\')" title="Click to expand or collapse this category">'
-        +'<td colspan="7" style="font-weight:700;"><span class="rpt-mac-chev" style="display:inline-block;width:14px;color:var(--text-muted);">'+(open?'\u25be':'\u25b8')+'</span><span class="rpt-mac-name">'+esc(g.name)+'</span>'+(g.allRev?' <span class="rpt-mac-rev" style="color:#16A34A;font-weight:700;font-size:11px;" title="All '+g.list.length+' risk'+(g.list.length!==1?'s':'')+' under this category reviewed and completed">\u2713</span>':'')+((g.k&&!_roLocked())?' <button type="button" class="btn btn-ghost btn-xs no-print" style="padding:1px 6px;font-size:11px;" onclick="_macroRenameStart(event,\''+g.k+'\')" title="Rename this macro category - the high level label, the detail stays on each risk">\u270e</button>':'')+'</td>'
+        +'<td colspan="8" style="font-weight:700;"><span class="rpt-mac-chev" style="display:inline-block;width:14px;color:var(--text-muted);">'+(open?'\u25be':'\u25b8')+'</span><span class="rpt-mac-name">'+esc(g.name)+'</span>'+(g.allRev?' <span class="rpt-mac-rev" style="color:#16A34A;font-weight:700;font-size:11px;" title="All '+g.list.length+' risk'+(g.list.length!==1?'s':'')+' under this category reviewed and completed">\u2713</span>':'')+((g.k&&!_roLocked())?' <button type="button" class="btn btn-ghost btn-xs no-print" style="padding:1px 6px;font-size:11px;" onclick="_macroRenameStart(event,\''+g.k+'\')" title="Rename this macro category - the high level label, the detail stays on each risk">\u270e</button>':'')+'</td>'
         +'<td style="text-align:left;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(g.atT?'#15803d':'var(--text-muted)')+';">'
         +((g.k&&g.worst)?_riskPrioBadge(g.worst,null)+' ':'')+esc(g.roll)+'</td></tr>';
       return head+(open?_riskRowHTML(g.list):'');
@@ -22277,9 +22315,9 @@ function _riskTableRowsHTML(){
       const gs=groups.filter(g=>g.origin===o);
       const cnt=gs.reduce((s,g)=>s+g.list.length,0);
       const anyOpen=gs.some(g=>_macroIsOpen(g.k)||g.list.some(rr=>rr.id===_riskMacroLast));
-      const band='<tr class="rpt-band" onclick="_bandToggle(\''+o+'\')" title="Click to '+(anyOpen?'collapse':'expand')+' every category in this section"><td colspan="8">'+esc(_ORIGIN_LABEL[o])+(cnt?'<span class="rpt-band-n">'+cnt+' risk'+(cnt!==1?'s':'')+'</span>':'')+'</td></tr>';
+      const band='<tr class="rpt-band" onclick="_bandToggle(\''+o+'\')" title="Click to '+(anyOpen?'collapse':'expand')+' every category in this section"><td colspan="9">'+esc(_ORIGIN_LABEL[o])+(cnt?'<span class="rpt-band-n">'+cnt+' risk'+(cnt!==1?'s':'')+'</span>':'')+'</td></tr>';
       const filtered=!!_riskSearch||(_riskModeFilter&&_riskModeFilter!=='all')||Object.keys(_riskFilter||{}).some(k=>!!_riskFilter[k]);
-      return band+(gs.length?gs.map(groupHTML).join(''):(filtered?'<tr class="rpt-band-empty"><td colspan="8">Nothing in this section matches the current view.</td></tr>':'<tr class="rpt-band-empty"><td colspan="8">'+esc(_ORIGIN_EMPTY[o])+'</td></tr>'));
+      return band+(gs.length?gs.map(groupHTML).join(''):(filtered?'<tr class="rpt-band-empty"><td colspan="9">Nothing in this section matches the current view.</td></tr>':'<tr class="rpt-band-empty"><td colspan="9">'+esc(_ORIGIN_EMPTY[o])+'</td></tr>'));
     }).join('');
   }
   return _riskRowHTML(rows);
@@ -22291,6 +22329,7 @@ function _riskRowHTML(rows){
     const cword=ctl==='None'?'uncontrolled':(ctl==='Partial'?'no target set':(rvd?'controlled - review due':'controlled as reasonably practicable'));
     return '<tr class="rpt-row'+(ctl==='In place'?' rpt-atline':'')+'" onclick="_riskOpenModal(\''+r.id+'\')" title="'+(ctl==='In place'?'Controlled as reasonably practicable - open this risk. Esc brings you straight back':'Open this risk - Esc brings you straight back')+'">'
       +'<td onclick="event.stopPropagation()" style="white-space:nowrap;">'+RISK_MODES.map(m=>'<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:'+(_riskMode(r)===m.k?'700':'400')+';color:'+(_riskMode(r)===m.k?m.colour:'var(--text-muted)')+';cursor:pointer;line-height:1.5;"><input type="radio" name="kind_'+r.id+'" '+(_riskMode(r)===m.k?'checked':'')+' onchange="setRiskMode(\''+r.id+'\',\''+m.k+'\')" style="accent-color:'+m.colour+';width:12px;height:12px;cursor:pointer;">'+(m.k==='hs'?'H&S':'Ops')+'</label>').join('')+'</td>'
+      +'<td>'+_riskRefChip(r)+'</td>'
       +'<td style="font-weight:700;">'+esc(r.activity||r.hazard||'New risk')+(r.reviewed?' <span style="color:#16A34A;font-weight:700;font-size:11px;" title="Reviewed and completed">\u2713</span>':'')+'</td>'
       +'<td><span class="rc-chip" style="background:'+cc+'1a;color:'+cc+';">'+esc(mk?_macroName(mk):'-')+'</span>'+(ops?' <span class="rc-chip" style="background:#7C3AED1a;color:#7C3AED;">Operational</span>':'')+'</td>'
       +'<td style="font-size:12px;color:var(--text-muted);">'+esc(r.area||'-')+'</td>'
@@ -22526,8 +22565,9 @@ function renderRiskProfile(){
     ? { cat:'Macro', flag:'Critical' }
     : _riskModeFilter==='hs' ? { cat:'Macro', flag:'SIF' }
     : { cat:'Macro', flag:'SIF' };
-  const table=`<div style="overflow-x:auto;"><table class="rpt"><colgroup><col style="width:64px"><col><col style="width:16%"><col style="width:12%"><col style="width:44px"><col style="width:84px"><col style="width:56px"><col style="width:15%"></colgroup><thead><tr>
+  const table=`<div style="overflow-x:auto;"><table class="rpt"><colgroup><col style="width:64px"><col style="width:52px"><col><col style="width:16%"><col style="width:12%"><col style="width:44px"><col style="width:84px"><col style="width:56px"><col style="width:15%"></colgroup><thead><tr>
       <th title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
+      <th title="Each risk keeps one reference for life - it is never changed and never reused, so it means the same risk on every document.">Ref</th>
       <th>Risk title</th>
       <th>${_hh.cat}</th><th>Business area</th>
       <th style="text-align:center;" title="Worst case: could kill or seriously injure (H&amp;S) / business-critical (operational)">${_hh.flag}</th>
@@ -22545,6 +22585,7 @@ function renderRiskProfile(){
           <button type="button" class="btn btn-ghost btn-xs no-print" title="Close - back to the list (Esc)" onclick="_riskCloseModal()">✕</button>
         </div>
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+          ${_riskRefChip(selR,'margin-right:8px;flex:0 0 auto;')}
           <input class="rp-name" id="ract-${selR.id}" value="${esc(selR.activity||'')}" placeholder="Name the risk - what we are talking about"${ro?' disabled':''} oninput="updateRiskField('${selR.id}','activity',this.value)" title="The risk's title. Typing here and the Risk title field on the Identify tab are the same thing.">
           <span style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
             ${_riskControlStatus(selR)==='In place'?('<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;white-space:nowrap;">Controlled as reasonably practicable \u2713</span>'+(selR.reviewDue?(_riskReviewDue(selR)?'<span class="badge" style="border-color:#D97706;color:#B45309;background:#D9770614;font-weight:700;white-space:nowrap;">Review due '+esc(fmtDate(selR.reviewDue))+'</span>':'<span class="badge badge-muted" style="white-space:nowrap;">Review '+esc(fmtDate(selR.reviewDue))+'</span>'):'')):''}
@@ -23562,6 +23603,7 @@ function buildProfileFromDiscovery(){
   if(!confirm('Build the risk profile from discovery?\n\nThis adds '+sug.size+' suggested theme'+(sug.size!==1?'s':'')+' from the library, pre-scored with suggested ratings and marked for your review:\n\n• '+names.slice(0,14).join('\n• ')+(names.length>14?('\n… and '+(names.length-14)+' more'):'')+'\n\nNothing existing is changed - you review and agree each rating with the client.')) return;
   let n=0;
   sug.forEach((firedBy,k)=>{ const e=insertLibraryRisk(k, true); if(e){ e.suggestedBy='discovery'; e.suggestedFrom=firedBy; if(!e.assocRisk) e.assocRisk=_discAssocText(firedBy); n++; } });
+  _riskRefsEnsure();
   saveData();
   // Reviewing what was just added is the next thing the consultant does, so
   // the register and every category open rather than sitting shut.

@@ -46,7 +46,9 @@ export const wait = (page, ms) => page.evaluate(m => new Promise(r => setTimeout
 // is cleared, so one test never inherits another's data.
 export async function seed(page, state, tab) {
   await page.evaluate((st, t) => {
-    const blank = { riskProfile: [], actionPlan: [], requirements: [], documents: [], raRegister: [], recycleBin: [],
+    // riskRefSeq is per client: seeding a fresh client resets it, or every
+    // suite in the same page would carry on numbering where the last left off.
+    const blank = { riskProfile: [], actionPlan: [], requirements: [], documents: [], raRegister: [], recycleBin: [], riskRefSeq: 0,
       incidents: [], decisions: [], siteInspections: [], units: [], memberships: [], healthSurveillance: [],
       supplyChain: [], buildingSafety: [] };
     Object.assign(S, blank, st || {});

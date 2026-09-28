@@ -333,9 +333,14 @@ export function planRisk({ rows, footnote }) {
   const bullets = (list, empty, cls) => list && list.length
     ? `<ul class="r-mp-list${cls ? ' ' + cls : ''}">${list.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`
     : `<div class="r-mp-none">${esc(empty)}</div>`;
-  const card = (r) => `<div class="r-mp">
+  const band = (r) => r.band
+    ? `<div class="r-mp-band"><span class="r-mp-bandl">${esc(r.band.letter)}</span>
+        <span class="r-mp-bandn">${esc(r.band.name)}</span>
+        <span class="r-mp-bandm">${esc(r.band.meta)}</span></div>`
+    : '';
+  const card = (r) => band(r) + `<div class="r-mp">
     <div class="r-mp-top">
-      <span class="r-mp-theme">${esc(r.theme)}</span>
+      ${r.ref ? `<span class="r-mp-ref">${esc(r.ref)}</span>` : ''}
       ${tierWord(r.tier)}
       ${r.sif ? `<span class="r-mp-sif">worst case ${esc(r.sifWord)}</span>` : ''}
     </div>

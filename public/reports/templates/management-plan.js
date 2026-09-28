@@ -45,6 +45,7 @@ export function buildManagementPlan(state, opts = {}) {
 
   // ── 1 · Context ──────────────────────────────────────────────
   const themeRows = P.themes.map(t => ([
+    t.letter,
     t.name,
     String(t.rows.length),
     { html: tierWord(t.worst) },
@@ -68,10 +69,10 @@ export function buildManagementPlan(state, opts = {}) {
       ] },
       themeRows.length
         ? { type: 'dataTable', title: 'The risk themes this business carries',
-            cols: [{ header: 'Theme', w: '38%' }, { header: 'Risks', w: '10%' }, { header: 'Worst band', w: '16%' },
-                   { header: 'Controlled', w: '20%' }, { header: 'Flagged', w: '16%' }],
+            cols: [{ header: 'Section', w: '9%' }, { header: 'Theme', w: '33%' }, { header: 'Risks', w: '9%' },
+                   { header: 'Worst band', w: '15%' }, { header: 'Controlled', w: '18%' }, { header: 'Flagged', w: '16%' }],
             rows: themeRows,
-            footnote: 'A theme is a high level category of risk; every action in this plan belongs to one of them. Flagged means the worst credible outcome is death or serious injury - or, for a business risk, damage the business would struggle to recover from.' }
+            footnote: 'A theme is a high level category of risk; every action in this plan belongs to one of them, and each has its own lettered section in part 4. Flagged means the worst credible outcome is death or serious injury - or, for a business risk, damage the business would struggle to recover from.' }
         : none('No risks recorded yet. The risk profile is built first; this plan then reports it.'),
       { type: 'soWhat', text: P.rows.length
         ? (countPhrase(P.themes.length, 'risk theme is', 'risk themes are') + ' carried by this business, and '
@@ -192,7 +193,7 @@ export function buildManagementPlan(state, opts = {}) {
   // it does on the execution plan, so both read in the same order.
   const opCard = (x) => {
     const r = x.r;
-    return { theme: x.theme, name: r.name, assoc: r.assoc, tier: r.tier,
+    return { theme: x.theme, t: x.t, ref: r.ref, name: r.name, assoc: r.assoc, tier: r.tier,
       sif: r.fatal, sifWord: r.sifWord, scoreHtml: scoreHtml(r), stands: standsSay(r),
       controls: (r.controlsList || []).slice(0, CAP_CONTROLS).map(t => cut(t, CAP_CONTROL_LEN)),
       kept: r.kept.map(l => ({ label: l.label, text: l.text })),
@@ -207,6 +208,7 @@ export function buildManagementPlan(state, opts = {}) {
   const rowH = (lines) => 6 + Math.max(2, lines) * LH;
   const cardWeight = (c) => {
     let h = 29 + 16 + lineCount(c.name, 74) * 17 + 6;
+    if (c.band) h += 44;            // the lettered section band above it
     if (c.assoc) h += rowH(lineCount(c.assoc));
     h += rowH(1 + lineCount(c.stands));
     h += rowH(c.controls.length ? c.controls.reduce((t, x) => t + lineCount(x, 100), 0) : 1);
@@ -218,8 +220,14 @@ export function buildManagementPlan(state, opts = {}) {
   // Flatten theme by theme, worst theme first, so the register reads in the
   // same order as the risk register and the execution plan.
   const flat = [];
-  P.themes.forEach(t => t.rows.forEach(r => flat.push(opCard({ theme: t.name, r }))));
-  const slices = packRows(flat, cardWeight, PAGE_FIRST, PAGE_CONT);
+  P.themes.forEach(t => t.rows.forEach((r, i) => {
+    const c = opCard({ theme: t.name, t: t, r: r });
+    if (i === 0) c.band = { letter: t.letter, name: t.name, meta: t.meta };   // the section starts here
+    flat.push(c);
+  }));
+  // Every page may gain a band at the top (either its own or a 'continued'
+  // one), so the continuation budget keeps room for one.
+  const slices = packRows(flat, cardWeight, PAGE_FIRST, PAGE_CONT - 44);
   // The packer cannot know which page ends up last, and that one also carries
   // the closing line and the footnote - so if the tail no longer fits, the
   // final card moves to a page of its own rather than into the footer.
@@ -228,7 +236,14 @@ export function buildManagementPlan(state, opts = {}) {
     && weighs(slices[slices.length - 1]) > PAGE_CONT - PAGE_TAIL) {
     slices.push([slices[slices.length - 1].pop()]);
   }
-  const themeTables = (slice, last) => ([{ type: 'planRisk', rows: slice,
+  // A theme that carries over a page break gets its band again at the top of
+  // the next page, marked continued, so no page opens on an unheaded card.
+  const banded = (slice) => slice.map((c, i) => {
+    if (i > 0 || c.band) return c;
+    const t = c.t;
+    return t ? Object.assign({}, c, { band: { letter: t.letter, name: t.name, meta: t.meta + ' \u00b7 continued' } }) : c;
+  });
+  const themeTables = (slice, last) => ([{ type: 'planRisk', rows: banded(slice),
     footnote: last ? '"As found" is the score before the plan moved it; where it matches "now", the risk has not been re-scored yet. "Target" is where the plan is written to reach. Scores are likelihood multiplied by severity, each judged from 1 to 5, so 25 is the worst case and 1 the least.' : undefined }]);
   const opPages = P.rows.length ? slices.map((slice, i) => ({
     label: 'Managed' + (slices.length > 1 ? ' ' + (i + 1) : ''),

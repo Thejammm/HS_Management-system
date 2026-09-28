@@ -15667,9 +15667,10 @@ function updateExecAction(refStr, field, value){
   saveData(); _refreshActionViews();
   // Risk-profile action closed from the plan → same evidence prompt as the risk card.
   if(field==='status' && (value==='Complete'||value==='Accepted')){
-    const _er=(ref.t==='risk')?(S.riskProfile||[]).find(x=>x.id===ref.a):null;
+    const _er=_execRiskOf({ ref:ref });   // the plan's own resolver, not a second opinion
     if(_er) _ctlOnActionClosed(_er, o);
     setTimeout(()=>_promptActionEvidence(o,_er||null), 150);
+    if(o.regKey && typeof _regActionCompleted==='function') setTimeout(()=>_regActionCompleted(o), 60);
   }
   // Training renewal closed → capture the new date/status straight into the matrix cell.
   if(field==='status' && value==='Complete' && o.trainingPersonId && typeof _trainingActionCompleted==='function'){ setTimeout(()=>_trainingActionCompleted(o), 60); }
@@ -15769,9 +15770,13 @@ function completeActionWithNote(refStr){
   if(typeof _stamp==='function') _stamp(found.o,'updated');
   saveData(); _refreshActionViews(); if(typeof showToast==='function') showToast('✓ Marked complete','success');
   if(found.o.trainingPersonId && typeof _trainingActionCompleted==='function'){ setTimeout(()=>_trainingActionCompleted(found.o), 60); }
+  if(found.o.regKey && typeof _regActionCompleted==='function'){ setTimeout(()=>_regActionCompleted(found.o), 60); }
   // Every action reaches the close-out, not only the ones sitting on a risk -
   // a legal duty or an assurance job needs holding in place just the same.
-  { const _er=(found.ref&&found.ref.t==='risk')?(S.riskProfile||[]).find(x=>x.id===found.ref.a):null;
+  // ONE resolver, the plan's own: a renewal raised from a register belongs to
+  // that register's risk, so it gets the same close-out and the same evidence
+  // against the same risk as any other action.
+  { const _er=_execRiskOf({ ref:found.ref });
     setTimeout(()=>_promptActionEvidence(found.o,_er||null), 150); }
 }
 // Delete an action from the Consultant Review table: archive a snapshot first (nothing is
@@ -16411,8 +16416,8 @@ const HAZARD_LIBRARY = [
    "A training matrix kept and managed by a named person",
    "Induction and role-based competence standards written into the employment process"
   ],
-  "macro": "Competence & legal duties",
-  "macroKey": "management"
+  "macro": "Training & competence",
+  "macroKey": "training"
  },
  {
   "key": "ohwellbeing",
@@ -16861,7 +16866,7 @@ const HAZARD_LIBRARY = [
    "Induction, site-rules and permit process for everyone working for the business",
    "Audit and review cycle for the contractors used, with a named owner"
   ],
-  "macro": "Competence & legal duties",
+  "macro": "Legal duties & governance",
   "macroKey": "management"
  },
  {
@@ -17250,7 +17255,7 @@ const HAZARD_LIBRARY = [
    "Competence and resource check process before each appointment",
    "Gateway and handover obligations tracked on a project calendar"
   ],
-  "macro": "Competence & legal duties",
+  "macro": "Legal duties & governance",
   "macroKey": "management"
  },
  {
@@ -17283,7 +17288,7 @@ const HAZARD_LIBRARY = [
    "Pre-construction information process on every project",
    "Gateway assessment process for higher-risk building work"
   ],
-  "macro": "Competence & legal duties",
+  "macro": "Legal duties & governance",
   "macroKey": "management"
  },
  {
@@ -17313,7 +17318,7 @@ const HAZARD_LIBRARY = [
    "Renewal notification arrangements with each issuing body so nothing lapses",
    "Trigger-event review - what could suspend each authorisation"
   ],
-  "macro": "Competence & legal duties",
+  "macro": "Legal duties & governance",
   "macroKey": "management"
  },
  {
@@ -17346,8 +17351,8 @@ const HAZARD_LIBRARY = [
    "Reports and certificates filed where they can be produced on request",
    "The register reviewed on a rhythm, so nothing lapses unnoticed"
   ],
-  "macro": "Competence & legal duties",
-  "macroKey": "management"
+  "macro": "Statutory examinations",
+  "macroKey": "statutory"
  },
  {
   "key": "compliance",
@@ -17377,7 +17382,7 @@ const HAZARD_LIBRARY = [
    "Roles and responsibilities delegated for each duty area",
    "Access to competent H&S advice retained"
   ],
-  "macro": "Competence & legal duties",
+  "macro": "Legal duties & governance",
   "macroKey": "management"
  },
  {
@@ -22289,7 +22294,7 @@ function _bandToggle(o){
   gs.forEach(g=>{ _riskMacroOpen[g.k||'_']=!anyOpen; });
   _keepScroll(renderRiskProfile);
 }
-function _macroColour(k){ if(String(k||'').indexOf('legal:')===0) return '#0F766E'; return ({ fire:'#DC2626', height:'#EA580C', transport:'#7C3AED', plant:'#2563EB', health:'#0891B2', construction:'#B45309', ergonomics:'#059669', people:'#DB2777', premises:'#0EA5E9', management:'#4B5563', business:'#6D28D9', hsg65:'#4338CA', legal:'#0F766E' })[k]||'#9CA3AF'; }
+function _macroColour(k){ if(String(k||'').indexOf('legal:')===0) return '#0F766E'; return ({ fire:'#DC2626', height:'#EA580C', transport:'#7C3AED', plant:'#2563EB', health:'#0891B2', construction:'#B45309', ergonomics:'#059669', people:'#DB2777', premises:'#0EA5E9', management:'#4B5563', business:'#6D28D9', training:'#0D9488', statutory:'#9333EA', hsg65:'#4338CA', legal:'#0F766E' })[k]||'#9CA3AF'; }
 function _macroTagHTML(r){
   const k=_riskMacroOf(r); if(!k) return '';
   const c=_macroColour(k);
@@ -25345,7 +25350,7 @@ function raiseRegItemAction(secId,id){
   const key='reg|'+id; const desc='Statutory inspection due: '+(r.item||'item')+(s.name?(' ('+s.name+')'):'');
   let it=S.actionPlan.find(a=>a.regKey===key);
   if(it){ it.due=r.dueDate||it.due; it.desc=desc; }
-  else { it={ id:_reqUid('act'), regKey:key, desc:desc, owner:'', due:r.dueDate||'', status:'Not started', priority:(_regRag(r.dueDate)==='red'?'High':'Medium'), source:'Assurance', sourceLabel:(s.name||'Regulatory tracker') };
+  else { it={ id:_reqUid('act'), regKey:key, riskId:_assuranceRiskIdFor('statutory'), desc:desc, owner:'', due:r.dueDate||'', status:'Not started', priority:(_regItemRag(r)==='red'?'High':'Medium'), source:'Assurance', sourceLabel:(s.name||'Regulatory tracker') };
     if(typeof _stamp==='function') _stamp(it,'created'); S.actionPlan.push(it); }
   saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
   showToast('✓ Added to the execution plan','success');
@@ -25367,7 +25372,7 @@ function raiseStatutoryDue(){
     // An ongoing control put here by an action close-out is not a statutory
     // inspection, and the client reads this line - so it says what it is.
     const _own=/ongoing controls/i.test(String(s.name||''));
-    const it={ id:_reqUid('act'), regKey:key, desc:(_own?'Ongoing control due: ':'Statutory inspection due: ')+(r.item||'item')+((s.name&&!_own)?(' ('+s.name+')'):''), owner:'', due:r.dueDate||'', status:'Not started', priority:(rag==='red'?'High':'Medium'), source:'Assurance', sourceLabel:(s.name||'Regulatory tracker') };
+    const it={ id:_reqUid('act'), regKey:key, riskId:_assuranceRiskIdFor('statutory'), desc:(_own?'Ongoing control due: ':'Statutory inspection due: ')+(r.item||'item')+((s.name&&!_own)?(' ('+s.name+')'):''), owner:'', due:r.dueDate||'', status:'Not started', priority:(rag==='red'?'High':'Medium'), source:'Assurance', sourceLabel:(s.name||'Regulatory tracker') };
     if(typeof _stamp==='function') _stamp(it,'created'); S.actionPlan.push(it); n++;
   }));
   saveData(); renderMonitoring(); if(typeof _refreshActionViews==='function') _refreshActionViews();
@@ -26126,7 +26131,7 @@ function _syncTrainingAction(p, course, cell){
   const key='train|'+p.id+'|'+course;
   const existing=S.actionPlan.find(a=>a.trainingKey===key);
   if(existing){ existing.due=cell.v||existing.due; }
-  else { const it={ id:_reqUid('act'), trainingKey:key, trainingPersonId:p.id, trainingCourse:course, desc:'Renew '+course+' - '+_tPersonLabel(p), owner:'', due:cell.v||'', status:'Not started', priority:(rag==='red'?'High':'Medium'), source:'Training', sourceLabel:_tPersonLabel(p) };
+  else { const it={ id:_reqUid('act'), trainingKey:key, riskId:_assuranceRiskIdFor('training'), trainingPersonId:p.id, trainingCourse:course, desc:'Renew '+course+' - '+_tPersonLabel(p), owner:'', due:cell.v||'', status:'Not started', priority:(rag==='red'?'High':'Medium'), source:'Training', sourceLabel:_tPersonLabel(p) };
     if(typeof _stamp==='function') _stamp(it,'created'); S.actionPlan.push(it); }
 }
 function _forEachTrainingDate(fn){ (_trainingData().people||[]).filter(p=>p.status==='active').forEach(p=>Object.entries(p.cells||{}).forEach(([c,cell])=>fn(p,c,cell))); }
@@ -26168,6 +26173,23 @@ function _assuranceRiskEnsure(kind){
 }
 // Individually raised renewals. While any are open THEY are the plan for
 // this register, so the summary action stands down.
+// The risk every one of this register's actions belongs to. Raising work
+// from a register is raising work on that register's risk, so it travels
+// with it and inherits the whole journey.
+function _assuranceRiskIdFor(kind){ const r=_assuranceRiskEnsure(kind); return r?r.id:''; }
+// Anything raised before this belonged nowhere. Give it its risk.
+function _assuranceAdoptOrphans(){
+  let n=0;
+  const ids={};
+  (S.actionPlan||[]).forEach(a=>{
+    if(!a || a.deleted || a.riskId) return;
+    const kind = a.trainingKey ? 'training' : (a.regKey ? 'statutory' : '');
+    if(!kind) return;
+    if(!(kind in ids)) ids[kind]=_assuranceRiskIdFor(kind);
+    if(ids[kind]){ a.riskId=ids[kind]; n++; }
+  });
+  return n;
+}
 function _assuranceItemActions(kind){
   const has=kind==='training'?(a=>!!a.trainingKey):(a=>!!a.regKey);
   return (S.actionPlan||[]).filter(a=>a&&!a.deleted&&has(a)&&a.status!=='Complete'&&a.status!=='Accepted');
@@ -26196,7 +26218,7 @@ function _assuranceRetireDone(){
 // comes back into date. That is what makes the monthly re-upload work.
 function _assuranceSync(){
   if(typeof _profileWritable==='function' && !_profileWritable()) return 0;
-  let n=_assuranceRetireDone();
+  let n=_assuranceRetireDone()+_assuranceAdoptOrphans();
   Object.keys(ASSURANCE_RISKS).forEach(kind=>{
     if(!_assuranceHas(kind)) return;
     const def=ASSURANCE_RISKS[kind];
@@ -26244,6 +26266,15 @@ function raiseTrainingRenewals(){
 }
 // When a training renewal action is marked Complete, open the cell editor so the
 // new date/status is written straight back into the matrix (closes the loop).
+// The twin of _trainingActionCompleted: closing a statutory action opens the
+// register line so the new date carried out and next due go straight back in.
+// Without it the action closes and the register still says overdue.
+function _regActionCompleted(o){
+  if(!o || !o.regKey) return;
+  const id=String(o.regKey).slice(4);
+  const sec=_regSections().find(s=>(s.items||[]).some(x=>x.id===id));
+  if(sec && typeof regEditItem==='function') regEditItem(sec.id, id);
+}
 function _trainingActionCompleted(o){ if(!o||!o.trainingPersonId) return; const p=(_trainingData().people||[]).find(x=>x.id===o.trainingPersonId); if(!p) return; trainingEditCell(p.id, o.trainingCourse); }
 
 function importStatutoryCSV(text){

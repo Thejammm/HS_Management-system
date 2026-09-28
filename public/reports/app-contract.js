@@ -202,7 +202,9 @@ export const MACRO_LABELS = {
   plant: 'Plant, equipment & electricity', health: 'Hazardous substances & health',
   construction: 'Construction & confined spaces', ergonomics: 'Manual handling & ergonomics',
   people: 'People & wellbeing', premises: 'Premises & environment',
-  management: 'Competence & legal duties', business: 'Business continuity',
+  management: 'Legal duties & governance', business: 'Business continuity',
+  training: 'Training & competence',        // the training matrix's own section
+  statutory: 'Statutory examinations',      // and the statutory register's
   hsg65: 'Consultant judgement (HSG65)',   // no library theme behind these two - the app's _MACRO_EXTRA:
   legal: 'Legal duties'                    // one risk per judged HSG65 area / per Legal duties section
 };
@@ -214,7 +216,8 @@ export const MACRO_OF_THEME = {
   manualhandling: 'ergonomics', dseoffice: 'ergonomics', peoplecare: 'ergonomics',
   ohwellbeing: 'people', violence: 'people', loneworking: 'people', vulnerable: 'people', safeguarding: 'people', publicsafety: 'people',
   premises: 'premises', environment: 'premises', outdoor: 'premises', weather: 'premises',
-  competence: 'management', contractor: 'management', compliance: 'management', statutory: 'management', dutyholder: 'management', designrisk: 'management', licence: 'management',
+  competence: 'training', statutory: 'statutory',   // each register's risk has its own section
+  contractor: 'management', compliance: 'management', dutyholder: 'management', designrisk: 'management', licence: 'management',
   financial: 'business', continuity: 'business', keypeople: 'business', contractloss: 'business', information: 'business'
 };
 // ── Review due - verbatim port of the app's _riskReviewDue: the risk's own

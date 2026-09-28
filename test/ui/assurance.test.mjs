@@ -191,7 +191,76 @@ await wait(page, 300);
   R.ok(t.mapped === 0, 'and the mark is gone for good, so the next upload does not resurrect it');
 }
 
+// ── a raised renewal travels the SAME journey as any other risk action ──────
+//    Simon, 2026-09-28: "the risk when raised into the client execution plan
+//    needs to follow the exact same journey as the other risks - the same
+//    features like the work on button and the same path to completion."
+await seed(page, { company: { legalName: 'Fairbank Fabrications Ltd' } }, 'execplan');
+await load([past, far, far], [past, far]);
+await wait(page, 300);
+{
+  const t = await page.evaluate(() => {
+    raiseStatutoryDue(); raiseTrainingRenewals();
+    const acts = _execActions();
+    const reg = acts.find(a => (a.ref || {}).t === 'free' && /inspection due|control due/i.test(a.desc));
+    const trn = acts.find(a => /^Renew /.test(a.desc));
+    const look = (a) => { if (!a) return null; const r = _execRiskOf(a);
+      return { risk: r ? r.ref : '', band: _epBandOf(a), theme: _epThemeName(a),
+        work: _epWorkBtnHTML(a), refCell: _epRefCellHTML(a) }; };
+    return { reg: look(reg), trn: look(trn), regDesc: (reg || {}).desc, trnDesc: (trn || {}).desc,
+      statRisk: (_assuranceRiskOf('statutory') || {}).ref, trnRisk: (_assuranceRiskOf('training') || {}).ref };
+  });
+  R.ok(t.reg && t.reg.risk === t.statRisk, 'a statutory renewal belongs to the statutory risk (' + (t.reg || {}).risk + ')');
+  R.ok(t.trn && t.trn.risk === t.trnRisk, 'a training renewal belongs to the training risk (' + (t.trn || {}).risk + ')');
+  R.ok(t.reg.band && t.trn.band, 'so both carry a band mark like every other action (' + t.reg.band + ' / ' + t.trn.band + ')');
+  R.ok(/Statutory examinations/.test(t.reg.theme) && /Training & competence/.test(t.trn.theme),
+    'each sits in its OWN high level section, not lumped together (' + t.trn.theme + ' / ' + t.reg.theme + ')');
+  R.ok(t.reg.risk.charAt(0) !== t.trn.risk.charAt(0),
+    'so they carry different section letters too (' + t.trn.risk + ' / ' + t.reg.risk + ')');
+  R.ok(/Work on this/.test(t.reg.work) && /Work on this/.test(t.trn.work), 'both get the Work on this button');
+  R.ok(/_gotoRisk/.test(t.reg.refCell) && !/ep-ref-none/.test(t.reg.refCell), 'and a reference that opens the risk, not a dash');
+}
+
+// ── the same path to completion: the close-out, against the same risk ──
+{
+  const t = await page.evaluate(() => new Promise(res => {
+    const a = _execActions().find(x => /^Renew /.test(x.desc));
+    const rk = encodeURIComponent(JSON.stringify(a.ref));
+    updateExecAction(rk, 'status', 'Complete');
+    setTimeout(() => {
+      const ov = document.getElementById('evidOverlay');
+      const out = { opened: !!ov,
+        evidence: !!(ov && ov.querySelector('.evid-name')),
+        keeps: !!(ov && /What keeps this in place/i.test(ov.textContent)),
+        named: !!(ov && /Renew/.test(ov.textContent)) };
+      if (typeof _closeOutCancel === 'function') _closeOutCancel();
+      res(out);
+    }, 500);
+  }));
+  R.ok(t.opened && t.named, 'completing a renewal opens the same close-out as any other action');
+  R.ok(t.evidence, 'with the evidence section, because it now has a risk to file it against');
+  R.ok(t.keeps, 'and the same "what keeps this in place" question');
+}
+
+// ── anything raised before this change is adopted, not left orphaned ──
+{
+  const t = await page.evaluate(() => {
+    const orphan = { id: _reqUid('act'), regKey: 'reg|reg2', desc: 'Raised the old way', owner: '', due: '2026-01-15',
+      status: 'Not started', source: 'Assurance', sourceLabel: 'Plant & Equipment' };
+    S.actionPlan.push(orphan);
+    const before = _execRiskOf(_execActions().find(x => x.desc === 'Raised the old way'));
+    _assuranceSync();
+    const after = _execRiskOf(_execActions().find(x => x.desc === 'Raised the old way'));
+    return { before: before ? before.ref : '', after: after ? after.ref : '', want: (_assuranceRiskOf('statutory') || {}).ref };
+  });
+  R.ok(!t.before, 'an action raised before this belonged to nothing');
+  R.ok(t.after && t.after === t.want, 'and is adopted by its register\'s risk on the next sync (' + t.after + ')');
+}
+
 // ── the cockpit answers one question per register ──
+await seed(page, { company: { legalName: 'Fairbank Fabrications Ltd' } }, 'risk');
+await load([past, far, far], [past, soon]);
+await wait(page, 300);
 await seed(page, { company: { legalName: 'Fairbank Fabrications Ltd' } }, 'risk');
 await load([past, far, far], [past, soon]);
 await wait(page, 300);

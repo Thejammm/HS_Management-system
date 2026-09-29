@@ -454,7 +454,7 @@ export const REPORT_DOC_CODES = {
   companyProfile: 'CP', policySignoff: 'PSO', boardReport: 'BR', riskProfile: 'RP',
   actionPlan: 'AP', executionPlan: 'EP', completedActions: 'CA', actionArchive: 'AA',
   managementSystem: 'MS', raRegister: 'RAR', riskAcceptance: 'RAC', audit: 'AUD',
-  managementPlan: 'MP', riskPathway: 'RPW',
+  managementPlan: 'MP', riskPathway: 'RPW', keptInPlace: 'KIP',
   siteInspections: 'SIT', feedback: 'CR', cas: 'CAS', acp: 'ACP', policy: 'POL',
   incidents: 'INC', consultation: 'CCR', trainingMatrix: 'TCR', assuranceMonthly: 'MAR',
 };

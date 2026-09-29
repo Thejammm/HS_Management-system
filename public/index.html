@@ -3621,6 +3621,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .rpt-band-n{font-weight:600;color:var(--text-muted);letter-spacing:0;text-transform:none;margin-left:8px;font-size:11px;}
     .rpt-band-empty td{padding:6px 10px 8px;font-size:11.5px;color:var(--text-muted);border-top:0;}
     /* ── The risk pathway: six stations, one colour per risk ── */
+    .kip-row{display:flex;flex-direction:column;gap:8px;margin:10px 0 0;padding:10px 12px;border:1px solid var(--border);border-left:3px solid var(--accent);}
+    .kip-top,.kip-bot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+    .kip-lab{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);}
+    .kip-boxes{display:flex;gap:3px;flex-wrap:wrap;}
+    .kip-box{width:34px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;border:1px solid var(--border);background:transparent;color:var(--text-muted);border-radius:0;padding:0;font-family:inherit;cursor:default;}
+    button.kip-box{cursor:pointer;}
+    .kip-have{background:var(--accent);border-color:var(--accent);color:#fff;}
+    .kip-cur{outline:2px solid var(--accent);outline-offset:1px;}
+    .kip-miss{background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(127,127,127,.14) 4px 5px);}
+    .kip-note{font-size:12px;color:var(--text-muted);flex:1;min-width:180px;}
     .pw-card{border-radius:4px;margin-bottom:10px;transition:background .15s;}
     .pw-sum{padding:12px 16px;cursor:pointer;list-style:none;}
     .pw-sum::-webkit-details-marker{display:none;}
@@ -15073,6 +15083,11 @@ function renderReports(){
       icon:svg('<path d="M4 19h16"/><path d="M4 15l4-4 4 3 4-6 4 2"/><circle cx="8" cy="11" r="1.5"/><circle cx="12" cy="14" r="1.5"/><circle cx="16" cy="8" r="1.5"/><circle cx="20" cy="10" r="1.5"/>'),
       desc:'Every risk walked through its six stations - identified, assessed, controls, actions, kept in place, signed off - each line in the words it was recorded in, with where it lives. This period\'s progress on the front: the good work, and what is still to do.',
       tags:['Pathway','Period review','Client-facing'] },
+    { title:'Controls Kept in Place', accent:'#16A34A', tint:'#E8F6EE', fn:'downloadKeptReport()',
+      meta:(function(){ try{ const cur=new Date().toISOString().slice(0,7); const l=_keptReports(); const r=l.find(x=>x&&x.month===cur); return (r?('This month produced '+fmtDate(String(r.at).slice(0,10))):'Not produced yet this month')+' · '+l.length+' month'+(l.length!==1?'s':'')+' on record'; }catch(e){ return ''; } })(),
+      icon:svg('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>'),
+      desc:'The monthly record of how every control is being held: what has lapsed, what is coming due, and each risk\'s routines, briefings, documents and owners read live from where they are filed. Produce it each month and keep it - twelve of them are the year. A past month prints exactly as it was produced.',
+      tags:['Monthly','Kept in place','12 a year'] },
   ];
   const dl = svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>');
   const card = (r) => `<div class="rep-card" style="--rep:${r.accent};--rep-tint:${r.tint};">
@@ -18298,6 +18313,71 @@ function _pwPlanActions(r){
     return false;
   });
 }
+// ── Kept in place, read live ──────────────────────────────────
+// Simon, 2026-09-29: "make kept in place read the live state". What was
+// filed at close-out is a promise; this reads whether it is still being
+// kept - the routine against its next due date on Assurance records, the
+// briefing against who has confirmed it on the sign-off register, the
+// document against the documents register, the owner against company
+// personnel. Nothing is stored: it is read every time, in the register's
+// own words.
+function _psoStanding(polId){
+  const p=_psoState(); const pol=p.policies.find(x=>x.id===polId); if(!pol) return null;
+  let ok=0, ex=0, soon=0;
+  p.staff.forEach(st=>{ const i=_psoSignInfo(p.signed[st.id+'|'+polId], pol);
+    if(i.state==='ok') ok++; else if(i.state==='expiring'){ ok++; soon++; } else if(i.state==='expired') ex++; });
+  return { pol:pol, ok:ok, expired:ex, soon:soon, of:p.staff.length };
+}
+function _regFindItem(id){ let hit=null; _regSections().forEach(sec=>(sec.items||[]).forEach(it=>{ if(!hit && it && it.id===id) hit=it; })); return hit; }
+function _keptLive(o, desc){
+  const e=_embedOf(o); const out=[]; if(!e) return out;
+  const from='from "'+String(desc||'(action)').slice(0,80)+'"';
+  const L=(text, meta, state, home, extra)=>Object.assign(_pwLine(text, meta?(meta+' · '+from):from, state, e.at, home), extra||{});
+  if(e.none){ out.push(L('One-off: nothing recurring - the action stands on its own', '', 'done', '')); return out; }
+  if(e.routine){
+    const rt=e.routine, it=rt.regId?_regFindItem(rt.regId):null;
+    if(!rt.regId) out.push(L('Routine: '+rt.item, 'recorded before it was linked to Assurance records, so Compass cannot see whether it is still happening', 'part', 'Assurance records'));
+    else if(!it) out.push(L('Routine: '+rt.item, 'no longer on Assurance records - nothing is checking this now', 'late', 'Assurance records'));
+    else {
+      const nm='Routine: '+(it.item||rt.item)+(it.frequency?(' - '+String(it.frequency).toLowerCase()):'');
+      const last=it.resultDate?('last done '+fmtDate(it.resultDate)):'not done yet';
+      if(_regIsNA(it)) out.push(L(nm, 'marked no longer applies'+((it.na&&it.na.reason)?(' - '+it.na.reason):'')+' - check the risk still holds without it', 'part', 'Assurance records'));
+      else {
+        const rag=_regRag(it.dueDate);
+        if(rag==='red') out.push(L(nm, 'OVERDUE - was due '+fmtDate(it.dueDate)+' · '+last, 'late', 'Assurance records', { due:it.dueDate, kind:'routine' }));
+        else if(rag==='grey') out.push(L(nm, 'no next due date on Assurance records - set one, or nothing prompts it', 'part', 'Assurance records'));
+        else out.push(L(nm, last+' · next due '+fmtDate(it.dueDate), 'done', 'Assurance records', { due:it.dueDate, kind:'routine' }));
+      }
+    }
+  }
+  if(e.brief){
+    const b=e.brief, s=b.polId?_psoStanding(b.polId):null;
+    const nm='Briefed: '+((s&&s.pol.title)||b.title);
+    if(!b.polId) out.push(L(nm, 'recorded before it was linked to the sign-off register', 'part', 'Sign-off register'));
+    else if(!s) out.push(L(nm, 'no longer on the sign-off register - nobody is confirming it', 'late', 'Sign-off register'));
+    else if(!s.of) out.push(L(nm, 'nobody on the sign-off register yet to confirm it', 'part', 'Sign-off register'));
+    else if(s.expired) out.push(L(nm, s.expired+' confirmation'+(s.expired!==1?'s':'')+' expired - issue it again', 'late', 'Sign-off register'));
+    else if(s.ok===s.of) out.push(L(nm, 'all '+s.of+' confirmed', 'done', 'Sign-off register', s.soon?{ soon:s.soon, polTitle:s.pol.title }:null));
+    else out.push(L(nm, s.ok+' of '+s.of+' confirmed - '+(s.of-s.ok)+' still to confirm', 'part', 'Sign-off register'));
+  }
+  if(e.doc){
+    const docs=S.documents||[], nl=String(e.doc.name||'').trim().toLowerCase();
+    const d=(e.doc.docId&&docs.find(x=>x&&x.id===e.doc.docId))||docs.find(x=>x&&nl&&String(x.name||'').trim().toLowerCase()===nl)||null;
+    const nm='Document: '+((d&&d.name)||e.doc.name);
+    if(!d) out.push(L(nm, 'no longer on the documents register', 'late', 'Documents'));
+    else if(d.reviewDate && _regRag(d.reviewDate)==='red') out.push(L(nm, 'its review was due '+fmtDate(d.reviewDate), 'late', 'Documents', { due:d.reviewDate, kind:'doc' }));
+    else out.push(L(nm, (String(d.link||'').trim()||'on the documents register')+(d.reviewDate?(' · review '+fmtDate(d.reviewDate)):''), 'done', 'Documents', d.reviewDate?{ due:d.reviewDate, kind:'doc' }:null));
+  }
+  if(e.owner){
+    const nl=String(e.owner.name||'').trim().toLowerCase();
+    const pp=((S.company&&S.company.personnel)||[]).find(x=>x&&nl&&String(x.name||'').trim().toLowerCase()===nl)||null;
+    const role=(pp&&pp.role)||e.owner.role||'';
+    const nm='Owned by: '+(e.owner.name||'')+(role?(' - '+role):'');
+    if(!pp) out.push(L(nm, 'no longer on the company personnel list - name who owns it now', 'part', 'Company personnel'));
+    else out.push(L(nm, 'on the company personnel list', 'done', 'Company personnel'));
+  }
+  return out;
+}
 function _pathwayOf(r){
   const sc=_riskScore(r), tgt=_riskTarget(r), plan=_riskPlanState(r), ctl=_riskControlStatus(r);
   const live=a=>a&&!a.deleted&&(a.desc||a.owner||a.due);
@@ -18363,23 +18443,27 @@ function _pathwayOf(r){
     else { st='part'; sum=closed+' of '+acts.length+' closed'; }
     S6.push({ k:'actions', label:'Actions', state:st, summary:sum, lines:L });
   }
-  // 5 · Kept in place - what each closed piece of work left behind, as filed
+  // 5 · Kept in place - what each closed piece of work left behind, and
+  //     whether it is still happening, read live from where it was filed
   {
     const L=[]; let need=0, have=0;
     const closed=[];
     ctlRows.forEach(a=>{ if(_pwActionState(a)==='done') closed.push({ o:a, desc:a.desc }); });
     acts.forEach(a=>{ if(a.status==='Complete'||a.status==='Accepted'){ const o=_execOrigin(a.ref); if(o) closed.push({ o:o, desc:a.desc }); } });
-    closed.forEach(x=>{ need++; const lines=_embedLines(x.o); const e=_embedOf(x.o)||{};
-      if(lines.length){ have++; lines.forEach(l=>L.push(_pwLine(l.label+': '+l.text, 'from "'+String(x.desc||'').slice(0,80)+'"', 'done', e.at, l.home||''))); }
+    closed.forEach(x=>{ need++; const live=_keptLive(x.o, x.desc);
+      if(live.length){ have++; live.forEach(l=>L.push(l)); }
       else L.push(_pwLine('Not recorded yet - "'+String(x.desc||'(action)')+'"', 'record how it is kept in place, on the execution plan', 'part', '', 'Client execution plan')); });
     (r.linked||[]).filter(l=>l.ref||l.url).forEach(l=>L.push(_pwLine('Evidence: '+(l.ref||l.url), (l.url&&l.ref)?l.url:'', 'done', '', 'Risk profile · evidence')));
     const ra=(typeof _psoItemsFrom==='function')?_psoItemsFrom('risk', r.id)[0]:null;
-    if(ra){ const n=_psoSignedCount(ra.id), of=_psoState().staff.length;
-      L.push(_pwLine('Risk assessment issued for sign-off - '+n+' of '+of+' confirmed', 'issued '+fmtDate(ra.delivered), (of&&n===of)?'done':'part', ra.delivered, 'Sign-off register')); }
+    if(ra){ const s=_psoStanding(ra.id)||{ ok:0, of:0, expired:0, soon:0 };
+      L.push(Object.assign(_pwLine('Risk assessment issued for sign-off - '+s.ok+' of '+s.of+' confirmed'+(s.expired?(', '+s.expired+' expired'):''), 'issued '+fmtDate(ra.delivered),
+        s.expired?'late':((s.of&&s.ok===s.of)?'done':'part'), ra.delivered, 'Sign-off register'), s.soon?{ soon:s.soon, polTitle:ra.title }:{})); }
+    const nLate=L.filter(l=>l.state==='late').length, nPart=L.filter(l=>l.state==='part').length;
     let st, sum;
-    if(!need){ st='open'; sum='Nothing delivered yet'; if(!L.length) L.push(_pwLine('Nothing to hold in place yet - it follows the actions', '', 'open', '', 'Client execution plan')); }
-    else if(have===need){ st='done'; sum='Everything delivered is held - '+have+' of '+need+' recorded'; }
-    else { st='part'; sum=have+' of '+need+' delivered piece'+(need!==1?'s':'')+' of work recorded as held'; }
+    if(!need && !ra){ st='open'; sum='Nothing delivered yet'; if(!L.length) L.push(_pwLine('Nothing to hold in place yet - it follows the actions', '', 'open', '', 'Client execution plan')); }
+    else if(nLate){ st='late'; const f=L.find(l=>l.state==='late'); sum='Slipping - '+nLate+' lapsed: '+String(f.text).replace(/^[A-Za-z -]+: /,'').slice(0,70); }
+    else if(nPart){ st='part'; sum=(have<need)?(have+' of '+need+' delivered piece'+(need!==1?'s':'')+' of work recorded as held'):('Held, with '+nPart+' to check'); }
+    else { st='done'; sum='Everything delivered is held, and still happening'; }
     S6.push({ k:'kept', label:'Kept in place', state:st, summary:sum, lines:L });
   }
   // 6 · Signed off - reviewed and completed, or formally accepted; and kept reviewed
@@ -18475,16 +18559,148 @@ function renderRiskJourney(){
   el.innerHTML='<div class="card" style="margin-bottom:14px;"><div class="card-band"><h3><span class="dot">●</span> Risk pathway</h3>'
     +(_empView()?'':'<button class="btn btn-outline btn-sm no-print" onclick="downloadPathwayReport()" title="Every risk, station by station, in the words it was recorded in - what has been done and what has not, with this period\'s progress on the front">⭳ Pathway report</button>')+'</div>'
     +'<div class="card-body">'
-    +'<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Every risk walks the same six stations - <b>identified, assessed, controls, actions, kept in place, signed off</b>. Open one and each station shows what was recorded, in the words it was recorded in, and where it lives. Green is done, amber is in progress, red needs attention, grey has not started. The bar under each strip is the score: from the inherent score towards fully avoided, the <span style="color:#2563EB;font-weight:700;">blue line</span> being the residual target.</div>'
+    +'<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Every risk walks the same six stations - <b>identified, assessed, controls, actions, kept in place, signed off</b>. Open one and each station shows what was recorded, in the words it was recorded in, and where it lives. <b>Kept in place</b> reads live: a routine gone overdue on Assurance records, a briefing not yet confirmed, or a document gone from the register turns it amber or red. Green is done, amber is in progress, red needs attention, grey has not started. The bar under each strip is the score: from the inherent score towards fully avoided, the <span style="color:#2563EB;font-weight:700;">blue line</span> being the residual target.</div>'
     +'<div class="ckx-kpis" style="margin-bottom:12px;">'+tile(nDone,'Signed off',PW_COLOUR.done,'done')+tile(nMoving,'In progress',PW_COLOUR.part,'open')+tile(nLate,'Needs attention',PW_COLOUR.late,'late')+tile(paths.length,'All risks','var(--text)','all')+'</div>'
     +'<div class="pw-period no-print"><span>Progress this period:</span>'+pbtn(30)+pbtn(90)+pbtn(180)+pbtn(365)+'<span style="margin-left:auto;display:flex;gap:6px;"><button class="btn btn-ghost btn-xs" onclick="pathwayToggleAll(true)">Expand all</button><button class="btn btn-ghost btn-xs" onclick="pathwayToggleAll(false)">Collapse all</button></span></div>'
-    +'<div class="pw-good">'+good+'</div>'
+    +'<div class="pw-good">'+good+'</div>'+_keptTrackerHTML()
     +'</div></div>'
     +(rows.length
       ? (_riskGroupMode==='macro'
           ? _riskMacroGroups(rows,p=>p.r).map((g,i,arr)=>((i===0||arr[i-1].origin!==g.origin)?('<div class="jny-band">'+esc(_ORIGIN_LABEL[g.origin])+'</div>'):'')+_macroHeadHTML(g)+(_journeyMacroOpen(g.k)?g.list.map(p=>_pathwayCardHTML(p, since)).join(''):'')).join('')
           : rows.map(p=>_pathwayCardHTML(p, since)).join(''))
       : '<div class="card"><div class="card-body"><div class="empty"><h4>No risks '+(_journeyFilter==='done'?'signed off':_journeyFilter==='late'?'needing attention':_journeyFilter==='open'?'in progress':'yet')+'</h4><p>'+(paths.length?'Change the filter above.':'Add risks to the profile and their pathway appears here.')+'</p></div></div></div>');
+}
+// ── Controls Kept in Place: the monthly record ────────────────
+// Simon, 2026-09-29: "this is the only thing the client will have left, i
+// need to generate this report and print it out every month so i have
+// twelve in a year". Produced from the pathway, as at the day it is made.
+// Each month is kept exactly as it was produced - a record of what was true
+// then - so reprinting March in December gives March. A month that was
+// never produced cannot be made afterwards, because the live state that
+// month has gone; the tab says which months are missing.
+function _keptMonthLabel(m){ try{ return new Date(String(m).slice(0,7)+'-01T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }catch(e){ return String(m); } }
+function _keptReports(){ if(!S.monitoring||typeof S.monitoring!=='object') S.monitoring={}; if(!Array.isArray(S.monitoring.keptReports)) S.monitoring.keptReports=[]; return S.monitoring.keptReports; }
+function _keptSnapshot(){
+  const now=new Date(), month=now.toISOString().slice(0,7);
+  const soon=new Date(); soon.setDate(soon.getDate()+60); const soonD=soon.toISOString().slice(0,10);
+  const cap=(s,n)=>String(s==null?'':s).slice(0,n);
+  const paths=_riskDisplayOrder().map(_pathwayOf);
+  const counts={ risks:paths.length, held:0, checking:0, lapsed:0, delivering:0, signed:0 };
+  const attention=[], ahead=[], delivering=[];
+  paths.forEach(P=>{
+    const k=P.stations[4], r=P.r, rt=cap(P.title,120);
+    if(P.overall.state==='done') counts.signed++;
+    if(k.state==='open'){ counts.delivering++; const at=P.stations.find(s=>s.state!=='done')||P.stations[0];
+      delivering.push({ ref:P.ref, title:cap(P.title,140), where:at.label+' - '+cap(at.summary,140) }); return; }
+    if(k.state==='done') counts.held++; else if(k.state==='part') counts.checking++; else counts.lapsed++;
+    k.lines.forEach(l=>{
+      if(l.state==='late'||l.state==='part') attention.push({ ref:P.ref, title:rt, text:cap(l.text,240), meta:cap(l.meta,200), state:l.state, home:l.home||'' });
+      if(l.due && l.state==='done' && l.due<=soonD) ahead.push({ due:l.due, text:cap(l.text,200), ref:P.ref, title:rt, home:l.home||'' });
+      if(l.soon) ahead.push({ due:'', text:l.soon+' confirmation'+(l.soon!==1?'s':'')+' on '+cap(l.polTitle,120)+' expire'+(l.soon===1?'s':'')+' within the month - issue it again', ref:P.ref, title:rt, home:'Sign-off register' });
+    });
+    if(r.reviewDue){
+      if(_riskReviewDue(r)) attention.push({ ref:P.ref, title:rt, text:'Risk review', meta:'was due '+fmtDate(r.reviewDue)+' - review the controls and the score', state:'late', home:'Risk profile · Control table' });
+      else if(r.reviewDue<=soonD) ahead.push({ due:r.reviewDue, text:'Risk review - the controls and the score', ref:P.ref, title:rt, home:'Risk profile · Control table' });
+    }
+  });
+  attention.sort((a,b)=>(a.state===b.state)?0:(a.state==='late'?-1:1));
+  ahead.sort((a,b)=>String(a.due||'9').localeCompare(String(b.due||'9')));
+  const held=paths.filter(P=>P.stations[4].state!=='open');
+  const themes=_riskMacroGroups(held, P=>P.r).map(g=>({ name:g.name, letter:(g.k&&typeof _macroLetterRead==='function')?_macroLetterRead(g.k):'',
+    risks:g.list.map(P=>({ ref:P.ref, title:cap(P.title,160), band:P.sc.priority||'', rating:P.sc.rating||0,
+      overall:String(P.overall.label).replace(/^[✓≈] /,''), state:P.stations[4].state, summary:cap(P.stations[4].summary,160),
+      review:P.r.reviewDue?((_riskReviewDue(P.r)?'Review overdue - was due ':'Next review ')+fmtDate(P.r.reviewDue)):'No review date set',
+      lines:P.stations[4].lines.map(l=>({ text:cap(l.text,240), meta:cap(l.meta,200), state:l.state, home:l.home||'' })) })) }))
+    // printed in letter order, A B C, the way every AHS document reads; ungrouped last
+    .sort((a,b)=>{ const la=(a.letter&&a.letter!=='X')?a.letter:'~', lb=(b.letter&&b.letter!=='X')?b.letter:'~'; return la<lb?-1:(la>lb?1:0); });
+  const client=(_consultantView&&_consultantView.name)||_cockpitClientName();
+  return { month:month, label:_keptMonthLabel(month), at:now.toISOString(), by:(typeof _actor==='function'?(_actor().name||''):''),
+    client:String(client||''), counts:counts, attention:attention, ahead:ahead, themes:themes, delivering:delivering };
+}
+function _keptDraw(snap){
+  const d0=_docFor('keptInPlace');
+  const d=Object.assign({}, d0, { ref:(d0.ref||'KIP')+'-'+String(snap.month).replace('-',''), issued:String(snap.at||'').slice(0,10)||d0.issued });
+  const K=_mkPdf('Controls Kept in Place', snap.client, d, snap.label+' - how every control is being held, as at '+fmtDate(String(snap.at).slice(0,10)));
+  const NAVY=[30,58,95], GREY=[110,110,110], FAINT=[140,140,140];
+  const RGB={ done:[22,163,74], part:[217,119,6], late:[220,38,38], open:[120,128,140] };
+  const WORD={ done:'Held', part:'To check', late:'LAPSED', open:'Not started' };
+  const c=snap.counts||{};
+  K.tiles([{num:c.held||0,label:'Held, still happening',color:RGB.done},{num:c.checking||0,label:'Held, something to check',color:RGB.part},{num:c.lapsed||0,label:'Lapsed',color:RGB.late},{num:c.delivering||0,label:'Still being delivered',color:RGB.open}],{cols:4});
+  const nHeld=(c.held||0)+(c.checking||0)+(c.lapsed||0);
+  K.text(nHeld?((c.held||0)+' of the '+nHeld+' risk'+(nHeld!==1?'s':'')+' with work kept in place '+((c.held||0)===1?'has':'have')+' every control still happening'+(c.signed?(' - '+c.signed+' signed off as how the company manages the risk'):'')+'.'):'No risk has delivered work to keep in place yet.', 9.5, {gap:3});
+  K.section('Needs attention', RGB.late);
+  if((snap.attention||[]).length) K.table([{header:'RISK',w:44},{header:'WHAT',w:62},{header:'STATUS',w:46},{header:'WHERE IT LIVES',w:26}],
+    snap.attention.map(a=>[{text:(a.ref?(a.ref+'  '):'')+a.title,bold:true}, {text:a.text,color:RGB[a.state]}, {text:(a.state==='late'?'Lapsed: ':'To check: ')+String(a.meta).replace(/^OVERDUE - /,''),color:RGB[a.state],bold:a.state==='late'}, {text:a.home,color:FAINT}]), {fs:8});
+  else K.text('Nothing has lapsed. Every control recorded as kept in place is still happening.', 9.5, {color:RGB.done});
+  K.section('Coming due in the next 60 days', NAVY);
+  if((snap.ahead||[]).length) K.table([{header:'DUE',w:24},{header:'WHAT',w:74},{header:'RISK',w:52},{header:'WHERE IT LIVES',w:28}],
+    snap.ahead.map(a=>[a.due?fmtDate(a.due):'this month', a.text, (a.ref?(a.ref+'  '):'')+a.title, {text:a.home,color:FAINT}]), {fs:8});
+  else K.text('Nothing falls due in the next 60 days.', 9.5, {color:GREY});
+  (snap.themes||[]).forEach(g=>{
+    K.section((g.letter?(g.letter+' - '):'')+g.name, NAVY);
+    g.risks.forEach(R=>{
+      K.st.y+=1;
+      K.kv('Risk', (R.ref?(R.ref+' - '):'')+R.title+'  -  '+(R.band?(R.band+' '+R.rating):'not rated')+'  -  '+R.overall);
+      K.kv('Kept in place', WORD[R.state]+' - '+R.summary);
+      K.kv('Review', R.review);
+      K.table([{header:'WHAT KEEPS IT IN PLACE',w:78},{header:'STATUS',w:70},{header:'WHERE IT LIVES',w:30}],
+        R.lines.map(l=>[{text:l.text,color:RGB[l.state]}, {text:l.meta,color:RGB[l.state]}, {text:l.home,color:FAINT}]), {fs:8});
+    });
+  });
+  if((snap.delivering||[]).length){
+    K.section('Still being delivered', [120,128,140]);
+    K.table([{header:'REF',w:18},{header:'RISK',w:80},{header:'WHERE IT IS',w:80}], snap.delivering.map(x=>[x.ref||'', x.title, x.where]), {fs:8});
+  }
+  K.st.y+=2;
+  K.text('Produced monthly from the risk pathway and kept as it was produced, so twelve of these are the year\'s record of how the controls were held. Monitoring and review of the arrangements that control risk: Management of Health and Safety at Work Regulations 1999, reg 5.', 8.4, {color:GREY});
+  _pdfFooter(K, d, 'Controls Kept in Place');
+  K.doc.save('controls-kept-in-place-'+String(snap.client||'client').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+snap.month+'.pdf');
+}
+function downloadKeptReport(month){
+  try{
+    const cur=new Date().toISOString().slice(0,7); month=String(month||cur).slice(0,7);
+    const list=_keptReports(); const rec=list.find(x=>x&&x.month===month);
+    if(month!==cur){
+      if(!rec||!rec.snap){ showToast(_keptMonthLabel(month)+' was not produced - a month is recorded as it stood at the time, so it cannot be made afterwards','info'); return; }
+      _keptDraw(rec.snap);   // what it said then, not what is true now
+      showToast('✓ '+_keptMonthLabel(month)+' printed as it was produced on '+fmtDate(String(rec.at).slice(0,10)),'success');
+      return;
+    }
+    const snap=_keptSnapshot();
+    if(!_roLocked()){
+      const row={ month:month, at:snap.at, by:snap.by, counts:snap.counts, snap:snap };
+      if(rec) Object.assign(rec, row); else list.push(row);
+      list.sort((a,b)=>String(a.month).localeCompare(String(b.month)));
+      while(list.length>24) list.shift();
+      saveData();
+    }
+    _keptDraw(snap);
+    if(document.getElementById('journeyRoot')) renderRiskJourney();
+    const c=snap.counts;
+    showToast('✓ '+snap.label+' produced - '+c.held+' held, '+c.checking+' to check, '+c.lapsed+' lapsed','success');
+  }catch(e){ console.error('Kept in place report failed',e); showToast('Could not build the report - see console','error'); }
+}
+// Twelve boxes, twelve months: which are on record, which is due, which
+// were missed. Every box that holds a month prints it.
+function _keptTrackerHTML(){
+  if(_empView()) return '';
+  const ro=_roLocked(), have={};
+  _keptReports().forEach(x=>{ if(x&&x.month) have[x.month]=x; });
+  const now=new Date(), cur=now.toISOString().slice(0,7);
+  const months=[]; for(let i=11;i>=0;i--){ months.push(new Date(now.getFullYear(), now.getMonth()-i, 1, 12).toISOString().slice(0,7)); }
+  const nHave=months.filter(m=>have[m]).length;
+  const box=(m)=>{
+    const r=have[m], lab=new Date(m+'-01T12:00:00').toLocaleDateString('en-GB',{month:'short'});
+    if(r) return '<button class="kip-box kip-have'+(m===cur?' kip-cur':'')+'" onclick="downloadKeptReport(\''+m+'\')" title="'+esc(_keptMonthLabel(m)+' - produced '+fmtDate(String(r.at).slice(0,10))+(r.by?(' by '+r.by):'')+(m===cur?'. Click to produce it again with today\'s position.':'. Click to print it again, exactly as it was.'))+'">'+esc(lab)+'</button>';
+    if(m===cur && !ro) return '<button class="kip-box kip-cur" onclick="downloadKeptReport()" title="Not produced yet this month - click to produce it">'+esc(lab)+'</button>';
+    return '<span class="kip-box kip-miss" title="'+esc(_keptMonthLabel(m)+(m===cur?' - not produced yet':' - not produced'))+'">'+esc(lab)+'</span>';
+  };
+  const cr=have[cur];
+  return '<div class="kip-row no-print"><div class="kip-top"><span class="kip-lab">Monthly record · controls kept in place</span>'
+    +'<span class="kip-boxes">'+months.map(box).join('')+'</span></div>'
+    +'<div class="kip-bot"><span class="kip-note">'+nHave+' of the last 12 months on record · '+(cr?(esc(_keptMonthLabel(cur))+' produced '+esc(fmtDate(String(cr.at).slice(0,10)))):('<b>'+esc(_keptMonthLabel(cur))+' not produced yet</b>'))+'</span>'
+    +(ro?'':'<button class="btn btn-primary btn-sm" onclick="downloadKeptReport()" title="The month\'s record, as at today: what has lapsed, what is coming due, and how each risk is held">⭳ '+'Produce '+esc(now.toLocaleDateString('en-GB',{month:'long'}))+'\'s report'+(cr?' again':'')+'</button>')
+    +'</div></div>';
 }
 function setJourneyFilter(v){ _journeyFilter=(_journeyFilter===v&&v!=='all')?'all':v; renderRiskJourney(); }
 function setPathwayPeriod(d){ _pathwayDays=d; renderRiskJourney(); }
@@ -21396,6 +21612,7 @@ const REPORT_DOCS = [
   { key:'discovery',        title:'Discovery Questionnaire',      code:'DQ'  },
   { key:'policySignoff',    title:'Acknowledgement Register',     code:'PSO' },
   { key:'riskPathway',      title:'Risk Pathway',                 code:'RPW' },
+  { key:'keptInPlace',      title:'Controls Kept in Place',       code:'KIP' },
   { key:'boardReport',      title:'Board Report',                 code:'BR'  },
   { key:'managementPlan',   title:'H&S Management Plan',          code:'MP'  },
   { key:'bizStatus',        title:'Business Status Report',       code:'BSR' },

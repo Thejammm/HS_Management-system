@@ -7,12 +7,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --env-file=.env server.js",
-    "test": "node --test test/reports.test.mjs test/cas-export.test.mjs test/management-plan.test.mjs test/signoff-link.test.mjs test/onejourney-reports.test.mjs && npm run check",
+    "test": "node --test test/reports.test.mjs test/cas-export.test.mjs test/management-plan.test.mjs test/signoff-link.test.mjs test/onejourney-reports.test.mjs test/training-tabs.test.mjs && npm run check",
     "check:consistency": "node scripts/check-app-report-consistency.mjs",
     "check:masthead": "node scripts/check-report-masthead-fit.mjs",
     "check": "npm run check:consistency && npm run check:masthead && npm run check:overflow",
     "check:overflow": "node scripts/check-report-page-overflow.mjs",
-    "test:ui": "node test/ui/register.test.mjs && node test/ui/cockpit.test.mjs && node test/ui/discovery.test.mjs && node test/ui/execplan.test.mjs && node test/ui/closeout.test.mjs && node test/ui/assurance.test.mjs && node test/ui/signoff.test.mjs && node test/ui/onejourney.test.mjs && node test/ui/pathway.test.mjs"
+    "test:ui": "node test/ui/register.test.mjs && node test/ui/cockpit.test.mjs && node test/ui/discovery.test.mjs && node test/ui/execplan.test.mjs && node test/ui/closeout.test.mjs && node test/ui/assurance.test.mjs && node test/ui/signoff.test.mjs && node test/ui/onejourney.test.mjs && node test/ui/pathway.test.mjs && node test/ui/field-fixes.test.mjs"
   },
   "engines": {
     "node": ">=18"

@@ -7107,7 +7107,7 @@ function renderActions() {
             ${a.resolved?`<span style="color:var(--success)">✓ ${fmtDate(a.resolvedAt?.slice(0,10))} · ${esc(a.resolvedBy)}</span>`:''}
           </div>
         </div>
-        ${_roLocked()?'':`<button class="no-print" onclick="deleteAction('${a.id}')" title="Remove this action item" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:28px;height:28px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;align-self:flex-start;">✕</button>`}
+        ${(_roLocked()||a.source==='linked')?'':`<button class="no-print" onclick="deleteAction('${a.id}')" title="Remove this action item" style="background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:28px;height:28px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;align-self:flex-start;">✕</button>`}
       </div>
       <div style="font-size:13px;margin-bottom:${a.assignedTo?'6px':'0'};"><strong>Issue:</strong> ${esc(a.issue)}${a.source==='linked'?' <span class="badge badge-muted" title="Synced from the Inspection app - view only here">from Inspection app</span>':''}</div>
       ${a.assignedTo?`<div style="font-size:13px;color:var(--text-muted);"><strong>Assigned:</strong> ${esc(a.assignedTo)}</div>`:''}
@@ -7123,7 +7123,8 @@ function renderActions() {
             <div style="display:flex;gap:6px;flex-wrap:wrap;">${a.afterPhotos.map((p,pi)=>`<img class="photo-thumb" src="${p}" onclick="openLightbox('${p}','After - ${a.itemName}')" alt="After photo ${pi+1}">`).join('')}</div>
           </div>`:''}
         </div>`:''}
-      ${!a.resolved?`
+      ${(!a.resolved && a.source==='linked')?_linkedResolveNoteHTML(a):''}
+      ${(!a.resolved && a.source!=='linked')?`
         <div class="resolve-panel">
           <div class="rp-label">✓ Mark as Resolved</div>
           <div class="field-grid" style="margin-bottom:10px;">
@@ -9047,7 +9048,7 @@ function saveData(){
   // refresh (the server still held the old data). Surface it now.
   if(Auth.isSignedIn() && Auth.activeTenantId()){
     _ownSaveInFlight = true;   // pause the freshness poll from reloading our own change
-    Auth.saveToServer(S).then(res => {
+    return Auth.saveToServer(S).then(res => {
       if(res && res.conflict){
         // Another editor saved this company between our load and this save.
         // Adopt their version (server wins) so nothing they did is lost - but
@@ -26247,7 +26248,21 @@ function _subscribedApps(){
   return MY_APPS.filter(a=>keys.includes(a.k));
 }
 
+// Quick links is a screen you type on (the linked-app boxes). A sync that
+// finishes, or fails, redraws it - which threw the cursor out mid-word
+// (Simon, 2026-09-29: "it glitches and refreshes removing my cursor"). The
+// redraw now puts the cursor back exactly where it was.
 function renderAppLinks(){
+  const cont=document.getElementById('appLinksContainer');
+  const ae=document.activeElement;
+  const key=(cont && ae && cont.contains(ae) && ae.getAttribute) ? (ae.getAttribute('data-f')||'') : '';
+  let s0=null, s1=null; if(key){ try{ s0=ae.selectionStart; s1=ae.selectionEnd; }catch(e){} }
+  _renderAppLinksNow();
+  if(!key) return;
+  const el=cont && cont.querySelector('[data-f="'+key+'"]'); if(!el) return;
+  el.focus(); if(s0!=null){ try{ el.setSelectionRange(s0, s1); }catch(e){} }
+}
+function _renderAppLinksNow(){
   const cont=document.getElementById('appLinksContainer'); if(!cont) return;
   const canEdit=_canEditLinks();
   // Two sources, one grid: the subscription apps from the tenant's config
@@ -26417,13 +26432,17 @@ async function syncLinkedApp(id, opts){
       : 'Set the remote tenant id first (the client\'s tenant id in the Inspection app).','info'); return; }
   const btn=document.getElementById('lasync-'+id); if(btn){ btn.disabled=true; btn.textContent='Syncing…'; }
   try{
+    // The server reads the link from the SAVED record, so a tenant id typed a
+    // moment ago must reach it first - otherwise Sync now pulls the old id,
+    // or none. A background sync on load has nothing new to save.
+    if(!opts.silent){ try{ clearTimeout(_autoTimer); await saveData(); }catch(e){} }
     const _ep = link.kind==='casaudit' ? 'casaudit' : 'inspections';
     const r=await fetch('/api/linked/'+_ep+'?tenantId='+encodeURIComponent(Auth.activeTenantId())+'&linkId='+encodeURIComponent(id), { credentials:'include' });
     let j={}; try{ j=await r.json(); }catch(e){}
     if(!r.ok || !j.ok){
       link.lastStatus='error: '+(j.error||('http '+r.status));
       saveData(); renderAppLinks();
-      if(!opts.silent) showToast('Sync failed ('+(j.error||r.status)+') - keeping the last-synced data.','error');
+      if(!opts.silent) showToast('Sync failed - '+_laErrText(j.error||('http '+r.status))+'. Keeping the last-synced data.','error');
       return;
     }
     if(link.kind==='casaudit') _mergeCasauditRecords(link, j); else _mergeLinkedRecords(link, j);
@@ -26454,20 +26473,53 @@ function _autoSyncLinkedApps(){
     syncLinkedApp(l.id, { silent:true });
   });
 }
+// What went wrong, in words - the raw codes ("remote_tenant_not_found") meant
+// nothing on the card, and a background sync that failed said nothing at all.
+const _LA_ERR={
+  link_not_configured:"Compass's server is not set up for linked apps (its service token is missing)",
+  tenant_required:'Compass could not tell which client this is - sign in again',
+  tenant_not_found:"this client is not saved on Compass's server yet - make any change, then try again",
+  no_link_configured:'the link had not reached the server yet - press Sync now again',
+  bad_link_url:'the app address is not a web address',
+  https_required:'the app address must start https://',
+  host_not_allowed:'that app address is not one Compass may pull from - use https://inspections.archerhs.co.uk',
+  remote_unreachable:'the Inspection app did not answer - try again in a minute',
+  remote_auth_failed:"the Inspection app refused Compass's service token - the two apps' tokens do not match",
+  remote_tenant_not_found:"the Inspection app has no client with that id - copy it from the client's row on the Inspection app's Admin tab",
+  remote_link_not_configured:'the Inspection app is not set up for linked apps',
+  remote_error:'the Inspection app returned an error',
+  remote_bad_payload:'the Inspection app sent something Compass could not read',
+  server_error:"Compass's server hit an error",
+  network:"Compass's server could not be reached - check the connection"
+};
+function _laErrText(code){
+  code=String(code||'').replace(/^error:\s*/,'').trim();
+  if(_LA_ERR[code]) return _LA_ERR[code];
+  if(/^http 401/.test(code)) return 'you are signed out - sign in again';
+  return code||'unknown error';
+}
+function _laStatusText(s){ s=String(s||''); if(s==='ok') return 'ok'; return s.indexOf('error')===0 ? ('Sync failed: '+_laErrText(s)) : s; }
+// A synced action is resolved where it was raised; Compass shows where.
+function _linkedResolveNoteHTML(a){
+  const l=_linkedAppsState().find(x=>x.id===a.sourceApp)||{};
+  const url=String(l.baseUrl||'').trim(), nm=l.label||'the Inspection app';
+  return '<div class="resolve-panel" style="font-size:13px;color:var(--text-muted);">Raised in '+esc(nm)+' - resolve it there, and it comes back here resolved on the next sync.'
+    +(/^https:\/\//i.test(url)?(' <a href="'+esc(url)+'" target="_blank" rel="noopener" class="btn btn-outline btn-sm no-print" style="margin-left:6px;">Open '+esc(nm)+' &#8599;</a>'):'')+'</div>';
+}
 function _linkedAppsCardHTML(canEdit){
   const list=_linkedAppsState(); const dis=_roLocked()?' disabled':'';
   if(!list.length && !canEdit) return '';
   const rows=list.map(l=>`<div style="border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:10px;">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px;">
-        <div class="field-group"><label class="field-label">Label</label><input type="text"${dis} value="${esc(l.label||'')}" oninput="updateLinkedApp('${l.id}','label',this.value)"></div>
-        <div class="field-group"><label class="field-label">App address</label><input type="text"${dis} value="${esc(l.baseUrl||'')}" oninput="updateLinkedApp('${l.id}','baseUrl',this.value)"></div>
-        <div class="field-group"><label class="field-label">${l.kind==='casaudit'?"Client's Link ID (CAS Auditor Admin tab)":"Client's tenant id in that app"}</label><input type="text"${dis} value="${esc(l.remoteTenantId||'')}" oninput="updateLinkedApp('${l.id}','remoteTenantId',this.value)"></div>
+        <div class="field-group"><label class="field-label">Label</label><input type="text"${dis} value="${esc(l.label||'')}" oninput="updateLinkedApp('${l.id}','label',this.value)" data-f="la-${l.id}-label"></div>
+        <div class="field-group"><label class="field-label">App address</label><input type="text"${dis} value="${esc(l.baseUrl||'')}" oninput="updateLinkedApp('${l.id}','baseUrl',this.value)" data-f="la-${l.id}-baseUrl"></div>
+        <div class="field-group"><label class="field-label">${l.kind==='casaudit'?"Client's Link ID (CAS Auditor Admin tab)":"Client's tenant id in that app"}</label><input type="text"${dis} value="${esc(l.remoteTenantId||'')}" oninput="updateLinkedApp('${l.id}','remoteTenantId',this.value)" data-f="la-${l.id}-remoteTenantId"></div>
       </div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px;">
         <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;"><input type="checkbox"${dis} ${l.autoSync?'checked':''} onchange="updateLinkedApp('${l.id}','autoSync',this.checked)"> Auto-sync when this client loads</label>
         ${dis?'':`<button class="btn btn-primary btn-sm no-print" id="lasync-${l.id}" onclick="syncLinkedApp('${l.id}')">Sync now</button>`}
         ${canEdit&&!dis?`<button class="btn btn-ghost btn-sm no-print" onclick="deleteLinkedApp('${l.id}')">Remove link</button>`:''}
-        <span style="font-size:11.5px;color:${String(l.lastStatus||'').startsWith('error')?'var(--danger)':'var(--text-muted)'};">${l.lastSyncAt?('Last synced '+new Date(l.lastSyncAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})):(l.lastStatus?esc(l.lastStatus):'Never synced')}${l.lastSyncAt&&String(l.lastStatus||'').startsWith('error')?(' · '+esc(l.lastStatus)):''}</span>
+        <span style="font-size:11.5px;color:${String(l.lastStatus||'').startsWith('error')?'var(--danger)':'var(--text-muted)'};">${l.lastSyncAt?('Last synced '+new Date(l.lastSyncAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})):(l.lastStatus?esc(_laStatusText(l.lastStatus)):'Never synced')}${l.lastSyncAt&&String(l.lastStatus||'').startsWith('error')?(' · '+esc(_laStatusText(l.lastStatus))):''}</span>
       </div>
     </div>`).join('');
   return `<div class="card" style="margin:0 0 16px;">
@@ -27085,19 +27137,36 @@ function _trainingRows(){
 }
 function _tOnline(){ try{ return !!(Auth.isSignedIn() && Auth.activeTenantId()); }catch(e){ return false; } }
 function _tFmt(iso){ try{ return iso? new Date(String(iso)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}):''; }catch(e){ return ''; } }
-function _tCoursesFor(group){
-  const d=_trainingData();
-  // Every active sheet in the group, in sheet order - not just the first one.
-  // Taking the first sheet's columns hid any course a second sheet added: the
-  // dates were imported and sat in the record, they simply never appeared on
-  // the matrix, so nobody could see the gap or raise the renewal.
-  const out=[];
-  (d.sheets||[]).filter(s=>s.group===group && s.status==='active').forEach(s=>{
-    (s.courses||[]).forEach(c=>{ if(c && c.name && out.indexOf(c.name)<0) out.push(c.name); });
-  });
-  // Then anything a person carries that no sheet declared - typed in the app,
-  // or left over from an earlier import with different columns.
-  (d.people||[]).filter(p=>p.group===group).forEach(p=>Object.keys(p.cells||{}).forEach(c=>{ if(out.indexOf(c)<0) out.push(c); }));
+// ── Tabs, not two fixed groups ────────────────────────────────
+// Simon, 2026-09-29: a training workbook can hold "two or more tabs with
+// different employees' training needs" - a business, a site or a trade each.
+// The importer folds every tab into Staff or Garage staff by its name, so two
+// businesses read as one list with their columns run together. Each active
+// tab is now its own table, under its own name, with its own columns. A
+// person added in the app joins the tab chosen for them (p.tab) and is
+// written back into that tab when the workbook is exported.
+function _tActiveSheets(){ return (_trainingData().sheets||[]).filter(s=>s&&s.status==='active'&&s.name); }
+function _tSectionOf(p){
+  const sh=_tActiveSheets(), own=p&&(p.sheet||p.tab);
+  if(own && sh.some(s=>s.name===own)) return 'sheet:'+own;
+  const g=sh.find(s=>(s.group||'staff')===((p&&p.group)||'staff'));
+  return g ? ('sheet:'+g.name) : ('group:'+((p&&p.group)||'staff'));
+}
+function _tSections(){
+  const out=[], seen={};
+  _tActiveSheets().forEach(s=>{ const k='sheet:'+s.name; if(seen[k]) return; seen[k]=1; out.push({ key:k, label:s.name, sheet:s.name, group:s.group||'staff' }); });
+  (_trainingData().people||[]).filter(p=>p.status==='active').forEach(p=>{ const k=_tSectionOf(p); if(seen[k]) return; seen[k]=1;
+    const g=k.slice(6); out.push({ key:k, label:g==='garage'?'Garage staff':'Staff', sheet:null, group:g }); });
+  return out;
+}
+function _tSectionsOrDefault(){ const s=_tSections(); return s.length ? s : [{ key:'group:staff', label:'Staff', sheet:null, group:'staff' }, { key:'group:garage', label:'Garage staff', sheet:null, group:'garage' }]; }
+function _tSectionByKey(k){ return _tSectionsOrDefault().find(s=>s.key===k)||null; }
+// That tab's own columns, then anything a person on it carries that the tab
+// never declared (typed in the app, or left from an earlier import).
+function _tCoursesForSection(sec){
+  const out=[]; if(!sec) return out;
+  if(sec.sheet){ const s=_tActiveSheets().find(x=>x.name===sec.sheet); ((s&&s.courses)||[]).forEach(c=>{ if(c&&c.name&&out.indexOf(c.name)<0) out.push(c.name); }); }
+  (_trainingData().people||[]).filter(p=>_tSectionOf(p)===sec.key).forEach(p=>Object.keys(p.cells||{}).forEach(c=>{ if(out.indexOf(c)<0) out.push(c); }));
   return out;
 }
 const _TRAGC={red:'#DC2626',amber:'#F59E0B',green:'#16A34A',grey:'#9CA3AF',blue:'#2563EB',na:'#D1D5DB',none:'transparent'};
@@ -27111,10 +27180,10 @@ function _tRagCell(cell){
   if(l==='trainer') return {rag:'blue',label:s,title:'Delivers this course'};
   return {rag:'grey',label:s,title:s};
 }
-function _tGroupTable(group,label){
+function _tGroupTable(sec){
   const d=_trainingData(), ro=_roLocked();
-  const courses=_tCoursesFor(group);
-  const people=(d.people||[]).filter(p=>p.group===group && p.status==='active').sort((a,b)=>(((a.lastName||'')+a.firstName).toLowerCase()).localeCompare(((b.lastName||'')+b.firstName).toLowerCase()));
+  const courses=_tCoursesForSection(sec), label=sec.label;
+  const people=(d.people||[]).filter(p=>p.status==='active' && _tSectionOf(p)===sec.key).sort((a,b)=>(((a.lastName||'')+a.firstName).toLowerCase()).localeCompare(((b.lastName||'')+b.firstName).toLowerCase()));
   if(!people.length && !courses.length) return '';
   const head=`<tr><th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--surface);z-index:1;">Name</th>${courses.map(c=>`<th style="padding:6px 6px;font-size:10.5px;text-align:center;white-space:nowrap;">${esc(c)}</th>`).join('')}${ro?'':'<th></th>'}</tr>`;
   const body=people.map(p=>`<tr>
@@ -27126,7 +27195,7 @@ function _tGroupTable(group,label){
     ${ro?'':`<td style="white-space:nowrap;"><button class="btn btn-ghost btn-xs no-print" title="Move to Left (offboard) - kept and archived" onclick="trainingOffboard('${esc(p.id)}')">→ Left</button><button class="btn btn-ghost btn-xs no-print" title="Delete permanently" onclick="trainingDeletePerson('${esc(p.id)}')">${_ic('trash',13)}</button></td>`}
   </tr>`).join('');
   return `<div style="margin-top:14px;"><div style="font-weight:700;font-size:13px;margin-bottom:6px;">${esc(label)} <span style="font-weight:400;color:var(--text-muted);">(${people.length})</span></div>
-    <div style="overflow-x:auto;" data-keepscroll="trn-${group}"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div></div>`;
+    <div style="overflow-x:auto;" data-keepscroll="trn-${String(sec.key).replace(/[^a-z0-9]+/gi,'-')}"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div></div>`;
 }
 function _trainingMatrixHTML(){
   const d=_trainingData(), ro=_roLocked();
@@ -27151,7 +27220,7 @@ function _trainingMatrixHTML(){
   }
   let nExp=0,nSoon=0; (d.people||[]).filter(p=>p.status==='active').forEach(p=>Object.values(p.cells||{}).forEach(c=>{ if(c&&c.type==='date'){ const r=_trainingRag(c.v); if(r==='red')nExp++; else if(r==='amber')nSoon++; }}));
   const nActive=(d.people||[]).filter(p=>p.status==='active').length, nLeft=(d.people||[]).filter(p=>p.status==='left').length;
-  const staffTbl=_tGroupTable('staff','Staff'), garageTbl=_tGroupTable('garage','Garage staff');
+  const secTbls=_tSections().map(s=>_tGroupTable(s)).join('');
   const leftPeople=(d.people||[]).filter(p=>p.status==='left');
   const leftHTML=leftPeople.length?`<details style="margin-top:14px;"><summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--text-muted);">Left / archived (${leftPeople.length})</summary><div style="font-size:12px;color:var(--text-muted);margin-top:6px;">${leftPeople.map(p=>esc(p.lastName+', '+p.firstName)).join(' · ')}</div></details>`:'';
   const due=_trainingDueCount();
@@ -27170,7 +27239,7 @@ function _trainingMatrixHTML(){
     <div class="card-band"><h3><span class="dot">●</span> Training matrix</h3><span class="badge badge-muted">${nActive} staff${nLeft?(' · '+nLeft+' left'):''}${nExp?(' · '+nExp+' expired'):''}${nSoon?(' · '+nSoon+' expiring'):''}</span></div>
     <div class="card-body">
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:2px;">Dates traffic-light by expiry (<span style="color:${_TRAGC.red};font-weight:700;">expired</span> · <span style="color:${_TRAGC.amber};font-weight:700;">≤60 days</span> · <span style="color:${_TRAGC.green};font-weight:700;">in date</span>); other entries show as written. ${ro?'':'Click any cell to update it.'} Expired / expiring raise actions in the plan.</div>
-      ${staffTbl}${garageTbl}${leftHTML}${toolbar}
+      ${secTbls}${leftHTML}${toolbar}
     </div></div>`;
 }
 // ── DRM-style import wizard (copied from the DRM app's importer): step 1
@@ -27385,17 +27454,17 @@ function trainingAddPerson(){
   // The person joins the matrix AS IT IS: every existing column for the
   // chosen group gets its own input, so a new row never appears half-empty
   // next to the imported ones.
-  const colInputs=(g)=>{ const cs=_tCoursesFor(g);
+  const colInputs=(k)=>{ const cs=_tCoursesForSection(_tSectionByKey(k));
     if(!cs.length) return '<div style="font-size:11.5px;color:var(--text-muted);">No columns yet for this group - they appear once a spreadsheet is loaded.</div>';
     return cs.map(c=>`<div style="display:flex;gap:8px;align-items:center;margin-top:6px;"><label style="flex:0 0 44%;font-size:11.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(c)}">${esc(c)}</label><input data-course="${esc(c)}" placeholder="date (dd/mm/yyyy) or text" style="flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:7px;font-size:12px;"></div>`).join(''); };
   ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:460px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
     <div style="font-weight:700;margin-bottom:12px;">Add person</div>
     <div style="display:flex;gap:8px;"><div style="flex:1;"><label style="font-size:12px;font-weight:600;">First name</label><input id="_tpF" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"></div><div style="flex:1;"><label style="font-size:12px;font-weight:600;">Surname</label><input id="_tpL" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"></div></div>
     <div style="display:flex;gap:8px;margin-top:10px;"><div style="flex:1;"><label style="font-size:12px;font-weight:600;">Badge</label><input id="_tpB" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"></div><div style="flex:1;"><label style="font-size:12px;font-weight:600;">Job</label><input id="_tpJ" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"></div></div>
-    <label style="font-size:12px;font-weight:600;display:block;margin-top:10px;">Group</label>
-    <select id="_tpG" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;"><option value="staff">Staff</option><option value="garage">Garage staff</option></select>
+    <label style="font-size:12px;font-weight:600;display:block;margin-top:10px;">Tab <span style="font-weight:400;color:var(--text-muted);">(the list they belong on)</span></label>
+    <select id="_tpG" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-top:3px;">${_tSectionsOrDefault().map(s=>`<option value="${esc(s.key)}">${esc(s.label)}</option>`).join('')}</select>
     <div style="font-size:12px;font-weight:600;margin-top:12px;">The matrix columns <span style="font-weight:400;color:var(--text-muted);">(fill any that apply - dates traffic-light, anything else shows as written)</span></div>
-    <div id="_tpCols" style="max-height:260px;overflow:auto;padding-right:4px;">${colInputs('staff')}</div>
+    <div id="_tpCols" style="max-height:260px;overflow:auto;padding-right:4px;">${colInputs(_tSectionsOrDefault()[0].key)}</div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;"><button type="button" id="_tpCancel" class="btn btn-ghost btn-sm">Cancel</button><button type="button" id="_tpSave" class="btn btn-primary btn-sm">Add</button></div>
   </div>`;
   document.body.appendChild(ov); const close=()=>ov.remove();
@@ -27412,7 +27481,7 @@ function trainingAddPerson(){
     ov.querySelectorAll('#_tpCols input[data-course]').forEach(inp=>{ const c=inp.dataset.course; if(cells[c]) return;
       if(/^first\s*name$/i.test(c) && f) cells[c]={type:'text',v:f};
       if(/^(surname|last\s*name)$/i.test(c) && l) cells[c]={type:'text',v:l}; });
-    _trainingData().people.push({ id:_reqUid('trp'), sheet:null, row:null, group:ov.querySelector('#_tpG').value, status:'active', lastName:l, firstName:f, badge:ov.querySelector('#_tpB').value.trim(), job:ov.querySelector('#_tpJ').value.trim(), cells });
+    _trainingData().people.push({ id:_reqUid('trp'), sheet:null, row:null, group:(_tSectionByKey(ov.querySelector('#_tpG').value)||{}).group||'staff', tab:(_tSectionByKey(ov.querySelector('#_tpG').value)||{}).sheet||null, status:'active', lastName:l, firstName:f, badge:ov.querySelector('#_tpB').value.trim(), job:ov.querySelector('#_tpJ').value.trim(), cells });
     saveData(); renderMonitoring(); close(); showToast('✓ Added '+(f+' '+l).trim(),'success');
   };
 }
@@ -28970,15 +29039,46 @@ function addPoliciesFromDocuments(){ if(_roLocked()) return; const p=_psoState()
 function addSignoffStaff(){ if(_roLocked()) return; _psoState().staff.push({id:_psoUid('emp'), name:'', role:''}); saveData(); renderPolicySignoff(); }
 function removeSignoffStaff(id){ if(_roLocked()) return; const p=_psoState(); p.staff=p.staff.filter(x=>x.id!==id); Object.keys(p.signed).forEach(k=>{ if(k.split('|')[0]===id) delete p.signed[k]; }); saveData(); renderPolicySignoff(); }
 function updateSignoffStaff(id, field, val){ if(_roLocked()) return; const s=_psoState().staff.find(x=>x.id===id); if(s){ s[field]=val; scheduleAutoSave(); } }
-function addStaffFromTraining(){ if(_roLocked()) return; const p=_psoState(); const seen=new Set(p.staff.map(x=>(x.name||'').toLowerCase()));
-  // People live in the Excel round-trip model (trainingData.people); fall back to the legacy flat store.
-  const people=[];
-  if(S.trainingData && Array.isArray(S.trainingData.people)){
-    S.trainingData.people.filter(x=>x.status==='active').forEach(x=>{ const nm=((x.firstName||'')+' '+(x.lastName||'')).trim(); if(nm) people.push({name:nm, role:x.job||''}); });
-  }
-  (S.training||[]).forEach(t=>{ if(t.employee) people.push({name:String(t.employee).trim(), role:''}); });
-  let n=0; people.forEach(pe=>{ const k=pe.name.toLowerCase(); if(k && !seen.has(k)){ p.staff.push({id:_psoUid('emp'), name:pe.name, role:pe.role||''}); seen.add(k); n++; } });
-  saveData(); renderPolicySignoff(); showToast(n?('✓ Added '+n+' staff from training matrix'):'All training staff already listed','info'); }
+// Employees from the training matrix. With more than one tab - a business, a
+// site, a trade each - you pick which: a tick box per tab, with how many on
+// it are not on the register yet.
+function _tStaffCandidates(){
+  const out=[];
+  (_trainingData().people||[]).filter(x=>x.status==='active').forEach(x=>{ const nm=((x.firstName||'')+' '+(x.lastName||'')).trim(); if(nm) out.push({ name:nm, role:x.job||'', key:_tSectionOf(x) }); });
+  (S.training||[]).forEach(t=>{ if(t.employee) out.push({ name:String(t.employee).trim(), role:'', key:'' }); });
+  return out;
+}
+function _addStaffFrom(list){
+  const p=_psoState(); const seen=new Set(p.staff.map(x=>(x.name||'').toLowerCase())); let n=0;
+  list.forEach(pe=>{ const k=String(pe.name||'').toLowerCase(); if(k && !seen.has(k)){ p.staff.push({ id:_psoUid('emp'), name:pe.name, role:pe.role||'' }); seen.add(k); n++; } });
+  saveData(); renderPolicySignoff();
+  showToast(n?('✓ Added '+n+' employee'+(n!==1?'s':'')+' from the training matrix'):'Everyone ticked is already on the register','info');
+  return n;
+}
+function addStaffFromTraining(){
+  if(_roLocked()) return;
+  const all=_tStaffCandidates(), secs=_tSections();
+  if(secs.length<2){ _addStaffFrom(all); return; }
+  const on=new Set(_psoState().staff.map(x=>(x.name||'').toLowerCase()));
+  const ov=document.createElement('div'); ov.id='tStaffPick';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:flex-start;justify-content:center;padding:26px 12px;overflow:auto;';
+  const rows=secs.map(s=>{ const ppl=all.filter(x=>x.key===s.key); const fresh=ppl.filter(x=>!on.has(x.name.toLowerCase())).length;
+    return '<label class="pso-pick"><input type="checkbox" data-sec="'+esc(s.key)+'"'+(fresh?' checked':'')+'><span>'+esc(s.label)+' <i>'+ppl.length+' '+(ppl.length!==1?'people':'person')+'</i></span><b>'+(fresh?(fresh+' not on the register'):'all on the register')+'</b></label>'; }).join('');
+  ov.innerHTML='<div style="background:var(--surface,#fff);color:var(--text,#111);max-width:520px;width:100%;margin:auto 0;box-shadow:0 18px 60px rgba(0,0,0,.35);">'
+    +'<div style="padding:16px 20px;border-bottom:1.5px solid var(--border);"><div style="font-weight:800;font-size:15px;">Add employees from the training matrix</div>'
+    +'<div style="font-size:12.5px;color:var(--text-muted);margin-top:3px;">The matrix has '+secs.length+' tabs. Tick the ones whose people should sign for this client\'s documents.</div></div>'
+    +'<div style="padding:14px 20px;">'+rows+'</div>'
+    +'<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;"><button class="btn btn-ghost btn-sm" id="tspCancel">Cancel</button><button class="btn btn-primary btn-sm" id="tspAdd">Add the ticked tabs</button></div></div>';
+  document.body.appendChild(ov);
+  const close=()=>ov.remove();
+  if(typeof _backdropClose==='function') _backdropClose(ov, close);
+  ov.querySelector('#tspCancel').onclick=close;
+  ov.querySelector('#tspAdd').onclick=()=>{
+    const keys=new Set([...ov.querySelectorAll('input[data-sec]')].filter(x=>x.checked).map(x=>x.getAttribute('data-sec')));
+    if(!keys.size){ showToast('Tick at least one tab','info'); return; }
+    close(); _addStaffFrom(all.filter(x=>keys.has(x.key)));
+  };
+}
 // A signature lasts 12 MONTHS. After that it shows amber and needs re-signing,
 // so the weekly talks / monthly CPD / annual policy review cycle stays honest
 // instead of one tick lasting forever.
@@ -29061,12 +29161,63 @@ function _psoRecord(staffId, policyId, kind, opts){
 }
 // Where the document actually lives - the Documents register holds the link,
 // because Compass never holds the document itself.
+// Where the document lives - wherever it has already been recorded in
+// Compass. Simon, 2026-09-29: "find the location of the file from the other
+// parts of the app that I have entered it into, referencing which policy it
+// is". It used to take only a Documents entry whose name was EXACTLY the
+// title, so "Fire Safety Policy" never found "Fire Safety Policy v3.1.pdf",
+// and the RA register was never looked at.
+const _PSO_STOP=new Set(['the','and','of','for','a','an','to','in','on','at','our','company','ltd','limited','document','doc']);
+function _psoNormTitle(s){
+  return String(s||'').toLowerCase()
+    .replace(/\.(pdf|docx?|xlsx?|pptx?|odt)$/i,'')
+    .replace(/\b(v|ver|version|rev|revision|issue)\.?\s*\d+(\.\d+)*\b/g,' ')
+    .replace(/[^a-z0-9]+/g,' ').trim();
+}
+function _psoWords(s){ return _psoNormTitle(s).split(' ').filter(w=>w.length>1&&!_PSO_STOP.has(w)); }
+// 100 = the same title; 80 = one contains the other; lower = most words shared.
+function _psoTitleScore(a, b){
+  const na=_psoNormTitle(a), nb=_psoNormTitle(b); if(!na||!nb) return 0;
+  if(na===nb) return 100;
+  if(na.indexOf(nb)>=0||nb.indexOf(na)>=0) return 80;
+  const wa=_psoWords(a), wb=new Set(_psoWords(b)); if(!wa.length||!wb.size) return 0;
+  const r=wa.filter(w=>wb.has(w)).length/Math.max(wa.length, wb.size);
+  return r>=0.6 ? Math.round(r*70) : 0;
+}
+function _psoLinkCandidates(pol){
+  const out=[]; const t=pol&&pol.title; if(!t) return out;
+  const add=(name, link, from, score)=>{ link=String(link||'').trim(); if(!link||!(score>0)) return;
+    const dup=out.find(x=>x.link.toLowerCase()===link.toLowerCase());
+    if(dup){ if(score>dup.score){ dup.score=score; dup.name=String(name||''); dup.from=from; } return; }
+    out.push({ name:String(name||''), link:link, from:from, score:score }); };
+  (S.documents||[]).forEach(d=>{ if(d) add(d.name, d.link, 'Documents register', _psoTitleScore(t, d.name)); });
+  (S.raRegister||[]).forEach(e=>{ if(e) add(e.title||e.ref, e.location, 'Risk assessment register', Math.max(_psoTitleScore(t, e.title), e.ref?_psoTitleScore(t, e.ref):0)); });
+  // a document filed when an action was closed out
+  const acts=[]; (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>acts.push(a))); (S.actionPlan||[]).forEach(a=>acts.push(a));
+  acts.forEach(a=>{ const e=_embedOf(a); if(e&&e.doc) add(e.doc.name, e.doc.path, 'close-out record', _psoTitleScore(t, e.doc.name)); });
+  // the same document already on this register with its link
+  (_psoState().policies||[]).forEach(o=>{ if(o&&o!==pol&&o.link) add(o.title, o.link, 'sign-off register', _psoTitleScore(t, o.title)); });
+  // a risk assessment issued from a risk: that risk's RA register entry
+  if(pol.source&&pol.source.kind==='risk'){ const e=_raRegState().find(x=>x.riskId===pol.source.id); if(e) add(e.title, e.location, 'Risk assessment register', 100); }
+  return out.sort((a,b)=>b.score-a.score);
+}
+// Filled in on its own only when the title is the same, or one contains the
+// other - a guess is shown as a suggestion, never recorded as the answer.
 function _psoPolicyLink(pol){
   if(!pol) return '';
   if(String(pol.link||'').trim()) return String(pol.link).trim();   // set when it was issued, or typed into the send modal
-  const t=String(pol.title||'').trim().toLowerCase(); if(!t) return '';
-  const d=(S.documents||[]).find(x=>String(x.name||'').trim().toLowerCase()===t);
-  return d?String(d.link||''):'';
+  const best=_psoLinkCandidates(pol)[0];
+  return (best && best.score>=80) ? best.link : '';
+}
+function _psoFoundHTML(pol, link){
+  const c=_psoLinkCandidates(pol).filter(x=>x.score>=40);
+  if(!c.length) return '<div class="pso-note">Nothing on the Documents register or the RA register matches "'+esc(pol.title||'')+'" yet. Paste where it lives and it is remembered on this item.</div>';
+  const lk=String(link||'').trim().toLowerCase();
+  const cur=c.find(x=>x.link.toLowerCase()===lk);
+  const others=c.filter(x=>x!==cur).slice(0,4);
+  return (cur?('<div class="pso-note">Found on the '+esc(cur.from)+' as "'+esc(cur.name)+'".</div>'):'')
+    +(others.length?('<div class="pso-note">'+(cur?'Also found:':'Possible matches - tap one to use it:')+' '
+      +others.map(x=>'<button type="button" class="btn btn-ghost btn-xs" data-l="'+esc(x.link)+'" onclick="document.getElementById(\'psoLink\').value=this.getAttribute(\'data-l\')" title="'+esc(x.link)+'">'+esc(x.name)+' <i style="font-style:normal;color:var(--text-muted);">('+esc(x.from)+')</i></button>').join(' ')+'</div>'):'');
 }
 // The tick is the FACE of the trail, not the record. Rebuilt from it, so the
 // grid and the trail can never tell different stories.
@@ -29108,7 +29259,9 @@ async function _psoApi(path, body){
   const tid=Auth.activeTenantId(); const sep=path.includes('?')?'&':'?';
   const opt={ credentials:'include' };
   if(body!==undefined){ opt.method='POST'; opt.headers={'Content-Type':'application/json'}; opt.body=JSON.stringify(body); }
-  const r=await fetch(path+sep+'tenantId='+encodeURIComponent(tid), opt);
+  let r;
+  try{ r=await fetch(path+sep+'tenantId='+encodeURIComponent(tid), opt); }
+  catch(e){ return { ok:false, status:0, data:{ error:'network' } }; }   // a dropped connection is an answer, not a crash
   let j=null; try{ j=await r.json(); }catch(e){}
   return { ok:r.ok, status:r.status, data:j||{} };
 }
@@ -29153,6 +29306,7 @@ function openSignoffSend(policyId){
       <div class="pso-lab">Where the document lives</div>
       <input id="psoLink" value="${esc(link||'')}" placeholder="https://... or the folder path" style="width:100%;font-size:12.5px;padding:8px 10px;border:1px solid var(--border);background:var(--input-bg,transparent);color:inherit;font-family:inherit;">
       <div class="pso-note">${webby?'A web address - the link will open it for them.':'Not a web address, so it is shown as text telling them where to look. Paste a shared link (SharePoint, OneDrive) if you want it to open on a phone.'}</div>
+      ${_psoFoundHTML(pol, link)}
       ${pol.content?'<div class="pso-note">This item carries what was covered - the page shows it under the document line, so a link is optional.</div>':''}
       <div class="pso-lab">Who to ask</div>
       ${rowsHTML}
@@ -29659,19 +29813,52 @@ function _certDraw(doc, o){
   doc.text(A('Certificate '+o.ref+'  -  Retain as evidence of continuing professional development'), cx, H-16, {align:'center'});
 }
 function _certPdf(){ const { jsPDF } = window.jspdf; return new jsPDF({orientation:'landscape',unit:'mm',format:'a4'}); }
+function _certBuild(entryId){
+  const e=_psoTrail().find(x=>x&&x.id===entryId); if(!e||e.kind!=='acknowledged') return { err:'Only a confirmed entry earns a certificate' };
+  const pol=_psoState().policies.find(x=>x.id===e.policyId);
+  if(!_certCanIssue(pol)) return { err:'Certificates are for Training / CPD items' };
+  if(_roLocked()) return { err:'Read-only - certificates are issued by the consultant' };
+  const c=_certRecordFor(e, pol);
+  const doc=_certPdf(); _certDraw(doc, _certData(e, pol, c));
+  return { e:e, pol:pol, c:c, doc:doc, fname:'certificate-'+String(e.staffName||'name').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+c.ref+'.pdf' };
+}
+function _certReopenTrail(policyId){ const ov=document.getElementById('psoTrailOv'); if(ov){ ov.remove(); openSignoffTrail(policyId); } }
 function issueCertificate(entryId){
   try{
-    const e=_psoTrail().find(x=>x&&x.id===entryId); if(!e||e.kind!=='acknowledged'){ showToast('Only a confirmed entry earns a certificate','info'); return; }
-    const pol=_psoState().policies.find(x=>x.id===e.policyId);
-    if(!_certCanIssue(pol)){ showToast('Certificates are for Training / CPD items','info'); return; }
-    if(_roLocked()){ showToast('Read-only - certificates are issued by the consultant','info'); return; }
-    const c=_certRecordFor(e, pol);
-    const doc=_certPdf(); _certDraw(doc, _certData(e, pol, c));
-    doc.save('certificate-'+String(e.staffName||'name').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+c.ref+'.pdf');
-    saveData();
-    const ov=document.getElementById('psoTrailOv'); if(ov){ ov.remove(); openSignoffTrail(e.policyId); }
-    showToast('✓ Certificate '+c.ref+' issued to '+(e.staffName||''),'success');
+    const b=_certBuild(entryId); if(b.err){ showToast(b.err,'info'); return; }
+    b.doc.save(b.fname);
+    saveData(); _certReopenTrail(b.e.policyId);
+    showToast('✓ Certificate '+b.c.ref+' issued to '+(b.e.staffName||''),'success');
   }catch(err){ console.error('Certificate failed',err); showToast('Could not build the certificate - see console','error'); }
+}
+// Simon, 2026-09-29: "an option to automatically open a share screen so I can
+// email the cert to the delegate". The certificate goes straight onto the
+// device's share screen (Mail, Outlook, WhatsApp...) as an attached PDF - built
+// inside the tap, because a share screen only opens from one. Where a browser
+// cannot share a file, it downloads and an email opens ready to attach it.
+function shareCertificate(entryId){
+  try{
+    const b=_certBuild(entryId); if(b.err){ showToast(b.err,'info'); return; }
+    saveData();
+    const d=_certData(b.e, b.pol, b.c);
+    const first=String(b.e.staffName||'').trim().split(/\s+/)[0]||'';
+    const when=d.date?new Date(d.date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'';
+    const subject='Your certificate of attendance - '+(b.pol.title||'')+' ('+b.c.ref+')';
+    const text=(first?('Hi '+first+',\n\n'):'')+'Here is your certificate of attendance for '+(b.pol.title||'the session')+(when?(', delivered on '+when):'')+'.\n\n'
+      +'Certificate '+b.c.ref+' - please keep it as evidence of your continuing professional development.\n\n'+(d.signatory||d.producer||'');
+    let file=null; try{ file=new File([b.doc.output('blob')], b.fname, { type:'application/pdf' }); }catch(err){ file=null; }
+    if(file && navigator.canShare && navigator.canShare({ files:[file] }) && navigator.share){
+      navigator.share({ files:[file], title:subject, text:text })
+        .then(()=>showToast('✓ Certificate '+b.c.ref+' shared with '+(b.e.staffName||'them'),'success'))
+        .catch(err=>{ if(err && err.name==='AbortError') return; _certShareFallback(b, subject, text); });
+    } else _certShareFallback(b, subject, text);
+    _certReopenTrail(b.e.policyId);
+  }catch(err){ console.error('Certificate share failed',err); showToast('Could not build the certificate - see console','error'); }
+}
+function _certShareFallback(b, subject, text){
+  b.doc.save(b.fname);
+  setTimeout(()=>{ try{ location.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(text); }catch(e){} }, 400);
+  showToast('This browser cannot attach it for you - the certificate has downloaded ('+b.fname+') and an email has opened: attach it and send','info');
 }
 // Everyone confirmed, one PDF, a page each. Numbers already given are kept.
 function issueCertificates(policyId){
@@ -29691,10 +29878,11 @@ function issueCertificates(policyId){
 // On the trail: the number if one has been issued, the button if not.
 function _certEntryHTML(e, pol){
   if(!e||e.kind!=='acknowledged'||!_certCanIssue(pol)) return '';
-  const c=_certFor(e.id);
+  const c=_certFor(e.id), ro=_roLocked(), id=esc(e.id);
+  const share=ro?'':' <button class="btn btn-outline btn-xs no-print" onclick="shareCertificate(\''+id+'\')" title="Opens the share screen with the certificate attached, ready to email to '+esc(e.staffName||'them')+'">✉ Email / share</button>';
   if(c) return '<div class="pso-e-meta">Certificate <b>'+esc(c.ref)+'</b> issued '+esc(fmtDate(String(c.issuedAt||'').slice(0,10)))+(c.by?(' by '+esc(c.by)):'')
-    +(_roLocked()?'':' <button class="btn btn-ghost btn-xs no-print" onclick="issueCertificate(\''+esc(e.id)+'\')" title="Print it again - the same certificate, the same number">⭳ again</button>')+'</div>';
-  return _roLocked()?'':'<div class="pso-e-meta"><button class="btn btn-outline btn-xs no-print" onclick="issueCertificate(\''+esc(e.id)+'\')" title="Certificate of attendance for this person - numbered, and kept on the record">⭳ Certificate</button></div>';
+    +(ro?'':' <button class="btn btn-ghost btn-xs no-print" onclick="issueCertificate(\''+id+'\')" title="Print it again - the same certificate, the same number">⭳ again</button>')+share+'</div>';
+  return ro?'':'<div class="pso-e-meta"><button class="btn btn-outline btn-xs no-print" onclick="issueCertificate(\''+id+'\')" title="Certificate of attendance for this person - numbered, and kept on the record">⭳ Certificate</button>'+share+'</div>';
 }
 function _certBulkBtnHTML(pol){
   if(!_certCanIssue(pol)||_roLocked()) return '';

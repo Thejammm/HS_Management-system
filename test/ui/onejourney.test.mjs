@@ -27,7 +27,7 @@ await wait(page, 300);
 {
   const t = await page.evaluate((today) => {
     const txt = document.getElementById('toolboxContainer').innerText;
-    const before = { record: /Record delivery/.test(txt), signAll: /Mark all signed/.test(txt), deliveries: /Delivery and sign-off/.test(txt), issue: /Issue for sign-off/.test(txt) };
+    const before = { record: /Record delivery/.test(txt), signAll: /Mark all signed/.test(txt), deliveries: /Delivery and sign-off/.test(txt), issue: [...document.querySelectorAll('#toolboxContainer button')].some(b => b.textContent.trim() === 'Issue') };
     issueTalkForSignoff('tbt-slips');
     const p = _psoState(); const pol = p.policies[0] || {};
     const shown = getComputedStyle(document.getElementById('tab-signoff')).display !== 'none';

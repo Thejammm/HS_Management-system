@@ -3946,7 +3946,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 
   <div id="tab-toolbox" class="tab-panel">
-    <div class="rep-hero"><h2>Toolbox talks</h2><p>The short talks you deliver on the floor or on site, the sheet you print to take out with you, and one button to issue a talk for sign-off. Who heard it is recorded on the sign-off register, the same way as a policy.</p></div>
+    <div class="rep-hero"><h2>Toolbox talks</h2><p>Toolbox talks for the kind of work this client does, and any you write yourself. Print the talk sheet to take out with you, then Issue it: it goes in the Toolbox talks section of the sign-off register, and who heard it is recorded there.</p></div>
     <div id="toolboxContainer"></div>
   </div>
 
@@ -4075,7 +4075,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .pss-mband th{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sec);border-bottom:3px solid var(--sec);padding:6px 6px 3px;text-align:left;white-space:nowrap;}
     .cpt-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--border);}
     .cpt-bar select{width:auto;flex:0 0 auto;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font-family:inherit;max-width:100%;}
-    .cpt-kind{font-size:12.5px;flex:1;min-width:220px;}
+    .cpt-kind{font-size:12.5px;flex:1 1 100%;}
     .cpt-grp{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);padding:16px 4px 6px;border-bottom:1.5px solid var(--border);}
     .cpt-row{display:grid;grid-template-columns:minmax(0,3fr) 140px 250px;gap:12px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--border);}
     .cpt-row.cpt-open{background:var(--muted-bg);}
@@ -4122,6 +4122,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .trn-empty{font-size:12px;color:var(--text-muted);padding:6px 0;}
     .pss-onfile{font-size:9px;color:#B45309;font-weight:700;line-height:1;}
     @media (max-width:760px){ .trn-file{grid-template-columns:1fr;} }
+    .tbt-row{grid-template-columns:minmax(0,3fr) 140px 300px;}
+    .tbt-yours{display:inline-block;margin-left:8px;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border:1px solid var(--accent);color:var(--accent-dark,var(--accent));vertical-align:2px;}
+    .tbt-q{flex:1 1 200px;min-width:160px;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font-family:inherit;}
+    .tbt-points{margin:4px 0 8px 20px;padding:0;font-size:12.5px;line-height:1.5;}
+    .tbt-points li{margin-bottom:3px;}
+    .tbt-edit{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.4fr) 90px;gap:8px;}
+    .tbt-edit label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);}
+    .tbt-edit .tbt-wide{grid-column:1/-1;}
+    .tbt-edit input,.tbt-edit select,.tbt-edit textarea{display:block;width:100%;margin-top:3px;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font-family:inherit;text-transform:none;letter-spacing:0;font-weight:400;}
+    @media (max-width:760px){ .tbt-row{grid-template-columns:1fr;} .tbt-edit{grid-template-columns:1fr;} }
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
     /* Quick links to other apps */
     .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;}
@@ -30321,7 +30331,7 @@ function _psoAddBarHTML(){
   const d=_psoAddDraft;
   const talk=d.type==='Toolbox talk', cpd=d.type==='Training / CPD';
   const cs=cpd ? _cpdClientSectors().keys : [];
-  const names=talk ? _tbtAllTalks().map(t=>t.title)
+  const names=talk ? _tbtClientTalks().map(t=>t.title)
     : (cpd ? (_cpdState().items||[]).map(i=>i.title).concat(_cpdTopicsFor(cs.length?cs:SECTOR_DEFS.map(x=>x.k)).map(t=>t.title)) : (S.documents||[]).map(x=>x&&x.name));
   const opts=[...new Set(names.filter(Boolean))].slice(0,400).map(t=>'<option value="'+esc(t)+'"></option>').join('');
   return '<div class="psl-add no-print">'
@@ -32822,6 +32832,306 @@ const TBT_LIBRARY = [
 // theirs: talks they wrote, talks they have hidden, and the delivery records
 // with who signed. Delivery is the point of the tab - a talk nobody signed for
 // is a talk we cannot evidence.
+// ── Talks for the other kinds of work (2026-09-30) ──────────────
+// The first four categories covered garages, sites and drivers only. These
+// fill in the rest so every kind of work in discovery has talks of its own.
+// The legal line names the Act, Regulations or guidance - never a
+// regulation number that has not been checked.
+const TBT_LIBRARY_MORE = [
+// design, surveying or consultancy
+{ id:'tbt-d-sitevisit', sectors:['design'], title:'Site visits - arriving safely on a live site', mins:10,
+  legal:'Construction (Design and Management) Regulations 2015',
+  why:'A site you visit is someone else\'s workplace, and its rules apply to you for as long as you are there.',
+  points:['Sign in and take the site induction, even if you are only there for an hour.',
+    'Wear what the site requires - hard hat, boots, hi-vis, glasses - and keep your own set in the car.',
+    'Stay on the walkways and out of exclusion zones. Ask before you go anywhere the public cannot.',
+    'Do not climb scaffolds, ladders or roofs unless the principal contractor has agreed it and it is safe to do.',
+    'Keep clear of plant. Make eye contact with the operator before you pass.',
+    'Anything dangerous you see, tell the site manager before you leave - you may be the only one who noticed.',
+    'Sign out, so the site knows you have gone.'],
+  ask:['Who do you report to when you arrive on site?','What PPE do you keep in the car?'] },
+{ id:'tbt-d-empty', sectors:['design','property'], title:'Surveying empty and damaged homes', mins:10,
+  legal:'Health and Safety at Work etc. Act 1974; Management of Health and Safety at Work Regulations 1999',
+  why:'Empty homes hide hazards - rotten floors, needles, animals, unsafe structures - and nobody is there to help if it goes wrong.',
+  points:['Check in before you go in, and say when you expect to be out.',
+    'Look before you step. Floors, stairs and ceilings in empty homes can give way - test with a foot and keep to the joist lines.',
+    'Torch in hand. Never put a hand into a void, or behind a panel, that you cannot see into.',
+    'Needles and sharps: do not touch them. Photograph, note where, report.',
+    'A needlestick: encourage it to bleed, wash it under running water, and go to A&E the same day.',
+    'Lofts and cellars: not alone unless there is a safe way in and out.',
+    'If something feels wrong - a person, a dog, a smell of gas - leave, and report it.'],
+  ask:['What do you do after a needlestick injury?','Who do you check in with, and when?'] },
+{ id:'tbt-d-occupied', sectors:['design','property'], title:'Surveying in occupied homes', mins:10,
+  legal:'Health and Safety at Work etc. Act 1974; Management of Health and Safety at Work Regulations 1999',
+  why:'You are a stranger in someone\'s home. Getting the visit right keeps you safe and keeps the occupier\'s trust.',
+  points:['Show your ID and say why you are there before you go in.',
+    'Keep your way out clear. Do not let anyone stand between you and the door.',
+    'Ask before you go into a bedroom or a bathroom, and keep the visit professional.',
+    'Ask for pets to be put away before you start.',
+    'If the occupier becomes aggressive, or you feel unsafe, end the visit politely and leave.',
+    'If you see signs that someone is at risk - neglect, harm, a child or adult in danger - report it through the company\'s safeguarding procedure the same day. If they are in immediate danger, call 999.'],
+  ask:['What do you do if the occupier becomes aggressive?','Who do you tell if you are worried about someone\'s welfare?'] },
+{ id:'tbt-d-drone', sectors:['design'], title:'Flying the survey drone', mins:10,
+  legal:'UK Regulation (EU) 2019/947; CAA Drone and Model Aircraft Code',
+  why:'A drone is an aircraft. The pilot is responsible for the people, property and privacy under it.',
+  points:['Check the flyer ID and operator ID are current, and the operator ID is shown on the drone.',
+    'Check the area on a drone map app for restrictions - airports, prisons, hospitals and the like.',
+    'Walk the site first: people, power lines, trees, the wind.',
+    'Know which category you are flying in and the distances it allows from people who are not involved.',
+    'Keep the drone in sight the whole time. Never fly over crowds.',
+    'Tell occupiers and neighbours what you are doing. Photographs of people are personal data.',
+    'Land with reserve battery left. Charge and store batteries the way the maker says.'],
+  ask:['Where must the operator ID be shown?','What do you check before take-off?'] },
+{ id:'tbt-d-asbestos', sectors:['design','property'], title:'Asbestos on a survey - if you find it', mins:10,
+  legal:'Control of Asbestos Regulations 2012',
+  why:'Buildings built before 2000 can contain asbestos. It is harmless left alone and deadly once disturbed.',
+  points:['Ask for the asbestos survey or register before you start.',
+    'Where it is found: textured coatings, ceiling tiles, pipe lagging, insulating board, cement sheets, floor tiles.',
+    'Do not drill, break, lift or sample anything suspect - unless that is your trained job.',
+    'If you think you have disturbed it: stop, leave the room, close the door, tell your manager.',
+    'Photograph it and note where it is, for the report.',
+    'Do not take dust home. Bag contaminated clothing and ask for advice.'],
+  ask:['What do you ask for before a survey starts?','What are the first three things you do if you disturb suspect material?'] },
+// office or professional services
+{ id:'tbt-o-dse', sectors:['office','design'], title:'Your workstation - set it up in five minutes', mins:8,
+  legal:'Health and Safety (Display Screen Equipment) Regulations 1992',
+  why:'Aches, eye strain and headaches from screen work are common, and most are fixed by five minutes of adjustment.',
+  points:['Chair height so your forearms are level with the keyboard and your feet are flat - use a footrest if they are not.',
+    'Adjust the backrest so your lower back is supported.',
+    'Top of the screen at about eye level, an arm\'s length away, with no glare from windows or lights.',
+    'Keyboard and mouse close in, wrists straight.',
+    'Break up screen work - change activity or move at least once an hour.',
+    'As a screen user you can ask for an eye test, paid for by the company.',
+    'Tell us about anything that aches. Early changes fix most problems.'],
+  ask:['Who pays for a screen user\'s eye test?','How often should you break up screen work?'] },
+{ id:'tbt-o-home', sectors:['office','design'], title:'Working from home safely', mins:8,
+  legal:'Health and Safety at Work etc. Act 1974; Health and Safety (Display Screen Equipment) Regulations 1992',
+  why:'Home is still a workplace when you are working there, and the same care applies.',
+  points:['The same set-up rules apply at home - chair, screen, keyboard, light.',
+    'Complete the company\'s home-working self-assessment and flag anything you need.',
+    'Watch trailing leads and overloaded sockets. Adaptors plugged into adaptors are a fire risk.',
+    'Keep in touch. Isolation affects wellbeing - say if you are struggling.',
+    'An injury while working at home is reported the same way as one in the office.',
+    'Know who to call if you feel unwell or unsafe.'],
+  ask:['How do you report an injury while working at home?','What is wrong with plugging an adaptor into an adaptor?'] },
+{ id:'tbt-o-lone', sectors:['office','property','design'], title:'Lone and out-of-hours working', mins:8,
+  legal:'Health and Safety at Work etc. Act 1974; Management of Health and Safety at Work Regulations 1999',
+  why:'Working alone is allowed, but if something goes wrong nobody is there to help unless it has been planned.',
+  points:['Tell someone where you are, and when you expect to finish.',
+    'Use the check-in and check-out arrangement every time.',
+    'Do not do the higher-risk jobs alone - ladders, heavy lifts, electrical work.',
+    'Keep your phone charged and with you.',
+    'In an empty building, know your way out and how to raise the alarm.',
+    'If you miss a check-in, someone will follow up. Make sure they know how to reach you.'],
+  ask:['What jobs should never be done alone here?','What happens if you miss a check-in?'] },
+// manufacturing or fabrication
+{ id:'tbt-m-guards', sectors:['manufacture'], title:'Machine guards and safe isolation', mins:10,
+  legal:'Provision and Use of Work Equipment Regulations 1998',
+  why:'Machinery injuries are sudden and life-changing. Guards and isolation are what stop them.',
+  points:['Guards stay on. Never remove, bypass or defeat a guard or an interlock.',
+    'Before clearing a blockage or making an adjustment: stop, isolate, lock off, prove it dead.',
+    'Your lock, your key. Nobody removes another person\'s lock.',
+    'Loose clothing, jewellery and long hair are kept away from moving parts.',
+    'Only use machines you have been trained and authorised to use.',
+    'A damaged guard or a faulty stop button is reported straight away, and the machine is not used until it is fixed.'],
+  ask:['What are the steps before clearing a blockage?','Who may remove your lock?'] },
+{ id:'tbt-m-mwf', sectors:['manufacture'], title:'Metalworking fluids and your skin', mins:8,
+  legal:'Control of Substances Hazardous to Health Regulations 2002',
+  why:'Metalworking fluids cause dermatitis and lung disease when they are not looked after.',
+  points:['Fluid that smells, has changed colour or looks cloudy may be contaminated. Report it.',
+    'Keep skin covered and wear the gloves provided.',
+    'Wash before breaks and at the end of the shift, and use the after-work cream.',
+    'Check your hands for dryness, redness or cracking - report it early, it gets worse.',
+    'Keep machine doors closed and extraction on to control mist.',
+    'Do not blow down parts or skin with compressed air.',
+    'Health checks are there to catch problems early - go to them.'],
+  ask:['What are the early signs of dermatitis?','Why must you not blow down with compressed air?'] },
+{ id:'tbt-m-welding', sectors:['manufacture','motor'], title:'Welding, cutting and hot work', mins:10,
+  legal:'Control of Substances Hazardous to Health Regulations 2002; Regulatory Reform (Fire Safety) Order 2005',
+  why:'All welding fume can cause lung cancer, and hot work starts fires long after the job is finished.',
+  points:['Extraction on and positioned at the work. Wear the respiratory protection provided where extraction is not enough.',
+    'Use screens so the arc does not reach other people\'s eyes.',
+    'Clear or cover anything that can burn before you start.',
+    'Keep a fire watch during the work and for a period after it.',
+    'Gas cylinders chained upright, valves closed when not in use, flashback arrestors fitted.',
+    'Check leads, hoses and connections before every use.'],
+  ask:['What do you do before starting hot work?','Why is a fire watch kept after the job?'] },
+// warehousing, storage or logistics
+{ id:'tbt-w-lifttruck', sectors:['warehouse','manufacture'], title:'Lift trucks - pre-use checks and safe driving', mins:10,
+  legal:'Provision and Use of Work Equipment Regulations 1998; Lifting Operations and Lifting Equipment Regulations 1998; HSE guidance L117',
+  why:'Lift truck incidents are frequent and often serious - for the driver and for anyone nearby.',
+  points:['Only trained, authorised operators drive a lift truck.',
+    'Pre-use check every shift - tyres, forks, chains, brakes, horn, lights, seat belt - and record it. A defect means it is parked.',
+    'Seat belt on, every time.',
+    'Travel with the forks low and the load tilted back. Never lift people on the forks.',
+    'Look where you are going. If the load blocks your view, travel in reverse.',
+    'Sound the horn at junctions and blind corners, and watch for pedestrians.',
+    'Park with forks down, handbrake on and key out.'],
+  ask:['What happens if the pre-use check finds a defect?','What do you do if the load blocks your view?'] },
+{ id:'tbt-w-racking', sectors:['warehouse','manufacture'], title:'Racking - look after it and report damage', mins:8,
+  legal:'Provision and Use of Work Equipment Regulations 1998; SEMA guidance',
+  why:'Damaged racking can collapse without warning, bringing down everything on it.',
+  points:['Know the safe working load signs, and never exceed them.',
+    'Never climb racking.',
+    'Place pallets carefully - do not push loads through the back of a bay.',
+    'Report any knocked upright, bent beam or missing locking pin straight away, even if you did it.',
+    'A damaged bay is offloaded and taped off until it has been repaired.',
+    'Keep the aisles clear.'],
+  ask:['Where are the safe load signs?','What do you do if you knock an upright?'] },
+{ id:'tbt-w-yard', sectors:['warehouse','transportsvc','manufacture'], title:'People and vehicles in the yard', mins:8,
+  legal:'Workplace (Health, Safety and Welfare) Regulations 1992; HSE guidance HSG136',
+  why:'Being struck by a vehicle is one of the most common ways people are killed at work.',
+  points:['Use the marked walkways and crossing points.',
+    'Wear hi-vis in the yard.',
+    'Never walk behind a reversing vehicle. Make eye contact with the driver before you cross.',
+    'Loading bays: nobody on the dock edge, the vehicle restrained or chocked before loading starts.',
+    'Visiting drivers wait in the safe area during loading.',
+    'Visitors are escorted.'],
+  ask:['Where do visiting drivers wait during loading?','What do you check before you cross behind a vehicle?'] },
+// care, health or education
+{ id:'tbt-c-hoist', sectors:['care'], title:'Using hoists and slings', mins:10,
+  legal:'Lifting Operations and Lifting Equipment Regulations 1998; Manual Handling Operations Regulations 1992',
+  why:'Falls from hoists and the wrong sling cause serious harm to the people being moved.',
+  points:['Follow the person\'s moving and handling plan every time.',
+    'Check the hoist and sling before use - in date for inspection, undamaged, the right sling and size for that person.',
+    'Two staff where the plan says two.',
+    'Talk the person through each step.',
+    'Slings are for the person they are assessed for - do not swap them between people.',
+    'A fault takes the equipment out of use. Label it and report it.'],
+  ask:['Where do you find the moving and handling plan?','What do you check on a sling before use?'] },
+{ id:'tbt-c-infection', sectors:['care','hospitality'], title:'Hand hygiene and infection control', mins:8,
+  legal:'Control of Substances Hazardous to Health Regulations 2002',
+  why:'Clean hands are the single most effective way to stop infection spreading.',
+  points:['Clean your hands before and after contact with a person, after removing gloves, after bodily fluids, and before handling food.',
+    'Gloves and aprons are single use - one person, one task.',
+    'Sharps go straight into the sharps bin. Never re-sheath a needle.',
+    'Spills of bodily fluids are cleaned with the spill kit.',
+    'Stay off work for 48 hours after sickness or diarrhoea.',
+    'Report a needlestick injury straight away.'],
+  ask:['When must you clean your hands?','How long do you stay off after sickness or diarrhoea?'] },
+{ id:'tbt-c-safeguarding', sectors:['care','transportsvc'], title:'Safeguarding - spotting and reporting', mins:10,
+  legal:'Care Act 2014; the company\'s safeguarding policy',
+  why:'People who rely on us can be at risk of abuse or neglect, and staff are often the first to notice.',
+  points:['Abuse can be physical, emotional, sexual, financial, or neglect.',
+    'Signs include unexplained injuries, a change in behaviour, fear of a particular person, missing money.',
+    'If someone tells you something: listen, do not promise to keep it secret, do not question them in detail.',
+    'Write down what they said, in their words, with the date and time.',
+    'Report it to the safeguarding lead the same day.',
+    'If someone is in immediate danger, call 999.',
+    'Never investigate it yourself.'],
+  ask:['Who is the safeguarding lead?','Why must you never promise to keep a secret?'] },
+// retail, food or hospitality
+{ id:'tbt-h-allergens', sectors:['hospitality'], title:'Allergens - getting every order right', mins:8,
+  legal:'Food Information Regulations 2014',
+  why:'A mistake with an allergen can kill a customer.',
+  points:['There are fourteen major allergens. Know where the allergen information for every dish is kept.',
+    'Every allergen question gets a checked answer - never a guess.',
+    'For an allergen-free order: clean surfaces, clean utensils, clean hands, and keep it separate.',
+    'Label it and tell front of house which order it is.',
+    'If you cannot be sure, say so to the customer.',
+    'A customer with swelling or difficulty breathing: call 999.'],
+  ask:['Where is the allergen information kept?','What do you do if you cannot be sure a dish is safe?'] },
+{ id:'tbt-h-kitchen', sectors:['hospitality'], title:'Knives, hot surfaces and burns', mins:8,
+  legal:'Provision and Use of Work Equipment Regulations 1998; Workplace (Health, Safety and Welfare) Regulations 1992',
+  why:'Cuts and burns are the everyday injuries of a busy kitchen, and most are avoidable.',
+  points:['A sharp knife is safer than a blunt one. Carry it point down, and never try to catch a falling knife.',
+    'Wash knives separately - never leave one in a sink of water.',
+    'Use dry oven gloves, and call out "hot behind" when you carry something hot.',
+    'Never leave a fryer unattended. Never put water on an oil fire - use the fire blanket.',
+    'A burn: cool it under cool running water for twenty minutes.',
+    'Wet floor: clean it or sign it straight away.'],
+  ask:['What do you do with a burn?','Why must water never go on an oil fire?'] },
+{ id:'tbt-h-customers', sectors:['hospitality','care','transportsvc'], title:'Difficult and abusive customers', mins:8,
+  legal:'Health and Safety at Work etc. Act 1974; Management of Health and Safety at Work Regulations 1999',
+  why:'Abuse from customers is not part of the job, and it is planned for, not just put up with.',
+  points:['Stay calm, listen, and do not argue back.',
+    'Keep a counter or a space between you where you can.',
+    'Know when to step away and get a manager.',
+    'Never physically intervene.',
+    'Report every incident, however small - it is how patterns are spotted.',
+    'Talk to someone afterwards. Support is available.'],
+  ask:['When do you step away and get a manager?','Why report the small incidents?'] },
+// landscaping, grounds or agriculture
+{ id:'tbt-l-mowers', sectors:['land'], title:'Mowers, strimmers and brushcutters', mins:10,
+  legal:'Provision and Use of Work Equipment Regulations 1998; Control of Noise at Work Regulations 2005; Control of Vibration at Work Regulations 2005',
+  why:'Grounds machinery throws stones, cuts, and damages hearing and hands over time.',
+  points:['Pre-use check: guards fitted, blades and lines sound, controls working.',
+    'Wear the kit: visor or glasses, hearing protection, boots, and leg protection where needed.',
+    'Keep people well clear - stones and debris fly.',
+    'Stop the engine before clearing a blockage.',
+    'Refuel with the engine off and cool.',
+    'Limit trigger time and report tingling or numbness in your hands.',
+    'Ride-on mowers: know the machine\'s slope limit and keep within it.'],
+  ask:['What do you do before clearing a blockage?','What are the signs of vibration damage?'] },
+{ id:'tbt-l-outdoor', sectors:['land','construction'], title:'Sun, heat, cold and ticks', mins:8,
+  legal:'Management of Health and Safety at Work Regulations 1999; Control of Substances Hazardous to Health Regulations 2002',
+  why:'Working outdoors brings risks that are easy to overlook until they cause harm.',
+  points:['Sun: cover up, use sunscreen, take breaks in the shade.',
+    'Heat: drink water regularly - do not wait until you are thirsty.',
+    'Cold: wear layers and keep dry.',
+    'Ticks: long trousers in long grass, check yourself afterwards, remove a tick with a tick remover.',
+    'A spreading rash or flu-like illness after a tick bite: see your GP.',
+    'Cover cuts and wash your hands before eating - rats can carry Weil\'s disease. Tell your GP you work outdoors if you feel unwell.'],
+  ask:['How should a tick be removed?','What should you tell your GP if you feel unwell?'] },
+{ id:'tbt-l-pesticides', sectors:['land'], title:'Using weedkillers and pesticides', mins:8,
+  legal:'Plant Protection Products (Sustainable Use) Regulations 2012; Control of Substances Hazardous to Health Regulations 2002',
+  why:'Pesticides harm people and the environment when they are not handled properly.',
+  points:['Only certified operators use professional products.',
+    'Read the label every time, and follow it.',
+    'Wear the protection the label says.',
+    'Mix and fill in the designated area, away from drains.',
+    'Do not spray in wind, and keep away from water.',
+    'Store products locked away and record what you applied.'],
+  ask:['Who may use professional products?','Where do you mix and fill?'] },
+// property or facilities management
+{ id:'tbt-p-legionella', sectors:['property','care','leisure'], title:'Water systems and legionella', mins:8,
+  legal:'HSE Approved Code of Practice L8; Control of Substances Hazardous to Health Regulations 2002',
+  why:'Legionnaires\' disease comes from water systems that are not looked after, and it is preventable.',
+  points:['Legionella grows in water between about 20 and 45 degrees, especially where it sits still.',
+    'Flush little-used outlets as the written scheme says.',
+    'Hot water is stored at 60 degrees or above; cold water is kept below 20 degrees.',
+    'Clean and descale shower heads as scheduled.',
+    'Record every check.',
+    'Report temperatures outside the limits straight away.'],
+  ask:['What temperature is hot water stored at?','Why are little-used outlets flushed?'] },
+{ id:'tbt-p-contractors', sectors:['property','manufacture'], title:'Contractors on our premises', mins:8,
+  legal:'Health and Safety at Work etc. Act 1974; HSE guidance HSG159 Managing contractors',
+  why:'Bringing in a contractor does not hand over the duty - both of us stay responsible.',
+  points:['Every contractor signs in and gets an induction.',
+    'A permit is needed for hot work, roof work and electrical work.',
+    'Show the asbestos register before any work on the building fabric.',
+    'Check their risk assessment and method statement before they start.',
+    'Keep occupants and staff away from the work area.',
+    'Check the work is finished and the area is safe before they sign out.'],
+  ask:['Which jobs need a permit?','What must a contractor see before work on the building fabric?'] },
+// events, leisure or sport
+{ id:'tbt-e-crowds', sectors:['leisure'], title:'Crowds and exits at events', mins:8,
+  legal:'Health and Safety at Work etc. Act 1974; Regulatory Reform (Fire Safety) Order 2005; The Purple Guide',
+  why:'Crowds can become dangerous quickly. Clear routes and early action keep them safe.',
+  points:['Know the capacity, and stop entry when it is reached.',
+    'Keep exits and routes clear at all times.',
+    'Watch for crowd pressure - pushing, surging, people unable to move.',
+    'Use the radio and report concerns early.',
+    'Know how the event is stopped, and who decides.',
+    'Know the lost child and vulnerable person procedure.'],
+  ask:['Who can stop the event?','What are the signs of dangerous crowd pressure?'] },
+{ id:'tbt-e-build', sectors:['leisure'], title:'Build and break - setting up and taking down', mins:10,
+  legal:'Work at Height Regulations 2005; Provision and Use of Work Equipment Regulations 1998; Lifting Operations and Lifting Equipment Regulations 1998',
+  why:'Most event injuries happen while the site is being built or taken down, not during the show.',
+  points:['Work to the build plan and the site rules.',
+    'Plan every lift - use equipment and more people for heavy or awkward items.',
+    'Work at height on staging only from proper platforms, with edge protection.',
+    'Marquees and temporary structures: follow the ballast plan and the wind limits.',
+    'Route cables out of walkways, or cover them.',
+    'Vehicles on site: banksman when reversing, walking pace.'],
+  ask:['Who sets the wind limit for the structure?','When is a banksman needed?'] }
+];
+// The first four categories, and the standard talks that fit more than one
+// kind of work, as the discovery sectors.
+const TBT_CAT_SECTORS={ 'All sectors':['all'], 'Vehicle workshop':['motor'], 'Construction':['construction'], 'Transport and driving':['transportsvc'] };
+const TBT_EXTRA_SECTORS={ 'tbt-abrasive':['construction','manufacture','motor'], 'tbt-plant':['construction','warehouse','land'], 'tbt-scaffold':['construction','property'],
+  'tbt-overhead':['construction','land'], 'tbt-excav':['construction','land'], 'tbt-vehmove':['motor','transportsvc','warehouse'],
+  'tbt-fume':['motor','manufacture'], 'tbt-air':['motor','manufacture'], 'tbt-batteries':['motor','transportsvc'], 'tbt-walkaround':['transportsvc','motor'] };
 function _tbtState(){
   if(!S.toolbox || typeof S.toolbox!=='object') S.toolbox={};
   const t=S.toolbox;
@@ -32830,21 +33140,54 @@ function _tbtState(){
   if(!Array.isArray(t.hidden))     t.hidden=[];
   return t;
 }
-var _tbtCat='', _tbtQ='', _tbtOpen='';
+var _tbtView='client', _tbtQ='', _tbtOpen='';
 // Catalogue plus this client's own, minus anything they have hidden.
 function _tbtAllTalks(){
   const t=_tbtState(), hid=t.hidden;
-  return TBT_LIBRARY.filter(x=>hid.indexOf(x.id)===-1).map(x=>Object.assign({std:true},x))
+  return TBT_LIBRARY.concat(TBT_LIBRARY_MORE).filter(x=>hid.indexOf(x.id)===-1).map(x=>Object.assign({std:true},x))
     .concat(t.custom.map(x=>Object.assign({std:false},x)));
 }
 function _tbtTalk(id){ return _tbtAllTalks().find(x=>x.id===id)||null; }
-function _tbtFiltered(){
-  const q=String(_tbtQ||'').trim().toLowerCase();
-  return _tbtAllTalks().filter(x=>{
-    if(_tbtCat && x.cat!==_tbtCat) return false;
-    if(!q) return true;
-    return (String(x.title||'')+' '+String(x.cat||'')+' '+(x.points||[]).join(' ')).toLowerCase().indexOf(q)>-1;
-  }).sort((a,b)=> String(a.cat).localeCompare(String(b.cat)) || String(a.title).localeCompare(String(b.title)));
+// A talk's kind of work: its own list (the newer talks, and anything you
+// write), else the category it came with, else every business.
+function _tbtSectorsOf(x){
+  if(x && Array.isArray(x.sectors) && x.sectors.length) return x.sectors;
+  return (x && (TBT_EXTRA_SECTORS[x.id] || TBT_CAT_SECTORS[x.cat])) || ['all'];
+}
+function _tbtFiltered(q){
+  q=String(q||'').trim().toLowerCase();
+  return _tbtAllTalks().filter(x=>!q || (String(x.title||'')+' '+String(x.why||'')+' '+(x.points||[]).join(' ')).toLowerCase().indexOf(q)>-1);
+}
+// Grouped the way the CPD tab groups its topics: your own talks first, then
+// the client's kinds of work, then the talks every business needs. Each once.
+function _tbtGroups(view, keys, q){
+  const list=_tbtFiltered(q), seen={}, groups=[];
+  const own=list.filter(x=>!x.std && (view==='client' || view==='all' || _tbtSectorsOf(x).indexOf(view)>=0));
+  if(own.length){ own.forEach(x=>{ seen[x.id]=1; }); groups.push({ k:'own', label:'Your own talks', talks:own }); }
+  keys.concat(['all']).forEach(k=>{
+    const ts=list.filter(x=>!seen[x.id] && _tbtSectorsOf(x).indexOf(k)>=0);
+    ts.forEach(x=>{ seen[x.id]=1; });
+    if(ts.length) groups.push({ k:k, label:_cpdSectorLabel(k), talks:ts });
+  });
+  return groups;
+}
+function _tbtViewKeys(view, cs){ return view==='client' ? cs.keys : (view==='all' ? SECTOR_DEFS.map(d=>d.k) : [view]); }
+// The talks that fit this client - what the sign-off Add line offers.
+function _tbtClientTalks(){
+  const cs=_cpdClientSectors();
+  if(!cs.keys.length) return _tbtAllTalks();
+  return [].concat.apply([], _tbtGroups('client', cs.keys, '').map(g=>g.talks));
+}
+// ── Kind of work: one reading, one bar, for the CPD and toolbox tabs ──
+function _kowKindHTML(cs){
+  return 'Kind of work: '+(cs.keys.length
+    ? ('<b>'+esc(cs.keys.map(_cpdSectorLabel).join(' · '))+'</b> <span style="color:var(--text-muted);">- from '+(cs.from==='discovery'?'the sectors ticked in discovery':'the Company setup sector')+'</span>')
+    : '<b style="color:var(--warning);">Not set yet</b> <span style="color:var(--text-muted);">- tick what the business does in discovery, or pick its sector, and this list narrows to fit</span>')
+    +' <button class="pss-lib no-print" onclick="switchTab(\'company\')" title="Set on Company setup - discovery and the sector">Change</button>';
+}
+function _kowSelectHTML(id, view, cs, fn, allLabel){
+  const opts=[['client','For this client'+(cs.keys.length?'':' (not set)')],['all',allLabel]].concat(SECTOR_DEFS.map(d=>[d.k,d.label]));
+  return '<select id="'+id+'" onchange="'+fn+'(this.value)" title="Whose to show">'+opts.map(o=>'<option value="'+o[0]+'"'+(o[0]===view?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select>';
 }
 // Issued = on the sign-off register. The register is the only record of who
 // heard a talk; the library just remembers when it last went out.
@@ -32901,22 +33244,31 @@ function _tbtMigrateDeliveries(){
   if(n || (t.deliveries||[]).length) saveData();
   return n;
 }
-function setTbtCat(v){ _tbtCat=v; renderToolbox(); }
-function setTbtQ(v){ _tbtQ=v; _keepScroll(renderToolbox); }
-function tbtToggleOpen(id){ _tbtOpen=(_tbtOpen===id?'':id); renderToolbox(); }
+function setTbtView(v){ _tbtView=v; _keepScroll(renderToolbox); }
+// The search re-draws the list; the cursor stays where you were typing.
+function setTbtQ(v){
+  _tbtQ=v;
+  const el=document.getElementById('tbtQ'), c=el?el.selectionStart:null;
+  _keepScroll(renderToolbox);
+  const n=document.getElementById('tbtQ'); if(n && c!=null){ n.focus(); try{ n.setSelectionRange(c,c); }catch(e){} }
+}
+function tbtToggleOpen(id){ _tbtOpen=(_tbtOpen===id?'':id); _keepScroll(renderToolbox); }
 
 function addTbtTalk(){
   if(_blockIfReadOnly()) return;
-  const id=_reqUid('tbt');
-  _tbtState().custom.unshift({ id:id, cat:(_tbtCat||TBT_CATEGORIES[0]), title:'', mins:'10', why:'', points:[''], ask:[''], legal:'' });
-  saveData(); _tbtOpen=id; renderToolbox();
+  const id=_reqUid('tbt'), cs=_cpdClientSectors();
+  const k=(_tbtView!=='client' && _tbtView!=='all') ? _tbtView : (cs.keys[0]||'all');
+  _tbtState().custom.unshift({ id:id, sectors:[k], title:'', mins:'10', why:'', points:[''], ask:[''], legal:'' });
+  saveData(); _tbtOpen=id; _tbtQ=''; _keepScroll(renderToolbox);
+  setTimeout(()=>{ const r=document.getElementById('tbt-'+id); if(!r) return; try{ r.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(e){} const i=r.querySelector('.tbt-edit input'); if(i) i.focus(); },0);
 }
 function updateTbtTalk(id,f,v){
   if(_roLocked()) return;
   const it=_tbtState().custom.find(x=>x.id===id); if(!it) return;
   if(f==='points'||f==='ask') it[f]=String(v).split('\n').map(s=>s.trim()).filter(Boolean);
+  else if(f==='sectors'){ it.sectors=[String(v||'all')]; delete it.cat; }
   else it[f]=v;
-  if(f==='cat') _keepScroll(renderToolbox);
+  if(f==='sectors') _keepScroll(renderToolbox);
   scheduleAutoSave();
 }
 function deleteTbtTalk(id){
@@ -32945,70 +33297,62 @@ function renderToolbox(){
   const el=document.getElementById('toolboxContainer'); if(!el) return;
   try{ _tbtMigrateDeliveries(); }catch(e){ console.error('toolbox migration', e); }
   const t=_tbtState(), ro=_roLocked(), dis=ro?' disabled':'';
-  const inp='width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;font-size:12.5px;';
-  const talks=_tbtFiltered(), all=_tbtAllTalks();
-  const cats='<option value="">All categories</option>'+TBT_CATEGORIES.map(c=>'<option'+(c===_tbtCat?' selected':'')+'>'+esc(c)+'</option>').join('');
-
-  const talkRow=(x)=>{
-    const issued=_tbtIssuedFor(x.id), last=issued.length?issued[0]:null, open=(_tbtOpen===x.id);
-    const body=open? '<tr><td colspan="5" style="padding:0 6px 12px;">'+talkBody(x)+'</td></tr>' : '';
-    const lastCell = last
-      ? '<a href="javascript:void(0)" onclick="switchTab(\'signoff\')" title="On the sign-off register - who confirmed it is there" style="color:var(--success);text-decoration:none;">'+fmtDate(last.delivered)+' · '+_psoSignedCount(last.id)+' of '+_psoState().staff.length+' signed</a>'+(issued.length>1?('<span style="color:var(--text-muted);"> · '+issued.length+'×</span>'):'')
-      : '<span style="color:var(--text-muted);">never</span>';
-    return '<tr style="border-top:1px solid var(--border);">'
-      + '<td style="padding:7px 6px;"><a href="javascript:void(0)" onclick="tbtToggleOpen(\''+esc(x.id)+'\')" style="font-weight:600;color:inherit;text-decoration:none;">'+(open?'▾ ':'▸ ')+esc(x.title||'(untitled)')+'</a>'+(x.std?'':'<span class="badge badge-muted" style="margin-left:6px;">yours</span>')+'</td>'
-      + '<td style="padding:7px 6px;color:var(--text-muted);white-space:nowrap;">'+esc(x.cat||'')+'</td>'
-      + '<td style="padding:7px 6px;color:var(--text-muted);white-space:nowrap;">'+esc(String(x.mins||''))+' min</td>'
-      + '<td style="padding:7px 6px;white-space:nowrap;">'+lastCell+'</td>'
-      + '<td style="padding:7px 6px;white-space:nowrap;text-align:right;">'
-        + '<button class="btn btn-ghost btn-xs no-print" title="The talk as a sheet to read from on the floor" onclick="downloadTalkSheet(\''+esc(x.id)+'\')">⭳ Talk sheet</button> '
-        + (ro?'':'<button class="btn btn-primary btn-xs no-print" title="Puts this talk on the sign-off register, dated today, and makes a link for each person - or tick them in person. Same road as a policy." onclick="issueTalkForSignoff(\''+esc(x.id)+'\')">Issue for sign-off</button> ')
-        + (ro?'':'<button class="btn btn-ghost btn-xs no-print" title="'+(x.std?'Hide from this client':'Delete this talk')+'" onclick="deleteTbtTalk(\''+esc(x.id)+'\')">'+_ic('trash',13)+'</button>')
-      + '</td></tr>' + body;
-  };
-  const talkBody=(x)=>{
-    if(!x.std){
-      return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--muted-bg,transparent);">'
-        + '<div class="field-grid" style="margin-bottom:8px;">'
-        + '<div class="field-group"><label class="field-label">Title</label><input'+dis+' value="'+esc(x.title||'')+'" oninput="updateTbtTalk(\''+esc(x.id)+'\',\'title\',this.value)" style="'+inp+'"></div>'
-        + '<div class="field-group"><label class="field-label">Category</label><select'+dis+' onchange="updateTbtTalk(\''+esc(x.id)+'\',\'cat\',this.value)" style="'+inp+'">'+TBT_CATEGORIES.map(c=>'<option'+(c===x.cat?' selected':'')+'>'+esc(c)+'</option>').join('')+'</select></div>'
-        + '<div class="field-group"><label class="field-label">Minutes</label><input'+dis+' value="'+esc(String(x.mins||''))+'" oninput="updateTbtTalk(\''+esc(x.id)+'\',\'mins\',this.value)" style="'+inp+'"></div>'
-        + '</div>'
-        + '<div class="field-group" style="margin-bottom:8px;"><label class="field-label">Why it matters (the opening line)</label><input'+dis+' value="'+esc(x.why||'')+'" oninput="updateTbtTalk(\''+esc(x.id)+'\',\'why\',this.value)" style="'+inp+'"></div>'
-        + '<div class="field-group" style="margin-bottom:8px;"><label class="field-label">Key points - one per line</label><textarea'+dis+' rows="6" oninput="updateTbtTalk(\''+esc(x.id)+'\',\'points\',this.value)" style="'+inp+'">'+esc((x.points||[]).join('\n'))+'</textarea></div>'
-        + '<div class="field-group" style="margin-bottom:8px;"><label class="field-label">Questions to check understanding - one per line</label><textarea'+dis+' rows="3" oninput="updateTbtTalk(\''+esc(x.id)+'\',\'ask\',this.value)" style="'+inp+'">'+esc((x.ask||[]).join('\n'))+'</textarea></div>'
-        + '<div class="field-group"><label class="field-label">Legal reference (leave blank if you are not certain)</label><input'+dis+' value="'+esc(x.legal||'')+'" oninput="updateTbtTalk(\''+esc(x.id)+'\',\'legal\',this.value)" style="'+inp+'"></div>'
-        + '</div>';
-    }
-    return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12.5px;line-height:1.55;">'
-      + (x.why?('<div style="font-style:italic;color:var(--text-muted);margin-bottom:8px;">'+esc(x.why)+'</div>'):'')
-      + '<ul style="margin:0 0 8px 16px;padding:0;">'+(x.points||[]).map(p=>'<li style="margin-bottom:4px;">'+esc(p)+'</li>').join('')+'</ul>'
-      + ((x.ask||[]).length? ('<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin:10px 0 4px;">Check they were listening</div><ul style="margin:0 0 8px 16px;padding:0;">'+(x.ask||[]).map(p=>'<li style="margin-bottom:3px;">'+esc(p)+'</li>').join('')+'</ul>'):'')
-      + (x.legal?('<div style="font-size:11.5px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:7px;margin-top:6px;">'+esc(x.legal)+'</div>'):'')
-      + '</div>';
-  };
-
-  const head='<thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;font-size:10.5px;border-bottom:1.5px solid var(--border);"><tr>'
-    + '<th style="text-align:left;padding:6px;">Talk</th><th style="text-align:left;padding:6px;">Category</th><th style="text-align:left;padding:6px;">Length</th><th style="text-align:left;padding:6px;">Last issued</th><th></th></tr></thead>';
-  const table = talks.length
-    ? '<div style="overflow-x:auto;" data-keepscroll="tbt-lib"><table style="border-collapse:collapse;font-size:12.5px;min-width:100%;">'+head+'<tbody>'+talks.map(talkRow).join('')+'</tbody></table></div>'
-    : '<div class="ck-pending" style="padding:6px 0;">Nothing matches that filter.</div>';
-
-  const hiddenBtn = (t.hidden.length && !ro) ? '<button class="btn btn-ghost btn-sm no-print" onclick="restoreTbtHidden()" title="Bring back the standard talks you have hidden">Restore '+t.hidden.length+' hidden</button>' : '';
+  const cs=_cpdClientSectors();
+  const view=(_tbtView==='client' && !cs.keys.length) ? 'all' : _tbtView;
+  const groups=_tbtGroups(view, _tbtViewKeys(view, cs), _tbtQ), shown=groups.reduce((n,g)=>n+g.talks.length,0);
   const nIssued=_psoItemsFrom('talk').length+_psoItemsFrom('delivery').length;
-
-  el.innerHTML =
-    '<div class="card" style="margin-bottom:16px;">'
-  + '<div class="card-band"><h3><span class="dot">●</span> Toolbox talk library</h3><span class="badge badge-muted">'+all.length+' talk'+(all.length!==1?'s':'')+(nIssued?(' · '+nIssued+' issued'):'')+'</span></div>'
-  + '<div class="card-body">'
-  + '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">Standard talks ready to deliver, plus any you write yourself. Open one to read it, print the talk sheet to take out with you, then <b>Issue for sign-off</b>: it goes on the sign-off register and everyone confirms it the same way they confirm a policy - by link on their phone, or ticked in person. Who heard it lives in one place: the register.</div>'
-  + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
-  + '<select onchange="setTbtCat(this.value)" style="flex:0 0 200px;'+inp+'" title="Filter by the kind of business">'+cats+'</select>'
-  + '<input value="'+esc(_tbtQ||'')+'" placeholder="Search the talks" oninput="setTbtQ(this.value)" style="flex:1;min-width:160px;'+inp+'">'
-  + '</div>'
-  + table
-  + (ro?'':'<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="addTbtTalk()">＋ Write your own talk</button>'+hiddenBtn+'</div>')
-  + '</div></div>';
+  const who=(S.company&&(S.company.tradingName||S.company.legalName))||'this client';
+  const talkBody=x=>{
+    if(!x.std){
+      const k=_tbtSectorsOf(x)[0]||'all', q='\''+esc(x.id)+'\'';
+      const kinds=[['all','Every business']].concat(SECTOR_DEFS.map(d=>[d.k,d.label]));
+      return '<div class="tbt-edit">'
+        +'<label>Title<input'+dis+' value="'+esc(x.title||'')+'" placeholder="What the talk is called" oninput="updateTbtTalk('+q+',\'title\',this.value)"></label>'
+        +'<label>Kind of work<select'+dis+' onchange="updateTbtTalk('+q+',\'sectors\',this.value)">'+kinds.map(o=>'<option value="'+o[0]+'"'+(o[0]===k?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select></label>'
+        +'<label>Minutes<input'+dis+' value="'+esc(String(x.mins||''))+'" oninput="updateTbtTalk('+q+',\'mins\',this.value)"></label>'
+        +'<label class="tbt-wide">Why it matters (the opening line)<input'+dis+' value="'+esc(x.why||'')+'" oninput="updateTbtTalk('+q+',\'why\',this.value)"></label>'
+        +'<label class="tbt-wide">Key points - one per line<textarea'+dis+' rows="6" oninput="updateTbtTalk('+q+',\'points\',this.value)">'+esc((x.points||[]).join('\n'))+'</textarea></label>'
+        +'<label class="tbt-wide">Questions to check understanding - one per line<textarea'+dis+' rows="3" oninput="updateTbtTalk('+q+',\'ask\',this.value)">'+esc((x.ask||[]).join('\n'))+'</textarea></label>'
+        +'<label class="tbt-wide">Legal reference (leave blank if you are not certain)<input'+dis+' value="'+esc(x.legal||'')+'" oninput="updateTbtTalk('+q+',\'legal\',this.value)"></label>'
+        +'</div>';
+    }
+    return '<div class="psl-lab" style="margin-top:0;">The talk</div><ol class="tbt-points">'+(x.points||[]).map(p=>'<li>'+esc(p)+'</li>').join('')+'</ol>'
+      +((x.ask||[]).length ? ('<div class="psl-lab">Check they were listening</div><ul class="tbt-points">'+x.ask.map(p=>'<li>'+esc(p)+'</li>').join('')+'</ul>') : '')
+      +(x.legal ? ('<div class="cpt-basis"><b>The law behind it:</b> '+esc(x.legal)+'</div>') : '');
+  };
+  const row=x=>{
+    const issued=_tbtIssuedFor(x.id), last=issued[0]||null, open=(_tbtOpen===x.id), q='\''+esc(x.id)+'\'';
+    const s=last ? (_psoStanding(last.id)||{ ok:0, of:0 }) : null;
+    const status=last
+      ? ('<b>✓ Issued '+fmtDate(last.delivered)+'</b><div style="color:var(--text-muted);">'+s.ok+' of '+s.of+' signed'+(issued.length>1?(' · '+issued.length+' times'):'')+'</div>')
+      : '<span style="color:var(--text-muted);">Not issued yet</span>';
+    const meta=[x.mins?(x.mins+' min'):'', _tbtSectorsOf(x).map(_cpdSectorLabel).join(' · ')].filter(Boolean).join(' · ');
+    return '<div class="cpt-row tbt-row'+(open?' cpt-open':'')+'" id="tbt-'+esc(x.id)+'">'
+      +'<div><div class="cpt-title">'+esc(x.title||'(untitled)')+(x.std?'':'<span class="tbt-yours">Yours</span>')+'</div>'
+      +(x.why?('<div class="cpt-why">'+esc(x.why)+'</div>'):'')+'<div class="cpt-meta">'+esc(meta)+'</div></div>'
+      +'<div class="cpt-status">'+status+'</div>'
+      +'<div class="cpt-act">'
+        +(ro?'':'<button class="btn btn-primary btn-sm no-print" onclick="issueTalkForSignoff('+q+')" title="Put it in the Toolbox talks section of the sign-off register, dated today, and make a link for each person - or tick them in person">Issue</button>')
+        +'<button class="btn btn-ghost btn-sm no-print" onclick="downloadTalkSheet('+q+')" title="The talk as a sheet to read from on the floor">Talk sheet</button>'
+        +'<button class="btn btn-ghost btn-sm no-print" onclick="tbtToggleOpen('+q+')" title="'+(x.std?'Read the talk':'Write or change your talk')+'">'+(open?'Less':(x.std?'More':'Edit'))+'</button>'
+        +(ro?'':'<button class="trn-x no-print" onclick="deleteTbtTalk('+q+')" title="'+(x.std?'Hide it from this client - it can be brought back':'Delete this talk')+'">×</button>')
+      +'</div>'
+      +(open?('<div class="cpt-more">'+talkBody(x)+'</div>'):'')
+      +'</div>';
+  };
+  const list=groups.length
+    ? groups.map(g=>'<div class="cpt-grp">'+esc(g.label)+'</div>'+g.talks.map(row).join('')).join('')
+    : '<div class="ck-pending" style="padding:12px 0;">Nothing matches that search.</div>';
+  const tools=ro ? '' : ('<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;"><button class="btn btn-primary btn-sm no-print" onclick="addTbtTalk()" title="A talk of your own for this client - the title, the points, the questions to check understanding. It sits in this list and on the sign-off Add line like any other.">＋ Write your own talk</button>'
+    +(t.hidden.length ? ('<button class="btn btn-ghost btn-sm no-print" onclick="restoreTbtHidden()" title="Bring back the standard talks you have hidden">Restore '+t.hidden.length+' hidden</button>') : '')+'</div>');
+  el.innerHTML='<div class="card" style="margin-bottom:16px;">'
+    +'<div class="card-band"><h3><span class="dot">●</span> Toolbox talks for '+esc(who)+'</h3><span class="badge badge-muted">'+shown+' talk'+(shown!==1?'s':'')+(nIssued?(' · '+nIssued+' issued'):'')+'</span></div>'
+    +'<div class="card-body">'
+    +'<div class="cpt-bar"><div class="cpt-kind">'+_kowKindHTML(cs)+'</div>'+_kowSelectHTML('tbtView', view, cs, 'setTbtView', 'Every talk')
+    +'<input id="tbtQ" class="tbt-q" value="'+esc(_tbtQ||'')+'" placeholder="Search the talks" oninput="setTbtQ(this.value)"></div>'
+    +'<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">Talks that fit the work, and any you write yourself. Read one with <b>More</b>, print the <b>Talk sheet</b> to take out with you, then <b>Issue</b>: it goes in the Toolbox talks section of the sign-off register, and each person confirms by link or is ticked in person.</div>'
+    +tools+list
+    +'</div></div>';
 }
 
 // The sheet you print and take out: the talk itself, to read from. Who heard
@@ -33022,7 +33366,7 @@ function downloadTalkSheet(talkId){
     const K=_mkPdf('Toolbox Talk', client, d, talk.title+(talk.mins?('  -  about '+talk.mins+' minutes'):''));
     const NAVY=[30,58,95], GREY=[110,110,110];
     K.kv('Talk', talk.title||'');
-    K.kv('Category', talk.cat||'');
+    K.kv('Kind of work', _tbtSectorsOf(talk).map(_cpdSectorLabel).join(', '));
     K.st.y+=2;
     if(talk.why){ K.text(talk.why, 10, {italic:true, color:GREY, gap:3}); K.st.y+=1; }
     K.section('The talk', NAVY);
@@ -33444,11 +33788,7 @@ function _cpdTopicsCardHTML(ro){
   const keys=view==='client' ? cs.keys : (view==='all' ? SECTOR_DEFS.map(d=>d.k) : [view]);
   const groups=_cpdTopicGroups(keys), shown=groups.reduce((n,g)=>n+g.topics.length,0);
   const who=(S.company&&(S.company.tradingName||S.company.legalName))||'this client';
-  const kind=cs.keys.length
-    ? ('<b>'+esc(cs.keys.map(_cpdSectorLabel).join(' · '))+'</b> <span style="color:var(--text-muted);">- from '+(cs.from==='discovery'?'the sectors ticked in discovery':'the Company setup sector')+'</span>')
-    : '<b style="color:var(--warning);">Not set yet</b> <span style="color:var(--text-muted);">- tick what the business does in discovery, or pick its sector, and this list narrows to fit</span>';
-  const opts=[['client','For this client'+(cs.keys.length?'':' (not set)')],['all','Every topic']].concat(SECTOR_DEFS.map(d=>[d.k,d.label]));
-  const sel='<select id="cptView" onchange="cpdTopicView(this.value)" title="Whose topics to show">'+opts.map(o=>'<option value="'+o[0]+'"'+(o[0]===view?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select>';
+  const sel=_kowSelectHTML('cptView', view, cs, 'cpdTopicView', 'Every topic');
   const row=t=>{
     const iss=_cpdTopicIssued(t)[0], lib=_cpdTopicInLibrary(t), open=!!_cpdTopicMore[t.id];
     const s=iss ? (_psoStanding(iss.id)||{ ok:0, of:0 }) : null;
@@ -33468,7 +33808,7 @@ function _cpdTopicsCardHTML(ro){
   return '<div class="card" style="margin-bottom:16px;">'
     +'<div class="card-band"><h3><span class="dot">●</span> Suggested CPD for '+esc(who)+'</h3><span class="badge badge-muted">'+shown+' topic'+(shown!==1?'s':'')+'</span></div>'
     +'<div class="card-body">'
-    +'<div class="cpt-bar"><div class="cpt-kind">Kind of work: '+kind+' <button class="pss-lib no-print" onclick="switchTab(\'company\')" title="Set on Company setup - discovery and the sector">Change</button></div>'+sel+'</div>'
+    +'<div class="cpt-bar"><div class="cpt-kind">'+_kowKindHTML(cs)+'</div>'+sel+'</div>'
     +'<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:4px;">Topics that fit the work. <b>Issue</b> puts one on the sign-off register, in the CPD section, and makes a link for each person - its outline goes with the link. <b>＋ Library</b> keeps it below, to issue with the month\'s learning.</div>'
     +groups.map(g=>'<div class="cpt-grp">'+esc(g.label)+'</div>'+g.topics.map(row).join('')).join('')
     +'</div></div>';
@@ -33491,7 +33831,7 @@ function renderCPD(){
   // were - a prompt is not a confirmation, so they never join the register.
   const oldLog=(c.log||[]).slice().sort(function(a,b){ return String(b.month).localeCompare(String(a.month)); }).slice(0,12);
   const logRows=oldLog.map(function(x){ const nTo=String(x.to||'').split(/[;,]/).filter(function(s){ return s.trim(); }).length; return '<tr><td style="padding:4px 6px;">'+_cpdMonthLabel(x.month)+'</td><td style="padding:4px 6px;">'+fmtDate(x.sentAt)+'</td><td style="padding:4px 6px;">'+x.count+'</td><td style="padding:4px 6px;color:var(--text-muted);">'+nTo+' recipient'+(nTo!==1?'s':'')+'</td></tr>'; }).join('');
-  const libTools = ro ? '' : '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="addCpdItem()">＋ Add item</button></div>';
+  const libTools = ro ? '' : '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm no-print" onclick="addCpdItem()" title="A webinar, guide or course of your own - it sits in the library and on the sign-off Add line">＋ Add your own</button></div>';
   const promptTools = ro ? '' : '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
     + (issued
       ? '<button class="btn btn-primary btn-sm no-print" onclick="issueCpdMonth()" title="Open it on the sign-off register and make links for anyone who has not confirmed yet">✉ Ask by link</button><button class="btn btn-ghost btn-sm no-print" onclick="switchTab(\'signoff\')">Open the register</button>'

@@ -178,7 +178,9 @@ await wait(page, 300);
     const certs = _psoState().certificates;
     openSignoffTrail('p1'); const ov1 = document.getElementById('psoTrailOv'); const t1 = ov1 ? ov1.innerText : ''; if (ov1) ov1.remove();
     openSignoffTrail('p2'); const ov2 = document.getElementById('psoTrailOv'); const t2 = ov2 ? ov2.innerText : ''; if (ov2) ov2.remove();
+    _psoMore = { p1: true, p2: true };   // the certificate wording sits behind More on each line
     renderPolicySignoff(); const reg = document.getElementById('signoffContainer').innerHTML;
+    _psoMore = {};
     return { names, d: drawn[0] || {}, pages: drawn.length, first: first.map(c => c.ref), certs: certs.map(c => c.ref + ':' + c.name), t1, t2,
       certInputs: (reg.match(/'certLine'/g) || []).length };
   });

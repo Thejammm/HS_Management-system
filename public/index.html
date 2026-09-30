@@ -3824,7 +3824,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 
   <div id="tab-signoff" class="tab-panel">
-    <div class="rep-hero"><h2>Policy &amp; procedure sign-off</h2><p>Evidence that policies have been communicated to and understood by employees. Build the policy list (from Documents, the risk profile, or typed in), add your staff, print the acknowledgement sheets, then record who has signed for a live compliance picture.</p></div>
+    <div class="rep-hero"><h2>Policy &amp; procedure sign-off</h2><p>Everything your client's people must sign for. Add it with where it lives, press Issue, and each person gets a link: they read it and confirm on their phone, and it lands on the tracker.</p></div>
     <div id="signoffContainer"></div>
     <div id="riskDocControl" style="margin-top:18px;"></div>
   </div>
@@ -3990,6 +3990,43 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .insr-stmt{font-size:12.5px;line-height:1.45;color:var(--text);}
     .insr-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px;}
     .insr-meta label{display:block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);}
+    .psl{border-top:1.5px solid var(--border);}
+    .psl-head,.psl-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,2.2fr) 96px 150px;gap:12px;align-items:center;}
+    .psl-head{padding:6px 4px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);}
+    .psl-row{padding:10px 4px;border-bottom:1px solid var(--border);}
+    .psl-row.psl-open{background:var(--muted-bg);}
+    .psl-row.psl-new{outline:2px solid var(--accent);outline-offset:-2px;}
+    .psl-title{font-weight:700;font-size:13.5px;overflow-wrap:anywhere;}
+    .psl-meta{font-size:11.5px;color:var(--text-muted);margin-top:2px;}
+    .psl-loc{width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:transparent;color:inherit;font-family:inherit;}
+    .psl-covers{font-size:11px;color:var(--accent-dark,var(--accent));margin-top:3px;font-weight:600;}
+    .psl-n{font-weight:700;font-size:13px;}
+    .psl-n.psl-all{color:var(--success);}
+    .psl-n.psl-some{color:var(--warning);}
+    .psl-n.psl-none{color:var(--text-muted);}
+    .psl-exp{display:block;font-size:10.5px;color:#B45309;font-weight:700;}
+    .psl-act{display:flex;gap:6px;justify-content:flex-end;}
+    .psl-more{grid-column:1/-1;border-top:1px dashed var(--border);padding-top:10px;margin-top:4px;}
+    .psl-edit{display:grid;grid-template-columns:minmax(0,2fr) 150px 90px 150px;gap:8px;}
+    .psl-edit label,.psl-lab{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);}
+    .psl-edit input,.psl-edit select,.psl-cert input{display:block;width:100%;margin-top:3px;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font-family:inherit;text-transform:none;letter-spacing:0;font-weight:400;}
+    .psl-cert{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .psl-lab{margin:10px 0 4px;}
+    .psl-content{white-space:pre-wrap;font-size:12px;line-height:1.45;max-height:160px;overflow:auto;padding:8px 10px;border:1px solid var(--border);background:var(--surface);}
+    .psl-risks{display:flex;flex-wrap:wrap;gap:5px;}
+    .psl-risk{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;border:1px solid var(--border);padding:3px 7px;cursor:pointer;}
+    .psl-tools{display:flex;gap:8px;margin-top:10px;}
+    .psl-add{display:grid;grid-template-columns:150px minmax(0,2fr) minmax(0,2fr) auto auto;gap:8px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--border);background:var(--muted-bg);}
+    .psl-add input,.psl-add select{font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;width:100%;font-family:inherit;}
+    .psl-records{border-top:1px solid var(--border);padding-top:10px;display:flex;flex-direction:column;gap:8px;}
+    .psl-records .kip-row{margin:0;}
+    #psoArchEnd{width:150px;flex:0 0 auto;}
+    .psl-consult{margin-top:6px;}
+    .psl-consult > summary{cursor:pointer;font-size:13px;font-weight:700;padding:10px 4px;color:var(--text-muted);list-style:none;border-top:1px solid var(--border);}
+    .psl-consult > summary::-webkit-details-marker{display:none;}
+    .psl-consult > summary span{font-weight:400;}
+    .psl-consult[open] > summary{color:var(--text);}
+    @media (max-width:760px){ .psl-head{display:none;} .psl-row{grid-template-columns:1fr;} .psl-act{justify-content:flex-start;} .psl-edit{grid-template-columns:1fr 1fr;} .psl-add{grid-template-columns:1fr;} .psl-cert{grid-template-columns:1fr;} }
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
     /* Quick links to other apps */
     .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;}
@@ -19757,7 +19794,7 @@ function _renderRiskDocControl(){
         ${ro?'':`<button class="btn btn-ghost btn-xs" onclick="deleteBriefing('${b.id}')" title="Delete">${_ic('trash',13)}</button>`}
       </div>
     </div>`).join('') || '<div class="ck-pending" style="padding:4px 0 8px;">No briefings recorded yet. Add the daily starts, toolbox talks and project briefings as they happen.</div>';
-  el.innerHTML = `<div class="card">
+  el.innerHTML = `<details class="psl-consult"${_psoConsultOpen?' open':''} ontoggle="_psoConsultOpen=this.open"><summary>▸ Consultation &amp; two-way communication <span>- the record the consultation and board reports read</span></summary><div class="card">
     <div class="card-band"><h3><span class="dot">●</span> Consultation &amp; two-way communication</h3>
       <span class="badge badge-muted">${bTot?(bTot+' briefing'+(bTot!==1?'s':'')+' · '+bFb+' with feedback · '+bSigned+' signed off'):'none recorded yet'}</span></div>
     <div class="card-body">
@@ -19773,7 +19810,7 @@ function _renderRiskDocControl(){
       <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Daily starts, toolbox talks and project briefings, linked by reference to the client's own paperwork. "What came back" is the evidence the conversation ran both ways.</div>
       ${rows}
       <div style="font-size:12px;color:var(--text-muted);margin-top:10px;">Meets the duty to consult and inform employees on health and safety (Health and Safety (Consultation with Employees) Regulations 1996; MHSWR 1999 reg. 10). The wording above is written from what Compass is actually doing for this client - edit it freely.</div>
-    </div></div>`;
+    </div></div></details>`;
 }
 
 // ── Scoring key (spec #1) ──
@@ -29576,7 +29613,7 @@ function openSignoffSend(policyId){
   }).join('')||'<div style="font-size:12.5px;color:var(--text-muted);">No employees on the register yet - add them first.</div>';
   ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);max-width:680px;width:100%;margin:auto 0;box-shadow:0 18px 60px rgba(0,0,0,.35);">
     <div style="padding:16px 20px;border-bottom:1.5px solid var(--border);">
-      <div style="font-weight:800;font-size:15px;">Ask for acknowledgement</div>
+      <div style="font-weight:800;font-size:15px;">Issue for sign-off</div>
       <div style="font-size:12.5px;color:var(--text-muted);margin-top:3px;">${esc(pol.title||'(untitled)')}${pol.version?(' \u00b7 version '+esc(pol.version)):' \u00b7 no version set'}. Compass makes a link each; you send them by email or WhatsApp.</div>
     </div>
     <div style="padding:14px 20px;max-height:56vh;overflow:auto;" id="psoSendBody">
@@ -29584,6 +29621,7 @@ function openSignoffSend(policyId){
       <input id="psoLink" value="${esc(link||'')}" placeholder="https://... or the folder path" style="width:100%;font-size:12.5px;padding:8px 10px;border:1px solid var(--border);background:var(--input-bg,transparent);color:inherit;font-family:inherit;">
       <div class="pso-note">${webby?'A web address - the link will open it for them.':'Not a web address, so it is shown as text telling them where to look. Paste a shared link (SharePoint, OneDrive) if you want it to open on a phone.'}</div>
       ${_psoFoundHTML(pol, link)}
+      ${pol.content?('<div class="pso-lab">What it covers - shown on their link</div><div class="psl-content">'+esc(pol.content)+'</div>'):''}
       ${pol.content?'<div class="pso-note">This item carries what was covered - the page shows it under the document line, so a link is optional.</div>':''}
       <div class="pso-lab">Who to ask</div>
       ${rowsHTML}
@@ -29822,6 +29860,115 @@ function importSignoffRegister(inp){
   };
   r.readAsText(f);
 }
+// ── The sign-off tab (Simon, 2026-09-30: "the CPD etc sign things are too
+//    complex - here is the flow"). Three things, in the order the job goes:
+//  1 What needs signing - one line per item: what it is, where it lives (or
+//    what it covers), who has signed, and Issue. The rest is behind More.
+//  2 Employees.
+//  3 Who has signed - the matrix, with Check for replies.
+//  Issue opens the send screen: where it lives, what it covers, who to ask,
+//  then the links and the message. What comes back lands on the matrix.
+var _psoMore={}, _psoAddOpen=false, _psoAddDraft={ type:'Policy', title:'', link:'' }, _psoConsultOpen=false;
+function psoToggleMore(id){ _psoMore[id]=!_psoMore[id]; _keepScroll(renderPolicySignoff); }
+function _psoWhereHTML(pol, ro){
+  const link=_psoPolicyLink(pol);
+  const kind=pol.type==='Toolbox talk' ? 'Talk points attached' : (pol.type==='Training / CPD' ? 'Learning list attached' : 'What it covers is attached');
+  const covers=pol.content ? ('<div class="psl-covers" title="'+esc(String(pol.content).slice(0,400))+'">'+kind+' - sent with the link</div>') : '';
+  return '<input class="psl-loc" value="'+esc(link)+'" placeholder="'+(pol.content?'Link or folder path (optional)':'Paste the link or folder path')+'"'+(ro?' disabled':'')
+    +' oninput="updateSignoffPolicy(\''+pol.id+'\',\'link\',this.value)" title="Where the document lives - it goes on the link every employee is sent">'+covers;
+}
+function _psoSignedCellHTML(pol){
+  const s=_psoStanding(pol.id)||{ ok:0, of:0, expired:0 };
+  const cls=!s.of ? '' : (s.ok===s.of ? 'psl-all' : (s.ok ? 'psl-some' : 'psl-none'));
+  return '<span class="psl-n '+cls+'">'+s.ok+' of '+s.of+'</span>'+(s.expired?('<span class="psl-exp">'+s.expired+' expired</span>'):'');
+}
+function _psoIssueBtnHTML(pol, ro){
+  if(ro) return '';
+  return _tOnline()
+    ? '<button class="btn btn-primary btn-sm no-print" onclick="openSignoffSend(\''+pol.id+'\')" title="Send it by link - each person opens it where it lives, reads it and confirms on their phone">Issue</button>'
+    : '<button class="btn btn-outline btn-sm no-print" disabled title="Sign in to make links - or tick people in person on the tracker below">Issue</button>';
+}
+function _psoMoreHTML(pol, ro){
+  const dis=ro?' disabled':'';
+  const risks=(S.riskProfile||[]), tagged=(pol.riskIds||[]).length;
+  const riskChecks=risks.length ? risks.map(r=>'<label class="psl-risk"><input type="checkbox" '+((pol.riskIds||[]).includes(r.id)?'checked':'')+dis+' onchange="toggleSignoffPolicyRisk(\''+pol.id+'\',\''+r.id+'\',this.checked)"> '+esc(r.activity||r.hazard||'Risk')+'</label>').join('')
+    : '<span style="font-size:11.5px;color:var(--text-muted);">No risks in the profile yet.</span>';
+  const trailN=_psoTrail().filter(e=>e&&e.policyId===pol.id).length;
+  return '<div class="psl-more">'
+    +'<div class="psl-edit">'
+      +'<label>Title<input value="'+esc(pol.title||'')+'"'+dis+' oninput="updateSignoffPolicy(\''+pol.id+'\',\'title\',this.value)" onchange="_keepScroll(renderPolicySignoff)"></label>'
+      +'<label>Type<select'+dis+' onchange="updateSignoffPolicy(\''+pol.id+'\',\'type\',this.value);_keepScroll(renderPolicySignoff)">'+PSO_TYPES.map(t=>'<option'+((pol.type||'Policy')===t?' selected':'')+'>'+t+'</option>').join('')+'</select></label>'
+      +'<label>Version<input value="'+esc(pol.version||'')+'"'+dis+' oninput="updateSignoffPolicy(\''+pol.id+'\',\'version\',this.value)" onchange="_keepScroll(renderPolicySignoff)"></label>'
+      +'<label>Issued<input type="date" value="'+esc(pol.delivered||'')+'"'+dis+' onchange="updateSignoffPolicy(\''+pol.id+'\',\'delivered\',this.value);_keepScroll(renderPolicySignoff)"></label>'
+    +'</div>'
+    +(pol.type==='Training / CPD' ? ('<div class="psl-lab">On the certificate</div><div class="psl-cert">'
+      +'<input value="'+esc(pol.certLine||'')+'" placeholder="attended... e.g. a one-hour continuing professional development session"'+dis+' oninput="updateSignoffPolicy(\''+pol.id+'\',\'certLine\',this.value)">'
+      +'<input value="'+esc(pol.certStrap||'')+'" placeholder="Strapline (optional) e.g. Legislation, risk assessment, policy, process and procedure"'+dis+' oninput="updateSignoffPolicy(\''+pol.id+'\',\'certStrap\',this.value)"></div>') : '')
+    +(pol.content ? ('<div class="psl-lab">What it covers - sent with the link</div><div class="psl-content">'+esc(pol.content)+'</div>') : '')
+    +'<div class="psl-lab">Linked risks'+(tagged?(' ('+tagged+')'):'')+'</div><div class="psl-risks">'+riskChecks+'</div>'
+    +'<div class="psl-tools"><button class="btn btn-ghost btn-sm no-print" onclick="openSignoffTrail(\''+pol.id+'\')" title="Every acknowledgement and withdrawal, with who, when, how and which version">≡ Trail'+(trailN?(' ('+trailN+')'):'')+'</button>'
+      +(ro?'':'<button class="btn btn-ghost btn-sm no-print" onclick="removeSignoffPolicy(\''+pol.id+'\')">'+_ic('trash',13)+' Remove</button>')+'</div>'
+    +'</div>';
+}
+function _psoRowHTML(pol, ro){
+  const open=!!_psoMore[pol.id];
+  const meta=[pol.type||'Policy', pol.version?('v'+pol.version):'', pol.delivered?('issued '+fmtDate(pol.delivered)):''].filter(Boolean).join(' · ');
+  return '<div class="psl-row'+(open?' psl-open':'')+'" id="psl-'+pol.id+'">'
+    +'<div class="psl-item"><div class="psl-title">'+esc(pol.title||'(untitled)')+'</div><div class="psl-meta">'+esc(meta)+'</div></div>'
+    +'<div class="psl-where">'+_psoWhereHTML(pol, ro)+'</div>'
+    +'<div class="psl-signed">'+_psoSignedCellHTML(pol)+'</div>'
+    +'<div class="psl-act">'+_psoIssueBtnHTML(pol, ro)+'<button class="btn btn-ghost btn-sm no-print" onclick="psoToggleMore(\''+pol.id+'\')" title="Title, type, version and date; certificate wording; linked risks; the trail; remove">'+(open?'Less':'More')+'</button></div>'
+    +(open?_psoMoreHTML(pol, ro):'')
+    +'</div>';
+}
+// Add: the type first, then a title picked from what Compass already holds -
+// a talk from the library brings its points, a document its location.
+function _psoAddBarHTML(){
+  const d=_psoAddDraft;
+  const talk=d.type==='Toolbox talk', cpd=d.type==='Training / CPD';
+  const names=talk ? _tbtAllTalks().map(t=>t.title) : (cpd ? ((_cpdState().items||[]).map(i=>i.title)) : (S.documents||[]).map(x=>x&&x.name));
+  const opts=[...new Set(names.filter(Boolean))].slice(0,400).map(t=>'<option value="'+esc(t)+'"></option>').join('');
+  return '<div class="psl-add no-print">'
+    +'<select id="psoAddType" onchange="psoAddDraft(\'type\',this.value)" title="What kind of item this is">'+PSO_TYPES.map(t=>'<option'+(d.type===t?' selected':'')+'>'+t+'</option>').join('')+'</select>'
+    +'<input id="psoAddTitle" list="psoAddList" value="'+esc(d.title)+'" placeholder="'+(talk?'Pick a talk from the library, or type your own':(cpd?'Pick from the CPD library, or type':'Title - pick from the Documents register, or type'))+'" oninput="psoAddDraft(\'title\',this.value)" onchange="psoAddPrefill()">'
+    +'<datalist id="psoAddList">'+opts+'</datalist>'
+    +'<input id="psoAddLink" value="'+esc(d.link)+'" placeholder="'+(cpd?'Link to the learning':(talk?'Link or folder path (optional)':'Where it lives - link or folder path'))+'" oninput="psoAddDraft(\'link\',this.value)">'
+    +'<button class="btn btn-primary btn-sm" onclick="psoAddSave()">Add</button>'
+    +'<button class="btn btn-ghost btn-sm" onclick="psoAddCancel()">Cancel</button>'
+    +'</div>';
+}
+function psoAddOpen(){ if(_blockIfReadOnly()) return; _psoAddOpen=true; _psoAddDraft={ type:'Policy', title:'', link:'' }; _keepScroll(renderPolicySignoff); setTimeout(()=>{ const t=document.getElementById('psoAddTitle'); if(t) t.focus(); },0); }
+function psoAddCancel(){ _psoAddOpen=false; _keepScroll(renderPolicySignoff); }
+function psoAddDraft(f, v){ _psoAddDraft[f]=v; if(f==='type'){ _keepScroll(renderPolicySignoff); setTimeout(()=>{ const t=document.getElementById('psoAddTitle'); if(t) t.focus(); },0); } }
+function psoAddPrefill(){
+  const d=_psoAddDraft, t=String(d.title||'').trim(); if(!t || String(d.link||'').trim()) return;
+  let link='';
+  if(d.type==='Training / CPD'){ const it=(_cpdState().items||[]).find(x=>String(x.title||'').trim().toLowerCase()===t.toLowerCase()); if(it&&it.url) link=it.url; }
+  else if(d.type!=='Toolbox talk'){ const best=_psoLinkCandidates({ title:t })[0]; if(best && best.score>=80) link=best.link; }
+  if(link){ d.link=link; const el=document.getElementById('psoAddLink'); if(el) el.value=link; }
+}
+function psoAddSave(){
+  if(_blockIfReadOnly()) return;
+  const d=_psoAddDraft, title=String(d.title||'').trim();
+  if(!title){ showToast('Give it a title','info'); const el=document.getElementById('psoAddTitle'); if(el) el.focus(); return; }
+  psoAddPrefill();
+  const today=new Date().toISOString().slice(0,10);
+  const o={ title:title, type:d.type, link:String(d.link||'').trim() };
+  if(d.type==='Toolbox talk'){
+    const talk=_tbtAllTalks().find(x=>String(x.title||'').trim().toLowerCase()===title.toLowerCase());
+    if(talk){ o.content=_tbtContent(talk); o.source={ kind:'talk', id:talk.id }; }
+    o.delivered=today;
+  } else if(d.type==='Training / CPD'){
+    const it=(_cpdState().items||[]).find(x=>String(x.title||'').trim().toLowerCase()===title.toLowerCase());
+    if(it){ o.content=(it.title||'')+(it.type?(' ('+it.type+(it.minutes?(', '+it.minutes+' min'):'')+')'):'')+(it.url?('\n'+it.url):'')+(it.notes?('\n'+it.notes):''); if(!o.link && it.url) o.link=it.url; }
+    o.delivered=today;
+  } else if(d.type==='Briefing') o.delivered=today;
+  const pol=_psoAddItem(o);
+  _psoAddOpen=false; saveData(); _keepScroll(renderPolicySignoff);
+  const row=document.getElementById('psl-'+pol.id);
+  if(row){ row.classList.add('psl-new'); try{ row.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(e){} setTimeout(()=>row.classList.remove('psl-new'),1600); }
+  showToast('✓ Added - press Issue on its line to send it','success');
+}
 function renderPolicySignoff(){
   const cont=document.getElementById('signoffContainer'); if(!cont) return;
   try{ _psoMigrateTrail(); }catch(e){}
@@ -29829,26 +29976,13 @@ function renderPolicySignoff(){
   // Anything an employee confirmed by link since you last looked lands now.
   try{ _psoPullSignoffs(true); }catch(e){}
   const p=_psoState(); const ro=_roLocked(); const dis=ro?' disabled':'';
-  const risks=(S.riskProfile||[]);
-  const inp='font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;';
-  const polRows=p.policies.map(pol=>{
-    const tagged=(pol.riskIds||[]).map(_psoRiskName).filter(Boolean);
-    const riskChecks=risks.length?risks.map(r=>`<label style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer;"><input type="checkbox" ${(pol.riskIds||[]).includes(r.id)?'checked':''}${dis} onchange="toggleSignoffPolicyRisk('${pol.id}','${r.id}',this.checked)"> ${esc(r.activity||r.hazard||'Risk')}</label>`).join(' '):'<span style="font-size:11.5px;color:var(--text-muted);">No risks in the profile yet.</span>';
-    return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <input value="${esc(pol.title||'')}" placeholder="Title - policy, toolbox talk, training session…"${dis} oninput="updateSignoffPolicy('${pol.id}','title',this.value)" style="flex:2;min-width:180px;${inp}">
-        <select${dis} onchange="updateSignoffPolicy('${pol.id}','type',this.value)" style="flex:0 0 130px;${inp}" title="What kind of item this is">${PSO_TYPES.map(t=>`<option${(pol.type||'Policy')===t?' selected':''}>${t}</option>`).join('')}</select>
-        <input value="${esc(pol.version||'')}" placeholder="Version"${dis} oninput="updateSignoffPolicy('${pol.id}','version',this.value)" style="flex:0 0 80px;${inp}">
-        <input type="date" value="${esc(pol.delivered||'')}"${dis} onchange="updateSignoffPolicy('${pol.id}','delivered',this.value)" style="flex:0 0 135px;${inp}" title="When it was delivered / issued (talks, training, CPD)">
-        ${(ro||!_tOnline())?'':`<button class="btn btn-outline btn-xs no-print" onclick="openSignoffSend('${pol.id}')" title="Make a link for each employee - they read it and confirm on their phone, and it comes back onto the trail">✉ Ask by link</button>`}<button class="btn btn-ghost btn-xs no-print" onclick="openSignoffTrail('${pol.id}')" title="Every acknowledgement and every withdrawal recorded against this, with who, when, how and which version">≡ Trail${(function(){ const c=_psoTrail().filter(e=>e&&e.policyId===pol.id).length; return c?(' ('+c+')'):''; })()}</button>
-        ${ro?'':`<button class="btn btn-ghost btn-xs" onclick="removeSignoffPolicy('${pol.id}')" title="Remove">${_ic('trash',13)}</button>`}
-      </div>
-      ${pol.type==='Training / CPD'?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px;"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);flex:0 0 auto;" title="What the certificate of attendance says under the name">On the certificate</span><input value="${esc(pol.certLine||'')}" placeholder="attended... e.g. a one-hour continuing professional development session"${dis} oninput="updateSignoffPolicy('${pol.id}','certLine',this.value)" style="flex:2;min-width:220px;${inp}"><input value="${esc(pol.certStrap||'')}" placeholder="Strapline (optional) e.g. Legislation, risk assessment, policy, process and procedure"${dis} oninput="updateSignoffPolicy('${pol.id}','certStrap',this.value)" style="flex:2;min-width:220px;${inp}"></div>`:''}
-      <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12px;color:var(--accent);">Linked risks${tagged.length?(' ('+tagged.length+')'):''}</summary>
-        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;">${riskChecks}</div>
-      </details>
-    </div>`;
-  }).join('')||'<div class="ck-pending" style="padding:6px 0;">No policies yet. Add the policies employees must acknowledge - type them in, or pull from Documents.</div>';
+  const inp='font-size:13px;padding:6px 8px;border:1px solid var(--border);background:transparent;color:inherit;';
+  // 1 · what needs signing
+  const rows=p.policies.map(pol=>_psoRowHTML(pol, ro)).join('');
+  const list=(p.policies.length||_psoAddOpen)
+    ? '<div class="psl"><div class="psl-head"><span>Item</span><span>Where it lives / what it covers</span><span>Signed</span><span></span></div>'+rows+(_psoAddOpen?_psoAddBarHTML():'')+'</div>'
+    : '<div class="ck-pending" style="padding:6px 0;">Nothing to sign yet. Add the policies, toolbox talks, training and CPD your client\'s people must sign for.</div>';
+  // 2 · employees
   const staffRows=p.staff.map(s=>{
     const sug=ro?null:_signoffSuggestions(s);
     return `<div style="margin-bottom:6px;">
@@ -29857,47 +29991,52 @@ function renderPolicySignoff(){
         <input value="${esc(s.role||'')}" placeholder="Job role"${dis} oninput="updateSignoffStaff('${s.id}','role',this.value)" style="flex:1;min-width:100px;${inp}">
         ${ro?'':`<button class="btn btn-ghost btn-xs" onclick="removeSignoffStaff('${s.id}')" title="Remove">${_ic('trash',13)}</button>`}
       </div>
-      ${sug&&sug.items.length?`<div class="no-print" style="margin:6px 0 4px;padding:8px 10px;border:1px dashed var(--accent);border-radius:8px;background:var(--accent-light,#eef6fb);">
+      ${sug&&sug.items.length?`<div class="no-print" style="margin:6px 0 4px;padding:8px 10px;border:1px dashed var(--accent);background:var(--accent-light,#eef6fb);">
         <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:6px;">Found <b>${esc(s.name)}</b> in the training matrix (${sug.courses.length} course${sug.courses.length!==1?'s':''}: ${esc(sug.courses.slice(0,3).join(', '))}). Assessments they likely need to sign - check before adding:</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;">${sug.items.map(it=>`<button class="btn btn-outline btn-xs" title="Suggested because of: ${esc(it.why||'')}" onclick="addSignoffSuggestion('${encodeURIComponent(it.title)}','${it.riskId||''}')">＋ ${esc(it.title.slice(0,58))}</button>`).join('')}</div>
-      </div>`:(sug?`<div class="no-print" style="font-size:11px;color:var(--text-muted);margin:2px 0 4px;">✓ ${esc(s.name)} is in the training matrix - no new sign-off suggestions (already listed, or no matching assessments).</div>`:'')}
+      </div>`:''}
     </div>`;
   }).join('')||'<div class="ck-pending" style="padding:6px 0;">No employees added yet.</div>';
+  // 3 · who has signed
   const comp=_psoCompliance();
   let matrix='';
   if(p.staff.length && p.policies.length){
-    const head=`<tr><th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--surface);">Employee</th>${p.policies.map(pol=>`<th style="padding:6px 6px;font-size:10.5px;text-align:center;white-space:nowrap;">${esc((pol.title||'Policy').slice(0,20))}</th>`).join('')}<th style="padding:6px 8px;text-align:center;">%</th></tr>`;
+    const head=`<tr><th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--surface);">Employee</th>${p.policies.map(pol=>`<th style="padding:6px 6px;font-size:10.5px;text-align:center;white-space:nowrap;" title="${esc(pol.title||'')}">${esc((pol.title||'Item').slice(0,20))}</th>`).join('')}<th style="padding:6px 8px;text-align:center;">%</th></tr>`;
     const body=p.staff.map(s=>{ let sc=0; const cells=p.policies.map(pol=>{ const dt=p.signed[s.id+'|'+pol.id]; const info=_psoSignInfo(dt,pol); const inDate=(info.state==='ok'||info.state==='expiring'); if(inDate) sc++;
       const bg=info.state==='expired'?'background:#F59E0B22;':info.state==='expiring'?'background:#F59E0B11;':'';
       return `<td style="text-align:center;padding:3px;${bg}" title="${esc(info.label)}"><input type="checkbox" ${inDate?'checked':''}${dis} onchange="toggleSignoff('${s.id}','${pol.id}',this.checked)">${info.state==='expired'?'<div style="font-size:9px;color:#B45309;font-weight:700;line-height:1;">⚠ expired</div>':(info.state==='expiring'?'<div style="font-size:9px;color:#B45309;line-height:1;">renew soon</div>':'')}</td>`; }).join(''); const pct=p.policies.length?Math.round(sc/p.policies.length*100):0; return `<tr><td style="padding:5px 8px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--surface);">${esc(s.name||'(unnamed)')}</td>${cells}<td style="text-align:center;font-weight:700;color:${pct===100?'var(--success)':pct?'var(--warning)':'var(--text-muted)'};">${pct}%</td></tr>`; }).join('');
     matrix=`<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div>`;
-  } else matrix='<div class="ck-pending" style="padding:6px 0;">Add at least one policy and one employee to track sign-off.</div>';
+  } else matrix='<div class="ck-pending" style="padding:6px 0;">Add at least one item and one employee to track who has signed.</div>';
   const cpc=comp.pct===100?'var(--success)':comp.pct?'var(--warning)':'var(--text-muted)';
+  const replies=(ro||!_tOnline())?'':`<button class="btn btn-outline btn-sm no-print" onclick="_psoPullSignoffs(false)" title="Fetch anything employees have confirmed by link since you last looked. This happens on its own when you open the tab - this is for when you are waiting on someone.">↻ Check for replies${_psoOutstandingCount?(' ('+_psoOutstandingCount+' still out)'):''}</button>`;
   cont.innerHTML=`
-    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Items to sign off - policies, toolbox talks, training &amp; CPD</h3><span class="badge badge-muted">${p.policies.length}</span></div>
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> What needs signing</h3><span class="badge badge-muted">${p.policies.length}</span></div>
       <div class="card-body">
-        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">One register, one purpose: the employee's declaration that they have received and <b>understood</b> what was delivered - a policy, a toolbox talk, a training or CPD session. The trail is the evidence. Tag each item to the risks it controls - the golden thread to the risk profile.</div>
-        ${polRows}
-        ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-primary btn-sm no-print" onclick="addSignoffPolicy()">＋ Add item</button><button class="btn btn-ghost btn-sm no-print" onclick="seedCoreSignoffPolicies()" title="Start from a structured core-policy list, then edit to fit">＋ Seed core policies</button><button class="btn btn-ghost btn-sm no-print" onclick="addPoliciesFromDocuments()">＋ Pull from Documents</button></div>`}
+        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">Policies, procedures, risk assessments, toolbox talks, training and CPD. Press <b>Issue</b> on a line to send it by link: each person opens it where it lives, reads it and confirms on their phone - and it comes back onto the tracker below.</div>
+        ${list}
+        ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;" class="no-print">${_psoAddOpen?'':'<button class="btn btn-primary btn-sm" onclick="psoAddOpen()">＋ Add</button>'}<button class="btn btn-ghost btn-sm" onclick="addPoliciesFromDocuments()" title="Every policy on the Documents register, with where it lives">＋ Pull from Documents</button><button class="btn btn-ghost btn-sm" onclick="seedCoreSignoffPolicies()" title="Start from a structured core-policy list, then edit to fit">＋ Seed core policies</button></div>`}
       </div></div>
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Employees</h3><span class="badge badge-muted">${p.staff.length}</span></div>
       <div class="card-body">
         ${staffRows}
-        ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-primary btn-sm no-print" onclick="addSignoffStaff()">＋ Add employee</button><button class="btn btn-ghost btn-sm no-print" onclick="addStaffFromTraining()">＋ From training matrix</button></div>`}
+        ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;" class="no-print"><button class="btn btn-primary btn-sm" onclick="addSignoffStaff()">＋ Add employee</button><button class="btn btn-ghost btn-sm" onclick="addStaffFromTraining()">＋ From training matrix</button></div>`}
       </div></div>
-    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Sign-off tracking</h3><span class="badge badge-muted">${comp.pct}% signed</span></div>
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Who has signed</h3><span class="badge badge-muted">${comp.pct}% signed</span></div>
       <div class="card-body">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:12px;color:var(--text-muted);flex:1;">${comp.signed} of ${comp.total} acknowledgements recorded</span><span style="font-size:13px;font-weight:700;color:${cpc};">${comp.pct}%</span></div>
-        <div style="height:8px;background:var(--muted-bg);border-radius:4px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${comp.pct}%;background:var(--success);"></div></div>
-        <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Tick a box to record an acknowledgement given in person - it goes on the trail with your name as the witness. <b>Policies, procedures and risk assessments last 12 months</b>, then the cell turns amber and they need re-signing; a talk or a month's learning, once confirmed, stays confirmed. Once a year, produce the <b>12-month archive</b> - the register as it stood and every entry in the year - and file it with the client's records.${comp.expired?` <span style="color:#B45309;font-weight:700;">${comp.expired} signature${comp.expired!==1?'s':''} expired.</span>`:''}</div>
-        ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" class="no-print">
-          ${(!_tOnline())?'':`<button class="btn btn-outline btn-sm" onclick="_psoPullSignoffs(false)" title="Fetch anything employees have confirmed by link since you last looked. This happens on its own when you open the tab - this is for when you are waiting on someone.">↻ Check for replies${_psoOutstandingCount?(' ('+_psoOutstandingCount+' still out)'):''}</button>`}
-          <button class="btn btn-ghost btn-sm" onclick="exportSignoffRegister()" title="The whole register as a CSV - opens straight in Excel to control updates">⭳ Export register (Excel/CSV)</button>
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('psoCsvInput').click()" title="Import an amended register back - matches by employee name + item title">⭱ Import register</button>
-          <input type="file" id="psoCsvInput" accept=".csv,text/csv" style="display:none" onchange="importSignoffRegister(this)">
-        </div>`}
-        ${_psoArchiveLineHTML(ro)}
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <span style="font-size:13px;flex:1;min-width:200px;"><b style="color:${cpc};">${comp.signed} of ${comp.total}</b> <span style="color:var(--text-muted);">signed${comp.expired?` · <b style="color:#B45309;">${comp.expired} expired</b>`:''}</span></span>
+          ${replies}
+        </div>
         ${matrix}
+        <div style="font-size:11.5px;color:var(--text-muted);margin:10px 0 12px;">Tick a box to record a signature given in person - it goes on the trail with you as the witness. Policies, procedures and risk assessments need signing again after 12 months; a talk or CPD, once signed, stays signed.</div>
+        <div class="psl-records no-print">
+          ${_psoArchiveLineHTML(ro)}
+          ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="exportSignoffRegister()" title="The whole register as a CSV - opens straight in Excel">⭳ Export (Excel/CSV)</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('psoCsvInput').click()" title="Import an amended register back - matches by employee name + item title">⭱ Import</button>
+            <input type="file" id="psoCsvInput" accept=".csv,text/csv" style="display:none" onchange="importSignoffRegister(this)">
+          </div>`}
+        </div>
       </div></div>
 `;
   _renderRiskDocControl();

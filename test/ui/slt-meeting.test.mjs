@@ -145,6 +145,48 @@ await wait(page, 300);
   R.ok(open.some(x => /pre-construction information/.test(x)) && open.some(x => /fire warden/.test(x)), 'the next briefing\'s item 10 asks whether they happened, with the earlier ones');
 }
 
+// ── the leadership team, set once on Company setup ──
+// Simon, 2026-09-30: "make a small tweak to the company set up screen so I'm
+// prompted to add in the senior leadership team, so when the leadership
+// meeting screen is opened it pulls in the delegates and their emails".
+{
+  const t = await page.evaluate(async () => {
+    const out = {};
+    S.company.slt = []; switchTab('company'); renderCompany();
+    const card = document.getElementById('coSltCard');
+    out.prompt = !!card && /Not added yet/.test(card.textContent);
+    out.fromBtn = /From key personnel \(2\)/.test(card.textContent);
+    addSltFromPersonnel();                                   // the two directors, with their emails - the office manager is not leadership
+    out.slt = S.company.slt.map(p => p.name + '|' + p.role + '|' + p.email).join(';');
+    addCompanySlt(); await new Promise(r => setTimeout(r, 20));
+    const rows = document.querySelectorAll('#coSltCard .co-row'), last = rows[rows.length - 1].querySelectorAll('input');
+    out.focus = document.activeElement === last[0];
+    const put = (el, v) => { el.value = v; el.dispatchEvent(new Event('input')); };
+    put(last[0], 'Priya Nair'); put(last[1], 'Associate Director'); put(last[2], 'priya@fineline.example');
+    out.noPrompt = !/Not added yet/.test((renderCompany(), document.getElementById('coSltCard').textContent));
+    // the open meeting (nobody in it yet) fills itself from the team
+    openSltMeeting(); const m = _sltCur();
+    out.att = m.attendees.map(a => a.name + '|' + a.email).join(';');
+    out.note = /From the leadership team on Company setup/.test(document.getElementById('sltOv').textContent);
+    sltDelAttendee(0); closeSltMeeting(); openSltMeeting();
+    out.kept = _sltCur().attendees.length === 2;             // taken off on purpose stays off
+    out.teamBtn = /The leadership team \(1\)/.test(document.getElementById('sltOv').textContent);
+    sltAddTeam(); out.back = _sltCur().attendees.length === 3;
+    closeSltMeeting();
+    // with no team recorded, the meeting says where to add one
+    const keep = S.company.slt; S.company.slt = []; _meetings().forEach(x => { if (x.status !== 'finished') x.status = 'finished'; });
+    openSltMeeting(); out.pointer = /Add the senior leadership team on Company setup/.test(document.getElementById('sltOv').textContent) && _sltCur().attendees.length === 0;
+    closeSltMeeting(); S.company.slt = keep;
+    return out;
+  });
+  R.ok(t.prompt && t.fromBtn, 'Company setup prompts for the senior leadership team, and offers the leaders already on key personnel');
+  R.ok(t.slt === 'Jo Fine|Managing Director|jo@fineline.example;Sam Line|Technical Director|sam@fineline.example', 'the directors come across with their emails - not the office manager (' + t.slt + ')');
+  R.ok(t.focus && t.noPrompt, 'Add a leader is ready to type into, and the prompt goes once there is a team');
+  R.ok(t.att === 'Jo Fine|jo@fineline.example;Sam Line|sam@fineline.example;Priya Nair|priya@fineline.example' && t.note, 'the leadership meeting opens with the team in the room, emails ready: ' + t.att);
+  R.ok(t.kept && t.teamBtn && t.back, 'anyone taken off stays off when the meeting is reopened, and one click brings them back');
+  R.ok(t.pointer, 'with no team on Company setup, the meeting says where to add one');
+}
+
 // ── the briefing itself ──
 {
   const rep = buildReport({ company: { legalName: 'Fineline Architects Ltd', sector: 'Design / architecture / surveying' } }, 'board-briefing', { today: '2026-10-01' });

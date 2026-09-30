@@ -3500,6 +3500,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .co-row.co-row2{grid-template-columns:1fr 2fr auto;}
     @media(max-width:640px){.co-row,.co-row2{grid-template-columns:1fr;}}
     .co-row input{width:100%;font-family:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);}
+    .co-prompt{font-size:12.5px;line-height:1.5;padding:9px 12px;border:1px solid var(--border);border-left:4px solid var(--warning);background:var(--surface);}
     .co-del{background:transparent;border:1px solid var(--danger-brd);color:var(--danger);width:32px;height:32px;border-radius:7px;font-size:15px;font-weight:700;cursor:pointer;flex-shrink:0;}
   </style>
   <div id="tab-company" class="tab-panel">
@@ -14319,6 +14320,7 @@ function _companyState(){
   if(!S.company || typeof S.company !== 'object') S.company = {};
   if(!Array.isArray(S.company.personnel)) S.company.personnel = [];
   if(!Array.isArray(S.company.siteList))  S.company.siteList  = [];
+  if(!Array.isArray(S.company.slt))       S.company.slt       = [];   // the senior leadership team
   return S.company;
 }
 
@@ -14347,6 +14349,22 @@ function renderCompany(){
       ${dis?'':`<button class="co-del" title="Remove" onclick="removeCompanySite(${i})">&times;</button>`}
     </div>`).join('') || '<div style="font-size:12.5px;color:var(--text-muted);">No sites added yet. Add each site or location the client operates from.</div>';
 
+  // The senior leadership team - who the leadership meeting is for. It
+  // starts every new meeting with them in the room and their emails ready.
+  const sltRows = c.slt.map((p,i)=>`
+    <div class="co-row">
+      <input value="${esc(p.name||'')}" placeholder="Name" oninput="updateCompanySlt(${i},'name',this.value)"${dis}>
+      <input value="${esc(p.role||'')}" placeholder="Role (e.g. Managing Director)" oninput="updateCompanySlt(${i},'role',this.value)"${dis}>
+      <input type="email" value="${esc(p.email||'')}" placeholder="Email - the minutes go here" oninput="updateCompanySlt(${i},'email',this.value)"${dis}>
+      ${dis?'':`<button class="co-del" title="Remove" onclick="removeCompanySlt(${i})">&times;</button>`}
+    </div>`).join('');
+  const sltFromKey = c.personnel.filter(p=>p&&String(p.name||'').trim()&&_isLeaderRole(p.role)&&!c.slt.some(s=>String(s.name||'').trim().toLowerCase()===String(p.name).trim().toLowerCase()));
+  const sltCard = `<div class="card" id="coSltCard" style="margin-bottom:16px;"><div class="card-band"><h3>Senior leadership team</h3>${c.slt.length?`<span class="badge badge-muted">${c.slt.length}</span>`:''}</div><div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;line-height:1.5;">The directors and senior managers who sit in the H&amp;S leadership meeting. Every new Leadership Meeting starts with them in the room, and the minutes go to their emails.</div>
+      ${c.slt.length?`<div class="co-rowlist">${sltRows}</div>`:`<div class="co-prompt">Not added yet. Add the leadership team and every leadership meeting fills in who is there and who the minutes go to.</div>`}
+      ${dis?'':`<div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"><button class="btn btn-outline btn-sm" onclick="addCompanySlt()">+ Add a leader</button>${sltFromKey.length?`<button class="btn btn-ghost btn-sm" onclick="addSltFromPersonnel()" title="${esc(sltFromKey.map(p=>p.name).join(', '))}">+ From key personnel (${sltFromKey.length})</button>`:''}</div>`}
+    </div></div>
+`;
   cont.innerHTML = `
     <div class="no-print" style="display:flex;justify-content:flex-end;margin-bottom:14px;"><button class="btn btn-ghost btn-sm" onclick="downloadCompanyProfile()">⭳ Company Profile PDF</button></div>
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Company identity</h3></div><div class="card-body"><div class="co-grid">
@@ -14376,6 +14394,7 @@ function renderCompany(){
       ${dis?'':`<button class="btn btn-outline btn-sm no-print" style="margin-top:10px;" onclick="addCompanyPerson()">+ Add person</button>`}
     </div></div>
 
+    ${sltCard}
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Sites &amp; locations</h3></div><div class="card-body">
       <div class="co-rowlist">${sites}</div>
       ${dis?'':`<button class="btn btn-outline btn-sm no-print" style="margin-top:10px;" onclick="addCompanySite()">+ Add site</button>`}
@@ -14458,6 +14477,13 @@ function buildCompanyProfileReportPDF(){
       people.map(p=>[p.role||'-', {text:p.name||'-'}, {text:p.contact||'-', color:[110,110,110]}]),
       {headFill:NAVY, headText:[255,255,255]});
   }
+  const leaders=(c.slt||[]).filter(p=>p&&(p.name||p.role));
+  if(leaders.length){
+    K.section('Senior leadership team', NAVY);
+    K.table([{header:'NAME',w:60},{header:'ROLE',w:58},{header:'EMAIL',w:60}],
+      leaders.map(p=>[{text:p.name||'-'}, p.role||'-', {text:p.email||'-', color:[110,110,110]}]),
+      {headFill:NAVY, headText:[255,255,255]});
+  }
   const sites=(c.siteList||[]).filter(s=>s.name||s.address);
   if(sites.length){
     K.section('Sites & locations', NAVY);
@@ -14496,6 +14522,27 @@ function updateCompanyPerson(i, key, val){ if(_roLocked()) return; const a=_comp
 function updateCompanySite(i, key, val){ if(_roLocked()) return; const a=_companyState().siteList; if(a[i]){ a[i][key]=val; scheduleAutoSave(); } }
 function addCompanyPerson(){ if(_roLocked()) return; _companyState().personnel.push({role:'',name:'',contact:''}); saveData(); renderCompany(); }
 function removeCompanyPerson(i){ if(_roLocked()) return; _companyState().personnel.splice(i,1); saveData(); renderCompany(); }
+// Who counts as leadership when a role is only written down - one reading
+// for Company setup and the meeting.
+function _isLeaderRole(r){ return /director|\bmd\b|chief|ceo|owner|partner|principal|founder|chair|head of|senior manager|general manager/i.test(String(r||'')); }
+function updateCompanySlt(i, key, val){ if(_roLocked()) return; const a=_companyState().slt; if(a[i]){ a[i][key]=val; scheduleAutoSave(); } }
+function addCompanySlt(){
+  if(_roLocked()) return; _companyState().slt.push({ name:'', role:'', email:'' }); saveData(); renderCompany();
+  setTimeout(()=>{ const r=document.querySelectorAll('#coSltCard .co-row'), last=r[r.length-1]; if(last){ const i=last.querySelector('input'); if(i) i.focus(); } },0);
+}
+function removeCompanySlt(i){ if(_roLocked()) return; _companyState().slt.splice(i,1); saveData(); renderCompany(); }
+// Most leadership teams are already on the key personnel list - brought
+// across rather than typed twice, with the email where the contact is one.
+function addSltFromPersonnel(){
+  if(_roLocked()) return; const c=_companyState(); let n=0;
+  c.personnel.forEach(p=>{
+    if(!p||!String(p.name||'').trim()||!_isLeaderRole(p.role)) return;
+    if(c.slt.some(s=>String(s.name||'').trim().toLowerCase()===String(p.name).trim().toLowerCase())) return;
+    c.slt.push({ name:String(p.name).trim(), role:String(p.role||''), email:/@/.test(String(p.contact||''))?String(p.contact).trim():'' }); n++;
+  });
+  saveData(); renderCompany();
+  showToast('✓ '+n+' brought across'+(c.slt.some(s=>!String(s.email||'').trim())?' - add the emails that are missing':''),'success');
+}
 function addCompanySite(){ if(_roLocked()) return; _companyState().siteList.push({name:'',address:''}); saveData(); renderCompany(); }
 function removeCompanySite(i){ if(_roLocked()) return; _companyState().siteList.splice(i,1); saveData(); renderCompany(); }
 
@@ -28515,6 +28562,7 @@ function _sltPeople(m){
   const out=[], seen=new Set();
   const add=(n,r,e)=>{ n=String(n||'').trim(); if(!n) return; const k=n.toLowerCase(); if(seen.has(k)) return; seen.add(k); out.push({ name:n, role:String(r||''), email:String(e||'') }); };
   ((m&&m.attendees)||[]).forEach(a=>add(a.name,a.role,a.email));
+  ((S.company&&S.company.slt)||[]).forEach(p=>add(p.name,p.role,p.email));
   ((S.company&&S.company.personnel)||[]).forEach(p=>add(p.name,p.role,/@/.test(String(p.contact||''))?p.contact:''));
   ((S.policySignoff&&S.policySignoff.staff)||[]).forEach(s=>add(s.name,s.role,''));
   return out;
@@ -28527,10 +28575,32 @@ function openSltMeeting(){
     _stamp(m,'created'); _meetings().unshift(m); saveData();
   }
   _sltId=m.id; _sltDone=null;
+  _sltFillTeam(m);
   let ov=document.getElementById('sltOv');
   if(!ov){ ov=document.createElement('div'); ov.id='sltOv'; ov.className='slt-ov'; document.body.appendChild(ov); }
   document.body.classList.add('slt-open');
   _sltRender(); _sltLoadFacts();
+}
+// The senior leadership team from Company setup - the people a leadership
+// meeting is for. A new meeting starts with them in the room; anyone absent
+// comes off with ×, and a meeting emptied on purpose is not refilled.
+function _sltTeam(){ return ((S.company&&S.company.slt)||[]).filter(p=>p&&String(p.name||'').trim()); }
+function _sltFillTeam(m){
+  if(!m || m.teamFilled || (m.attendees||[]).length) return;
+  const team=_sltTeam(); if(!team.length) return;
+  m.attendees=team.map(p=>({ name:String(p.name).trim(), role:String(p.role||''), email:String(p.email||'').trim() }));
+  m.teamFilled=true; saveData();
+}
+function sltAddTeam(){
+  const m=_sltCur(); if(!m||_blockIfReadOnly()) return;
+  if(!Array.isArray(m.attendees)) m.attendees=[];
+  _sltTeam().forEach(p=>{ const nm=String(p.name).trim(); if(m.attendees.some(a=>String(a.name).toLowerCase()===nm.toLowerCase())) return;
+    m.attendees.push({ name:nm, role:String(p.role||''), email:String(p.email||'').trim() }); });
+  saveData(); _sltRender();
+}
+function sltToCompany(){
+  closeSltMeeting(); switchTab('company');
+  setTimeout(()=>{ const c=document.getElementById('coSltCard'); if(c) try{ c.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){} },60);
 }
 function closeSltMeeting(){
   const ov=document.getElementById('sltOv'); if(ov) ov.remove();
@@ -28578,12 +28648,17 @@ function _sltRender(){
   if(_sltDone){ ov.innerHTML=bar+_sltDoneHTML(m); return; }
   const chips=(m.attendees||[]).map((a,i)=>'<span class="slt-chip"><b>'+esc(a.name)+'</b>'+(a.role?('<span>'+esc(a.role)+'</span>'):'')+(a.email?('<span class="slt-muted">'+esc(a.email)+'</span>'):'')
     +'<button class="trn-x" onclick="sltDelAttendee('+i+')" title="Not here">×</button></span>').join('');
-  const dirs=((S.company&&S.company.personnel)||[]).filter(p=>p&&p.name&&/director|\bmd\b|chief|ceo|owner|partner|principal|founder|chair/i.test(String(p.role||'')) && !(m.attendees||[]).some(a=>String(a.name).toLowerCase()===String(p.name).toLowerCase()));
+  // The team from Company setup first; with no team recorded, the leaders
+  // on the key personnel list are the fallback, and it says where to add them.
+  const team=_sltTeam(), missing=team.filter(p=>!(m.attendees||[]).some(a=>String(a.name).toLowerCase()===String(p.name).trim().toLowerCase()));
+  const dirs=team.length ? [] : ((S.company&&S.company.personnel)||[]).filter(p=>p&&p.name&&_isLeaderRole(p.role) && !(m.attendees||[]).some(a=>String(a.name).toLowerCase()===String(p.name).toLowerCase()));
   const who='<section class="slt-sec slt-who" id="slt-who"><div class="slt-ih"><span class="slt-n">·</span><h3>Who is here</h3></div>'
-    +(chips?('<div class="slt-people">'+chips+'</div>'):'<div class="slt-muted" style="margin:4px 0 8px;">Nobody added yet - the minutes list who was present, and the email goes to them.</div>')
+    +(chips?('<div class="slt-people">'+chips+'</div>'+(m.teamFilled?'<div class="slt-muted" style="margin:-2px 0 8px;">From the leadership team on Company setup - × anyone who is not here.</div>':'')):'<div class="slt-muted" style="margin:4px 0 8px;">Nobody added yet - the minutes list who was present, and the email goes to them.</div>')
     +'<div class="slt-add"><input id="sltAttName" list="sltPeopleList" placeholder="Name" onchange="sltPickAttendee(this.value)"><input id="sltAttRole" placeholder="Role"><input id="sltAttEmail" type="email" placeholder="Email (for the minutes)">'
     +'<button class="btn btn-outline btn-sm" onclick="sltAddAttendee()">＋ Add</button>'
-    +(dirs.length?('<button class="btn btn-ghost btn-sm" onclick="sltAddDirectors()" title="'+esc(dirs.map(d=>d.name).join(', '))+'">＋ The directors ('+dirs.length+')</button>'):'<span></span>')+'</div>'
+    +(missing.length?('<button class="btn btn-ghost btn-sm" onclick="sltAddTeam()" title="'+esc(missing.map(d=>d.name).join(', '))+'">＋ The leadership team ('+missing.length+')</button>')
+      :(dirs.length?('<button class="btn btn-ghost btn-sm" onclick="sltAddDirectors()" title="'+esc(dirs.map(d=>d.name).join(', '))+'">＋ The directors ('+dirs.length+')</button>'):'<span></span>'))+'</div>'
+    +(team.length?'':'<div class="slt-muted" style="margin-top:8px;">Add the senior leadership team on Company setup and they come into every meeting with their emails. <button class="pss-lib" onclick="sltToCompany()">Company setup →</button></div>')
     +'<datalist id="sltPeopleList">'+people.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.role||'')+'</option>').join('')+'</datalist></section>';
   const items=AG.map(a=>{
     const mine=acts.filter(d=>d.agendaItem===a.n);
@@ -28632,7 +28707,7 @@ function sltAddDirectors(){
   const m=_sltCur(); if(!m||_blockIfReadOnly()) return;
   if(!Array.isArray(m.attendees)) m.attendees=[];
   ((S.company&&S.company.personnel)||[]).forEach(p=>{
-    if(!p||!p.name||!/director|\bmd\b|chief|ceo|owner|partner|principal|founder|chair/i.test(String(p.role||''))) return;
+    if(!p||!p.name||!_isLeaderRole(p.role)) return;
     if(m.attendees.some(a=>a.name.toLowerCase()===String(p.name).toLowerCase())) return;
     m.attendees.push({ name:String(p.name), role:String(p.role||''), email:/@/.test(String(p.contact||''))?String(p.contact):'' });
   });

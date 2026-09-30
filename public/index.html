@@ -3910,7 +3910,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
        TAB - CPD LIBRARY (webinars, guides, monthly staff prompt)
   ══════════════════════════════════════ -->
   <div id="tab-cpd" class="tab-panel">
-    <div class="rep-hero"><h2>CPD library</h2><p>The webinars, guides and short courses this client's people should work through, issued each month for sign-off as one item on the register - one link per person, and the trail says who confirmed it.</p></div>
+    <div class="rep-hero"><h2>CPD library</h2><p>CPD topics suggested for the kind of work this client does, and the library of webinars, guides and courses. Issue sends one out as a line in the CPD section of the sign-off register - one link per person, and the trail says who confirmed it.</p></div>
     <div id="cpdContainer"></div>
   </div>
 
@@ -4027,6 +4027,37 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .psl-consult > summary span{font-weight:400;}
     .psl-consult[open] > summary{color:var(--text);}
     @media (max-width:760px){ .psl-head{display:none;} .psl-row{grid-template-columns:1fr;} .psl-act{justify-content:flex-start;} .psl-edit{grid-template-columns:1fr 1fr;} .psl-add{grid-template-columns:1fr;} .psl-cert{grid-template-columns:1fr;} }
+    .pss{border-bottom:1px solid var(--border);}
+    .pss-band{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;padding:9px 8px 9px 10px;border-left:4px solid var(--sec);border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--muted-bg);}
+    .psl-head + .pss .pss-band{margin-top:0;border-top:0;}
+    .pss-name{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sec);}
+    .pss-count{font-size:12px;color:var(--text-muted);}
+    .pss-lib{border:0;background:none;padding:0;font:inherit;font-size:12px;font-weight:700;color:var(--accent-dark,var(--accent));cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+    .pss-tools{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;}
+    .psl-head{padding-left:14px;}
+    .pss .psl-row,.pss .psl-add{border-left:4px solid var(--sec);padding-left:10px;}
+    .pss .psl-row:last-child{border-bottom:0;}
+    .pss-empty{font-size:12.5px;color:var(--text-muted);padding:10px 4px 10px 10px;border-left:4px solid var(--sec);}
+    .psl-links{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;}
+    .psl-from,.psl-rk{border:1px solid var(--border);border-radius:0;background:var(--surface);color:var(--text-muted);font:inherit;font-size:10.5px;font-weight:600;padding:1px 6px;cursor:pointer;}
+    .psl-from:hover,.psl-rk:hover{border-color:var(--accent);color:var(--text);}
+    .pss-mband th{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sec);border-bottom:3px solid var(--sec);padding:6px 6px 3px;text-align:left;white-space:nowrap;}
+    .cpt-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--border);}
+    .cpt-bar select{width:auto;flex:0 0 auto;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font-family:inherit;max-width:100%;}
+    .cpt-kind{font-size:12.5px;flex:1;min-width:220px;}
+    .cpt-grp{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);padding:16px 4px 6px;border-bottom:1.5px solid var(--border);}
+    .cpt-row{display:grid;grid-template-columns:minmax(0,3fr) 140px 250px;gap:12px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--border);}
+    .cpt-row.cpt-open{background:var(--muted-bg);}
+    .cpt-title{font-weight:700;font-size:13.5px;}
+    .cpt-why{font-size:12px;color:var(--text-muted);margin-top:2px;line-height:1.4;}
+    .cpt-meta{font-size:10.5px;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;}
+    .cpt-status{font-size:12px;line-height:1.4;}
+    .cpt-status b{color:var(--success);}
+    .cpt-act{display:flex;gap:6px;justify-content:flex-start;flex-wrap:wrap;}
+    .cpt-more{grid-column:1/-1;border-top:1px dashed var(--border);padding-top:8px;font-size:12.5px;}
+    .cpt-more ul{margin:4px 0 8px 18px;padding:0;}
+    .cpt-basis{font-size:11.5px;color:var(--text-muted);}
+    @media (max-width:760px){ .pss-tools{margin-left:0;} .cpt-row{grid-template-columns:1fr;} .cpt-act{justify-content:flex-start;} }
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
     /* Quick links to other apps */
     .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;}
@@ -14181,7 +14212,7 @@ function renderCompany(){
   const dis = _roLocked() ? ' disabled' : '';
   const f  = (key,label,ph,type)=>`<div class="co-field"><label>${label}</label><input type="${type||'text'}" value="${esc(c[key]||'')}" placeholder="${esc(ph||'')}" oninput="updateCompanyField('${key}',this.value)"${dis}></div>`;
   const ta = (key,label,ph)=>`<div class="co-field co-wide"><label>${label}</label><textarea placeholder="${esc(ph||'')}" oninput="updateCompanyField('${key}',this.value)"${dis}>${esc(c[key]||'')}</textarea></div>`;
-  const sectorOpts = ['','Construction','Manufacturing','Warehouse & logistics','Transport & logistics','Retail','Hospitality & catering','Office / professional services','Healthcare','Care home','Education','Agriculture','Motor trade','Property / facilities management','Other'];
+  const sectorOpts = ['','Construction','Design / architecture / surveying','Manufacturing','Warehouse & logistics','Transport & logistics','Retail','Hospitality & catering','Office / professional services','Healthcare','Care home','Education','Agriculture','Motor trade','Property / facilities management','Other'];
   const sectorSel = `<div class="co-field"><label>Sector / industry</label><select oninput="updateCompanyField('sector',this.value)"${dis}>${sectorOpts.map(o=>`<option value="${esc(o)}"${(c.sector||'')===o?' selected':''}>${esc(o||'Select...')}</option>`).join('')}</select></div>`;
 
   const personnel = c.personnel.map((p,i)=>`
@@ -29868,7 +29899,52 @@ function importSignoffRegister(inp){
 //  3 Who has signed - the matrix, with Check for replies.
 //  Issue opens the send screen: where it lives, what it covers, who to ask,
 //  then the links and the message. What comes back lands on the matrix.
-var _psoMore={}, _psoAddOpen=false, _psoAddDraft={ type:'Policy', title:'', link:'' }, _psoConsultOpen=false;
+// ── Three kinds of sign-off, one road (Simon, 2026-09-30: "this will now be
+// the sign off area for all sign offs - split into toolbox talks and CPD
+// sections but work the same"). Every line in every section is the same
+// line: where it lives, who has signed, Issue. The section comes from the
+// item's type and nothing else, and its colour follows it onto the tracker.
+const PSO_SECTIONS=[
+  { k:'pol', label:'Policies, procedures & risk assessments', short:'Policies', types:['Policy','Procedure','Risk assessment'], colour:'#3B6EA8', addType:'Policy',
+    lib:'', libLabel:'', empty:'No policies yet - pull them from the Documents register, seed the core list, or add one.' },
+  { k:'tbt', label:'Toolbox talks & briefings', short:'Toolbox talks', types:['Toolbox talk','Briefing'], colour:'#C2610C', addType:'Toolbox talk',
+    lib:'toolbox', libLabel:'Talk library', empty:'No talks issued yet - add one from the talk library.' },
+  { k:'cpd', label:'CPD & training', short:'CPD', types:['Training / CPD'], colour:'#0E8F7E', addType:'Training / CPD',
+    lib:'cpd', libLabel:'CPD library', empty:'No CPD issued yet - the CPD library suggests topics for the kind of work this client does.' } ];
+var _psoMore={}, _psoAddOpen='', _psoAddDraft={ type:'Policy', title:'', link:'' }, _psoConsultOpen=false;
+function _psoSectionForType(t){ return PSO_SECTIONS.find(s=>s.types.indexOf(t||'Policy')>=0)||PSO_SECTIONS[0]; }
+function _psoSectionOf(pol){ return _psoSectionForType(pol&&pol.type); }
+function _psoSectionHTML(sec, pols, ro){
+  let ok=0, of=0; pols.forEach(pol=>{ const s=_psoStanding(pol.id)||{ ok:0, of:0 }; ok+=s.ok; of+=s.of; });
+  const adding=_psoAddOpen===sec.k;
+  const count=pols.length ? (pols.length+' item'+(pols.length!==1?'s':'')+(of?(' · '+ok+' of '+of+' signed'):'')) : 'none yet';
+  const lib=sec.lib ? ('<button class="pss-lib no-print" onclick="switchTab(\''+sec.lib+'\')" title="Open the '+sec.libLabel.toLowerCase()+' - where these come from">'+sec.libLabel+' →</button>') : '';
+  const tools=ro ? '' : ('<span class="pss-tools no-print">'
+    +(sec.k==='pol' ? '<button class="btn btn-ghost btn-sm" onclick="addPoliciesFromDocuments()" title="Every policy on the Documents register, with where it lives">＋ Pull from Documents</button><button class="btn btn-ghost btn-sm" onclick="seedCoreSignoffPolicies()" title="Start from a structured core-policy list, then edit to fit">＋ Seed core policies</button>' : '')
+    +(adding ? '' : '<button class="btn btn-primary btn-sm" onclick="psoAddOpen(\''+sec.k+'\')">＋ Add</button>')
+    +'</span>');
+  return '<div class="pss" id="pss-'+sec.k+'" style="--sec:'+sec.colour+'">'
+    +'<div class="pss-band"><span class="pss-name">'+esc(sec.label)+'</span><span class="pss-count">'+count+'</span>'+lib+tools+'</div>'
+    +pols.map(pol=>_psoRowHTML(pol, ro)).join('')
+    +(adding ? _psoAddBarHTML() : '')
+    +(!pols.length && !adding ? ('<div class="pss-empty">'+esc(sec.empty)+'</div>') : '')
+    +'</div>';
+}
+// What joins the three lists up: where a line came from (one click away) and
+// the risks it controls - a policy, a talk and a CPD topic tagged to the
+// same risk carry the same chip.
+function _psoLinksHTML(pol){
+  const bits=[], k=pol.source&&pol.source.kind;
+  const from={ talk:['toolbox','Talk library'], delivery:['toolbox','Talk library'], cpd:['cpd',"Month's CPD"], cpdtopic:['cpd','Suggested CPD'] }[k];
+  if(from) bits.push('<button class="psl-from" onclick="switchTab(\''+from[0]+'\')" title="Where this came from - opens it">'+from[1]+' →</button>');
+  const risks=S.riskProfile||[];
+  (pol.riskIds||[]).forEach(id=>{
+    const r=risks.find(x=>x.id===id); if(!r) return;
+    const ref=_riskRefOf(r), name=String(r.activity||r.hazard||'Risk'), short=name.length>24?(name.slice(0,23).trim()+'…'):name;
+    bits.push('<button class="psl-rk" onclick="switchTab(\'risk\');_riskOpenModal(\''+r.id+'\')" title="Controls this risk: '+esc(name)+' - opens it">'+esc((ref?(ref+' · '):'')+short)+'</button>');
+  });
+  return bits.length ? ('<div class="psl-links">'+bits.join('')+'</div>') : '';
+}
 function psoToggleMore(id){ _psoMore[id]=!_psoMore[id]; _keepScroll(renderPolicySignoff); }
 function _psoWhereHTML(pol, ro){
   const link=_psoPolicyLink(pol);
@@ -29914,7 +29990,7 @@ function _psoRowHTML(pol, ro){
   const open=!!_psoMore[pol.id];
   const meta=[pol.type||'Policy', pol.version?('v'+pol.version):'', pol.delivered?('issued '+fmtDate(pol.delivered)):''].filter(Boolean).join(' · ');
   return '<div class="psl-row'+(open?' psl-open':'')+'" id="psl-'+pol.id+'">'
-    +'<div class="psl-item"><div class="psl-title">'+esc(pol.title||'(untitled)')+'</div><div class="psl-meta">'+esc(meta)+'</div></div>'
+    +'<div class="psl-item"><div class="psl-title">'+esc(pol.title||'(untitled)')+'</div><div class="psl-meta">'+esc(meta)+'</div>'+_psoLinksHTML(pol)+'</div>'
     +'<div class="psl-where">'+_psoWhereHTML(pol, ro)+'</div>'
     +'<div class="psl-signed">'+_psoSignedCellHTML(pol)+'</div>'
     +'<div class="psl-act">'+_psoIssueBtnHTML(pol, ro)+'<button class="btn btn-ghost btn-sm no-print" onclick="psoToggleMore(\''+pol.id+'\')" title="Title, type, version and date; certificate wording; linked risks; the trail; remove">'+(open?'Less':'More')+'</button></div>'
@@ -29922,28 +29998,44 @@ function _psoRowHTML(pol, ro){
     +'</div>';
 }
 // Add: the type first, then a title picked from what Compass already holds -
-// a talk from the library brings its points, a document its location.
+// a talk from the library brings its points, a document its location, a CPD
+// topic suggested for this client its outline. The line opens in the section
+// the type belongs to, and moves with the type.
+function _psoCpdTitleMatch(title){
+  const t=String(title||'').trim().toLowerCase(); if(!t) return {};
+  const item=(_cpdState().items||[]).find(x=>String(x.title||'').trim().toLowerCase()===t)||null;
+  const topic=CPD_TOPICS.find(x=>x.title.toLowerCase()===t) || (item&&item.topicId ? CPD_TOPICS.find(x=>x.id===item.topicId) : null) || null;
+  return { item:item, topic:topic };
+}
 function _psoAddBarHTML(){
   const d=_psoAddDraft;
   const talk=d.type==='Toolbox talk', cpd=d.type==='Training / CPD';
-  const names=talk ? _tbtAllTalks().map(t=>t.title) : (cpd ? ((_cpdState().items||[]).map(i=>i.title)) : (S.documents||[]).map(x=>x&&x.name));
+  const cs=cpd ? _cpdClientSectors().keys : [];
+  const names=talk ? _tbtAllTalks().map(t=>t.title)
+    : (cpd ? (_cpdState().items||[]).map(i=>i.title).concat(_cpdTopicsFor(cs.length?cs:SECTOR_DEFS.map(x=>x.k)).map(t=>t.title)) : (S.documents||[]).map(x=>x&&x.name));
   const opts=[...new Set(names.filter(Boolean))].slice(0,400).map(t=>'<option value="'+esc(t)+'"></option>').join('');
   return '<div class="psl-add no-print">'
-    +'<select id="psoAddType" onchange="psoAddDraft(\'type\',this.value)" title="What kind of item this is">'+PSO_TYPES.map(t=>'<option'+(d.type===t?' selected':'')+'>'+t+'</option>').join('')+'</select>'
-    +'<input id="psoAddTitle" list="psoAddList" value="'+esc(d.title)+'" placeholder="'+(talk?'Pick a talk from the library, or type your own':(cpd?'Pick from the CPD library, or type':'Title - pick from the Documents register, or type'))+'" oninput="psoAddDraft(\'title\',this.value)" onchange="psoAddPrefill()">'
+    +'<select id="psoAddType" onchange="psoAddDraft(\'type\',this.value)" title="What kind of item this is - the line moves to its section">'+PSO_TYPES.map(t=>'<option'+(d.type===t?' selected':'')+'>'+t+'</option>').join('')+'</select>'
+    +'<input id="psoAddTitle" list="psoAddList" value="'+esc(d.title)+'" placeholder="'+(talk?'Pick a talk from the library, or type your own':(cpd?'Pick from the CPD library or a suggested topic, or type':'Title - pick from the Documents register, or type'))+'" oninput="psoAddDraft(\'title\',this.value)" onchange="psoAddPrefill()">'
     +'<datalist id="psoAddList">'+opts+'</datalist>'
     +'<input id="psoAddLink" value="'+esc(d.link)+'" placeholder="'+(cpd?'Link to the learning':(talk?'Link or folder path (optional)':'Where it lives - link or folder path'))+'" oninput="psoAddDraft(\'link\',this.value)">'
     +'<button class="btn btn-primary btn-sm" onclick="psoAddSave()">Add</button>'
     +'<button class="btn btn-ghost btn-sm" onclick="psoAddCancel()">Cancel</button>'
     +'</div>';
 }
-function psoAddOpen(){ if(_blockIfReadOnly()) return; _psoAddOpen=true; _psoAddDraft={ type:'Policy', title:'', link:'' }; _keepScroll(renderPolicySignoff); setTimeout(()=>{ const t=document.getElementById('psoAddTitle'); if(t) t.focus(); },0); }
-function psoAddCancel(){ _psoAddOpen=false; _keepScroll(renderPolicySignoff); }
-function psoAddDraft(f, v){ _psoAddDraft[f]=v; if(f==='type'){ _keepScroll(renderPolicySignoff); setTimeout(()=>{ const t=document.getElementById('psoAddTitle'); if(t) t.focus(); },0); } }
+function _psoAddFocus(){ setTimeout(()=>{ const t=document.getElementById('psoAddTitle'); if(t) t.focus(); },0); }
+function psoAddOpen(k){
+  if(_blockIfReadOnly()) return;
+  const sec=PSO_SECTIONS.find(s=>s.k===k)||PSO_SECTIONS[0];
+  _psoAddOpen=sec.k; _psoAddDraft={ type:sec.addType, title:'', link:'' };
+  _keepScroll(renderPolicySignoff); _psoAddFocus();
+}
+function psoAddCancel(){ _psoAddOpen=''; _keepScroll(renderPolicySignoff); }
+function psoAddDraft(f, v){ _psoAddDraft[f]=v; if(f==='type'){ _psoAddOpen=_psoSectionForType(v).k; _keepScroll(renderPolicySignoff); _psoAddFocus(); } }
 function psoAddPrefill(){
   const d=_psoAddDraft, t=String(d.title||'').trim(); if(!t || String(d.link||'').trim()) return;
   let link='';
-  if(d.type==='Training / CPD'){ const it=(_cpdState().items||[]).find(x=>String(x.title||'').trim().toLowerCase()===t.toLowerCase()); if(it&&it.url) link=it.url; }
+  if(d.type==='Training / CPD'){ const m=_psoCpdTitleMatch(t); if(m.item&&m.item.url) link=m.item.url; }
   else if(d.type!=='Toolbox talk'){ const best=_psoLinkCandidates({ title:t })[0]; if(best && best.score>=80) link=best.link; }
   if(link){ d.link=link; const el=document.getElementById('psoAddLink'); if(el) el.value=link; }
 }
@@ -29959,12 +30051,14 @@ function psoAddSave(){
     if(talk){ o.content=_tbtContent(talk); o.source={ kind:'talk', id:talk.id }; }
     o.delivered=today;
   } else if(d.type==='Training / CPD'){
-    const it=(_cpdState().items||[]).find(x=>String(x.title||'').trim().toLowerCase()===title.toLowerCase());
-    if(it){ o.content=(it.title||'')+(it.type?(' ('+it.type+(it.minutes?(', '+it.minutes+' min'):'')+')'):'')+(it.url?('\n'+it.url):'')+(it.notes?('\n'+it.notes):''); if(!o.link && it.url) o.link=it.url; }
+    const m=_psoCpdTitleMatch(title), it=m.item;
+    if(it && !o.link && it.url) o.link=it.url;
+    if(m.topic){ o.content=_cpdTopicContent(m.topic, o.link); o.source={ kind:'cpdtopic', id:m.topic.id }; }
+    else if(it) o.content=(it.title||'')+(it.type?(' ('+it.type+(it.minutes?(', '+it.minutes+' min'):'')+')'):'')+(it.url?('\n'+it.url):'')+(it.notes?('\n'+it.notes):'');
     o.delivered=today;
   } else if(d.type==='Briefing') o.delivered=today;
   const pol=_psoAddItem(o);
-  _psoAddOpen=false; saveData(); _keepScroll(renderPolicySignoff);
+  _psoAddOpen=''; saveData(); _keepScroll(renderPolicySignoff);
   const row=document.getElementById('psl-'+pol.id);
   if(row){ row.classList.add('psl-new'); try{ row.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(e){} setTimeout(()=>row.classList.remove('psl-new'),1600); }
   showToast('✓ Added - press Issue on its line to send it','success');
@@ -29978,10 +30072,9 @@ function renderPolicySignoff(){
   const p=_psoState(); const ro=_roLocked(); const dis=ro?' disabled':'';
   const inp='font-size:13px;padding:6px 8px;border:1px solid var(--border);background:transparent;color:inherit;';
   // 1 · what needs signing
-  const rows=p.policies.map(pol=>_psoRowHTML(pol, ro)).join('');
-  const list=(p.policies.length||_psoAddOpen)
-    ? '<div class="psl"><div class="psl-head"><span>Item</span><span>Where it lives / what it covers</span><span>Signed</span><span></span></div>'+rows+(_psoAddOpen?_psoAddBarHTML():'')+'</div>'
-    : '<div class="ck-pending" style="padding:6px 0;">Nothing to sign yet. Add the policies, toolbox talks, training and CPD your client\'s people must sign for.</div>';
+  // Three sections, the same line in each; the column heads once, at the top.
+  const list='<div class="psl"><div class="psl-head"><span>Item</span><span>Where it lives / what it covers</span><span>Signed</span><span></span></div>'
+    +PSO_SECTIONS.map(sec=>_psoSectionHTML(sec, p.policies.filter(pol=>_psoSectionOf(pol)===sec), ro)).join('')+'</div>';
   // 2 · employees
   const staffRows=p.staff.map(s=>{
     const sug=ro?null:_signoffSuggestions(s);
@@ -30001,20 +30094,24 @@ function renderPolicySignoff(){
   const comp=_psoCompliance();
   let matrix='';
   if(p.staff.length && p.policies.length){
-    const head=`<tr><th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--surface);">Employee</th>${p.policies.map(pol=>`<th style="padding:6px 6px;font-size:10.5px;text-align:center;white-space:nowrap;" title="${esc(pol.title||'')}">${esc((pol.title||'Item').slice(0,20))}</th>`).join('')}<th style="padding:6px 8px;text-align:center;">%</th></tr>`;
-    const body=p.staff.map(s=>{ let sc=0; const cells=p.policies.map(pol=>{ const dt=p.signed[s.id+'|'+pol.id]; const info=_psoSignInfo(dt,pol); const inDate=(info.state==='ok'||info.state==='expiring'); if(inDate) sc++;
+    // Columns go section by section under a coloured band naming each - the
+    // same colours as the lists above, so a column is never a mystery.
+    const groups=PSO_SECTIONS.map(sec=>({ sec:sec, pols:p.policies.filter(pol=>_psoSectionOf(pol)===sec) })).filter(g=>g.pols.length);
+    const cols=[].concat.apply([], groups.map(g=>g.pols));
+    const band=`<tr class="pss-mband"><th style="position:sticky;left:0;background:var(--surface);"></th>${groups.map(g=>`<th colspan="${g.pols.length}" style="--sec:${g.sec.colour}" title="${esc(g.sec.label)}">${esc(g.sec.short)}</th>`).join('')}<th></th></tr>`;
+    const head=`<tr><th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--surface);">Employee</th>${cols.map(pol=>`<th style="padding:6px 6px;font-size:10.5px;text-align:center;white-space:nowrap;" title="${esc(pol.title||'')}">${esc((pol.title||'Item').slice(0,20))}</th>`).join('')}<th style="padding:6px 8px;text-align:center;">%</th></tr>`;
+    const body=p.staff.map(s=>{ let sc=0; const cells=cols.map(pol=>{ const dt=p.signed[s.id+'|'+pol.id]; const info=_psoSignInfo(dt,pol); const inDate=(info.state==='ok'||info.state==='expiring'); if(inDate) sc++;
       const bg=info.state==='expired'?'background:#F59E0B22;':info.state==='expiring'?'background:#F59E0B11;':'';
-      return `<td style="text-align:center;padding:3px;${bg}" title="${esc(info.label)}"><input type="checkbox" ${inDate?'checked':''}${dis} onchange="toggleSignoff('${s.id}','${pol.id}',this.checked)">${info.state==='expired'?'<div style="font-size:9px;color:#B45309;font-weight:700;line-height:1;">⚠ expired</div>':(info.state==='expiring'?'<div style="font-size:9px;color:#B45309;line-height:1;">renew soon</div>':'')}</td>`; }).join(''); const pct=p.policies.length?Math.round(sc/p.policies.length*100):0; return `<tr><td style="padding:5px 8px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--surface);">${esc(s.name||'(unnamed)')}</td>${cells}<td style="text-align:center;font-weight:700;color:${pct===100?'var(--success)':pct?'var(--warning)':'var(--text-muted)'};">${pct}%</td></tr>`; }).join('');
-    matrix=`<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);border-bottom:1.5px solid var(--border);">${head}</thead><tbody>${body}</tbody></table></div>`;
+      return `<td style="text-align:center;padding:3px;${bg}" title="${esc(info.label)}"><input type="checkbox" ${inDate?'checked':''}${dis} onchange="toggleSignoff('${s.id}','${pol.id}',this.checked)">${info.state==='expired'?'<div style="font-size:9px;color:#B45309;font-weight:700;line-height:1;">⚠ expired</div>':(info.state==='expiring'?'<div style="font-size:9px;color:#B45309;line-height:1;">renew soon</div>':'')}</td>`; }).join(''); const pct=cols.length?Math.round(sc/cols.length*100):0; return `<tr><td style="padding:5px 8px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--surface);">${esc(s.name||'(unnamed)')}</td>${cells}<td style="text-align:center;font-weight:700;color:${pct===100?'var(--success)':pct?'var(--warning)':'var(--text-muted)'};">${pct}%</td></tr>`; }).join('');
+    matrix=`<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);border-bottom:1.5px solid var(--border);">${band}${head}</thead><tbody>${body}</tbody></table></div>`;
   } else matrix='<div class="ck-pending" style="padding:6px 0;">Add at least one item and one employee to track who has signed.</div>';
   const cpc=comp.pct===100?'var(--success)':comp.pct?'var(--warning)':'var(--text-muted)';
   const replies=(ro||!_tOnline())?'':`<button class="btn btn-outline btn-sm no-print" onclick="_psoPullSignoffs(false)" title="Fetch anything employees have confirmed by link since you last looked. This happens on its own when you open the tab - this is for when you are waiting on someone.">↻ Check for replies${_psoOutstandingCount?(' ('+_psoOutstandingCount+' still out)'):''}</button>`;
   cont.innerHTML=`
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> What needs signing</h3><span class="badge badge-muted">${p.policies.length}</span></div>
       <div class="card-body">
-        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">Policies, procedures, risk assessments, toolbox talks, training and CPD. Press <b>Issue</b> on a line to send it by link: each person opens it where it lives, reads it and confirms on their phone - and it comes back onto the tracker below.</div>
+        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">Three lists that work the same way - policies, toolbox talks and CPD. Press <b>Issue</b> on a line to send it by link: each person opens it where it lives, reads it and confirms on their phone - and it comes back onto the tracker below.</div>
         ${list}
-        ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;" class="no-print">${_psoAddOpen?'':'<button class="btn btn-primary btn-sm" onclick="psoAddOpen()">＋ Add</button>'}<button class="btn btn-ghost btn-sm" onclick="addPoliciesFromDocuments()" title="Every policy on the Documents register, with where it lives">＋ Pull from Documents</button><button class="btn btn-ghost btn-sm" onclick="seedCoreSignoffPolicies()" title="Start from a structured core-policy list, then edit to fit">＋ Seed core policies</button></div>`}
       </div></div>
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Employees</h3><span class="badge badge-muted">${p.staff.length}</span></div>
       <div class="card-body">
@@ -32695,6 +32792,376 @@ function _cpdRowHTML(i, ro, dis, inp){
     + '<td style="padding:5px 6px;white-space:nowrap;text-align:right;">'+openBtn+delBtn+'</td>'
     + '</tr>';
 }
+// ══════════════════════════════════════════════════════════════
+//  CPD TOPICS BY KIND OF WORK (Simon, 2026-09-30): "make the tab smart and
+//  list potential CPD topics ... controlled by the type of client I'm
+//  working on - Fineline are architects so they need design-based things,
+//  Easy Travel are vehicle repair engineers so they need theirs".
+//  Keyed to the discovery sectors (SECTOR_DEFS); 'all' is every business.
+//  The basis names the Act, Regulations or HSE guidance - by title only,
+//  never a regulation or paragraph number that has not been checked.
+// ══════════════════════════════════════════════════════════════
+const CPD_TOPICS=[
+  // ── every business ──
+  { id:'all-essentials', sectors:['all'], title:'Health and Safety Essentials', format:'Short course', mins:60, audience:'Everyone',
+    why:'The law in plain terms, how a risk assessment works, and how policy turns into what people do each day.',
+    covers:['What the law expects of the employer and of every employee','Risk assessment - hazards, who could be harmed, the controls','Policy, process and procedure - how they fit together','Reporting concerns and asking for help'],
+    basis:'Health and Safety at Work etc. Act 1974; Management of Health and Safety at Work Regulations 1999' },
+  { id:'all-reporting', sectors:['all'], title:'Reporting accidents, near misses and ill health', format:'Webinar', mins:30, audience:'Everyone',
+    why:'What is not reported cannot be learned from - and some events must be reported to HSE.',
+    covers:['What counts as a near miss, and why it matters','How to report inside the company','What must be reported to HSE, and by whom','What happens after a report'],
+    basis:'Reporting of Injuries, Diseases and Dangerous Occurrences Regulations 2013 (RIDDOR)' },
+  { id:'all-fire', sectors:['all'], title:'Fire safety awareness', format:'Webinar', mins:30, audience:'Everyone',
+    why:'Everyone needs to know how to raise the alarm and get out - and what not to do.',
+    covers:['How fires start at work','Raising the alarm and evacuating','Fire doors and escape routes','Extinguishers - which type, and only if trained'],
+    basis:'Regulatory Reform (Fire Safety) Order 2005' },
+  { id:'all-stress', sectors:['all'], title:'Stress and mental health at work', format:'Webinar', mins:45, audience:'Everyone, and managers',
+    why:'Work-related stress is one of the biggest causes of lost time, and it can be assessed and managed like any other risk.',
+    covers:['Signs of work-related stress','The six HSE Management Standards areas','Where to get support','What managers can do early'],
+    basis:'Management of Health and Safety at Work Regulations 1999; HSE Management Standards' },
+  { id:'all-manual', sectors:['all'], title:'Manual handling', format:'Toolbox talk', mins:30, audience:'Anyone who lifts, carries, pushes or pulls',
+    why:'Back and joint injuries are among the most common at work, and most are avoidable.',
+    covers:['Assessing the task, the load, the environment and the person','Good handling technique','Using lifting aids','Reporting strain early'],
+    basis:'Manual Handling Operations Regulations 1992; HSE guidance L23' },
+  { id:'all-firstaid', sectors:['all'], title:'First aid arrangements - who, where, what', format:'Toolbox talk', mins:15, audience:'Everyone',
+    why:'In an emergency people need to know who the first aiders are and where the kit is, without thinking.',
+    covers:['Who the first aiders or appointed persons are','Where the first aid kit and eyewash are','What to do until help arrives','Recording what happened'],
+    basis:'Health and Safety (First-Aid) Regulations 1981' },
+  // ── design, surveying or consultancy ──
+  { id:'dsg-cdm', sectors:['design'], title:'CDM 2015 for designers', format:'Short course', mins:60, audience:'Architects, technologists, engineers',
+    why:'Designers must eliminate, reduce or control foreseeable risks so far as reasonably practicable, and pass on what others need to know.',
+    covers:['Who counts as a designer - more people than think so','Eliminate, reduce, inform - the order that matters','What to give the principal designer and the contractors','Domestic clients and small projects'],
+    basis:'Construction (Design and Management) Regulations 2015' },
+  { id:'dsg-pd', sectors:['design'], title:'The principal designer role under CDM', format:'Short course', mins:60, audience:'Principal designer leads',
+    why:'The principal designer plans, manages and monitors the pre-construction phase - and is accountable when it goes wrong.',
+    covers:['Planning, managing and monitoring the pre-construction phase','Coordinating designers and sharing information','Pre-construction information','Starting and handing over the health and safety file'],
+    basis:'Construction (Design and Management) Regulations 2015' },
+  { id:'dsg-competence', sectors:['design','construction'], title:'Building Regulations dutyholders and competence', format:'Short course', mins:60, audience:'Architects, designers, contractors',
+    why:'Since October 2023 everyone who designs or builds must be competent for the work and must plan, manage and monitor compliance with the Building Regulations.',
+    covers:['The dutyholder roles - client, principal designer, principal contractor, designers, contractors','Competence - skills, knowledge, experience and behaviours','Higher-risk buildings and the gateways','The golden thread of information'],
+    basis:'Building Safety Act 2022; Building Regulations 2010 as amended in 2023 (dutyholders and competence)' },
+  { id:'dsg-fire', sectors:['design'], title:'Fire safety in design and at handover', format:'Short course', mins:60, audience:'Architects, designers',
+    why:'Small design changes can undo a fire strategy, and the building owner needs the fire safety information to run the building.',
+    covers:['Means of escape and compartmentation, in principle','How a change in design affects the fire strategy','The fire safety information the responsible person needs','Working with the fire engineer'],
+    basis:'Building Regulations 2010 (Approved Document B, fire safety information); Regulatory Reform (Fire Safety) Order 2005' },
+  { id:'dsg-asbestos', sectors:['design','property'], title:'Asbestos in refurbishment and retrofit design', format:'Webinar', mins:45, audience:'Designers, surveyors',
+    why:'Most refurbishment disturbs older buildings; asbestos must be found before the design fixes the scope of work.',
+    covers:['Where asbestos is found in buildings built before 2000','Management surveys and refurbishment and demolition surveys','Designing out disturbance','What to do on finding suspect material'],
+    basis:'Control of Asbestos Regulations 2012; HSE guidance HSG264' },
+  { id:'dsg-voidsurvey', sectors:['design','property'], title:'Safe surveying in empty and occupied homes', format:'Webinar', mins:45, audience:'Surveyors, assessors',
+    why:'Surveyors often work alone in empty, damaged or occupied homes, with hazards nobody warned them about.',
+    covers:['Lone working and checking in','Floors, stairs and structure in empty property','Sharps, needles, animals and biological hazards','Occupiers who are aggressive or at risk - and when to leave'],
+    basis:'Health and Safety at Work etc. Act 1974; Management of Health and Safety at Work Regulations 1999; HSE guidance INDG73 Protecting lone workers' },
+  { id:'dsg-drones', sectors:['design'], title:'Flying drones for surveys', format:'Webinar', mins:45, audience:'Drone pilots',
+    why:'Survey drones are aircraft; the pilot must fly within the rules and keep people, property and privacy safe.',
+    covers:['The Open category and its A1, A2 and A3 subcategories','Flyer ID and Operator ID','Site assessment, permissions and people below','Photographs, privacy and data'],
+    basis:'UK Regulation (EU) 2019/947; CAA Drone and Model Aircraft Code' },
+  { id:'dsg-retrofit', sectors:['design'], title:'Retrofit, ventilation and moisture risk', format:'Webinar', mins:60, audience:'Retrofit assessors, designers',
+    why:'Insulating without thinking about ventilation causes condensation and mould - a health risk for the people who live there.',
+    covers:['The whole-house approach','PAS 2035 roles and assessment','Ventilation and condensation risk after insulating','Unintended consequences and how to avoid them'],
+    basis:'PAS 2035 (retrofit of dwellings); Building Regulations 2010 (Approved Document F, ventilation)' },
+  { id:'dsg-access', sectors:['design'], title:'Inclusive and accessible design', format:'Webinar', mins:45, audience:'Architects, designers',
+    why:'Buildings that work for disabled people work better for everyone, and some of it is the law.',
+    covers:['Access to and around buildings','Reasonable adjustments and the Equality Act','Approved Document M in practice','Evacuating people who need help'],
+    basis:'Equality Act 2010; Building Regulations 2010 (Approved Document M)' },
+  // ── vehicle repair or maintenance ──
+  { id:'mvr-lifts', sectors:['motor'], title:'Vehicle lifts and working under vehicles', format:'Toolbox talk', mins:30, audience:'Technicians',
+    why:'Vehicles falling from lifts and jacks cause some of the most serious garage injuries.',
+    covers:['Using two-post and four-post lifts correctly','Lifting points and the weight of the vehicle','Axle stands - never a jack on its own','Daily checks and the statutory thorough examination'],
+    basis:'Lifting Operations and Lifting Equipment Regulations 1998; Provision and Use of Work Equipment Regulations 1998; HSE guidance HSG261' },
+  { id:'mvr-ev', sectors:['motor'], title:'Electric and hybrid vehicle safety', format:'Short course', mins:60, audience:'Technicians, workshop managers',
+    why:'High-voltage systems can kill, and a damaged battery can catch fire hours after an accident.',
+    covers:['High-voltage systems and their orange cabling','Isolating and proving dead before work','Who is competent to do what - the competence levels','Damaged and crashed vehicles, and battery fire'],
+    basis:'Electricity at Work Regulations 1989; HSE guidance on electric and hybrid vehicles; IMI TechSafe standards' },
+  { id:'mvr-coshh', sectors:['motor'], title:'Hazardous substances in the workshop', format:'Toolbox talk', mins:30, audience:'Technicians',
+    why:'Brake cleaner, used oil, fuel and exhaust fumes all harm health - some slowly, some fast.',
+    covers:['Brake cleaner, used engine oil and fuel','Exhaust fumes and extraction','Reading a safety data sheet','Gloves, skin care and dermatitis'],
+    basis:'Control of Substances Hazardous to Health Regulations 2002; HSE guidance HSG261' },
+  { id:'mvr-paint', sectors:['motor'], title:'Isocyanates and paint spraying', format:'Webinar', mins:45, audience:'Bodyshop and paint staff',
+    why:'Two-pack paints are a leading cause of occupational asthma - and it can be prevented.',
+    covers:['Why isocyanates cause asthma','Spray booths and air-fed masks','Health surveillance','Clean-up and small hand-held jobs'],
+    basis:'Control of Substances Hazardous to Health Regulations 2002; HSE guidance HSG261' },
+  { id:'mvr-tyres', sectors:['motor'], title:'Tyre and wheel safety', format:'Toolbox talk', mins:30, audience:'Technicians, tyre fitters',
+    why:'An exploding tyre or split rim can kill.',
+    covers:['Inflation, and why tyres explode','Inflation cages and clip-on chucks','Split-rim wheels','Wheel refitting and re-torque'],
+    basis:'Provision and Use of Work Equipment Regulations 1998; HSE guidance HSG261' },
+  { id:'mvr-noisevib', sectors:['motor','construction','manufacture'], title:'Noise and hand-arm vibration from tools', format:'Toolbox talk', mins:30, audience:'Anyone using power or air tools',
+    why:'Impact wrenches, grinders and breakers damage hearing and hands for life.',
+    covers:['Which tools cause the most exposure','Symptoms - tingling, numbness, white finger, ringing ears','Tool choice, maintenance and rotation','Hearing protection and health surveillance'],
+    basis:'Control of Noise at Work Regulations 2005; Control of Vibration at Work Regulations 2005' },
+  { id:'mvr-fuel', sectors:['motor'], title:'Fuel, fire and explosion in the workshop', format:'Toolbox talk', mins:30, audience:'Technicians',
+    why:'Petrol vapour needs only a spark; draining a tank is one of the riskiest jobs in a garage.',
+    covers:['Draining fuel safely','Vapour and ignition sources','Hot work near fuel systems','Spills and clean-up'],
+    basis:'Dangerous Substances and Explosive Atmospheres Regulations 2002' },
+  { id:'mvr-pits', sectors:['motor'], title:'Inspection pits and working at height on vehicles', format:'Toolbox talk', mins:30, audience:'Technicians',
+    why:'Falls into pits and from vehicle roofs are common, and fumes collect in pits.',
+    covers:['Pit covers and barriers','Fumes gathering in a pit','Getting onto vehicle roofs and high-sided vehicles','Steps, ladders and platforms'],
+    basis:'Work at Height Regulations 2005; Workplace (Health, Safety and Welfare) Regulations 1992' },
+  { id:'mvr-asbestos', sectors:['motor'], title:'Asbestos in older vehicles', format:'Toolbox talk', mins:20, audience:'Technicians',
+    why:'Brakes, clutches and gaskets on older and imported vehicles can still contain asbestos.',
+    covers:['Where it can be found on older vehicles','Never blow dust out - wet methods and the right vacuum','What to do if you suspect it','Disposal'],
+    basis:'Control of Asbestos Regulations 2012; HSE guidance HSG261' },
+  { id:'mvr-waste', sectors:['motor'], title:'Hazardous waste from the workshop', format:'Toolbox talk', mins:30, audience:'Technicians, managers',
+    why:'Oils, filters and batteries are hazardous waste; the garage stays responsible until it is disposed of properly.',
+    covers:['Oils, filters, batteries and fluids','Segregation and storage','Consignment notes and who takes it away','Spill kits and protecting drains'],
+    basis:'Environmental Protection Act 1990 (duty of care); Hazardous Waste (England and Wales) Regulations 2005' },
+  { id:'mvr-mot', sectors:['motor'], title:'MOT tester annual training and assessment', format:'Short course', mins:180, audience:'MOT testers',
+    why:'DVSA requires MOT testers to complete training and pass an assessment every year; recording it here keeps the evidence with the rest.',
+    covers:["This year's DVSA training topics",'Changes to the testing standards','The annual assessment','Keeping the training record'],
+    basis:'DVSA MOT testing guide and annual training requirements' },
+  // ── transport, passenger or delivery services ──
+  { id:'trn-walkround', sectors:['transportsvc'], title:'Daily vehicle walkaround checks', format:'Toolbox talk', mins:20, audience:'Drivers',
+    why:'Most defects that cause incidents can be found in a five-minute check before driving.',
+    covers:['What to check before driving','Recording and reporting a defect','When a vehicle must not be driven','Ramps and tail lifts'],
+    basis:'Provision and Use of Work Equipment Regulations 1998; DVSA guidance on daily walkaround checks' },
+  { id:'trn-driving', sectors:['transportsvc','office','property'], title:'Driving for work', format:'Webinar', mins:30, audience:'Anyone who drives for work',
+    why:'Driving is often the most dangerous thing people do for work.',
+    covers:['Fatigue and planning the journey','Phones and distraction','Speed, weather and conditions','What to do after an incident'],
+    basis:'Health and Safety at Work etc. Act 1974; HSE guidance INDG382 Driving at work' },
+  { id:'trn-wheelchair', sectors:['transportsvc'], title:'Loading and securing wheelchair passengers', format:'Short course', mins:45, audience:'Drivers, passenger assistants',
+    why:'An unsecured wheelchair or passenger is a serious injury waiting for the first hard brake.',
+    covers:['Using tail lifts and ramps safely','Securing the wheelchair and the passenger separately','Checks before moving off','Passengers who need extra help'],
+    basis:'Lifting Operations and Lifting Equipment Regulations 1998; Provision and Use of Work Equipment Regulations 1998' },
+  { id:'trn-safeguarding', sectors:['transportsvc','care'], title:'Safeguarding children and adults at risk', format:'Short course', mins:45, audience:'Drivers, assistants, anyone with vulnerable people',
+    why:'Staff who work with vulnerable people must recognise abuse and know exactly who to tell.',
+    covers:['Recognising abuse and neglect','Professional boundaries and conduct','Reporting a concern','Working alone with a vulnerable person'],
+    basis:"Safeguarding Vulnerable Groups Act 2006; Care Act 2014; the client's safeguarding policy" },
+  { id:'trn-violence', sectors:['transportsvc','hospitality','care'], title:'Aggressive or distressed people', format:'Webinar', mins:30, audience:'Customer and passenger-facing staff',
+    why:'Violence and abuse at work is foreseeable and has to be planned for, not just endured.',
+    covers:['Early warning signs','Calming things down','When to stop, step away or call for help','Reporting every incident'],
+    basis:'Health and Safety at Work etc. Act 1974; Management of Health and Safety at Work Regulations 1999; HSE guidance on work-related violence' },
+  { id:'trn-hours', sectors:['transportsvc'], title:"Drivers' hours and fatigue", format:'Webinar', mins:30, audience:'Drivers, transport managers',
+    why:'Tired drivers crash; the hours rules exist to stop it.',
+    covers:["Which drivers' hours rules apply to your vehicles",'Breaks and daily rest','Tachograph records where they are needed','Recognising and reporting fatigue'],
+    basis:"Transport Act 1968 (GB domestic drivers' hours); assimilated Regulation (EC) 561/2006" },
+  { id:'trn-loads', sectors:['transportsvc','warehouse'], title:'Securing loads', format:'Toolbox talk', mins:20, audience:'Drivers, loaders',
+    why:'A shifting load kills the driver or someone on the road.',
+    covers:['Load restraint - straps, nets, bars','Weight distribution and axle limits','Checking the load during the journey','Unloading safely'],
+    basis:'DVSA guidance on securing loads' },
+  // ── construction or building trades ──
+  { id:'con-cdm', sectors:['construction'], title:'CDM 2015 for contractors and workers', format:'Short course', mins:45, audience:'Site staff, supervisors',
+    why:'Every contractor must plan, manage and monitor their own work and work with the principal contractor.',
+    covers:['Planning, managing and monitoring your own work','Site induction and welfare','Working with the principal contractor','Reporting unsafe conditions'],
+    basis:'Construction (Design and Management) Regulations 2015' },
+  { id:'con-asbestos', sectors:['construction','property'], title:'Asbestos awareness', format:'Short course', mins:60, audience:'Anyone who could disturb the fabric of a building',
+    why:'Anyone whose work could disturb asbestos must be trained to recognise it and stop.',
+    covers:['Where asbestos is found','How it harms health','What to do if you find or disturb it','Surveys and the asbestos register'],
+    basis:'Control of Asbestos Regulations 2012' },
+  { id:'con-height', sectors:['construction','property'], title:'Working at height - ladders, towers and MEWPs', format:'Short course', mins:45, audience:'Anyone working above ground',
+    why:'Falls from height remain the biggest cause of deaths at work.',
+    covers:['Avoid, prevent, then mitigate','Ladders and stepladders - when they are right','Mobile towers and MEWPs','Fragile surfaces and edges'],
+    basis:'Work at Height Regulations 2005' },
+  { id:'con-dust', sectors:['construction'], title:'Construction dust and silica', format:'Toolbox talk', mins:30, audience:'Anyone cutting, drilling or sanding',
+    why:'Silica dust from cutting concrete, brick and stone causes lung disease that cannot be cured.',
+    covers:['Where silica dust comes from','On-tool extraction and water suppression','Face masks - the right one, face-fitted','Health surveillance'],
+    basis:'Control of Substances Hazardous to Health Regulations 2002' },
+  { id:'con-hotworks', sectors:['construction'], title:'Hot works and fire on site', format:'Toolbox talk', mins:30, audience:'Anyone welding, cutting, brazing or using a torch',
+    why:'Hot works start many site fires, often after everyone has gone home.',
+    covers:['When a hot works permit is needed','Clearing and protecting the area','The fire watch - during and after','Extinguishers and raising the alarm'],
+    basis:'Regulatory Reform (Fire Safety) Order 2005; Construction (Design and Management) Regulations 2015' },
+  { id:'con-services', sectors:['construction','land'], title:'Buried and overhead services', format:'Toolbox talk', mins:30, audience:'Anyone digging or working near cables',
+    why:'Striking a cable or gas main can kill, and plans are not always right.',
+    covers:['Getting service plans before digging','Cable locators - using them properly','Safe digging','Overhead lines and plant'],
+    basis:'HSE guidance HSG47 Avoiding danger from underground services' },
+  { id:'con-confined', sectors:['construction','manufacture','property'], title:'Confined spaces', format:'Short course', mins:45, audience:'Anyone entering tanks, ducts, voids or chambers',
+    why:'Confined spaces kill quickly, and would-be rescuers often die too.',
+    covers:['What makes a space confined','Avoiding entry where you can','Safe systems of work and permits','Emergency arrangements'],
+    basis:'Confined Spaces Regulations 1997' },
+  // ── office or professional services ──
+  { id:'off-dse', sectors:['office','design'], title:'Display screen equipment and workstation set-up', format:'Toolbox talk', mins:20, audience:'Screen users',
+    why:'Poor set-up causes aches, eye strain and fatigue - usually fixed in minutes.',
+    covers:['Chair, screen, keyboard and mouse','Breaks and changes of activity','Eye tests for screen users','Working at home'],
+    basis:'Health and Safety (Display Screen Equipment) Regulations 1992; HSE guidance INDG36' },
+  { id:'off-lone', sectors:['office','property'], title:'Lone and remote working', format:'Toolbox talk', mins:20, audience:'Anyone who works alone',
+    why:'Working alone is not illegal, but it has to be planned so help can reach you.',
+    covers:['When lone working is and is not acceptable','Checking in and checking out','What to do if something goes wrong','Remote and home working'],
+    basis:'Health and Safety at Work etc. Act 1974; HSE guidance INDG73 Protecting lone workers' },
+  { id:'off-greyfleet', sectors:['office','design'], title:'Driving your own car for work', format:'Toolbox talk', mins:20, audience:'Staff who use their own vehicle',
+    why:'The company has duties when staff drive their own cars on business.',
+    covers:['Business insurance','MOT, servicing and roadworthiness','Licence checks','Fatigue and journey planning'],
+    basis:'Health and Safety at Work etc. Act 1974; HSE guidance INDG382 Driving at work' },
+  { id:'off-warden', sectors:['office','hospitality','care','leisure'], title:'Fire warden (marshal)', format:'Short course', mins:60, audience:'Appointed fire wardens',
+    why:'Wardens make the evacuation work; they need to know what they are for.',
+    covers:['The warden role before and during an alarm','Sweeping the area and reporting','People who need help to evacuate','Fire prevention day to day'],
+    basis:'Regulatory Reform (Fire Safety) Order 2005' },
+  // ── manufacturing or fabrication ──
+  { id:'mfg-guarding', sectors:['manufacture'], title:'Machinery guarding and safe isolation', format:'Short course', mins:45, audience:'Operators, maintenance staff',
+    why:'Unguarded or unisolated machinery causes amputations.',
+    covers:['Types of guard and why they are there','Isolation and locking off before maintenance','Clearing blockages safely','Reporting damaged guards'],
+    basis:'Provision and Use of Work Equipment Regulations 1998' },
+  { id:'mfg-mwf', sectors:['manufacture'], title:'Metalworking fluids and skin health', format:'Toolbox talk', mins:30, audience:'Machinists',
+    why:'Metalworking fluids cause dermatitis and lung disease if they are not managed.',
+    covers:['How fluids harm skin and lungs','Keeping fluids in good condition','Skin checks and gloves','Mist extraction'],
+    basis:'Control of Substances Hazardous to Health Regulations 2002' },
+  { id:'mfg-lifttruck', sectors:['manufacture','warehouse'], title:'Lift truck safety refresher', format:'Short course', mins:45, audience:'Lift truck operators and supervisors',
+    why:'Lift truck incidents are frequent and often serious.',
+    covers:['Pre-use checks','Stability and loads','Pedestrians and blind spots','Refresher training and authorisation'],
+    basis:'HSE guidance L117 Rider-operated lift trucks' },
+  // ── warehousing, storage or logistics ──
+  { id:'wh-racking', sectors:['warehouse','manufacture'], title:'Racking safety and damage reporting', format:'Toolbox talk', mins:30, audience:'Warehouse staff',
+    why:'Damaged racking can collapse without warning.',
+    covers:['Load signs and safe loads','Spotting and reporting damage','Regular inspection','Protecting uprights'],
+    basis:'Provision and Use of Work Equipment Regulations 1998; SEMA guidance' },
+  { id:'wh-traffic', sectors:['warehouse','motor','transportsvc'], title:'Workplace transport - people and vehicles', format:'Toolbox talk', mins:30, audience:'Everyone on site',
+    why:'People struck by vehicles on site is one of the most common causes of death at work.',
+    covers:['Keeping people and vehicles apart','Reversing and banksmen','Loading bays','Visitors and delivery drivers'],
+    basis:'Workplace (Health, Safety and Welfare) Regulations 1992; HSE guidance HSG136' },
+  // ── care, health or education ──
+  { id:'care-moving', sectors:['care'], title:'Moving and handling people', format:'Short course', mins:60, audience:'Care and support staff',
+    why:'Moving people is a leading cause of injury to carers - and to the people being moved.',
+    covers:['Assessing the person and the move','Hoists and slings','Equipment checks','Working with the person, not on them'],
+    basis:'Manual Handling Operations Regulations 1992; Lifting Operations and Lifting Equipment Regulations 1998' },
+  { id:'care-infection', sectors:['care','hospitality'], title:'Infection prevention and control', format:'Webinar', mins:45, audience:'Care and cleaning staff',
+    why:'Good hygiene stops infections spreading between the people you look after and your staff.',
+    covers:['How infections spread','Hand hygiene','Gloves, aprons and masks','Spills and sharps'],
+    basis:'Control of Substances Hazardous to Health Regulations 2002 (biological agents)' },
+  // ── retail, food or hospitality ──
+  { id:'hos-allergens', sectors:['hospitality'], title:'Food allergens', format:'Webinar', mins:30, audience:'Kitchen and front-of-house staff',
+    why:'A mistake with an allergen can kill a customer.',
+    covers:['The fourteen major allergens','Labelling, including food prepacked for direct sale','Preventing cross-contact','Answering customer questions'],
+    basis:'Food Information Regulations 2014' },
+  { id:'hos-kitchen', sectors:['hospitality'], title:'Kitchen safety - knives, burns and slips', format:'Toolbox talk', mins:20, audience:'Kitchen staff',
+    why:'Cuts, burns and slips are the everyday injuries of a busy kitchen.',
+    covers:['Knife handling and storage','Hot oil, steam and burns','Wet floors and spills','Equipment guards and cleaning'],
+    basis:'Provision and Use of Work Equipment Regulations 1998; Workplace (Health, Safety and Welfare) Regulations 1992' },
+  // ── landscaping, grounds or agriculture ──
+  { id:'land-saws', sectors:['land'], title:'Chainsaw and brushcutter safety', format:'Short course', mins:45, audience:'Grounds staff',
+    why:'Chainsaws and brushcutters cause severe injuries in seconds.',
+    covers:['Pre-use checks and maintenance','Protective clothing','Kickback and safe cutting','Noise, vibration and fuel'],
+    basis:'Provision and Use of Work Equipment Regulations 1998; AFAG safety guides' },
+  { id:'land-pesticides', sectors:['land'], title:'Using pesticides safely', format:'Webinar', mins:45, audience:'Anyone applying pesticides',
+    why:'Pesticides harm people and the environment if they are not handled, applied and stored properly.',
+    covers:['Certification to use professional products','Mixing, applying and storing','Protecting water and the public','Records'],
+    basis:'Plant Protection Products (Sustainable Use) Regulations 2012; Control of Substances Hazardous to Health Regulations 2002' },
+  { id:'land-outdoor', sectors:['land','construction'], title:"Outdoor ill health - Weil's disease, ticks and sun", format:'Toolbox talk', mins:20, audience:'Outdoor workers',
+    why:'Outdoor workers face infections and skin cancer risks that are easy to overlook.',
+    covers:["Leptospirosis (Weil's disease) and rats",'Ticks and Lyme disease','Sun exposure','Welfare and hand washing'],
+    basis:'Control of Substances Hazardous to Health Regulations 2002 (biological agents)' },
+  // ── property or facilities management ──
+  { id:'prop-legionella', sectors:['property'], title:'Legionella control in water systems', format:'Webinar', mins:45, audience:'Facilities and maintenance staff',
+    why:"Legionnaires' disease is preventable, and the person in control of the premises has to manage the risk.",
+    covers:['Where legionella grows','Temperatures, flushing and little-used outlets','The written scheme and records','Showers, cooling towers and hot tubs'],
+    basis:'HSE Approved Code of Practice L8; Control of Substances Hazardous to Health Regulations 2002' },
+  { id:'prop-contractors', sectors:['property','manufacture'], title:'Managing contractors', format:'Webinar', mins:45, audience:'Managers who bring in contractors',
+    why:'Using a contractor does not hand over the duty - both parties stay responsible.',
+    covers:['Choosing a competent contractor','Sharing information about the site','Permits and supervision','Checking the work was done safely'],
+    basis:'Health and Safety at Work etc. Act 1974; HSE guidance HSG159 Managing contractors' },
+  { id:'prop-landlord', sectors:['property'], title:'Landlord gas and electrical safety', format:'Webinar', mins:30, audience:'Landlords, lettings and property managers',
+    why:'Landlords must keep gas and electrical installations safe and hold the certificates to prove it.',
+    covers:['Annual gas safety checks and records','Electrical installation inspections','Giving tenants the certificates','Acting on defects'],
+    basis:'Gas Safety (Installation and Use) Regulations 1998; Electrical Safety Standards in the Private Rented Sector (England) Regulations 2020' },
+  // ── events, leisure or sport ──
+  { id:'lei-crowd', sectors:['leisure'], title:'Crowd safety and event planning', format:'Short course', mins:45, audience:'Event organisers, stewards',
+    why:'Crowds can become dangerous quickly; planning is what keeps them safe.',
+    covers:['Capacity and flow','Entrances, exits and emergency routes','Stewarding and communication','Working with the venue and emergency services'],
+    basis:'Health and Safety at Work etc. Act 1974; The Purple Guide (events industry guidance)' },
+  { id:'lei-structures', sectors:['leisure'], title:'Temporary structures at events', format:'Toolbox talk', mins:30, audience:'Event crews',
+    why:'Stages, marquees and grandstands fail when wind, loading or ground are misjudged.',
+    covers:['Design information and sign-off','Wind limits and monitoring','Ground conditions and ballast','Inspection before use'],
+    basis:'Health and Safety at Work etc. Act 1974; IStructE guidance on temporary demountable structures' }
+];
+// Company setup's single sector, for a client that has not been through
+// discovery yet.
+const CPD_SECTOR_FROM_COMPANY={ 'Construction':'construction', 'Design / architecture / surveying':'design', 'Manufacturing':'manufacture',
+  'Warehouse & logistics':'warehouse', 'Transport & logistics':'transportsvc', 'Retail':'hospitality', 'Hospitality & catering':'hospitality',
+  'Office / professional services':'office', 'Healthcare':'care', 'Care home':'care', 'Education':'care', 'Agriculture':'land',
+  'Motor trade':'motor', 'Property / facilities management':'property' };
+// ── Suggested CPD, by the kind of work this client does ──────────
+// The kind of work is what is already set for the client: the sectors
+// ticked in discovery first, the Company setup sector if discovery has not
+// been done. Nothing is typed twice.
+var _cpdTopicView='client', _cpdTopicMore={};
+function _cpdClientSectors(){
+  const disc=(typeof _discSectorKeys==='function') ? _discSectorKeys() : [];
+  if(disc.length) return { keys:disc, from:'discovery' };
+  const k=CPD_SECTOR_FROM_COMPANY[String((S.company&&S.company.sector)||'')];
+  return k ? { keys:[k], from:'company' } : { keys:[], from:'' };
+}
+function _cpdSectorLabel(k){ if(k==='all') return 'Every business'; const d=SECTOR_DEFS.find(x=>x.k===k); return d?d.label:k; }
+// Each topic once, under the first of the given sectors it belongs to; the
+// topics every business needs come last.
+function _cpdTopicGroups(keys){
+  const seen={}, groups=[];
+  keys.concat(['all']).forEach(k=>{
+    const ts=CPD_TOPICS.filter(t=>t.sectors.indexOf(k)>=0 && !seen[t.id]);
+    ts.forEach(t=>{ seen[t.id]=1; });
+    if(ts.length) groups.push({ k:k, label:_cpdSectorLabel(k), topics:ts });
+  });
+  return groups;
+}
+function _cpdTopicsFor(keys){ return [].concat.apply([], _cpdTopicGroups(keys).map(g=>g.topics)); }
+// The outline that goes with the link - what the person reads before they confirm.
+function _cpdTopicContent(t, url){
+  return t.title+' ('+t.format+', about '+t.mins+' minutes)'+(url?('\n'+url):'')
+    +'\n\nWhy it matters: '+t.why
+    +'\n\nWhat it covers:\n'+t.covers.map(c=>'- '+c).join('\n')
+    +'\n\nThe law and guidance behind it: '+t.basis;
+}
+// Issued = on the sign-off register, put there from here or picked by name
+// on the register's own Add line.
+function _cpdTopicIssued(t){
+  const lc=t.title.toLowerCase();
+  return _psoState().policies.filter(x=>(x.source&&x.source.kind==='cpdtopic'&&x.source.id===t.id) || (x.type==='Training / CPD' && String(x.title||'').trim().toLowerCase()===lc))
+    .sort((a,b)=>String(b.delivered||'').localeCompare(String(a.delivered||'')));
+}
+function _cpdTopicInLibrary(t){ const lc=t.title.toLowerCase(); return _cpdState().items.find(i=>i.topicId===t.id || String(i.title||'').trim().toLowerCase()===lc)||null; }
+function cpdTopicView(v){ _cpdTopicView=v; _keepScroll(renderCPD); }
+function cpdTopicToggle(id){ _cpdTopicMore[id]=!_cpdTopicMore[id]; _keepScroll(renderCPD); }
+function addCpdTopicToLibrary(id){
+  if(_blockIfReadOnly()) return;
+  const t=CPD_TOPICS.find(x=>x.id===id); if(!t) return;
+  if(_cpdTopicInLibrary(t)){ showToast('Already in the library','info'); return; }
+  _cpdState().items.unshift({ id:_reqUid('cpd'), title:t.title, type:(CPD_TYPES.indexOf(t.format)>=0?t.format:'Other'), url:'', minutes:String(t.mins||''), month:'', notes:t.why, added:new Date().toISOString().slice(0,10), topicId:t.id });
+  saveData(); _keepScroll(renderCPD);
+  showToast('✓ In the library - add a link to the learning, or set a month to issue it with the rest','success');
+}
+// Issue = the same road as everything else: one line in the CPD section of
+// the sign-off register, carrying the topic's outline to every link.
+function issueCpdTopic(id){
+  if(_blockIfReadOnly()) return;
+  const t=CPD_TOPICS.find(x=>x.id===id); if(!t) return;
+  const have=_cpdTopicIssued(t)[0];
+  if(have){ _psoIssue(have); return; }
+  const lib=_cpdTopicInLibrary(t), url=(lib&&lib.url)||'';
+  const pol=_psoAddItem({ title:t.title, type:'Training / CPD', delivered:new Date().toISOString().slice(0,10), link:url,
+    presenter:(typeof _actor==='function'?(_actor().name||''):''), content:_cpdTopicContent(t, url), source:{ kind:'cpdtopic', id:t.id } });
+  _psoIssue(pol);
+}
+function _cpdTopicsCardHTML(ro){
+  const cs=_cpdClientSectors();
+  const view=(_cpdTopicView==='client' && !cs.keys.length) ? 'all' : _cpdTopicView;
+  const keys=view==='client' ? cs.keys : (view==='all' ? SECTOR_DEFS.map(d=>d.k) : [view]);
+  const groups=_cpdTopicGroups(keys), shown=groups.reduce((n,g)=>n+g.topics.length,0);
+  const who=(S.company&&(S.company.tradingName||S.company.legalName))||'this client';
+  const kind=cs.keys.length
+    ? ('<b>'+esc(cs.keys.map(_cpdSectorLabel).join(' · '))+'</b> <span style="color:var(--text-muted);">- from '+(cs.from==='discovery'?'the sectors ticked in discovery':'the Company setup sector')+'</span>')
+    : '<b style="color:var(--warning);">Not set yet</b> <span style="color:var(--text-muted);">- tick what the business does in discovery, or pick its sector, and this list narrows to fit</span>';
+  const opts=[['client','For this client'+(cs.keys.length?'':' (not set)')],['all','Every topic']].concat(SECTOR_DEFS.map(d=>[d.k,d.label]));
+  const sel='<select id="cptView" onchange="cpdTopicView(this.value)" title="Whose topics to show">'+opts.map(o=>'<option value="'+o[0]+'"'+(o[0]===view?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select>';
+  const row=t=>{
+    const iss=_cpdTopicIssued(t)[0], lib=_cpdTopicInLibrary(t), open=!!_cpdTopicMore[t.id];
+    const s=iss ? (_psoStanding(iss.id)||{ ok:0, of:0 }) : null;
+    const status=iss ? ('<b>✓ Issued '+fmtDate(iss.delivered)+'</b><div style="color:var(--text-muted);">'+s.ok+' of '+s.of+' signed</div>')
+      : (lib ? '<span style="color:var(--text-muted);">In the library</span>' : '');
+    return '<div class="cpt-row'+(open?' cpt-open':'')+'" id="cpt-'+t.id+'">'
+      +'<div><div class="cpt-title">'+esc(t.title)+'</div><div class="cpt-why">'+esc(t.why)+'</div><div class="cpt-meta">'+esc(t.format+' · '+t.mins+' min · '+t.audience)+'</div></div>'
+      +'<div class="cpt-status">'+status+'</div>'
+      +'<div class="cpt-act">'
+        +(ro ? '' : '<button class="btn btn-primary btn-sm no-print" onclick="issueCpdTopic(\''+t.id+'\')" title="Put it on the sign-off register, in the CPD section, and make a link for each person - the outline goes with the link">Issue</button>')
+        +(ro||lib ? '' : '<button class="btn btn-ghost btn-sm no-print" onclick="addCpdTopicToLibrary(\''+t.id+'\')" title="Keep it in the library below - add a link to the learning, or set a month to issue it with the rest">＋ Library</button>')
+        +'<button class="btn btn-ghost btn-sm no-print" onclick="cpdTopicToggle(\''+t.id+'\')" title="What it covers, and the law and guidance behind it">'+(open?'Less':'More')+'</button>'
+      +'</div>'
+      +(open ? ('<div class="cpt-more"><div class="psl-lab" style="margin-top:0;">What it covers</div><ul>'+t.covers.map(c=>'<li>'+esc(c)+'</li>').join('')+'</ul><div class="cpt-basis"><b>The law and guidance behind it:</b> '+esc(t.basis)+'</div></div>') : '')
+      +'</div>';
+  };
+  return '<div class="card" style="margin-bottom:16px;">'
+    +'<div class="card-band"><h3><span class="dot">●</span> Suggested CPD for '+esc(who)+'</h3><span class="badge badge-muted">'+shown+' topic'+(shown!==1?'s':'')+'</span></div>'
+    +'<div class="card-body">'
+    +'<div class="cpt-bar"><div class="cpt-kind">Kind of work: '+kind+' <button class="pss-lib no-print" onclick="switchTab(\'company\')" title="Set on Company setup - discovery and the sector">Change</button></div>'+sel+'</div>'
+    +'<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:4px;">Topics that fit the work. <b>Issue</b> puts one on the sign-off register, in the CPD section, and makes a link for each person - its outline goes with the link. <b>＋ Library</b> keeps it below, to issue with the month\'s learning.</div>'
+    +groups.map(g=>'<div class="cpt-grp">'+esc(g.label)+'</div>'+g.topics.map(row).join('')).join('')
+    +'</div></div>';
+}
 function renderCPD(){
   const el=document.getElementById('cpdContainer'); if(!el) return;
   const c=_cpdState(), ro=_roLocked(), dis=ro?' disabled':'';
@@ -32726,7 +33193,8 @@ function renderCPD(){
     ? '<div style="margin-top:14px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:6px;">Prompts emailed before acknowledgement by link</div><div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);font-size:10.5px;text-transform:uppercase;"><tr><th style="text-align:left;padding:4px 6px;">Month</th><th style="text-align:left;padding:4px 6px;">Sent</th><th style="text-align:left;padding:4px 6px;">Items</th><th style="text-align:left;padding:4px 6px;">To</th></tr></thead><tbody>'+logRows+'</tbody></table></div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">A prompt is not a confirmation, so these stay here as history and never join the register.</div></div>'
     : '';
   el.innerHTML =
-    '<div class="card" style="margin-bottom:16px;">'
+    _cpdTopicsCardHTML(ro)
+  + '<div class="card" style="margin-bottom:16px;">'
   + '<div class="card-band"><h3><span class="dot">●</span> CPD library</h3><span class="badge badge-muted">'+c.items.length+' item'+(c.items.length!==1?'s':'')+(thisMonth.length?(' · '+thisMonth.length+' for '+_cpdMonthLabel(month)):'')+'</span></div>'
   + '<div class="card-body">'
   + '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">Webinars, guides and short courses for this client\'s people. Set a month against the ones you want issued that month; leave the month blank to keep an item in the back catalogue.</div>'

@@ -4132,6 +4132,48 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .tbt-edit .tbt-wide{grid-column:1/-1;}
     .tbt-edit input,.tbt-edit select,.tbt-edit textarea{display:block;width:100%;margin-top:3px;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font-family:inherit;text-transform:none;letter-spacing:0;font-weight:400;}
     @media (max-width:760px){ .tbt-row{grid-template-columns:1fr;} .tbt-edit{grid-template-columns:1fr;} }
+    .slt-ov{position:fixed;inset:0;z-index:9000;background:var(--bg);overflow:auto;}
+    body.slt-open{overflow:hidden;}
+    .slt-bar{position:sticky;top:0;z-index:2;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;padding:12px 20px 8px;background:var(--surface);border-bottom:1.5px solid var(--border);}
+    .slt-t{flex:1;min-width:200px;}
+    .slt-k{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);}
+    .slt-h{font-size:18px;font-weight:800;}
+    .slt-bar label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;}
+    .slt-bar input,.slt-bar select{font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font-family:inherit;text-transform:none;letter-spacing:0;}
+    .slt-nav{flex-basis:100%;display:flex;gap:4px;flex-wrap:wrap;}
+    .slt-nb{position:relative;min-width:34px;padding:4px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;}
+    .slt-nb-on{border-color:var(--accent);color:var(--accent-dark,var(--accent));}
+    .slt-nb i{font-style:normal;font-size:10px;margin-left:4px;padding:0 4px;background:var(--accent);color:#fff;}
+    .slt-body{max-width:1100px;margin:0 auto;padding:16px 20px 80px;}
+    .slt-sec{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);padding:14px 16px;margin-bottom:12px;scroll-margin-top:120px;}
+    .slt-who{border-left-color:var(--text-muted);}
+    .slt-ih{display:flex;align-items:baseline;gap:10px;}
+    .slt-ih h3{margin:0;font-size:16px;}
+    .slt-n{font-size:20px;font-weight:800;color:var(--accent-dark,var(--accent));min-width:26px;}
+    .slt-cover{margin:6px 0 8px 36px;padding:0;font-size:12.5px;color:var(--text-muted);line-height:1.5;}
+    .slt-facts{margin-left:36px;}
+    .slt-line{font-size:13px;font-weight:600;margin:2px 0 6px;}
+    .slt-tiles{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+    .slt-tile{border:1px solid var(--border);padding:6px 10px;min-width:118px;background:var(--bg);}
+    .slt-tile b{display:block;font-size:18px;line-height:1.2;}
+    .slt-tile span{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);}
+    .slt-bad b{color:#DC2626;}
+    .slt-warn b{color:var(--warning);}
+    .slt-ok b{color:var(--success);}
+    .slt-muted{font-size:12px;color:var(--text-muted);}
+    .slt-lab{display:block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);margin:10px 0 4px;}
+    .slt-notes{width:100%;font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font-family:inherit;resize:vertical;}
+    .slt-act{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1.3fr) 150px auto;gap:6px;margin-bottom:6px;}
+    .slt-act input,.slt-add input{font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font-family:inherit;width:100%;min-width:0;}
+    .slt-people{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 8px;}
+    .slt-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);padding:4px 4px 4px 8px;font-size:12.5px;background:var(--bg);}
+    .slt-chip span{color:var(--text-muted);font-size:11.5px;}
+    .slt-add{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.4fr) auto auto;gap:6px;align-items:center;}
+    .slt-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 0;}
+    .slt-done{max-width:720px;margin:40px auto;background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--success);padding:24px;}
+    .slt-done h2{margin:4px 0 8px;font-size:22px;}
+    .slt-done-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+    @media (max-width:760px){ .slt-act,.slt-add{grid-template-columns:1fr;} .slt-cover,.slt-facts{margin-left:0;} }
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
     /* Quick links to other apps */
     .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;}
@@ -15201,6 +15243,15 @@ function renderReports(){
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
       desc:'For the leadership meeting, defaulted to what HSG65 says a review draws on: the position and decisions, incidents and investigations, active monitoring, training, worker-raised issues, statutory checks, successes and movement since the baseline.',
       tags:['Directors','HSG65 review','Sign-off'] },
+    { title:'Leadership Briefing', accent:'#DC2626', tint:'#FCE9E9', fn:'openBoardBriefingPrint()', meta:'Ten agenda items, one page each',
+      icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
+      desc:'The board report arranged as the SLT agenda - position, incidents, key risks, design and CDM, projects, competence, audits, wellbeing, objectives, and the decisions required. One page an item: what to cover, the live figures, and ruled lines for notes.',
+      tags:['Directors','SLT agenda','Talk from it'] },
+    { title:'Leadership Meeting', accent:'#475569', tint:'#EDF1F5', fn:'openSltMeeting()',
+      meta:(function(){ try{ const o=_meetings().find(x=>x.status!=='finished'); if(o) return 'In progress - '+fmtDate(o.date); const f=_meetings().filter(x=>x.status==='finished').length; return f?(f+' run in Compass'):'Notes and actions, live'; }catch(e){ return 'Notes and actions, live'; } })(),
+      icon:svg('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+      desc:'Run the meeting on the same ten items: who is there, notes on each item, and actions with who and by when. Finish puts the actions on the execution plan and gives you the minutes to email.',
+      tags:['In the meeting','Actions','Minutes'] },
     { title:'Management Decisions', accent:'#475569', tint:'#EDF1F5', fn:'downloadDecisionsReport()',
       meta:(function(){ try{ const s=_decisionStats(); return s.total?(s.total+' recorded · '+s.open+' open'+(s.pctDelivered!=null?(' · '+s.pctDelivered+'% delivered'):'')):'Nothing recorded yet'; }catch(e){ return 'The post-meeting note'; } })(),
       icon:svg('<path d="M9 12h6"/><path d="M9 16h6"/><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>'),
@@ -21809,6 +21860,7 @@ const REPORT_DOCS = [
   { key:'managementPlan',   title:'H&S Management Plan',          code:'MP'  },
   { key:'bizStatus',        title:'Business Status Report',       code:'BSR' },
   { key:'decisions',        title:'Management Decisions',         code:'MD'  },
+  { key:'meetingMinutes',   title:'Meeting Minutes',              code:'MM'  },
   { key:'riskProfile',      title:'Risk Profile',                 code:'RP'  },
   { key:'executionPlan',    title:'Client Execution Plan',        code:'EP'  },
   { key:'completedActions', title:'Completed Actions',            code:'CA'  },
@@ -28405,19 +28457,309 @@ function deleteDecision(id){
   S.decisions=_decisions().filter(x=>x.id!==id); saveData(); _renderDecisions();
 }
 // A decision becomes work the same way an incident does - explicitly, so the
-// plan never fills up with things nobody asked to track.
+// plan never fills up with things nobody asked to track. One door for both
+// the register's button and the meeting's Finish.
+function _decisionAction(d, note){
+  const ap={ id:'ap_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    desc:String(d.decision||'').slice(0,140), owner:d.owner||'', due:d.due||'', priority:'', status:'Not started',
+    riskId:'', docId:'', note:note, completedDate:'' };
+  _stamp(ap,'created'); _apList().push(ap);
+  d.raised=(d.raised||0)+1;
+  return ap;
+}
 function raiseDecisionAction(id){
   if(_blockIfReadOnly()) return;
   const d=_decisions().find(x=>x.id===id); if(!d) return;
   if(!String(d.decision||'').trim()){ showToast('Write the decision first','info'); return; }
-  const ap={ id:'ap_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-    desc:String(d.decision).slice(0,140), owner:d.owner||'', due:d.due||'', priority:'', status:'Not started',
-    riskId:'', docId:'', note:'Decided at the '+(d.forum||'meeting').toLowerCase()+' on '+fmtDate(d.date)+(d.why?(': '+String(d.why).slice(0,140)):''), completedDate:'' };
-  _stamp(ap,'created'); _apList().push(ap);
-  d.raised=(d.raised||0)+1;
+  _decisionAction(d, 'Decided at the '+(d.forum||'meeting').toLowerCase()+' on '+fmtDate(d.date)+(d.why?(': '+String(d.why).slice(0,140)):''));
   saveData(); _renderDecisions();
   showToast('✓ Action raised into the plan - it now tracks on the Client execution plan.','success');
 }
+// ══════════════════════════════════════════════════════════════
+//  LEADERSHIP MEETING (Simon, 2026-09-30): "I want the board report to
+//  reflect these items so I can talk round them, then create actions for
+//  people/directors in the meeting, and email it when I sit back down."
+//  The ten items are the Leadership Briefing's pages - SLT_AGENDA is the
+//  report's own list (test/ui/slt-meeting holds the two together). Notes
+//  are kept per item on the meeting; every action is a decision on the
+//  register, tagged with its meeting and item, so the next board report asks
+//  whether it happened. Finish puts each onto the execution plan and builds
+//  the minutes. The email goes from Simon's own mail - Compass never sends.
+// ══════════════════════════════════════════════════════════════
+const SLT_AGENDA = [
+  { n: 1, title: 'Current H&S position', cover: ['Overall performance and key headline statistics', 'Significant changes since the last review', 'Any areas of concern requiring leadership attention'] },
+  { n: 2, title: 'Incidents, accidents & near misses', cover: ['RIDDOR / reportable incidents, accidents and near misses', 'Trends and recurring themes', 'Lessons learned and actions taken'] },
+  { n: 3, title: 'Key risk areas for the business', cover: ['Principal risks associated with architectural / design activities', 'Site visits and construction-phase activities', 'Office / workplace risks', 'Travel, lone working and other relevant activities'] },
+  { n: 4, title: 'Design risk & CDM responsibilities', cover: ['How effectively health and safety is being considered during design', 'Designer / Principal Designer responsibilities', 'Any recurring gaps or areas requiring improvement', 'Quality of pre-construction information and risk communication'] },
+  { n: 5, title: 'Project / site performance', cover: ['Overview of H&S performance across live projects', 'Any projects presenting elevated risk or requiring intervention', 'Site inspection / visit findings and recurring issues'] },
+  { n: 6, title: 'Competence, training & engagement', cover: ['Mandatory training / competency position', 'Outstanding training or refresher requirements', 'Staff engagement and reporting culture'] },
+  { n: 7, title: 'Audits, inspections & compliance', cover: ['Recent audit / inspection findings', 'Common non-conformances', 'Progress against corrective actions', 'Any upcoming regulatory / compliance changes'] },
+  { n: 8, title: 'Health & wellbeing', cover: ['Work-related stress / mental health', 'Ergonomics / workstation issues', 'Occupational health trends, where relevant', 'Wider wellbeing initiatives'] },
+  { n: 9, title: 'Key H&S objectives / improvement plan', cover: ['What has been achieved', 'What remains outstanding', 'Priorities for the next 6-12 months'] },
+  { n: 10, title: 'Leadership actions / decisions required', cover: ['The 2-4 things senior leadership needs to know, support or decide', 'Resources, investment, policy changes or accountability issues', 'Any significant emerging risks'] },
+];
+// Item 3 names the core work - the same rule as the report's sltAgenda().
+function _sltAgenda(){
+  const sec=(S.profiler&&S.profiler.sectors)||{};
+  const design=sec.design===true || /design|architect|survey/i.test(String((S.company&&S.company.sector)||''));
+  return SLT_AGENDA.map(a=>(a.n===3&&!design) ? Object.assign({},a,{ cover:['Principal risks from the core work of the business'].concat(a.cover.slice(1)) }) : a);
+}
+function _meetings(){ if(!Array.isArray(S.meetings)) S.meetings=[]; return S.meetings; }
+var _sltId='', _sltFacts=null, _sltDone=null;
+function _sltCur(){ return _meetings().find(m=>m.id===_sltId)||null; }
+function _sltActions(m){ return _decisions().filter(d=>d.meetingId===m.id).reverse().sort((a,b)=>(a.agendaItem||0)-(b.agendaItem||0)); }
+function _sltClient(){ return (typeof _consultantView!=='undefined'&&_consultantView&&_consultantView.name)||(S.company&&(S.company.tradingName||S.company.legalName))||activeClientName()||'Client'; }
+// Who can own an action: those in the room, then the company's people, then
+// the sign-off register - each name once.
+function _sltPeople(m){
+  const out=[], seen=new Set();
+  const add=(n,r,e)=>{ n=String(n||'').trim(); if(!n) return; const k=n.toLowerCase(); if(seen.has(k)) return; seen.add(k); out.push({ name:n, role:String(r||''), email:String(e||'') }); };
+  ((m&&m.attendees)||[]).forEach(a=>add(a.name,a.role,a.email));
+  ((S.company&&S.company.personnel)||[]).forEach(p=>add(p.name,p.role,/@/.test(String(p.contact||''))?p.contact:''));
+  ((S.policySignoff&&S.policySignoff.staff)||[]).forEach(s=>add(s.name,s.role,''));
+  return out;
+}
+function openSltMeeting(){
+  if(_blockIfReadOnly()) return;
+  let m=_meetings().find(x=>x.status!=='finished');
+  if(!m){
+    m={ id:'mtg_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), date:new Date().toISOString().slice(0,10), forum:'Board meeting', attendees:[], notes:{}, status:'open' };
+    _stamp(m,'created'); _meetings().unshift(m); saveData();
+  }
+  _sltId=m.id; _sltDone=null;
+  let ov=document.getElementById('sltOv');
+  if(!ov){ ov=document.createElement('div'); ov.id='sltOv'; ov.className='slt-ov'; document.body.appendChild(ov); }
+  document.body.classList.add('slt-open');
+  _sltRender(); _sltLoadFacts();
+}
+function closeSltMeeting(){
+  const ov=document.getElementById('sltOv'); if(ov) ov.remove();
+  document.body.classList.remove('slt-open'); _sltDone=null;
+  saveData(); try{ _renderDecisions(); }catch(e){}
+}
+// The briefing's own figures, item by item - the same report the pack is
+// printed from, so the screen and the paper say the same thing.
+async function _sltLoadFacts(){
+  try{
+    const tpl=await import('/reports/templates/index.js');
+    const rep=tpl.buildReport(S,'board-briefing',{ tenant:{ name:_sltClient() } });
+    const out={};
+    (rep.pages||[]).forEach(p=>{
+      if(!p.agendaItem) return;
+      const bl=p.blocks||[], t=bl.find(b=>b.type==='titleBlock'), k=bl.find(b=>b.type==='kpiStrip'), db=bl.find(b=>b.type==='distributionBars'), dp=bl.find(b=>b.type==='decisionsPanel');
+      out[p.agendaItem]={ line:(t&&t.standfirst)||'', tiles:k?k.tiles:(db?db.items.map(i=>({ value:String(i.n), label:i.label })):[]), decisions:dp?dp.items.map(i=>i.text):[] };
+    });
+    _sltFacts=out;
+  }catch(e){ _sltFacts={}; }
+  _sltAgenda().forEach(a=>{ const el=document.getElementById('sltFacts'+a.n); if(el) el.innerHTML=_sltFactsHTML(a.n); });
+}
+function _sltFactsHTML(n){
+  if(!_sltFacts) return '<div class="slt-muted">Loading the figures…</div>';
+  const f=_sltFacts[n]; if(!f) return '';
+  return (f.line?('<div class="slt-line">'+esc(f.line)+'</div>'):'')
+    +(f.tiles.length?('<div class="slt-tiles">'+f.tiles.map(t=>'<div class="slt-tile slt-'+(t.tone||'n')+'"><b>'+esc(t.value)+'</b><span>'+esc(t.label)+'</span></div>').join('')+'</div>'):'')
+    +(f.decisions.length?('<div class="slt-lab">Decisions required</div><ol class="slt-cover">'+f.decisions.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ol>'):'');
+}
+function _sltRender(){
+  const ov=document.getElementById('sltOv'); const m=_sltCur(); if(!ov||!m) return;
+  const top=ov.scrollTop;
+  const AG=_sltAgenda(), acts=_sltActions(m), people=_sltPeople(m);
+  const q=s=>'\''+String(s).replace(/[^a-z0-9_]/gi,'')+'\'';
+  const bar='<div class="slt-bar">'
+    +'<div class="slt-t"><div class="slt-k">Leadership meeting</div><div class="slt-h">'+esc(_sltClient())+'</div></div>'
+    +'<label>Date<input type="date" value="'+esc(m.date||'')+'" onchange="sltSet(\'date\',this.value)"></label>'
+    +'<label>Meeting<select onchange="sltSet(\'forum\',this.value)">'+DECISION_FORUMS.map(f=>'<option'+(f===m.forum?' selected':'')+'>'+esc(f)+'</option>').join('')+'</select></label>'
+    +'<button class="btn btn-ghost btn-sm" onclick="openBoardBriefingPrint()" title="The Leadership Briefing - the pack to talk from">Briefing (PDF)</button>'
+    +'<button class="btn btn-ghost btn-sm" onclick="closeSltMeeting()" title="Everything is kept - open it again from the Reports tab to carry on">Close</button>'
+    +(_sltDone?'':'<button class="btn btn-primary btn-sm" onclick="sltFinish()" title="Put the actions on the execution plan and make the minutes to email">Finish &amp; email →</button>')
+    +(_sltDone?'':('<div class="slt-nav">'+AG.map(a=>{ const na=acts.filter(d=>d.agendaItem===a.n).length, nn=String((m.notes||{})[a.n]||'').trim()?1:0;
+        return '<button class="slt-nb'+((na||nn)?' slt-nb-on':'')+'" onclick="sltGo('+a.n+')" title="'+esc(a.title)+'">'+a.n+(na?('<i>'+na+'</i>'):'')+'</button>'; }).join('')+'</div>'))
+    +'</div>';
+  if(_sltDone){ ov.innerHTML=bar+_sltDoneHTML(m); return; }
+  const chips=(m.attendees||[]).map((a,i)=>'<span class="slt-chip"><b>'+esc(a.name)+'</b>'+(a.role?('<span>'+esc(a.role)+'</span>'):'')+(a.email?('<span class="slt-muted">'+esc(a.email)+'</span>'):'')
+    +'<button class="trn-x" onclick="sltDelAttendee('+i+')" title="Not here">×</button></span>').join('');
+  const dirs=((S.company&&S.company.personnel)||[]).filter(p=>p&&p.name&&/director|\bmd\b|chief|ceo|owner|partner|principal|founder|chair/i.test(String(p.role||'')) && !(m.attendees||[]).some(a=>String(a.name).toLowerCase()===String(p.name).toLowerCase()));
+  const who='<section class="slt-sec slt-who" id="slt-who"><div class="slt-ih"><span class="slt-n">·</span><h3>Who is here</h3></div>'
+    +(chips?('<div class="slt-people">'+chips+'</div>'):'<div class="slt-muted" style="margin:4px 0 8px;">Nobody added yet - the minutes list who was present, and the email goes to them.</div>')
+    +'<div class="slt-add"><input id="sltAttName" list="sltPeopleList" placeholder="Name" onchange="sltPickAttendee(this.value)"><input id="sltAttRole" placeholder="Role"><input id="sltAttEmail" type="email" placeholder="Email (for the minutes)">'
+    +'<button class="btn btn-outline btn-sm" onclick="sltAddAttendee()">＋ Add</button>'
+    +(dirs.length?('<button class="btn btn-ghost btn-sm" onclick="sltAddDirectors()" title="'+esc(dirs.map(d=>d.name).join(', '))+'">＋ The directors ('+dirs.length+')</button>'):'<span></span>')+'</div>'
+    +'<datalist id="sltPeopleList">'+people.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.role||'')+'</option>').join('')+'</datalist></section>';
+  const items=AG.map(a=>{
+    const mine=acts.filter(d=>d.agendaItem===a.n);
+    const rows=mine.map(d=>'<div class="slt-act" id="slta-'+esc(d.id)+'">'
+      +'<input class="slt-a-what" value="'+esc(d.decision||'')+'" placeholder="What will be done" oninput="sltAct('+q(d.id)+',\'decision\',this.value)">'
+      +'<input class="slt-a-who" list="sltPeopleList" value="'+esc(d.owner||'')+'" placeholder="Who" oninput="sltAct('+q(d.id)+',\'owner\',this.value)">'
+      +'<input class="slt-a-due" type="date" value="'+esc(d.due||'')+'" title="By when" onchange="sltAct('+q(d.id)+',\'due\',this.value)">'
+      +'<button class="trn-x" onclick="sltDelAction('+q(d.id)+')" title="Take this action off">×</button></div>').join('');
+    return '<section class="slt-sec" id="slt-i'+a.n+'"><div class="slt-ih"><span class="slt-n">'+a.n+'</span><h3>'+esc(a.title)+'</h3></div>'
+      +'<ul class="slt-cover">'+a.cover.map(c=>'<li>'+esc(c)+'</li>').join('')+'</ul>'
+      +'<div class="slt-facts" id="sltFacts'+a.n+'">'+_sltFactsHTML(a.n)+'</div>'
+      +'<label class="slt-lab" for="sltNote'+a.n+'">Notes</label>'
+      +'<textarea class="slt-notes" id="sltNote'+a.n+'" rows="3" placeholder="What was said" oninput="sltNote('+a.n+',this.value)">'+esc((m.notes||{})[a.n]||'')+'</textarea>'
+      +'<div class="slt-lab">Actions'+(mine.length?(' ('+mine.length+')'):'')+'</div>'+rows
+      +'<button class="btn btn-outline btn-sm" onclick="sltAddAction('+a.n+')">＋ Action</button></section>';
+  }).join('');
+  ov.innerHTML=bar+'<div class="slt-body">'+who+items
+    +'<div class="slt-foot"><button class="btn btn-primary" onclick="sltFinish()">Finish &amp; email →</button><span class="slt-muted">Puts the '+acts.length+' action'+(acts.length!==1?'s':'')+' on the execution plan and makes the minutes.</span></div></div>';
+  ov.scrollTop=top;
+}
+function sltGo(n){ const el=document.getElementById('slt-i'+n); if(el) try{ el.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ el.scrollIntoView(); } }
+// The meeting's date and forum are its actions' date and forum - they are
+// the decisions of that meeting.
+function sltSet(f, v){
+  const m=_sltCur(); if(!m||_roLocked()) return;
+  m[f]=v; _stamp(m,'updated');
+  if(f==='date'||f==='forum') _sltActions(m).forEach(d=>{ d[f]=v; });
+  saveData();
+}
+function sltNote(n, v){ const m=_sltCur(); if(!m||_roLocked()) return; if(!m.notes||typeof m.notes!=='object') m.notes={}; m.notes[n]=v; scheduleAutoSave(); }
+function sltPickAttendee(v){
+  const p=_sltPeople(null).find(x=>x.name.toLowerCase()===String(v||'').trim().toLowerCase()); if(!p) return;
+  const r=document.getElementById('sltAttRole'), e=document.getElementById('sltAttEmail');
+  if(r && !r.value) r.value=p.role||''; if(e && !e.value) e.value=p.email||'';
+}
+function sltAddAttendee(){
+  const m=_sltCur(); if(!m||_blockIfReadOnly()) return;
+  const n=document.getElementById('sltAttName'), r=document.getElementById('sltAttRole'), e=document.getElementById('sltAttEmail');
+  const name=String((n&&n.value)||'').trim(); if(!name){ if(n) n.focus(); return; }
+  if(!Array.isArray(m.attendees)) m.attendees=[];
+  if(!m.attendees.some(a=>a.name.toLowerCase()===name.toLowerCase())) m.attendees.push({ name:name, role:String((r&&r.value)||'').trim(), email:String((e&&e.value)||'').trim() });
+  saveData(); _sltRender();
+  setTimeout(()=>{ const x=document.getElementById('sltAttName'); if(x) x.focus(); },0);
+}
+function sltAddDirectors(){
+  const m=_sltCur(); if(!m||_blockIfReadOnly()) return;
+  if(!Array.isArray(m.attendees)) m.attendees=[];
+  ((S.company&&S.company.personnel)||[]).forEach(p=>{
+    if(!p||!p.name||!/director|\bmd\b|chief|ceo|owner|partner|principal|founder|chair/i.test(String(p.role||''))) return;
+    if(m.attendees.some(a=>a.name.toLowerCase()===String(p.name).toLowerCase())) return;
+    m.attendees.push({ name:String(p.name), role:String(p.role||''), email:/@/.test(String(p.contact||''))?String(p.contact):'' });
+  });
+  saveData(); _sltRender();
+}
+function sltDelAttendee(i){ const m=_sltCur(); if(!m||_blockIfReadOnly()) return; (m.attendees||[]).splice(i,1); saveData(); _sltRender(); }
+function sltAddAction(n){
+  const m=_sltCur(); if(!m||_blockIfReadOnly()) return;
+  const a=_sltAgenda()[n-1]||{ title:'' };
+  const d={ id:'dec_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), date:m.date, forum:m.forum||'Board meeting',
+    decision:'', why:'Agreed at the '+String(m.forum||'meeting').toLowerCase()+' - item '+n+': '+a.title, owner:'', due:'', status:'Agreed', outcome:'', raised:0,
+    meetingId:m.id, agendaItem:n };
+  _stamp(d,'created'); _decisions().unshift(d); saveData(); _sltRender();
+  setTimeout(()=>{ const r=document.getElementById('slta-'+d.id); if(r){ const i=r.querySelector('.slt-a-what'); if(i) i.focus(); } },0);
+}
+function sltAct(id, f, v){ if(_roLocked()) return; const d=_decisions().find(x=>x.id===id); if(!d) return; d[f]=v; _stamp(d,'updated'); scheduleAutoSave(); }
+function sltDelAction(id){
+  if(_blockIfReadOnly()) return;
+  const d=_decisions().find(x=>x.id===id); if(!d) return;
+  if(String(d.decision||'').trim() && !confirm('Take "'+String(d.decision).slice(0,80)+'" off?')) return;
+  S.decisions=_decisions().filter(x=>x.id!==id); saveData(); _sltRender();
+}
+// Finish: empty lines go, the rest go on the execution plan (once - a
+// second Finish never doubles them), and the minutes are made.
+function sltFinish(){
+  const m=_sltCur(); if(!m||_blockIfReadOnly()) return;
+  S.decisions=_decisions().filter(d=>!(d.meetingId===m.id && !String(d.decision||'').trim()));
+  const acts=_sltActions(m), AG=_sltAgenda();
+  const gaps=acts.filter(d=>!String(d.owner||'').trim()||!d.due).length;
+  if(gaps && !confirm(gaps+' action'+(gaps!==1?'s have':' has')+' no one named or no date. Finish anyway? '+(gaps!==1?'They go':'It goes')+' on the plan as '+(gaps!==1?'they are':'it is')+' and show as a gap until filled in.')) return;
+  let raised=0;
+  acts.forEach(d=>{ if(d.raised) return; const a=AG[(d.agendaItem||1)-1]||{ title:'' };
+    _decisionAction(d, 'Agreed at the '+String(m.forum||'meeting').toLowerCase()+' on '+fmtDate(m.date)+' - item '+d.agendaItem+': '+a.title); raised++; });
+  m.status='finished'; m.finishedAt=new Date().toISOString(); _stamp(m,'updated');
+  saveData();
+  let pdf=null; try{ pdf=_sltMinutesPdf(m); }catch(e){ console.error('Minutes failed', e); }
+  _sltDone={ n:acts.length, raised:raised, pdf:pdf };
+  _sltRender();
+  const ov=document.getElementById('sltOv'); if(ov) ov.scrollTop=0;
+}
+function _sltMail(m){
+  const acts=_sltActions(m).slice().sort((a,b)=>(a.agendaItem||0)-(b.agendaItem||0));
+  const to=(m.attendees||[]).map(a=>String(a.email||'').trim()).filter(e=>/@/.test(e));
+  const subject='H&S leadership meeting - '+_sltClient()+' - '+fmtDate(m.date);
+  const body='Thank you for your time at today\'s health and safety leadership meeting.\n\n'
+    +(acts.length?('Actions agreed:\n'+acts.map((d,i)=>(i+1)+'. '+d.decision+' - '+(d.owner||'owner to be named')+(d.due?(', by '+fmtDate(d.due)):'')).join('\n')+'\n\n'):'No actions were agreed.\n\n')
+    +'The minutes are attached'+(_sltDone&&_sltDone.pdf?(' ('+_sltDone.pdf.fname+')'):'')+'. Each action is on the H&S execution plan and will be checked at the next meeting.\n\n'
+    +((typeof _actor==='function'&&_actor().name)?_actor().name:'');
+  return { to:to, subject:subject, body:body };
+}
+function _sltDoneHTML(m){
+  const d=_sltDone, mail=_sltMail(m);
+  let canShare=false;
+  try{ canShare=!!(d.pdf && navigator.canShare && navigator.canShare({ files:[new File([d.pdf.blob], d.pdf.fname, { type:'application/pdf' })] })); }catch(e){}
+  return '<div class="slt-done">'
+    +'<div class="slt-k">Meeting finished</div><h2>✓ '+d.n+' action'+(d.n!==1?'s':'')+' agreed</h2>'
+    +'<p>'+(d.raised?(d.raised+' put on the execution plan, owned and dated. '):'')+'The minutes are ready'+(d.pdf?(' - '+esc(d.pdf.fname)):' - but could not be built; see the console')+'.</p>'
+    +'<div class="slt-done-btns">'
+    +(canShare?'<button class="btn btn-primary" onclick="sltShare()" title="Opens the share screen with the minutes attached - pick your email">Email the minutes…</button>':'')
+    +(d.pdf?('<button class="btn '+(canShare?'btn-outline':'btn-primary')+'" onclick="sltMailOut()" title="Saves the minutes and opens an email to everyone present, with the actions written in - attach the saved file">Download + open an email</button>'):'')
+    +(d.pdf?'<button class="btn btn-ghost" onclick="sltDownload()">Download the minutes</button>':'')
+    +'<button class="btn btn-ghost" onclick="closeSltMeeting()">Close</button></div>'
+    +'<div class="slt-muted" style="margin-top:10px;">To: '+(mail.to.length?esc(mail.to.join(', ')):'nobody has an email address on the list - add them on the email itself')+'</div>'
+    +'</div>';
+}
+// Kept as small doors so a test can watch them without a real download or mail client.
+function _sltSaveBlob(blob, fname){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 4000); }
+function _sltOpenLink(href){ const a=document.createElement('a'); a.href=href; document.body.appendChild(a); a.click(); a.remove(); }
+function sltDownload(){ if(_sltDone&&_sltDone.pdf) _sltSaveBlob(_sltDone.pdf.blob, _sltDone.pdf.fname); }
+function sltMailOut(){
+  const m=_sltCur(); if(!m||!_sltDone||!_sltDone.pdf) return;
+  _sltSaveBlob(_sltDone.pdf.blob, _sltDone.pdf.fname);
+  const e=_sltMail(m);
+  _sltOpenLink('mailto:'+e.to.map(encodeURIComponent).join(',')+'?subject='+encodeURIComponent(e.subject)+'&body='+encodeURIComponent(e.body));
+  showToast('✓ Minutes saved - attach '+_sltDone.pdf.fname+' to the email','success');
+}
+function sltShare(){
+  const m=_sltCur(); if(!m||!_sltDone||!_sltDone.pdf) return;
+  const e=_sltMail(m);
+  navigator.share({ files:[new File([_sltDone.pdf.blob], _sltDone.pdf.fname, { type:'application/pdf' })], title:e.subject, text:e.body })
+    .then(()=>showToast('✓ Minutes shared','success'))
+    .catch(err=>{ if(err && err.name==='AbortError') return; sltMailOut(); });
+}
+// The minutes: who was there, the actions (the part people act on), then
+// each item's notes in agenda order, then what is still owed from before.
+function _sltMinutesPdf(m){
+  const client=_sltClient(), d=_docFor('meetingMinutes');
+  const K=_mkPdf('Meeting Minutes', client, d, (m.forum||'Meeting')+' - '+fmtDate(m.date));
+  const NAVY=[30,58,95], GREY=[110,116,126], RED=[197,32,32], AMBER=[180,110,10];
+  const acts=_sltActions(m).slice().sort((a,b)=>(a.agendaItem||0)-(b.agendaItem||0)), AG=_sltAgenda(), today=new Date().toISOString().slice(0,10);
+  K.kv('Meeting', (m.forum||'Meeting')+', '+fmtDate(m.date));
+  K.kv('Present', (m.attendees||[]).map(a=>a.name+(a.role?(' ('+a.role+')'):'')).join(', ')||'Not recorded');
+  K.kv('Minutes by', (typeof _actor==='function'&&_actor().name)?_actor().name:'');
+  K.section('Actions agreed'+(acts.length?(' - '+acts.length):''), NAVY);
+  if(acts.length){
+    K.table([{header:'ITEM',w:7},{header:'ACTION',w:53},{header:'WHO',w:22},{header:'BY WHEN',w:18}],
+      acts.map(x=>[String(x.agendaItem||''), {text:x.decision||'',bold:true}, x.owner?x.owner:{text:'not named',color:RED}, x.due?fmtDate(x.due):{text:'no date',color:RED}]),
+      {headFill:NAVY, headText:[255,255,255], fs:8.5});
+    K.text('Each action is on the H&S execution plan, owned and dated. The next board report opens by asking whether it has happened.', 8.6, {color:GREY, gap:2});
+  } else K.text('No actions were agreed.', 9.5, {color:GREY});
+  const quiet=[];
+  AG.forEach(a=>{
+    const note=String((m.notes||{})[a.n]||'').trim(), mine=acts.filter(x=>x.agendaItem===a.n);
+    if(!note && !mine.length){ quiet.push(a.n+'. '+a.title); return; }
+    K.section(a.n+'. '+a.title, NAVY);
+    if(note) K.text(note, 9.5, {color:[45,45,45], gap:1});
+    mine.forEach(x=>K.text('Action: '+x.decision+' - '+(x.owner||'not named')+(x.due?(', by '+fmtDate(x.due)):''), 9, {bold:true, color:NAVY}));
+  });
+  if(quiet.length){ K.section('Also covered, nothing to minute', GREY); K.text(quiet.join(' · '), 9, {color:GREY}); }
+  const cf=_decCarriedForward((m.date||'')+'|'+(m.forum||'Meeting')).filter(x=>x.meetingId!==m.id);
+  if(cf.length){
+    K.section('Carried forward from earlier meetings', AMBER);
+    K.table([{header:'DECIDED',w:13},{header:'DECISION',w:47},{header:'OWNER',w:22},{header:'BY WHEN',w:18}],
+      cf.map(x=>[fmtDate(x.date), x.decision||'(not recorded)', x.owner||'not named', {text:x.due?fmtDate(x.due):'no date', bold:true, color:(x.due&&x.due<today)?RED:[55,55,55]}]),
+      {headFill:AMBER, headText:[255,255,255], fs:8.5});
+  }
+  _pdfBrandFooter(K.doc, K.ML, K.RM);
+  return { blob:K.doc.output('blob'), fname:'meeting-minutes-'+String(client).replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+m.date+'.pdf' };
+}
+// The last meeting's minutes, made again from what was recorded.
+function downloadLastMinutes(){
+  const m=_meetings().filter(x=>x.status==='finished').sort((a,b)=>String(b.finishedAt||'').localeCompare(String(a.finishedAt||'')))[0];
+  if(!m){ showToast('No meeting has been finished yet','info'); return; }
+  try{ const p=_sltMinutesPdf(m); _sltSaveBlob(p.blob, p.fname); showToast('✓ Minutes of '+fmtDate(m.date)+' saved','success'); }
+  catch(e){ console.error('Minutes failed', e); showToast('Could not build the minutes - see console','error'); }
+}
+async function openBoardBriefingPrint(){ return _openEngineReport('board-briefing','Leadership briefing', null); }
 var _openDecisions=new Set();
 function _renderDecisions(){
   const el=document.getElementById('decisionPanel'); if(!el) return;
@@ -28470,9 +28812,11 @@ function _renderDecisions(){
         <b>The meeting cycle.</b> Board report produced <span style="color:var(--accent);">→</span> taken to the meeting <span style="color:var(--accent);">→</span> decisions recorded here <span style="color:var(--accent);">→</span> the decisions report circulated <span style="color:var(--accent);">→</span> the next board report opens by asking whether they happened.
       </div>
       ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-        <button class="btn btn-primary btn-sm no-print" onclick="addDecision()">＋ Record a decision</button>
+        <button class="btn btn-primary btn-sm no-print" onclick="openSltMeeting()" title="Run the meeting on the ten briefing items - notes and actions as you go, then the minutes to email">▶ Run the leadership meeting</button>
+        <button class="btn btn-outline btn-sm no-print" onclick="addDecision()">＋ Record a decision</button>
         <button class="btn btn-outline btn-sm no-print" onclick="pullTop5Decisions()" title="Bring this month's five priorities across from the client execution plan as decisions - pre-filled and still editable">↙ Bring in this month's Top 5</button>
         ${list.length?`<button class="btn btn-ghost btn-sm no-print" onclick="downloadDecisionsReport()" title="The note that circulates after the meeting">⭳ Decisions report (PDF)</button>`:''}
+        ${_meetings().some(x=>x.status==='finished')?`<button class="btn btn-ghost btn-sm no-print" onclick="downloadLastMinutes()" title="The minutes of the last meeting run in Compass, made again from what was recorded">⭳ Last meeting minutes</button>`:''}
       </div>`}
       ${rows||''}
     </div></details>`;
@@ -34298,7 +34642,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','inspRegister','inspFolder','trainRegister','trainFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','inspRegister','inspFolder','meetings','trainRegister','trainFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
   'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance','buildingSafety','memberships',

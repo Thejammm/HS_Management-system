@@ -5,10 +5,10 @@
 // The consultant's per-tenant choice persists in the state blob under
 // state.reportPrefs[reportId].format via the existing /api/state save path -
 // use getReportFormat/setReportFormat, no new storage.
-import { buildBoardReport, BOARD_SECTIONS } from './board-report.js';
+import { buildBoardReport, BOARD_SECTIONS, SLT_AGENDA, sltAgenda } from './board-report.js';
 import { buildRiskAssessment } from './risk-assessment.js';
 import { buildManagementPlan } from './management-plan.js';
-export { BOARD_SECTIONS };
+export { BOARD_SECTIONS, SLT_AGENDA, sltAgenda };
 
 // Per-tenant section choice for the board report, same storage pattern as the
 // format preference. Mutates the state blob; caller saves via the normal path.
@@ -29,6 +29,16 @@ export const REPORTS = {
       { id: 'brief',  title: 'Brief - editorial board paper, 4 pages' },
     ],
     build: (state, opts) => buildBoardReport(state, opts),
+  },
+  // The same report arranged as the SLT agenda - ten items, one page each.
+  'board-briefing': {
+    id: 'board-briefing',
+    title: 'Health & Safety Leadership Briefing',
+    formats: [
+      { id: 'signal', title: 'Signal - with cover', default: true },
+      { id: 'brief',  title: 'Brief - no cover' },
+    ],
+    build: (state, opts) => buildBoardReport(state, Object.assign({}, opts, { layout: 'agenda' })),
   },
   'risk-assessment': {
     id: 'risk-assessment',

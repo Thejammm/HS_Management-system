@@ -374,11 +374,24 @@ export function twinPanels({ left, right, footnote }) {
   return `<div class="r-twin">${panel(left)}${panel(right)}</div>${footnote ? `<div class="r-footnote">${esc(footnote)}</div>` : ''}`;
 }
 
+// The leadership briefing's two extras: what an item is to cover, as the
+// short list the presenter talks from, and ruled lines for notes taken in
+// the room.
+export function coverList({ title, items }) {
+  return `<div class="r-coverlist">${title ? `<div class="r-block-title">${esc(title)}</div>` : ''}<ul>${(items || []).map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`;
+}
+// The ruled area runs to the foot of the page, so a light page leaves more
+// room to write; `lines` is the least it will give.
+export function notesLines({ title, lines }) {
+  const min = Math.max(1, Math.min(12, lines || 4)) * 24;
+  return `<div class="r-notes">${title ? `<div class="r-block-title">${esc(title)}</div>` : ''}<div class="r-notes-ruled" style="min-height:${min}px"></div></div>`;
+}
+
 const BLOCKS = {
   masthead, titleBlock, kpiStrip, decisionsPanel, dataTable, dualBar, planBar, gapBars, matrix5x5,
   distributionBars, hierarchyStrip, statementPanel, tagList, stepScale,
   signoffGrid, soWhat, pageFooter, textBlock, coverBlock,
-  splitStrip, journeyStrip, riskLadder, twinPanels, planRisk,
+  splitStrip, journeyStrip, riskLadder, twinPanels, planRisk, coverList, notesLines,
 };
 
 // Render one block descriptor {type, ...props} to HTML.

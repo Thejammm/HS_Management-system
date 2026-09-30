@@ -57,6 +57,31 @@ export function boardHidden(state) {
   return out;
 }
 
+// ── The leadership briefing (Simon, 2026-09-30) ─────────────────────
+// The board report arranged as the SLT agenda he talks to: ten items, one
+// page each - what the item covers, the live figures for it, and ruled lines
+// for the notes. The app's meeting screen carries the same list (SLT_AGENDA
+// in index.html); test/ui/slt-meeting holds the two together.
+export const SLT_AGENDA = [
+  { n: 1, title: 'Current H&S position', cover: ['Overall performance and key headline statistics', 'Significant changes since the last review', 'Any areas of concern requiring leadership attention'] },
+  { n: 2, title: 'Incidents, accidents & near misses', cover: ['RIDDOR / reportable incidents, accidents and near misses', 'Trends and recurring themes', 'Lessons learned and actions taken'] },
+  { n: 3, title: 'Key risk areas for the business', cover: ['Principal risks associated with architectural / design activities', 'Site visits and construction-phase activities', 'Office / workplace risks', 'Travel, lone working and other relevant activities'] },
+  { n: 4, title: 'Design risk & CDM responsibilities', cover: ['How effectively health and safety is being considered during design', 'Designer / Principal Designer responsibilities', 'Any recurring gaps or areas requiring improvement', 'Quality of pre-construction information and risk communication'] },
+  { n: 5, title: 'Project / site performance', cover: ['Overview of H&S performance across live projects', 'Any projects presenting elevated risk or requiring intervention', 'Site inspection / visit findings and recurring issues'] },
+  { n: 6, title: 'Competence, training & engagement', cover: ['Mandatory training / competency position', 'Outstanding training or refresher requirements', 'Staff engagement and reporting culture'] },
+  { n: 7, title: 'Audits, inspections & compliance', cover: ['Recent audit / inspection findings', 'Common non-conformances', 'Progress against corrective actions', 'Any upcoming regulatory / compliance changes'] },
+  { n: 8, title: 'Health & wellbeing', cover: ['Work-related stress / mental health', 'Ergonomics / workstation issues', 'Occupational health trends, where relevant', 'Wider wellbeing initiatives'] },
+  { n: 9, title: 'Key H&S objectives / improvement plan', cover: ['What has been achieved', 'What remains outstanding', 'Priorities for the next 6-12 months'] },
+  { n: 10, title: 'Leadership actions / decisions required', cover: ['The 2-4 things senior leadership needs to know, support or decide', 'Resources, investment, policy changes or accountability issues', 'Any significant emerging risks'] },
+];
+// Item 3 names the core work. Simon wrote it for a design practice; any
+// other client gets the same line without the word "architectural".
+export function sltAgenda(state) {
+  const sec = state && state.profiler && state.profiler.sectors;
+  const design = !!((sec && sec.design === true) || (state && state.company && /design|architect|survey/i.test(String(state.company.sector || ''))));
+  return SLT_AGENDA.map(a => (a.n === 3 && !design) ? Object.assign({}, a, { cover: ['Principal risks from the core work of the business'].concat(a.cover.slice(1)) }) : a);
+}
+
 import { MATURITY_DOMAINS } from '../app-contract.js';
 // The consultant's judgement of the six HSG65 areas - words, never numbers.
 function judgementRows(state) {
@@ -550,10 +575,10 @@ export function buildBoardReport(state, opts = {}) {
   // The measures the business set itself, target against current. Leading
   // indicators are effort in; lagging are outcomes out. No verdict is
   // derived - whether higher is better depends on the measure.
+  const objRows = [];
+  (Array.isArray(state.riskAssurance && state.riskAssurance.leading) ? state.riskAssurance.leading : []).forEach(r => { if (String(r.metric || '').trim()) objRows.push([ String(r.metric).slice(0, 70), 'Leading', r.target || '-', r.current || '-', r.owner || '-' ]); });
+  (Array.isArray(state.riskAssurance && state.riskAssurance.lagging) ? state.riskAssurance.lagging : []).forEach(r => { if (String(r.metric || '').trim()) objRows.push([ String(r.metric).slice(0, 70), 'Lagging', r.target || '-', r.current || '-', r.owner || '-' ]); });
   if (!hide.objectives) {
-    const objRows = [];
-    (Array.isArray(state.riskAssurance && state.riskAssurance.leading) ? state.riskAssurance.leading : []).forEach(r => { if (String(r.metric || '').trim()) objRows.push([ String(r.metric).slice(0, 70), 'Leading', r.target || '-', r.current || '-', r.owner || '-' ]); });
-    (Array.isArray(state.riskAssurance && state.riskAssurance.lagging) ? state.riskAssurance.lagging : []).forEach(r => { if (String(r.metric || '').trim()) objRows.push([ String(r.metric).slice(0, 70), 'Lagging', r.target || '-', r.current || '-', r.owner || '-' ]); });
     compBlocks.push(objRows.length
       ? { type: 'dataTable', title: 'Objectives - target against current',
           cols: [ { header: 'Measure', w: '38%' }, { header: 'Kind', w: '12%' }, { header: 'Target', w: '16%' }, { header: 'Current', w: '16%' }, { header: 'Owner', w: '18%' } ],
@@ -994,6 +1019,236 @@ export function buildBoardReport(state, opts = {}) {
         standfirst: 'Left: system ranking by band and control state. Right: the five selected for this month.' },
       ...fiveBlocks ],
   } : null;
+
+  // ── The leadership briefing: the same facts, in the order of the SLT
+  //    agenda. One page an item - kicker, what it covers, the figures, the
+  //    notes lines - then the sign-off page. Everything below reads the
+  //    locals the full report is built from, so a number here is the
+  //    number there. ──
+  if (opts.layout === 'agenda') {
+    const AG = sltAgenda(state);
+    const cut = (s, n) => { s = String(s == null ? '' : s); return s.length > n ? (s.slice(0, n - 1) + '…') : s; };
+    const notes = (lines) => ({ type: 'notesLines', title: 'Notes from the meeting', lines: lines || 4 });
+    const holdCols = [ { header: 'Risk', w: '56%' }, { header: 'Band', w: '14%' }, { header: 'Controls', w: '30%' } ];
+    const holdRow = z => [ cut(z.name, 80), z.band || '-', z.hold ? (z.hold.level + ' · ' + z.hold.label) : '-' ];
+    const byName = re => D.holdS.rows.filter(z => re.test(String(z.name || ''))).sort(holdWorstFirst);
+    const item = (n, headline, blocks) => {
+      const a = AG[n - 1];
+      return { label: n + '. ' + a.title, section: 'agenda' + n, agendaItem: n, blocks: [ mast,
+        { type: 'titleBlock', kicker: 'Item ' + n + ' of ' + AG.length, headline: a.title, standfirst: headline || undefined },
+        { type: 'coverList', title: 'To cover', items: a.cover },
+        ...blocks.filter(Boolean) ] };
+    };
+    const front = { label: 'Leadership briefing', cover: format === 'signal', blocks: [
+      { type: 'coverBlock', org, title: 'H&S Leadership Briefing', period, refCode: ref, issued: today },
+      { type: 'titleBlock', kicker: 'Health & safety leadership briefing · ' + period, headline: D.headline, standfirst: D.standfirst },
+      { type: 'dataTable', title: 'The agenda', cols: [ { header: 'No.', w: '7%' }, { header: 'Item', w: '37%' }, { header: 'To cover', w: '56%' } ],
+        rows: AG.map(a => [ String(a.n), a.title, a.cover.join(' · ') ]) },
+      { type: 'soWhat', text: verdictLine } ] };
+
+    // 1 · the position
+    const p1 = item(1, D.headline, [
+      { type: 'kpiStrip', tiles: kpis },
+      moveBlock || { type: 'textBlock', title: 'Changes since the last review', body: 'No baseline snapshot is recorded yet, so movement cannot be shown. The consultant records one at each audit visit; from then on this says what has moved.' },
+      D.holdS.breaches.length
+        ? { type: 'dataTable', title: 'Needing leadership attention - ' + D.holdS.breaches.length,
+            cols: [ { header: 'Risk', w: '40%' }, { header: 'Band', w: '12%' }, { header: 'Why', w: '48%' } ],
+            rows: D.holdS.breaches.slice(0, 4).map(b => [ cut(b.name, 70), b.band || '-', cut((b.hold && b.hold.reasons && b.hold.reasons.join('; ')) || b.breach, 110) ]),
+            footnote: D.holdS.breaches.length > 4 ? ('The first 4 of ' + D.holdS.breaches.length + ' - the board report names them all.') : undefined }
+        : { type: 'textBlock', title: 'Areas of concern', body: 'Nothing on the risk profile needs attention first - every risk has a response that matches its size.' },
+      notes(4) ]);
+
+    // 2 · incidents
+    const incList = X.incRecent.filter(i => ACCIDENT_TYPES.includes(i.type) || i.type === 'Near miss' || i.type === 'RIDDOR reportable')
+      .slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    const ridRecent = incList.filter(i => i.type === 'RIDDOR reportable');
+    const byType = {}; incList.forEach(i => { byType[i.type] = (byType[i.type] || 0) + 1; });
+    const withCause = incList.filter(i => String(i.immediateCause || '').trim() || String(i.rootCause || '').trim()).length;
+    const raisedN = incList.reduce((n, i) => n + (Number(i.raised) || 0), 0);
+    const p2 = item(2, incList.length ? (countPhrase(incAcc.length, 'accident', 'accidents') + ', ' + countPhrase(incNear.length, 'near miss', 'near misses') + ' and ' + countPhrase(ridRecent.length, 'RIDDOR event', 'RIDDOR events') + ' in the last 90 days.') : 'Nothing recorded in the last 90 days.', [
+      { type: 'kpiStrip', tiles: [
+        { value: String(incAcc.length), label: 'Accidents in 90 days', tone: incAcc.length ? 'warn' : 'ok' },
+        { value: String(incNear.length), label: 'Near misses in 90 days' },
+        { value: String(ridRecent.length), label: 'RIDDOR reportable', note: incRid.length !== ridRecent.length ? (incRid.length + ' on record in all') : undefined, tone: ridRecent.length ? 'bad' : 'ok' },
+        { value: String(X.incOpen), label: 'Investigations open', tone: X.incOpen ? 'warn' : 'ok' } ] },
+      incList.length ? incTable(incList, 'The full record, with the investigations, is on the incident register.') : null,
+      { type: 'textBlock', title: 'Trends and recurring themes', body: incList.length
+        ? (Object.keys(byType).map(k => k + ': ' + byType[k]).join(' · ') + '. '
+          + (incNear.length >= incAcc.length ? 'Near misses are being reported at least as often as accidents - people are reporting what nearly happened.' : 'Fewer near misses than accidents are on the record - near misses are probably going unreported.'))
+        : 'No accidents, near misses or reportable events in the last 90 days. Confirm that reflects reality rather than under-reporting.' },
+      { type: 'textBlock', title: 'Lessons learned and actions taken', body: incList.length
+        ? (withCause + ' of ' + incList.length + ' ' + (incList.length !== 1 ? 'events have' : 'event has') + ' a cause recorded, and ' + countPhrase(raisedN, 'action has', 'actions have') + ' been raised from them onto the plan.')
+        : 'Nothing to learn from on the record this period.' },
+      notes(3) ]);
+
+    // 3 · the key risk areas
+    const openActs = {};
+    ((state && state.riskProfile) || []).forEach(r => { if (r) openActs[r.id] = (r.actions || []).filter(a => a && !a.deleted && a.status !== 'Complete' && a.status !== 'Accepted').length; });
+    const rk = D.holdS.rows.slice().sort(holdWorstFirst);
+    const p3 = item(3, B.total ? (B.total + ' significant risk' + (B.total !== 1 ? 's' : '') + ' - ' + B.unc + ' uncontrolled, ' + B.atTgt + ' at target.') : 'No risks recorded yet.', [
+      { type: 'distributionBars', title: 'How many risks sit in each band (with controls in place)', items: ['Critical', 'High', 'Medium', 'Low'].map(t => ({ label: t, n: D.byTier[t], colour: TIER_COLOURS[t] })) },
+      rk.length
+        ? { type: 'dataTable', title: 'The principal risks - worst first',
+            cols: [ { header: 'Risk', w: '48%' }, { header: 'Band', w: '12%' }, { header: 'Controls', w: '26%' }, { header: 'Open actions', w: '14%' } ],
+            rows: rk.slice(0, 10).map(z => [ cut(z.name, 80), z.band || '-', z.hold ? (z.hold.level + ' · ' + z.hold.label) : '-', String(openActs[z.id] || 0) ]),
+            footnote: rk.length > 10 ? ('The 10 worst of ' + rk.length + ' - the risk ladder in the board report names every one.') : undefined }
+        : { type: 'textBlock', title: 'The principal risks', body: 'No risks are recorded yet.' },
+      notes(3) ]);
+
+    // 4 · design risk and CDM
+    const desRisks = byName(/design|cdm|principal designer|pre-construction|building regulation|construction phase|construction-phase/i);
+    const p4 = item(4, cdm.overdue ? (countPhrase(cdm.overdue, 'design review or CDM audit is', 'design reviews or CDM audits are') + ' overdue.')
+      : cdm.total ? (cdm.done + ' of ' + cdm.total + ' planned design reviews and CDM audits completed.') : 'No design reviews or CDM audits are recorded yet.', [
+      { type: 'kpiStrip', tiles: [
+        { value: String(cdm.total), label: 'Design reviews & CDM audits planned', tone: cdm.total ? undefined : 'muted' },
+        { value: String(cdm.done), label: 'Completed', tone: cdm.done ? 'ok' : undefined },
+        { value: String(cdm.overdue), label: 'Overdue', tone: cdm.overdue ? 'bad' : 'ok' },
+        { value: String(bs.inScope), label: 'Higher-risk buildings', note: bs.gaps ? (bs.gaps + ' with duties outstanding') : undefined, tone: bs.gaps ? 'bad' : undefined } ] },
+      cdm.latest.length
+        ? { type: 'dataTable', title: 'Latest design reviews and CDM audits',
+            cols: [ { header: 'Activity', w: '24%' }, { header: 'Site / project', w: '30%' }, { header: 'Done', w: '14%' }, { header: 'By', w: '14%' }, { header: 'Outcome', w: '18%' } ],
+            rows: cdm.latest.slice(0, 4).map(v => [ v.kind, cut(v.site || '-', 40), fmtD(v.actual), cut(v.by || '-', 20), cut(v.outcome || '-', 24) ]) }
+        : { type: 'textBlock', title: 'Design reviews and CDM audits', body: 'None recorded yet. Where the business designs or manages construction work, design reviews and CDM audits belong on the Process assurance plan - they are the evidence that health and safety is considered in design.' },
+      desRisks.length ? { type: 'dataTable', title: 'Design and CDM risks on the profile', cols: holdCols, rows: desRisks.slice(0, 5).map(holdRow) } : null,
+      notes(3) ]);
+
+    // 5 · projects and sites - the inspection reports read on the Documents tab
+    const insr = (Array.isArray(state.inspRegister) ? state.inspRegister : []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    const insOpen = insr.reduce((n, e) => n + (Number(((e.summary && e.summary.counts) || {}).open) || 0), 0);
+    const insOver = insr.reduce((n, e) => n + (Number(((e.summary && e.summary.counts) || {}).overdue) || 0), 0);
+    const vCol = k => k === 'bad' ? [197,32,32] : k === 'warn' ? [180,110,10] : k === 'good' ? [22,128,60] : [110,110,110];
+    const p5 = item(5, insr.length ? (countPhrase(insr.length, 'inspection report', 'inspection reports') + ' on file, ' + noneOrCount(insOpen, 'finding still open', 'findings still open', 'no') + '.') : undefined, [
+      { type: 'kpiStrip', tiles: [
+        { value: String(X.siteDone), label: 'Site visits completed' },
+        { value: String(X.siteOverdue), label: 'Planned visits overdue', tone: X.siteOverdue ? 'warn' : 'ok' },
+        { value: String(insr.length), label: 'Inspection reports on file', tone: insr.length ? undefined : 'muted' },
+        { value: String(insOpen), label: 'Findings still open', note: insOver ? (insOver + ' overdue') : undefined, tone: insOpen ? 'warn' : 'ok' } ] },
+      insr.length
+        ? { type: 'dataTable', title: 'Inspection reports - latest first',
+            cols: [ { header: 'Report', w: '32%' }, { header: 'Site', w: '22%' }, { header: 'When', w: '18%' }, { header: 'Verdict', w: '18%' }, { header: 'Open', w: '10%' } ],
+            rows: insr.slice(0, 6).map(e => { const s = e.summary || {}; const c = s.counts || {};
+              return [ cut(s.title || e.title || e.file || 'Report', 60), cut(s.location || s.client || '-', 36), cut(s.period || (e.date ? fmtD(e.date) : '-'), 26),
+                s.verdict ? { text: cut(s.verdict, 26), bold: true, color: vCol(s.verdictKey) } : '-', c.open == null ? '-' : String(c.open) ]; }),
+            footnote: 'Read from each report on the Documents tab.' + (insr.length > 6 ? (' The latest 6 of ' + insr.length + '.') : '') }
+        : { type: 'textBlock', title: 'Inspection reports', body: 'No inspection reports are indexed yet. Index the client\'s inspection reports folder on the Documents tab and each report\'s verdict and open findings appear here.' },
+      { type: 'textBlock', title: 'Subcontractors and others working for the business', body: sup.total
+        ? (sup.total + ' on the register, ' + sup.approved + ' approved; ' + noneOrCount(sup.insExpired, 'with expired insurance', 'with expired insurance', 'none') + '; ' + noneOrCount(sup.concerns.length, 'concern raised in 90 days', 'concerns raised in 90 days', 'no') + '.')
+        : 'No subcontractors or sub-consultants are on the register.' },
+      notes(3) ]);
+
+    // 6 · competence, training and engagement - the sign-off register read
+    //     by its three sections, with the app's rule: a policy is in date for
+    //     12 months, a talk or CPD once signed stays signed.
+    const pso = (state.policySignoff && typeof state.policySignoff === 'object') ? state.policySignoff : {};
+    const psoStaff = Array.isArray(pso.staff) ? pso.staff : [], psoItems = Array.isArray(pso.policies) ? pso.policies : [];
+    const psoSigned = (pso.signed && typeof pso.signed === 'object') ? pso.signed : {};
+    const ONCE = ['Toolbox talk', 'Training / CPD', 'Briefing'];
+    const signedInDate = (pol, dt) => { if (!dt) return false; if (ONCE.includes(pol.type || 'Policy')) return true;
+      const days = Math.floor((new Date(todayIso + 'T23:59:59').getTime() - new Date(dt + 'T00:00:00').getTime()) / 86400000); return !isNaN(days) && days <= 365; };
+    const psoGroups = [ { label: 'Policies, procedures & risk assessments', types: ['Policy', 'Procedure', 'Risk assessment'] },
+      { label: 'Toolbox talks & briefings', types: ['Toolbox talk', 'Briefing'] }, { label: 'CPD & training', types: ['Training / CPD'] } ]
+      .map(g => { const its = psoItems.filter(p => g.types.includes(p.type || 'Policy')); let ok = 0;
+        its.forEach(p => psoStaff.forEach(st => { if (signedInDate(p, psoSigned[st.id + '|' + p.id])) ok++; }));
+        return { label: g.label, n: its.length, ok, of: its.length * psoStaff.length }; });
+    const psoOk = psoGroups.reduce((a, r) => a + r.ok, 0), psoOf = psoGroups.reduce((a, r) => a + r.of, 0);
+    const p6 = item(6, X.trnExpired.length ? (countPhrase(X.trnExpired.length, 'training course has', 'training courses have') + ' expired.') : (psoOf ? (Math.round(psoOk / psoOf * 100) + '% of what has been issued is signed for.') : undefined), [
+      { type: 'kpiStrip', tiles: [
+        { value: String(X.staffN), label: 'Staff on the training matrix', tone: X.staffN ? undefined : 'muted' },
+        { value: String(X.trnExpired.length), label: 'Training expired', tone: X.trnExpired.length ? 'bad' : 'ok' },
+        { value: String(X.trnSoon.length), label: 'Expiring within 60 days', tone: X.trnSoon.length ? 'warn' : 'ok' },
+        { value: psoOf ? (Math.round(psoOk / psoOf * 100) + '%') : '-', label: 'Sign-offs in place', note: psoOf ? (psoOk + ' of ' + psoOf) : 'nothing issued yet', tone: psoOf ? (psoOk === psoOf ? 'ok' : undefined) : 'muted' } ] },
+      { type: 'dataTable', title: 'Signed for - the sign-off register',
+        cols: [ { header: 'What has been issued', w: '46%' }, { header: 'Items', w: '14%' }, { header: 'Signed', w: '20%' }, { header: 'Still to sign', w: '20%' } ],
+        rows: psoGroups.map(r => [ r.label, String(r.n), r.of ? (r.ok + ' of ' + r.of) : '-', r.of ? { text: String(r.of - r.ok), bold: true, color: (r.of - r.ok) ? [180,110,10] : [22,128,60] } : '-' ]),
+        footnote: psoStaff.length ? ('Across the ' + countPhrase(psoStaff.length, 'employee', 'employees') + ' on the register. A policy needs signing again after 12 months; a talk or CPD, once signed, stays signed.') : 'No employees are on the sign-off register yet.' },
+      X.trnExpired.length ? { type: 'dataTable', title: 'Refreshers now due',
+        cols: [ { header: 'Employee', w: '30%' }, { header: 'Course', w: '46%' }, { header: 'Expired', w: '24%' } ],
+        rows: X.trnExpired.slice(0, 4).map(x => [ cut(x.employee || '-', 30), cut(x.course || '-', 60), fmtD(x.expiry) ]),
+        footnote: X.trnExpired.length > 4 ? ('4 of ' + X.trnExpired.length + ' - the board report lists them all.') : undefined } : null,
+      { type: 'textBlock', title: 'Engagement and reporting culture', body: (X.brRecent.length
+          ? (countPhrase(X.brRecent.length, 'briefing', 'briefings') + ' held in 90 days, ' + noneOrCount(X.brFb.length, 'with something raised back by the workforce', 'with something raised back by the workforce', 'none') + '. ')
+          : 'No briefings recorded in 90 days. ') + countPhrase(incNear.length, 'near miss', 'near misses') + ' reported in the same period.' },
+      notes(3) ]);
+
+    // 7 · audits, inspections and compliance
+    const soon90 = (function () { const s = new Date(todayIso + 'T12:00:00'); s.setDate(s.getDate() + 90); return s.toISOString().slice(0, 10); })();
+    const reqDue = [];
+    reqSections.forEach(sec => (sec.items || []).forEach(it => { if (it && it.dueDate && it.dueDate >= todayIso && it.dueDate <= soon90 && !(it.present === 'Yes' && it.adequate === 'Yes')) reqDue.push(it); }));
+    const memGone = memAll.filter(m => m.expiry && m.expiry < todayIso), memSoon = memAll.filter(m => m.expiry && m.expiry >= todayIso && m.expiry <= soonIso);
+    const nc = legal.notInPlace.concat(legal.gaps);
+    const comingUp = [ memGone.length ? (countPhrase(memGone.length, 'accreditation has', 'accreditations have') + ' expired: ' + memGone.map(m => m.name || '(unnamed)').join(', ') + '.') : '',
+      memSoon.length ? (countPhrase(memSoon.length, 'accreditation expires', 'accreditations expire') + ' within 60 days: ' + memSoon.map(m => (m.name || '(unnamed)') + ' (' + fmtD(m.expiry) + ')').join(', ') + '.') : '',
+      reqDue.length ? (countPhrase(reqDue.length, 'legal duty is', 'legal duties are') + ' due to be in place within 90 days.') : '' ].filter(Boolean).join(' ');
+    const p7 = item(7, legal.notInPlace.length ? (countPhrase(legal.notInPlace.length, 'legal duty is', 'legal duties are') + ' not in place.') : (D.overdue ? (countPhrase(D.overdue, 'corrective action is', 'corrective actions are') + ' overdue.') : undefined), [
+      { type: 'kpiStrip', tiles: [
+        { value: audDone + '/' + audits.length, label: 'Audits and reviews done', note: audOverdue ? (audOverdue + ' overdue') : undefined, tone: audits.length ? (audOverdue ? 'warn' : undefined) : 'muted' },
+        { value: String(legal.notInPlace.length), label: 'Legal duties not in place', tone: legal.notInPlace.length ? 'bad' : 'ok' },
+        { value: String(D.openActions), label: 'Corrective actions open', note: D.overdue ? (D.overdue + ' overdue') : 'none overdue', tone: D.overdue ? 'warn' : undefined },
+        { value: casPct != null ? (casPct + '%') : '-', label: 'Accreditation (CAS) ready', tone: casPct == null ? 'muted' : undefined } ] },
+      nc.length
+        ? { type: 'dataTable', title: 'Non-conformances - duties not in place or not adequate',
+            cols: [ { header: 'Duty', w: '30%' }, { header: 'What is missing', w: '48%' }, { header: 'Standing', w: '22%' } ],
+            rows: nc.slice(0, 5).map(r => [ cut(r.duty, 40), cut(r.line, 90), { text: (r.nip ? 'Not in place' : 'Not adequate') + (r.due ? (' · by ' + fmtD(r.due)) : ''), bold: true, color: r.nip ? [197,32,32] : [180,110,10] } ]),
+            footnote: nc.length > 5 ? ('5 of ' + nc.length + ' - the full list is on the Legal duties tab.') : undefined }
+        : { type: 'textBlock', title: 'Non-conformances', body: legal.assessed ? 'Every assessed legal duty is in place and adequate.' : 'The Legal duties assessment has not been started, so non-conformances cannot be shown yet.' },
+      { type: 'textBlock', title: 'Coming up', body: cut(comingUp || 'Nothing on the registers falls due in the next 60 days. Regulatory changes on the horizon are for discussion.', 420) },
+      notes(3) ]);
+
+    // 8 · health and wellbeing
+    const wellRe = /stress|mental|wellbeing|well-being|display screen|\bdse\b|workstation|ergonom|fatigue|home ?working|agile|welfare/i;
+    const wellRisks = byName(wellRe);
+    const wellIssued = psoItems.filter(p => wellRe.test(String(p.title || '')));
+    const p8 = item(8, oh.overdue.length ? (countPhrase(oh.overdue.length, 'health surveillance is', 'health surveillances are') + ' overdue.') : undefined, [
+      { type: 'kpiStrip', tiles: [
+        { value: String(oh.people), label: 'Under health surveillance', tone: oh.total ? undefined : 'muted' },
+        { value: String(oh.overdue.length), label: 'Surveillance overdue', tone: oh.overdue.length ? 'bad' : 'ok' },
+        { value: String(oh.act.length), label: 'Outcomes to act on', tone: oh.act.length ? 'warn' : 'ok' },
+        { value: String(ohIll), label: 'Ill-health events', note: 'on the incident register', tone: ohIll ? 'warn' : 'ok' } ] },
+      wellRisks.length
+        ? { type: 'dataTable', title: 'Wellbeing risks on the profile - stress, workstations, fatigue', cols: holdCols, rows: wellRisks.slice(0, 5).map(holdRow) }
+        : { type: 'textBlock', title: 'Wellbeing risks on the profile', body: 'No risk on the profile is about stress, workstations or fatigue. Work-related stress and display screen work are risks most businesses carry - worth confirming they have been assessed.' },
+      { type: 'textBlock', title: 'Wellbeing initiatives', body: wellIssued.length
+        ? cut(countPhrase(wellIssued.length, 'item', 'items') + ' on the sign-off register: ' + wellIssued.map(p => p.title).join('; ') + '.', 300)
+        : 'Nothing on stress, workstations or wellbeing has been issued for sign-off yet. The toolbox talks and CPD tabs carry ready-made ones.' },
+      notes(4) ]);
+
+    // 9 · objectives and the improvement plan
+    const doneN = (X.allDone || []).filter(w => !w.accepted).length;
+    const t5 = X.top5 || [];
+    const mLabel = m => { try { return new Date(m + '-01T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); } catch (e) { return m; } };
+    const p9 = item(9, (doneN ? (countPhrase(doneN, 'action', 'actions') + ' completed to date; ') : '') + D.openActions + ' still open' + (D.overdue ? (', ' + D.overdue + ' overdue.') : '.'), [
+      { type: 'kpiStrip', tiles: [
+        { value: String(doneN), label: 'Actions completed to date', tone: doneN ? 'ok' : undefined },
+        { value: String(D.openActions), label: 'Still outstanding' },
+        { value: String(D.overdue), label: 'Overdue', tone: D.overdue ? 'warn' : 'ok' },
+        { value: D.planDone + '/' + D.holdS.total, label: 'Risks fully actioned' } ] },
+      objRows.length ? { type: 'dataTable', title: 'Objectives - target against current',
+        cols: [ { header: 'Measure', w: '38%' }, { header: 'Kind', w: '12%' }, { header: 'Target', w: '16%' }, { header: 'Current', w: '16%' }, { header: 'Owner', w: '18%' } ],
+        rows: objRows.slice(0, 5), footnote: objRows.length > 5 ? ('5 of ' + objRows.length + ' - all are in Monitoring & assurance.') : undefined } : null,
+      t5.length
+        ? { type: 'dataTable', title: 'Priorities - the five for ' + mLabel(X.t5Month),
+            cols: [ { header: 'What we will do', w: '52%' }, { header: 'Owner', w: '24%' }, { header: 'By', w: '24%' } ],
+            rows: t5.map(a => [ cut(a.desc, 80), a.owner || 'to be named', a.due ? fmtD(a.due) : 'to be dated' ]) }
+        : { type: 'textBlock', title: 'Priorities for the next 6-12 months', body: 'No Top 5 is marked for this month yet. The priorities are for the meeting to agree - they go on the plan as dated, owned actions.' },
+      notes(3) ]);
+
+    // 10 · what leadership needs to know, support or decide
+    const decOpenL = decAll.filter(decOpenOf).sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
+    const p10 = item(10, decisions.length + ' decision' + (decisions.length !== 1 ? 's' : '') + ' for the meeting' + (decOpenL.length ? (', and ' + decOpenL.length + ' still open from earlier meetings.') : '.'), [
+      { type: 'decisionsPanel', title: 'Decisions required', items: decisions.slice(0, 4) },
+      decOpenL.length ? { type: 'dataTable', title: 'Still open from earlier meetings - has this happened?',
+        cols: [ { header: 'Decided', w: '14%' }, { header: 'Decision', w: '46%' }, { header: 'Owner', w: '20%' }, { header: 'By when', w: '20%' } ],
+        rows: decOpenL.slice(0, 4).map(d => [ fmtD(d.date), cut(d.decision || '(not recorded)', 90), d.owner || 'no owner', { text: d.due ? fmtD(d.due) : 'no date', bold: true, color: (d.due && d.due < todayIso) ? [197,32,32] : [110,110,110] } ]),
+        footnote: decOpenL.length > 4 ? ('4 of ' + decOpenL.length + ' - the decisions register holds the rest.') : undefined } : null,
+      { type: 'dataTable', title: 'Agreed in the meeting', cols: [ { header: 'Action / decision', w: '56%' }, { header: 'Who', w: '24%' }, { header: 'By when', w: '20%' } ],
+        rows: [0, 1, 2, 3, 4, 5, 6].map(() => [' ', ' ', ' ']) },
+      { type: 'notesLines', title: 'Emerging risks and anything else raised', lines: 3 } ]);
+
+    return {
+      meta: { title: 'Health & Safety Leadership Briefing', org, ref, producer: producerOf(state), format, period },
+      pages: [ front, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, page4 ],
+    };
+  }
 
   // The running order follows the picker: summary, the risk picture, dashboard,
   // this period, actions (with the register), people, compliance, partners,

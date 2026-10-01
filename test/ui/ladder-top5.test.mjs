@@ -109,4 +109,23 @@ const ladder = () => page.evaluate(() => {
   R.ok(t.boxes === 0 && t.star === '★', 'read-only, the column shows a star on the five and no boxes');
 }
 
+// ── the Top 5 Risks report, from the ladder and the Reports tab ──
+// Simon, 2026-10-01: "I have been given a task to provide the top five risks
+// that need to be dealt with back to the SLT - can you provide one".
+{
+  const t = await page.evaluate(() => {
+    const opened = []; const keep = window._openEngineReport;
+    window._openEngineReport = (id, label) => { opened.push(id + '|' + label); return Promise.resolve(); };
+    renderCockpit();
+    const btn = [...document.querySelectorAll('.ckx-panel button')].find(b => /Report/.test(b.textContent) && /Top 5/.test(b.title));
+    if (btn) btn.click();
+    switchTab('reports');
+    const reports = document.getElementById('tab-reports').textContent;
+    window._openEngineReport = keep;
+    return { btn: !!btn, opened, card: /Top 5 Risks/.test(reports), doc: REPORT_DOCS.some(d => d.key === 'topFive' && d.code === 'T5') };
+  });
+  R.ok(t.btn && t.opened[0] === 'top-five|Top 5 risks report', 'the ladder has a Report button that makes the Top 5 Risks report');
+  R.ok(t.card && t.doc, 'and it is on the Reports tab, as a controlled document (T5)');
+}
+
 await R.done(browser, errors);

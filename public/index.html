@@ -14999,7 +14999,8 @@ const COCKPIT_WIDGETS = {
             +(on.length?on.map(chip).join(''):'<span style="font-size:11.5px;color:var(--text-muted);">None at this level.</span>')+'</div></div>'; };
       const unrated=B.rows.filter(z=>!z.sc.priority);
       return '<div class="ckx-panel"><h4>Risk ladder</h4><div class="ckl-headrow"><span style="font-size:11px;color:var(--text-muted);">Risk to the business, Critical to Low</span>'
-        +'<span class="ckl-head" title="This month’s five priorities - the same five as the Top 5 on the execution plan">Top 5 · '+n5+' of '+TOP5_MAX+' for '+esc(_top5MonthLabel(m5))+'</span></div>'
+        +'<span class="ckl-head" title="This month’s five priorities - the same five as the Top 5 on the execution plan">Top 5 · '+n5+' of '+TOP5_MAX+' for '+esc(_top5MonthLabel(m5))+'</span>'
+        +(t5ro?'':'<button class="btn btn-ghost btn-xs no-print" onclick="openTopFivePrint()" title="The Top 5 Risks report for the SLT - these five, a page each">⭳ Report</button>')+'</div>'
         +'<div>'+['Critical','High','Medium','Low'].map(rung).join('')+'</div>'
         +(unrated.length?('<div style="font-size:11.5px;color:var(--text-muted);padding:8px 0 0;border-top:1px solid var(--border);margin-top:2px;">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name)).join(', ')+'</div>'):'')
         +'<div style="display:flex;gap:18px;font-size:11.5px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;">'
@@ -15311,6 +15312,11 @@ function renderReports(){
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
       desc:'For the leadership meeting, defaulted to what HSG65 says a review draws on: the position and decisions, incidents and investigations, active monitoring, training, worker-raised issues, statutory checks, successes and movement since the baseline.',
       tags:['Directors','HSG65 review','Sign-off'] },
+    { title:'Top 5 Risks', accent:'#B45309', tint:'#FBF0E6', fn:'openTopFivePrint()',
+      meta:(function(){ try{ const n=(S.riskProfile||[]).filter(r=>_riskTop5Picked(r)).length; return n?(n+' of 5 chosen for '+_top5MonthLabel(_top5Month())):'None chosen yet - it ranks the worst five'; }catch(e){ return 'The five to deal with first'; } })(),
+      icon:svg('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
+      desc:'The five risks to deal with first, for the SLT: the five ticked on the cockpit\'s risk ladder for the month (topped up from the system\'s own ranking if fewer are chosen). A page each - where it stands, why it is on the list, the controls, what will be done by whom and when, and what the SLT is asked to do.',
+      tags:['SLT','Top 5','A page each'] },
     { title:'Leadership Briefing', accent:'#DC2626', tint:'#FCE9E9', fn:'openBoardBriefingPrint()', meta:'Ten agenda items, one page each',
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
       desc:'The board report arranged as the SLT agenda - position, incidents, key risks, design and CDM, projects, competence, audits, wellbeing, objectives, and the decisions required. One page an item: what to cover, the live figures, and ruled lines for notes.',
@@ -21954,6 +21960,7 @@ const REPORT_DOCS = [
   { key:'riskPathway',      title:'Risk Pathway',                 code:'RPW' },
   { key:'keptInPlace',      title:'Controls Kept in Place',       code:'KIP' },
   { key:'boardReport',      title:'Board Report',                 code:'BR'  },
+  { key:'topFive',          title:'Top 5 Risks',                  code:'T5'  },
   { key:'managementPlan',   title:'H&S Management Plan',          code:'MP'  },
   { key:'bizStatus',        title:'Business Status Report',       code:'BSR' },
   { key:'decisions',        title:'Management Decisions',         code:'MD'  },
@@ -22500,6 +22507,9 @@ function setBoardSection(id, hide){
   if(hide) h[id]=true; else delete h[id];
   saveData();
 }
+// The five risks to deal with first, for the SLT (2026-10-01) - the same
+// five the risk ladder's ticks choose, a page each.
+async function openTopFivePrint(){ return _openEngineReport('top-five','Top 5 risks report', null); }
 async function openBoardReportPrint(){
   try{ if(new URLSearchParams(location.search).get('report')==='legacy'){ downloadBoardReport(); return; } }catch(e){}
   return _openEngineReport('board-report','Board report', downloadBoardReport);

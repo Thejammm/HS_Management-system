@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --env-file=.env server.js",
-    "test": "node --test test/reports.test.mjs test/cas-export.test.mjs test/management-plan.test.mjs test/signoff-link.test.mjs test/onejourney-reports.test.mjs test/training-tabs.test.mjs && npm run check",
+    "test": "node --test test/reports.test.mjs test/cas-export.test.mjs test/management-plan.test.mjs test/signoff-link.test.mjs test/onejourney-reports.test.mjs test/training-tabs.test.mjs test/top-five-report.test.mjs && npm run check",
     "check:consistency": "node scripts/check-app-report-consistency.mjs",
     "check:masthead": "node scripts/check-report-masthead-fit.mjs",
     "check": "npm run check:consistency && npm run check:masthead && npm run check:overflow",

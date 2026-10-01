@@ -8,6 +8,7 @@
 import { buildBoardReport, BOARD_SECTIONS, SLT_AGENDA, sltAgenda } from './board-report.js';
 import { buildRiskAssessment } from './risk-assessment.js';
 import { buildManagementPlan } from './management-plan.js';
+import { buildTopFive } from './top-five.js';
 export { BOARD_SECTIONS, SLT_AGENDA, sltAgenda };
 
 // Per-tenant section choice for the board report, same storage pattern as the
@@ -39,6 +40,16 @@ export const REPORTS = {
       { id: 'brief',  title: 'Brief - no cover' },
     ],
     build: (state, opts) => buildBoardReport(state, Object.assign({}, opts, { layout: 'agenda' })),
+  },
+  // The five risks to deal with first - asked for by the SLT (2026-10-01).
+  'top-five': {
+    id: 'top-five',
+    title: 'Top 5 Risks',
+    formats: [
+      { id: 'signal', title: 'Signal - with cover', default: true },
+      { id: 'brief',  title: 'Brief - no cover' },
+    ],
+    build: (state, opts) => buildTopFive(state, opts),
   },
   'risk-assessment': {
     id: 'risk-assessment',

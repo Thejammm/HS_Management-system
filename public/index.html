@@ -4175,6 +4175,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .slt-done h2{margin:4px 0 8px;font-size:22px;}
     .slt-done-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
     @media (max-width:760px){ .slt-act,.slt-add{grid-template-columns:1fr;} .slt-cover,.slt-facts{margin-left:0;} }
+    .ckl-headrow{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:-2px 0 8px;}
+    .ckl-head{margin-left:auto;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#B45309;}
+    .ckl-line{display:flex;align-items:center;gap:8px;width:100%;}
+    .ckl-ref{flex:0 0 44px;display:flex;}
+    .ckl-ref:empty::before{content:'';}
+    .ckl-t5{flex:0 0 40px;display:flex;justify-content:center;align-items:center;color:#B45309;font-weight:800;}
+    .ckl-t5 input{width:16px;height:16px;margin:0;cursor:pointer;accent-color:#B45309;}
+    .ckl-pick{font-size:11px;font-weight:600;color:#B45309;margin:-3px 48px 2px 52px;overflow-wrap:anywhere;}
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
     /* Quick links to other apps */
     .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;}
@@ -14944,9 +14952,21 @@ const COCKPIT_WIDGETS = {
       if(!B.total) return '<div class="ckx-panel"><h4>Risk ladder</h4><div class="ck-pending">No risks recorded yet.</div></div>';
       // Plain lines, no borders (Simon: the pills looked infantile): the wash
       // carries the level, the dot carries the controls judgement.
-      const chip=z=>'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':(z.part?'No target set':(z.reviewDue?'Controlled - review due':'Controlled as reasonably practicable')))+' - click to open" '
-        +'style="all:unset;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;max-width:100%;color:'+(z.unc||z.part?'var(--text)':(z.reviewDue?'#B45309':'#16A34A'))+';padding:2px 0;">'
-        +'<span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':(z.reviewDue?'#D97706':'#16A34A')))+';"></span><span>'+esc(z.name)+_macroTagHTML(z.r)+'</span></button>';
+      // Each line: the risk's reference (as on the pathway), the risk itself,
+      // and a Top 5 tick in a column of its own (Simon, 2026-10-01: in the
+      // meeting the ladder was the screen that showed what is wrong in order,
+      // but choosing the five meant hunting the app for each risk's ref).
+      try{ _riskRefsEnsure(); }catch(e){}
+      const m5=_top5Month(), n5=_top5List(m5).length, t5ro=_roLocked()||_empView();
+      const chip=z=>{
+        const pick=_riskTop5Picked(z.r, m5);
+        return '<div class="ckl-line"><span class="ckl-ref">'+_riskRefChip(z.r)+'</span>'
+        +'<button type="button" class="ckl-name" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':(z.part?'No target set':(z.reviewDue?'Controlled - review due':'Controlled as reasonably practicable')))+' - click to open" '
+        +'style="all:unset;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;flex:1;min-width:0;color:'+(z.unc||z.part?'var(--text)':(z.reviewDue?'#B45309':'#16A34A'))+';padding:2px 0;">'
+        +'<span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':(z.reviewDue?'#D97706':'#16A34A')))+';"></span><span>'+esc(z.name)+_macroTagHTML(z.r)+'</span></button>'
+        +'<span class="ckl-t5">'+(t5ro?(pick?'★':'')
+          :('<input type="checkbox" '+(pick?'checked ':'')+'onchange="toggleRiskTop5(\''+z.id+'\')" title="'+(pick?'One of the five for '+esc(_top5MonthLabel(m5))+' - untick to take it off':'Make this one of the five priorities for '+esc(_top5MonthLabel(m5))+' - its most pressing open action is marked on the execution plan')+'">'))+'</span></div>'
+        +(pick?('<div class="ckl-pick">Top 5 · '+esc(String(pick.desc||'').slice(0,90))+(pick.owner?(' · '+esc(pick.owner)):'')+(pick.due?(' · by '+esc(fmtDate(pick.due))):'')+'</div>'):''); };
       // A real ladder: the rails run unbroken down the left (tinted with each
       // band's colour, so the ladder itself grades red to green), the rung is
       // a solid bar between them, and an empty rung says so. Each band label
@@ -14978,7 +14998,8 @@ const COCKPIT_WIDGETS = {
           +'<div style="display:flex;flex-direction:column;gap:5px;align-items:stretch;flex:1;min-width:0;align-self:center;padding:8px 14px 8px 0;">'
             +(on.length?on.map(chip).join(''):'<span style="font-size:11.5px;color:var(--text-muted);">None at this level.</span>')+'</div></div>'; };
       const unrated=B.rows.filter(z=>!z.sc.priority);
-      return '<div class="ckx-panel"><h4>Risk ladder</h4><div style="font-size:11px;color:var(--text-muted);margin:-2px 0 8px;">Risk to the business, Critical to Low</div>'
+      return '<div class="ckx-panel"><h4>Risk ladder</h4><div class="ckl-headrow"><span style="font-size:11px;color:var(--text-muted);">Risk to the business, Critical to Low</span>'
+        +'<span class="ckl-head" title="This month’s five priorities - the same five as the Top 5 on the execution plan">Top 5 · '+n5+' of '+TOP5_MAX+' for '+esc(_top5MonthLabel(m5))+'</span></div>'
         +'<div>'+['Critical','High','Medium','Low'].map(rung).join('')+'</div>'
         +(unrated.length?('<div style="font-size:11.5px;color:var(--text-muted);padding:8px 0 0;border-top:1px solid var(--border);margin-top:2px;">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name)).join(', ')+'</div>'):'')
         +'<div style="display:flex;gap:18px;font-size:11.5px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;">'
@@ -14986,7 +15007,7 @@ const COCKPIT_WIDGETS = {
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#F59E0B;margin-right:5px;"></span>no residual target set</span>'
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#16A34A;margin-right:5px;"></span>controlled as reasonably practicable</span>'
         +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#D97706;margin-right:5px;"></span>controlled - review due</span>'
-        +'<span>Select a risk to open it.</span></div></div>';
+        +'<span>Select a risk to open it.'+(t5ro?'':' Tick up to five as this month’s priorities.')+'</span></div></div>';
     } },
   boardFive: { id:'boardFive', label:'Putting us at risk today', group:'Board', render:x=>{
       const B=_boardModel(); const H=_holdSummary();
@@ -15990,6 +16011,35 @@ function toggleTop5(refStr){
   }
   if(typeof _stamp==='function') _stamp(o,'updated');
   saveData(); _refreshActionViews();
+}
+// ── Choosing the five from the risk ladder (Simon, 2026-10-01) ──
+// The Top 5 stays a pick of ACTIONS - one tick, one store, so the execution
+// plan, the cockpit's five and the board report all read the same marks.
+// Ticking a risk marks its most pressing open action for the month (overdue
+// first, then the soonest due); unticking clears the month's mark from every
+// action on the risk.
+function _riskTop5Picked(r, month){ return ((r&&r.actions)||[]).find(a=>a&&!a.deleted&&a.top5===(month||_top5Month()))||null; }
+function _riskTop5Action(r){
+  const open=((r&&r.actions)||[]).filter(a=>a&&!a.deleted&&!a.hideFromPlan&&String(a.desc||'').trim()&&_actionStatus(a)!=='Complete'&&_actionStatus(a)!=='Accepted');
+  return open.slice().sort((a,b)=>{ const ao=_actionStatus(a)==='Overdue'?0:1, bo=_actionStatus(b)==='Overdue'?0:1; if(ao!==bo) return ao-bo; return String(a.due||'9999').localeCompare(String(b.due||'9999')); })[0]||null;
+}
+function _top5Repaint(){ saveData(); _refreshActionViews(); try{ if(document.getElementById('tab-cockpit').classList.contains('active')) _keepScroll(renderCockpit); }catch(e){} }
+function toggleRiskTop5(riskId){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===riskId); if(!r) return;
+  const month=_top5Month(), ref=_riskRefOf(r), name=(ref?(ref+' '):'')+String(r.activity||r.hazard||'This risk');
+  const marked=(r.actions||[]).filter(a=>a&&!a.deleted&&a.top5===month);
+  if(marked.length){
+    marked.forEach(a=>{ a.top5=''; if(typeof _stamp==='function') _stamp(a,'updated'); });
+    _top5Repaint(); showToast(name+' taken off the Top 5 for '+_top5MonthLabel(month),'info'); return;
+  }
+  const a=_riskTop5Action(r);
+  // The box has already ticked itself; every refusal repaints so the screen
+  // never shows a tick the state does not hold.
+  if(!a){ _top5Repaint(); showToast('Nothing open on '+name+' to make a priority - open it and add an action first','info'); return; }
+  if(_top5List(month).length>=TOP5_MAX){ _top5Repaint(); showToast('Five are already marked for '+_top5MonthLabel(month)+' - untick one first','info'); return; }
+  a.top5=month; if(typeof _stamp==='function') _stamp(a,'updated');
+  _top5Repaint(); showToast('✓ '+name+' is in the Top 5 for '+_top5MonthLabel(month)+' - "'+String(a.desc).slice(0,60)+'" is marked on the execution plan','success');
 }
 // The month's five, shown on the plan itself: what is marked, and how last
 // month's five actually went. Plain counts - no scoring.

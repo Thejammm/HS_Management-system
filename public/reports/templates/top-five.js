@@ -11,22 +11,14 @@ import { deriveBoard, bandsFrom, tierFor, residualOf, targetOf, producerOf, coun
 import { holdWorstFirst, riskRefOf, controlsListOf, sifOf, sifWordOf, top5MonthOf, docFor } from '../app-contract.js';
 import { esc } from '../blocks.js';
 
-export function buildTopFive(state, opts = {}) {
+// Which five, and what each one needs - one reading, shared by the report and
+// the app's fillable response form (the app keeps a port, _top5Five /
+// _top5Asks; test/ui/top5-response.test.mjs holds the two together).
+export function topFiveOf(state, opts = {}) {
   const s = state || {};
-  const D = deriveBoard(s, opts);
+  const D = opts._D || deriveBoard(s, opts);
   const today = opts.today || new Date().toISOString().slice(0, 10);
-  const fmtD = d => d ? new Date(String(d).slice(0, 10) + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-  const cut = (t, n) => { t = String(t == null ? '' : t); return t.length > n ? (t.slice(0, n - 1) + '…') : t; };
-  const co = D.company || {};
-  const org = (opts.tenant && opts.tenant.name) || co.tradingName || co.legalName || 'Client';
-  const format = opts.format || 'signal';
-  const period = opts.period || new Date(today + 'T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
   const month = top5MonthOf(today);
-  const mLabel = new Date(month + '-01T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-  const dc = docFor(s, 'topFive', { clientName: (opts.tenant && opts.tenant.name) || '', today: opts.today });
-  const ref = (opts.meta && opts.meta.ref) || (dc.omit ? '' : dc.ref);
-  const mast = { type: 'masthead', org, refCode: ref, issued: dc.omit ? fmtD(today) : fmtD(dc.issued), review: dc.omit ? '' : fmtD(dc.nextReview) };
-
   // ── Which five ──
   const bands = bandsFrom(s);
   const risks = Array.isArray(s.riskProfile) ? s.riskProfile : [];
@@ -65,6 +57,27 @@ export function buildTopFive(state, opts = {}) {
       nowTier: now ? tierFor(now.score, bands) : null, tgtTier: tgt ? tierFor(tgt.score, bands) : null,
       hold, breach: f.z.breach, why, open, next, overdue: open.filter(late).length, controls: controlsListOf(r), sif: sifOf(r), sifWord: sifWordOf(r), asks: asks.slice(0, 3) };
   });
+  return { X, month, late };
+}
+
+export function buildTopFive(state, opts = {}) {
+  const s = state || {};
+  const D = deriveBoard(s, opts);
+  const today = opts.today || new Date().toISOString().slice(0, 10);
+  const fmtD = d => d ? new Date(String(d).slice(0, 10) + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  const cut = (t, n) => { t = String(t == null ? '' : t); return t.length > n ? (t.slice(0, n - 1) + '…') : t; };
+  const co = D.company || {};
+  const org = (opts.tenant && opts.tenant.name) || co.tradingName || co.legalName || 'Client';
+  const format = opts.format || 'signal';
+  const period = opts.period || new Date(today + 'T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const month = top5MonthOf(today);
+  const mLabel = new Date(month + '-01T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const dc = docFor(s, 'topFive', { clientName: (opts.tenant && opts.tenant.name) || '', today: opts.today });
+  const ref = (opts.meta && opts.meta.ref) || (dc.omit ? '' : dc.ref);
+  const mast = { type: 'masthead', org, refCode: ref, issued: dc.omit ? fmtD(today) : fmtD(dc.issued), review: dc.omit ? '' : fmtD(dc.nextReview) };
+
+  const T = topFiveOf(s, Object.assign({}, opts, { _D: D }));
+  const X = T.X, late = T.late;
 
   // ── Front page ──
   const nChosen = X.filter(x => x.chosen).length;

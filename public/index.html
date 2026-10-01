@@ -4183,6 +4183,15 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     .ckl-t5{flex:0 0 40px;display:flex;justify-content:center;align-items:center;color:#B45309;font-weight:800;}
     .ckl-t5 input{width:16px;height:16px;margin:0;cursor:pointer;accent-color:#B45309;}
     .ckl-pick{font-size:11px;font-weight:600;color:#B45309;margin:-3px 48px 2px 52px;overflow-wrap:anywhere;}
+    .t5r-row{display:grid;grid-template-columns:20px minmax(0,3fr) minmax(0,1.2fr) 140px minmax(0,1fr) 26px;gap:6px;align-items:center;margin-bottom:6px;}
+    .t5r-row input[type=checkbox]{width:16px;height:16px;margin:0;cursor:pointer;accent-color:var(--accent);}
+    .t5r-row input:not([type=checkbox]){font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font-family:inherit;width:100%;min-width:0;}
+    .t5r-done{opacity:.6;}
+    .t5r-from{font-size:11px;color:var(--text-muted);overflow-wrap:anywhere;}
+    .t5r-cmt{font-size:12.5px;line-height:1.45;padding:6px 10px;margin-bottom:6px;border-left:3px solid var(--border);background:var(--bg);}
+    .t5r-ok{color:var(--success);font-weight:700;font-size:11px;}
+    .t5r-no{color:#B45309;font-weight:700;font-size:11px;}
+    @media (max-width:760px){ .t5r-row{grid-template-columns:20px 1fr;} }
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
     /* Quick links to other apps */
     .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;}
@@ -15000,7 +15009,8 @@ const COCKPIT_WIDGETS = {
       const unrated=B.rows.filter(z=>!z.sc.priority);
       return '<div class="ckx-panel"><h4>Risk ladder</h4><div class="ckl-headrow"><span style="font-size:11px;color:var(--text-muted);">Risk to the business, Critical to Low</span>'
         +'<span class="ckl-head" title="This month’s five priorities - the same five as the Top 5 on the execution plan">Top 5 · '+n5+' of '+TOP5_MAX+' for '+esc(_top5MonthLabel(m5))+'</span>'
-        +(t5ro?'':'<button class="btn btn-ghost btn-xs no-print" onclick="openTopFivePrint()" title="The Top 5 Risks report for the SLT - these five, a page each">⭳ Report</button>')+'</div>'
+        +(t5ro?'':('<button class="btn btn-ghost btn-xs no-print" onclick="openTopFivePrint()" title="The Top 5 Risks report for the SLT - these five, a page each">⭳ Report</button>'
+          +'<button class="btn btn-ghost btn-xs no-print" onclick="openTop5Review()" title="The fillable form for the leadership team, and what comes back">Responses'+(function(){ try{ const n=_top5Resp().list.filter(x=>x.month===m5).length; return n?(' ('+n+')'):''; }catch(e){ return ''; } })()+'</button>'))+'</div>'
         +'<div>'+['Critical','High','Medium','Low'].map(rung).join('')+'</div>'
         +(unrated.length?('<div style="font-size:11.5px;color:var(--text-muted);padding:8px 0 0;border-top:1px solid var(--border);margin-top:2px;">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name)).join(', ')+'</div>'):'')
         +'<div style="display:flex;gap:18px;font-size:11.5px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;">'
@@ -15317,6 +15327,11 @@ function renderReports(){
       icon:svg('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
       desc:'The five risks to deal with first, for the SLT: the five ticked on the cockpit\'s risk ladder for the month (topped up from the system\'s own ranking if fewer are chosen). A page each - where it stands, why it is on the list, the controls, what will be done by whom and when, and what the SLT is asked to do.',
       tags:['SLT','Top 5','A page each'] },
+    { title:'Top 5 Responses', accent:'#B45309', tint:'#FBF0E6', fn:'openTop5Review()',
+      meta:(function(){ try{ const n=_top5Resp().list.filter(x=>x.month===_top5Month()).length; return n?(n+' back for '+_top5MonthLabel(_top5Month())):'Send the fillable form, import what comes back'; }catch(e){ return 'The fillable form and its returns'; } })(),
+      icon:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/>'),
+      desc:'The Top 5 as a fillable form for the leadership team - up to three actions and a comment on each risk. Import what comes back, see the proposals side by side, keep the best, add your own, and put them on the plan as proper actions.',
+      tags:['SLT','Fillable','Choose the best'] },
     { title:'Leadership Briefing', accent:'#DC2626', tint:'#FCE9E9', fn:'openBoardBriefingPrint()', meta:'Ten agenda items, one page each',
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
       desc:'The board report arranged as the SLT agenda - position, incidents, key risks, design and CDM, projects, competence, audits, wellbeing, objectives, and the decisions required. One page an item: what to cover, the live figures, and ruled lines for notes.',
@@ -22510,6 +22525,309 @@ function setBoardSection(id, hide){
 // The five risks to deal with first, for the SLT (2026-10-01) - the same
 // five the risk ladder's ticks choose, a page each.
 async function openTopFivePrint(){ return _openEngineReport('top-five','Top 5 risks report', null); }
+// ══════════════════════════════════════════════════════════════
+//  TOP 5 RESPONSES (Simon, 2026-10-01): "add editable fields so the client
+//  can enter their actions and comments and send it back to me - I might
+//  get three or four different responses but I want to choose the best, add
+//  my knowledge and then import the actions into the app using the correct
+//  fields and structure". The fillable form (pdf-lib, like the execution
+//  plan) carries the same five as the Top 5 Risks report. Each return lands
+//  in a holding list (S.top5Resp) - never straight onto the risks. The
+//  review screen sets the proposals side by side; Simon ticks the ones to
+//  keep, edits them, adds his own and a note, and Add to the plan makes real
+//  risk actions - the first on each risk taking the month's Top 5 mark.
+// ══════════════════════════════════════════════════════════════
+// The five, read the way the report reads them (templates/top-five.js
+// topFiveOf): the risks behind this month's ticks, worst first, topped up
+// from the ranking - needs attention first, then the next worst.
+function _top5Five(){
+  const H=_holdSummary(), month=_top5Month();
+  const chosenIds=new Set(); (S.riskProfile||[]).forEach(r=>{ if(r&&(r.actions||[]).some(a=>a&&!a.deleted&&a.top5===month)) chosenIds.add(r.id); });
+  const chosen=H.rows.filter(z=>chosenIds.has(z.id)).sort(_holdWorstFirst).slice(0,5);
+  const ranked=H.breaches.concat(H.nextWorst).filter(z=>!chosenIds.has(z.id));
+  return chosen.map(z=>({ z, chosen:true })).concat(ranked.slice(0,5-chosen.length).map(z=>({ z, chosen:false })));
+}
+function _top5Open(r){
+  const today=new Date().toISOString().slice(0,10), late=a=>!!(a.due&&a.due<today);
+  return ((r&&r.actions)||[]).filter(a=>a&&!a.deleted&&!a.hideFromPlan&&String(a.desc||'').trim()&&a.status!=='Complete'&&a.status!=='Accepted')
+    .sort((a,b)=>(late(b)-late(a))||String(a.due||'9999').localeCompare(String(b.due||'9999')));
+}
+// What the SLT is asked to do - the report's own rule (topFiveOf asks).
+function _top5Asks(r){
+  const today=new Date().toISOString().slice(0,10), late=a=>!!(a.due&&a.due<today);
+  const open=_top5Open(r), now=_riskScore(r).rating, tgt=_riskTarget(r).rating, asks=[];
+  if(!open.length) asks.push('Agree what will be done - nothing is planned on this risk yet.');
+  else {
+    const unowned=open.filter(a=>!String(a.owner||'').trim()).length, undated=open.filter(a=>!a.due).length, over=open.filter(late).length;
+    if(unowned) asks.push('Name an owner for '+(unowned===1?'the action that has none.':('the '+unowned+' actions that have none.')));
+    if(over) asks.push('Re-date or resource the '+over+' overdue action'+(over!==1?'s':'')+'.');
+    if(undated) asks.push('Put a date on '+(undated===1?'the action that has none.':('the '+undated+' actions that have none.')));
+  }
+  if(!tgt && now) asks.push('Agree the residual target this risk is being brought down to.');
+  if(!asks.length) asks.push('Note the progress, and confirm the time and money to finish the plan.');
+  return asks.slice(0,3);
+}
+function _top5Fid(id){ return String(id||'').replace(/[^a-z0-9_]/gi,'_'); }
+function _top5Resp(){
+  if(!S.top5Resp||typeof S.top5Resp!=='object') S.top5Resp={};
+  const t=S.top5Resp; if(!Array.isArray(t.list)) t.list=[]; if(!t.own||typeof t.own!=='object') t.own={}; if(!t.notes||typeof t.notes!=='object') t.notes={};
+  return t;
+}
+// ── The fillable form ──
+async function buildTop5FormPDF(){
+  const L=window.PDFLib; if(!L) throw new Error('pdf-lib is not loaded');
+  const client=_sltClient(), d=_docFor('topFive'), month=_top5Month(), mLabel=_top5MonthLabel(month);
+  const five=_top5Five();
+  const pdf=await L.PDFDocument.create();
+  const font=await pdf.embedFont(L.StandardFonts.Helvetica), bold=await pdf.embedFont(L.StandardFonts.HelveticaBold);
+  const form=pdf.getForm();
+  const W=595.28, H=841.89, ML=40, MR=W-40, BOT=58;
+  const NAVY=L.rgb(30/255,58/255,95/255), INK=L.rgb(.16,.18,.2), GREY=L.rgb(.43,.45,.47), AMBER=L.rgb(.71,.43,.04), RED=L.rgb(185/255,28/255,28/255), HAIR=L.rgb(.84,.85,.87);
+  const A=t=>_pdfAscii(String(t==null?'':t));
+  const wrap=(t,f,size,w)=>{ const out=[]; String(A(t)).split('\n').forEach(seg=>{ const words=seg.split(/\s+/).filter(Boolean); let cur='';
+    words.forEach(wd=>{ const trial=cur?cur+' '+wd:wd; if(f.widthOfTextAtSize(trial,size)<=w) cur=trial; else { if(cur) out.push(cur); cur=wd; } }); out.push(cur); }); return out.length?out:['']; };
+  let page, y;
+  const header=()=>{
+    page.drawText(A(client).toUpperCase(),{x:ML,y:H-34,size:12,font:bold,color:NAVY});
+    if(!d._omit){ const meta=A('REF '+d.ref+'  -  '+mLabel.toUpperCase()); page.drawText(meta,{x:MR-font.widthOfTextAtSize(meta,6.5),y:H-32,size:6.5,font,color:GREY}); }
+    page.drawLine({start:{x:ML,y:H-42},end:{x:MR,y:H-42},thickness:0.8,color:NAVY});
+  };
+  const newPage=()=>{ page=pdf.addPage([W,H]); header(); y=H-58; };
+  const ensure=(need)=>{ if(y-need<BOT) newPage(); };
+  const text=(t,size,o)=>{ o=o||{}; const f=o.bold?bold:font; const w=o.w||(MR-(o.x||ML)); const lh=size*1.34;
+    wrap(t,f,size,w).forEach(ln=>{ ensure(lh); page.drawText(ln,{x:o.x||ML,y:y-size,size,font:f,color:o.color||INK}); y-=lh; }); y-=(o.gap||2); };
+  const label=(t)=>{ ensure(16); page.drawText(A(t).toUpperCase(),{x:ML,y:y-7,size:6.5,font:bold,color:GREY}); y-=12; };
+  const field=(name,x,w,h,o)=>{ o=o||{}; const tf=form.createTextField(name); if(o.multi) tf.enableMultiline(); if(o.text) tf.setText(o.text);
+    tf.addToPage(page,{x,y:y-h,width:w,height:h,borderColor:HAIR,borderWidth:0.8}); tf.setFontSize(o.size||8.5); if(o.ro) tf.enableReadOnly(); return tf; };
+  const band=(sc,tg)=>(sc.rating?(sc.priority+' '+sc.rating):'Not rated')+'  >  '+(tg.rating?(tg.priority+' '+tg.rating):'no target');
+
+  // Page 1: who is answering, and the five
+  newPage();
+  page.drawText('TOP 5 RISKS - YOUR RESPONSE',{x:ML,y:y-20,size:20,font:bold,color:NAVY}); y-=30;
+  text('The five risks to deal with first, '+mLabel+'. Each has a page: what it is, why it is on the list and what is already planned. Please propose up to three actions for each - what will be done, by whom and by when - add any comments, then save this file and email it back.',10,{color:GREY,gap:8});
+  label('Your name'); field('t5__name',ML,250,18,{size:10}); y-=24;
+  label('Your role'); field('t5__role',ML,250,18,{size:10}); y-=30;
+  label('The five');
+  five.forEach((f,i)=>{ const r=f.z.r||{}; const ref=_riskRefOf(r);
+    text((i+1)+'.  '+(ref?(ref+'  '):'')+(f.z.name||'')+'   ('+band(_riskScore(r),_riskTarget(r))+')',9.5,{gap:3}); });
+  if(!five.length) text('No risks are recorded yet.',10,{color:GREY});
+  // the form's own reference - which client and which risks - read on import
+  const meta=form.createTextField('t5__meta');
+  meta.setText(JSON.stringify({ v:1, client:client, month:month, made:new Date().toISOString().slice(0,10), ids:five.map(f=>f.z.id) }));
+  meta.addToPage(page,{x:ML,y:BOT-6,width:1,height:1,borderWidth:0}); meta.enableReadOnly();
+
+  // A page a risk
+  five.forEach((f,i)=>{
+    const r=f.z.r||{}, id=_top5Fid(f.z.id), ref=_riskRefOf(r), sc=_riskScore(r), tg=_riskTarget(r), hold=f.z.hold||{reasons:[]};
+    newPage();
+    page.drawText(A('RISK '+(i+1)+' OF '+five.length+(ref?('  -  '+ref):'')+'  -  '+(f.chosen?('CHOSEN FOR '+mLabel.toUpperCase()):'SYSTEM RANKING')),{x:ML,y:y-8,size:7,font:bold,color:GREY}); y-=14;
+    text(f.z.name||'',15,{bold:true,color:NAVY,gap:4});
+    text('Now '+band(sc,tg),9.5,{bold:true,color:(sc.priority==='Critical'||sc.priority==='High')?RED:INK,gap:6});
+    label('Why it is on the list');
+    text((f.z.breach?(f.z.breach.charAt(0).toUpperCase()+f.z.breach.slice(1)):hold.label)+((hold.reasons||[]).length?(' - '+hold.reasons.join('; ')):'')+'.',9.5,{gap:6});
+    const open=_top5Open(r);
+    label('Already planned');
+    if(open.length) open.slice(0,4).forEach(a=>text('-  '+a.desc+'  ('+(a.owner||'no owner')+', '+(a.due?fmtDate(a.due):'no date')+')',8.8,{gap:1}));
+    else text('Nothing is planned on this risk yet.',8.8,{color:AMBER});
+    y-=4;
+    label('Asked of the SLT');
+    _top5Asks(r).forEach((t,k)=>text((k+1)+'.  '+t,9.2,{gap:1}));
+    ensure(22); y-=4;
+    const cb=form.createCheckBox('t5_'+id+'_agree'); cb.addToPage(page,{x:ML,y:y-12,width:12,height:12,borderColor:GREY,borderWidth:1});
+    page.drawText('I agree with what is asked',{x:ML+18,y:y-10,size:9,font,color:INK}); y-=22;
+    // three proposed actions
+    ensure(110);
+    const XW=ML, WW=290, XO=XW+WW+6, OW=110, XD=XO+OW+6, DW=MR-XD;
+    page.drawText('YOUR PROPOSED ACTIONS - WHAT WILL BE DONE',{x:XW,y:y-7,size:6.5,font:bold,color:NAVY});
+    page.drawText('WHO',{x:XO,y:y-7,size:6.5,font:bold,color:NAVY});
+    page.drawText('BY WHEN (DD/MM/YYYY)',{x:XD,y:y-7,size:6.5,font:bold,color:NAVY}); y-=12;
+    [1,2,3].forEach(n=>{
+      field('t5_'+id+'_a'+n+'_what',XW,WW,26,{multi:true,size:8.5});
+      field('t5_'+id+'_a'+n+'_who',XO,OW,26,{size:8.5});
+      field('t5_'+id+'_a'+n+'_due',XD,DW,26,{size:8.5});
+      y-=32;
+    });
+    ensure(120); y-=4;
+    label('Comments');
+    field('t5_'+id+'_comment',ML,MR-ML,100,{multi:true,size:9}); y-=108;
+  });
+  ensure(40); y-=6;
+  text('Save this file (File > Save, or the download button in your browser viewer) and email it back. Printing it to PDF, or some phone apps, can flatten the boxes - if that happens, please send the saved file instead.',8.5,{color:GREY,gap:4});
+  _pdfFormFooter(pdf,{font,W,ML,MR,mid:'Top 5 Risks - response form  -  '+mLabel});
+  return await pdf.save();
+}
+async function downloadTop5Form(){
+  try{
+    const bytes=await buildTop5FormPDF();
+    const safe=_sltClient().replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+    _sltSaveBlob(new Blob([bytes],{type:'application/pdf'}), 'top-5-risks-response-'+safe+'-'+_top5Month()+'.pdf');
+    showToast('✓ Fillable Top 5 form made - send it to each of the leadership team, then import what comes back','success',6000);
+  }catch(e){ console.error('Top 5 form failed',e); showToast('Could not build the form - see console','error'); }
+}
+// ── The return trip ──
+// A date as people type it: 15/11/2026, 15-11-26, 2026-11-15 or 15 Nov 2026.
+// Anything else is kept as written and flagged for a date to be set.
+function _top5ParseDate(t){
+  t=String(t||'').trim(); if(!t) return '';
+  let m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t); if(m) return _top5Ymd(+m[1],+m[2],+m[3]);
+  m=/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})$/.exec(t); if(m) return _top5Ymd(m[3].length===2?2000+(+m[3]):+m[3],+m[2],+m[1]);
+  m=/^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?\s+(\d{4})$/i.exec(t);
+  if(m){ const mi=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m[2].slice(0,3).toLowerCase()); if(mi>=0) return _top5Ymd(+m[3],mi+1,+m[1]); }
+  return '';
+}
+function _top5Ymd(y,mo,d){ if(!(mo>=1&&mo<=12&&d>=1&&d<=31)) return ''; const dt=new Date(Date.UTC(y,mo-1,d)); if(dt.getUTCMonth()!==mo-1) return ''; return dt.toISOString().slice(0,10); }
+function importTop5Responses(){
+  if(_blockIfReadOnly()) return;
+  let inp=document.getElementById('t5ImportFile');
+  if(!inp){ inp=document.createElement('input'); inp.type='file'; inp.id='t5ImportFile'; inp.accept='application/pdf,.pdf'; inp.multiple=true; inp.style.display='none';
+    inp.onchange=()=>{ const fs=[...(inp.files||[])]; inp.value=''; _top5ImportFiles(fs); }; document.body.appendChild(inp); }
+  inp.click();
+}
+async function _top5ImportFiles(files){
+  if(!files||!files.length) return; if(_blockIfReadOnly()) return;
+  if(!window.PDFLib){ showToast('The PDF reader is not loaded - refresh and try again','error'); return; }
+  const t=_top5Resp(), out={ added:0, replaced:0, refused:[] };
+  for(const f of files){
+    try{
+      const rec=await _top5ReadForm(new Uint8Array(await f.arrayBuffer()), f.name||'form.pdf');
+      if(rec.error){ out.refused.push((f.name||'a file')+': '+rec.error); continue; }
+      const i=t.list.findIndex(x=>x.month===rec.month && String(x.name||'').trim().toLowerCase()===String(rec.name||'').trim().toLowerCase());
+      if(i>=0){ t.list[i]=rec; out.replaced++; } else { t.list.push(rec); out.added++; }
+    }catch(e){ console.error('Top 5 import',e); out.refused.push((f.name||'a file')+': could not be read as a PDF'); }
+  }
+  saveData();
+  if(document.getElementById('t5Ov')) _top5ReviewRender();
+  const bits=[]; if(out.added) bits.push(out.added+' response'+(out.added!==1?'s':'')+' added'); if(out.replaced) bits.push(out.replaced+' replaced an earlier one from the same person');
+  if(out.refused.length) showToast((bits.length?(bits.join(', ')+'. '):'')+'Not imported - '+out.refused.join(' | '),'error',9000);
+  else showToast('✓ '+bits.join(', ')+' - nothing is on the plan until you choose it','success',6000);
+}
+async function _top5ReadForm(bytes, fname){
+  const L=window.PDFLib;
+  const doc=await L.PDFDocument.load(bytes,{ignoreEncryption:true});
+  const form=doc.getForm(); const fields=form.getFields();
+  const val=n=>{ const f=fields.find(x=>x.getName()===n); if(!f) return null; try{ if(f instanceof L.PDFCheckBox) return f.isChecked(); if(f instanceof L.PDFTextField) return f.getText()||''; }catch(e){} return null; };
+  if(!fields.some(f=>/^t5_/.test(f.getName()))) return { error:'no answers could be read - the boxes may have been flattened (printed to PDF or saved by a phone app). Ask for the saved file instead.' };
+  let meta={}; try{ meta=JSON.parse(val('t5__meta')||'{}'); }catch(e){}
+  if(meta.client && meta.client!==_sltClient()) return { error:'this form is for '+meta.client+', not '+_sltClient() };
+  const name=String(val('t5__name')||'').trim();
+  if(!name) return { error:'no name was filled in - ask them to add their name and send it again' };
+  const ids=(S.riskProfile||[]).map(r=>r.id), byFid={}; ids.forEach(id=>{ byFid[_top5Fid(id)]=id; });
+  const risks={};
+  fields.forEach(f=>{ const m=/^t5_(.+)_(agree|comment|a([1-3])_(what|who|due))$/.exec(f.getName()); if(!m) return;
+    const rid=byFid[m[1]]; if(!rid) return; const e=risks[rid]=risks[rid]||{ agree:null, comment:'', acts:[] };
+    const v=val(f.getName());
+    if(m[2]==='agree') e.agree=v===true; else if(m[2]==='comment') e.comment=String(v||'').trim();
+    else { const n=+m[3]; const a=e.acts[n-1]=e.acts[n-1]||{ what:'', who:'', due:'', dueText:'', pick:false, done:false }; const s=String(v||'').trim();
+      if(m[4]==='what') a.what=s; else if(m[4]==='who') a.who=s; else { a.dueText=s; a.due=_top5ParseDate(s); } } });
+  Object.keys(risks).forEach(rid=>{ risks[rid].acts=risks[rid].acts.filter(a=>a&&a.what); });
+  return { id:'t5r_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), file:fname, name:name, role:String(val('t5__role')||'').trim(),
+    month:meta.month||_top5Month(), importedAt:new Date().toISOString(), risks:risks };
+}
+// ── Choosing the best ──
+function openTop5Review(){
+  if(_blockIfReadOnly()) return;
+  let ov=document.getElementById('t5Ov');
+  if(!ov){ ov=document.createElement('div'); ov.id='t5Ov'; ov.className='slt-ov'; document.body.appendChild(ov); }
+  document.body.classList.add('slt-open'); _top5ReviewRender();
+}
+function closeTop5Review(){ const ov=document.getElementById('t5Ov'); if(ov) ov.remove(); document.body.classList.remove('slt-open'); saveData(); try{ if(document.getElementById('tab-cockpit').classList.contains('active')) _keepScroll(renderCockpit); }catch(e){} }
+function _top5Rows(rid){
+  const t=_top5Resp(), month=_top5Month(), rows=[];
+  t.list.filter(x=>x.month===month).forEach(resp=>{ const e=(resp.risks||{})[rid]; if(!e) return;
+    (e.acts||[]).forEach((a,i)=>rows.push({ a, key:resp.id+'|'+i, from:resp.name+(resp.role?(' ('+resp.role+')'):''), own:false })); });
+  ((t.own||{})[rid]||[]).forEach((a,i)=>rows.push({ a, key:'own|'+i, from:'you', own:true }));
+  return rows;
+}
+function _top5RowFind(rid, key){
+  const t=_top5Resp(), p=String(key).split('|');
+  if(p[0]==='own') return ((t.own||{})[rid]||[])[+p[1]]||null;
+  const resp=t.list.find(x=>x.id===p[0]); return resp&&resp.risks&&resp.risks[rid]?((resp.risks[rid].acts||[])[+p[1]]||null):null;
+}
+function _top5ReviewRender(){
+  const ov=document.getElementById('t5Ov'); if(!ov) return;
+  const top=ov.scrollTop, t=_top5Resp(), month=_top5Month(), mLabel=_top5MonthLabel(month);
+  const resps=t.list.filter(x=>x.month===month);
+  const five=_top5Five(); const ids=five.map(f=>f.z.id);
+  resps.forEach(r=>Object.keys(r.risks||{}).forEach(rid=>{ if(ids.indexOf(rid)<0 && (S.riskProfile||[]).some(x=>x.id===rid)) ids.push(rid); }));
+  const people=_sltPeople(null); const q=s=>'\''+String(s).replace(/[^a-z0-9_|]/gi,'')+'\'';
+  const bar='<div class="slt-bar"><div class="slt-t"><div class="slt-k">Top 5 responses · '+esc(mLabel)+'</div><div class="slt-h">'+esc(_sltClient())+'</div></div>'
+    +'<button class="btn btn-ghost btn-sm" onclick="downloadTop5Form()" title="The fillable form to send to the leadership team">⭳ Form</button>'
+    +'<button class="btn btn-outline btn-sm" onclick="importTop5Responses()" title="Choose one or more returned forms - each lands here, nothing goes on the plan until you choose it">⭱ Import returned forms</button>'
+    +'<button class="btn btn-ghost btn-sm" onclick="closeTop5Review()">Close</button></div>';
+  const who=resps.length
+    ? ('<div class="slt-people">'+resps.map(r=>'<span class="slt-chip"><b>'+esc(r.name)+'</b>'+(r.role?('<span>'+esc(r.role)+'</span>'):'')+'<span class="slt-muted">'+esc(r.file||'')+'</span><button class="trn-x" onclick="t5DelResponse('+q(r.id)+')" title="Take this response off - the risks and the plan are not touched">×</button></span>').join('')+'</div>')
+    : '<div class="slt-muted">No forms back yet. Send the fillable form (⭳ Form) to the leadership team, then import what they return.</div>';
+  const secs=ids.map((rid,i)=>{
+    const r=(S.riskProfile||[]).find(x=>x.id===rid)||{}; const ref=_riskRefOf(r), sc=_riskScore(r), tg=_riskTarget(r);
+    const comments=resps.map(resp=>{ const e=(resp.risks||{})[rid]; if(!e||(!e.comment&&!e.agree&&!(e.acts||[]).length)) return '';   // said nothing on this risk - no line
+      return '<div class="t5r-cmt"><b>'+esc(resp.name)+'</b>'+(e.agree===true?' <span class="t5r-ok">agrees with the asks</span>':(e.agree===false?' <span class="t5r-no">did not tick agree</span>':''))+(e.comment?(': '+esc(e.comment)):'')+'</div>'; }).join('');
+    const rows=_top5Rows(rid).map(x=>{ const a=x.a, dis=a.done?' disabled':'';
+      return '<div class="t5r-row'+(a.done?' t5r-done':'')+'">'
+        +'<input type="checkbox"'+(a.pick||a.done?' checked':'')+dis+' onchange="t5Pick('+q(rid)+','+q(x.key)+',this.checked)" title="Keep this one">'
+        +'<input value="'+esc(a.what)+'"'+dis+' placeholder="What will be done" oninput="t5Edit('+q(rid)+','+q(x.key)+',\'what\',this.value)">'
+        +'<input list="t5People" value="'+esc(a.who)+'"'+dis+' placeholder="Who" oninput="t5Edit('+q(rid)+','+q(x.key)+',\'who\',this.value)">'
+        +'<input type="date" value="'+esc(a.due)+'"'+dis+' onchange="t5Edit('+q(rid)+','+q(x.key)+',\'due\',this.value)" title="'+esc(a.dueText&&!a.due?('Written as: '+a.dueText):'By when')+'">'
+        +'<span class="t5r-from">'+(a.done?'✓ on the plan':('from '+esc(x.from)))+(a.dueText&&!a.due&&!a.done?('<br><span class="t5r-no">date not read: '+esc(a.dueText)+'</span>'):'')+'</span>'
+        +(x.own&&!a.done?'<button class="trn-x" onclick="t5DelOwn('+q(rid)+','+q(x.key)+')" title="Remove">×</button>':'<span></span>')
+        +'</div>'; }).join('');
+    const picked=_top5Rows(rid).filter(x=>x.a.pick&&!x.a.done&&String(x.a.what||'').trim()).length;
+    return '<section class="slt-sec" id="t5r-'+esc(_top5Fid(rid))+'"><div class="slt-ih"><span class="slt-n">'+(i+1)+'</span><h3>'+(ref?('<span class="risk-ref">'+esc(ref)+'</span> '):'')+esc(r.activity||r.hazard||'Risk')+'</h3></div>'
+      +'<div class="slt-muted" style="margin:2px 0 8px 36px;">Now '+esc(sc.rating?(sc.priority+' '+sc.rating):'not rated')+' → '+esc(tg.rating?(tg.priority+' '+tg.rating):'no target')+'</div>'
+      +(comments?('<div class="slt-lab">What they said</div>'+comments):'')
+      +'<div class="slt-lab">Proposed actions - tick the ones to keep, edit as you like</div>'
+      +(rows||'<div class="slt-muted">Nothing proposed for this risk yet.</div>')
+      +'<button class="btn btn-ghost btn-sm" onclick="t5AddOwn('+q(rid)+')">＋ Add your own</button>'
+      +'<label class="slt-lab" for="t5n-'+esc(_top5Fid(rid))+'">Your note - goes on the history of what you add</label>'
+      +'<textarea class="slt-notes" id="t5n-'+esc(_top5Fid(rid))+'" rows="2" oninput="t5Note('+q(rid)+',this.value)">'+esc((t.notes||{})[rid]||'')+'</textarea>'
+      +'<div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="t5Apply('+q(rid)+')"'+(picked?'':' disabled')+'>Add '+(picked?(picked+' '):'')+'to the plan</button></div></section>';
+  }).join('');
+  ov.innerHTML=bar+'<div class="slt-body"><section class="slt-sec slt-who"><div class="slt-ih"><span class="slt-n">·</span><h3>Responses back</h3></div>'+who+'</section>'
+    +(ids.length?secs:'<div class="slt-muted">No risks to show yet.</div>')
+    +'<datalist id="t5People">'+people.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.role||'')+'</option>').join('')+'</datalist></div>';
+  ov.scrollTop=top;
+}
+function t5Pick(rid, key, on){ const a=_top5RowFind(rid,key); if(!a||a.done) return; a.pick=!!on; saveData(); _top5ReviewRender(); }
+function t5Edit(rid, key, f, v){ const a=_top5RowFind(rid,key); if(!a||a.done) return; a[f]=v; if(f==='due') a.dueText=''; scheduleAutoSave(); if(f==='due') _top5ReviewRender(); }
+function t5Note(rid, v){ const t=_top5Resp(); t.notes[rid]=v; scheduleAutoSave(); }
+function t5AddOwn(rid){
+  const t=_top5Resp(); (t.own[rid]=t.own[rid]||[]).push({ what:'', who:'', due:'', dueText:'', pick:true, done:false }); saveData(); _top5ReviewRender();
+  setTimeout(()=>{ const sec=document.getElementById('t5r-'+_top5Fid(rid)); if(!sec) return; const rows=sec.querySelectorAll('.t5r-row'); const last=rows[rows.length-1]; if(last){ const i=last.querySelectorAll('input')[1]; if(i) i.focus(); } },0);
+}
+function t5DelOwn(rid, key){ const t=_top5Resp(), i=+String(key).split('|')[1]; if(t.own[rid]) t.own[rid].splice(i,1); saveData(); _top5ReviewRender(); }
+function t5DelResponse(id){
+  const t=_top5Resp(), r=t.list.find(x=>x.id===id); if(!r) return;
+  if(!confirm('Take the response from '+r.name+' off this list? Anything already added to the plan stays there.')) return;
+  t.list=t.list.filter(x=>x.id!==id); saveData(); _top5ReviewRender();
+}
+// Add to the plan: real risk actions, in the same shape as one added on the
+// risk itself, each saying where it came from. The first takes the month's
+// Top 5 mark for the risk; the respondents' comments and the note go on its
+// history.
+function t5Apply(rid){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r){ showToast('That risk is no longer on the profile','error'); return; }
+  const rows=_top5Rows(rid).filter(x=>x.a.pick&&!x.a.done&&String(x.a.what||'').trim());
+  if(!rows.length){ showToast('Tick at least one proposal to add','info'); return; }
+  const t=_top5Resp(), month=_top5Month(), mLabel=_top5MonthLabel(month), note=String((t.notes||{})[rid]||'').trim();
+  if(!Array.isArray(r.actions)) r.actions=[];
+  const made=rows.map(x=>{
+    const a={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), desc:String(x.a.what).trim().slice(0,240), owner:String(x.a.who||'').trim(), due:x.a.due||'', status:'Not started', priority:_suggestPriority(r) };
+    _stamp(a,'created'); r.actions.push(a);
+    _logAdd(a,'raised','From the Top 5 responses, '+mLabel+' - '+(x.own?'added by the consultant':('proposed by '+x.from)));
+    if(note) _logAdd(a,'comment','Consultant: '+note);
+    x.a.done=true; x.a.actId=a.id;
+    return a;
+  });
+  t.list.filter(x=>x.month===month).forEach(resp=>{ const e=(resp.risks||{})[rid]; if(e&&e.comment) _logAdd(made[0],'comment',resp.name+': '+e.comment); });
+  // the month's mark: the first action added, replacing any earlier mark on this risk
+  let markMsg='';
+  const had=(r.actions||[]).filter(a=>a&&!a.deleted&&a.top5===month&&made.indexOf(a)<0);
+  had.forEach(a=>{ a.top5=''; _stamp(a,'updated'); });
+  if(had.length || _top5List(month).length<TOP5_MAX){ made[0].top5=month; markMsg=' - the first is this month’s Top 5 action'; }
+  else markMsg=' - not marked Top 5: five are already marked for '+mLabel;
+  _stamp(r,'updated'); saveData(); _refreshActionViews(); _top5ReviewRender();
+  showToast('✓ '+made.length+' action'+(made.length!==1?'s':'')+' added to '+(_riskRefOf(r)||'the risk')+markMsg,'success',6000);
+}
 async function openBoardReportPrint(){
   try{ if(new URLSearchParams(location.search).get('report')==='legacy'){ downloadBoardReport(); return; } }catch(e){}
   return _openEngineReport('board-report','Board report', downloadBoardReport);
@@ -34799,7 +35117,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','inspRegister','inspFolder','meetings','trainRegister','trainFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
+var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','inspRegister','inspFolder','meetings','top5Resp','trainRegister','trainFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
   'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance','buildingSafety','memberships',

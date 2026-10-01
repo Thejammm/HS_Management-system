@@ -27,7 +27,9 @@
   page-break-after:always; break-after:page;
 }
 .r-page:last-child { page-break-after:auto; break-after:auto; }
-.r-page-cover { background:var(--r-cover); color:var(--r-ground); }
+/* The cover is light (Simon, 2026-10-01: the dark first page was off-putting) -
+   the same ground as every other page, a band of the accent across the top. */
+.r-page-cover { background:var(--r-ground); color:var(--r-ink); border-top:7px solid var(--r-accent); }
 .r-page-body { flex:1; min-height:0; display:flex; flex-direction:column; gap:10px; }
 
 /* ── Type ── */
@@ -188,11 +190,11 @@
 .r-hier-seg:nth-child(1), .r-hier-seg:nth-child(2) { background:#416180; }
 .r-hier-callout { margin-top:6px; font-size:11px; font-weight:600; border-left:3px solid var(--r-high); padding-left:8px; }
 
-/* ── Inverted panels ── */
-.r-statement, .r-sowhat { background:var(--r-cover); color:var(--r-ground); padding:12px 14px; }
-.r-statement-title { font-size:7.5px; letter-spacing:.2em; color:#94bce3; margin-bottom:6px; }
+/* ── Called-out panels: light, an accent rule down the left (were dark until 2026-10-01) ── */
+.r-statement, .r-sowhat { background:#e6edf4; color:var(--r-ink); border-left:4px solid var(--r-accent); padding:12px 14px; }
+.r-statement-title { font-size:7.5px; letter-spacing:.2em; color:var(--r-accent); margin-bottom:6px; }
 .r-statement-body { font-size:11px; line-height:1.55; }
-.r-statement-cite { font-size:8px; color:#94bce3; margin-top:6px; }
+.r-statement-cite { font-size:8px; color:var(--r-muted); margin-top:6px; }
 .r-sowhat { font-size:11.5px; font-weight:500; }
 
 /* ── Tags ── */
@@ -221,14 +223,14 @@
 
 /* ── Cover ── */
 .r-cover { flex:1; display:flex; flex-direction:column; justify-content:flex-end; padding-bottom:8mm; }
-.r-cover-org { font-size:9px; letter-spacing:.2em; color:#94bce3; }
+.r-cover-org { font-size:9px; letter-spacing:.2em; color:var(--r-accent); }
 .r-cover-title { font-size:42px; line-height:1; text-transform:uppercase; margin:10px 0 14px; }
-.r-cover-meta { font-size:9px; color:#b5d9fd; }
+.r-cover-meta { font-size:9px; color:var(--r-muted); }
 
 /* ── Footer ── */
 .r-pagefoot { margin-top:auto; display:flex; justify-content:space-between;
   border-top:1px solid var(--r-hair2); padding-top:5px; font-size:6.8px; letter-spacing:.14em; color:var(--r-muted); }
-.r-page-cover .r-pagefoot { border-top-color:#416180; color:#94bce3; }
+.r-page-dark .r-pagefoot { border-top-color:#416180; color:#94bce3; }
 .r-foot-brand { display:inline-flex; align-items:center; gap:4px; font-weight:600; letter-spacing:.02em; }
 .r-foot-mark { flex:0 0 auto; opacity:.85; }
 
@@ -236,26 +238,26 @@
       above are tuned for paper; on the navy cover every ink/muted usage
       disappears (labels, decisions rationale, bar labels, registration
       marks - reported unreadable Aug 2026). One scope fixes them all. ── */
-.r-page-cover .r-frame { border-color:#416180; }
-.r-page-cover .r-frame-title, .r-page-cover .r-block-title,
-.r-page-cover .r-dist-lab, .r-page-cover .r-mx-ax,
-.r-page-cover .r-mx-ylab, .r-page-cover .r-mx-xlab,
-.r-page-cover .r-kpi-lab, .r-page-cover .r-kpi-note,
-.r-page-cover .r-so-lab, .r-page-cover .r-step-lab,
-.r-page-cover .r-table th { color:#a7c4e0; }
-.r-page-cover .r-dec-why, .r-page-cover .r-footnote { color:#8fb2d4; }
-.r-page-cover .r-reg::before, .r-page-cover .r-reg::after { background:#8fb2d4; }
-.r-page-cover .r-kpis, .r-page-cover .r-kpi { border-color:#416180; }
-.r-page-cover .r-table th { border-bottom-color:#a7c4e0; }
-.r-page-cover .r-table td { border-bottom-color:rgba(65,97,128,.6); }
-.r-page-cover .r-dist-track, .r-page-cover .r-dualbar, .r-page-cover .r-step { background:#14222f; border-color:#416180; }
-.r-page-cover .r-kpi-bad  .r-kpi-val { color:#e2725b; }
-.r-page-cover .r-kpi-warn .r-kpi-val { color:#e0a35e; }
-.r-page-cover .r-kpi-ok   .r-kpi-val { color:#7fbf8e; }
-.r-page-cover .r-kpi-muted .r-kpi-val { color:#a7c4e0; }
-.r-page-cover .r-tier-none { color:#a7c4e0; }
-.r-page-cover .r-statement, .r-page-cover .r-sowhat { border:1px solid #416180; }
-.r-page-cover .r-so-line { border-bottom-color:#a7c4e0; }
+.r-page-dark .r-frame { border-color:#416180; }
+.r-page-dark .r-frame-title, .r-page-dark .r-block-title,
+.r-page-dark .r-dist-lab, .r-page-dark .r-mx-ax,
+.r-page-dark .r-mx-ylab, .r-page-dark .r-mx-xlab,
+.r-page-dark .r-kpi-lab, .r-page-dark .r-kpi-note,
+.r-page-dark .r-so-lab, .r-page-dark .r-step-lab,
+.r-page-dark .r-table th { color:#a7c4e0; }
+.r-page-dark .r-dec-why, .r-page-dark .r-footnote { color:#8fb2d4; }
+.r-page-dark .r-reg::before, .r-page-dark .r-reg::after { background:#8fb2d4; }
+.r-page-dark .r-kpis, .r-page-dark .r-kpi { border-color:#416180; }
+.r-page-dark .r-table th { border-bottom-color:#a7c4e0; }
+.r-page-dark .r-table td { border-bottom-color:rgba(65,97,128,.6); }
+.r-page-dark .r-dist-track, .r-page-dark .r-dualbar, .r-page-dark .r-step { background:#14222f; border-color:#416180; }
+.r-page-dark .r-kpi-bad  .r-kpi-val { color:#e2725b; }
+.r-page-dark .r-kpi-warn .r-kpi-val { color:#e0a35e; }
+.r-page-dark .r-kpi-ok   .r-kpi-val { color:#7fbf8e; }
+.r-page-dark .r-kpi-muted .r-kpi-val { color:#a7c4e0; }
+.r-page-dark .r-tier-none { color:#a7c4e0; }
+.r-page-dark .r-statement, .r-page-dark .r-sowhat { border:1px solid #416180; }
+.r-page-dark .r-so-line { border-bottom-color:#a7c4e0; }
 
 /* ── Brief format skin: editorial, lighter furniture, serif-feel weightings ── */
 .r-fmt-brief .r-headline { font-size:22px; letter-spacing:.01em; }
@@ -266,7 +268,7 @@
 .r-fmt-brief .r-cover-org { color:var(--r-muted); }
 .r-fmt-brief .r-cover-meta { color:var(--r-muted); }
 .r-fmt-brief .r-cover-title { font-size:34px; }
-.r-fmt-brief .r-page-cover .r-pagefoot { border-top-color:var(--r-hair2); color:var(--r-muted); }
+.r-fmt-brief .r-page-dark .r-pagefoot { border-top-color:var(--r-hair2); color:var(--r-muted); }
 
 /* ── Print ── */
 @media print {
@@ -285,18 +287,18 @@
 .r-gap-mark { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--r-ink); display:block; }
 .r-gap-marklab { position:absolute; top:-11px; transform:translateX(-50%); font-size:6.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--r-muted); white-space:nowrap; }
 .r-gap-val { font-size:9.5px; font-weight:700; width:150px; flex:0 0 auto; text-align:right; }
-.r-page-cover .r-gap-track { background:#14222f; border-color:#416180; }
-.r-page-cover .r-gap-mark { background:#e8edf4; }
-.r-page-cover .r-gap-marklab { color:#a7c4e0; }
-.r-page-cover .r-gap-lab { color:#a7c4e0; }
+.r-page-dark .r-gap-track { background:#14222f; border-color:#416180; }
+.r-page-dark .r-gap-mark { background:#e8edf4; }
+.r-page-dark .r-gap-marklab { color:#a7c4e0; }
+.r-page-dark .r-gap-lab { color:#a7c4e0; }
 
 /* ── Plan bar additions: projected-score row + delivery progress ── */
 .r-wn-plan { opacity:.45; }
 .r-wn-none { font-size:7.5px; color:var(--r-muted); font-style:normal; }
 .r-wn-prog { display:block; font-size:7px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--r-muted); margin-top:2px; padding-left:25px; }
 .r-wn-prog-none { color:var(--r-high); }
-.r-page-cover .r-wn-lab, .r-page-cover .r-wn-none, .r-page-cover .r-wn-prog { color:#a7c4e0; }
-.r-page-cover .r-wn-track { background:#14222f; border-color:#416180; }
+.r-page-dark .r-wn-lab, .r-page-dark .r-wn-none, .r-page-dark .r-wn-prog { color:#a7c4e0; }
+.r-page-dark .r-wn-track { background:#14222f; border-color:#416180; }
 
 /* ── The director's risk picture: split strip, journey, ladder, twin fives ── */
 .r-split { display:flex; align-items:flex-start; gap:16px; margin:10px 0 14px; }

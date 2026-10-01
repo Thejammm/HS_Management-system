@@ -99,7 +99,16 @@ await wait(page, 300);
     const out = {};
     const m = _sltCur();
     const apBefore = _apList().length;
-    sltFinish();                                        // the harness says yes to "no one named - finish anyway?"
+    // the figures as the screen read them - from file:// the report module
+    // cannot load, so they are given here; live they come from the briefing
+    _sltFacts = { 1: { line: '16 risks can still kill or maim someone with our controls in place.', tiles: [ { value: '5/5', label: 'Worst possible harm', tone: 'bad' }, { value: '3/16', label: 'Risks fully actioned' } ], decisions: [] },
+                  10: { line: '3 decisions for the meeting.', tiles: [], decisions: [ 'Reset owners and dates on the 5 overdue actions.' ] } };
+    const said = [], tiled = [], mk = window._mkPdf;
+    window._mkPdf = function () { const K = mk.apply(null, arguments); const tx = K.text, ti = K.tiles;
+      K.text = function (s) { said.push(String(s)); return tx.apply(null, arguments); };
+      K.tiles = function (items) { items.forEach(i => tiled.push(i.label + '=' + i.num)); return ti.apply(null, arguments); }; return K; };
+    await sltFinish();                                  // the harness says yes to "no one named - finish anyway?"
+    out.said = said; out.tiled = tiled; out.snap = m.snapshot && m.snapshot.items && m.snapshot.items[1] && m.snapshot.items[1].line;
     const acts = _sltActions(m);
     out.acts = acts.map(d => d.agendaItem + ':' + d.raised).join(',');
     out.plan = _apList().slice(apBefore).map(a => a.desc + ' | ' + a.owner + ' | ' + a.due + ' | ' + a.note);
@@ -116,13 +125,17 @@ await wait(page, 300);
     const q = new URLSearchParams(out.mail.split('?')[1] || '');
     out.to = decodeURIComponent(out.mail.slice(7).split('?')[0]); out.subject = q.get('subject'); out.body = q.get('body');
     // Finish again never doubles the plan
-    const n = _apList().length; sltFinish(); out.again = _apList().length === n;
+    const n = _apList().length; await sltFinish(); out.again = _apList().length === n;
     closeSltMeeting();
     out.closed = !document.getElementById('sltOv') && !document.body.classList.contains('slt-open');
     // the decisions register offers the last minutes again
     switchTab('monitoring'); _renderDecisions();
     out.lastBtn = /Last meeting minutes/.test(document.getElementById('decisionPanel').textContent);
-    const saved2 = []; window._sltSaveBlob = (b, f) => saved2.push(f); downloadLastMinutes(); out.again2 = saved2[0] || '';
+    const saved2 = []; window._sltSaveBlob = (b, f) => saved2.push(f);
+    _sltFacts = { 1: { line: 'Changed since the meeting.', tiles: [], decisions: [] } }; said.length = 0;
+    downloadLastMinutes(); out.again2 = saved2[0] || '';
+    out.remadeSnap = said.some(s => /16 risks can still kill/.test(s)) && !said.some(s => /Changed since the meeting/.test(s));
+    window._mkPdf = mk;
     // a new meeting starts clean; the finished one is kept
     openSltMeeting(); out.fresh = _sltCur().id !== m.id && _meetings().length === 2 && !_sltActions(_sltCur()).length; closeSltMeeting();
     out.state = JSON.parse(JSON.stringify(S));
@@ -136,6 +149,17 @@ await wait(page, 300);
   R.ok(/1\. Review the pre-construction information template with the design team - Sam Line, by 15 Nov 2026/.test(t.body) && /2\. Book DSE assessments for the studio - owner to be named/.test(t.body) && /minutes are attached \(meeting-minutes-/.test(t.body), 'with the actions written into it, and the file named to attach');
   R.ok(t.again && t.closed, 'Finish twice never doubles the plan; Close puts the screen away');
   R.ok(t.lastBtn && /^meeting-minutes-/.test(t.again2), 'the last meeting\'s minutes can be made again from the decisions register');
+  // Simon, 2026-10-01: "the leadership meeting report needs to also include
+  // the current status of the company after the bullet point structured prompt"
+  {
+    const s = t.said, at = re => s.findIndex(x => re.test(x));
+    const iCover = at(/^To cover$/), iBullet = at(/^•  Overall performance and key headline statistics$/), iStatus = at(/^Current status: 16 risks can still kill or maim/), iNotes = at(/^Notes: Good quarter\./);
+    R.ok(iCover >= 0 && iCover < iBullet && iBullet < iStatus && iStatus < iNotes, 'each item in the minutes reads: to cover, then the current status, then the notes (' + [iCover, iBullet, iStatus, iNotes].join(' < ') + ')');
+    R.ok(t.tiled.includes('Worst possible harm=5/5') && t.tiled.includes('Risks fully actioned=3/16'), 'with the figures the briefing printed for it');
+    R.ok(s.includes('Current status: 3 decisions for the meeting.') && s.includes('1.  Reset owners and dates on the 5 overdue actions.'), 'item 10 carries the decisions put to the meeting');
+    R.ok(s.includes('The figures could not be read when these minutes were made.') && s.includes('Nothing minuted.'), 'an item with no figures, or no notes, says so rather than going quiet');
+    R.ok(/^16 risks can still kill/.test(t.snap || '') && t.remadeSnap, 'the status is kept with the meeting - minutes made again later show it as it stood on the day');
+  }
   R.ok(t.fresh, 'the next meeting starts clean, and the last one is kept');
 
   // the next briefing opens by asking whether they happened

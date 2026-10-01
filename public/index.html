@@ -28732,7 +28732,7 @@ function sltDelAction(id){
 }
 // Finish: empty lines go, the rest go on the execution plan (once - a
 // second Finish never doubles them), and the minutes are made.
-function sltFinish(){
+async function sltFinish(){
   const m=_sltCur(); if(!m||_blockIfReadOnly()) return;
   S.decisions=_decisions().filter(d=>!(d.meetingId===m.id && !String(d.decision||'').trim()));
   const acts=_sltActions(m), AG=_sltAgenda();
@@ -28741,6 +28741,10 @@ function sltFinish(){
   let raised=0;
   acts.forEach(d=>{ if(d.raised) return; const a=AG[(d.agendaItem||1)-1]||{ title:'' };
     _decisionAction(d, 'Agreed at the '+String(m.forum||'meeting').toLowerCase()+' on '+fmtDate(m.date)+' - item '+d.agendaItem+': '+a.title); raised++; });
+  // The company's status on each item as it stood at the meeting - kept with
+  // the meeting, so the minutes say the same thing whenever they are made.
+  if(!_sltFacts || !Object.keys(_sltFacts).length) await _sltLoadFacts();
+  m.snapshot={ at:new Date().toISOString(), items:JSON.parse(JSON.stringify(_sltFacts||{})) };
   m.status='finished'; m.finishedAt=new Date().toISOString(); _stamp(m,'updated');
   saveData();
   let pdf=null; try{ pdf=_sltMinutesPdf(m); }catch(e){ console.error('Minutes failed', e); }
@@ -28792,7 +28796,13 @@ function sltShare(){
     .catch(err=>{ if(err && err.name==='AbortError') return; sltMailOut(); });
 }
 // The minutes: who was there, the actions (the part people act on), then
-// each item's notes in agenda order, then what is still owed from before.
+// each item in agenda order - what it was to cover, the company's status on
+// it at the meeting, what was said and agreed - then what is still owed.
+function _sltStatusFor(m, n){
+  const snap=m && m.snapshot && m.snapshot.items;
+  if(snap) return snap[n] || null;
+  return (_sltFacts && _sltFacts[n]) || null;
+}
 function _sltMinutesPdf(m){
   const client=_sltClient(), d=_docFor('meetingMinutes');
   const K=_mkPdf('Meeting Minutes', client, d, (m.forum||'Meeting')+' - '+fmtDate(m.date));
@@ -28808,15 +28818,24 @@ function _sltMinutesPdf(m){
       {headFill:NAVY, headText:[255,255,255], fs:8.5});
     K.text('Each action is on the H&S execution plan, owned and dated. The next board report opens by asking whether it has happened.', 8.6, {color:GREY, gap:2});
   } else K.text('No actions were agreed.', 9.5, {color:GREY});
-  const quiet=[];
+  const TONE={ bad:RED, warn:AMBER, ok:[22,120,60], muted:GREY };
   AG.forEach(a=>{
-    const note=String((m.notes||{})[a.n]||'').trim(), mine=acts.filter(x=>x.agendaItem===a.n);
-    if(!note && !mine.length){ quiet.push(a.n+'. '+a.title); return; }
+    const note=String((m.notes||{})[a.n]||'').trim(), mine=acts.filter(x=>x.agendaItem===a.n), st=_sltStatusFor(m, a.n);
+    const nt0=((st&&st.tiles)||[]).length;
+    K.ensure(30+a.cover.length*4.6+(nt0?Math.ceil(nt0/(nt0>4?3:nt0))*30:6)+((st&&st.decisions)||[]).length*5);
     K.section(a.n+'. '+a.title, NAVY);
-    if(note) K.text(note, 9.5, {color:[45,45,45], gap:1});
+    K.text('To cover', 8.4, {bold:true, color:GREY});
+    a.cover.forEach(c=>K.text('•  '+c, 8.8, {color:GREY}));
+    K.st.y+=2;
+    const nt=((st&&st.tiles)||[]).length; K.ensure(10+(nt?Math.ceil(nt/(nt>4?3:nt))*30:0));
+    K.text('Current status'+((st&&st.line)?(': '+st.line):''), 9.6, {bold:true, color:NAVY, gap:1.5});
+    if(st && (st.tiles||[]).length) K.tiles(st.tiles.map(t=>({ num:String(t.value), label:t.label, sub:t.note||'', color:TONE[t.tone]||NAVY })), { cols:st.tiles.length>4?3:st.tiles.length });
+    if(st && (st.decisions||[]).length) st.decisions.forEach((x,i)=>K.text((i+1)+'.  '+x, 9, {color:[45,45,45]}));
+    if(!st) K.text('The figures could not be read when these minutes were made.', 8.8, {color:GREY});
+    K.st.y+=1;
+    K.text(note?('Notes: '+note):'Nothing minuted.', 9.5, {color:note?[45,45,45]:GREY, gap:1});
     mine.forEach(x=>K.text('Action: '+x.decision+' - '+(x.owner||'not named')+(x.due?(', by '+fmtDate(x.due)):''), 9, {bold:true, color:NAVY}));
   });
-  if(quiet.length){ K.section('Also covered, nothing to minute', GREY); K.text(quiet.join(' · '), 9, {color:GREY}); }
   const cf=_decCarriedForward((m.date||'')+'|'+(m.forum||'Meeting')).filter(x=>x.meetingId!==m.id);
   if(cf.length){
     K.section('Carried forward from earlier meetings', AMBER);

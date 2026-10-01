@@ -28544,6 +28544,7 @@ const SLT_AGENDA = [
   { n: 8, title: 'Health & wellbeing', cover: ['Work-related stress / mental health', 'Ergonomics / workstation issues', 'Occupational health trends, where relevant', 'Wider wellbeing initiatives'] },
   { n: 9, title: 'Key H&S objectives / improvement plan', cover: ['What has been achieved', 'What remains outstanding', 'Priorities for the next 6-12 months'] },
   { n: 10, title: 'Leadership actions / decisions required', cover: ['The 2-4 things senior leadership needs to know, support or decide', 'Resources, investment, policy changes or accountability issues', 'Any significant emerging risks'] },
+  { n: 11, title: 'Any other business', aob: true, cover: ['Anything raised that is not on the agenda', 'Actions and points agreed outside the items above'] },
 ];
 // Item 3 names the core work - the same rule as the report's sltAgenda().
 function _sltAgenda(){
@@ -28827,11 +28828,13 @@ function _sltMinutesPdf(m){
     K.text('To cover', 8.4, {bold:true, color:GREY});
     a.cover.forEach(c=>K.text('•  '+c, 8.8, {color:GREY}));
     K.st.y+=2;
-    const nt=((st&&st.tiles)||[]).length; K.ensure(10+(nt?Math.ceil(nt/(nt>4?3:nt))*30:0));
-    K.text('Current status'+((st&&st.line)?(': '+st.line):''), 9.6, {bold:true, color:NAVY, gap:1.5});
-    if(st && (st.tiles||[]).length) K.tiles(st.tiles.map(t=>({ num:String(t.value), label:t.label, sub:t.note||'', color:TONE[t.tone]||NAVY })), { cols:st.tiles.length>4?3:st.tiles.length });
-    if(st && (st.decisions||[]).length) st.decisions.forEach((x,i)=>K.text((i+1)+'.  '+x, 9, {color:[45,45,45]}));
-    if(!st) K.text('The figures could not be read when these minutes were made.', 8.8, {color:GREY});
+    if(!a.aob){   // any other business has no figures of its own - just what was said and agreed
+      const nt=((st&&st.tiles)||[]).length; K.ensure(10+(nt?Math.ceil(nt/(nt>4?3:nt))*30:0));
+      K.text('Current status'+((st&&st.line)?(': '+st.line):''), 9.6, {bold:true, color:NAVY, gap:1.5});
+      if(st && (st.tiles||[]).length) K.tiles(st.tiles.map(t=>({ num:String(t.value), label:t.label, sub:t.note||'', color:TONE[t.tone]||NAVY })), { cols:st.tiles.length>4?3:st.tiles.length });
+      if(st && (st.decisions||[]).length) st.decisions.forEach((x,i)=>K.text((i+1)+'.  '+x, 9, {color:[45,45,45]}));
+      if(!st) K.text('The figures could not be read when these minutes were made.', 8.8, {color:GREY});
+    }
     K.st.y+=1;
     K.text(note?('Notes: '+note):'Nothing minuted.', 9.5, {color:note?[45,45,45]:GREY, gap:1});
     mine.forEach(x=>K.text('Action: '+x.decision+' - '+(x.owner||'not named')+(x.due?(', by '+fmtDate(x.due)):''), 9, {bold:true, color:NAVY}));

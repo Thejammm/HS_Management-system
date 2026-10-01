@@ -73,6 +73,7 @@ export const SLT_AGENDA = [
   { n: 8, title: 'Health & wellbeing', cover: ['Work-related stress / mental health', 'Ergonomics / workstation issues', 'Occupational health trends, where relevant', 'Wider wellbeing initiatives'] },
   { n: 9, title: 'Key H&S objectives / improvement plan', cover: ['What has been achieved', 'What remains outstanding', 'Priorities for the next 6-12 months'] },
   { n: 10, title: 'Leadership actions / decisions required', cover: ['The 2-4 things senior leadership needs to know, support or decide', 'Resources, investment, policy changes or accountability issues', 'Any significant emerging risks'] },
+  { n: 11, title: 'Any other business', aob: true, cover: ['Anything raised that is not on the agenda', 'Actions and points agreed outside the items above'] },
 ];
 // Item 3 names the core work. Simon wrote it for a design practice; any
 // other client gets the same line without the word "architectural".
@@ -1244,9 +1245,15 @@ export function buildBoardReport(state, opts = {}) {
         rows: [0, 1, 2, 3, 4, 5, 6].map(() => [' ', ' ', ' ']) },
       { type: 'notesLines', title: 'Emerging risks and anything else raised', lines: 3 } ]);
 
+    // 11 · any other business - room for what was not on the agenda
+    const p11 = item(11, undefined, [
+      { type: 'dataTable', title: 'Actions agreed', cols: [ { header: 'Action', w: '56%' }, { header: 'Who', w: '24%' }, { header: 'By when', w: '20%' } ],
+        rows: [0, 1, 2, 3, 4].map(() => [' ', ' ', ' ']) },
+      { type: 'notesLines', title: 'Notes from the meeting', lines: 8 } ]);
+
     return {
       meta: { title: 'Health & Safety Leadership Briefing', org, ref, producer: producerOf(state), format, period },
-      pages: [ front, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, page4 ],
+      pages: [ front, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, page4 ],
     };
   }
 

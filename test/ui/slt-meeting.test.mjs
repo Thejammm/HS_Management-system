@@ -84,7 +84,7 @@ await wait(page, 300);
     out.dateFollows = _sltActions(m).every(x => x.date === m.date);
     return out;
   });
-  R.ok(t.open && t.nav === 10, 'Run the leadership meeting opens full screen, with the ten items to jump between');
+  R.ok(t.open && t.nav === 11, 'Run the leadership meeting opens full screen, with the eleven items to jump between');
   R.ok(t.items[0] === 'Who is here' && t.items.slice(1).join('|') === SLT_AGENDA.map(a => a.title).join('|'), 'who is here, then the ten items in agenda order');
   R.ok(t.att.join(';') === 'Jo Fine|Managing Director|jo@fineline.example;Sam Line|Technical Director|sam@fineline.example;Priya Nair|Architect|', 'the directors come in one click with their emails; anyone else by name - ' + t.att.join('; '));
   R.ok(t.noteKept, 'notes are kept as they are typed, and the cursor stays put');
@@ -215,9 +215,9 @@ await wait(page, 300);
 {
   const rep = buildReport({ company: { legalName: 'Fineline Architects Ltd', sector: 'Design / architecture / surveying' } }, 'board-briefing', { today: '2026-10-01' });
   const items = rep.pages.filter(p => p.agendaItem).map(p => p.agendaItem).join(',');
-  const cover = rep.pages.filter(p => p.agendaItem).every(p => p.blocks.some(b => b.type === 'coverList') && p.blocks.some(b => b.type === 'titleBlock' && /^Item \d+ of 10$/.test(b.kicker)));
+  const cover = rep.pages.filter(p => p.agendaItem).every(p => p.blocks.some(b => b.type === 'coverList') && p.blocks.some(b => b.type === 'titleBlock' && /^Item \d+ of 11$/.test(b.kicker)));
   const notes = rep.pages.filter(p => p.agendaItem).every(p => p.blocks.some(b => b.type === 'notesLines' || (b.type === 'dataTable' && /Agreed in the meeting/.test(b.title || ''))));
-  R.ok(rep.meta.title === 'Health & Safety Leadership Briefing' && rep.pages.length === 12 && items === '1,2,3,4,5,6,7,8,9,10', 'the briefing is a front page, the ten items in order, and the sign-off page');
+  R.ok(rep.meta.title === 'Health & Safety Leadership Briefing' && rep.pages.length === 13 && items === '1,2,3,4,5,6,7,8,9,10,11', 'the briefing is a front page, the eleven items in order, and the sign-off page');
   R.ok(cover && notes, 'every item page says what it covers and leaves room for the notes');
 }
 

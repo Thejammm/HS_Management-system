@@ -66,8 +66,15 @@ test('a signature can only be claimed once, by the database not the code', () =>
 
 // ── the page ──
 const renderPage = () => {
-  // pull the page() helper and the view handler's happy path out of the module
-  const mod = need(path.join(root, 'routes', 'signoff.js'));
+  // pull the page() helper and the view handler's happy path out of the module.
+  // Loading it loads db/index.js, which announces local dev mode on stdout.
+  // The test runner reads this file's results from that same stream, and a
+  // stray line landing mid-message made a full `npm test` fail to read this
+  // file at all ("Unable to deserialize cloned data"). Hold the line back.
+  const log = console.log; console.log = () => {};
+  let mod;
+  try { mod = need(path.join(root, 'routes', 'signoff.js')); }
+  finally { console.log = log; }
   assert.ok(mod, 'the route module loads');
   return true;
 };

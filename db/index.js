@@ -40,7 +40,16 @@ if(DEMO){
 // Run schema.sql on startup. Idempotent (CREATE TABLE IF NOT EXISTS).
 async function migrate(){
   const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-  if(DEMO){ await pool.query(sql); console.log('✓ Schema migration applied (local)'); return; }
+  if(DEMO){
+    // pg-mem has no plpgsql, so a DO $$ ... $$ block stops the local server
+    // starting. Those blocks only reshape a long-lived production table (the
+    // CREATE statements already give a fresh database its current shape), so
+    // the in-memory copy skips them. Production runs the file untouched.
+    const local = sql.replace(/^DO \$\$[\s\S]*?^END \$\$;[ \t]*$/gm, '-- (DO block skipped in local pg-mem mode)');
+    await pool.query(local);
+    console.log('✓ Schema migration applied (local)');
+    return;
+  }
   const client = await pool.connect();
   try {
     await client.query('BEGIN');

@@ -4,6 +4,9 @@ import { deriveBoard, deriveBoardExtras, boardModelOf, bandsFrom, noneOrCount, c
 import { holdWorstFirst, macroOf } from '../app-contract.js';
 import { esc, tierWord, planBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
+// The accreditation core sets globalThis.AccredCore - the same rules the
+// Accreditation tab uses, so the report and the app can never disagree.
+import '../accred-core.js';
 
 // The report's sections, defaulted to what HSG65 says a leadership review
 // draws on (Reviewing performance, p55): active + reactive monitoring,
@@ -264,6 +267,10 @@ export function buildBoardReport(state, opts = {}) {
   const CDM_KINDS = ['CDM audit', 'Design review', 'Architectural review'];
   const cdmAll = (Array.isArray(state.siteInspections) ? state.siteInspections : []).filter(v => CDM_KINDS.includes(v.kind));
   const todayIso = (opts.today || new Date().toISOString().slice(0, 10));
+  // Once a client has started the accreditation journey, that is the
+  // readiness the app shows, so it is the readiness this page reports.
+  const AC = (typeof globalThis !== 'undefined' && globalThis.AccredCore) || null;
+  const journey = (AC && AC.started(state)) ? AC.summary(state, todayIso) : null;
   const cdm = {
     total: cdmAll.length,
     done: cdmAll.filter(v => v.actual && v.outcome !== 'Not done').length,
@@ -831,7 +838,36 @@ export function buildBoardReport(state, opts = {}) {
 
   // ── Accreditation readiness - its own page, framed as a journey with a
   //    next step, not a wall of criteria. ──
-  const readinessPage = !hide.accreditation ? {
+  const journeyPage = (!hide.accreditation && journey) ? (function () {
+    const c = journey.counts, mg = journey.mandatoryGap.length;
+    const schemes = AC.SCHEMES.filter(sc => ((state.accred && state.accred.schemes) || {})[sc.id] && state.accred.schemes[sc.id].on).map(sc => sc.label).join(' and ');
+    const renew = journey.renewals.filter(r => r.expires).map(r => r.label + ' renews ' + new Date(r.expires + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })).join('; ');
+    return {
+      label: 'Readiness', section: 'readiness', blocks: [
+        mast,
+        { type: 'titleBlock', kicker: 'Accreditation readiness · ' + schemes,
+          headline: !journey.total ? 'No questions in scope yet - the scheme and role are still to be chosen.'
+            : c.rejected ? (countPhrase(c.rejected, 'answer was', 'answers were') + ' rejected by the assessor - put those right first.')
+            : mg ? (countPhrase(mg, 'mandatory question is', 'mandatory questions are') + ' not met yet - close those first.')
+            : (journey.pct != null ? (journey.pct + '% of the questions in scope are evidenced.') : 'Evidence under way.'),
+          standfirst: 'Worked question by question on the Accreditation tab, against the scheme\u2019s own question sets. One answer covers every question that shares it, and the evidence behind each is checked for its date, its signature and its expiry.' + (renew ? ' ' + renew + '.' : '') },
+        { type: 'distributionBars', title: 'The ' + journey.total + ' questions in scope', items: [
+          { label: 'Evidenced - in date', n: c.evidenced, colour: '#16A34A' },
+          { label: 'Due to expire within ' + AC.DUE_DAYS + ' days', n: c.due, colour: '#F59E0B' },
+          { label: 'Rejected by the assessor', n: c.rejected, colour: '#B42318' },
+          { label: 'Gap - nothing in date picked yet', n: c.gap, colour: '#DC2626' },
+          { label: 'Not applicable, or answered elsewhere', n: c.na + c.elsewhere, colour: '#9CA3AF' },
+        ] },
+        { type: 'textBlock', title: 'The next step', body:
+          c.rejected ? ('Put right the ' + countPhrase(c.rejected, 'rejected answer', 'rejected answers') + ' and resubmit; each keeps the assessor\u2019s comment and its history on the line.')
+            : mg ? ('Close the ' + countPhrase(mg, 'mandatory question', 'mandatory questions') + ' that are not met. A mandatory question left open holds the submission; the others can pass with an advisory.')
+            : c.due ? ('Renew the ' + countPhrase(c.due, 'piece of evidence', 'pieces of evidence') + ' due to expire in the next ' + AC.DUE_DAYS + ' days before the assessor sees ' + (c.due === 1 ? 'it' : 'them') + '.')
+            : c.gap ? ('No mandatory question is open. ' + countPhrase(c.gap, 'gap remains', 'gaps remain') + ' - closing them turns advisories into passes.')
+            : 'Every question in scope is evidenced and in date. The submission pack builds itself from what is recorded.' },
+      ],
+    };
+  })() : null;
+  const readinessPage = journeyPage ? journeyPage : !hide.accreditation ? {
     label: 'Readiness', section: 'readiness', blocks: [
       mast,
       { type: 'titleBlock', kicker: 'Accreditation readiness · Common Assessment Standard',

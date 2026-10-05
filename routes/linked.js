@@ -181,4 +181,93 @@ router.get('/casaudit', requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/linked/siteinspection?tenantId=xxx[&linkId=yyy]   body: { focus: [...] }
+// Evidence from the Site Safety Inspection app: what the inspector sent from
+// each completed inspection for this client, by accreditation question. The
+// same request carries the client's open accreditation questions back to
+// that app, where they show as focus areas for the next visit. Same guards
+// as the other links: service token server-side only, host allow-list, https.
+// The client is matched by the reference saved on the link (remoteTenantId):
+// the words the inspector typed against the project in that app.
+function cleanFocus(list){
+  return (Array.isArray(list) ? list : []).slice(0, 120).map(f => ({
+    id: String(f && f.id || '').slice(0, 12),
+    area: String(f && f.area || '').slice(0, 60),
+    text: String(f && f.text || '').slice(0, 400),
+    status: String(f && f.status || '').slice(0, 40),
+    site: String(f && f.site || '').slice(0, 200),
+  })).filter(f => /^[A-Z]{2}-\d{2}$/.test(f.id));
+}
+router.post('/siteinspection', requireAuth, async (req, res) => {
+  const token = process.env.LINK_SERVICE_TOKEN || '';
+  if(token.length < 32){
+    return res.status(503).json({ ok: false, error: 'link_not_configured' });
+  }
+
+  const tenantId = req.user.role !== 'consultant'
+    ? (req.user.tenantId || '')
+    : String(req.query?.tenantId || '').trim();
+  if(!tenantId) return res.status(400).json({ ok: false, error: 'tenant_required' });
+
+  try {
+    const r = await pool.query(`SELECT state FROM app_state WHERE tenant_id = $1 LIMIT 1`, [tenantId]);
+    if(!r.rows.length) return res.status(404).json({ ok: false, error: 'tenant_not_found' });
+    const links = (r.rows[0].state && Array.isArray(r.rows[0].state.linkedApps))
+      ? r.rows[0].state.linkedApps : [];
+    const linkId = String(req.query?.linkId || '').trim();
+    const link = linkId
+      ? links.find(l => l && l.id === linkId)
+      : links.find(l => l && l.kind === 'siteinspection');
+    if(!link || !link.baseUrl || !link.remoteTenantId){
+      return res.status(400).json({ ok: false, error: 'no_link_configured' });
+    }
+
+    let target;
+    try { target = new URL(link.baseUrl); }
+    catch(e){ return res.status(400).json({ ok: false, error: 'bad_link_url' }); }
+    const isLocal = target.hostname === 'localhost' || target.hostname === '127.0.0.1';
+    if(target.protocol !== 'https:' && !isLocal){
+      return res.status(400).json({ ok: false, error: 'https_required' });
+    }
+    if(!allowedHosts().includes(target.hostname.toLowerCase())){
+      return res.status(400).json({ ok: false, error: 'host_not_allowed' });
+    }
+
+    const url = target.origin + '/api/link/evidence';
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
+    let remote;
+    try {
+      remote = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client: String(link.remoteTenantId), focus: cleanFocus(req.body && req.body.focus) }),
+        signal: ctrl.signal,
+      });
+    } catch(e){
+      clearTimeout(timer);
+      return res.status(502).json({ ok: false, error: 'remote_unreachable' });
+    }
+    clearTimeout(timer);
+
+    if(remote.status === 401) return res.status(502).json({ ok: false, error: 'remote_auth_failed' });
+    if(remote.status === 503) return res.status(502).json({ ok: false, error: 'remote_link_not_configured' });
+    if(!remote.ok) return res.status(502).json({ ok: false, error: 'remote_error', status: remote.status });
+
+    let body;
+    try { body = await remote.json(); }
+    catch(e){ return res.status(502).json({ ok: false, error: 'remote_bad_payload' }); }
+
+    res.json({
+      ok: true,
+      source: { url: target.origin, client: link.remoteTenantId, linkId: link.id || null },
+      fetchedAt: new Date().toISOString(),
+      records: Array.isArray(body && body.records) ? body.records : [],
+    });
+  } catch(err){
+    console.error('POST /api/linked/siteinspection error:', err);
+    res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
 module.exports = router;

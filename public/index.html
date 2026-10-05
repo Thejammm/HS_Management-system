@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="reports/accred-core.js"></script>
 <script>/* pdf-lib v1.17.1 (MIT) - inlined so the fillable Discovery Questionnaire builds and imports offline */
 !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t=t||self).PDFLib={})}(this,(function(t){"use strict";
 /*! *****************************************************************************
@@ -2951,6 +2952,103 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .tab-panel{display:block!important;}
 }
 </style>
+<style id="acjCss">
+/* ── Accreditation journey: square, flat, ruled (AHS app design standard) ── */
+.acj{--acj-teal:#3E9DAF;--acj-teal2:#4bbfd6;--acj-grey:#757575;font-family:Inter,system-ui,sans-serif;color:var(--text);margin-bottom:18px}
+.acj button{font-family:inherit}
+.acj .k-evidenced{color:var(--success)} .acj .k-due{color:var(--warning)} .acj .k-gap,.acj .k-rejected{color:var(--danger)} .acj .k-na,.acj .k-elsewhere{color:var(--text-muted)}
+.acj-muted{font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:4px}
+.acj-hero{background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--acj-teal);padding:18px 20px;margin-bottom:12px}
+.acj-eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--acj-teal)}
+.acj-h{margin:3px 0 6px;font-size:22px;font-weight:800;letter-spacing:-.01em}
+.acj-lede{margin:0;font-size:13.5px;color:var(--text-muted);line-height:1.55;max-width:900px}
+.acj-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));border:1px solid var(--border);margin-top:14px}
+.acj-stat{background:transparent;border:0;border-right:1px solid var(--border);padding:10px 12px;text-align:left;cursor:pointer;color:inherit}
+.acj-stat:last-child{border-right:0}
+.acj-stat:disabled{cursor:default;opacity:.55}
+.acj-stat b{display:block;font-size:24px;font-weight:800;line-height:1.1}
+.acj-stat span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);font-weight:700;margin-top:3px}
+.acj-stat:not(:disabled):hover{background:var(--muted-bg)}
+.acj-stat[aria-pressed="true"]{box-shadow:inset 0 -3px 0 var(--acj-teal);background:var(--muted-bg)}
+.acj-renew{margin-top:12px;border-top:1px solid var(--border);padding-top:9px;font-size:12.5px;display:flex;flex-direction:column;gap:3px}
+.acj-renew small{color:var(--text-muted)}
+.acj-strip{display:flex;overflow-x:auto;background:var(--surface);border:1px solid var(--border);margin-bottom:12px;position:sticky;top:0;z-index:4}
+.acj-node{flex:1 1 0;background:transparent;border:0;border-right:1px solid var(--border);padding:8px 9px 9px;text-align:left;cursor:pointer;color:inherit;min-width:84px}
+.acj-node:last-child{border-right:0}
+.acj-node:hover{background:var(--muted-bg)}
+.acj-node .n{display:block;font-size:11px;font-weight:800;color:var(--acj-teal)}
+.acj-node .t{display:block;font-size:11.5px;font-weight:600;line-height:1.25;min-height:29px}
+.acj-bars{display:flex;gap:2px;flex-wrap:wrap;margin-top:5px}
+.acj-bars i{display:block;width:6px;height:10px;background:var(--border)}
+.acj-bars i.st-evidenced{background:var(--success)} .acj-bars i.st-due{background:var(--warning)}
+.acj-bars i.st-gap{background:transparent;box-shadow:inset 0 0 0 1px var(--danger)} .acj-bars i.st-rejected{background:var(--danger)}
+.acj-bars i.st-na,.acj-bars i.st-elsewhere{background:var(--text-muted);opacity:.4}
+.acj-stage{background:var(--surface);border:1px solid var(--border);margin-bottom:12px;scroll-margin-top:84px}
+.acj-head{display:flex;gap:14px;align-items:flex-start;padding:13px 16px;border-bottom:1px solid var(--border)}
+.acj-num{font-size:24px;font-weight:800;color:var(--acj-teal);line-height:1;min-width:36px}
+.acj-head h3{margin:0;font-size:15.5px;font-weight:800}
+.acj-head p{margin:3px 0 0;font-size:12.5px;color:var(--text-muted);line-height:1.45}
+.acj-body{padding:4px 16px 14px}
+.acj-lbl{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin:12px 0 5px}
+.acj-seg{display:flex;flex-wrap:wrap;gap:6px}
+.acj-btn{border:1px solid var(--acj-teal);background:transparent;color:var(--acj-teal);padding:6px 11px;font-size:12.5px;font-weight:600;cursor:pointer;line-height:1.3}
+.acj-btn:hover:not(:disabled){background:var(--muted-bg)}
+.acj-btn[aria-pressed="true"],.acj-btn.pri{background:var(--acj-teal);color:#fff}
+.acj-btn:disabled{opacity:.5;cursor:default}
+.acj-link{background:none;border:0;padding:0 2px;color:var(--acj-teal);font-weight:700;cursor:pointer;text-decoration:underline;font-size:inherit}
+.acj-scheme{border:1px solid var(--border);padding:9px 12px;margin-bottom:8px}
+.acj-scheme.is-pending{opacity:.75}
+.acj-scheme-h label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13.5px}
+.acj-scheme-h input{width:auto;margin:0}
+.acj-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.acj-sets summary{cursor:pointer;font-size:13px;font-weight:600;padding:3px 0}
+.acj-set{display:flex;align-items:flex-start;gap:7px;font-size:12.5px;padding:3px 0;cursor:pointer}
+.acj-set input{width:auto;margin:2px 0 0}
+.acj select,.acj .acj-in{width:100%;box-sizing:border-box;border:1px solid var(--border);background:var(--input-bg);color:var(--text);padding:7px 9px;font:inherit;font-size:13px;border-radius:0}
+.acj textarea.acj-in{resize:vertical}
+.acj input[type="date"]{border:1px solid var(--border);background:var(--input-bg);color:var(--text);padding:5px 7px;font:inherit;font-size:12.5px;border-radius:0}
+.acj-next{border:1px dashed var(--border);padding:14px 16px;font-size:13.5px;color:var(--text-muted);background:var(--surface)}
+.acj-filterbar{position:sticky;top:64px;z-index:3;background:var(--surface);border:1px solid var(--acj-teal);border-left:4px solid var(--acj-teal);padding:9px 12px;margin-bottom:12px;font-size:13px}
+.acj-line{border-bottom:1px solid var(--border);border-left:4px solid var(--border);scroll-margin-top:96px}
+.acj-line:last-child{border-bottom:0}
+.acj-line.st-evidenced{border-left-color:var(--success)} .acj-line.st-due{border-left-color:var(--warning)}
+.acj-line.st-gap,.acj-line.st-rejected{border-left-color:var(--danger)} .acj-line.st-na,.acj-line.st-elsewhere{border-left-color:var(--text-muted)}
+.acj-row{display:grid;grid-template-columns:58px minmax(0,1fr) 210px 140px;gap:12px;align-items:start;width:100%;background:transparent;border:0;padding:10px 14px;text-align:left;cursor:pointer;color:inherit}
+.acj-row:hover{background:var(--muted-bg)}
+.acj-line.open>.acj-row{background:var(--muted-bg)}
+.acj-qid{font-weight:800;font-size:12px;color:var(--text-muted);padding-top:1px}
+.acj-qt{font-size:13.5px;line-height:1.45}
+.acj-must{display:inline-block;margin-left:7px;font-size:9.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;border:1px solid currentColor;padding:0 4px;vertical-align:1px;color:var(--text)}
+.acj-st b{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em}
+.acj-st small{display:block;font-size:11.5px;color:var(--text-muted);line-height:1.35;margin-top:1px}
+.acj-exp{font-size:11.5px;color:var(--text-muted);line-height:1.35}
+.acj-exp small{display:block}
+.acj-detail{padding:4px 16px 16px 86px;border-top:1px solid var(--border)}
+.acj-guide{font-size:12.5px;line-height:1.5}
+.acj-used{margin:0;padding-left:18px}
+.acj-facts{width:100%;border-collapse:collapse;margin-top:9px;font-size:12.5px}
+.acj-facts th{text-align:left;font-weight:700;color:var(--text-muted);width:110px;padding:5px 8px;border:1px solid var(--border);vertical-align:top;font-size:11.5px}
+.acj-facts td{padding:5px 8px;border:1px solid var(--border)}
+.acj-warnline{font-size:12.5px;color:var(--danger);padding:6px 8px}
+.acj-photo{display:block;max-width:220px;max-height:160px;margin-top:8px;border:1px solid var(--border)}
+.acj-states{margin-top:12px}
+.acj-states>div{display:flex;gap:6px}
+.acj-state{margin-top:12px;padding:8px 10px;border:1px solid var(--border);font-size:13px;background:var(--muted-bg)}
+.acj-rejadd{margin-top:12px;font-size:13px}
+.acj-rejadd summary{cursor:pointer;font-weight:600;color:var(--text-muted)}
+.acj-rejbox{margin-top:12px;border:1px solid var(--danger);border-left:4px solid var(--danger);padding:9px 11px;font-size:13px}
+.acj-rejfix{margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.acj-hist{margin:0;padding-left:20px;font-size:12.5px;line-height:1.55}
+.acj-packrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border)}
+#casLegacy{margin-top:6px}
+#casLegacy>summary{cursor:pointer;font-weight:700;font-size:13.5px;padding:11px 14px;border:1px solid var(--border);background:var(--surface);margin-bottom:12px}
+@media (max-width:860px){
+  .acj-row{grid-template-columns:50px minmax(0,1fr)}
+  .acj-st,.acj-exp{grid-column:2}
+  .acj-detail{padding-left:16px}
+  .acj-grid2{grid-template-columns:1fr}
+}
+</style>
 </head>
 <body>
 <div id="toast"></div>
@@ -3955,7 +4053,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
        TAB - CAS / ACCREDITATION
   ══════════════════════════════════════ -->
   <div id="tab-cas" class="tab-panel">
+    <div id="accredJourney"></div>
+    <div id="membershipsPanel"></div>
     <div id="evidenceAuditContainer"></div>
+    <details id="casLegacy">
+      <summary>Common Assessment Standard (Build UK) - the earlier criterion-by-criterion assessment</summary>
     <div class="card no-print" style="margin-bottom:18px;">
       <div class="card-band"><h3><span class="dot">●</span> Accreditation readiness</h3>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
@@ -3969,8 +4071,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div id="casSummary" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"></div>
       </div>
     </div>
-    <div id="membershipsPanel"></div>
     <div id="casContainer"></div>
+    </details>
     <div id="approvedPartner"></div>
   </div>
 
@@ -8143,6 +8245,7 @@ function _auditMetricsNow(){
   reqSecs.forEach(s=>(s.items||[]).forEach(it=>{ if(it.present||it.adequate){ reqAssessed++; if(it.present==='No'||it.adequate==='No') reqGaps++; } }));
   const pd=(typeof _policyState==='function')?_policyState():{};
   let casReady=null;
+  if(typeof _acjStarted==='function' && _acjStarted()){ try{ casReady=AccredCore.summary(S,_acjToday()).pct; }catch(e){} } else
   try{ let inS=0,rd=0,na=0,po=0; CAS_FRAMEWORK.sections.forEach(s=>s.questions.forEach(q=>{ if(!_casRowInScope(q.q))return; inS++; const st=(S.cas?.status?.[q.q]||{}).v; if(st==='ready')rd++; else if(st==='na')na++; else if(!st&&_casProportionateOptional(q))po++; })); const as=inS-na-po; casReady=as>0?Math.round(rd/as*100):null; }catch(e){}
   return {
     risks:risks.length, rated:M.rated.length,
@@ -14572,6 +14675,11 @@ function _cockpitClientName(){
 
 // Accreditation readiness tally (for the cockpit card + the CAS tab summary).
 function _casStats(){
+  if(_acjStarted()){
+    const m=AccredCore.summary(S,_acjToday());
+    return { scheme:{ id:'journey', label:'Accreditation journey' }, inScope:m.total, ready:m.ready, partial:m.counts.due, gap:m.counts.gap+m.counts.rejected,
+      na:m.counts.na+m.counts.elsewhere, propOptional:0, assessable:m.assessable, pctReady:m.pct, assessed:m.total };
+  }
   // NOT from the Accreditation tab's dropdown. This tally feeds the cockpit
   // card, and reading a control on another tab meant the cockpit's headline
   // number changed depending on what that dropdown happened to be set to -
@@ -27452,10 +27560,10 @@ function _renderAppLinksNow(){
 function _linkedAppsState(){ if(!Array.isArray(S.linkedApps)) S.linkedApps=[]; return S.linkedApps; }
 function addLinkedApp(kind){
   if(!_canEditLinks() || _blockIfReadOnly()) return;
-  const cas = kind==='casaudit';
+  const cas = kind==='casaudit', si = kind==='siteinspection';
   _linkedAppsState().push({ id:'la_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-    kind:cas?'casaudit':'inspections', label:cas?'CAS Auditor':'Inspection app',
-    baseUrl:cas?'https://casaudit.archerhs.co.uk':'https://inspections.archerhs.co.uk',
+    kind:cas?'casaudit':si?'siteinspection':'inspections', label:cas?'CAS Auditor':si?'Site Safety Inspection':'Inspection app',
+    baseUrl:cas?'https://casaudit.archerhs.co.uk':si?'https://siteinspection.archerhs.co.uk':'https://inspections.archerhs.co.uk',
     remoteTenantId:'', autoSync:true, lastSyncAt:'', lastStatus:'' });
   saveData(); renderAppLinks(); try{ applyViewMode(); }catch(e){}
 }
@@ -27469,7 +27577,9 @@ function updateLinkedApp(id,f,v){
 function deleteLinkedApp(id){
   if(!_canEditLinks() || _blockIfReadOnly()) return;
   const l=_linkedAppsState().find(x=>x.id===id); if(!l) return;
-  const _cmsg = l.kind==='casaudit'
+  const _cmsg = l.kind==='siteinspection'
+    ? 'Remove this link? The site inspection evidence pulled into the Accreditation tab is removed from Compass (it stays safe in the Site Safety Inspection app).'
+    : l.kind==='casaudit'
     ? 'Remove this link? The synced evidence view is removed from Compass (everything stays safe in CAS Auditor).'
     : 'Remove this link? Its synced inspections and actions will also be removed from Compass (they stay safe in the app they were done in).';
   if(!confirm(_cmsg)) return;
@@ -27477,6 +27587,7 @@ function deleteLinkedApp(id){
   S.actions=(S.actions||[]).filter(a=>!(a.source==='linked'&&a.sourceApp===id));
   S.linkedApps=_linkedAppsState().filter(x=>x.id!==id);
   if(S.evidenceAudit && S.evidenceAudit[id]) delete S.evidenceAudit[id];
+  if(S.siteEvidence && S.siteEvidence[id]) delete S.siteEvidence[id];
   saveData(); renderAppLinks(); if(typeof renderActions==='function'){ try{ renderActions(); renderActionStats(); }catch(e){} }
   try{ applyViewMode(); }catch(e){}
   showToast('Link removed - synced records cleared.','success');
@@ -27506,6 +27617,23 @@ function _mergeCasauditRecords(link, payload){
     updatedAt: payload.remoteUpdatedAt||'', client: payload.client||null };
   try{ renderEvidenceAudit(); }catch(e){}
 }
+// ── Site inspection evidence (Site Safety Inspection link): what the
+//    inspector sent from a completed inspection, by accreditation question.
+//    Kept under S.siteEvidence[linkId]; each pull replaces the last for that
+//    link, so a resent inspection never doubles up. It never replaces a
+//    document the client picked: AccredCore only lets it stand in where
+//    nothing was picked. ──
+function _mergeSiteEvidence(link, payload){
+  if(!S.siteEvidence || typeof S.siteEvidence!=='object') S.siteEvidence={};
+  const recs=(Array.isArray(payload.records)?payload.records:[]).map(r=>({ inspectionId:String(r.inspectionId||''), project:String(r.project||''), visit:r.visit||'', date:String(r.date||''),
+    sentAt:String(r.sentAt||''), inspector:String(r.inspector||''), reportName:String(r.reportName||''),
+    items:(Array.isArray(r.items)?r.items:[]).map(it=>({ qids:(Array.isArray(it.qids)?it.qids:[]).map(String), check:String(it.check||''), checkId:String(it.checkId||''), note:String(it.note||''), photo:/^data:image\/(jpeg|png);base64,/.test(String(it.photo||''))?String(it.photo):'' })) }));
+  S.siteEvidence[link.id]={ fetchedAt: payload.fetchedAt||new Date().toISOString(), records: recs };
+  try{ renderAccred(); }catch(e){}
+}
+// The questions a site inspection could evidence that need it now, sent with
+// each pull so the inspector sees them as focus areas on the next visit.
+function _acjFocusPayload(){ try{ return _acjStarted()?AccredCore.focusFor(S,_acjToday()).map(f=>({ id:f.id, area:f.area, text:f.text, status:f.label, site:f.site })):[]; }catch(e){ return []; } }
 function _evStatusMeta(st){
   return st==='g' ? { label:'In the folder', color:'var(--success)' }
        : st==='a' ? { label:'Client to send', color:'var(--warning)' }
@@ -27568,7 +27696,9 @@ async function syncLinkedApp(id, opts){
   if(typeof Auth==='undefined' || !Auth.isSignedIn() || !Auth.activeTenantId()){
     if(!opts.silent) showToast('Sign in first - linked sync runs through the server.','info'); return;
   }
-  if(!link.remoteTenantId){ if(!opts.silent) showToast(link.kind==='casaudit'
+  if(!link.remoteTenantId){ if(!opts.silent) showToast(link.kind==='siteinspection'
+      ? 'Set the client reference first - the same words typed against this client in the Site Safety Inspection app.'
+      : link.kind==='casaudit'
       ? 'Set the Link ID first (copy it from the client\'s row on the CAS Auditor Admin tab).'
       : 'Set the remote tenant id first (the client\'s tenant id in the Inspection app).','info'); return; }
   const btn=document.getElementById('lasync-'+id); if(btn){ btn.disabled=true; btn.textContent='Syncing…'; }
@@ -27577,8 +27707,10 @@ async function syncLinkedApp(id, opts){
     // moment ago must reach it first - otherwise Sync now pulls the old id,
     // or none. A background sync on load has nothing new to save.
     if(!opts.silent){ try{ clearTimeout(_autoTimer); await saveData(); }catch(e){} }
-    const _ep = link.kind==='casaudit' ? 'casaudit' : 'inspections';
-    const r=await fetch('/api/linked/'+_ep+'?tenantId='+encodeURIComponent(Auth.activeTenantId())+'&linkId='+encodeURIComponent(id), { credentials:'include' });
+    const _ep = link.kind==='casaudit' ? 'casaudit' : link.kind==='siteinspection' ? 'siteinspection' : 'inspections';
+    const r=await fetch('/api/linked/'+_ep+'?tenantId='+encodeURIComponent(Auth.activeTenantId())+'&linkId='+encodeURIComponent(id), link.kind==='siteinspection'
+      ? { method:'POST', credentials:'include', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ focus:_acjFocusPayload() }) }
+      : { credentials:'include' });
     let j={}; try{ j=await r.json(); }catch(e){}
     if(!r.ok || !j.ok){
       link.lastStatus='error: '+(j.error||('http '+r.status));
@@ -27586,13 +27718,14 @@ async function syncLinkedApp(id, opts){
       if(!opts.silent) showToast('Sync failed - '+_laErrText(j.error||('http '+r.status))+'. Keeping the last-synced data.','error');
       return;
     }
-    if(link.kind==='casaudit') _mergeCasauditRecords(link, j); else _mergeLinkedRecords(link, j);
+    if(link.kind==='casaudit') _mergeCasauditRecords(link, j); else if(link.kind==='siteinspection') _mergeSiteEvidence(link, j); else _mergeLinkedRecords(link, j);
     link.lastSyncAt=j.fetchedAt||new Date().toISOString(); link.lastStatus='ok';
     saveData(); renderAppLinks();
     if(typeof renderActions==='function'){ try{ renderActions(); renderActionStats(); }catch(e){} }
     if(typeof renderMonthlyReport==='function'){ try{ renderMonthlyReport(); }catch(e){} }
     if(typeof renderCockpit==='function'){ try{ renderCockpit(); }catch(e){} }
     try{ applyViewMode(); }catch(e){}
+    if(!opts.silent && link.kind==='siteinspection'){ const n=(j.records||[]).length; showToast('✓ Pulled '+n+' inspection'+(n!==1?'s':'')+"' evidence from the Site Safety Inspection app",'success'); } else
     if(!opts.silent) showToast('✓ Synced '+(j.inspections||[]).length+' inspection'+((j.inspections||[]).length!==1?'s':'')+' and '+(j.actions||[]).length+' action'+((j.actions||[]).length!==1?'s':'')+' from '+(link.label||'the linked app')+'.','success');
   }catch(e){
     link.lastStatus='error: network';
@@ -27623,7 +27756,7 @@ const _LA_ERR={
   no_link_configured:'the link had not reached the server yet - press Sync now again',
   bad_link_url:'the app address is not a web address',
   https_required:'the app address must start https://',
-  host_not_allowed:'that app address is not one Compass may pull from - use https://inspections.archerhs.co.uk',
+  host_not_allowed:'that app address is not one Compass may pull from - use the address the link was created with',
   remote_unreachable:'the Inspection app did not answer - try again in a minute',
   remote_auth_failed:"the Inspection app refused Compass's service token - the two apps' tokens do not match",
   remote_tenant_not_found:"the Inspection app has no client with that id - copy it from the client's row on the Inspection app's Admin tab",
@@ -27654,7 +27787,7 @@ function _linkedAppsCardHTML(canEdit){
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px;">
         <div class="field-group"><label class="field-label">Label</label><input type="text"${dis} value="${esc(l.label||'')}" oninput="updateLinkedApp('${l.id}','label',this.value)" data-f="la-${l.id}-label"></div>
         <div class="field-group"><label class="field-label">App address</label><input type="text"${dis} value="${esc(l.baseUrl||'')}" oninput="updateLinkedApp('${l.id}','baseUrl',this.value)" data-f="la-${l.id}-baseUrl"></div>
-        <div class="field-group"><label class="field-label">${l.kind==='casaudit'?"Client's Link ID (CAS Auditor Admin tab)":"Client's tenant id in that app"}</label><input type="text"${dis} value="${esc(l.remoteTenantId||'')}" oninput="updateLinkedApp('${l.id}','remoteTenantId',this.value)" data-f="la-${l.id}-remoteTenantId"></div>
+        <div class="field-group"><label class="field-label">${l.kind==='casaudit'?"Client's Link ID (CAS Auditor Admin tab)":l.kind==='siteinspection'?"Client reference (typed in the Site Safety Inspection app)":"Client's tenant id in that app"}</label><input type="text"${dis} value="${esc(l.remoteTenantId||'')}" oninput="updateLinkedApp('${l.id}','remoteTenantId',this.value)" data-f="la-${l.id}-remoteTenantId"></div>
       </div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px;">
         <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;"><input type="checkbox"${dis} ${l.autoSync?'checked':''} onchange="updateLinkedApp('${l.id}','autoSync',this.checked)"> Auto-sync when this client loads</label>
@@ -27666,9 +27799,9 @@ function _linkedAppsCardHTML(canEdit){
   return `<div class="card" style="margin:0 0 16px;">
     <div class="card-band"><h3>Linked apps - data sync</h3><span class="badge badge-muted">${list.length||''}</span></div>
     <div class="card-body">
-      <div class="no-print" style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Pull this client's inspections and actions from their standalone Inspection app, automatically. Inspections stay DONE over there (the source of truth); Compass is where they are seen and managed. Synced records carry a "from Inspection app" badge and are view-only here. A CAS Auditor link pulls the client's evidence-day list into the Accreditation tab the same way.</div>
+      <div class="no-print" style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Pull this client's inspections and actions from their standalone Inspection app, automatically. Inspections stay DONE over there (the source of truth); Compass is where they are seen and managed. Synced records carry a "from Inspection app" badge and are view-only here. A CAS Auditor link pulls the client's evidence-day list into the Accreditation tab the same way, and a Site Safety Inspection link pulls the evidence the inspector sends from each completed inspection against the accreditation questions it answers.</div>
       ${rows||'<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">No linked apps yet.</div>'}
-      ${canEdit&&!dis?`<button class="btn btn-outline btn-sm no-print" onclick="addLinkedApp()">＋ Link the Inspection app</button> <button class="btn btn-outline btn-sm no-print" onclick="addLinkedApp('casaudit')">＋ Link the CAS Auditor</button>`:''}
+      ${canEdit&&!dis?`<button class="btn btn-outline btn-sm no-print" onclick="addLinkedApp()">＋ Link the Inspection app</button> <button class="btn btn-outline btn-sm no-print" onclick="addLinkedApp('casaudit')">＋ Link the CAS Auditor</button> <button class="btn btn-outline btn-sm no-print" onclick="addLinkedApp('siteinspection')">＋ Link the Site Safety Inspection app</button>`:''}
     </div>
   </div>`;
 }
@@ -30350,6 +30483,14 @@ function openDocModal(id){
          <div class="field-group"><label class="field-label">Owner</label><input type="text" id="docOwner" placeholder="Who maintains it" value="${esc(v('owner'))}"></div>
          <div class="field-group"><label class="field-label">Review date</label><input type="date" id="docReview" value="${esc(v('reviewDate'))}"></div>
        </div>
+       <div class="field-grid">
+         <div class="field-group"><label class="field-label">Dated</label><input type="date" id="docDated" value="${esc(v('dated'))}"><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">The date on this version. Accreditation schemes want most documents dated within 12 months.</div></div>
+         <div class="field-group"><label class="field-label">Valid to</label><input type="date" id="docExpires" value="${esc(v('expires'))}"><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">For a certificate, card or licence.</div></div>
+       </div>
+       <div class="field-grid">
+         <div class="field-group"><label class="field-label">Signed by</label><input type="text" id="docSignedBy" placeholder="Name and role" value="${esc(v('signedBy'))}"></div>
+         <div class="field-group"><label class="field-label">Signatory</label><label style="display:flex;align-items:center;gap:8px;font-size:13px;padding-top:8px;cursor:pointer;"><input type="checkbox" id="docSignedDirector" style="width:auto;margin:0;" ${doc&&doc.signedDirector?'checked':''}> Signed by a director</label></div>
+       </div>
        <div class="field-group"><label class="field-label">Link or file location</label><input type="text" id="docLink" placeholder="https://…   or   C:\\Folder\\file.pdf" value="${esc(v('link'))}"><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">A web link (OneDrive / SharePoint) opens in the browser; a local or network path (C:\\… or \\\\server\\…) gets a Copy button to paste into File Explorer. The file itself is not stored here.</div></div>
      </div>`,
     `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -30365,7 +30506,8 @@ function saveDocument(id){
   const link = g('docLink').replace(/^["']+|["']+$/g,'').trim();   // strip wrapping quotes (Windows "Copy as path")
   if(link && /^\s*(javascript|data|vbscript):/i.test(link)){ showToast('That link type is not allowed','error'); return; }
   if(!Array.isArray(S.documents)) S.documents = [];
-  const fields = { name, category:g('docCategory'), version:g('docVersion'), owner:g('docOwner'), reviewDate:g('docReview'), link };
+  const fields = { name, category:g('docCategory'), version:g('docVersion'), owner:g('docOwner'), reviewDate:g('docReview'), link,
+    dated:g('docDated'), expires:g('docExpires'), signedBy:g('docSignedBy'), signedDirector:!!(document.getElementById('docSignedDirector')||{}).checked };
   let doc = id ? S.documents.find(d=>d.id===id) : null;
   if(doc){ Object.assign(doc, fields); _stamp(doc,'updated'); }
   else { doc = Object.assign({ id:'doc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6) }, fields); _stamp(doc,'created'); S.documents.push(doc); }
@@ -30373,6 +30515,7 @@ function saveDocument(id){
   closeModal();
   showToast(id?'✓ Document updated':'✓ Document added','success');
   renderDocuments();
+  try{ if(document.getElementById('tab-cas') && document.getElementById('tab-cas').classList.contains('active')) _keepScroll(renderAccred); }catch(e){}
 }
 
 function deleteDocument(id){
@@ -32154,7 +32297,478 @@ async function casExportXlsx(){
     showToast('✓ Exported '+name,'success');
   }catch(e){ console.error('cas export',e); alert('Export failed: '+e.message); }
 }
+// ══════════════════════════════════════════════════════════════
+//  ACCREDITATION JOURNEY - one stepped flow, shaped like the job.
+//
+//  01 Scheme and role -> the questions, area by area -> the submission pack,
+//  opening on where things stand. The questions are the master list in
+//  reports/accred-core.js (AccredCore), keyed by common id (HS-01...), so one
+//  answer covers every scheme question that shares the id. Statuses, counts
+//  and expiry dates are worked out by AccredCore from the facts every time;
+//  nothing here stores a status.
+//
+//  Store: S.accred = { roles:[], schemes:{ cl:{ on, membershipId, setsOff:{} } },
+//    answers:{ 'HS-02': { ev:{src,id}, text, decl, note, na, elsewhere, hist:[] } } }
+//  Created only when something is first recorded, so a client who never
+//  opens this has nothing added to their record.
+// ══════════════════════════════════════════════════════════════
+var _acjOpen = {};      // which lines are open - view state, never saved
+var _acjFilter = null;  // { kind, ids } pinned when a count is clicked, so a line never vanishes while you work on it
+function _acjCore(){ return (typeof AccredCore !== 'undefined') ? AccredCore : null; }
+function _acjToday(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function _accredState(){
+  if(!S.accred || typeof S.accred !== 'object') S.accred = {};
+  const a = S.accred;
+  if(!Array.isArray(a.roles)) a.roles = [];
+  if(!a.schemes || typeof a.schemes !== 'object') a.schemes = {};
+  if(!a.answers || typeof a.answers !== 'object') a.answers = {};
+  return a;
+}
+function _acjAns(qid){ const a = _accredState(); return a.answers[qid] = a.answers[qid] || {}; }
+function _acjTouch(qid){ const x = _acjAns(qid); try{ x.by = _actor().name; }catch(e){} x.at = new Date().toISOString(); }
+function _acjStarted(){ const A = _acjCore(); return !!(A && A.started(S)); }
+function _acjClient(){ return (_consultantView && _consultantView.name) || (typeof Auth!=='undefined' && Auth.user && Auth.user() && Auth.user().tenantName) || (S.branding && S.branding.name) || (S.company && S.company.name) || 'Client'; }
+function _acjSave(){ saveData(); _keepScroll(renderAccred); }
+function _acjDays(n){ return n == null ? '' : n < 0 ? (Math.abs(n) + ' day' + (Math.abs(n) === 1 ? '' : 's') + ' ago') : n === 0 ? 'today' : ('in ' + n + ' day' + (n === 1 ? '' : 's')); }
+function _acjNode(id){ return 'acjL-' + String(id).replace(/[^A-Za-z0-9-]/g, ''); }
+
+// ── the line itself: id, question, mandatory flag, status and expiry ──
+function _acjRowHTML(q, s){
+  return `<span class="acj-qid">${esc(q.id)}</span>
+    <span class="acj-qt">${esc(q.text)}${q.cas ? '<span class="acj-must" title="Mandatory under the Common Assessment Standard">Mandatory</span>' : ''}</span>
+    <span class="acj-st k-${s.k}"><b>${esc(s.label)}</b>${s.why ? `<small>${esc(s.why)}</small>` : ''}</span>
+    <span class="acj-exp">${s.expires ? ('Valid to ' + esc(fmtDate(s.expires)) + '<small>' + esc(_acjDays(s.days)) + '</small>') : ''}</span>`;
+}
+// After typing, refresh the line and the counts without rebuilding the page:
+// a rebuild under the cursor loses what is being typed.
+function _acjRefreshRow(qid){
+  const A = _acjCore(); if(!A) return;
+  const q = A.byId(qid); if(!q) return;
+  const s = A.statusOf(S, q, _acjToday());
+  const line = document.getElementById(_acjNode(qid));
+  if(line){
+    line.className = line.className.replace(/\bst-\w+/g, '').trim() + ' st-' + s.k;
+    const row = line.querySelector('.acj-row'); if(row) row.innerHTML = _acjRowHTML(q, s);
+  }
+  _acjRefreshTop();
+}
+function _acjRefreshTop(){
+  const A = _acjCore(); if(!A) return;
+  const h = document.getElementById('acjHero'), st = document.getElementById('acjStrip');
+  const sum = A.summary(S, _acjToday()), qs = A.questions(S);
+  if(h) h.innerHTML = _acjHeroInner(A, sum);
+  if(st) st.innerHTML = _acjStripInner(A, qs);
+}
+
+// ── where things stand ──
+function _acjHeroInner(A, sum){
+  const c = sum.counts;
+  const roles = (A.cfgOf(S).roles || []).map(r => (A.ROLES.find(x => x.id === r) || {}).label).filter(Boolean);
+  const schemes = A.SCHEMES.filter(sc => (A.cfgOf(S).schemes[sc.id] || {}).on).map(sc => sc.label);
+  const lede = !sum.started || !roles.length
+    ? 'Start at step 01: pick the schemes the client holds or needs and the role it works in. Only the questions for that scheme and role appear after that.'
+    : `${sum.total} question${sum.total === 1 ? '' : 's'} for ${roles.join(' and ')} under ${schemes.join(' and ')}: `
+      + `${c.evidenced} evidenced, ${c.gap} gap${c.gap === 1 ? '' : 's'}, ${c.rejected} rejected and ${c.due} due to expire in the next ${A.DUE_DAYS} days.`
+      + (sum.mandatoryGap.length ? ` ${sum.mandatoryGap.length} mandatory question${sum.mandatoryGap.length === 1 ? ' is' : 's are'} not met yet.` : ' Every mandatory question is met.');
+  // a count is coloured only when there is something in it: a red nought is decoration
+  const stat = (n, label, kind, cls) => `<button type="button" class="acj-stat ${n ? (cls || '') : ''}" ${sum.started && roles.length ? `onclick="setAccredFilter('${kind}')"` : 'disabled'} aria-pressed="${_acjFilter && _acjFilter.kind === kind ? 'true' : 'false'}" title="Show the lines this counts"><b>${n}</b><span>${label}</span></button>`;
+  const renew = sum.renewals.map(r => `<div class="acj-renew-row"><b>${esc(r.label)}</b> ${r.expires
+      ? `renews ${esc(fmtDate(r.expires))} <span class="${r.days != null && r.days <= A.DUE_DAYS ? 'k-' + (r.days < 0 ? 'gap' : 'due') : ''}">${esc(r.days < 0 ? 'expired ' + _acjDays(r.days) : _acjDays(r.days))}</span>${r.membership ? ` <small>(${esc(r.membership)})</small>` : ''}`
+      : '<span class="acj-muted">renewal date not recorded: link its certificate at step 01</span>'}</div>`).join('');
+  return `<div class="acj-eyebrow">Accreditation</div>
+    <h2 class="acj-h">Where things stand</h2>
+    <p class="acj-lede">${esc(lede)}</p>
+    <div class="acj-stats">
+      ${stat(sum.total, 'Questions', 'all')}
+      ${stat(c.evidenced, 'Evidenced', 'evidenced', 'k-evidenced')}
+      ${stat(c.due, 'Due in ' + A.DUE_DAYS + ' days', 'due', 'k-due')}
+      ${stat(c.rejected, 'Rejected', 'rejected', 'k-rejected')}
+      ${stat(c.gap, 'Gaps', 'gap', 'k-gap')}
+      ${stat(sum.mandatoryGap.length, 'Mandatory not met', 'mandatory', 'k-gap')}
+    </div>
+    ${renew ? `<div class="acj-renew">${renew}</div>` : ''}`;
+}
+function _acjAreasIn(A, qs){ return A.AREAS.filter(a => qs.some(q => q.area === a)); }
+function _acjStripInner(A, qs){
+  const today = _acjToday();
+  const areas = _acjAreasIn(A, qs);
+  const node = (n, title, target, bars) => `<button type="button" class="acj-node" onclick="_acjJump('${target}')"><span class="n">${String(n).padStart(2, '0')}</span><span class="t">${esc(title)}</span>${bars != null ? `<span class="acj-bars">${bars}</span>` : ''}</button>`;
+  let out = node(1, 'Scheme and role', 'acjStage1', null);
+  areas.forEach((a, i) => {
+    const bars = qs.filter(q => q.area === a).map(q => { const s = A.statusOf(S, q, today); return `<i class="st-${s.k}" title="${esc(q.id + ' ' + s.label)}"></i>`; }).join('');
+    out += node(i + 2, a, 'acjArea' + i, bars);
+  });
+  if(areas.length) out += node(areas.length + 2, 'Submission pack', 'acjPack', null);
+  return out;
+}
+function _acjJump(id){ const el = document.getElementById(id); if(el) el.scrollIntoView({ behavior:'smooth', block:'start' }); }
+
+// ── step 01 ──
+function _acjStage1(A, ro){
+  const cfg = A.cfgOf(S), dis = ro ? ' disabled' : '';
+  const roleBtns = A.ROLES.map(r => `<button type="button" class="acj-btn" aria-pressed="${cfg.roles.indexOf(r.id) >= 0}"${dis} onclick="toggleAccredRole('${r.id}')">${esc(r.label)}</button>`).join('');
+  const mems = (S.memberships || []);
+  const schemeRows = A.SCHEMES.map(sc => {
+    const c = cfg.schemes[sc.id] || {};
+    if(sc.pending) return `<div class="acj-scheme is-pending"><div class="acj-scheme-h"><label><input type="checkbox" disabled> <b>${esc(sc.label)}</b></label></div><div class="acj-muted">${esc(sc.pending)}</div></div>`;
+    const memOpts = '<option value="">- certificate not linked -</option>' + mems.map(m => `<option value="${esc(m.id)}"${c.membershipId === m.id ? ' selected' : ''}>${esc((m.name || 'Untitled') + (m.expiry ? ' · expires ' + fmtDate(m.expiry) : ' · no expiry recorded'))}</option>`).join('');
+    const sets = A.setsFor(cfg, sc.id);
+    const off = c.setsOff || {};
+    const setBoxes = sets.map(k => `<label class="acj-set"><input type="checkbox"${dis}${off[k] ? '' : ' checked'} onchange="toggleAccredSet('${sc.id}','${k}',this.checked)"> ${esc(sc.sets[k])}</label>`).join('');
+    return `<div class="acj-scheme">
+      <div class="acj-scheme-h"><label><input type="checkbox"${dis}${c.on ? ' checked' : ''} onchange="toggleAccredScheme('${sc.id}',this.checked)"> <b>${esc(sc.label)}</b></label></div>
+      ${c.on ? `<div class="acj-grid2">
+        <div><div class="acj-lbl">Certificate (sets the renewal date)</div><select${dis} onchange="setAccredMembership('${sc.id}',this.value)">${memOpts}</select>
+          <div class="acj-muted">From the accreditations and memberships register below.${mems.length ? '' : ' Nothing is recorded there yet.'}</div></div>
+        <div><div class="acj-lbl">Question sets the client answers</div>
+          ${cfg.roles.length ? `<details class="acj-sets"><summary>${sets.length - sets.filter(k => off[k]).length} of ${sets.length} sets in use</summary>${setBoxes}</details>
+          <div class="acj-muted">Untick a requirement the client does not hold, and its questions leave the list.</div>` : '<div class="acj-muted">Pick a role first.</div>'}</div>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+  return `<section class="acj-stage" id="acjStage1">
+    <div class="acj-head"><div class="acj-num">01</div><div><h3>Scheme and role</h3><p>What the client holds or needs, and the role it works in. Only the questions for that scheme and role appear from here on.</p></div></div>
+    <div class="acj-body">
+      <div class="acj-lbl">Role</div>
+      <div class="acj-seg">${roleBtns}</div>
+      <div class="acj-muted">A principal contractor answers the contractor questions, and a principal designer the designer questions.</div>
+      <div class="acj-lbl">Schemes</div>
+      ${schemeRows}
+    </div>
+  </section>`;
+}
+
+// ── one question, opened ──
+function _acjEvidenceOptions(A, q, ans){
+  const cur = ans.ev && ans.ev.src ? (ans.ev.src === 'policy' ? 'policy' : ans.ev.src + ':' + ans.ev.id) : '';
+  const opt = (v, label) => `<option value="${esc(v)}"${cur === v ? ' selected' : ''}>${esc(label)}</option>`;
+  const docs = (S.documents || []).map(d => opt('doc:' + d.id, (d.name || 'Untitled') + (d.version ? ' ' + d.version : '') + ' · ' + (d.dated ? 'dated ' + fmtDate(d.dated) : 'date not recorded') + (d.signedBy ? ' · signed ' + d.signedBy : '')));
+  const mems = (S.memberships || []).map(m => opt('mem:' + m.id, (m.name || 'Certificate') + (m.expiry ? ' · expires ' + fmtDate(m.expiry) : ' · no expiry recorded')));
+  const pd = S.policyDoc || {};
+  const site = A.siteFor(S, q.id).map(x => { const f = A.facts(S, { src:'site', id:x.key }); return opt('site:' + x.key, f.name + (f.dated ? ' · ' + fmtDate(f.dated) : '')); });
+  let h = opt('', '- Nothing picked -');
+  if(docs.length) h += `<optgroup label="Document register">${docs.join('')}</optgroup>`;
+  if(mems.length) h += `<optgroup label="Certificates and memberships">${mems.join('')}</optgroup>`;
+  if(pd.statement || pd.signedDate) h += `<optgroup label="Policy statement">${opt('policy', 'Health and safety policy statement of intent' + (pd.signedDate ? ' · signed ' + fmtDate(pd.signedDate) : ' · not signed'))}</optgroup>`;
+  if(site.length) h += `<optgroup label="Site inspections">${site.join('')}</optgroup>`;
+  // A pick whose record has since gone stays visible, so it can be put right
+  if(cur && h.indexOf('value="' + esc(cur) + '"') < 0) h += opt(cur, 'A record that is no longer here');
+  return h;
+}
+function _acjFactsHTML(A, q, s){
+  const e = s.ev; if(!e || !e.facts) return '';
+  const f = e.facts, rule = A.freshRule(q) || {};
+  if(f.missing) return `<div class="acj-facts"><div class="acj-warnline">${esc(f.name)}. Pick its replacement above.</div></div>`;
+  const row = (k, v) => `<tr><th>${k}</th><td>${v}</td></tr>`;
+  const dated = f.dated ? esc(fmtDate(f.dated)) : '<span class="k-gap">Not recorded</span>';
+  const signed = f.signedBy ? esc(f.signedBy) + (rule.director ? (f.director ? ' <span class="acj-muted">· a director</span>' : ' <span class="k-gap">· not marked as a director</span>') : '') : (rule.director ? '<span class="k-gap">Not recorded</span>' : '<span class="acj-muted">Not recorded</span>');
+  const fix = (f.src === 'doc' && !_roLocked() && (!f.dated || (rule.director && !f.director) || (rule.indate && !f.expires)))
+    ? `<button type="button" class="acj-btn" onclick="openDocModal('${esc(f.id)}')">Record the date and signatory on the document</button>` : '';
+  return `<table class="acj-facts">
+      ${row('Evidence', esc(f.name) + (e.picked ? '' : ' <span class="acj-muted">· stands in from a site inspection; nothing was picked</span>'))}
+      ${row('Dated', dated)}
+      ${row('Signed by', signed)}
+      ${f.expires || s.expires ? row('Valid to', esc(fmtDate(s.expires || f.expires)) + ' <span class="acj-muted">· ' + esc(_acjDays(s.days)) + '</span>') : ''}
+      ${f.by ? row('Inspected by', esc(f.by)) : ''}
+      ${f.file ? row('File', esc(f.file)) : ''}
+      ${f.note ? row('Recorded on site', esc(f.note)) : ''}
+    </table>
+    ${f.photo ? `<img class="acj-photo" src="${esc(f.photo)}" alt="Photo from the site inspection">` : ''}
+    ${fix ? `<div style="margin-top:8px;">${fix}</div>` : ''}`;
+}
+function _acjDetail(A, q, s, ro){
+  const ans = (A.cfgOf(S).answers[q.id]) || {}, dis = ro ? ' disabled' : '';
+  const rule = A.freshRule(q);
+  const id = esc(q.id);
+  let answer = '';
+  if(q.kind === 'info'){
+    answer = `<div class="acj-lbl">Answer</div><textarea class="acj-in" rows="2"${dis} oninput="setAccredText('${id}',this.value)" placeholder="The answer as it goes on the portal">${esc(ans.text || '')}</textarea>`;
+  } else if(q.kind === 'declaration'){
+    answer = `<div class="acj-lbl">Declaration</div><div class="acj-seg">
+        <button type="button" class="acj-btn" aria-pressed="${ans.decl === 'yes'}"${dis} onclick="setAccredDecl('${id}','yes')">Yes</button>
+        <button type="button" class="acj-btn" aria-pressed="${ans.decl === 'no'}"${dis} onclick="setAccredDecl('${id}','no')">No</button></div>
+      <input class="acj-in" type="text"${dis} value="${esc(ans.note || '')}" oninput="setAccredNote('${id}',this.value)" placeholder="Note to go with it (optional)">`;
+  } else {
+    answer = `<div class="acj-lbl">Evidence</div>
+      <select class="acj-in"${dis} onchange="setAccredEvidence('${id}',this.value)">${_acjEvidenceOptions(A, q, ans)}</select>
+      <div class="acj-muted">Pick the one record that answers this question. Nothing counts until it is picked here${A.siteFor(S, q.id).length ? ', except a site inspection tagged to this question while nothing else is picked' : ''}.
+        Add or date a document on the <a href="javascript:void(0)" onclick="switchTab('documents')">Documents tab</a>.</div>
+      ${_acjFactsHTML(A, q, s)}`;
+  }
+  const used = A.usedIn(q, S);
+  const guide = [
+    rule ? `<div class="acj-lbl">Evidence rule</div><div>${esc(rule.text)}</div>` : '',
+    q.site ? `<div class="acj-lbl">A site inspection can evidence this</div><div>${esc(q.site)}</div>` : '',
+    q.notes ? `<div class="acj-lbl">What assessors have said</div><div>${esc(q.notes)}</div>` : '',
+    used.length ? `<div class="acj-lbl">One answer covers</div><ul class="acj-used">${used.map(u => `<li>${esc(u.label)} <span class="acj-muted">REF ${esc(u.refs.join(', '))}</span></li>`).join('')}</ul>` : ''
+  ].join('');
+  // the awkward states
+  const naRow = ans.na
+    ? `<div class="acj-state">Not applicable: ${esc(ans.na)} ${ro ? '' : `<button type="button" class="acj-link" onclick="clearAccredNA('${id}')">Clear</button>`}</div>`
+    : ans.elsewhere
+      ? `<div class="acj-state">Answered elsewhere: ${esc(ans.elsewhere)} ${ro ? '' : `<button type="button" class="acj-link" onclick="clearAccredElsewhere('${id}')">Clear</button>`}</div>`
+      : (ro ? '' : `<div class="acj-grid2 acj-states">
+          <div><input class="acj-in" type="text" id="acjNa-${id}" placeholder="Why it does not apply"><button type="button" class="acj-btn" onclick="setAccredNA('${id}')">Not applicable</button></div>
+          <div><input class="acj-in" type="text" id="acjEw-${id}" placeholder="Where it is answered instead"><button type="button" class="acj-btn" onclick="setAccredElsewhere('${id}')">Answered elsewhere</button></div>
+        </div>`);
+  // rejections, with their history kept on the line
+  const hist = Array.isArray(ans.hist) ? ans.hist : [];
+  const last = hist.length ? hist[hist.length - 1] : null;
+  let rej = '';
+  if(last && last.t === 'rejected'){
+    rej = `<div class="acj-rejbox"><b>Rejected ${esc(fmtDate(last.at))}.</b> ${esc(last.note || '')}${last.ev ? `<div class="acj-muted">Evidence behind it: ${esc(last.ev)}</div>` : ''}
+      ${ro ? '' : `<div class="acj-rejfix">Put it right above, then <input type="date" id="acjResDate-${id}" value="${_acjToday()}"> <button type="button" class="acj-btn pri" onclick="markAccredResubmitted('${id}')">Mark resubmitted</button></div>`}</div>`;
+  } else if(!ro){
+    rej = `<details class="acj-rejadd"><summary>Record an assessor's rejection</summary>
+      <textarea class="acj-in" rows="2" id="acjRejNote-${id}" placeholder="Paste the assessor's comment"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;"><input type="date" id="acjRejDate-${id}" value="${_acjToday()}"><button type="button" class="acj-btn" onclick="recordAccredRejection('${id}')">Mark rejected</button></div></details>`;
+  }
+  const histHTML = hist.length ? `<div class="acj-lbl">History</div><ol class="acj-hist">${hist.map(h => `<li><b>${esc(fmtDate(h.at))}</b> ${h.t === 'rejected' ? 'Rejected' : 'Resubmitted'}${h.note ? ': ' + esc(h.note) : ''}${h.ev ? ` <span class="acj-muted">· evidence: ${esc(h.ev)}</span>` : ''}${h.by ? ` <span class="acj-muted">· ${esc(h.by)}</span>` : ''}</li>`).join('')}</ol>` : '';
+  const raise = (!ro && (s.k === 'gap' || s.k === 'rejected' || s.k === 'due'))
+    ? `<button type="button" class="acj-btn" id="acjRaise-${id}" onclick="raiseAccredGap('${id}')">${_acjOnPlan(q.id) ? 'On the plan - chase again' : 'Raise to the plan'}</button>` : '';
+  return `<div class="acj-detail">
+    <div class="acj-grid2"><div>${answer}</div><div class="acj-guide">${guide}</div></div>
+    ${naRow}${rej}${histHTML}
+    ${raise ? `<div style="margin-top:10px;">${raise}</div>` : ''}
+  </div>`;
+}
+
+function renderAccred(){
+  const el = document.getElementById('accredJourney'); if(!el) return;
+  const A = _acjCore();
+  if(!A){ el.innerHTML = '<div class="acj"><div class="acj-stage"><div class="acj-body">The accreditation questions could not load (reports/accred-core.js is missing).</div></div></div>'; return; }
+  const ro = _roLocked(), today = _acjToday();
+  const sum = A.summary(S, today), qs = A.questions(S), cfg = A.cfgOf(S);
+  const ready = sum.started && cfg.roles.length;
+  const areas = _acjAreasIn(A, qs);
+  const pinned = _acjFilter && _acjFilter.ids ? new Set(_acjFilter.ids) : null;
+  let body = '';
+  if(!ready){
+    body = `<div class="acj-next">Next: ${!cfg.roles.length ? 'pick the role the client works in' : 'tick the scheme the client holds or needs'} at step 01.</div>`;
+  } else {
+    if(_acjFilter){
+      const lbl = { all:'every question', evidenced:'evidenced', due:'due to expire', rejected:'rejected', gap:'gaps', mandatory:'mandatory questions not met' }[_acjFilter.kind] || _acjFilter.kind;
+      body += `<div class="acj-filterbar">Showing the ${pinned ? pinned.size : qs.length} line${pinned && pinned.size === 1 ? '' : 's'} counted as ${esc(lbl)}. They stay on screen while you work on them. <button type="button" class="acj-link" onclick="setAccredFilter(null)">Show everything</button></div>`;
+    }
+    areas.forEach((a, i) => {
+      const list = qs.filter(q => q.area === a && (!pinned || pinned.has(q.id)));
+      if(!list.length) return;
+      const all = qs.filter(q => q.area === a);
+      const st = all.map(q => A.statusOf(S, q, today));
+      const n = k => st.filter(x => x.k === k).length;
+      const tally = [n('evidenced') + ' evidenced', n('due') ? n('due') + ' due to expire' : '', n('gap') ? n('gap') + ' gap' + (n('gap') === 1 ? '' : 's') : '', n('rejected') ? n('rejected') + ' rejected' : '']
+        .filter(Boolean).join(' · ');
+      body += `<section class="acj-stage" id="acjArea${i}">
+        <div class="acj-head"><div class="acj-num">${String(i + 2).padStart(2, '0')}</div><div><h3>${esc(a)}</h3><p>${all.length} question${all.length === 1 ? '' : 's'} · ${esc(tally)}</p></div></div>
+        <div class="acj-lines">${list.map(q => {
+          const s = A.statusOf(S, q, today), open = !!_acjOpen[q.id];
+          return `<div class="acj-line st-${s.k}${open ? ' open' : ''}" id="${_acjNode(q.id)}">
+            <button type="button" class="acj-row" aria-expanded="${open}" onclick="toggleAccredLine('${esc(q.id)}')">${_acjRowHTML(q, s)}</button>
+            ${open ? _acjDetail(A, q, s, ro) : ''}
+          </div>`;
+        }).join('')}</div>
+      </section>`;
+    });
+    const packs = A.SCHEMES.filter(sc => !sc.pending && (cfg.schemes[sc.id] || {}).on);
+    body += `<section class="acj-stage" id="acjPack">
+      <div class="acj-head"><div class="acj-num">${String(areas.length + 2).padStart(2, '0')}</div><div><h3>Submission pack</h3><p>A Word document per scheme, in the scheme's own order: each question set in turn, REF by REF, with the answer and the evidence file behind it.</p></div></div>
+      <div class="acj-body">
+        ${packs.map(sc => `<div class="acj-packrow"><b>${esc(sc.label)}</b> <button type="button" class="acj-btn pri" onclick="downloadAccredPack('${sc.id}')">Download the Word pack</button></div>`).join('')}
+        <div class="acj-muted">Each question carries the master list's wording, which summarises the portal question. The portal's exact wording was not captured, so read each one against the portal as you enter it.</div>
+      </div>
+    </section>`;
+  }
+  el.innerHTML = `<div class="acj">
+    <header class="acj-hero" id="acjHero">${_acjHeroInner(A, sum)}</header>
+    ${ready ? `<nav class="acj-strip" id="acjStrip" aria-label="Steps">${_acjStripInner(A, qs)}</nav>` : ''}
+    ${_acjStage1(A, ro)}
+    ${body}
+  </div>`;
+}
+
+// ── writes (each one saves loudly through saveData) ──
+function toggleAccredRole(r){ if(_blockIfReadOnly()) return; const a = _accredState(); const i = a.roles.indexOf(r); if(i >= 0) a.roles.splice(i, 1); else a.roles.push(r); _acjFilter = null; _acjSave(); }
+function toggleAccredScheme(id, on){ if(_blockIfReadOnly()) return; const a = _accredState(); a.schemes[id] = Object.assign({}, a.schemes[id], { on: !!on }); _acjFilter = null; _acjSave(); }
+function setAccredMembership(id, memId){ if(_blockIfReadOnly()) return; const a = _accredState(); a.schemes[id] = Object.assign({}, a.schemes[id], { membershipId: memId || '' }); _acjSave(); }
+function toggleAccredSet(id, set, on){
+  if(_blockIfReadOnly()) return;
+  const a = _accredState(); const s = a.schemes[id] = Object.assign({}, a.schemes[id]);
+  s.setsOff = Object.assign({}, s.setsOff); if(on) delete s.setsOff[set]; else s.setsOff[set] = true;
+  _acjFilter = null; _acjSave();
+}
+function toggleAccredLine(qid){ _acjOpen[qid] = !_acjOpen[qid]; _keepScroll(renderAccred); }
+function setAccredEvidence(qid, v){
+  if(_blockIfReadOnly()) return;
+  const x = _acjAns(qid);
+  if(!v) delete x.ev;
+  else if(v === 'policy') x.ev = { src:'policy', id:'policy' };
+  else { const i = v.indexOf(':'); x.ev = { src: v.slice(0, i), id: v.slice(i + 1) }; }
+  _acjTouch(qid); _acjSave();
+}
+function setAccredText(qid, v){ if(_roLocked()) return; const x = _acjAns(qid); x.text = v; _acjTouch(qid); scheduleAutoSave(); _acjRefreshRow(qid); }
+function setAccredNote(qid, v){ if(_roLocked()) return; const x = _acjAns(qid); x.note = v; _acjTouch(qid); scheduleAutoSave(); }
+function setAccredDecl(qid, v){ if(_blockIfReadOnly()) return; const x = _acjAns(qid); x.decl = (x.decl === v) ? '' : v; _acjTouch(qid); _acjSave(); }
+function setAccredNA(qid){
+  if(_blockIfReadOnly()) return;
+  const r = ((document.getElementById('acjNa-' + qid) || {}).value || '').trim();
+  if(!r){ showToast('Say why it does not apply - the reason goes into the pack', 'info'); return; }
+  const x = _acjAns(qid); x.na = r; delete x.elsewhere; _acjTouch(qid); _acjSave();
+}
+function clearAccredNA(qid){ if(_blockIfReadOnly()) return; const x = _acjAns(qid); delete x.na; _acjTouch(qid); _acjSave(); }
+function setAccredElsewhere(qid){
+  if(_blockIfReadOnly()) return;
+  const r = ((document.getElementById('acjEw-' + qid) || {}).value || '').trim();
+  if(!r){ showToast('Say where it is answered - that goes into the pack', 'info'); return; }
+  const x = _acjAns(qid); x.elsewhere = r; delete x.na; _acjTouch(qid); _acjSave();
+}
+function clearAccredElsewhere(qid){ if(_blockIfReadOnly()) return; const x = _acjAns(qid); delete x.elsewhere; _acjTouch(qid); _acjSave(); }
+function _acjEvLabel(qid){
+  const A = _acjCore(); if(!A) return '';
+  const s = A.statusOf(S, A.byId(qid), _acjToday());
+  const f = s.ev && s.ev.facts; return f && !f.missing ? f.name : '';
+}
+function recordAccredRejection(qid){
+  if(_blockIfReadOnly()) return;
+  const note = ((document.getElementById('acjRejNote-' + qid) || {}).value || '').trim();
+  const at = ((document.getElementById('acjRejDate-' + qid) || {}).value || '') || _acjToday();
+  if(!note){ showToast("Paste the assessor's comment first - it stays on the line", 'info'); return; }
+  const x = _acjAns(qid); let by = ''; try{ by = _actor().name; }catch(e){}
+  x.hist = (Array.isArray(x.hist) ? x.hist : []).concat([{ t:'rejected', at, note, ev:_acjEvLabel(qid), by }]);
+  _acjTouch(qid); _acjSave();
+}
+function markAccredResubmitted(qid){
+  if(_blockIfReadOnly()) return;
+  const at = ((document.getElementById('acjResDate-' + qid) || {}).value || '') || _acjToday();
+  const x = _acjAns(qid); let by = ''; try{ by = _actor().name; }catch(e){}
+  x.hist = (Array.isArray(x.hist) ? x.hist : []).concat([{ t:'resubmitted', at, ev:_acjEvLabel(qid), by }]);
+  _acjTouch(qid); _acjSave();
+}
+function _acjOnPlan(qid){ return (S.actionPlan || []).some(a => (a.desc || '').indexOf('Accreditation ' + qid + ':') === 0 && a.status !== 'Complete'); }
+function raiseAccredGap(qid){
+  if(_blockIfReadOnly()) return;
+  const A = _acjCore(); const q = A && A.byId(qid); if(!q) return;
+  if(!Array.isArray(S.actionPlan)) S.actionPlan = [];
+  if(_acjOnPlan(qid)){ showToast(qid + ' is already on the plan', 'info'); return; }
+  const it = { id:_reqUid('act'), desc:'Accreditation ' + qid + ': ' + q.text.slice(0, 110), owner:'', due:'', status:'Not started', priority:'', source:'Accreditation', sourceLabel:qid };
+  if(typeof _stamp === 'function') _stamp(it, 'created');
+  S.actionPlan.push(it);
+  saveData(); try{ _refreshActionViews(); }catch(e){}
+  _keepScroll(renderAccred);
+  showToast('✓ ' + qid + ' raised into the execution plan - set its target date there', 'success');
+}
+// A count jumps to the lines it counts. The set is pinned at the click, so a
+// line you then put right stays where it is until you clear the filter.
+function setAccredFilter(kind){
+  const A = _acjCore(); if(!A) return;
+  if(!kind || (_acjFilter && _acjFilter.kind === kind)){ _acjFilter = null; _keepScroll(renderAccred); return; }
+  const sum = A.summary(S, _acjToday());
+  const ids = kind === 'all' ? A.questions(S).map(q => q.id) : kind === 'mandatory' ? sum.mandatoryGap : (sum.lists[kind] || []);
+  _acjFilter = { kind, ids: ids.slice() };
+  renderAccred();
+  const first = ids.length ? document.getElementById(_acjNode(ids[0])) : null;
+  if(first) first.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+// ── the Word pack: built in the page, no library (the temporary works
+//    trainer's stored-zip method, with tables, landscape A4 and a footer) ──
+var _ACJ_CRC = (function(){ const t = []; for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function _acjCrc32(b){ let c = 0xFFFFFFFF; for(let i = 0; i < b.length; i++) c = _ACJ_CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function _acjZip(files){
+  const enc = new TextEncoder(), out = [], cen = []; let off = 0;
+  files.forEach(f => {
+    const nm = enc.encode(f.n), d = enc.encode(f.d), c = _acjCrc32(d);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(8, 0, true);
+    h.setUint32(14, c, true); h.setUint32(18, d.length, true); h.setUint32(22, d.length, true); h.setUint16(26, nm.length, true);
+    out.push(new Uint8Array(h.buffer), nm, d);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(10, 0, true);
+    ch.setUint32(16, c, true); ch.setUint32(20, d.length, true); ch.setUint32(24, d.length, true); ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true);
+    cen.push(new Uint8Array(ch.buffer), nm);
+    off += 30 + nm.length + d.length;
+  });
+  const cenLen = cen.reduce((n, a) => n + a.length, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cenLen, true); e.setUint32(16, off, true);
+  return new Blob([...out, ...cen, new Uint8Array(e.buffer)], { type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+function _acjX(s){ return String(s == null ? '' : s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function _acjRun(t, o){ o = o || {};
+  const rpr = '<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/>' + (o.b ? '<w:b/>' : '') + (o.color ? '<w:color w:val="' + o.color + '"/>' : '') + '<w:sz w:val="' + (o.sz || 18) + '"/><w:szCs w:val="' + (o.sz || 18) + '"/></w:rPr>';
+  return String(t == null ? '' : t).split('\n').map((line, i) => (i ? '<w:r>' + rpr + '<w:br/></w:r>' : '') + '<w:r>' + rpr + '<w:t xml:space="preserve">' + _acjX(line) + '</w:t></w:r>').join('');
+}
+function _acjPara(runs, o){ o = o || {};
+  return '<w:p><w:pPr>' + (o.keepNext ? '<w:keepNext/>' : '') + '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after == null ? 80 : o.after) + '"/></w:pPr>' + runs + '</w:p>';
+}
+function _acjCell(w, runs, fill){ return '<w:tc><w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/>' + (fill ? '<w:shd w:val="clear" w:color="auto" w:fill="' + fill + '"/>' : '') + '</w:tcPr>' + _acjPara(runs, { after:0 }) + '</w:tc>'; }
+function _acjPackXml(sc, groups, client, roles, renewal){
+  const W = [1300, 4700, 3600, 3500, 2298];   // landscape A4 inside 0.5in margins = 15398 twips
+  const teal = '3E9DAF', grey = '757575';
+  let x = _acjPara(_acjRun(sc.label + ': submission pack', { b:true, sz:32, color:teal }), { after:60 });
+  x += _acjPara(_acjRun('Prepared for ' + client + ' · ' + roles + ' · produced ' + fmtDate(_acjToday()) + (renewal ? ' · scheme renews ' + renewal : ''), { sz:18, color:grey }), { after:60 });
+  x += _acjPara(_acjRun("In the scheme's order: each question set in turn, by REF. One answer covers every REF that shares a common question. The wording is the AHS master list's summary of each portal question; read each against the portal as you enter it.", { sz:16, color:grey }), { after:200 });
+  groups.forEach(g => {
+    x += _acjPara(_acjRun(g.label, { b:true, sz:22, color:teal }), { before:200, after:80, keepNext:true });
+    const head = '<w:tr><w:trPr><w:tblHeader/></w:trPr>' + ['REF', 'Question', 'Answer', 'Evidence and file', 'Dated · signed · valid to'].map((h, i) => _acjCell(W[i], _acjRun(h, { b:true, sz:16 }), 'E8F6F9')).join('') + '</w:tr>';
+    const rows = g.rows.map(r => '<w:tr><w:trPr><w:cantSplit/></w:trPr>'
+      + _acjCell(W[0], _acjRun(r.refs.join(', ') + (r.cas ? '\nMandatory' : ''), { sz:16 }))
+      + _acjCell(W[1], _acjRun(r.id + '  ' + r.text, { sz:16 }))
+      + _acjCell(W[2], _acjRun(r.answer, { sz:16, color: (r.status === 'gap' || r.status === 'rejected') ? 'B42318' : null }))
+      + _acjCell(W[3], _acjRun([r.evidence, r.file].filter(Boolean).join('\n') || '-', { sz:16 }))
+      + _acjCell(W[4], _acjRun([r.dated ? 'Dated ' + fmtDate(r.dated) : '', r.signedBy ? 'Signed ' + r.signedBy : '', r.by ? 'Inspected by ' + r.by : '', r.expires ? 'Valid to ' + fmtDate(r.expires) : ''].filter(Boolean).join('\n') || '-', { sz:16 }))
+      + '</w:tr>').join('');
+    x += '<w:tbl><w:tblPr><w:tblW w:w="' + W.reduce((a, b) => a + b, 0) + '" w:type="dxa"/><w:tblBorders>'
+      + ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(b => '<w:' + b + ' w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>').join('')
+      + '</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="40" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>'
+      + W.map(w => '<w:gridCol w:w="' + w + '"/>').join('') + '</w:tblGrid>' + head + rows + '</w:tbl>';
+    x += '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="120" w:lineRule="exact"/></w:pPr></w:p>';
+  });
+  return x;
+}
+function _acjPackDocx(sc, groups, client, roles, renewal){
+  const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+  const doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ' + NS + '><w:body>' + _acjPackXml(sc, groups, client, roles, renewal)
+    + '<w:sectPr><w:footerReference w:type="default" r:id="rIdFtr"/><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr></w:body></w:document>';
+  const fr = '<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:color w:val="757575"/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr>';
+  const ftr = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr ' + NS + '><w:p><w:pPr><w:pBdr><w:top w:val="single" w:sz="4" w:space="4" w:color="D9D9D9"/></w:pBdr><w:spacing w:before="0" w:after="0"/></w:pPr>'
+    + '<w:r>' + fr + '<w:t xml:space="preserve">AHS Compliance Consulting Ltd · Prepared for ' + _acjX(client) + ' · Page </w:t></w:r><w:fldSimple w:instr="PAGE"><w:r>' + fr + '<w:t>1</w:t></w:r></w:fldSimple><w:r>' + fr + '<w:t xml:space="preserve"> of </w:t></w:r><w:fldSimple w:instr="NUMPAGES"><w:r>' + fr + '<w:t>1</w:t></w:r></w:fldSimple></w:p></w:ftr>';
+  const styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="18"/><w:szCs w:val="18"/><w:lang w:val="en-GB"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="80"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>';
+  return _acjZip([
+    { n:'[Content_Types].xml', d:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>' },
+    { n:'_rels/.rels', d:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>' },
+    { n:'word/_rels/document.xml.rels', d:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdSty" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rIdFtr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>' },
+    { n:'word/document.xml', d:doc },
+    { n:'word/styles.xml', d:styles },
+    { n:'word/footer1.xml', d:ftr }
+  ]);
+}
+function buildAccredPack(schemeId){
+  const A = _acjCore(); if(!A) throw new Error('accreditation questions not loaded');
+  const sc = A.schemeOf(schemeId); if(!sc || sc.pending) throw new Error('no questions for that scheme');
+  const groups = A.packRows(S, schemeId, _acjToday());
+  const cfg = A.cfgOf(S);
+  const roles = cfg.roles.map(r => (A.ROLES.find(x => x.id === r) || {}).label).filter(Boolean).join(' and ') || 'role not set';
+  const ren = A.renewals(S, _acjToday()).find(r => r.scheme === schemeId);
+  const client = _acjClient();
+  const blob = _acjPackDocx(sc, groups, client, roles, ren && ren.expires ? fmtDate(ren.expires) : '');
+  const name = sc.label.replace(/\s*\(.*\)\s*/, '') + ' pack - ' + client.replace(/[^\w &-]+/g, '').trim() + ' - ' + _acjToday() + '.docx';
+  return { blob, name, groups };
+}
+function downloadAccredPack(schemeId){
+  try{
+    const p = buildAccredPack(schemeId);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(p.blob); a.download = p.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => { try{ URL.revokeObjectURL(a.href); }catch(e){} }, 60000);
+    showToast('✓ ' + p.name + ' downloaded', 'success');
+  }catch(e){ console.error('accreditation pack', e); showToast('Could not build the pack - ' + e.message, 'error'); }
+}
+
 function renderCAS(){
+  try{ renderAccred(); }catch(e){ console.error('accreditation journey', e); }
+  // The earlier CAS assessment opens by itself only for a client who has one
+  // and has not started the journey; after that it is the reader's choice.
+  try{ const lg=document.getElementById('casLegacy'); if(lg && lg.dataset.init!==(Auth&&Auth.activeTenantId?String(Auth.activeTenantId()||''):'')){ lg.dataset.init=(Auth&&Auth.activeTenantId?String(Auth.activeTenantId()||''):''); lg.open = !_acjStarted() && Object.keys((S.cas&&S.cas.status)||{}).length>0; } }catch(e){}
   _renderMemberships();
   try{ renderEvidenceAudit(); }catch(e){}
   const sel = document.getElementById('casSchemeFilter');
@@ -35117,7 +35731,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','inspRegister','inspFolder','meetings','top5Resp','trainRegister','trainFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
+var _IMPORT_KEYS=['accred','company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','inspRegister','inspFolder','meetings','top5Resp','trainRegister','trainFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
   'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance','buildingSafety','memberships',

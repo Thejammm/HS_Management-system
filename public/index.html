@@ -23012,9 +23012,23 @@ function _asSheetStatus(s){
   if(s.issuedAt) return { k:'out', label:'With the client since '+fmtDate(s.issuedAt) };
   return { k:'draft', label:'Draft - not sent yet' };
 }
-// What could go on the next sheet, most pressing first: anything carried back
-// from the last sheet, then this month's Top 5 marks, then by the band of the
-// risk behind it, overdue before on-time, soonest target first.
+// The risks in the Top 5's own order: the five the Top 5 report shows (those
+// ticked on the risk ladder or the plan, topped up by the system's ranking),
+// then on down that same ranking. One list, so the ladder, the Top 5 report,
+// the responses form and this sheet can never show a different five.
+function _asRiskOrder(){
+  const H=_holdSummary(), seen=new Set(), out=[];
+  const add=z=>{ if(z && !seen.has(z.id)){ seen.add(z.id); out.push(z.id); } };
+  _top5Five().forEach(f=>add(f.z));
+  H.breaches.concat(H.nextWorst).forEach(add);
+  H.rows.slice().sort(_holdWorstFirst).forEach(add);
+  return out;
+}
+// What goes on the next sheet, in order: anything carried back from the last
+// sheet; the actions marked Top 5 for the month; then one action a risk down
+// the Top 5's ranking (its most pressing: overdue first, then soonest), so the
+// first sheet is the Top 5 itself; then the rest of each risk's actions a
+// round at a time; last, actions with no risk behind them.
 function _asCandidates(exceptSheetId){
   const live=new Set(), carried={};
   _asList().forEach(s=>(s.items||[]).forEach(it=>{
@@ -23023,11 +23037,39 @@ function _asCandidates(exceptSheetId){
   }));
   // a later sheet may have finished the action off: only the latest word counts
   _asList().forEach(s=>(s.items||[]).forEach(it=>{ if(it.decision==='approved' || it.decision==='accepted') delete carried[it.key]; }));
-  const month=_top5Month(), BAND={ Critical:0, High:1, Medium:2, Low:3 };
-  return _execActions().filter(a=>a.status!=='Complete' && a.status!=='Accepted' && String(a.desc||'').trim())
-    .map(a=>{ const key=_asKey(a.ref), b=_epBandOf(a); return { a, key, band:b, carry:carried[key]||null, top:a.top5===month, bandN:(b in BAND)?BAND[b]:4, late:a.rag==='red'?0:1 }; })
-    .filter(c=>!live.has(c.key))
-    .sort((x,y)=>((x.carry?0:1)-(y.carry?0:1)) || ((x.top?0:1)-(y.top?0:1)) || (x.bandN-y.bandN) || (x.late-y.late) || String(x.a.due||'9999').localeCompare(String(y.a.due||'9999')));
+  const month=_top5Month(), order=_asRiskOrder(), rankOf=id=>{ const n=order.indexOf(id); return n<0?9999:n; };
+  const press=(x,y)=>(x.late-y.late) || String(x.a.due||'9999').localeCompare(String(y.a.due||'9999'));
+  const byRank=(x,y)=>(x.rank-y.rank) || press(x,y);
+  const all=_execActions().filter(a=>a.status!=='Complete' && a.status!=='Accepted' && String(a.desc||'').trim())
+    .map(a=>{ const key=_asKey(a.ref), r=_execRiskOf(a); return { a, key, band:_epBandOf(a), carry:carried[key]||null, top:a.top5===month, riskId:r?r.id:'', rank:rankOf(r?r.id:''), late:a.rag==='red'?0:1 }; })
+    .filter(c=>!live.has(c.key));
+  const out=[], used=new Set(), risksIn=new Set();
+  const take=c=>{ if(used.has(c.key)) return; used.add(c.key); out.push(c); if(c.riskId) risksIn.add(c.riskId); };
+  all.filter(c=>c.carry).sort(byRank).forEach(take);
+  all.filter(c=>c.top).sort(byRank).forEach(take);
+  const perRisk={}; all.filter(c=>c.riskId && !used.has(c.key)).forEach(c=>{ (perRisk[c.riskId]=perRisk[c.riskId]||[]).push(c); });
+  Object.keys(perRisk).forEach(id=>perRisk[id].sort(press));
+  order.forEach(id=>{ if(!risksIn.has(id) && perRisk[id] && perRisk[id].length) take(perRisk[id].shift()); });
+  for(let more=true; more; ){ more=false; order.forEach(id=>{ const l=perRisk[id]; if(l && l.length){ take(l.shift()); more=true; } }); }
+  all.filter(c=>!used.has(c.key)).sort(press).forEach(take);
+  return out;
+}
+// A Top 5 risk with no open action has nothing to put on a sheet. Say so,
+// rather than let the sheet quietly show a different five from the ladder.
+function _asTop5Missing(){
+  return _top5Five().filter(f=>f.z && f.z.r && !_top5Open(f.z.r).length).map(f=>{ const ref=_riskRefOf(f.z.r); return (ref?(ref+' '):'')+f.z.name; });
+}
+// What the client's page for this action would be missing. The sheet tells
+// the risk's own story - what is wrong, who it affects, today's score and the
+// target - so a risk with those left blank makes a thin page.
+function _asThin(it){
+  const r=_execRiskOf({ ref:it.ref }); if(!r) return [];
+  const out=[], hz=String(r.hazard||'').trim();
+  if(!((hz && hz.toLowerCase()!==String(r.activity||'').trim().toLowerCase()) || String(r.assocRisk||'').trim() || String(r.harm||'').trim())) out.push('what is wrong');
+  if(!(Array.isArray(r.personsAtRisk) && r.personsAtRisk.filter(Boolean).length)) out.push('who it affects');
+  if(!_riskScore(r).rating) out.push('today\u2019s score');
+  if(!_riskTarget(r).rating) out.push('the target score');
+  return out;
 }
 function _asItemFrom(c){
   const r=_execRiskOf(c.a);
@@ -23051,13 +23093,13 @@ function _asRender(){
   const sheets=_asList().slice().sort((a,b)=>b.no-a.no);
   const draftOpen=sheets.some(s=>_asSheetStatus(s).k==='draft' || _asSheetStatus(s).k==='empty');
   const bar='<div class="slt-bar"><div class="slt-t"><div class="slt-k">Top 5 action sheet</div><div class="slt-h">'+esc(_sltClient())+'</div></div>'
-    +(ro?'':'<button class="btn btn-primary btn-sm" onclick="asNewSheet()"'+(draftOpen?' disabled title="Finish the draft sheet first"':' title="The next five actions, most pressing first - anything carried back goes on first"')+'>＋ '+(sheets.length?'Next five':'First five')+'</button>'
+    +(ro?'':'<button class="btn btn-primary btn-sm" onclick="asNewSheet()"'+(draftOpen?' disabled title="Finish the draft sheet first"':' title="The Top 5 as ticked on the risk ladder, then on down the same ranking - anything carried back goes on first"')+'>＋ '+(sheets.length?'Next five':'First five')+'</button>'
       +'<button class="btn btn-outline btn-sm" onclick="importActionSheet()" title="A sheet the client filled in on screen and sent back">⭱ Import a returned sheet</button>')
     +'<button class="btn btn-ghost btn-sm" onclick="closeActionSheets()">Close</button></div>';
-  const intro='<div class="slt-muted" style="margin:0 0 12px;line-height:1.55;">Five actions at a time, each with the control you recommend. The client works from the sheet, says what happened and sends it back. You then decide each line: approve it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Every decision is written on the action in the execution plan.</div>';
+  const intro='<div class="slt-muted" style="margin:0 0 12px;line-height:1.55;">Five actions at a time, each with the control you recommend. The first sheet is the Top 5 - the risks ticked on the risk ladder, topped up the way the Top 5 report tops them up - and each next sheet carries on down the same list. The client works from the sheet, says what happened and sends it back. You then decide each line: approve it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Every decision is written on the action in the execution plan.</div>';
   const people=_sltPeople(null);
   const body=sheets.length ? sheets.map((s,idx)=>_asSheetHTML(s, idx===0, ro, dis)).join('')
-    : '<section class="slt-sec"><div class="slt-muted">No sheet yet. '+(ro?'':'Press First five to start: the most pressing open actions are put on it for you to check.')+'</div></section>';
+    : '<section class="slt-sec"><div class="slt-muted">No sheet yet. '+(ro?'':'Press First five to start: the Top 5 from the risk ladder goes on it for you to check.')+'</div></section>';
   ov.innerHTML=bar+'<div class="slt-body">'+intro+body
     +'<datalist id="asPeople">'+people.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.role||'')+'</option>').join('')+'</datalist></div>';
   ov.scrollTop=top;
@@ -23078,12 +23120,14 @@ function _asSheetHTML(s, latest, ro, dis){
       +'<button class="btn btn-outline btn-sm" onclick="asAddItem('+sid+')">Add</button></div>';
   }
   const missing=items.filter(i=>!String(i.rec||'').trim()).length;
+  const noAct=(!locked && latest) ? _asTop5Missing() : [];
+  const gap=noAct.length ? '<div class="as-warn" style="margin:10px 0 0;">In the Top 5 with nothing to send: '+noAct.map(esc).join('; ')+'. '+(noAct.length===1?'It has':'They have')+' no open action - add one on the risk and it is offered here.</div>' : '';
   const foot=ro?'':'<div class="as-foot">'
     +'<button class="btn btn-primary btn-sm" onclick="downloadActionSheet('+sid+')"'+(items.length?'':' disabled')+' title="A fillable PDF - it can also be printed and written on">⭳ '+(s.issuedAt?'Download the sheet again':'Download the sheet to send')+'</button>'
     +(missing&&items.length?'<span class="slt-muted">'+missing+' action'+(missing!==1?'s have':' has')+' no recommended control yet</span>':'')
     +(!locked?'<button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="asDeleteSheet('+sid+')">Delete this sheet</button>':'')
     +'</div>';
-  const inner=head+(rows||'<div class="slt-muted">No open actions to put on it.</div>')+add+foot;
+  const inner=head+(rows||'<div class="slt-muted">No open actions to put on it.</div>')+gap+add+foot;
   return latest ? '<section class="slt-sec" id="asS-'+esc(s.id)+'">'+inner+'</section>'
     : '<details class="slt-sec as-old" id="asS-'+esc(s.id)+'"'+(st.k==='reviewed'?'':' open')+'><summary>Sheet '+s.no+' · '+esc(st.label)+'</summary>'+inner+'</details>';
 }
@@ -23091,6 +23135,8 @@ function _asItemHTML(s, it, i, locked, ro, dis){
   const sid=_asQ(s.id), key=_asQ(it.key), r=it.resp||{}, back=_asHasResp(it), done=!!it.decision;
   const o=_execOrigin(it.ref);
   const gone=!o ? '<div class="as-warn">This action is no longer on the plan.</div>' : '';
+  const thin=(!locked && !ro && o) ? _asThin(it) : [];
+  const thinMsg=thin.length ? '<div class="as-warn">Its page will be thin: the risk has no '+esc(thin.length>1?(thin.slice(0,-1).join(', ')+' or '+thin[thin.length-1]):thin[0])+' recorded. Add it on the risk before you send the sheet.</div>' : '';
   const meta=[it.riskRef, it.risk, it.band?(it.band+' risk'):'', it.owner?('Owner: '+it.owner):'No owner', it.due?('Target: '+fmtDate(it.due)):'No target date'].filter(Boolean).map(esc).join(' · ');
   const recBox=(locked||ro)
     ? '<div class="as-fixed">'+(String(it.rec||'').trim()?esc(it.rec):'<span class="slt-muted">No recommendation was written.</span>')+'</div>'
@@ -23123,7 +23169,7 @@ function _asItemHTML(s, it, i, locked, ro, dis){
   return '<div class="as-item'+(done?' as-done':'')+'" id="asI-'+esc(s.id)+'-'+i+'">'
     +'<div class="as-ih"><span class="as-no">'+(i+1)+'</span><div class="as-desc">'+esc(it.desc||'(no description)')+(it.carriedFrom?(' <span class="as-tag as-out">carried from sheet '+it.carriedFrom+'</span>'):'')+'</div>'
     +((locked||ro)?'':'<button class="trn-x" onclick="asRemoveItem('+sid+','+key+')" title="Take this action off the sheet - it stays on the plan">×</button>')+'</div>'
-    +'<div class="slt-muted as-meta">'+meta+'</div>'+gone
+    +'<div class="slt-muted as-meta">'+meta+'</div>'+gone+thinMsg
     +'<div class="slt-lab">Recommended control</div>'+recBox+resp+decide+'</div>';
 }
 
@@ -23220,7 +23266,14 @@ function asUndo(sid, key){
   _asRender();
 }
 
-// ── the sheet the client works from: fillable, and printable to write on ──
+// ── the sheet the client works from ──
+// The first real deliverable a client holds, so it is built like the risk
+// itself and shows the journey: a cover with the five at a glance, then a
+// page an action - what is wrong, who it affects, where the risk stands today,
+// what is in place, the control we recommend, and where the risk will stand
+// once it is done - with the client's answer boxes on the same page. Every
+// page stands alone, so it can be handed to whoever owns that action. Fillable on
+// screen, and it prints to write on.
 async function buildActionSheetPDF(sid){
   const L=window.PDFLib; if(!L) throw new Error('pdf-lib is not loaded');
   const s=_asSheet(sid); if(!s) throw new Error('sheet not found');
@@ -23228,70 +23281,197 @@ async function buildActionSheetPDF(sid){
   const pdf=await L.PDFDocument.create();
   const font=await pdf.embedFont(L.StandardFonts.Helvetica), bold=await pdf.embedFont(L.StandardFonts.HelveticaBold);
   const form=pdf.getForm();
-  const W=595.28, H=841.89, ML=40, MR=W-40, BOT=58;
-  const NAVY=L.rgb(30/255,58/255,95/255), INK=L.rgb(.16,.18,.2), GREY=L.rgb(.43,.45,.47), HAIR=L.rgb(.84,.85,.87), TINT=L.rgb(.95,.96,.98);
+  const W=595.28, H=841.89, ML=40, MR=W-40, CW=MR-ML, BOT=60;
+  const hex=h=>{ h=String(h).replace('#',''); return L.rgb(parseInt(h.slice(0,2),16)/255, parseInt(h.slice(2,4),16)/255, parseInt(h.slice(4,6),16)/255); };
+  const NAVY=hex('1E3A5F'), INK=hex('1F2933'), GREY=hex('6B7280'), HAIR=hex('D5D9DE'), TINT=hex('F1F4F8'), WHITE=L.rgb(1,1,1), PALE=hex('A9BCCF'), SOFT=hex('DCE6F0');
+  const BAND={ Critical:hex('DC2626'), High:hex('EA580C'), Medium:hex('F59E0B'), Low:hex('16A34A'), '':hex('9CA3AF') };
   const A=t=>_pdfAscii(String(t==null?'':t));
   const wrap=(t,f,size,w)=>{ const out=[]; String(A(t)).split('\n').forEach(seg=>{ const words=seg.split(/\s+/).filter(Boolean); let cur='';
     words.forEach(wd=>{ const trial=cur?cur+' '+wd:wd; if(f.widthOfTextAtSize(trial,size)<=w) cur=trial; else { if(cur) out.push(cur); cur=wd; } }); out.push(cur); }); return out.length?out:['']; };
+  const clip=(lines,max)=>{ if(lines.length<=max) return lines; const o=lines.slice(0,max); o[max-1]=o[max-1].replace(/[\s.,;:]+$/,'')+' ...'; return o; };
   const issued=_asToday();
+  const producer=String((S.branding&&S.branding.producer)||'AHS Compliance Consulting');
   let page, y;
-  const header=()=>{
-    page.drawText(A(client).toUpperCase(),{x:ML,y:H-34,size:12,font:bold,color:NAVY});
-    const meta=A('ACTION SHEET '+s.no+'  -  '+fmtDate(issued).toUpperCase()); page.drawText(meta,{x:MR-font.widthOfTextAtSize(meta,6.5),y:H-32,size:6.5,font,color:GREY});
-    page.drawLine({start:{x:ML,y:H-42},end:{x:MR,y:H-42},thickness:0.8,color:NAVY});
+  const T=(t,x,yy,size,o)=>{ o=o||{}; page.drawText(A(t),{x,y:yy,size,font:o.bold?bold:font,color:o.color||INK}); };
+  const caps=(t,x,yy,o)=>{ o=o||{}; page.drawText(A(t).toUpperCase(),{x,y:yy,size:o.size||6.8,font:bold,color:o.color||GREY}); };
+  const rule=(yy,col,th)=>page.drawLine({start:{x:ML,y:yy},end:{x:MR,y:yy},thickness:th||0.6,color:col||HAIR});
+  const runHead=()=>{ T(client.toUpperCase(),ML,H-30,8.5,{bold:true,color:NAVY});
+    const m=A('TOP 5 ACTION SHEET '+s.no+'  -  '+fmtDate(issued).toUpperCase()); page.drawText(m,{x:MR-font.widthOfTextAtSize(m,6.5),y:H-29,size:6.5,font,color:GREY});
+    page.drawLine({start:{x:ML,y:H-37},end:{x:MR,y:H-37},thickness:0.6,color:NAVY}); };
+  const addPage=(running)=>{ page=pdf.addPage([W,H]); if(running){ runHead(); y=H-54; } };
+  const ensure=(need)=>{ if(y-need<BOT){ addPage(true); return true; } return false; };
+  // a block of wrapped text at the cursor; returns nothing, moves y
+  const para=(t,size,o)=>{ o=o||{}; const f=o.bold?bold:font, x=o.x||ML, w=o.w||(MR-x), lh=size*(o.lh||1.4);
+    let lines=wrap(t,f,size,w); if(o.max) lines=clip(lines,o.max);
+    lines.forEach(ln=>{ ensure(lh); page.drawText(ln,{x,y:y-size,size,font:f,color:o.color||INK}); y-=lh; }); y-=(o.gap==null?2:o.gap); };
+  const field=(name,x,yTop,w,h,o)=>{ o=o||{}; const tf=form.createTextField(name); if(o.multi) tf.enableMultiline();
+    tf.addToPage(page,{x,y:yTop-h,width:w,height:h,borderColor:HAIR,borderWidth:0.8}); tf.setFontSize(o.size||9); return tf; };
+  const bandOf=sc=>(sc&&sc.rating)?(sc.priority||''):'';
+  // a score, as a solid block in its band's colour
+  const chip=(x,yTop,w,h,sc,none)=>{
+    const has=!!(sc&&sc.rating), col=BAND[bandOf(sc)];
+    page.drawRectangle({x,y:yTop-h,width:w,height:h,color:has?col:WHITE,borderColor:has?col:HAIR,borderWidth:has?0:0.8});
+    if(has){ const n=String(sc.rating), ns=h*0.44; page.drawText(n,{x:x+(w-bold.widthOfTextAtSize(n,ns))/2,y:yTop-h*0.56,size:ns,font:bold,color:WHITE});
+      const b=A(sc.priority).toUpperCase(); page.drawText(b,{x:x+(w-bold.widthOfTextAtSize(b,6.4))/2,y:yTop-h+5.5,size:6.4,font:bold,color:WHITE}); }
+    else { const b=A(none||'NOT SET').toUpperCase(); page.drawText(b,{x:x+(w-bold.widthOfTextAtSize(b,6.4))/2,y:yTop-h/2-2.5,size:6.4,font:bold,color:GREY}); }
   };
-  const newPage=()=>{ page=pdf.addPage([W,H]); header(); y=H-58; };
-  const ensure=(need)=>{ if(y-need<BOT) newPage(); };
-  const text=(t,size,o)=>{ o=o||{}; const f=o.bold?bold:font; const w=o.w||(MR-(o.x||ML)); const lh=size*1.34;
-    wrap(t,f,size,w).forEach(ln=>{ ensure(lh); page.drawText(ln,{x:o.x||ML,y:y-size,size,font:f,color:o.color||INK}); y-=lh; }); y-=(o.gap||2); };
-  const label=(t,x)=>{ page.drawText(A(t).toUpperCase(),{x:x||ML,y:y-7,size:6.5,font:bold,color:GREY}); };
-  const field=(name,x,w,h,o)=>{ o=o||{}; const tf=form.createTextField(name); if(o.multi) tf.enableMultiline();
-    tf.addToPage(page,{x,y:y-h,width:w,height:h,borderColor:HAIR,borderWidth:0.8}); tf.setFontSize(o.size||9); return tf; };
+  const tri=(x,yy,path,col)=>page.drawSvgPath(path,{x,y:yy,color:col,borderWidth:0});
 
-  newPage();
-  page.drawText('TOP 5 ACTIONS - SHEET '+s.no,{x:ML,y:y-20,size:20,font:bold,color:NAVY}); y-=30;
-  text('The '+(s.items.length===1?'action':s.items.length+' actions')+' to deal with next, each with the control we recommend. Use this as your working sheet. For each action, tick what happened and say what was done, or why it could not be. If something cannot be done the way we recommend, say so: we will agree a compromise, or record that the business accepts the risk. Then save this file and email it back - or print it, write on it and send a copy.',9.5,{color:GREY,gap:8});
-  ensure(34); label('Your name'); label('Your role', ML+266); y-=11;
-  field('as__name',ML,256,18,{size:10}); field('as__role',ML+266,MR-ML-266,18,{size:10}); y-=28;
+  // a page an action, in the order they sit on the sheet; the risk behind
+  // each is told in full on its page
+  const groups=s.items.map((it,i)=>({ id:it.key, r:_execRiskOf({ ref:it.ref })||null, items:[{ it, n:i+1 }] }));
+  const gName=g=>g.r?String(g.r.activity||g.r.hazard||'Risk'):String(g.items[0].it.risk||'Action');
+  const gRef=g=>g.r?_riskRefOf(g.r):'';
+
+  // ══ the cover ══
+  addPage(false);
+  page.drawRectangle({x:0,y:H-176,width:W,height:176,color:NAVY});
+  page.drawRectangle({x:0,y:H-176,width:W,height:4,color:hex('4BBFD6')});
+  caps('Top 5 action sheet '+s.no, ML, H-50, { size:8.5, color:PALE });
+  { let cy=H-86; clip(wrap(client,bold,27,CW),2).forEach(ln=>{ page.drawText(ln,{x:ML,y:cy,size:27,font:bold,color:WHITE}); cy-=31; });
+    T('The '+(groups.length===1?'action':groups.length+' actions')+' to deal with first, and the control we recommend for each', ML, cy+4, 11, { color:SOFT }); }
+  T('Issued '+fmtDate(issued)+'    -    Prepared by '+producer, ML, H-158, 8.5, { color:PALE });
+  y=H-176-24;
+  para('These are the actions to deal with first, drawn from your risk profile. Each has its own page: what is wrong, who it affects, where the risk stands today, the control we recommend, and where the risk will stand once it is in place. Work through them, tell us on each page what happened, and send this sheet back.',10,{ lh:1.5, gap:14 });
+  caps('The '+(groups.length===1?'one':'')+(groups.length>1?groups.length:'')+' at a glance', ML, y-7, { size:7.6, color:NAVY });
+  caps('Today', MR-176+18, y-7, { size:6.6 }); caps('Once done', MR-70+12, y-7, { size:6.6 }); y-=13; rule(y, NAVY, 0.8);
+  groups.forEach((g,gi)=>{
+    const rowH=50; ensure(rowH+4);
+    const sc=g.r?_riskScore(g.r):null, tg=g.r?_riskTarget(g.r):null, ref=gRef(g);
+    page.drawText(String(gi+1),{x:ML,y:y-31,size:20,font:bold,color:NAVY});
+    const tx=ML+30, tw=MR-190-tx;
+    const nm=clip(wrap((ref?(ref+'   '):'')+gName(g),bold,10.5,tw),1)[0];
+    page.drawText(nm,{x:tx,y:y-17,size:10.5,font:bold,color:INK});
+    const acts=g.items.map(x=>x.it.desc).join('  |  ');
+    clip(wrap(acts,font,8.6,tw),2).forEach((ln,k)=>page.drawText(ln,{x:tx,y:y-30-k*11,size:8.6,font,color:GREY}));
+    chip(MR-176,y-7,70,36,sc,'Not rated');
+    page.drawLine({start:{x:MR-100,y:y-25},end:{x:MR-80,y:y-25},thickness:1.4,color:NAVY}); tri(MR-76,y-25,'M 0 0 L -6 -3.6 L -6 3.6 Z',NAVY);
+    chip(MR-70,y-7,70,36,tg,'No target');
+    y-=rowH; rule(y);
+  });
+  y-=16; ensure(150);
+  caps('How to use this sheet', ML, y-7, { size:7.6, color:NAVY }); y-=16;
+  [ 'Read each page. It says what is wrong, what we recommend, and what the risk will come down to.',
+    'Do the work - or, if it cannot be done the way we recommend, say so. We will agree a compromise with you, or record that the business accepts the risk.',
+    'On each page tick what happened and say what was done. Then save this file and email it back, or print it, write on it and send a copy.' ]
+    .forEach((t,i)=>{ const top=y; page.drawText(String(i+1),{x:ML,y:y-11,size:11,font:bold,color:NAVY}); para(t,9.6,{ x:ML+18, lh:1.42, gap:5 }); if(top-y<16) y=top-16; });
+  y-=8; ensure(46);
+  caps('Your name', ML, y-7); caps('Your role', ML+266, y-7); y-=11;
+  field('as__name',ML,y,256,20,{ size:10 }); field('as__role',ML+266,y,CW-266,20,{ size:10 }); y-=28;
   const meta=form.createTextField('as__meta');
   meta.setText(JSON.stringify({ v:1, client:client, sheet:s.id, no:s.no, made:issued, keys:s.items.map(i=>i.key) }));
-  meta.addToPage(page,{x:ML,y:BOT-6,width:1,height:1,borderWidth:0}); meta.enableReadOnly();
+  meta.addToPage(page,{x:ML,y:BOT-8,width:1,height:1,borderWidth:0}); meta.enableReadOnly();
 
-  s.items.forEach((it,i)=>{
-    const n=i+1, recLines=wrap(it.rec||'No recommendation written.',font,9.5,MR-ML-16), descLines=wrap(it.desc||'',bold,11.5,MR-ML);
-    const need=16 + descLines.length*15.4 + 14 + 14 + recLines.length*12.8 + 14 + 22 + 16 + 62 + 16;
-    ensure(Math.min(need, H-58-BOT));
-    page.drawText(A('ACTION '+n+' OF '+s.items.length+(it.riskRef?('  -  '+it.riskRef):'')+(it.band?('  -  '+it.band.toUpperCase()+' RISK'):'')+(it.carriedFrom?('  -  CARRIED FROM SHEET '+it.carriedFrom):'')),{x:ML,y:y-8,size:7,font:bold,color:GREY}); y-=14;
-    text(it.desc||'(no description)',11.5,{bold:true,color:NAVY,gap:3});
-    text([it.risk?('Risk: '+it.risk):'', 'Owner: '+(it.owner||'not named'), 'Target: '+(it.due?fmtDate(it.due):'no date')].filter(Boolean).join('   -   '),8.2,{color:GREY,gap:5});
-    // the recommendation, in a tinted panel so it reads as the instruction
-    const rh=recLines.length*12.8+20;
-    ensure(rh+6);
-    page.drawRectangle({x:ML,y:y-rh,width:MR-ML,height:rh,color:TINT});
-    page.drawRectangle({x:ML,y:y-rh,width:3,height:rh,color:NAVY});
-    page.drawText('RECOMMENDED CONTROL',{x:ML+10,y:y-11,size:6.5,font:bold,color:NAVY});
-    recLines.forEach((ln,k)=>page.drawText(ln,{x:ML+10,y:y-24-k*12.8,size:9.5,font,color:INK}));
-    y-=rh+8;
-    // what happened: four tick boxes, so it works on paper as well as on screen
-    ensure(24+16+62);
-    label('What happened - tick one'); y-=11;
-    let x=ML;
-    AS_OUTCOMES.forEach(oc=>{
-      const cb=form.createCheckBox('as_'+n+'_o_'+oc.f); cb.addToPage(page,{x,y:y-12,width:12,height:12,borderColor:GREY,borderWidth:1});
-      page.drawText(A(oc.label),{x:x+16,y:y-10,size:8.6,font,color:INK}); x+=16+font.widthOfTextAtSize(A(oc.label),8.6)+16;
+  // ══ a page a risk ══
+  groups.forEach((g,gi)=>{
+    addPage(false);
+    const r=g.r, sc=r?_riskScore(r):{ rating:null, priority:'' }, tg=r?_riskTarget(r):{ rating:null, priority:'' }, ref=gRef(g);
+    const nameLines=clip(wrap(gName(g),bold,18,CW-10),2), hb=nameLines.length>1?98:78;
+    page.drawRectangle({x:0,y:H-hb,width:W,height:hb,color:NAVY});
+    page.drawRectangle({x:0,y:H-hb,width:10,height:hb,color:BAND[bandOf(sc)]});
+    caps('Action '+(gi+1)+' of '+groups.length+(ref?('   -   '+ref):'')+(g.items.some(x=>x.it.carriedFrom)?('   -   carried from sheet '+g.items.find(x=>x.it.carriedFrom).it.carriedFrom):''), ML, H-30, { size:7.6, color:PALE });
+    if(r && typeof _riskFlagOn==='function' && _riskFlagOn(r)){ const tg2=A((typeof _riskMode==='function'&&_riskMode(r)==='ops')?'BUSINESS-CRITICAL':'COULD KILL OR SERIOUSLY INJURE');
+      const tw2=bold.widthOfTextAtSize(tg2,6.6)+12; page.drawRectangle({x:MR-tw2,y:H-35,width:tw2,height:13,color:BAND.Critical}); page.drawText(tg2,{x:MR-tw2+6,y:H-31,size:6.6,font:bold,color:WHITE}); }
+    nameLines.forEach((ln,k)=>page.drawText(ln,{x:ML,y:H-56-k*22,size:18,font:bold,color:WHITE}));
+    y=H-hb-20;
+
+    if(r){
+      // ── the journey: today -> the scale -> once the control is in place ──
+      const th=92, tw=126, top=y;
+      const tile=(x,label,p,none,sub)=>{
+        const has=!!p.rating, col=BAND[bandOf(p)];
+        page.drawRectangle({x,y:top-th,width:tw,height:th,color:TINT});
+        page.drawRectangle({x,y:top-4,width:tw,height:4,color:has?col:HAIR});
+        caps(label, x+10, top-17, { size:6.4, color:GREY });
+        if(has){ page.drawText(String(p.rating),{x:x+10,y:top-56,size:34,font:bold,color:col});
+          page.drawText(A(p.priority).toUpperCase(),{x:x+10,y:top-70,size:8.6,font:bold,color:col});
+          page.drawText(A('Likelihood '+p.l+' x Severity '+p.s),{x:x+10,y:top-83,size:7,font,color:GREY}); }
+        else { page.drawText(A(none),{x:x+10,y:top-50,size:11,font:bold,color:GREY}); wrap(sub,font,7.2,tw-20).forEach((ln,k)=>page.drawText(ln,{x:x+10,y:top-63-k*9,size:7.2,font,color:GREY})); }
+      };
+      tile(ML,'Where it stands today',sc,'Not rated yet','The score is set on the risk profile.');
+      tile(MR-tw,'Once the control is in place',tg,'No target set','We will agree the target with you.');
+      const sx=ML+tw+20, sw=CW-2*tw-40, by=top-58, bh=12, cw=sw/25;
+      caps('The journey', sx, top-17, { size:6.4, color:NAVY });
+      for(let n=1;n<=25;n++) page.drawRectangle({x:sx+(n-1)*cw,y:by,width:cw-0.7,height:bh,color:BAND[(typeof _bandFor==='function'?_bandFor(n):'')||'']});
+      page.drawText('1',{x:sx,y:by-9,size:6.2,font,color:GREY}); page.drawText('25',{x:sx+sw-font.widthOfTextAtSize('25',6.2),y:by-9,size:6.2,font,color:GREY});
+      const px=p=>sx+(p.rating-0.5)*cw;
+      if(sc.rating){ const xn=px(sc); tri(xn,by+bh+8,'M -4.5 0 L 4.5 0 L 0 7.5 Z',INK);
+        const lb='TODAY '+sc.rating; page.drawText(lb,{x:Math.max(sx,Math.min(sx+sw-bold.widthOfTextAtSize(lb,6.4),xn-bold.widthOfTextAtSize(lb,6.4)/2)),y:by+bh+12,size:6.4,font:bold,color:INK}); }
+      if(tg.rating){ const xt=px(tg); tri(xt,by-1,'M 0 0 L 4.5 7.5 L -4.5 7.5 Z',NAVY);
+        const lb='TARGET '+tg.rating; page.drawText(lb,{x:Math.max(sx,Math.min(sx+sw-bold.widthOfTextAtSize(lb,6.4),xt-bold.widthOfTextAtSize(lb,6.4)/2)),y:by-19,size:6.4,font:bold,color:NAVY}); }
+      if(sc.rating && tg.rating && sc.rating!==tg.rating){ const xn=px(sc), xt=px(tg), d=xt<xn?-1:1, ay=by+bh+3.5;
+        page.drawLine({start:{x:xn+d*7,y:ay},end:{x:xt-d*5,y:ay},thickness:1.3,color:NAVY}); tri(xt,ay,d<0?'M 0 0 L 6 -3.4 L 6 3.4 Z':'M 0 0 L -6 -3.4 L -6 3.4 Z',NAVY); }
+      y=top-th-12;
+      const drop=(sc.rating&&tg.rating) ? (tg.rating<sc.rating
+          ? ('Today this risk scores '+sc.rating+' ('+sc.priority+'). With the control below in place it is expected to come down to '+tg.rating+' ('+tg.priority+').')
+          : ('Today this risk scores '+sc.rating+' ('+sc.priority+'). The control below is to hold it there.'))
+        : sc.rating ? ('Today this risk scores '+sc.rating+' ('+sc.priority+'). No target has been set for it yet.') : 'This risk has not been scored yet.';
+      para(drop,9.6,{ bold:true, color:NAVY, gap:10 });
+
+      // ── what is wrong | who it affects ──
+      const lw=CW*0.6-14, rx=ML+CW*0.6+6, rw=MR-rx, top2=y;
+      const wrong=[];
+      const hz=String(r.hazard||'').trim(), as2=String(r.assocRisk||'').trim(), hm=String(r.harm||'').trim();
+      if(hz && hz.toLowerCase()!==String(r.activity||'').trim().toLowerCase()) wrong.push(hz);
+      if(as2) wrong.push(as2);
+      if(hm) wrong.push('What could happen: '+hm);
+      if(!wrong.length) wrong.push('The detail of this risk is on your risk profile.');
+      caps('What is wrong', ML, y-7, { size:7.2, color:NAVY }); y-=15;
+      wrong.forEach(t=>para(t,9.4,{ w:lw, lh:1.42, gap:4, max:6 }));
+      const leftEnd=y; y=top2;
+      caps('Who it affects', rx, y-7, { size:7.2, color:NAVY }); y-=15;
+      const who=(Array.isArray(r.personsAtRisk)?r.personsAtRisk:[]).filter(Boolean);
+      if(who.length) who.slice(0,7).forEach(p=>{ page.drawRectangle({x:rx,y:y-7.4,width:4,height:4,color:NAVY}); para(p,9.4,{ x:rx+10, w:rw-10, gap:2 }); });
+      else para('Not recorded yet.',9.4,{ x:rx, w:rw, color:GREY });
+      const bi=String(r.businessImpact||'').trim();
+      if(bi){ y-=4; caps('What it could cost the business', rx, y-7, { size:6.6 }); y-=13; para(bi,8.8,{ x:rx, w:rw, lh:1.4, max:5, color:INK }); }
+      y=Math.min(leftEnd,y)-6;
+      page.drawLine({start:{x:rx-10,y:top2-2},end:{x:rx-10,y:y+6},thickness:0.6,color:HAIR});
+      rule(y); y-=12;
+
+      // ── in place today ──
+      caps('In place today', ML, y-7, { size:7.2, color:NAVY }); y-=15;
+      const ctl=String(r.controls||'').trim();
+      if(ctl) para(ctl,9.2,{ lh:1.42, max:5, gap:6 }); else para('Nothing is recorded as in place yet.',9.2,{ color:GREY, gap:6 });
+      rule(y); y-=14;
+    } else {
+      para('Where this comes from: '+(g.items[0].it.risk||'the execution plan')+'. No risk score sits behind this action.',9.6,{ color:GREY, gap:12 });
+    }
+
+    // ── what needs to be done, the control we recommend, and the answer ──
+    g.items.forEach((x,k)=>{
+      const it=x.it, n=x.n;
+      const dLines=wrap(it.desc||'(no description)',bold,12.5,CW), rLines=wrap(it.rec||'No recommendation written.',font,10,CW-24);
+      const rh=rLines.length*14+24, need=14+dLines.length*16.4+14+rh+10+24+13+62+10;
+      if(y-need<BOT){ addPage(true); caps('Action '+(gi+1)+' of '+groups.length+(ref?('   -   '+ref):'')+'   -   '+gName(g)+' (continued)', ML, y-7, { size:7 }); y-=18; }
+      caps('What needs to be done'+(g.items.length>1?('   -   '+(k+1)+' of '+g.items.length+' on this risk'):''), ML, y-7, { size:7.2, color:NAVY }); y-=15;
+      dLines.forEach(ln=>{ page.drawText(ln,{x:ML,y:y-12.5,size:12.5,font:bold,color:INK}); y-=16.4; });
+      T('Owner: '+(it.owner||'to be named')+'     Target: '+(it.due?fmtDate(it.due):'to be agreed'), ML, y-9, 8.4, { color:GREY }); y-=18;
+      page.drawRectangle({x:ML,y:y-rh,width:CW,height:rh,color:TINT});
+      page.drawRectangle({x:ML,y:y-rh,width:4,height:rh,color:NAVY});
+      caps('The control we recommend', ML+14, y-13, { size:7, color:NAVY });
+      rLines.forEach((ln,j)=>page.drawText(ln,{x:ML+14,y:y-28-j*14,size:10,font,color:INK}));
+      y-=rh+12;
+      caps('What happened - tick one', ML, y-7, { size:6.8 }); y-=12;
+      let cx=ML;
+      AS_OUTCOMES.forEach(oc=>{ const cb=form.createCheckBox('as_'+n+'_o_'+oc.f); cb.addToPage(page,{x:cx,y:y-12,width:12,height:12,borderColor:GREY,borderWidth:1});
+        page.drawText(A(oc.label),{x:cx+17,y:y-10,size:8.8,font,color:INK}); cx+=17+font.widthOfTextAtSize(A(oc.label),8.8)+18; });
+      y-=24;
+      caps('What was done, or why it could not be', ML, y-7, { size:6.8 }); caps('Date done (dd/mm/yyyy)', MR-204, y-7, { size:6.8 }); caps('By whom', MR-100, y-7, { size:6.8 }); y-=11;
+      field('as_'+n+'_what',ML,y,CW-214,58,{ multi:true, size:9 });
+      field('as_'+n+'_date',MR-204,y,96,20,{ size:9 }); field('as_'+n+'_by',MR-100,y,100,20,{ size:9 });
+      y-=66;
+      if(k<g.items.length-1){ rule(y); y-=14; }
     });
-    y-=22;
-    label('What was done, or why it could not be'); label('Date done (dd/mm/yyyy)', MR-196); label('By whom', MR-96); y-=11;
-    field('as_'+n+'_what',ML,MR-ML-206,58,{multi:true,size:9});
-    field('as_'+n+'_date',MR-196,92,20,{size:9}); field('as_'+n+'_by',MR-96,96,20,{size:9});
-    y-=66;
-    page.drawLine({start:{x:ML,y:y},end:{x:MR,y:y},thickness:0.5,color:HAIR}); y-=12;
   });
-  ensure(86);
-  label('Anything else to tell us'); y-=11;
-  field('as__general',ML,MR-ML,48,{multi:true,size:9}); y-=58;
-  text('Save this file (File > Save, or the download button in your browser viewer) and email it back. Printing it to PDF, or some phone apps, can flatten the boxes - if that happens, send the saved file, or a photo of the printed sheet.',8.2,{color:GREY,gap:4});
-  _pdfFormFooter(pdf,{font,W,ML,MR,mid:'Top 5 action sheet '+s.no});
+
+  // ══ anything else, on the last page ══
+  if(y-104<BOT) addPage(true);
+  y-=6; rule(y, NAVY, 0.8); y-=12;
+  caps('Anything else to tell us', ML, y-7, { size:7.2, color:NAVY }); y-=12;
+  field('as__general',ML,y,CW,46,{ multi:true, size:9 }); y-=54;
+  para('Save this file (File > Save, or the download button in your browser viewer) and email it back. Printing it to PDF, or some phone apps, can flatten the boxes - if that happens, send the saved file, or a photo of the printed sheet.',7.8,{ color:GREY, gap:2 });
+  _pdfFormFooter(pdf,{ font, W, ML, MR, mid:'Top 5 action sheet '+s.no });
   return await pdf.save();
 }
 async function downloadActionSheet(sid){

@@ -3049,6 +3049,30 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .acj-grid2{grid-template-columns:1fr}
 }
 </style>
+<style id="asCss">
+.as-tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border:1px solid currentColor;padding:1px 6px;margin-left:8px;vertical-align:2px;color:var(--text-muted)}
+.as-tag.as-review{color:var(--warning)} .as-tag.as-reviewed{color:var(--success)} .as-tag.as-out{color:var(--accent-dark,var(--accent))}
+.as-item{border-top:1px solid var(--border);padding:12px 0 10px}
+.as-ih{display:flex;gap:10px;align-items:flex-start}
+.as-no{font-weight:800;color:var(--text-muted);min-width:18px}
+.as-desc{flex:1;font-size:14px;font-weight:700;line-height:1.4}
+.as-meta{margin:2px 0 0 28px}
+.as-fixed{font-size:13px;line-height:1.5;padding:8px 10px;border:1px solid var(--border);border-left:3px solid var(--accent);background:var(--bg);white-space:pre-wrap}
+.as-resp{display:grid;grid-template-columns:minmax(0,1.4fr) 150px minmax(0,1fr);gap:6px;margin-bottom:6px}
+.as-resp select,.as-resp input,.as-add select,.as-acc input{font:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;width:100%;box-sizing:border-box}
+.as-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.as-acc{display:inline-flex;gap:6px;align-items:center}
+.as-acc input{width:190px}
+.as-decided{margin-top:8px;padding:8px 10px;border:1px solid var(--border);border-left:4px solid var(--text-muted);font-size:13px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.as-decided>div{flex-basis:100%;color:var(--text-muted)}
+.as-decided button{margin-left:auto}
+.as-d-approved{border-left-color:var(--success)} .as-d-compromise{border-left-color:var(--warning)} .as-d-accepted{border-left-color:#6B7280}
+.as-add{display:flex;gap:8px;margin-top:10px}
+.as-foot{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+.as-warn{font-size:12.5px;color:var(--danger);margin:4px 0 0 28px}
+details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
+@media (max-width:760px){ .as-resp{grid-template-columns:1fr} .as-acc{flex-wrap:wrap} }
+</style>
 </head>
 <body>
 <div id="toast"></div>
@@ -15440,6 +15464,11 @@ function renderReports(){
       icon:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/>'),
       desc:'The Top 5 as a fillable form for the leadership team - up to three actions and a comment on each risk. Import what comes back, see the proposals side by side, keep the best, add your own, and put them on the plan as proper actions.',
       tags:['SLT','Fillable','Choose the best'] },
+    { title:'Top 5 Action Sheet', accent:'#B45309', tint:'#FBF0E6', fn:'openActionSheets()',
+      meta:(function(){ try{ const l=_asList(); if(!l.length) return 'Five actions out, the outcome back, a decision each'; const s=l.slice().sort((a,b)=>b.no-a.no)[0]; return 'Sheet '+s.no+' - '+_asSheetStatus(s).label; }catch(e){ return 'Five actions at a time'; } })(),
+      icon:svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
+      desc:'The next five actions with the control you recommend, as a working sheet for the client - fillable on screen, or printed and written on. Import what comes back, then decide each line: approve it, go back with a compromise, record that the client accepts the risk, or carry it forward. Then send the next five.',
+      tags:['Client','Fillable','Approve or compromise'] },
     { title:'Leadership Briefing', accent:'#DC2626', tint:'#FCE9E9', fn:'openBoardBriefingPrint()', meta:'Ten agenda items, one page each',
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
       desc:'The board report arranged as the SLT agenda - position, incidents, key risks, design and CDM, projects, competence, audits, wellbeing, objectives, and the decisions required. One page an item: what to cover, the live figures, and ruled lines for notes.',
@@ -16185,7 +16214,7 @@ function _top5BannerHTML(){
   return '<div class="no-print" style="border:1.5px solid #B4530955;background:#B4530910;border-radius:9px;padding:10px 14px;margin-bottom:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">'
     + '<span style="font-weight:700;color:#B45309;">Top 5 for '+_top5MonthLabel(m)+'</span>'
     + '<span style="font-size:12.5px;color:var(--text-muted);">'+mid+'</span>'
-    + last + '</div>';
+    + last + '<button type="button" class="btn btn-outline btn-sm" style="'+(last?'':'margin-left:auto;')+'" onclick="openActionSheets()" title="Five actions out to the client with your recommended controls, the outcome back, a decision each">Action sheet</button></div>';
 }
 
 function _execOpenCount(){ return _execActions().filter(x=>x.status!=='Complete' && x.status!=='Accepted').length; }
@@ -22936,6 +22965,395 @@ function t5Apply(rid){
   _stamp(r,'updated'); saveData(); _refreshActionViews(); _top5ReviewRender();
   showToast('✓ '+made.length+' action'+(made.length!==1?'s':'')+' added to '+(_riskRefOf(r)||'the risk')+markMsg,'success',6000);
 }
+// ══════════════════════════════════════════════════════════════
+//  TOP 5 ACTION SHEET - five actions out, the outcome back, a decision each.
+//
+//  Simon, 5 October 2026, from a client's own request: "give me the first top
+//  five actions with your recommendations for the controls". The client gets
+//  a working sheet (fillable PDF, or printed and written on), reports what
+//  happened against each action and sends it back. The consultant then
+//  decides, line by line: approve it, go back with a compromise, record that
+//  the client accepts the risk, or carry it forward - and sends the next five.
+//
+//  The sheet is a lens on the plan, never a copy of it: each item points at
+//  its action on the execution plan, and every decision is written on that
+//  action (status, who, when, its log). An accepted risk is the plan's own
+//  'Accepted', so it reads on the Risk Acceptance Register by itself.
+//
+//  Store: S.actionSheets = { list:[ { id, no, createdAt, issuedAt, returnedAt,
+//    returnedBy, file, items:[ { key, ref, desc, risk, riskRef, band, owner,
+//    due, rec, resp:{ outcome, what, date, by }, decision, decidedAt, dnote,
+//    acceptedBy } ] } ] }   - created when the first sheet is started.
+// ══════════════════════════════════════════════════════════════
+var AS_MAX = 5;
+var AS_OUTCOMES = [
+  { k:'done',   f:'done',   label:'Done as recommended' },
+  { k:'diff',   f:'diff',   label:'Done a different way' },
+  { k:'cannot', f:'cannot', label:'Cannot be done' },
+  { k:'notyet', f:'notyet', label:'Not done yet' }
+];
+var AS_DECISIONS = { approved:'Approved', compromise:'Compromise sent back', accepted:'Client accepts the risk', carry:'Carried to the next sheet' };
+function _asList(){ return (S.actionSheets && Array.isArray(S.actionSheets.list)) ? S.actionSheets.list : []; }
+function _asState(){ if(!S.actionSheets || typeof S.actionSheets!=='object') S.actionSheets={}; if(!Array.isArray(S.actionSheets.list)) S.actionSheets.list=[]; return S.actionSheets; }
+function _asToday(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _asKey(ref){ return ref ? [ref.t, ref.a, ref.b||'', ref.c||''].join(':') : ''; }
+function _asSheet(id){ return _asList().find(s=>s.id===id)||null; }
+function _asItem(sid, key){ const s=_asSheet(sid); return s ? (s.items||[]).find(i=>i.key===key)||null : null; }
+function _asOutcomeLabel(k){ const o=AS_OUTCOMES.find(x=>x.k===k); return o?o.label:''; }
+function _asHasResp(it){ const r=it&&it.resp; return !!(r && (r.outcome || String(r.what||'').trim() || r.date || String(r.by||'').trim())); }
+// Still in play: on a sheet and not yet finished with. An action sits on one
+// live sheet at a time, so the same action is never out twice.
+function _asLive(it){ return !it.decision; }
+function _asSheetStatus(s){
+  const items=s.items||[], decided=items.filter(i=>i.decision).length, back=items.filter(_asHasResp).length;
+  if(!items.length) return { k:'empty', label:'No actions on it yet' };
+  if(decided===items.length) return { k:'reviewed', label:'Reviewed' };
+  if(back) return { k:'review', label:(items.length-decided)+' to decide' };
+  if(s.issuedAt) return { k:'out', label:'With the client since '+fmtDate(s.issuedAt) };
+  return { k:'draft', label:'Draft - not sent yet' };
+}
+// What could go on the next sheet, most pressing first: anything carried back
+// from the last sheet, then this month's Top 5 marks, then by the band of the
+// risk behind it, overdue before on-time, soonest target first.
+function _asCandidates(exceptSheetId){
+  const live=new Set(), carried={};
+  _asList().forEach(s=>(s.items||[]).forEach(it=>{
+    if(s.id!==exceptSheetId && _asLive(it)) live.add(it.key);
+    if(it.decision==='compromise' || it.decision==='carry') carried[it.key]={ rec:(it.decision==='compromise' && String(it.dnote||'').trim()) ? it.dnote : (it.rec||''), from:s.no, decision:it.decision };
+  }));
+  // a later sheet may have finished the action off: only the latest word counts
+  _asList().forEach(s=>(s.items||[]).forEach(it=>{ if(it.decision==='approved' || it.decision==='accepted') delete carried[it.key]; }));
+  const month=_top5Month(), BAND={ Critical:0, High:1, Medium:2, Low:3 };
+  return _execActions().filter(a=>a.status!=='Complete' && a.status!=='Accepted' && String(a.desc||'').trim())
+    .map(a=>{ const key=_asKey(a.ref), b=_epBandOf(a); return { a, key, band:b, carry:carried[key]||null, top:a.top5===month, bandN:(b in BAND)?BAND[b]:4, late:a.rag==='red'?0:1 }; })
+    .filter(c=>!live.has(c.key))
+    .sort((x,y)=>((x.carry?0:1)-(y.carry?0:1)) || ((x.top?0:1)-(y.top?0:1)) || (x.bandN-y.bandN) || (x.late-y.late) || String(x.a.due||'9999').localeCompare(String(y.a.due||'9999')));
+}
+function _asItemFrom(c){
+  const r=_execRiskOf(c.a);
+  return { key:c.key, ref:c.a.ref, desc:c.a.desc||'', risk:(r?(r.activity||r.hazard||''):(c.a.sourceLabel||c.a.source||'')), riskRef:(r?_riskRefOf(r):''), band:c.band||'',
+    owner:c.a.owner||'', due:c.a.due||'', rec:(c.carry?c.carry.rec:''), carriedFrom:(c.carry?c.carry.from:0),
+    resp:{ outcome:'', what:'', date:'', by:'' }, decision:'', decidedAt:'', dnote:'', acceptedBy:'' };
+}
+
+// ── the screen ──
+function openActionSheets(){
+  let ov=document.getElementById('asOv');
+  if(!ov){ ov=document.createElement('div'); ov.id='asOv'; ov.className='slt-ov'; document.body.appendChild(ov); }
+  document.body.classList.add('slt-open'); _asRender();
+}
+function closeActionSheets(){ const ov=document.getElementById('asOv'); if(ov) ov.remove(); document.body.classList.remove('slt-open'); if(_asList().length) saveData();
+  try{ if(document.getElementById('tab-execplan').classList.contains('active')) _keepScroll(renderExecPlan); }catch(e){} }
+function _asQ(s){ return '\''+String(s).replace(/[^a-z0-9_:|\-]/gi,'')+'\''; }
+function _asRender(){
+  const ov=document.getElementById('asOv'); if(!ov) return;
+  const top=ov.scrollTop, ro=_roLocked(), dis=ro?' disabled':'';
+  const sheets=_asList().slice().sort((a,b)=>b.no-a.no);
+  const draftOpen=sheets.some(s=>_asSheetStatus(s).k==='draft' || _asSheetStatus(s).k==='empty');
+  const bar='<div class="slt-bar"><div class="slt-t"><div class="slt-k">Top 5 action sheet</div><div class="slt-h">'+esc(_sltClient())+'</div></div>'
+    +(ro?'':'<button class="btn btn-primary btn-sm" onclick="asNewSheet()"'+(draftOpen?' disabled title="Finish the draft sheet first"':' title="The next five actions, most pressing first - anything carried back goes on first"')+'>＋ '+(sheets.length?'Next five':'First five')+'</button>'
+      +'<button class="btn btn-outline btn-sm" onclick="importActionSheet()" title="A sheet the client filled in on screen and sent back">⭱ Import a returned sheet</button>')
+    +'<button class="btn btn-ghost btn-sm" onclick="closeActionSheets()">Close</button></div>';
+  const intro='<div class="slt-muted" style="margin:0 0 12px;line-height:1.55;">Five actions at a time, each with the control you recommend. The client works from the sheet, says what happened and sends it back. You then decide each line: approve it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Every decision is written on the action in the execution plan.</div>';
+  const people=_sltPeople(null);
+  const body=sheets.length ? sheets.map((s,idx)=>_asSheetHTML(s, idx===0, ro, dis)).join('')
+    : '<section class="slt-sec"><div class="slt-muted">No sheet yet. '+(ro?'':'Press First five to start: the most pressing open actions are put on it for you to check.')+'</div></section>';
+  ov.innerHTML=bar+'<div class="slt-body">'+intro+body
+    +'<datalist id="asPeople">'+people.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.role||'')+'</option>').join('')+'</datalist></div>';
+  ov.scrollTop=top;
+}
+function _asSheetHTML(s, latest, ro, dis){
+  const st=_asSheetStatus(s), items=s.items||[];
+  const locked=items.some(_asHasResp) || items.some(i=>i.decision);     // once something has come back, what was sent stays as sent
+  const sid=_asQ(s.id);
+  const head='<div class="slt-ih"><span class="slt-n">'+s.no+'</span><h3>Sheet '+s.no+' <span class="as-tag as-'+st.k+'">'+esc(st.label)+'</span></h3></div>'
+    +'<div class="slt-muted" style="margin:2px 0 8px 36px;">Started '+esc(fmtDate(String(s.createdAt||'').slice(0,10)))+(s.issuedAt?(' · sent '+esc(fmtDate(s.issuedAt))):'')+(s.returnedAt?(' · back '+esc(fmtDate(s.returnedAt))+(s.returnedBy?(' from '+esc(s.returnedBy)):'')):'')+'</div>'
+    +(s.general?('<div class="as-fixed" style="margin:0 0 8px 36px;">They also said: '+esc(s.general)+'</div>'):'');
+  const rows=items.map((it,i)=>_asItemHTML(s, it, i, locked, ro, dis)).join('');
+  let add='';
+  if(!locked && !ro && items.length<AS_MAX){
+    const cands=_asCandidates(s.id).filter(c=>!items.some(i=>i.key===c.key));
+    add='<div class="as-add"><select id="asAdd-'+esc(s.id)+'"><option value="">＋ Add an action from the plan</option>'
+      +cands.map(c=>'<option value="'+esc(c.key)+'">'+esc((c.band?(c.band+' · '):'')+String(c.a.desc).slice(0,90)+(c.a.due?(' · '+fmtDate(c.a.due)):''))+'</option>').join('')+'</select>'
+      +'<button class="btn btn-outline btn-sm" onclick="asAddItem('+sid+')">Add</button></div>';
+  }
+  const missing=items.filter(i=>!String(i.rec||'').trim()).length;
+  const foot=ro?'':'<div class="as-foot">'
+    +'<button class="btn btn-primary btn-sm" onclick="downloadActionSheet('+sid+')"'+(items.length?'':' disabled')+' title="A fillable PDF - it can also be printed and written on">⭳ '+(s.issuedAt?'Download the sheet again':'Download the sheet to send')+'</button>'
+    +(missing&&items.length?'<span class="slt-muted">'+missing+' action'+(missing!==1?'s have':' has')+' no recommended control yet</span>':'')
+    +(!locked?'<button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="asDeleteSheet('+sid+')">Delete this sheet</button>':'')
+    +'</div>';
+  const inner=head+(rows||'<div class="slt-muted">No open actions to put on it.</div>')+add+foot;
+  return latest ? '<section class="slt-sec" id="asS-'+esc(s.id)+'">'+inner+'</section>'
+    : '<details class="slt-sec as-old" id="asS-'+esc(s.id)+'"'+(st.k==='reviewed'?'':' open')+'><summary>Sheet '+s.no+' · '+esc(st.label)+'</summary>'+inner+'</details>';
+}
+function _asItemHTML(s, it, i, locked, ro, dis){
+  const sid=_asQ(s.id), key=_asQ(it.key), r=it.resp||{}, back=_asHasResp(it), done=!!it.decision;
+  const o=_execOrigin(it.ref);
+  const gone=!o ? '<div class="as-warn">This action is no longer on the plan.</div>' : '';
+  const meta=[it.riskRef, it.risk, it.band?(it.band+' risk'):'', it.owner?('Owner: '+it.owner):'No owner', it.due?('Target: '+fmtDate(it.due)):'No target date'].filter(Boolean).map(esc).join(' · ');
+  const recBox=(locked||ro)
+    ? '<div class="as-fixed">'+(String(it.rec||'').trim()?esc(it.rec):'<span class="slt-muted">No recommendation was written.</span>')+'</div>'
+    : '<textarea class="slt-notes" rows="2" placeholder="The control you recommend, in the words the client will read" oninput="asRec('+sid+','+key+',this.value)">'+esc(it.rec||'')+'</textarea>';
+  const opt=AS_OUTCOMES.map(x=>'<option value="'+x.k+'"'+(r.outcome===x.k?' selected':'')+'>'+esc(x.label)+'</option>').join('');
+  const lockResp=(done||ro)?' disabled':'';
+  const resp=!s.issuedAt && !back ? '' :
+    '<div class="slt-lab">What came back'+(back?'':' - import the returned sheet, or enter it here from a paper copy')+'</div>'
+    +'<div class="as-resp"><select'+lockResp+' onchange="asResp('+sid+','+key+',\'outcome\',this.value)"><option value="">- what happened -</option>'+opt+'</select>'
+    +'<input type="date"'+lockResp+' value="'+esc(r.date||'')+'" onchange="asResp('+sid+','+key+',\'date\',this.value)" title="Date done">'
+    +'<input list="asPeople"'+lockResp+' value="'+esc(r.by||'')+'" placeholder="By whom" oninput="asResp('+sid+','+key+',\'by\',this.value)"></div>'
+    +'<textarea class="slt-notes"'+lockResp+' rows="2" placeholder="What was done, or why it could not be" oninput="asResp('+sid+','+key+',\'what\',this.value)">'+esc(r.what||'')+'</textarea>';
+  let decide='';
+  if(done){
+    decide='<div class="as-decided as-d-'+esc(it.decision)+'"><b>'+esc(AS_DECISIONS[it.decision]||it.decision)+'</b> '+esc(fmtDate(it.decidedAt))
+      +(it.decision==='accepted'&&it.acceptedBy?(' · accepted by '+esc(it.acceptedBy)):'')+(it.dnote?('<div>'+esc(it.dnote)+'</div>'):'')
+      +(ro?'':'<button class="btn btn-ghost btn-sm" onclick="asUndo('+sid+','+key+')" title="Take this decision back and reopen the action">Undo</button>')+'</div>';
+  } else if(back && !ro){
+    const canApprove=(r.outcome==='done'||r.outcome==='diff');
+    decide='<div class="slt-lab">Your decision</div>'
+      +'<textarea class="slt-notes" id="asN-'+esc(s.id)+'-'+i+'" rows="2" placeholder="Your note. For a compromise: the control you will settle for. For an accepted risk: why the client accepts it.">'+esc(it.dnote||'')+'</textarea>'
+      +'<div class="as-btns">'
+      +'<button class="btn btn-primary btn-sm" onclick="asDecide('+sid+','+key+',\'approved\','+i+')"'+(canApprove?'':' disabled title="Nothing has been done yet to approve"')+'>'+(r.outcome==='diff'?'Approve what was done instead':'Approve')+'</button>'
+      +'<button class="btn btn-outline btn-sm" onclick="asDecide('+sid+','+key+',\'compromise\','+i+')" title="Stays open; your compromise goes on the next sheet as its recommended control">Go back with a compromise</button>'
+      +'<span class="as-acc"><input list="asPeople" id="asA-'+esc(s.id)+'-'+i+'" value="'+esc(it.acceptedBy||r.by||s.returnedBy||'')+'" placeholder="Accepted by (name, role)">'
+      +'<button class="btn btn-outline btn-sm" onclick="asDecide('+sid+','+key+',\'accepted\','+i+')" title="Closes the action as an accepted risk, on the Risk Acceptance Register">Client accepts the risk</button></span>'
+      +'<button class="btn btn-ghost btn-sm" onclick="asDecide('+sid+','+key+',\'carry\','+i+')" title="Stays open and goes on the next sheet as it is">Carry to the next sheet</button>'
+      +'</div>';
+  }
+  return '<div class="as-item'+(done?' as-done':'')+'" id="asI-'+esc(s.id)+'-'+i+'">'
+    +'<div class="as-ih"><span class="as-no">'+(i+1)+'</span><div class="as-desc">'+esc(it.desc||'(no description)')+(it.carriedFrom?(' <span class="as-tag as-out">carried from sheet '+it.carriedFrom+'</span>'):'')+'</div>'
+    +((locked||ro)?'':'<button class="trn-x" onclick="asRemoveItem('+sid+','+key+')" title="Take this action off the sheet - it stays on the plan">×</button>')+'</div>'
+    +'<div class="slt-muted as-meta">'+meta+'</div>'+gone
+    +'<div class="slt-lab">Recommended control</div>'+recBox+resp+decide+'</div>';
+}
+
+// ── building a sheet ──
+function asNewSheet(){
+  if(_blockIfReadOnly()) return;
+  const st=_asState();
+  const picks=_asCandidates(null).slice(0,AS_MAX);
+  if(!picks.length){ showToast('Nothing open on the execution plan to put on a sheet','info'); return; }
+  const no=st.list.reduce((m,s)=>Math.max(m,s.no||0),0)+1;
+  st.list.push({ id:'as_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), no, createdAt:new Date().toISOString(), issuedAt:'', returnedAt:'', returnedBy:'', file:'', items:picks.map(_asItemFrom) });
+  saveData(); _asRender();
+  const carried=picks.filter(p=>p.carry).length;
+  showToast('✓ Sheet '+no+' started with '+picks.length+' action'+(picks.length!==1?'s':'')+(carried?(' - '+carried+' carried from the last sheet'):'')+'. Check them, write your recommended controls, then download it.','success',7000);
+}
+function asAddItem(sid){
+  if(_blockIfReadOnly()) return;
+  const s=_asSheet(sid), sel=document.getElementById('asAdd-'+sid); if(!s||!sel||!sel.value) return;
+  if(s.items.length>=AS_MAX){ showToast('Five is the sheet - take one off first','info'); return; }
+  const c=_asCandidates(s.id).find(x=>x.key===sel.value); if(!c || s.items.some(i=>i.key===c.key)) return;
+  s.items.push(_asItemFrom(c)); saveData(); _asRender();
+}
+function asRemoveItem(sid, key){ if(_blockIfReadOnly()) return; const s=_asSheet(sid); if(!s) return; s.items=s.items.filter(i=>i.key!==key); saveData(); _asRender(); }
+function asRec(sid, key, v){ if(_roLocked()) return; const it=_asItem(sid,key); if(!it) return; it.rec=v; scheduleAutoSave(); }
+function asDeleteSheet(sid){
+  if(_blockIfReadOnly()) return;
+  const s=_asSheet(sid); if(!s) return;
+  if(!confirm('Delete sheet '+s.no+'? The actions stay on the execution plan.')) return;
+  _asState().list=_asList().filter(x=>x.id!==sid); saveData(); _asRender();
+}
+function asResp(sid, key, f, v){
+  if(_roLocked()) return;
+  const s=_asSheet(sid), it=_asItem(sid,key); if(!s||!it||it.decision) return;
+  if(!it.resp) it.resp={ outcome:'', what:'', date:'', by:'' };
+  it.resp[f]=v;
+  const first=!s.returnedAt;
+  if(first) s.returnedAt=_asToday();
+  // a choice redraws the line so its decision buttons appear; typing only saves
+  if(f==='outcome' || f==='date' || first){ saveData(); _asRender(); } else scheduleAutoSave();
+}
+
+// ── the decision, written on the action itself ──
+function asDecide(sid, key, decision, i){
+  if(_blockIfReadOnly()) return;
+  const s=_asSheet(sid), it=_asItem(sid,key); if(!s||!it||it.decision) return;
+  const r=it.resp||{}, note=String(((document.getElementById('asN-'+sid+'-'+i)||{}).value)||'').trim();
+  const by=String(((document.getElementById('asA-'+sid+'-'+i)||{}).value)||'').trim();
+  const o=_execOrigin(it.ref);
+  if(!o){ showToast('That action is no longer on the plan - nothing to decide','error'); return; }
+  const said=(_asOutcomeLabel(r.outcome)||'No outcome given')+(String(r.what||'').trim()?(' - '+String(r.what).trim()):'');
+  const tag='Action sheet '+s.no+': ';
+  if(decision==='approved'){
+    if(r.outcome!=='done' && r.outcome!=='diff'){ showToast('Nothing has been done yet to approve','info'); return; }
+    o.status='Complete'; _stampActionCompletion(o,'Complete');
+    if(r.date) o.completedDate=r.date;
+    if(String(r.by||'').trim()) o.completedBy=String(r.by).trim();
+    _logAdd(o,'completed', tag+said+'. Approved'+(note?(' - '+note):'')+'.');
+    const rk=_execRiskOf({ ref:it.ref }); if(rk) _ctlOnActionClosed(rk, o);
+  } else if(decision==='compromise'){
+    if(!note){ showToast('Write the compromise first - it goes to the client on the next sheet','info'); return; }
+    if(o.status==='Not started' || !o.status) o.status='In progress';
+    _logAdd(o,'comment', tag+said+'. Compromise sent back: '+note);
+  } else if(decision==='accepted'){
+    if(!by){ showToast('Say who at the client accepts the risk - the client is the duty holder','info'); return; }
+    const why=note || String(r.what||'').trim();
+    if(!why){ showToast('Say why the risk is accepted - it goes on the acceptance register','info'); return; }
+    o.status='Accepted'; _stampActionCompletion(o,'Accepted');
+    o.acceptedBy=by; o.acceptDate=r.date||_asToday(); o.acceptReason=why;
+    _logAdd(o,'accepted', tag+said+'. Risk accepted by '+by+': '+why);
+    it.acceptedBy=by;
+  } else if(decision==='carry'){
+    _logAdd(o,'comment', tag+said+'. Carried to the next sheet'+(note?(' - '+note):'')+'.');
+  } else return;
+  it.decision=decision; it.decidedAt=_asToday(); it.dnote=note;
+  if(typeof _stamp==='function') _stamp(o,'updated');
+  saveData(); try{ _refreshActionViews(); }catch(e){}
+  _asRender();
+  showToast('✓ '+AS_DECISIONS[decision]+(decision==='accepted'?' - on the Risk Acceptance Register':decision==='approved'?' - the action is complete on the plan':' - the action stays open'),'success',5000);
+}
+function asUndo(sid, key){
+  if(_blockIfReadOnly()) return;
+  const s=_asSheet(sid), it=_asItem(sid,key); if(!s||!it||!it.decision) return;
+  const was=it.decision, o=_execOrigin(it.ref);
+  // a later sheet already carries this action: taking the decision back here would put it on two
+  if((was==='compromise'||was==='carry') && _asList().some(x=>x.id!==sid && (x.items||[]).some(j=>j.key===key))){ showToast('This action is already on a later sheet - change it there','info'); return; }
+  if(o && (was==='approved'||was==='accepted')){
+    o.status='In progress'; _stampActionCompletion(o,'In progress');
+    if(was==='accepted'){ o.acceptReason=''; }
+    _logAdd(o,'reopened','Action sheet '+s.no+': the decision ('+AS_DECISIONS[was]+') was taken back');
+    if(typeof _stamp==='function') _stamp(o,'updated');
+  } else if(o){ _logAdd(o,'comment','Action sheet '+s.no+': the decision ('+AS_DECISIONS[was]+') was taken back'); }
+  it.decision=''; it.decidedAt=''; it.acceptedBy='';
+  saveData(); try{ _refreshActionViews(); }catch(e){}
+  _asRender();
+}
+
+// ── the sheet the client works from: fillable, and printable to write on ──
+async function buildActionSheetPDF(sid){
+  const L=window.PDFLib; if(!L) throw new Error('pdf-lib is not loaded');
+  const s=_asSheet(sid); if(!s) throw new Error('sheet not found');
+  const client=_sltClient();
+  const pdf=await L.PDFDocument.create();
+  const font=await pdf.embedFont(L.StandardFonts.Helvetica), bold=await pdf.embedFont(L.StandardFonts.HelveticaBold);
+  const form=pdf.getForm();
+  const W=595.28, H=841.89, ML=40, MR=W-40, BOT=58;
+  const NAVY=L.rgb(30/255,58/255,95/255), INK=L.rgb(.16,.18,.2), GREY=L.rgb(.43,.45,.47), HAIR=L.rgb(.84,.85,.87), TINT=L.rgb(.95,.96,.98);
+  const A=t=>_pdfAscii(String(t==null?'':t));
+  const wrap=(t,f,size,w)=>{ const out=[]; String(A(t)).split('\n').forEach(seg=>{ const words=seg.split(/\s+/).filter(Boolean); let cur='';
+    words.forEach(wd=>{ const trial=cur?cur+' '+wd:wd; if(f.widthOfTextAtSize(trial,size)<=w) cur=trial; else { if(cur) out.push(cur); cur=wd; } }); out.push(cur); }); return out.length?out:['']; };
+  const issued=_asToday();
+  let page, y;
+  const header=()=>{
+    page.drawText(A(client).toUpperCase(),{x:ML,y:H-34,size:12,font:bold,color:NAVY});
+    const meta=A('ACTION SHEET '+s.no+'  -  '+fmtDate(issued).toUpperCase()); page.drawText(meta,{x:MR-font.widthOfTextAtSize(meta,6.5),y:H-32,size:6.5,font,color:GREY});
+    page.drawLine({start:{x:ML,y:H-42},end:{x:MR,y:H-42},thickness:0.8,color:NAVY});
+  };
+  const newPage=()=>{ page=pdf.addPage([W,H]); header(); y=H-58; };
+  const ensure=(need)=>{ if(y-need<BOT) newPage(); };
+  const text=(t,size,o)=>{ o=o||{}; const f=o.bold?bold:font; const w=o.w||(MR-(o.x||ML)); const lh=size*1.34;
+    wrap(t,f,size,w).forEach(ln=>{ ensure(lh); page.drawText(ln,{x:o.x||ML,y:y-size,size,font:f,color:o.color||INK}); y-=lh; }); y-=(o.gap||2); };
+  const label=(t,x)=>{ page.drawText(A(t).toUpperCase(),{x:x||ML,y:y-7,size:6.5,font:bold,color:GREY}); };
+  const field=(name,x,w,h,o)=>{ o=o||{}; const tf=form.createTextField(name); if(o.multi) tf.enableMultiline();
+    tf.addToPage(page,{x,y:y-h,width:w,height:h,borderColor:HAIR,borderWidth:0.8}); tf.setFontSize(o.size||9); return tf; };
+
+  newPage();
+  page.drawText('TOP 5 ACTIONS - SHEET '+s.no,{x:ML,y:y-20,size:20,font:bold,color:NAVY}); y-=30;
+  text('The '+(s.items.length===1?'action':s.items.length+' actions')+' to deal with next, each with the control we recommend. Use this as your working sheet. For each action, tick what happened and say what was done, or why it could not be. If something cannot be done the way we recommend, say so: we will agree a compromise, or record that the business accepts the risk. Then save this file and email it back - or print it, write on it and send a copy.',9.5,{color:GREY,gap:8});
+  ensure(34); label('Your name'); label('Your role', ML+266); y-=11;
+  field('as__name',ML,256,18,{size:10}); field('as__role',ML+266,MR-ML-266,18,{size:10}); y-=28;
+  const meta=form.createTextField('as__meta');
+  meta.setText(JSON.stringify({ v:1, client:client, sheet:s.id, no:s.no, made:issued, keys:s.items.map(i=>i.key) }));
+  meta.addToPage(page,{x:ML,y:BOT-6,width:1,height:1,borderWidth:0}); meta.enableReadOnly();
+
+  s.items.forEach((it,i)=>{
+    const n=i+1, recLines=wrap(it.rec||'No recommendation written.',font,9.5,MR-ML-16), descLines=wrap(it.desc||'',bold,11.5,MR-ML);
+    const need=16 + descLines.length*15.4 + 14 + 14 + recLines.length*12.8 + 14 + 22 + 16 + 62 + 16;
+    ensure(Math.min(need, H-58-BOT));
+    page.drawText(A('ACTION '+n+' OF '+s.items.length+(it.riskRef?('  -  '+it.riskRef):'')+(it.band?('  -  '+it.band.toUpperCase()+' RISK'):'')+(it.carriedFrom?('  -  CARRIED FROM SHEET '+it.carriedFrom):'')),{x:ML,y:y-8,size:7,font:bold,color:GREY}); y-=14;
+    text(it.desc||'(no description)',11.5,{bold:true,color:NAVY,gap:3});
+    text([it.risk?('Risk: '+it.risk):'', 'Owner: '+(it.owner||'not named'), 'Target: '+(it.due?fmtDate(it.due):'no date')].filter(Boolean).join('   -   '),8.2,{color:GREY,gap:5});
+    // the recommendation, in a tinted panel so it reads as the instruction
+    const rh=recLines.length*12.8+20;
+    ensure(rh+6);
+    page.drawRectangle({x:ML,y:y-rh,width:MR-ML,height:rh,color:TINT});
+    page.drawRectangle({x:ML,y:y-rh,width:3,height:rh,color:NAVY});
+    page.drawText('RECOMMENDED CONTROL',{x:ML+10,y:y-11,size:6.5,font:bold,color:NAVY});
+    recLines.forEach((ln,k)=>page.drawText(ln,{x:ML+10,y:y-24-k*12.8,size:9.5,font,color:INK}));
+    y-=rh+8;
+    // what happened: four tick boxes, so it works on paper as well as on screen
+    ensure(24+16+62);
+    label('What happened - tick one'); y-=11;
+    let x=ML;
+    AS_OUTCOMES.forEach(oc=>{
+      const cb=form.createCheckBox('as_'+n+'_o_'+oc.f); cb.addToPage(page,{x,y:y-12,width:12,height:12,borderColor:GREY,borderWidth:1});
+      page.drawText(A(oc.label),{x:x+16,y:y-10,size:8.6,font,color:INK}); x+=16+font.widthOfTextAtSize(A(oc.label),8.6)+16;
+    });
+    y-=22;
+    label('What was done, or why it could not be'); label('Date done (dd/mm/yyyy)', MR-196); label('By whom', MR-96); y-=11;
+    field('as_'+n+'_what',ML,MR-ML-206,58,{multi:true,size:9});
+    field('as_'+n+'_date',MR-196,92,20,{size:9}); field('as_'+n+'_by',MR-96,96,20,{size:9});
+    y-=66;
+    page.drawLine({start:{x:ML,y:y},end:{x:MR,y:y},thickness:0.5,color:HAIR}); y-=12;
+  });
+  ensure(86);
+  label('Anything else to tell us'); y-=11;
+  field('as__general',ML,MR-ML,48,{multi:true,size:9}); y-=58;
+  text('Save this file (File > Save, or the download button in your browser viewer) and email it back. Printing it to PDF, or some phone apps, can flatten the boxes - if that happens, send the saved file, or a photo of the printed sheet.',8.2,{color:GREY,gap:4});
+  _pdfFormFooter(pdf,{font,W,ML,MR,mid:'Top 5 action sheet '+s.no});
+  return await pdf.save();
+}
+async function downloadActionSheet(sid){
+  if(_blockIfReadOnly()) return;
+  const s=_asSheet(sid); if(!s) return;
+  try{
+    const bytes=await buildActionSheetPDF(sid);
+    const safe=_sltClient().replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+    _sltSaveBlob(new Blob([bytes],{type:'application/pdf'}), 'top-5-action-sheet-'+s.no+'-'+safe+'-'+_asToday()+'.pdf');
+    s.issuedAt=_asToday(); saveData(); _asRender();
+    showToast('✓ Sheet '+s.no+' made - send it to the client, then import what comes back','success',6000);
+  }catch(e){ console.error('Action sheet failed',e); showToast('Could not build the sheet - see console','error'); }
+}
+
+// ── the return trip ──
+function importActionSheet(){
+  if(_blockIfReadOnly()) return;
+  let inp=document.getElementById('asImportFile');
+  if(!inp){ inp=document.createElement('input'); inp.type='file'; inp.id='asImportFile'; inp.accept='application/pdf,.pdf'; inp.multiple=true; inp.style.display='none';
+    inp.onchange=()=>{ const fs=[...(inp.files||[])]; inp.value=''; _asImportFiles(fs); }; document.body.appendChild(inp); }
+  inp.click();
+}
+async function _asImportFiles(files){
+  if(!files||!files.length) return; if(_blockIfReadOnly()) return;
+  if(!window.PDFLib){ showToast('The PDF reader is not loaded - refresh and try again','error'); return; }
+  const ok=[], refused=[];
+  for(const f of files){
+    try{ const r=await _asReadForm(new Uint8Array(await f.arrayBuffer()), f.name||'sheet.pdf'); if(r.error) refused.push((f.name||'a file')+': '+r.error); else ok.push(r.msg); }
+    catch(e){ console.error('Action sheet import',e); refused.push((f.name||'a file')+': could not be read as a PDF'); }
+  }
+  if(ok.length) saveData();
+  if(document.getElementById('asOv')) _asRender();
+  if(refused.length) showToast((ok.length?(ok.join(', ')+'. '):'')+'Not imported - '+refused.join(' | '),'error',9000);
+  else showToast('✓ '+ok.join(', ')+' - nothing changes on the plan until you decide each line','success',6000);
+}
+async function _asReadForm(bytes, fname){
+  const L=window.PDFLib;
+  const doc=await L.PDFDocument.load(bytes,{ignoreEncryption:true});
+  const fields=doc.getForm().getFields();
+  const val=n=>{ const f=fields.find(x=>x.getName()===n); if(!f) return null; try{ if(f instanceof L.PDFCheckBox) return f.isChecked(); if(f instanceof L.PDFTextField) return f.getText()||''; }catch(e){} return null; };
+  if(!fields.some(f=>/^as_\d+_/.test(f.getName()))) return { error:'no answers could be read - the boxes may have been flattened (printed to PDF or saved by a phone app). Ask for the saved file, or enter the answers by hand from the copy.' };
+  let meta={}; try{ meta=JSON.parse(val('as__meta')||'{}'); }catch(e){}
+  if(meta.client && meta.client!==_sltClient()) return { error:'this sheet is for '+meta.client+', not '+_sltClient() };
+  const s=_asSheet(meta.sheet);
+  if(!s) return { error:'this sheet is not one of this client’s - it may have been deleted since it was sent' };
+  let filled=0, clash=0;
+  (meta.keys||[]).forEach((key,idx)=>{
+    const it=(s.items||[]).find(i=>i.key===key); if(!it || it.decision) return;
+    const n=idx+1, ticked=AS_OUTCOMES.filter(oc=>val('as_'+n+'_o_'+oc.f)===true);
+    const what=String(val('as_'+n+'_what')||'').trim(), dText=String(val('as_'+n+'_date')||'').trim(), by=String(val('as_'+n+'_by')||'').trim();
+    if(!ticked.length && !what && !dText && !by) return;                // left blank: keep whatever is already recorded
+    if(ticked.length>1) clash++;
+    const date=_top5ParseDate(dText);
+    it.resp={ outcome:(ticked.length===1?ticked[0].k:''), what:what+(ticked.length>1?((what?' ':'')+'[More than one box was ticked: '+ticked.map(t=>t.label).join(', ')+']'):'')+(dText&&!date?((what||ticked.length>1?' ':'')+'[Date as written: '+dText+']'):''), date:date, by:by };
+    filled++;
+  });
+  if(!filled) return { error:'the sheet came back with nothing filled in' };
+  const name=String(val('as__name')||'').trim(), role=String(val('as__role')||'').trim(), general=String(val('as__general')||'').trim();
+  s.returnedAt=_asToday(); s.returnedBy=name+(role?(' ('+role+')'):''); s.file=fname; if(general) s.general=general;
+  return { msg:'Sheet '+s.no+': '+filled+' answer'+(filled!==1?'s':'')+' in'+(clash?(' ('+clash+' with more than one box ticked - choose the outcome yourself)'):'') };
+}
+
 async function openBoardReportPrint(){
   try{ if(new URLSearchParams(location.search).get('report')==='legacy'){ downloadBoardReport(); return; } }catch(e){}
   return _openEngineReport('board-report','Board report', downloadBoardReport);
@@ -35731,7 +36149,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['accred','company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','inspRegister','inspFolder','meetings','top5Resp','trainRegister','trainFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
+var _IMPORT_KEYS=['accred','actionSheets','company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','inspRegister','inspFolder','meetings','top5Resp','trainRegister','trainFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
   'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance','buildingSafety','memberships',

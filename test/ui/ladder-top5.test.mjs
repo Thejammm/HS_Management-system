@@ -117,7 +117,8 @@ const ladder = () => page.evaluate(() => {
     const opened = []; const keep = window._openEngineReport;
     window._openEngineReport = (id, label) => { opened.push(id + '|' + label); return Promise.resolve(); };
     renderCockpit();
-    const btn = [...document.querySelectorAll('.ckx-panel button')].find(b => /Report/.test(b.textContent) && /Top 5/.test(b.title));
+    // "⭳ Top 5 report" since the ladder's row of tools (2026-10-07)
+    const btn = [...document.querySelectorAll('.ckx-panel button')].find(b => /report/i.test(b.textContent) && /Top 5/.test(b.title));
     if (btn) btn.click();
     switchTab('reports');
     const reports = document.getElementById('tab-reports').textContent;

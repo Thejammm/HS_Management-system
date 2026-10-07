@@ -7,14 +7,16 @@
 //  Fillable form out (pdf-lib) -> filled in as two directors would (pdf-lib
 //  in the page) -> imported into the holding list -> reviewed side by side
 //  -> the best chosen, edited, one added -> real risk actions on the plan,
-//  the first taking the month's Top 5 mark. The form's five are the
-//  report's five (topFiveOf).
+//  the first taking the month's Top 5 mark.
+//  2026-10-07: the form is now the Risk Action Sheet's proposals form - it
+//  carries the risks ticked in the Sheet column on the cockpit's risk ladder
+//  (_sheetRisks), not the Top 5's five, and is reached from the Risk action
+//  sheet screen rather than a Responses button on the ladder.
 //  Run: npm run test:ui
 // ══════════════════════════════════════════════════════════════
 import { openApp, seed, wait, reporter } from './harness.mjs';
-import { topFiveOf } from '../../public/reports/templates/top-five.js';
 
-const R = reporter('Top 5 responses - form out, forms back, choose, add to the plan');
+const R = reporter('Risk action sheet proposals - form out, forms back, choose, add to the plan');
 const { browser, page, errors } = await openApp();
 
 const month = new Date().toISOString().slice(0, 7);
@@ -23,30 +25,35 @@ const STATE = () => ({
   company: { legalName: 'Fineline Architects Ltd', sector: 'Design / architecture / surveying',
     slt: [ { name: 'Jo Fine', role: 'Managing Director', email: 'jo@fineline.example' }, { name: 'Sam Line', role: 'Technical Director', email: 'sam@fineline.example' } ] },
   riskProfile: [
-    risk('r1', 'Asbestos disturbance on survey', 4, 4, { actions: [ { id: 'a1', desc: 'Get the R&D survey', owner: 'Jo Fine', due: '2026-09-01', status: 'Not started', top5: month } ] }),
-    risk('r2', 'Fall through a fragile roof', 5, 4),
-    risk('r3', 'Driving for work', 3, 4),
-    risk('r4', 'Lone working in void property', 4, 3),
-    risk('r5', 'Manual handling of kit', 3, 3),
+    // r1-r5 ticked for this month's Risk Action Sheet; r6 is not
+    risk('r1', 'Asbestos disturbance on survey', 4, 4, { sheet: month, actions: [ { id: 'a1', desc: 'Get the R&D survey', owner: 'Jo Fine', due: '2026-09-01', status: 'Not started', top5: month } ] }),
+    risk('r2', 'Fall through a fragile roof', 5, 4, { sheet: month }),
+    risk('r3', 'Driving for work', 3, 4, { sheet: month }),
+    risk('r4', 'Lone working in void property', 4, 3, { sheet: month }),
+    risk('r5', 'Manual handling of kit', 3, 3, { sheet: month }),
     risk('r6', 'Office fire', 1, 3),
   ], top5Resp: { list: [], own: {}, notes: {} } });
 await seed(page, STATE(), 'cockpit');
 await wait(page, 600);
 
-// ── the form carries the report's five ──
+// ── the form carries the risks ticked for the Risk Action Sheet ──
 {
   const t = await page.evaluate(async () => {
-    const bytes = await buildTop5FormPDF();
+    // pdf-lib cannot read text back, so what is printed is watched as it builds
+    const said = [], P = PDFLib.PDFPage.prototype, orig = P.drawText;
+    P.drawText = function (s, o) { said.push(String(s)); return orig.call(this, s, o); };
+    let bytes; try { bytes = await buildTop5FormPDF(); } finally { P.drawText = orig; }
     const doc = await PDFLib.PDFDocument.load(bytes);
     const names = doc.getForm().getFields().map(f => f.getName());
     const meta = JSON.parse(doc.getForm().getTextField('t5__meta').getText());
-    return { pages: doc.getPageCount(), names, meta, five: _top5Five().map(f => f.z.id + (f.chosen ? '*' : '')), state: JSON.parse(JSON.stringify(S)) };
+    return { pages: doc.getPageCount(), names, meta, sheet: _sheetRisks().map(z => z.id), said, kick: said.filter(s => /ON THE ACTION SHEET/.test(s)) };
   });
-  const rep = topFiveOf(t.state, { today: new Date().toISOString().slice(0, 10) }).X.map(x => x.r.id + (x.chosen ? '*' : ''));
-  R.ok(t.five.join(',') === rep.join(','), 'the form\'s five are the report\'s five, in the same order, chosen marked the same (' + t.five.join(',') + ')');
-  R.ok(t.pages === 6 && t.meta.client === 'Fineline Architects Ltd' && t.meta.ids.join(',') === 'r1,r2,r3,r4,r5', 'a front page and a page a risk; the form knows which client and which risks it is for');
+  R.ok(t.meta.ids.join(',') === t.sheet.join(',') && t.sheet.slice().sort().join(',') === 'r1,r2,r3,r4,r5', 'the form carries the risks ticked for the Risk Action Sheet, in the sheet\'s own order (' + t.meta.ids.join(',') + ')');
+  R.ok(t.kick.length === 5 && t.kick.filter(k => /THIS MONTH.S TOP 5/.test(k)).length === 1 && /THIS MONTH.S TOP 5/.test(t.kick[t.meta.ids.indexOf('r1')] || ''), 'each risk\'s page says it is on the action sheet, and r1\'s that it is this month\'s Top 5');
+  R.ok(t.said.includes('RISK ACTION SHEET - YOUR PROPOSALS'), 'the form is titled as the Risk Action Sheet\'s proposals');
+  R.ok(t.pages === 6 && t.meta.client === 'Fineline Architects Ltd', 'a front page and a page a risk; the form knows which client it is for');
   R.ok(t.names.includes('t5__name') && t.names.includes('t5_r1_a1_what') && t.names.includes('t5_r1_a3_due') && t.names.includes('t5_r1_comment') && t.names.includes('t5_r1_agree'), 'each risk has three actions (what / who / by when), a comment box and an agree tick');
-  R.ok(!t.names.includes('t5_r6_a1_what'), 'the lowest risk is not on the form');
+  R.ok(!t.names.includes('t5_r6_a1_what'), 'a risk not ticked for the sheet is not on the form');
 }
 
 // ── filled in by two directors, imported, nothing on the plan yet ──
@@ -66,8 +73,8 @@ const fill = (who, role, answers) => page.evaluate(async (who, role, answers) =>
     't5_r2_a1_what': 'Buy two crawl boards', 't5_r2_a1_who': 'Sam Line', 't5_r2_a1_due': '15 Nov 2026' });
   const b = await fill('Sam Line', 'Technical Director', { 't5_r1_a1_what': 'Get a UKAS surveyor in', 't5_r1_a1_who': 'Sam Line', 't5_r1_a1_due': '2026-10-20', 't5_r1_comment': 'Agree, and brief the team.',
     't5_r2_a1_what': 'Roof-light checklist before every visit', 't5_r2_a1_who': 'Priya Nair', 't5_r2_a1_due': '01/11/2026', 't5_r2_agree': true });
-  R.ok(/1 response added/.test(a.toast) && a.n === 1 && a.untouched, 'a returned form lands in the holding list - nothing goes on the plan');
-  R.ok(/1 response added/.test(b.toast) && b.n === 2 && b.untouched, 'a second director\'s form joins it');
+  R.ok(/1 form added/.test(a.toast) && a.n === 1 && a.untouched, 'a returned form lands in the holding list - nothing goes on the plan');
+  R.ok(/1 form added/.test(b.toast) && b.n === 2 && b.untouched, 'a second director\'s form joins it');
   // Jo sends a corrected copy - the whole response is replaced, so it carries everything again
   const c = await fill('Jo Fine', 'Managing Director', { 't5_r1_a1_what': 'Commission the R&D survey this month (revised)', 't5_r1_a1_who': 'Jo Fine', 't5_r1_a1_due': '31/10/2026',
     't5_r1_a2_what': 'Stop intrusive work until it is back', 't5_r1_a2_who': 'Sam Line', 't5_r1_a2_due': 'end of October', 't5_r1_comment': 'We should have done this already.', 't5_r1_agree': true,
@@ -107,10 +114,12 @@ const fill = (who, role, answers) => page.evaluate(async (who, role, answers) =>
     const sec = document.getElementById('t5r-r1');
     const rows = [...sec.querySelectorAll('.t5r-row')].map(r => { const i = r.querySelectorAll('input'); return { what: i[1].value, who: i[2].value, due: i[3].value, from: r.querySelector('.t5r-from').textContent }; });
     return { open: !!ov && document.body.classList.contains('slt-open'), people: [...ov.querySelectorAll('.slt-who .slt-chip b')].map(b => b.textContent),
-      secs: [...ov.querySelectorAll('.slt-sec h3')].map(h => h.textContent).slice(1), rows, said: sec.innerText, addBtn: sec.querySelector('.btn-primary').disabled };
+      secs: [...ov.querySelectorAll('.slt-sec h3')].map(h => h.textContent).slice(1), rows, said: sec.innerText, addBtn: sec.querySelector('.btn-primary').disabled,
+      sheetNames: _sheetRisks().map(z => z.name) };
   });
   R.ok(t.open && t.people.join(',') === 'Jo Fine,Sam Line', 'the review opens with both responses named');
-  R.ok(/Asbestos disturbance on survey/.test(t.secs[0]) && t.secs.length === 5, 'a section a risk, the five in order');
+  // worst first, as the sheet orders them: the fragile roof (20) before the asbestos (16)
+  R.ok(t.secs.length === 5 && t.secs.every((h, i) => h.indexOf(t.sheetNames[i]) >= 0), 'a section a risk, the sheet\'s risks in the sheet\'s order (' + t.sheetNames.join(' | ') + ')');
   R.ok(t.rows.length === 3 && t.rows[0].what === 'Commission the R&D survey this month (revised)' && t.rows[0].due === '2026-10-31' && /from Jo Fine/.test(t.rows[0].from), 'Jo\'s proposals, with 31/10/2026 read as a date');
   R.ok(t.rows[1].what === 'Stop intrusive work until it is back' && t.rows[1].due === '' && /date not read: end of October/.test(t.rows[1].from), 'a date written in words is kept as written and flagged for a date');
   R.ok(t.rows[2].what === 'Get a UKAS surveyor in' && t.rows[2].due === '2026-10-20' && /from Sam Line/.test(t.rows[2].from), 'Sam\'s proposal beside them, 2026-10-20 read');
@@ -150,22 +159,27 @@ const fill = (who, role, answers) => page.evaluate(async (who, role, answers) =>
   R.ok(t.made[1].startsWith('Get a UKAS-accredited surveyor in for the R&D survey | Sam Line | 2026-10-20 | Not started |  |'), 'the edited wording is what lands');
   R.ok(t.made[2].startsWith('Add asbestos to the pre-survey checklist | Priya Nair | 2026-11-30 | Not started |  |'), 'and the consultant\'s own line');
   R.ok(t.oldMark === '' && t.plan.includes('Commission the R&D survey this month (revised)') && !t.plan.includes('Get the R&D survey'), 'the earlier Top 5 mark on the risk moves to the new first action - one mark per risk');
-  R.ok(t.log0.some(l => /^raised: From the Top 5 responses, .* - proposed by Jo Fine \(Managing Director\)$/.test(l)) && t.log0.some(l => l === 'comment: Consultant: Jo and Sam agree - survey first, then the checklist.') && t.log0.some(l => l === 'comment: Jo Fine: We should have done this already.') && t.log0.some(l => l === 'comment: Sam Line: Agree, and brief the team.'), 'each action\'s history says who proposed it; the note and the directors\' comments go on the first');
+  R.ok(t.log0.some(l => /^raised: From the leadership team.s proposals for the risk action sheet, .* - proposed by Jo Fine \(Managing Director\)$/.test(l)) && t.log0.some(l => l === 'comment: Consultant: Jo and Sam agree - survey first, then the checklist.') && t.log0.some(l => l === 'comment: Jo Fine: We should have done this already.') && t.log0.some(l => l === 'comment: Sam Line: Agree, and brief the team.'), 'each action\'s history says who proposed it; the note and the directors\' comments go on the first');
   R.ok(t.log1.some(l => /proposed by Sam Line/.test(l)), 'the second credits Sam');
   R.ok(t.doneRows === 3 && /3 actions added to .* - the first is this month.s Top 5 action/.test(t.toast) && t.closed, 'added rows are marked on the plan and cannot be added twice; Close puts the screen away');
 }
 
-// ── where it is reached from ──
+// ── where it is reached from: the Risk action sheet screen, not the ladder ──
 {
   const t = await page.evaluate(() => {
     renderCockpit();
     const ladder = [...document.querySelectorAll('.ckx-panel')].find(p => /Risk ladder/.test((p.querySelector('h4') || {}).textContent || ''));
-    const btn = [...ladder.querySelectorAll('button')].find(b => /^Responses/.test(b.textContent.trim()));
+    const old = [...ladder.querySelectorAll('button')].filter(b => /^(Responses|Forms)/.test(b.textContent.trim())).map(b => b.textContent.trim());
+    openActionSheets('risk');
+    const prop = [...document.querySelectorAll('#asOv button')].some(b => b.textContent.trim() === 'Proposals from the leadership team');
+    closeActionSheets();
     switchTab('reports');
-    return { ladderBtn: btn ? btn.textContent.trim() : '', card: /Top 5 Responses/.test(document.getElementById('tab-reports').textContent), keys: _IMPORT_KEYS.includes('top5Resp') };
+    const rep = document.getElementById('tab-reports').textContent;
+    return { old, prop, card: /Risk Action Sheet/.test(rep), oldCard: /Top 5 Responses/.test(rep), keys: _IMPORT_KEYS.includes('top5Resp') };
   });
-  R.ok(t.ladderBtn === 'Responses (2)', 'the ladder shows how many responses are back: ' + t.ladderBtn);
-  R.ok(t.card && t.keys, 'a Top 5 Responses card on the Reports tab; responses travel with the client');
+  R.ok(!t.old.length, 'the ladder has no Responses or Forms button' + (t.old.length ? ': ' + t.old.join(', ') : ''));
+  R.ok(t.prop, 'the Risk action sheet screen has a Proposals from the leadership team button');
+  R.ok(t.card && !t.oldCard && t.keys, 'a Risk Action Sheet card on the Reports tab and no Top 5 Responses card; responses travel with the client');
 }
 
 await R.done(browser, errors);

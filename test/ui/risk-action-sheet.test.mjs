@@ -193,8 +193,8 @@ let riskShape = '', riskHeads = '';
       under: !!tools && !!head && head.nextElementSibling === tools, headBtns: head ? head.querySelectorAll('button').length : -1,
       responses: /Responses/.test(L.outerHTML), key: /Tick the Sheet column for the Risk Action Sheet - as many as you like\./.test(L.textContent) };
   });
-  R.ok(JSON.stringify(t.texts) === JSON.stringify(['Top 5 action sheet', 'Risk action sheet', '✎ Minutes']), 'under the head, one row of tools in order - the Top 5 report button gone: ' + t.texts.join(' | '));
-  R.ok(t.calls.join(',') === 'sheets:top5,sheets:risk,minutes', 'each opens its own thing - the Top 5 sheets, the risk sheets, the minutes (' + t.calls.join(',') + ')');
+  R.ok(JSON.stringify(t.texts) === JSON.stringify(['Top 5 action sheet', 'Legal duties sheet', 'Risk action sheet', '✎ Minutes']), 'under the head, one row of tools in order - the Top 5 report button gone: ' + t.texts.join(' | '));
+  R.ok(t.calls.join(',') === 'sheets:top5,sheets:legal,sheets:risk,minutes', 'each opens its own thing - the Top 5 sheets, the legal duties sheets, the risk sheets, the minutes (' + t.calls.join(',') + ')');
   R.ok(!t.report && !t.fn, 'nothing on the ladder points at a Top 5 report, and the report is gone from the app');
   R.ok(t.under && t.headBtns === 0, 'the row sits directly under the head row, and the head row has no buttons left in it');
   R.ok(!t.responses, 'the word Responses is nowhere on the ladder');
@@ -227,7 +227,7 @@ let riskShape = '', riskHeads = '';
     const tab = document.getElementById('tab-reports');
     const cards = [...tab.querySelectorAll('.rep-card')].map(c => ({ title: __text(c.querySelector('h3')), meta: __text(c.querySelector('.rep-meta')), desc: __text(c.querySelector('p')), c }));
     const titles = cards.map(c => c.title), i = titles.indexOf('Risk Action Sheet'), j = titles.indexOf('Top 5 Action Sheet');
-    const out = { titles, text: tab.textContent, next: i > 0 && titles[i - 1] === 'Top 5 Action Sheet', meta: i >= 0 ? cards[i].meta : '',
+    const out = { titles, text: tab.textContent, next: i > 1 && titles[i - 1] === 'Legal Duties Sheet' && titles[i - 2] === 'Top 5 Action Sheet', meta: i >= 0 ? cards[i].meta : '',
       descs: [i, j].map(k => (k >= 0 ? cards[k].desc : '')) };
     if (i >= 0) {
       cards[i].c.querySelector('.rep-btn').click();
@@ -241,7 +241,7 @@ let riskShape = '', riskHeads = '';
   });
   R.ok(t.titles.includes('Risk Action Sheet') && t.titles.includes('Top 5 Action Sheet') && !t.titles.includes('Top 5 Risks'), 'the Reports tab has the Risk Action Sheet and Top 5 Action Sheet cards - and no Top 5 Risks card');
   R.ok(!t.titles.includes('Top 5 Responses') && !/Top 5 Responses/.test(t.text), 'the Top 5 Responses card is gone');
-  R.ok(t.next, 'the card sits straight after the Top 5 Action Sheet card');
+  R.ok(t.next, 'the card follows the Top 5 Action Sheet and Legal Duties Sheet cards');
   R.ok(t.descs.every(d => /control/i.test(d) && /comment/i.test(d) && /\bwho\b/i.test(d) && /by when/i.test(d)), 'both action sheet cards say what the pages now carry - the controls, the comments, who and by when: ' + t.descs.join(' / '));
   R.ok(t.meta === '5 risks ticked for ' + label, 'the card counts the risks ticked for the month: ' + t.meta);
   R.ok(t.opened === 'Risk action sheet' && t.store, 'its button opens the risk action sheets, and opening them adds nothing to the client record (' + t.opened + ')');

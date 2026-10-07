@@ -132,7 +132,7 @@ const ladder = () => page.evaluate(() => {
     return out;
   });
   const REPORT = /Top 5 (risks )?report|Top 5 Risks/i;
-  R.ok(JSON.stringify(t.tools) === JSON.stringify(['Top 5 action sheet', 'Risk action sheet', '✎ Minutes']), 'the ladder\'s tools have no Top 5 report button: ' + t.tools.join(' | '));
+  R.ok(JSON.stringify(t.tools) === JSON.stringify(['Top 5 action sheet', 'Legal duties sheet', 'Risk action sheet', '✎ Minutes']), 'the ladder\'s tools have no Top 5 report button: ' + t.tools.join(' | '));
   R.ok(!REPORT.test(t.cockpit), 'nothing on the cockpit points at a Top 5 report');
   R.ok(!t.titles.includes('Top 5 Risks') && t.titles.includes('Top 5 Action Sheet') && !REPORT.test(t.cards), 'the Reports tab has no Top 5 Risks card, and no card mentions one');
   R.ok(!REPORT.test(t.top5) && !REPORT.test(t.risk), 'the action sheet screens no longer point at it');

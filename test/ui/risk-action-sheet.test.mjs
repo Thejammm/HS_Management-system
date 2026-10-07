@@ -544,7 +544,7 @@ if (!qm1) await R.done(browser, errors);
   R.ok(iFrom >= 0 && iFrom < iElse, 'the sheet carries From the meeting, before Anything else');
   R.ok(s.some(x => x.indexOf(t.fmt) >= 0 && /present: .*Jo Fine.*Sam Line/.test(x)), 'each meeting is headed with its date and who was there');
   R.ok(s.includes(NOTE), 'the notes are printed');
-  R.ok(ACTS.every((a, i) => s.some(x => x.indexOf(a.what) >= 0 && x.indexOf(a.who) >= 0 && x.indexOf(t.dues[i]) >= 0 && /On the plan/.test(x))), 'each action is a line - what, who, by when, and that it is on the plan');
+  R.ok(ACTS.every((a, i) => s.some(x => x.indexOf(a.what) >= 0 && x.indexOf(a.who) >= 0 && x.indexOf(t.dues[i]) >= 0 && /Not started/.test(x))), 'each action is a line - what, who, by when, and where it stands on the plan, live (Not started)');
   // the second meeting was opened and closed with nothing written: it never happened, so it is not printed
   R.ok(!s.includes('No notes.') && !s.includes('Nothing minuted this month yet.') && s.filter(x => /present:/.test(x)).length === 1, 'a meeting opened and left empty is not printed - only the one minuted');
   R.ok(s.some(x => /^ACTIONS FROM THIS MEETING/i.test(x)) && ['WHAT', 'WHO', 'BY WHEN (DD/MM/YYYY)'].every(c => s.some(x => x.toUpperCase() === c)), 'then the rows for the meeting\'s actions, under What, Who and By when');

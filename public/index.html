@@ -4405,6 +4405,12 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .as-cr-g textarea{resize:vertical;min-height:36px;}
     .as-d-agreed{border-left-color:var(--accent);}
     @media (max-width:760px){ .as-cr-g{grid-template-columns:1fr;} }
+    .as-rr-hint{margin:0 0 2px;font-size:12px;}
+    .as-rr-g{margin:10px 0 0;padding:5px 10px;background:var(--accent-light);border-left:3px solid var(--accent);border-radius:0;font-size:12.5px;font-weight:700;line-height:1.45;color:var(--text);overflow-wrap:anywhere;}
+    .as-rr-g .as-cr-k{margin-right:4px;}
+    .as-rr-g0{background:var(--muted-bg,var(--bg));border-left-color:var(--border);}
+    .as-rr-g0 .as-cr-k{color:var(--text-muted);}
+    .as-cr-gone{font-size:12px;font-weight:700;color:var(--danger);margin-top:3px;}
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
     /* Quick links to other apps */
     .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;}
@@ -19974,7 +19980,7 @@ function updateRiskAction(rid, aid, field, value){
 // Owners: a.owner stays ONE string, so every report, sheet and filter that
 // reads it keeps working; more than one owner is written "Name, Name".
 // _ownersOf is the one place that splits it.
-function _ownersOf(v){ const s=(v&&typeof v==='object')?v.owner:v; return String(s||'').split(/\s*[,;]\s*/).map(x=>x.trim()).filter(Boolean); }
+function _ownersOf(v){ const s=(v&&typeof v==='object')?v.owner:v; return String(s||'').split(/\s*[,;]\s*/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean); }
 function _riskCtlRows(r){ return ((r&&r.actions)||[]).filter(a=>a&&!a.deleted&&a.hideFromPlan); }
 function _ctlOfAction(r, a){ if(!a||!a.forCtl) return null; return _riskCtlRows(r).find(c=>c.id===a.forCtl)||null; }
 function _ctlActions(r, c){ return ((r&&r.actions)||[]).filter(a=>a&&!a.deleted&&!a.hideFromPlan&&a.forCtl===c.id); }
@@ -22560,7 +22566,21 @@ function _pdfFormFooter(pdf, o){
     if(F.mid) pg.drawText(F.mid,{x:F.midX,y:F.midY,size:F.size,font,color:GREY});
   });
 }
-function _pdfAscii(t){ return String(t).replace(/→/g,'>').replace(/×/g,'x').replace(/—/g,'-').replace(/–/g,'-').replace(/·/g,'-').replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/…/g,'...'); }
+// Text for the PDFs' standard fonts - pdf-lib's Helvetica and jsPDF's both
+// draw the WinAnsi set and nothing else (pdf-lib throws on anything else, so
+// one owner named Łukasz, or a ≥ in an action, would stop a whole sheet).
+// The app's own marks become plain ones; a letter WinAnsi lacks becomes its
+// plain form (Ł L, ő o, ș s, ﬁ fi, ₂ 2) and anything else a '?'. Line breaks,
+// and the \u0001 a caller parks a mark in, pass through.
+function _pdfAscii(t){ return String(t).replace(/→/g,'>').replace(/×/g,'x').replace(/—/g,'-').replace(/–/g,'-').replace(/·/g,'-').replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/…/g,'...')
+  .replace(/[\t\r\v\f]/g,' ')
+  .replace(/[^\x00-\x7E\xA0-\xFF]/gu, ch=>{
+    if('€‚ƒ„†‡ˆ‰Š‹ŒŽ•˜™š›œžŸ'.indexOf(ch)>=0) return ch;
+    const m={ 'Ł':'L', 'ł':'l', 'Đ':'D', 'đ':'d', 'Ħ':'H', 'ħ':'h', 'ı':'i', 'Ŧ':'T', 'ŧ':'t', '≥':'>=', '≤':'<=', '≠':'<>', '−':'-',
+      '✓':'*', '✔':'*', '✅':'*', '☑':'*', '✗':'x', '✘':'x', '❌':'x', '​':'', '‌':'', '‍':'', '⁠':'', '﻿':'' };
+    if(ch in m) return m[ch];
+    const d=(ch.normalize ? ch.normalize('NFKD') : ch).replace(/[^\x20-\x7E\xA0-\xFF]/g,'');
+    return d || '?'; }); }
 // Right-aligned masthead text that can never run into what sits to its left.
 // Shrinks a little first (a slightly smaller name still reads as the name),
 // then truncates with an ellipsis. Without this a long company name printed
@@ -23356,10 +23376,10 @@ function t5Apply(rid){
 //  Store: S.actionSheets = { list:[ { id, kind, no, formV, createdAt,
 //    issuedAt, returnedAt, returnedBy, file, general, items:[ { key, ref,
 //    desc, risk, riskRef, band, owner, due, rec, carriedFrom, ctlIds,
-//    ctlPrinted, resp:{ outcome, what, date, by, ctls, src }, decision,
+//    ctlPrinted, actRows, resp:{ outcome, what, date, by, ctls, rows, src }, decision,
 //    decidedAt, dnote, acceptedBy } ] } ] }   - created when the first sheet
-//    is started. resp.ctls and the rest of the second form: THE SECOND FORM,
-//    below.
+//    is started. resp.ctls and the second form: THE SECOND FORM, below;
+//    resp.rows, actRows and the third form: THE THIRD FORM, below that.
 //
 //  RISK ACTION SHEET (Simon, 7 October 2026): the same sheet, bespoke - the
 //  risks ticked in the Sheet column of the cockpit's risk ladder (as many as
@@ -23403,7 +23423,7 @@ function _asKey(ref){ return ref ? [ref.t, ref.a, ref.b||'', ref.c||''].join(':'
 function _asSheet(id){ return _asList().find(s=>s.id===id)||null; }
 function _asItem(sid, key){ const s=_asSheet(sid); return s ? (s.items||[]).find(i=>i.key===key)||null : null; }
 function _asOutcomeLabel(k){ const o=AS_OUTCOMES.find(x=>x.k===k); return o?o.label:''; }
-function _asHasResp(it){ const r=it&&it.resp; return !!(r && (r.outcome || String(r.what||'').trim() || r.date || String(r.by||'').trim() || (Array.isArray(r.ctls) && r.ctls.some(_asCtlWritten)))); }
+function _asHasResp(it){ const r=it&&it.resp; return !!(r && (r.outcome || String(r.what||'').trim() || r.date || String(r.by||'').trim() || (Array.isArray(r.ctls) && r.ctls.some(_asCtlWritten)) || (Array.isArray(r.rows) && r.rows.some(_asRowWritten)))); }
 // ── THE SECOND FORM: the controls table (Simon, 7 October 2026) ──
 // "A table which shows my controls on one side that cannot be edited, then a
 // comments box for the client to complete, then a who, then a date ... keep
@@ -23444,12 +23464,129 @@ function _asCtlText(it, id){
 // Which form a line is answered on: the second once its controls rows are in,
 // the first once anything else is (what happened); with nothing back yet, the
 // form the sheet was sent as.
-function _asV2(s, it){ const r=it&&it.resp; if(r && Array.isArray(r.ctls)) return true; if(_asHasResp(it)) return false; return !!(s && +s.formV>=2); }
+function _asV2(s, it){ return _asForm(s, it)===2; }
+// Which form a line is answered on - 3, the actions table; 2, the controls
+// table; 1, what happened - by what came back; with nothing back yet, the
+// form the sheet was sent as (s.formV).
+function _asForm(s, it){ const r=it&&it.resp; if(r && Array.isArray(r.rows)) return 3; if(r && Array.isArray(r.ctls)) return 2; if(_asHasResp(it)) return 1; const v=+((s&&s.formV)||0); return v>=3 ? 3 : v>=2 ? 2 : 1; }
+// ── THE THIRD FORM: the actions table (Simon, 7 October 2026) ──
+// "You have put the high level control in the table to answer when it should
+// be the action - frame it the same as it is in the Action delegation &
+// timescale modal view." Each page lists the risk's OPEN actions under the
+// control each puts in place, as tab 4 sets them out (_asSheetActRows - the
+// one derivation the sheet and this screen share): against each action the
+// client's comments, who and by when - who and when printed from the plan,
+// to change where they are wrong - and, under a control nothing puts in
+// place yet, a gap row to say what will be done.
+// What comes back: it.resp = { outcome:'', what (the comments box), date:'',
+// by:'', rows:[ { k (data row as printed), a (action id, null on a gap row),
+// c (control id or null), text, cmt, who, due, dueText, pWho, pDue (who and
+// when as printed), whoChanged, dueChanged, gap, applied (the day it was
+// put on the plan), newId (the action it made) } ], src:'form' when
+// imported }. A row is kept when its comment is written or who or when was
+// changed. it.actRows keeps the data rows as printed ({ a, c, who, due, t
+// the words }) - set when the sheet is downloaded, and from a returned
+// copy's meta - so a paper copy typed in here lines up with its page;
+// s.formV=3 marks a sheet sent as the third form.
+function _asIdOf(x){ return (x && typeof x==='object') ? (x.id||null) : (x||null); }
+// The data rows of a line's table as they were printed, or would print now
+// (_asPrintedRows - the one mapping the sheet's meta reads too).
+function _asRowsAsPrinted(it){ return (Array.isArray(it.actRows) && it.actRows.length) ? it.actRows : _asPrintedRows(it); }
+// Kept when the sheet is downloaded. A line already back, or decided, keeps
+// the rows it was answered on.
+function _asStampPrinted(s){ (s.items||[]).forEach(it=>{ if(!it.decision && !_asHasResp(it)) it.actRows=_asPrintedRows(it); }); }
+// The action behind a row: on the line's risk, or the line's own action (one
+// with no risk behind it, or on the plan directly). Gone once deleted.
+function _asRowFind(it, aid){
+  if(!aid) return null;
+  const r=_execRiskOf({ ref:it.ref }), a=r ? (r.actions||[]).find(x=>x && x.id===aid && !x.deleted) : null;
+  if(a) return { a, r };
+  const o=_execOrigin(it.ref);
+  return (o && o.id===aid && !o.deleted) ? { a:o, r:null } : null;
+}
+// A row's words: the action's own words now; a gap row asks for one, as the
+// sheet does; an action since taken off the plan reads as it was printed.
+function _asRowText(it, a, c, t){
+  const f=_asRowFind(it, a); if(f) return String(f.a.desc||'').trim();
+  if(a) return String(t||'').trim();
+  return _asGapText(c);
+}
+// A control's words now; one since taken off the risk, as it was printed.
+function _asRowCtlWords(it, c){
+  if(!c) return '';
+  const r=_execRiskOf({ ref:it.ref }), x=r ? _riskCtlRows(r).find(y=>y.id===c) : null;
+  return x ? String(x.desc||'').trim() : String((it.ctlPrinted && it.ctlPrinted[c])||'').trim();
+}
+// Who and when against a row, compared with what was printed - owners
+// compared name by name (_ownersOf), whatever the case.
+function _asRowDiff(row){
+  const own=v=>_ownersOf(v).join(', ').toLowerCase();
+  row.whoChanged=own(row.who)!==own(row.pWho);
+  row.dueChanged=(row.due||String(row.dueText||'').trim())!==String(row.pDue||'');
+  return row;
+}
+// One row as it came back - the import and a paper copy typed in make it the same way.
+function _asRowMake(it, k, p, cmt, who, dueText){
+  p=p||{}; const a=_asIdOf(p.a), c=_asIdOf(p.c);
+  return _asRowDiff({ k, a, c, text:_asRowText(it, a, c, p.t), cmt:String(cmt||''), who:String(who||''), due:_top5ParseDate(dueText), dueText:String(dueText||''),
+    pWho:String(p.who||'').trim(), pDue:_top5ParseDate(p.due)||'', whoChanged:false, dueChanged:false, gap:!a, applied:'', newId:'' });
+}
+// A row with something on it: a comment, or a who or when not as printed.
+function _asRowWritten(x){ return !!(x && (String(x.cmt||'').trim() || x.whoChanged || x.dueChanged || x.applied)); }
+// What changed on a row against what was printed - for the screen (html) or
+// an action's history. A gap row printed no who or when: it says what was written.
+function _asRowChanges(row, html){
+  const e=html ? esc : (t=>String(t)), out=[], dt=String(row.dueText||'').trim();
+  const now=row.due ? fmtDate(row.due) : dt ? (html ? ('<span class="as-amber">date as written: '+esc(dt)+'</span>') : ('date as written: '+dt)) : 'left blank';
+  if(row.whoChanged){ const w=String(row.who||'').trim(); out.push('Who: '+(row.gap ? e(w||'left blank') : (e(String(row.pWho||'').trim()||'no one named')+' → '+e(w||'left blank')))); }
+  if(row.dueChanged) out.push('By when: '+(row.gap ? now : (e(row.pDue ? fmtDate(row.pDue) : 'no date')+' → '+now)));
+  return out;
+}
+// What a row sets on its action: a new owner (several written "A, B") and a
+// new target date - only what was written and could be read.
+function _asRowSets(row){ const who=_ownersOf(row.who).join(', '); return { who:(row.whoChanged && who) ? who : '', due:(row.dueChanged && row.due) ? row.due : '' }; }
+// Only ever called on a line answered on the third form (_asForm 3).
+function _asRespRows(it){ if(!it.resp || !Array.isArray(it.resp.rows)) it.resp={ outcome:'', what:String((it.resp&&it.resp.what)||''), date:'', by:'', rows:[] }; return it.resp; }
+function _asRowGet(it, k, make){
+  const l=(it.resp && Array.isArray(it.resp.rows)) ? it.resp.rows : null; if(!l) return null;
+  let row=l.find(x=>x.k===k); if(row || !make) return row||null;
+  const p=_asRowsAsPrinted(it)[k-1]; if(!p) return null;
+  row=_asRowMake(it, k, p, '', p.who, p.due);
+  l.push(row); l.sort((x,y)=>x.k-y.k); return row;
+}
+// A sheet line onto the plan as a new action: on the risk, in the shape
+// addCtlAction gives one - under its control while that control is still on
+// the risk, otherwise not linked - or, with no risk behind the line, on the
+// plan as one added directly. Its history says where it came from. The
+// second form and the third both put lines on the plan through here.
+function _asAddPlanAction(s, it, cId, desc, owner, due, said){
+  const r=_execRiskOf({ ref:it.ref });
+  let a, c=null;
+  if(r){
+    c=cId ? (_riskCtlRows(r).find(x=>x.id===cId)||null) : null;
+    if(!Array.isArray(r.actions)) r.actions=[];
+    a={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc, owner, due:due||'', status:'Not started', priority:_suggestPriority(r) };
+    if(c) a.forCtl=c.id;
+    _stamp(a,'created'); r.actions.push(a);
+    r.raised=(r.raised||0)+1;
+    _stamp(r,'updated');
+  } else {
+    if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
+    a={ id:_reqUid('act'), desc, owner, due:due||'', status:'Not started', priority:'', source:'Added directly', sourceLabel:_asTitle(s) };
+    _stamp(a,'created'); S.actionPlan.push(a);
+  }
+  _logAdd(a,'raised','From '+_asTitle(s)+', returned '+fmtDate(s.returnedAt||_asToday())+': '+said);
+  return { a, r, c };
+}
 // What the client wrote on the second form, in one line - for the action's history.
 function _asCtlSaid(it){
   const tidy=t=>String(t||'').trim().replace(/[.;,\s]+$/,'');
   const r=it.resp||{}, out=[], w=tidy(r.what);
   if(w) out.push('comments: '+w);
+  (Array.isArray(r.rows)?r.rows:[]).filter(_asRowWritten).forEach(x=>{
+    const t=tidy(x.text), cm=tidy(x.cmt), ch=_asRowChanges(x, false).join(', ');
+    out.push((x.gap ? 'new action' : ('action '+x.k+(t?(' ('+(t.length>60?(t.slice(0,59)+'…'):t)+')'):'')))+': '+(cm||'no comment')+(ch?(', '+ch):''));
+  });
   (Array.isArray(r.ctls)?r.ctls:[]).filter(_asCtlWritten).forEach(c=>{
     const t=tidy(c.ctlText), cm=tidy(c.cmt), who=tidy(c.who), when=c.due?fmtDate(c.due):tidy(c.dueText);
     out.push('control '+c.k+(t?(' ('+(t.length>60?(t.slice(0,59)+'…'):t)+')'):'')+': '+(cm||'no comment')+(who?(', '+who):'')+(when?(', by '+when):''));
@@ -23600,13 +23737,13 @@ function _asRender(){
   let intro;
   if(risk){
     const month=_top5Month(), mLabel=_top5MonthLabel(month), ticked=_sheetRisks(month);
-    intro='<div class="slt-muted" style="margin:0 0 6px;line-height:1.55;">As many risks as you tick on the cockpit\'s risk ladder, one action each with the control you recommend - add more from the plan if you want them. Each risk gets a page with its controls; against each control the leadership team write their comments, who will do it and by when, and anything else goes in the comments box at the bottom of the page. The sheet ends with what came up at the client meeting, from the quick minute taker. Import the returned file and each comment lands under its own control, ready to go on the plan; you decide each line as on the Top 5 sheet.</div>'
+    intro='<div class="slt-muted" style="margin:0 0 6px;line-height:1.55;">As many risks as you tick on the cockpit\'s risk ladder, one action each with the control you recommend - add more from the plan if you want them. Each risk gets a page with its open actions, set out under the controls they put in place as on the risk\'s 4 · Action delegation &amp; timescale: against each action the leadership team write their comments and put right who and by when (printed from the plan), a control nothing puts in place yet gets a line to say what will be done, and anything else goes in the comments box under the table. The sheet ends with what came up at the client meeting, from the quick minute taker. Import the returned file and each answer lands against its own action - a new who or by when to apply to the plan, a comment for its history, or a new action under its control; you decide each line as on the Top 5 sheet.</div>'
       +'<div class="slt-muted" style="margin:0 0 12px;line-height:1.55;">'
       +(ticked.length
         ? ('<b>Ticked for '+esc(mLabel)+' ('+ticked.length+'):</b> '+ticked.map(z=>{ const ref=_riskRefOf(z.r); return esc((ref?(ref+' '):'')+z.name); }).join('; '))
         : ('<b>Nothing ticked for '+esc(mLabel)+' yet.</b> Tick the Sheet column on the cockpit\'s risk ladder.'))
       +'</div>';
-  } else intro='<div class="slt-muted" style="margin:0 0 12px;line-height:1.55;">Five actions at a time, each with the control you recommend. The first sheet is the Top 5 - the risks ticked on the risk ladder, topped up from the system\'s own ranking (needs attention first, then the next worst) - and each next sheet carries on down the same list. Each action gets a page, with its risk and the controls on that risk; against each control the leadership team write their comments, who will do it and by when, and send the sheet back. Import it and each comment lands under its own control, ready to go on the plan. You then decide each line: agree it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Every decision is written on the action in the execution plan.</div>';
+  } else intro='<div class="slt-muted" style="margin:0 0 12px;line-height:1.55;">Five actions at a time, each with the control you recommend. The first sheet is the Top 5 - the risks ticked on the risk ladder, topped up from the system\'s own ranking (needs attention first, then the next worst) - and each next sheet carries on down the same list. Each action gets a page, with its risk and the risk\'s open actions set out under the controls they put in place, as on the risk\'s 4 · Action delegation &amp; timescale: against each action the leadership team write their comments and put right who and by when (printed from the plan), and send the sheet back. Import it and each answer lands against its own action, ready to apply to the plan. You then decide each line: agree it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Every decision is written on the action in the execution plan.</div>';
   const people=_sltPeople(null);
   const body=sheets.length ? sheets.map((s,idx)=>_asSheetHTML(s, idx===0, ro, dis)).join('')
     : '<section class="slt-sec"><div class="slt-muted">'+(risk
@@ -23660,7 +23797,7 @@ function _asSheetHTML(s, latest, ro, dis){
     : '<details class="slt-sec as-old" id="asS-'+esc(s.id)+'"'+(st.k==='reviewed'?'':' open')+'><summary>'+esc(nm)+' · '+esc(st.label)+'</summary>'+inner+'</details>';
 }
 function _asItemHTML(s, it, i, locked, ro, dis){
-  const sid=_asQ(s.id), key=_asQ(it.key), r=it.resp||{}, back=_asHasResp(it), done=!!it.decision, v2=_asV2(s, it);
+  const sid=_asQ(s.id), key=_asQ(it.key), r=it.resp||{}, back=_asHasResp(it), done=!!it.decision, fm=_asForm(s, it), v2=fm>=2;      // v2: answered on a table (the second form or the third) - Agreed, never approved
   const o=_execOrigin(it.ref);
   const gone=!o ? '<div class="as-warn">This action is no longer on the plan.</div>' : '';
   const thin=(!locked && !ro && o) ? _asThin(it) : [];
@@ -23671,8 +23808,8 @@ function _asItemHTML(s, it, i, locked, ro, dis){
     : '<textarea class="slt-notes" rows="2" placeholder="The control you recommend, in the words the client will read" oninput="asRec('+sid+','+key+',this.value)">'+esc(it.rec||'')+'</textarea>';
   const opt=AS_OUTCOMES.map(x=>'<option value="'+x.k+'"'+(r.outcome===x.k?' selected':'')+'>'+esc(x.label)+'</option>').join('');
   const lockResp=(done||ro)?' disabled':'';
-  // the second form brings back the controls table, a line a control; the first, what happened
-  const resp=!s.issuedAt && !back ? '' : v2 ? _asCtlRespHTML(s, it, i, ro) :
+  // the third form brings back the actions table, a line an action; the second, the controls table; the first, what happened
+  const resp=!s.issuedAt && !back ? '' : fm===3 ? _asRowRespHTML(s, it, i, ro) : fm===2 ? _asCtlRespHTML(s, it, i, ro) :
     '<div class="slt-lab">What came back'+(back?'':' - import the returned sheet, or enter it here from a paper copy')+'</div>'
     +'<div class="as-resp"><select'+lockResp+' onchange="asResp('+sid+','+key+',\'outcome\',this.value)"><option value="">- what happened -</option>'+opt+'</select>'
     +'<input type="date"'+lockResp+' value="'+esc(r.date||'')+'" onchange="asResp('+sid+','+key+',\'date\',this.value)" title="Date done">'
@@ -23742,6 +23879,70 @@ function _asCtlRespHTML(s, it, i, ro){
       +'<div class="as-cr-m">'+(String(row.who||'').trim()?esc(row.who):'No one named')+' · '+when(row)+'</div>'
       +plan(row)+'</div>').join('')
     +((!what && !shown.length)?'<div class="slt-muted">Nothing was written on this page.</div>':'');
+}
+
+// What came back on the third form, a line under each action. An imported
+// sheet reads as it was written, each line with the one button that takes it
+// to the plan: a new who or when applied to its action (the comment on the
+// action's history), a comment alone added to that history, a gap row - or
+// an action since taken off the plan - added as a new action under its
+// control. A paper copy is typed in here: the rows in the order, and under
+// the controls, they were printed in, who and when filled in as printed.
+function _asRowRespHTML(s, it, i, ro){
+  const sid=_asQ(s.id), key=_asQ(it.key), r=it.resp||{}, back=_asHasResp(it), done=!!it.decision;
+  const rows=(Array.isArray(r.rows)?r.rows:[]), what=String(r.what||'').trim();
+  const rk=_execRiskOf({ ref:it.ref }), ctls=rk ? _riskCtlRows(rk) : [];
+  const cNo=c=>c ? (ctls.findIndex(x=>x.id===c)+1) : 0;      // as tab 4 numbers it; 0 once taken off the risk
+  const gone=row=>(row.a && !row.applied && !_asRowFind(it, row.a)) ? '<div class="as-cr-gone">This action is no longer on the plan.</div>' : '';
+  const foot=(row, k)=>'<div id="asR-'+esc(s.id)+'-'+i+'-'+k+'-x">'+(_asRowWritten(row) ? _asRowFootHTML(s, it, row) : '')+'</div>';
+  if(!ro && !done && r.src!=='form'){
+    const pr=_asRowsAsPrinted(it), f=k=>'asR-'+esc(s.id)+'-'+i+'-'+k, grouped=pr.some(p=>p && _asIdOf(p.c));
+    let at;      // the control the row above sat under, so each control heads its own rows, as on the page
+    return '<div class="slt-lab">What came back'+(back?' - from a paper copy':' - import the returned sheet, or enter it here from a paper copy')+'</div>'
+      +'<div class="slt-muted as-rr-hint">Who and by when are filled in as they were printed - change them only where the copy does.</div>'
+      +pr.map((p,j)=>{
+        const k=j+1, c=_asIdOf(p&&p.c), row=rows.find(x=>x.k===k) || _asRowMake(it, k, p, '', p&&p.who, p&&p.due), lk=row.applied?' disabled':'';
+        let g='';
+        if(grouped && (j===0 || c!==at)) g=c ? ('<div class="as-rr-g"><span class="as-cr-k">Control '+(cNo(c)||'-')+'</span> '+esc(_asRowCtlWords(it, c))+'</div>') : '<div class="as-rr-g as-rr-g0"><span class="as-cr-k">Not linked to a control</span></div>';
+        at=c;
+        const on=fld=>' oninput="asRowResp('+sid+','+key+','+k+',\''+fld+'\',this.value)"';
+        return g+'<div class="as-cr as-cr-in"><div class="as-cr-h"><span class="as-cr-k">Action '+k+'</span> · '+esc(row.text||'')+'</div>'+gone(row)
+          +'<div class="as-cr-g"><textarea id="'+f(k)+'-cmt" rows="2"'+lk+' placeholder="'+(row.gap?'What they say will be done':'What they wrote about this action')+'"'+on('cmt')+'>'+esc(row.cmt||'')+'</textarea>'
+          +'<input id="'+f(k)+'-who" list="asPeople"'+lk+' value="'+esc(row.who||'')+'" placeholder="Who"'+on('who')+'>'
+          +'<input id="'+f(k)+'-due" type="date"'+lk+' value="'+esc(row.due||'')+'" title="By when" onchange="asRowResp('+sid+','+key+','+k+',\'due\',this.value)"></div>'
+          +foot(row, k)+'</div>';
+      }).join('')
+      +'<div class="as-cr-k as-cr-kb">Comments on this risk</div>'
+      +'<textarea class="slt-notes" id="'+f(0)+'-what" rows="2" placeholder="What they wrote in the comments box under the table" oninput="asRowResp('+sid+','+key+',0,\'what\',this.value)">'+esc(r.what||'')+'</textarea>';
+  }
+  if(!back) return '<div class="slt-lab">What came back</div><div class="slt-muted">Nothing back yet.</div>';
+  const head=row=>{
+    if(!row.a) return '<div class="as-cr-h"><span class="as-cr-k">'+(row.c ? ('New action under '+(cNo(row.c)?('Control '+cNo(row.c)):'a control since taken off the risk')) : 'New action on this risk')+'</span>'
+      +(row.c && _asRowCtlWords(it, row.c) ? (' · '+esc(_asRowCtlWords(it, row.c))) : '')+'</div>';
+    return '<div class="as-cr-h"><span class="as-cr-k">Action '+row.k+'</span>'+(String(row.text||'').trim()?(' · '+esc(row.text)):'')+'</div>';
+  };
+  const shown=rows.filter(_asRowWritten);
+  return '<div class="slt-lab">What came back</div>'
+    +(what?('<div class="as-fixed as-cr-what"><span class="as-cr-k">Comments on this risk</span>'+esc(what)+'</div>'):'')
+    +shown.map(row=>'<div class="as-cr">'+head(row)+gone(row)
+      +'<div class="as-cr-c">'+(String(row.cmt||'').trim()?esc(row.cmt):'<span class="slt-muted">No comment written</span>')+'</div>'
+      +foot(row, row.k)+'</div>').join('')
+    +((!what && !shown.length)?'<div class="slt-muted">Nothing was written on this page.</div>':'');
+}
+// Under a row that came back: what changed against what was printed, and the
+// one button that takes it to the plan - ✓ Done once it has.
+function _asRowFootHTML(s, it, row){
+  const ch=_asRowChanges(row, true).map(t=>'<div class="as-cr-m">'+t+'</div>').join('');
+  if(_roLocked()) return ch;
+  if(row.applied) return ch+'<div class="as-cr-b"><span class="as-cr-on">✓ Done</span></div>';
+  const rk=_execRiskOf({ ref:it.ref }), under=!!(row.c && rk && _riskCtlRows(rk).some(x=>x.id===row.c));
+  const f=row.a ? _asRowFind(it, row.a) : null, set=_asRowSets(row), fix=!!(set.who || set.due);
+  const lab=!row.a ? ('＋ Add to the plan'+(under?' under this control':'')) : !f ? '＋ Add as a new action' : fix ? 'Apply to the plan' : 'Add to the action’s history';
+  const tip=!row.a ? ('A new action on the plan for this risk'+(under?', under this control':'')+' - worded from what the client wrote')
+    : !f ? 'The action has gone from the plan - put this on as a new action'
+    : fix ? 'Sets the new who and by when on the action, and writes the comment on its history'
+    : 'Writes what the client said on the action’s history - nothing else changes';
+  return ch+'<div class="as-cr-b"><button type="button" class="btn btn-outline btn-xs" onclick="asRowToPlan('+_asQ(s.id)+','+_asQ(it.key)+','+row.k+')" title="'+esc(tip)+'">'+lab+'</button></div>';
 }
 
 // ── building a sheet ──
@@ -23868,22 +24069,7 @@ function asCtlToPlan(sid, key, k){
   if(!row || !_asCtlWritten(row)){ showToast('Type in what the copy says against this control first','info'); return; }
   const cmt=String(row.cmt||'').trim(), who=String(row.who||'').trim(), ctlText=String(row.ctlText||'').trim()||_asCtlText(it, row.ctlId);
   const desc=(cmt||('Put in place: '+ctlText)).slice(0,240);
-  const r=_execRiskOf({ ref:it.ref });
-  let a, c=null;
-  if(r){
-    c=row.ctlId ? (_riskCtlRows(r).find(x=>x.id===row.ctlId)||null) : null;
-    if(!Array.isArray(r.actions)) r.actions=[];
-    a={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc, owner:who, due:row.due||'', status:'Not started', priority:_suggestPriority(r) };
-    if(c) a.forCtl=c.id;
-    _stamp(a,'created'); r.actions.push(a);
-    r.raised=(r.raised||0)+1;
-    _stamp(r,'updated');
-  } else {
-    if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
-    a={ id:_reqUid('act'), desc, owner:who, due:row.due||'', status:'Not started', priority:'', source:'Added directly', sourceLabel:_asTitle(s) };
-    _stamp(a,'created'); S.actionPlan.push(a);
-  }
-  _logAdd(a,'raised','From '+_asTitle(s)+', returned '+fmtDate(s.returnedAt||_asToday())+': '+(cmt||desc));
+  const { a, r, c }=_asAddPlanAction(s, it, row.ctlId, desc, who, row.due, cmt||desc);
   row.actId=a.id;
   saveData(); try{ _refreshActionViews(); }catch(e){}
   _asRedrawKeep();
@@ -23899,6 +24085,70 @@ function _asRedrawKeep(){
   try{ n.focus({ preventScroll:true }); if(a!=null && typeof n.setSelectionRange==='function') n.setSelectionRange(a,b); }catch(e){}
 }
 
+// The third form typed in from a paper copy: k is the row as printed (0 is
+// the comments box). Typing only saves - the row's changes and its button
+// are redrawn in place, the box being typed in is left alone; the first
+// entry stamps the sheet back and, as the line comes back, redraws the
+// sheet with the cursor where it was.
+function asRowResp(sid, key, k, f, v){
+  if(_roLocked()) return;
+  const s=_asSheet(sid), it=_asItem(sid,key); if(!s||!it||it.decision||_asForm(s,it)!==3) return;
+  if(it.resp && it.resp.src==='form') return;          // an imported sheet reads as it was written
+  const was=_asHasResp(it);
+  _asRespRows(it);
+  let row=null;
+  if(f==='what') it.resp.what=v;
+  else {
+    row=_asRowGet(it, k, true); if(!row || row.applied) return;
+    if(f==='due'){ row.due=v||''; row.dueText=''; }
+    else if(f==='cmt' || f==='who') row[f]=v;
+    else return;
+    _asRowDiff(row);
+  }
+  const first=!s.returnedAt;
+  if(first) s.returnedAt=_asToday();
+  if(first || was!==_asHasResp(it)){ saveData(); _asRedrawKeep(); return; }
+  scheduleAutoSave();
+  const el=row ? document.getElementById('asR-'+s.id+'-'+(s.items||[]).indexOf(it)+'-'+k+'-x') : null;
+  if(el) el.innerHTML=_asRowWritten(row) ? _asRowFootHTML(s, it, row) : '';
+}
+// A row of the actions table onto the plan. An action still on the plan
+// takes the new who and by when, through the plan's own paths, and what the
+// client said goes on its history; a row with only a comment adds it to the
+// history; a gap row, or an action since taken off the plan, becomes a new
+// action - under its control while that control is still on the risk.
+function asRowToPlan(sid, key, k){
+  if(_blockIfReadOnly()) return;
+  const s=_asSheet(sid), it=_asItem(sid,key); if(!s||!it||_asForm(s,it)!==3) return;
+  const row=_asRowGet(it, k, false);
+  if(row && row.applied){ showToast('That line is already done','info'); return; }
+  if(!row || !_asRowWritten(row)){ showToast('Type in what the copy says against this line first','info'); return; }
+  const cmt=String(row.cmt||'').trim(), f=_asRowFind(it, row.a), set=_asRowSets(row);
+  let msg;
+  if(f){
+    const ch=_asRowChanges(row, false).join('; ');
+    if(set.who || set.due){
+      const q=encodeURIComponent(JSON.stringify(it.ref));
+      const put=(fld,v)=>{ if(f.r) updateRiskAction(f.r.id, f.a.id, fld, v); else updateExecAction(q, fld, v); };
+      if(set.who) put('owner', set.who);
+      if(set.due) put('due', set.due);
+    }
+    _logAdd(f.a,'comment','From '+_asTitle(s)+', returned '+fmtDate(s.returnedAt||_asToday())+': '+(cmt ? (cmt+(ch?(' ('+ch+')'):'')) : ch));
+    _stamp(f.a,'updated');
+    msg=(set.who || set.due) ? ('✓ Applied to the plan - '+[set.who?('owner '+set.who):'', set.due?('target '+fmtDate(set.due)):''].filter(Boolean).join(', ')+(cmt?' - and the comment is on its history':'')) : '✓ On the action’s history';
+  } else {
+    const cw=_asRowCtlWords(it, row.c);
+    const desc=(cmt || (row.a ? String(row.text||'').trim() : '') || (cw?('Put in place: '+cw):'') || String(it.rec||'').trim() || String(it.desc||'').trim()).slice(0,240);
+    const n=_asAddPlanAction(s, it, row.c, desc, _ownersOf(row.who).join(', '), row.due, cmt||desc);
+    row.newId=n.a.id;
+    msg='✓ On the plan'+(n.r?(' - '+(_riskRefOf(n.r)||'the risk')+(n.c?', under its control':', not linked to a control')):' - added directly')+((n.a.owner&&n.a.due)?'':' - set its owner and target date there');
+  }
+  row.applied=_asToday();
+  saveData(); try{ _refreshActionViews(); }catch(e){}
+  _asRedrawKeep();
+  showToast(msg,'success',6000);
+}
+
 // ── the decision, written on the action itself ──
 function asDecide(sid, key, decision, i){
   if(_blockIfReadOnly()) return;
@@ -23908,7 +24158,7 @@ function asDecide(sid, key, decision, i){
   const o=_execOrigin(it.ref);
   if(!o){ showToast('That action is no longer on the plan - nothing to decide','error'); return; }
   // the second form says it under each control; the first, what happened
-  const v2=_asV2(s, it);
+  const v2=_asForm(s, it)>=2;      // the second form or the third: comments on a table
   const said=v2 ? ('Client comments - '+_asCtlSaid(it)) : ((_asOutcomeLabel(r.outcome)||'No outcome given')+(String(r.what||'').trim()?(' - '+String(r.what).trim()):''));
   const tag=_asLogTag(s)+': ';
   if(decision==='approved'){
@@ -23972,58 +24222,161 @@ function _asQuickMeetings(month){
   month=month||_asToday().slice(0,7);
   return _clientNoteMeetings().filter(m=>String(m.date||'').slice(0,7)===month);
 }
+// ── THE THIRD FORM: the actions table (Simon, 7 October 2026) ──
+// "You have put the high level control in the table to answer when it should
+// be the action - frame it the same as it is in the Action delegation &
+// timescale modal view, but obviously in the table so it can be edited."
+// Each page's table lists the risk's OPEN plan actions, framed as tab 4 frames
+// them: a heading a high level control (the control table's order and number,
+// its words, in place or planned), that control's open actions under it - or,
+// for a control not yet in place that nothing open puts in place, one row
+// asking what will be done; a control already in place with nothing open
+// under it has its heading alone - then "Not linked to a control". Against
+// each action the leadership team write a comment and correct who and by
+// when, which come printed from the plan.
+// _asSheetActRows is the one derivation of those rows: the sheet, as__meta
+// (v:3), a paper copy typed in and the review all read it.
+//  heading rows: { head:true, c (the control, or null for Not linked), j (its
+//    number on tab 3 and tab 4, 0 for none), text }
+//  data rows: { head:false, k (1.. across the item's table, headings not
+//    counted), a, c (the action and the control it sits under, or null), aid,
+//    cid, j, text (the action's words, or the gap label), who (owners "A, B"),
+//    due (ISO), gap (no action yet), own (the sheet line itself) }
+// A risk with no controls: its open actions, no headings. Nothing open and no
+// controls: one gap row. An action with no risk behind it: one row, itself.
+// A gap row's words - one line in the action column. The sheet, a paper copy
+// typed in and the review all read them from here.
+const AS_GAP='No action yet - what will be done?';
+function _asGapText(c){ return AS_GAP; }
+// A control is in place once its row on the control table is Complete: its
+// heading says In place since, and it asks for no action under it.
+function _ctlInPlace(c){ return _actionStatus(c)==='Complete'; }
+function _asSheetActRows(it){
+  const ref=it&&it.ref, r=_execRiskOf({ ref }), own=_execOrigin(ref)||null;
+  const live=a=>!!(a && !a.deleted);
+  // open: on the plan, worded, not Complete or Accepted - the sheet line too, once it is closed it is off the table
+  const open=a=>live(a) && !a.hideFromPlan && !!String(a.desc||'').trim() && !_actClosed(a);
+  const out=[]; let k=0;
+  const row=(a,c,j)=>{ k++; out.push({ head:false, k, a:a||null, c:c||null, aid:a?a.id:null, cid:c?c.id:null, j:j||0,
+    text:a?String(a.desc||'').trim():_asGapText(c), who:a?_ownersOf(a).join(', '):'', due:a?String(a.due||''):'', gap:!a, own:!!(a && a===own) }); };
+  if(!r){ row(live(own)?own:null, null, 0); return out; }
+  // the risk's open plan actions in tab 4's order (a free action raised
+  // against the risk, while it is open, sits with them, at the end)
+  const acts=(r.actions||[]).filter(open);
+  if(open(own) && acts.indexOf(own)<0) acts.push(own);
+  // the controls that have words, numbered as tab 3 and tab 4 number them
+  const ctls=_riskCtlRows(r).map((c,i)=>({ c, j:i+1 })).filter(x=>String(x.c.desc||'').trim());
+  const grp=a=>{ const c=_ctlOfAction(r,a); return (c && ctls.some(x=>x.c===c)) ? c : null; };
+  if(!ctls.length){ acts.forEach(a=>row(a,null,0)); if(!acts.length) row(null,null,0); return out; }
+  ctls.forEach(x=>{
+    const mine=acts.filter(a=>grp(a)===x.c);
+    out.push({ head:true, c:x.c, j:x.j, text:String(x.c.desc||'').trim() });
+    if(mine.length) mine.forEach(a=>row(a,x.c,x.j)); else if(!_ctlInPlace(x.c)) row(null,x.c,x.j);
+  });
+  const loose=acts.filter(a=>!grp(a));
+  if(loose.length){ out.push({ head:true, c:null, j:0, text:'Not linked to a control' }); loose.forEach(a=>row(a,null,0)); }
+  return out;
+}
+// The data rows as printed, in k order: the action (null for a gap row), the
+// control it sat under, who and by when exactly as they went into the boxes
+// (who in the PDF's letters, due the ISO date the box shows as dd/mm/yyyy, or
+// none), and t the words - so a correction is told from what was printed. The
+// one mapping: the sheet's meta (without t), it.actRows and a paper copy typed
+// in all read it. Pass the rows already derived to keep the sheet and its meta one.
+function _asPrintedRows(it, list){ return (list||_asSheetActRows(it)).filter(x=>x && !x.head).map(x=>({ a:x.aid, c:x.cid, who:_pdfAscii(x.who||'').trim(), due:_asDMY(x.due) ? String(x.due).slice(0,10) : '', t:String(x.text||'').trim() })); }
+// An ISO date as the sheet prints it in a box: dd/mm/yyyy (_top5ParseDate reads it back).
+function _asDMY(iso){ const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||'')); return m ? (m[3]+'/'+m[2]+'/'+m[1]) : ''; }
+
 // ── the sheet the client works from ──
 // The first real deliverable a client holds, so it is built like the risk
 // itself, set out like one of our procedures: a cover - what the sheet is
 // for, the risks at a glance in their band's colour, what we need back and
-// how to read a score - then a page an action: what is wrong, who it affects,
-// where the risk stands today and where it will stand, what needs to be done
-// and the control we recommend, then the two-way part (Simon, 7 October
-// 2026): the risk's high level controls, printed and not to be edited, with
-// the client's comments, who and by when against each, and a box for the
-// comments on the risk at the foot of its page. Every page stands alone, so
-// it can be handed to whoever owns that action. Fillable on screen, and it
-// prints to write on. Fields: as_<n>_c<k>_cmt / _who / _due a control row,
-// as_<n>_what the comments on the risk; as__meta (v:2) carries each item's
-// control row ids in row order (ctls, null for a row that is not one), so
-// the import puts every answer back under its own control.
+// how to read a score - then a page a risk (or action): what is wrong, who it
+// affects, where the risk stands today and where it will stand, what needs to
+// be done and the control we recommend, then the two-way part: the actions
+// table (above), and a box for the comments on the risk under it. Every risk
+// starts a page, so it can be handed to whoever owns that action. Fillable on
+// screen, and it prints to write on. Fields: as_<n>_r<k>_cmt / _who / _due a
+// data row (who and when prefilled from the plan), as_<n>_what the comments on
+// the risk, as__general, and on a risk action sheet as__m1..4_what/_who/_due;
+// as__meta (v:3) carries rows: per item [{ a, c, who, due }] in k order.
 //
 // The look is the board report's light one (Simon, twice now: no big dark
 // banners): a white page, ink text, an accent rule across the top, the
 // organisation and kickers in the accent, pale accent panels with an accent
 // left rule. The only solid colour is a risk band, where colour is the meaning.
+//
+// White space and the page edges (Simon, 7 October 2026: "make sure white
+// space is minimised and nothing bleeds into headers or footers"): every page
+// has one content box - an inner page from just under the masthead rule (TOP)
+// down to BOT, the cover from its own top - and every vertical step goes
+// through take / keep / skip / at, so nothing is drawn above the masthead rule
+// or into the footer. Parts stack with fixed gaps (no spreading to fill a
+// page); a row never splits and moves over only when it truly does not fit;
+// the comments box sits under its table, squeezed rather than left alone on a
+// page; the closing parts follow straight on when they fit whole.
 async function buildActionSheetPDF(sid){
   const L=window.PDFLib; if(!L) throw new Error('pdf-lib is not loaded');
   const s=_asSheet(sid); if(!s) throw new Error('sheet not found');
   const client=_sltClient(), risk=_asKindOf(s)==='risk';
   const pdf=await L.PDFDocument.create();
-  const font=await pdf.embedFont(L.StandardFonts.Helvetica), bold=await pdf.embedFont(L.StandardFonts.HelveticaBold);
+  const font=await pdf.embedFont(L.StandardFonts.Helvetica), bold=await pdf.embedFont(L.StandardFonts.HelveticaBold), ital=await pdf.embedFont(L.StandardFonts.HelveticaOblique);
   const form=pdf.getForm();
-  const W=595.28, H=841.89, ML=40, MR=W-40, CW=MR-ML, BOT=60;
+  const W=595.28, H=841.89, ML=40, MR=W-40, CW=MR-ML, BOT=60, TOP=H-58;
   const hex=h=>{ h=String(h).replace('#',''); return L.rgb(parseInt(h.slice(0,2),16)/255, parseInt(h.slice(2,4),16)/255, parseInt(h.slice(4,6),16)/255); };
   // the report layer's own tokens (public/reports/report.css)
   const INK=hex('1D1F20'), ACC=hex('5980A6'), GREY=hex('6A6C6E'), HAIR=hex('D4D4D7'), GROUND=hex('F2F2F3'), PANEL=hex('E6EDF4'), WHITE=L.rgb(1,1,1);
   const BAND={ Critical:hex('DC2626'), High:hex('EA580C'), Medium:hex('F59E0B'), Low:hex('16A34A'), '':hex('9CA3AF') };
   const A=t=>_pdfAscii(String(t==null?'':t));
+  // as A, keeping the app's middle dot ("Planned · Jo · by 3 Nov") that A turns into a dash
+  const K=t=>A(String(t==null?'':t).replace(/·/g,'\u0001')).replace(/\u0001/g,'·');
+  // wrap to a width - a word too long for it on its own is broken by letters, so no line runs past its width
   const wrap=(t,f,size,w)=>{ const out=[]; String(A(t)).split('\n').forEach(seg=>{ const words=seg.split(/\s+/).filter(Boolean); let cur='';
-    words.forEach(wd=>{ const trial=cur?cur+' '+wd:wd; if(f.widthOfTextAtSize(trial,size)<=w) cur=trial; else { if(cur) out.push(cur); cur=wd; } }); out.push(cur); }); return out.length?out:['']; };
-  const clip=(lines,max)=>{ if(lines.length<=max) return lines; const o=lines.slice(0,max); o[max-1]=o[max-1].replace(/[\s.,;:]+$/,'')+' ...'; return o; };
+    words.forEach(wd=>{ const trial=cur?cur+' '+wd:wd; if(f.widthOfTextAtSize(trial,size)<=w) cur=trial; else { if(cur) out.push(cur); cur=wd;
+      while(cur.length>1 && f.widthOfTextAtSize(cur,size)>w){ let i=cur.length-1; while(i>1 && f.widthOfTextAtSize(cur.slice(0,i),size)>w) i--; out.push(cur.slice(0,i)); cur=cur.slice(i); } } }); out.push(cur); }); return out.length?out:['']; };
+  // keep max lines; the last cut word by word (or, one long word, letter by
+  // letter) until it and ' ...' fit the width it was wrapped to
+  const clip=(lines,max,f,size,w)=>{ if(lines.length<=max) return lines; const o=lines.slice(0,max), fit=l=>f.widthOfTextAtSize(l+' ...',size)<=w;
+    let l=o[max-1].replace(/[\s.,;:]+$/,'');
+    while(!fit(l) && /\s/.test(l)) l=l.replace(/\s+\S+$/,'').replace(/[\s.,;:]+$/,'');
+    while(!fit(l) && l.length>1) l=l.slice(0,-1);
+    o[max-1]=l+' ...'; return o; };
+  // one line, cut to a width with ' ...'
+  const fitW=(t,f,size,w)=>{ if(f.widthOfTextAtSize(t,size)<=w) return t; let x=t; while(x.length>1 && f.widthOfTextAtSize(x+' ...',size)>w) x=x.slice(0,-1); return x.replace(/[\s.,;:·]+$/,'')+' ...'; };
   const issued=_asToday();
   const producer=String((S.branding&&S.branding.producer)||'AHS Compliance Consulting');
-  let page, y;
   const T=(t,x,yy,size,o)=>{ o=o||{}; page.drawText(A(t),{x,y:yy,size,font:o.bold?bold:font,color:o.color||INK}); };
   const caps=(t,x,yy,o)=>{ o=o||{}; page.drawText(A(t).toUpperCase(),{x,y:yy,size:o.size||6.8,font:bold,color:o.color||GREY}); };
   const rule=(yy,col,th)=>page.drawLine({start:{x:ML,y:yy},end:{x:MR,y:yy},thickness:th||0.6,color:col||HAIR});
-  // the masthead every inner page opens with: organisation left, sheet and date right, an ink rule
+
+  // ── THE CONTENT BOX: the one guard every vertical step goes through ──
+  // top0 is this page's top (TOP under a masthead, H on the cover); nothing
+  // goes under BOT, where the footer lives. take(h) hands out a block h tall
+  // and keeps it whole: when it would cross BOT it starts a page first, and
+  // what the part in hand puts at a page's head (ctx.open) - and closes on
+  // the page it leaves (ctx.shut) - is drawn. keep(h) asks for room without
+  // using it (a heading and its first row). skip(h) is a gap: never a page
+  // break, never at a page's head, never under BOT. at(v) moves back up a
+  // column on the same page.
+  let page, y=0, top0=0, ctx=null;
   const mast=()=>{ T(client.toUpperCase(),ML,H-34,8.5,{bold:true});
     const m=A(_asTitle(s).toUpperCase()+'    '+fmtDate(issued).toUpperCase()); page.drawText(m,{x:MR-font.widthOfTextAtSize(m,6.6),y:H-33,size:6.6,font,color:GREY});
     page.drawLine({start:{x:ML,y:H-41},end:{x:MR,y:H-41},thickness:0.8,color:INK}); };
-  const addPage=(withMast)=>{ page=pdf.addPage([W,H]); if(withMast){ mast(); y=H-58; } };
-  const ensure=(need)=>{ if(y-need<BOT){ addPage(true); return true; } return false; };
+  const addPage=withMast=>{ page=pdf.addPage([W,H]); top0=withMast?TOP:H; y=top0; if(withMast) mast(); };
+  const fits=h=>y-h>=BOT-0.01;
+  const fresh=()=>y>=top0-0.01;
+  const brk=()=>{ const c=ctx; if(c&&c.shut) c.shut(); addPage(true); if(c&&c.open) c.open(); };
+  const keep=h=>{ if(!fits(h) && !fresh()) brk(); };
+  const take=h=>{ keep(h); const t=y; y-=h; return t; };
+  const skip=h=>{ if(!fresh()) y=Math.max(BOT, y-h); };
+  const at=v=>{ y=Math.min(top0, Math.max(BOT, v)); };
   const para=(t,size,o)=>{ o=o||{}; const f=o.bold?bold:font, x=o.x||ML, w=o.w||(MR-x), lh=size*(o.lh||1.4);
-    let lines=wrap(t,f,size,w); if(o.max) lines=clip(lines,o.max);
-    lines.forEach(ln=>{ ensure(lh); page.drawText(ln,{x,y:y-size,size,font:f,color:o.color||INK}); y-=lh; }); y-=(o.gap==null?2:o.gap); };
+    let lines=wrap(t,f,size,w); if(o.max) lines=clip(lines,o.max,f,size,w);
+    lines.forEach((ln,i)=>{ const t0=take(lh); if(i===0 && o.dot) page.drawRectangle({x:o.dot,y:t0-7.4,width:4,height:4,color:ACC}); page.drawText(ln,{x,y:t0-size,size,font:f,color:o.color||INK}); });
+    skip(o.gap==null?2:o.gap); };
+  const paraH=(t,size,o)=>{ o=o||{}; const f=o.bold?bold:font, x=o.x||ML, w=o.w||(MR-x); let n=wrap(t,f,size,w).length; if(o.max) n=Math.min(n,o.max); return n*size*(o.lh||1.4)+(o.gap==null?2:o.gap); };
   const field=(name,x,yTop,w,h,o)=>{ o=o||{}; const tf=form.createTextField(name); if(o.multi) tf.enableMultiline();
+    if(o.text) tf.setText(A(o.text));
     tf.addToPage(page,{x,y:yTop-h,width:w,height:h,borderColor:HAIR,borderWidth:o.bare?0:0.8}); tf.setFontSize(o.size||9); return tf; };
   const bandOf=sc=>(sc&&sc.rating)?(sc.priority||''):'';
   // a score, as a solid block in its band's colour
@@ -24041,147 +24394,189 @@ async function buildActionSheetPDF(sid){
   // dash, and keeping "3 · Managed" on one line
   const wrapK=(t,f,size,w)=>wrap(String(t==null?'':t).replace(/ · /g,'¦•¦').replace(/·/g,'•'),f,size,w).map(l=>l.replace(/¦/g,' ').replace(/•/g,'·'));
 
-  // a page an action, in the order they sit on the sheet; the risk behind
-  // each is told in full on its page
+  // a page a risk (a Top 5 sheet: a page an action), in the order they sit on
+  // the sheet; the risk behind each is told in full on its page
   const groups=s.items.map((it,i)=>({ id:it.key, r:_execRiskOf({ ref:it.ref })||null, items:[{ it, n:i+1 }] }));
   const gName=g=>g.r?String(g.r.activity||g.r.hazard||'Risk'):String(g.items[0].it.risk||'Action');
   const gRef=g=>g.r?_riskRefOf(g.r):'';
-
-  // The rows of each page's table come from _asSheetCtlRows - the one
-  // derivation the screen, a paper copy typed in and the return trip use too:
-  // the risk's high level controls (the control table on 3 · Controls &
-  // rating, in its order); a risk with none, or an action with no risk, gets
-  // one row - the control we recommend, or failing that the action itself.
-  // Only how a row reads on paper is set here: its words, and under a control
-  // whether it is in place or planned. The cover's meta records the row ids.
-  const ctlSt=c=>(c.status==='Complete')
-    ? ('In place'+(c.completedDate?(' since '+fmtDate(c.completedDate)):''))
-    : ['Planned', String(c.owner||'').trim(), c.due?('by '+fmtDate(c.due)):''].filter(Boolean).join(' · ');
-  const rowsFor=s.items.map(it=>_asSheetCtlRows(it).map(x=>x.c
-    ? { id:x.id, text:x.text, st:ctlSt(x.c) }
-    : { id:null, text:x.text||'The control we recommend', st:String(it.rec||'').trim()?'Our recommendation':'The action above' }));
+  // each item's table rows - the one derivation (_asSheetActRows); as__meta
+  // records the same rows, so what comes back lines up with what was printed
+  const actRows=s.items.map(it=>_asSheetActRows(it));
 
   // ══ the cover: light, as the board report's - an accent rule, the
   //    organisation in the accent, a large ink title - then set out like one
-  //    of our procedures (Simon, 7 October 2026): what the sheet is for, the
-  //    risks at a glance in their band's colour, what we need back, and how
-  //    to read a score. Each part is measured before it is drawn, so a short
-  //    sheet fills the page and a long list runs on - never clipped. ══
+  //    of our procedures: what the sheet is for, the risks at a glance in
+  //    their band's colour, what we need back, and how to read a score. The
+  //    parts stack with fixed gaps; a long list runs on - never clipped. ══
   addPage(false);
   const cover=page;
   page.drawRectangle({x:0,y:H-7,width:W,height:7,color:ACC});
-  y=H-46;
-  clip(wrap(client.toUpperCase(),bold,9.5,CW),1).forEach(ln=>{ page.drawText(ln,{x:ML,y:y-9.5,size:9.5,font:bold,color:ACC}); }); y-=22;
-  page.drawText(risk?'RISK ACTION SHEET':'TOP 5 ACTIONS',{x:ML,y:y-38,size:40,font:bold,color:INK}); y-=52;
+  at(H-46);
+  { const t=take(22); clip(wrap(client.toUpperCase(),bold,9.5,CW),1,bold,9.5,CW).forEach(ln=>{ page.drawText(ln,{x:ML,y:t-9.5,size:9.5,font:bold,color:ACC}); }); }
+  { const t=take(52); page.drawText(risk?'RISK ACTION SHEET':'TOP 5 ACTIONS',{x:ML,y:t-38,size:40,font:bold,color:INK}); }
   const nRisk=new Set(groups.map(g=>g.r?g.r.id:g.id)).size;
-  T(risk ? ('The '+nRisk+' risk'+(nRisk!==1?'s':'')+' to deal with, and the control we recommend for each')
-    : ('The '+(groups.length===1?'action':groups.length+' actions')+' to deal with first, and the control we recommend for each'), ML, y-11, 11.5); y-=24;
-  T(_asName(s)+'      Issued '+fmtDate(issued)+'      Prepared by '+producer, ML, y-8, 8.5, { color:GREY }); y-=18;
-  rule(y, INK, 0.8); y-=20;
-  const head=t=>{ caps(t, ML, y-7, { size:7.6, color:ACC }); y-=17; };
+  { const t=take(24); T(risk ? ('The '+nRisk+' risk'+(nRisk!==1?'s':'')+' to deal with, and the actions in your plan for each')
+    : ('The '+(groups.length===1?'action':groups.length+' actions')+' to deal with first, and the plan behind each'), ML, t-11, 11.5); }
+  { const t=take(18); T(_asName(s)+'      Issued '+fmtDate(issued)+'      Prepared by '+producer, ML, t-8, 8.5, { color:GREY }); }
+  { const t=take(20); rule(t, INK, 0.8); }
+  const head=tt=>{ const t=take(17); caps(tt, ML, t-7, { size:7.6, color:ACC }); };
 
   // 1 - what the sheet is for
   const pL=wrap(risk
-    ? 'This sheet sets out the controls we recommend for the risks we picked out with you, drawn from your risk profile. It is for your leadership team to respond to: each risk has a page of its own, with our controls in a table and room against each one for your comments, who will do it and by when. When it comes back, your answers go into your plan under each control.'
-    : 'This sheet sets out the controls we recommend for the risks that matter most to your business right now, drawn from your risk profile. It is for your leadership team to respond to: each action has a page of its own, with the risk behind it, our controls in a table and room against each one for your comments, who will do it and by when. When it comes back, your answers go into your plan under each control.', font, 10, CW);
-  const pPurpose={ h:17+pL.length*14.6, draw(){ head('Purpose'); pL.forEach(ln=>{ page.drawText(ln,{x:ML,y:y-10,size:10,font,color:INK}); y-=14.6; }); } };
+    ? 'This sheet sets out the actions in your plan for the risks we picked out with you, drawn from your risk profile. It is for your leadership team to respond to: each risk has a page of its own, with its actions in a table - grouped under the control each one puts in place, as in your plan - and room against each one for your comments, who will do it and by when. When it comes back, your answers go into your plan.'
+    : 'This sheet sets out the actions that matter most to your business right now, drawn from your risk profile. It is for your leadership team to respond to: each action has a page of its own, with the risk behind it, the control we recommend and the actions on that risk in a table - grouped under the control each one puts in place - with room against each one for your comments, who will do it and by when. When it comes back, your answers go into your plan.', font, 10, CW);
+  const pPurpose={ first:17+pL.length*14.6, draw(){ head('Purpose'); pL.forEach(ln=>{ const t=take(14.6); page.drawText(ln,{x:ML,y:t-10,size:10,font,color:INK}); }); } };
 
   // 2 - the risks at a glance, each row in its band's colour: a bar down
   //     the left edge, the number in the band, a pale wash of it behind
-  let ROW=44; const gx1=MR-182, gx2=MR-76;      // the today and once-done chips (a short list's rows grow - see below)
-  const gHead=more=>{ caps('The '+(groups.length>1?groups.length:'one')+' at a glance'+(more?' (continued)':''), ML, y-7, { size:7.6, color:ACC });
-    [['Today',gx1],['Once done',gx2]].forEach(c=>caps(c[0], c[1]+(70-bold.widthOfTextAtSize(c[0].toUpperCase(),6.6))/2, y-7, { size:6.6 }));
-    y-=13; rule(y, INK, 0.8); y-=3; };
+  // ROW a row of the list and G the gap between parts - tightened below when
+  // that keeps the whole cover on its page (see the stacking at the end)
+  let ROW=44, G=18; const gx1=MR-182, gx2=MR-76;      // the today and once-done chips
+  const gHead=more=>{ const t=take(16); caps('The '+(groups.length>1?groups.length:'one')+' at a glance'+(more?' (continued)':''), ML, t-7, { size:7.6, color:ACC });
+    [['Today',gx1],['Once done',gx2]].forEach(c=>caps(c[0], c[1]+(70-bold.widthOfTextAtSize(c[0].toUpperCase(),6.6))/2, t-7, { size:6.6 }));
+    rule(t-13, INK, 0.8); };
   const gRow=(g,gi)=>{
-    const sc=g.r?_riskScore(g.r):null, tg=g.r?_riskTarget(g.r):null, ref=gRef(g), col=BAND[bandOf(sc)], top=y, h=ROW-3;
+    const sc=g.r?_riskScore(g.r):null, tg=g.r?_riskTarget(g.r):null, ref=gRef(g), col=BAND[bandOf(sc)], top=take(ROW), h=ROW-3;
+    const tY=top-15+(44-ROW)/2, dMax=ROW>=44?2:1;      // a tighter row keeps one line of the action
     page.drawRectangle({x:ML,y:top-h,width:CW,height:h,color:wash(col,0.08)});
     page.drawRectangle({x:ML,y:top-h,width:4,height:h,color:col});
-    const off=(ROW-44)/2;      // a taller row keeps its words in the middle
-    page.drawText(String(gi+1),{x:ML+13,y:top-27-off,size:18,font:bold,color:col});
+    page.drawText(String(gi+1),{x:ML+13,y:top-h/2-6.5,size:18,font:bold,color:col});
     const tx=ML+42, tw=gx1-12-tx;
-    page.drawText(clip(wrap((ref?(ref+'   '):'')+gName(g),bold,10.5,tw),1)[0],{x:tx,y:top-15-off,size:10.5,font:bold,color:INK});
-    clip(wrap(g.items.map(x=>x.it.desc).join('  |  '),font,8.4,tw),2).forEach((ln,k)=>page.drawText(ln,{x:tx,y:top-27.5-off-k*10.4,size:8.4,font,color:GREY}));
+    page.drawText(clip(wrap((ref?(ref+'   '):'')+gName(g),bold,10.5,tw),1,bold,10.5,tw)[0],{x:tx,y:tY,size:10.5,font:bold,color:INK});
+    clip(wrap(g.items.map(x=>x.it.desc).join('  |  '),font,8.4,tw),dMax,font,8.4,tw).forEach((ln,k)=>page.drawText(ln,{x:tx,y:tY-12.5-k*10.4,size:8.4,font,color:GREY}));
     chip(gx1,top-4,70,h-8,sc,'Not rated');
     const ay=top-h/2; page.drawLine({start:{x:gx1+76,y:ay},end:{x:gx2-10,y:ay},thickness:1.4,color:INK}); tri(gx2-4,ay,'M 0 0 L -6 -3.6 L -6 3.6 Z',INK);
     chip(gx2,top-4,70,h-8,tg,'No target');
-    y-=ROW;
   };
-  const pGlance={ h:16+groups.length*ROW, draw(flow){ gHead(false); groups.forEach((g,gi)=>{ if(flow && y-ROW<BOT){ addPage(true); gHead(true); } gRow(g,gi); }); } };
+  const pGlance={ get first(){ return 16+ROW; }, draw(){ gHead(false); ctx={ open:()=>gHead(true) }; groups.forEach(gRow); ctx=null; } };
 
   // 3 - what we need back
   const steps=[
     'Read each page: what is wrong, who it affects, where the risk stands and the control we recommend.',
-    'Against each of our controls in the table, tell us what you think, who will do it and by when.',
-    'Anything else about a risk goes in the comments box at the bottom of its page'+(risk?'; anything agreed at our meeting goes on the meeting page at the end':'')+'.',
+    'Against each action in the table, tell us what you think. Who and by when come filled in from your plan - change them if they are wrong. Where a control has no action yet, tell us what will be done.',
+    'Anything else about a risk goes in the comments box under its table'+(risk?'; anything agreed at our meeting goes in the meeting part at the end':'')+'.',
     'Save this file and email it back to us - or print it, write on it and send us a photo.' ];
   const sL=steps.map(t=>wrap(t,font,9.4,CW-22)), sH=l=>Math.max(16,l.length*13)+5;
-  const pBack={ h:17+sL.reduce((a,l)=>a+sH(l),0), draw(){ head('What we need from you');
-    sL.forEach((l,i)=>{ const top=y; page.drawText(String(i+1),{x:ML,y:top-10.5,size:11,font:bold,color:ACC});
-      l.forEach((ln,k)=>page.drawText(ln,{x:ML+22,y:top-9.6-k*13,size:9.4,font,color:INK})); y=top-sH(l); }); } };
+  const pBack={ first:17+sL.reduce((a,l)=>a+sH(l),0), draw(){ head('What we need from you');
+    sL.forEach((l,i)=>{ const top=take(sH(l)); page.drawText(String(i+1),{x:ML,y:top-10.5,size:11,font:bold,color:ACC});
+      l.forEach((ln,k)=>page.drawText(ln,{x:ML+22,y:top-9.6-k*13,size:9.4,font,color:INK})); }); } };
 
   // 4 - how to read a score: the cockpit risk ladder's own words for what
   //     each band demands, over the tenant's own score ranges
   const LEG=['Critical','High','Medium','Low'].map(b=>[b, _bandRange(b), _bandRule(b)]);
   const lI=wrapK('Each risk is scored likelihood x severity, 1 to 25. Its band sets how well it must be controlled ('+_hsLevel('notheld')+' to '+_hsLevel('held')+').',font,8.8,CW);
   const LW=(CW-30)/4, lL=LEG.map(b=>wrapK(b[2],font,8.2,LW-14)), lN=Math.max(...lL.map(l=>l.length)), lB=16+8+lN*10.6+2;
-  const pLegend={ h:17+lI.length*12.2+6+lB, draw(){ head('How to read the scores');
-    lI.forEach(ln=>{ page.drawText(ln,{x:ML,y:y-8.8,size:8.8,font,color:INK}); y-=12.2; }); y-=6;
-    const top=y;
+  const pLegend={ first:17+lI.length*12.2+6+lB, draw(){ head('How to read the scores');
+    lI.forEach(ln=>{ const t=take(12.2); page.drawText(ln,{x:ML,y:t-8.8,size:8.8,font,color:INK}); }); skip(6);
+    const top=take(lB);
     LEG.forEach((b,i)=>{ const x=ML+i*(LW+10), col=BAND[b[0]];
       page.drawRectangle({x,y:top-lB,width:LW,height:lB,color:wash(col,0.08)});
       page.drawRectangle({x,y:top-16,width:LW,height:16,color:col});
       page.drawText(b[0].toUpperCase(),{x:x+7,y:top-11,size:7.4,font:bold,color:WHITE});
       page.drawText(b[1],{x:x+LW-7-bold.widthOfTextAtSize(b[1],7.4),y:top-11,size:7.4,font:bold,color:WHITE});
-      lL[i].forEach((ln,k)=>page.drawText(ln,{x:x+7,y:top-16-6-8.2-k*10.6+2,size:8.2,font,color:INK})); });
-    y=top-lB; } };
+      lL[i].forEach((ln,k)=>page.drawText(ln,{x:x+7,y:top-16-6-8.2-k*10.6+2,size:8.2,font,color:INK})); }); } };
 
-  const parts=[pPurpose, pGlance, pBack, pLegend], room=y-BOT, total=parts.reduce((a,p)=>a+p.h,0);
-  if(total+3*10<=room){
-    // it all fits: what is left is spread between the parts, so the cover is
-    // a full page - a short list's rows grow a little first (up to 60pt) and
-    // its gaps open up to 52pt, so one or two risks still fill the page
-    const grow=Math.min(16, Math.max(0, (room-total-3*34)/groups.length));
-    ROW+=grow; pGlance.h+=grow*groups.length;
-    const gap=Math.min(grow?52:34,(room-total-grow*groups.length)/3);
-    parts.forEach((p,i)=>{ if(i) y-=gap; p.draw(false); });
-  } else {
-    // a long list runs on to the next page, and the parts after it follow it
-    pPurpose.draw(); y-=14;
-    pGlance.draw(true);
-    [pBack, pLegend].forEach(p=>{ y-=14; if(y-p.h<BOT) addPage(true); p.draw(); });
-  }
+  // stacked with fixed gaps (18pt). When that would push the last part on to
+  // a page of its own, the gaps close to 12 or 10 and the list's rows to 40 or
+  // 36 - whichever first keeps the whole cover on its page; a list too long
+  // for even that runs on over the pages it needs, each part (the list: its
+  // heading and first row) starting where it fits
+  { const fixed=pPurpose.first+16+pBack.first+pLegend.first;
+    const cfg=[[18,44],[12,44],[12,40],[10,36]].find(c=>fixed+groups.length*c[1]+3*c[0]<=y-BOT+0.01);
+    if(cfg){ G=cfg[0]; ROW=cfg[1]; } }
+  [pPurpose, pGlance, pBack, pLegend].forEach((p,i)=>{ if(i) skip(G); keep(p.first); p.draw(); });
   const meta=form.createTextField('as__meta');
-  meta.setText(JSON.stringify({ v:2, kind:_asKindOf(s), client:client, sheet:s.id, no:s.no, made:issued, keys:s.items.map(i=>i.key), ctls:rowsFor.map(rs=>rs.map(x=>x.id)) }));
-  meta.addToPage(cover,{x:ML,y:BOT-8,width:1,height:1,borderWidth:0}); meta.enableReadOnly();
+  // the rows as printed, without their words; the JSON kept to plain ASCII (\u escapes) so a client's name in
+  // any alphabet can neither stop the sheet nor come back changed
+  meta.setText(JSON.stringify({ v:3, kind:_asKindOf(s), client:client, sheet:s.id, no:s.no, made:issued, keys:s.items.map(i=>i.key),
+    rows:s.items.map((it,i)=>_asPrintedRows(it, actRows[i]).map(p=>({ a:p.a, c:p.c, who:p.who, due:p.due }))) }).replace(/[\u007f-￿]/g, ch=>'\\u'+('000'+ch.charCodeAt(0).toString(16)).slice(-4)));
+  meta.addToPage(cover,{x:ML,y:BOT,width:1,height:1,borderWidth:0}); meta.enableReadOnly();
 
-  // ══ a page an action ══
+  // ══ a page a risk ══
+  const ctlSt=c=>_ctlInPlace(c)
+    ? ('In place'+(c.completedDate?(' since '+fmtDate(c.completedDate)):''))
+    : ['Planned', _ownersOf(c).join(', '), c.due?('by '+fmtDate(c.due)):''].filter(Boolean).join(' · ');
+  const CWS=[CW*0.40, CW*0.30, CW*0.15, CW*0.15], CX=[ML, ML+CWS[0], ML+CWS[0]+CWS[1], ML+CWS[0]+CWS[1]+CWS[2]];
+  // HDR the table's header row; CSZ/CLH an action's words, AW their width; SSZ/SLH the grey line under them; HR a
+  // heading row of one line; MINR a row's least height (room to write); CP the comments box (12pt under the table),
+  // CPS squeezed (6pt under) and COMMS that with its gap - what the last row must take with it; CONT the room
+  // "Continued overleaf" needs under any other row
+  const HDR=20, CSZ=8.8, CLH=11, SSZ=7, SLH=9, HR=18, MINR=30, CP=76, CPS=66, COMMS=6+CPS, CONT=12, AW=CWS[0]-30;
+  const TAG='ON THIS SHEET', TAGW=bold.widthOfTextAtSize(TAG,5.6)+8;
+  // a heading: CONTROL k, the control's words in bold ink and where it stands in grey - at the right of the
+  // words' first line when that is no taller, else under them. A page the table runs on to repeats the
+  // heading of the rows it carries on with, "(continued)", on one line.
+  const headOf=(e,cont)=>{
+    const label=A((e.c?('Control '+e.j):'Not linked to a control')+(cont?' (continued)':'')).toUpperCase(), tx=ML+10+bold.widthOfTextAtSize(label,6.8)+8, full=MR-10-tx;
+    if(!e.c || cont) return { e, label, tx, words:e.c?clip(wrap(e.text,bold,CSZ,full),1,bold,CSZ,full):[], st:'', same:true, h:HR };
+    const st0=K(ctlSt(e.c)), stW=font.widthOfTextAtSize(st0,SSZ), sw=full-stW-14;
+    const sA=(stW<=full*0.6) ? wrap(e.text,bold,CSZ,sw) : null, uA=wrap(e.text,bold,CSZ,full);
+    if(sA && (sA.length<=3 || uA.length>3) && Math.min(sA.length,3)*CLH<=Math.min(uA.length,3)*CLH+SLH+1)
+      return { e, label, tx, words:clip(sA,3,bold,CSZ,sw), st:st0, same:true, h:HR+(Math.min(sA.length,3)-1)*CLH };
+    const words=clip(uA,3,bold,CSZ,full);
+    return { e, label, tx, words, st:fitW(st0,font,SSZ,full), same:false, h:HR+(words.length-1)*CLH+SLH+1 };
+  };
+  // how each row reads on paper, measured
+  const measure=list=>list.map(e=>{
+    if(e.head) return headOf(e,false);
+    const f=e.gap?ital:font, lines=clip(wrap(e.text||'(no description)',f,CSZ,AW),40,f,CSZ,AW);
+    const st0=e.gap?'':K([_actionStatus(e.a), String(e.a.priority||'').trim()].filter(Boolean).join(' · '));
+    const st=st0?fitW(st0,font,SSZ,AW-(e.own?TAGW+5:0)):'', hasSt=!!(st||e.own);
+    return { e, lines, st, hasSt, h:Math.max(MINR, (hasSt?31:19)+(lines.length-1)*CLH) };
+  });
+  // the most a unit of rows may be: what a fresh page holds under its kicker, the table's header, a
+  // repeated heading and the squeezed comments box
+  const UMAX=(TOP-BOT)-16-HDR-HR-COMMS;
+
+  // ══ the closing parts, measured before the pages are set out: what came up
+  //    at the client meeting (a risk action sheet), then anything else to tell
+  //    us. Each follows straight on under what comes before it - after a gap
+  //    and an ink rule (JOIN) - when it fits there whole, or starts a page of
+  //    its own, opened by the masthead's rule. The last risk's comments box is
+  //    squeezed when that is what lets the first of them follow on. ══
+  const JOIN=20;
+  const SAVE='Save this file (File > Save, or the download button in your browser viewer) and email it back. Printing it to PDF, or some phone apps, can flatten the boxes - if that happens, send the saved file, or a photo of the printed sheet.';
+  const anyH=12+50+paraH(SAVE,7.8,{ gap:2 });
+  // the month's quick minutes, then four rows to write in anything else agreed -
+  // read back into the quick minutes when the sheet is imported
+  const mtgs=risk ? _asQuickMeetings(_asMonthOf(s)) : [];      // the sheet's own month, so it prints the same every time it is downloaded
+  const mi=mtgs.map(m=>{ const present=(m.attendees||[]).map(a=>String((a&&a.name)||'').trim()).filter(Boolean), note=String(m.note||'').trim();
+    return { hd:fmtDate(m.date)+' · present: '+(present.length?present.join(', '):'nobody recorded'), note,
+      dec:_sltActions(m).filter(d=>String(d.decision||'').trim()).map(d=>'- '+String(d.decision).trim()+' ('+(String(d.owner||'').trim()||'to be named')+', '+(d.due?fmtDate(d.due):'no date')+') · '+_qmActWord(d)) }; });
+  const NONE='Nothing minuted this month yet.', WR=14+16+11+4*32;
+  const mtH=(x,i)=>(i?12:0)+paraH(x.hd,9.6,{ bold:true, gap:4 })+paraH(x.note||'No notes.',9.4,{ lh:1.45, gap:6 })+x.dec.reduce((a,t)=>a+paraH(t,9.2,{ x:ML+8, lh:1.4, gap:2 }),0)+10;
+  const meetH=18+30+(mi.length?mi.reduce((a,x,i)=>a+mtH(x,i),0):paraH(NONE,9.4,{ gap:10 }))+WR;
+  const closeH=risk ? meetH : anyH;
+  const opener=h=>{ if(fits(JOIN+h)){ skip(10); const t=take(10); rule(t, INK, 0.8); } else addPage(true); };
+
   groups.forEach((g,gi)=>{
-    addPage(true);
+    addPage(true); ctx=null;
     const r=g.r, sc=r?_riskScore(r):{ rating:null, priority:'' }, tg=r?_riskTarget(r):{ rating:null, priority:'' }, ref=gRef(g);
-    caps('Action '+(gi+1)+' of '+groups.length+(ref?('    '+ref):'')+(g.items.some(x=>x.it.carriedFrom)?('    carried from '+_asName({ kind:s.kind, no:g.items.find(x=>x.it.carriedFrom).it.carriedFrom }).toLowerCase()):''), ML, y-8, { size:7.6, color:ACC });
-    if(r && typeof _riskFlagOn==='function' && _riskFlagOn(r)){ const tg2=A((typeof _riskMode==='function'&&_riskMode(r)==='ops')?'BUSINESS-CRITICAL':'COULD KILL OR SERIOUSLY INJURE');
-      const tw2=bold.widthOfTextAtSize(tg2,6.6)+12; page.drawRectangle({x:MR-tw2,y:y-11,width:tw2,height:13,color:BAND.Critical}); page.drawText(tg2,{x:MR-tw2+6,y:y-7,size:6.6,font:bold,color:WHITE}); }
-    y-=18;
-    clip(wrap(gName(g),bold,20,CW),2).forEach(ln=>{ page.drawText(ln,{x:ML,y:y-20,size:20,font:bold,color:INK}); y-=24; });
-    y-=12;
+    const kw=(risk?'Risk ':'Action ')+(gi+1)+' of '+groups.length;
+    { const t=take(18);
+      caps(kw+(ref?('    '+ref):'')+(g.items.some(x=>x.it.carriedFrom)?('    carried from '+_asName({ kind:s.kind, no:g.items.find(x=>x.it.carriedFrom).it.carriedFrom }).toLowerCase()):''), ML, t-8, { size:7.6, color:ACC });
+      if(r && typeof _riskFlagOn==='function' && _riskFlagOn(r)){ const tg2=A((typeof _riskMode==='function'&&_riskMode(r)==='ops')?'BUSINESS-CRITICAL':'COULD KILL OR SERIOUSLY INJURE');
+        const tw2=bold.widthOfTextAtSize(tg2,6.6)+12; page.drawRectangle({x:MR-tw2,y:t-13,width:tw2,height:13,color:BAND.Critical}); page.drawText(tg2,{x:MR-tw2+6,y:t-9.2,size:6.6,font:bold,color:WHITE}); } }
+    clip(wrap(gName(g),bold,20,CW),2,bold,20,CW).forEach(ln=>{ const t=take(24); page.drawText(ln,{x:ML,y:t-20,size:20,font:bold,color:INK}); });
+    skip(8);
 
     if(r){
       // ── the journey: today -> the scale -> once the control is in place ──
-      const th=92, tw=126, top=y;
+      const th=82, tw=126, top=take(th);
       const tile=(x,label,p,none,sub)=>{
         const has=!!p.rating, col=BAND[bandOf(p)];
         page.drawRectangle({x,y:top-th,width:tw,height:th,color:GROUND});
         page.drawRectangle({x,y:top-4,width:tw,height:4,color:has?col:HAIR});
-        caps(label, x+10, top-17, { size:6.4, color:GREY });
-        if(has){ page.drawText(String(p.rating),{x:x+10,y:top-56,size:34,font:bold,color:col});
-          page.drawText(A(p.priority).toUpperCase(),{x:x+10,y:top-70,size:8.6,font:bold,color:col});
-          page.drawText(A('Likelihood '+p.l+' x Severity '+p.s),{x:x+10,y:top-83,size:7,font,color:GREY}); }
-        else { page.drawText(A(none),{x:x+10,y:top-50,size:11,font:bold,color:GREY}); wrap(sub,font,7.2,tw-20).forEach((ln,k)=>page.drawText(ln,{x:x+10,y:top-63-k*9,size:7.2,font,color:GREY})); }
+        caps(label, x+10, top-16, { size:6.4, color:GREY });
+        if(has){ page.drawText(String(p.rating),{x:x+10,y:top-48,size:30,font:bold,color:col});
+          page.drawText(A(p.priority).toUpperCase(),{x:x+10,y:top-61,size:8.6,font:bold,color:col});
+          page.drawText(A('Likelihood '+p.l+' x Severity '+p.s),{x:x+10,y:top-73,size:7,font,color:GREY}); }
+        else { page.drawText(A(none),{x:x+10,y:top-44,size:11,font:bold,color:GREY}); wrap(sub,font,7.2,tw-20).slice(0,2).forEach((ln,k)=>page.drawText(ln,{x:x+10,y:top-57-k*9,size:7.2,font,color:GREY})); }
       };
       tile(ML,'Where it stands today',sc,'Not rated yet','The score is set on the risk profile.');
       tile(MR-tw,'Once the control is in place',tg,'No target set','We will agree the target with you.');
-      const sx=ML+tw+20, sw=CW-2*tw-40, by=top-58, bh=12, cw=sw/25;
-      caps('The journey', sx, top-17, { size:6.4, color:ACC });
+      const sx=ML+tw+20, sw=CW-2*tw-40, by=top-52, bh=12, cw=sw/25;
+      caps('The journey', sx, top-16, { size:6.4, color:ACC });
       for(let n=1;n<=25;n++) page.drawRectangle({x:sx+(n-1)*cw,y:by,width:cw-0.7,height:bh,color:BAND[(typeof _bandFor==='function'?_bandFor(n):'')||'']});
       page.drawText('1',{x:sx,y:by-9,size:6.2,font,color:GREY}); page.drawText('25',{x:sx+sw-font.widthOfTextAtSize('25',6.2),y:by-9,size:6.2,font,color:GREY});
       const px=p=>sx+(p.rating-0.5)*cw;
@@ -24191,12 +24586,12 @@ async function buildActionSheetPDF(sid){
         const lb='TARGET '+tg.rating; page.drawText(lb,{x:Math.max(sx,Math.min(sx+sw-bold.widthOfTextAtSize(lb,6.4),xt-bold.widthOfTextAtSize(lb,6.4)/2)),y:by-19,size:6.4,font:bold,color:ACC}); }
       if(sc.rating && tg.rating && sc.rating!==tg.rating){ const xn=px(sc), xt=px(tg), d=xt<xn?-1:1, ay=by+bh+3.5;
         page.drawLine({start:{x:xn+d*7,y:ay},end:{x:xt-d*5,y:ay},thickness:1.3,color:INK}); tri(xt,ay,d<0?'M 0 0 L 6 -3.4 L 6 3.4 Z':'M 0 0 L -6 -3.4 L -6 3.4 Z',INK); }
-      y=top-th-12;
+      skip(10);
       const drop=(sc.rating&&tg.rating) ? (tg.rating<sc.rating
           ? ('Today this risk scores '+sc.rating+' ('+sc.priority+'). With the control below in place it is expected to come down to '+tg.rating+' ('+tg.priority+').')
           : ('Today this risk scores '+sc.rating+' ('+sc.priority+'). The control below is to hold it there.'))
         : sc.rating ? ('Today this risk scores '+sc.rating+' ('+sc.priority+'). No target has been set for it yet.') : 'This risk has not been scored yet.';
-      para(drop,9.6,{ bold:true, gap:10 });
+      para(drop,9.6,{ bold:true, gap:8 });
 
       // ── what is wrong | who it affects ──
       const lw=CW*0.6-14, rx=ML+CW*0.6+6, rw=MR-rx, top2=y;
@@ -24206,149 +24601,160 @@ async function buildActionSheetPDF(sid){
       if(as2) wrong.push(as2);
       if(hm) wrong.push('What could happen: '+hm);
       if(!wrong.length) wrong.push('The detail of this risk is on your risk profile.');
-      caps('What is wrong', ML, y-7, { size:7.2, color:ACC }); y-=15;
-      wrong.forEach(t=>para(t,9.4,{ w:lw, lh:1.42, gap:4, max:6 }));
-      const leftEnd=y; y=top2;
-      caps('Who it affects', rx, y-7, { size:7.2, color:ACC }); y-=15;
+      { const t=take(14); caps('What is wrong', ML, t-7, { size:7.2, color:ACC }); }
+      wrong.forEach(t=>para(t,9.4,{ w:lw, lh:1.38, gap:3, max:6 }));
+      const leftEnd=y; at(top2);
+      { const t=take(14); caps('Who it affects', rx, t-7, { size:7.2, color:ACC }); }
       const who=(Array.isArray(r.personsAtRisk)?r.personsAtRisk:[]).filter(Boolean);
-      if(who.length) who.slice(0,7).forEach(p=>{ page.drawRectangle({x:rx,y:y-7.4,width:4,height:4,color:ACC}); para(p,9.4,{ x:rx+10, w:rw-10, gap:2 }); });
+      if(who.length) who.slice(0,7).forEach(p=>para(p,9.4,{ x:rx+10, w:rw-10, lh:1.38, gap:1, dot:rx }));
       else para('Not recorded yet.',9.4,{ x:rx, w:rw, color:GREY });
       const bi=String(r.businessImpact||'').trim();
-      if(bi){ y-=4; caps('What it could cost the business', rx, y-7, { size:6.6 }); y-=13; para(bi,8.8,{ x:rx, w:rw, lh:1.4, max:5 }); }
-      y=Math.min(leftEnd,y)-6;
-      page.drawLine({start:{x:rx-10,y:top2-2},end:{x:rx-10,y:y+6},thickness:0.6,color:HAIR});
-      rule(y); y-=14;
+      if(bi){ skip(3); { const t=take(12); caps('What it could cost the business', rx, t-7, { size:6.6 }); } para(bi,8.8,{ x:rx, w:rw, lh:1.36, max:5 }); }
+      const end=Math.min(leftEnd,y); at(end); take(4);
+      page.drawLine({start:{x:rx-10,y:top2-2},end:{x:rx-10,y:end},thickness:0.6,color:HAIR});
+      rule(y); skip(10);
     } else {
-      para('Where this comes from: '+(g.items[0].it.risk||'the execution plan')+'. No risk score sits behind this action.',9.6,{ color:GREY, gap:12 });
+      para('Where this comes from: '+(g.items[0].it.risk||'the execution plan')+'. No risk score sits behind this action.',9.6,{ color:GREY, gap:10 });
     }
 
     // ── what needs to be done and the control we recommend (the control
-    //    title), then the two-way part: our controls, printed and not to be
-    //    edited, the client's comments, who and by when against each, and the
-    //    comments on the risk at the foot of its page ──
-    const kick=()=>{ let t=A(('Action '+(gi+1)+' of '+groups.length+(ref?('    '+ref):'')+'    '+gName(g)).toUpperCase()), cut=false;
-      while(t.length>8 && bold.widthOfTextAtSize(t+' ... (CONTINUED)',7)>CW){ t=t.slice(0,-1); cut=true; }
-      caps(t.replace(/\s+$/,'')+(cut?' ...':'')+' (continued)', ML, y-7, { size:7, color:ACC }); y-=18; };
+    //    title), then the two-way part: the actions table and the comments
+    //    on the risk under it ──
+    const kick=()=>{ const t=take(16); let tx=A((kw+(ref?('    '+ref):'')+'    '+gName(g)).toUpperCase()), cut=false;
+      while(tx.length>8 && bold.widthOfTextAtSize(tx+' ... (CONTINUED)',7)>CW){ tx=tx.slice(0,-1); cut=true; }
+      caps(tx.replace(/\s+$/,'')+(cut?' ...':'')+' (continued)', ML, t-7, { size:7, color:ACC }); };
     const bandCol=BAND[bandOf(sc)];
-    const CWS=[CW*0.40, CW*0.34, CW*0.13, CW*0.13], CX=[ML, ML+CWS[0], ML+CWS[0]+CWS[1], ML+CWS[0]+CWS[1]+CWS[2]];
-    const HDR=22, CSZ=8.8, CLH=11.4, SSZ=7, SLH=9, MINR=34, CP=86, COMM=12+CP, CPS=66, COMMS=6+CPS;   // COMM: the comments on the risk, with the gap above; COMMS: the same, squeezed to keep a risk on its page
     g.items.forEach((x,k)=>{
-      const it=x.it, n=x.n;
-      // the last page of a Top 5 sheet also holds Anything else to tell us
-      const tail=(!risk && gi===groups.length-1 && k===g.items.length-1) ? 116 : 0;
-      const dLines=clip(wrap(it.desc||'(no description)',bold,12.5,CW),4), rLines=clip(wrap(it.rec||'No recommendation written.',font,10,CW-24),18);
-      const rh=rLines.length*14+24;
-      // the table's rows, measured: the control as printed, and its state on the control table
-      const rows=rowsFor[n-1].map((c,j)=>{ const lines=clip(wrap(c.text,font,CSZ,CWS[0]-30),40), st=c.st?clip(wrapK(c.st,font,SSZ,CWS[0]-30),2):[];
-        return { k:j+1, lines, st, h:Math.max(MINR, 8+lines.length*CLH+(st.length?(2+st.length*SLH):0)+5) }; });
-      // the first row has to fit on a fresh page under the parts above it: a
-      // control too long for that is cut to fit, ending ' ...' (the rows after
-      // it run on over the pages as they need)
-      { const r0=rows[0], sH=r0.st.length?(2+r0.st.length*SLH):0;
-        const room0=(H-58-18)-BOT-(15+dLines.length*16.4+18+rh+14+14+HDR)-(rows.length===1?COMMS:0);
-        if(r0.h>room0){ r0.lines=clip(r0.lines, Math.max(1, Math.floor((room0-8-sH-5)/CLH))); r0.h=Math.max(MINR, 8+r0.lines.length*CLH+sH+5); } }
-      const need=15+dLines.length*16.4+18+rh+14+14+HDR+rows[0].h+(rows.length===1?COMMS:0);
-      if(y-need<BOT){ addPage(true); kick(); }
-      caps('What needs to be done', ML, y-7, { size:7.2, color:ACC }); y-=15;
-      dLines.forEach(ln=>{ page.drawText(ln,{x:ML,y:y-12.5,size:12.5,font:bold,color:INK}); y-=16.4; });
-      T('Owner: '+(it.owner||'to be named')+'     Target: '+(it.due?fmtDate(it.due):'to be agreed'), ML, y-9, 8.4, { color:GREY }); y-=18;
-      page.drawRectangle({x:ML,y:y-rh,width:CW,height:rh,color:PANEL});
-      page.drawRectangle({x:ML,y:y-rh,width:4,height:rh,color:ACC});
-      caps('The control we recommend', ML+14, y-13, { size:7, color:ACC });
-      rLines.forEach((ln,j)=>page.drawText(ln,{x:ML+14,y:y-28-j*14,size:10,font,color:INK}));
-      y-=rh+14;
-      // ... and its foot as well, when the whole table fits there with it
-      const floor=BOT+((tail && y-(14+HDR+rows.reduce((a,rw)=>a+rw.h,0))-COMM-tail>=BOT) ? tail : 0);
+      const it=x.it, n=x.n, lastOne=(gi===groups.length-1 && k===g.items.length-1);
+      // the table's rows, measured, in units that never part: a heading and
+      // its first row, with any heading before them of a control in place that
+      // has nothing under it; every other row on its own; such headings at the
+      // very end stay with the row above them. The unit with the last row
+      // takes the comments box with it (squeezed, if that is what keeps it).
+      const units=[]; let cur=null, waiting=false;
+      measure(actRows[n-1]).forEach(m=>{
+        if(cur && waiting && (!m.e.head || cur.h+m.h<=UMAX/2)){ cur.rows.push(m); cur.h+=m.h; waiting=m.e.head; return; }
+        cur={ rows:[m], h:m.h }; units.push(cur); waiting=m.e.head; });
+      if(waiting && units.length>1 && cur.rows.every(m=>m.e.head) && units[units.length-2].h+cur.h<=UMAX){ units.pop(); const p=units[units.length-1]; p.rows.push(...cur.rows); p.h+=cur.h; }
+      units[units.length-1].last=true;
+      const U0=units[0], firstNeed=14+HDR+U0.h+(U0.last?COMMS:CONT);
+      // what needs to be done and our control: a long one is cut (' ...') when
+      // that keeps the whole table and its comments box on this page, or else
+      // the table's start; failing that it stays whole and the table starts
+      // over the page; it only moves itself when even one line of each will
+      // not fit here
+      ctx={ open:kick };
+      const dAll=wrap(it.desc||'(no description)',bold,12.5,CW), rAll=wrap(it.rec||'No recommendation written.',font,10,CW-24);
+      const hh=sp=>14+Math.min(dAll.length,sp[0])*15.6+16+Math.min(rAll.length,sp[1])*13.4+20+10;
+      const STEPS=[[4,18],[4,8],[3,5],[2,3],[1,1]], whole=14+HDR+units.reduce((a,u)=>a+u.h,0)+COMMS;
+      let sp=STEPS.slice(0,4).find(p=>fits(hh(p)+whole)) || STEPS.slice(0,3).find(p=>fits(hh(p)+firstNeed)) || STEPS.find(p=>fits(hh(p)));
+      if(!sp){ brk(); sp=STEPS[0]; }
+      const dLines=clip(dAll,sp[0],bold,12.5,CW), rLines=clip(rAll,sp[1],font,10,CW-24), rh=rLines.length*13.4+20;
+      { const t=take(14); caps('What needs to be done', ML, t-7, { size:7.2, color:ACC }); }
+      dLines.forEach(ln=>{ const t=take(15.6); page.drawText(ln,{x:ML,y:t-12,size:12.5,font:bold,color:INK}); });
+      { const t=take(16); T('Owner: '+(it.owner||'to be named')+'     Target: '+(it.due?fmtDate(it.due):'to be agreed'), ML, t-9.5, 8.4, { color:GREY }); }
+      { const t=take(rh);
+        page.drawRectangle({x:ML,y:t-rh,width:CW,height:rh,color:PANEL});
+        page.drawRectangle({x:ML,y:t-rh,width:4,height:rh,color:ACC});
+        caps('The control we recommend', ML+14, t-12, { size:7, color:ACC });
+        rLines.forEach((ln,j)=>page.drawText(ln,{x:ML+14,y:t-25-j*13.4,size:10,font,color:INK})); }
+      skip(10);
 
-      // ── your controls - tell us what you think ──
-      caps('Your controls - tell us what you think', ML, y-7, { size:7.2, color:ACC });
-      const hint='The controls are printed - write against each one';
-      page.drawText(hint,{x:MR-font.widthOfTextAtSize(hint,7),y:y-7,size:7,font,color:GREY}); y-=14;
-      let segTop=0, cuts=[];
+      // ── your actions - tell us what you think ──
+      let segTop=0, cuts=[], lastHead=null, nextU=null;
       // the header row, shaded, with an accent rule under it (repeated on a new page)
-      const tHead=()=>{ segTop=y; cuts=[];
-        page.drawRectangle({x:ML,y:y-HDR,width:CW,height:HDR,color:PANEL});
-        ['Control','Comments','Who','By when'].forEach((t,i)=>caps(t, CX[i]+(i?7:10), y-(i===3?9.5:13.5), { size:6.8, color:ACC }));
-        page.drawText('dd/mm/yyyy',{x:CX[3]+7,y:y-18,size:6,font,color:GREY});
-        y-=HDR; };
-      // close the table on this page: hairline rows and columns, the accent
-      // rule under the header, the outer border, the band's rule down the left
+      const tHead=()=>{ const t=take(HDR); segTop=t; cuts=[];
+        page.drawRectangle({x:ML,y:t-HDR,width:CW,height:HDR,color:PANEL});
+        ['Action','Comments','Who','By when'].forEach((c,i)=>caps(c, CX[i]+(i?7:10), t-(i===3?8.5:12.5), { size:6.8, color:ACC }));
+        page.drawText('dd/mm/yyyy',{x:CX[3]+7,y:t-16.5,size:6,font,color:GREY}); };
+      // close the table on this page: hairline rows, the accent rule under
+      // the header, the outer border, the band's rule down the left
       const tShut=()=>{ const top=segTop, bot=y;
         cuts.slice(0,-1).forEach(cy=>page.drawLine({start:{x:ML,y:cy},end:{x:MR,y:cy},thickness:0.5,color:HAIR}));
-        [1,2,3].forEach(i=>page.drawLine({start:{x:CX[i],y:top},end:{x:CX[i],y:bot},thickness:0.5,color:HAIR}));
         page.drawLine({start:{x:ML,y:top-HDR},end:{x:MR,y:top-HDR},thickness:1.2,color:ACC});
         page.drawRectangle({x:ML,y:bot,width:CW,height:top-bot,borderColor:ACC,borderWidth:0.8});
         page.drawRectangle({x:ML,y:bot,width:3,height:top-bot,color:bandCol}); };
-      tHead();
-      rows.forEach((row,j)=>{
-        const last=(j===rows.length-1);
-        if(cuts.length && y-row.h-(last?COMMS:0)<floor){ tShut(); const co='Continued overleaf'; page.drawText(co,{x:MR-font.widthOfTextAtSize(co,7),y:y-10,size:7,font,color:GREY}); addPage(true); kick(); tHead(); }
-        const top=y, h=row.h, f='as_'+n+'_c'+row.k+'_', b0=top-8-CSZ+1;
+      // a heading: the control's number, its words and where it stands, across the table
+      const drawHead=m=>{ const top=take(m.h), b0=top-12;
+        page.drawRectangle({x:ML,y:top-m.h,width:CW,height:m.h,color:PANEL});
+        page.drawText(m.label,{x:ML+10,y:b0,size:6.8,font:bold,color:ACC});
+        m.words.forEach((ln,q)=>page.drawText(ln,{x:m.tx,y:b0-q*CLH,size:CSZ,font:bold,color:INK}));
+        if(m.st){ if(m.same) page.drawText(m.st,{x:MR-10-font.widthOfTextAtSize(m.st,SSZ),y:b0,size:SSZ,font,color:GREY});
+          else page.drawText(m.st,{x:m.tx,y:b0-(m.words.length-1)*CLH-SLH-1,size:SSZ,font,color:GREY}); }
+        cuts.push(y); };
+      // an action: printed, and its comment, who and by when to write on (who and when filled in from the plan)
+      const drawRow=m=>{ const top=take(m.h), h=m.h, e=m.e, f='as_'+n+'_r'+e.k+'_', b0=top-13;
         page.drawRectangle({x:ML,y:top-h,width:CWS[0],height:h,color:GROUND});
-        page.drawText(String(row.k),{x:ML+10,y:b0,size:CSZ,font:bold,color:ACC});
-        row.lines.forEach((ln,q)=>page.drawText(ln,{x:ML+22,y:b0-q*CLH,size:CSZ,font,color:INK}));
-        row.st.forEach((ln,q)=>page.drawText(ln,{x:ML+22,y:b0-row.lines.length*CLH-2-q*SLH,size:SSZ,font,color:GREY}));
+        const kt=String(e.k); page.drawText(kt,{x:ML+20-bold.widthOfTextAtSize(kt,CSZ),y:b0,size:CSZ,font:bold,color:ACC});     // right-aligned: row 10 clears its words
+        m.lines.forEach((ln,q)=>page.drawText(ln,{x:ML+24,y:b0-q*CLH,size:CSZ,font:e.gap?ital:font,color:e.gap?GREY:INK}));
+        if(m.hasSt){ const sb=b0-(m.lines.length-1)*CLH-11; let sx=ML+24;
+          if(e.own){ page.drawRectangle({x:sx,y:sb-2,width:TAGW,height:8.4,color:ACC}); page.drawText(TAG,{x:sx+4,y:sb,size:5.6,font:bold,color:WHITE}); sx+=TAGW+5; }
+          if(m.st) page.drawText(m.st,{x:sx,y:sb,size:SSZ,font,color:GREY}); }
+        [1,2,3].forEach(i=>page.drawLine({start:{x:CX[i],y:top},end:{x:CX[i],y:top-h},thickness:0.5,color:HAIR}));
         field(f+'cmt',CX[1]+2,top-2,CWS[1]-4,h-4,{ multi:true, size:8.6, bare:true });
-        field(f+'who',CX[2]+2,top-2,CWS[2]-4,h-4,{ size:8.6, bare:true });
-        field(f+'due',CX[3]+2,top-2,CWS[3]-4,h-4,{ size:8.6, bare:true });
-        y-=h; cuts.push(y);
-      });
+        field(f+'who',CX[2]+2,top-2,CWS[2]-4,h-4,{ multi:true, size:8.6, bare:true, text:e.who });
+        field(f+'due',CX[3]+2,top-2,CWS[3]-4,h-4,{ multi:true, size:8.6, bare:true, text:_asDMY(e.due) });
+        cuts.push(y); };
+      keep(firstNeed);                 // the table never starts without its first row
+      { const t=take(14); caps('Your actions - tell us what you think', ML, t-7, { size:7.2, color:ACC });
+        const hint='Who and when come from your plan - change them if they are wrong';
+        page.drawText(hint,{x:MR-font.widthOfTextAtSize(hint,7),y:t-7,size:7,font,color:GREY}); }
+      tHead();
+      // a page the table runs on to: the kicker, the header and - when its first row carries on under a
+      // heading from the page before - that heading again, "(continued)"
+      ctx={ shut(){ tShut(); const co='Continued overleaf'; page.drawText(co,{x:MR-font.widthOfTextAtSize(co,7),y:y-10,size:7,font,color:GREY}); },
+        open(){ kick(); tHead(); if(lastHead && nextU && !nextU.rows[0].e.head) drawHead(headOf(lastHead.e,true)); } };
+      units.forEach(u=>{ nextU=u; keep(u.h+(u.last?COMMS:CONT)); u.rows.forEach(m=>{ if(m.e.head){ lastHead=m; drawHead(m); } else drawRow(m); }); });
       tShut();
 
-      // ── the comments on this risk, at the foot of its page ──
-      let cp=CP, cgap=12;
-      if(y-COMM<floor){ if(y-COMMS>=floor){ cp=CPS; cgap=6; y=floor+COMMS; } else { addPage(true); kick(); } } else y=floor+COMM;
-      y-=cgap;
-      const cTop=y;
+      // ── the comments on this risk, 12pt under its table (6pt and squeezed
+      //    when that is what keeps it on the page with the last row, or lets
+      //    the closing part follow straight on under the last risk) ──
+      ctx={ open:kick };
+      let big=fits(12+CP);
+      if(big && lastOne && !fits(12+CP+JOIN+closeH) && fits(COMMS+JOIN+closeH)) big=false;
+      const cp=big?CP:CPS, cg=big?12:6;
+      const cTop=take(cg+cp)-cg;
       page.drawRectangle({x:ML,y:cTop-cp,width:CW,height:cp,color:PANEL});
       page.drawRectangle({x:ML,y:cTop-cp,width:4,height:cp,color:ACC});
-      caps('Comments on this risk', ML+14, cTop-13, { size:7.2, color:ACC });
-      const ch='Anything else about this risk';
-      page.drawText(ch,{x:MR-10-font.widthOfTextAtSize(ch,7),y:cTop-13,size:7,font,color:GREY});
-      field('as_'+n+'_what',ML+14,cTop-20,CW-24,cp-26,{ multi:true, size:9 });
-      y=cTop-cp-6;
-      if(k<g.items.length-1){ rule(y); y-=14; }
+      caps(r?'Comments on this risk':'Comments on this action', ML+14, cTop-12, { size:7.2, color:ACC });
+      const ch=r?'Anything else about this risk':'Anything else about this action';
+      page.drawText(ch,{x:MR-10-font.widthOfTextAtSize(ch,7),y:cTop-12,size:7,font,color:GREY});
+      field('as_'+n+'_what',ML+14,cTop-18,CW-24,cp-24,{ multi:true, size:9 });
+      ctx=null;
+      if(k<g.items.length-1){ skip(6); const t=take(14); rule(t); }
     });
   });
 
-  // ══ a risk action sheet ends with what came up at the client meeting, on a
-  //    page of its own (every action page stands alone): the month's quick
-  //    minutes, then four rows to write in anything else agreed - read back
-  //    into the quick minutes when the sheet is imported ══
+  // ══ the closing parts (measured above) ══
   if(risk){
-    const mtgs=_asQuickMeetings(_asMonthOf(s));      // the sheet's own month, so it prints the same every time it is downloaded
-    addPage(true);      // the masthead's ink rule opens the section
-    caps('From the meeting', ML, y-8, { size:7.6, color:ACC }); y-=18;
-    page.drawText('What came up at the meeting',{x:ML,y:y-20,size:20,font:bold,color:INK}); y-=36;
-    if(!mtgs.length) para('Nothing minuted this month yet.',9.4,{ color:GREY, gap:10 });
-    mtgs.forEach((m,mi)=>{
-      const present=(m.attendees||[]).map(a=>String((a&&a.name)||'').trim()).filter(Boolean);
-      ensure(40);
-      if(mi){ rule(y); y-=12; }
-      para(fmtDate(m.date)+' · present: '+(present.length?present.join(', '):'nobody recorded'),9.6,{ bold:true, gap:4 });
-      const note=String(m.note||'').trim();
-      para(note||'No notes.',9.4,{ lh:1.45, gap:6, color:note?INK:GREY });
-      _sltActions(m).filter(d=>String(d.decision||'').trim()).forEach(d=>
-        para('- '+String(d.decision).trim()+' ('+(String(d.owner||'').trim()||'to be named')+', '+(d.due?fmtDate(d.due):'no date')+') · '+_qmActWord(d),9.2,{ x:ML+8, lh:1.4, gap:2 }));
-      y-=10;
+    opener(meetH);
+    { const t=take(18); caps('From the meeting', ML, t-8, { size:7.6, color:ACC }); }
+    { const t=take(30); page.drawText('What came up at the meeting',{x:ML,y:t-19,size:20,font:bold,color:INK}); }
+    ctx={ open:()=>{ const t=take(18); caps('From the meeting (continued)', ML, t-7, { size:7, color:ACC }); } };
+    if(!mi.length) para(NONE,9.4,{ color:GREY, gap:10 });
+    mi.forEach((x,i)=>{
+      keep((i?12:0)+paraH(x.hd,9.6,{ bold:true, gap:4 })+13.6);       // a meeting's heading never sits alone
+      if(i){ const t=take(12); rule(t); }
+      para(x.hd,9.6,{ bold:true, gap:4 });
+      para(x.note||'No notes.',9.4,{ lh:1.45, gap:6, color:x.note?INK:GREY });
+      x.dec.forEach(t=>para(t,9.2,{ x:ML+8, lh:1.4, gap:2 }));
+      skip(10);
     });
-    ensure(14+16+11+4*32+6);
-    rule(y); y-=14;
-    caps('Actions from this meeting - write them here', ML, y-7, { size:7.2, color:ACC }); y-=16;
-    caps('What', ML, y-7, { size:6.8 }); caps('Who', MR-204, y-7, { size:6.8 }); caps('By when (dd/mm/yyyy)', MR-100, y-7, { size:6.8 }); y-=11;
-    [1,2,3,4].forEach(n=>{
-      field('as__m'+n+'_what',ML,y,CW-214,26,{ multi:true, size:9 });
-      field('as__m'+n+'_who',MR-204,y,96,20,{ size:9 }); field('as__m'+n+'_due',MR-100,y,100,20,{ size:9 });
-      y-=32;
-    });
-    y-=4;
+    keep(WR);
+    { const t=take(14); rule(t); }
+    { const t=take(16); caps('Actions from this meeting - write them here', ML, t-7, { size:7.2, color:ACC }); }
+    { const t=take(11); caps('What', ML, t-7, { size:6.8 }); caps('Who', MR-204, t-7, { size:6.8 }); caps('By when (dd/mm/yyyy)', MR-100, t-7, { size:6.8 }); }
+    [1,2,3,4].forEach(q=>{ const t=take(32);
+      field('as__m'+q+'_what',ML,t,CW-214,26,{ multi:true, size:9 });
+      field('as__m'+q+'_who',MR-204,t,96,20,{ size:9 }); field('as__m'+q+'_due',MR-100,t,100,20,{ size:9 }); });
+    ctx=null;
   }
-  // ══ anything else, on the last page ══
-  if(y-104<BOT) addPage(true);
-  y-=6; rule(y, INK, 0.8); y-=12;
-  caps('Anything else to tell us', ML, y-7, { size:7.2, color:ACC }); y-=12;
-  field('as__general',ML,y,CW,46,{ multi:true, size:9 }); y-=54;
-  para('Save this file (File > Save, or the download button in your browser viewer) and email it back. Printing it to PDF, or some phone apps, can flatten the boxes - if that happens, send the saved file, or a photo of the printed sheet.',7.8,{ color:GREY, gap:2 });
+  // ══ anything else ══
+  opener(anyH);
+  { const t=take(12); caps('Anything else to tell us', ML, t-7, { size:7.2, color:ACC }); }
+  { const t=take(50); field('as__general',ML,t,CW,44,{ multi:true, size:9 }); }
+  para(SAVE,7.8,{ color:GREY, gap:2 });
   _pdfFormFooter(pdf,{ font, W, ML, MR, mid:_asTitle(s) });
   return await pdf.save();
 }
@@ -24359,7 +24765,8 @@ async function downloadActionSheet(sid){
     const bytes=await buildActionSheetPDF(sid);
     const safe=_sltClient().replace(/[^a-z0-9]+/gi,'-').toLowerCase();
     _sltSaveBlob(new Blob([bytes],{type:'application/pdf'}), _asTitle(s).toLowerCase().replace(/\s+/g,'-')+'-'+safe+'-'+_asToday()+'.pdf');
-    s.issuedAt=_asToday(); s.formV=2;
+    s.issuedAt=_asToday(); s.formV=3;
+    _asStampPrinted(s);      // the actions table's rows as printed, so a paper copy typed in lines up
     (s.items||[]).forEach(it=>{
       const rows=_asSheetCtlRows(it), named=rows.filter(x=>x.id);
       // each control's words as printed, by id - a control taken off the risk later still reads as the client saw it
@@ -24408,6 +24815,8 @@ async function _asReadForm(bytes, fname){
   // control, and the comments box at the foot of the page. A sheet sent as the
   // first form still comes back the first way.
   const v1=!(+meta.v>=2) || fields.some(f=>/^as_\d+_o_/.test(f.getName()));
+  // the third: the risk's open actions under their controls - a comment, who and by when against each
+  const v3=!v1 && +meta.v>=3;
   let filled=0, clash=0, lines=0, settled=0;
   (meta.keys||[]).forEach((key,idx)=>{
     const it=(s.items||[]).find(i=>i.key===key); if(!it) return;
@@ -24421,6 +24830,38 @@ async function _asReadForm(bytes, fname){
       const date=_top5ParseDate(dText);
       it.resp={ outcome:(ticked.length===1?ticked[0].k:''), what:what+(ticked.length>1?((what?' ':'')+'[More than one box was ticked: '+ticked.map(t=>t.label).join(', ')+']'):'')+(dText&&!date?((what||ticked.length>1?' ':'')+'[Date as written: '+dText+']'):''), date:date, by:by };
       filled++;
+      return;
+    }
+    if(v3){
+      // the rows as printed on this copy, from its meta; who and when were
+      // printed from the plan, so a row counts when its comment is written or
+      // either was changed
+      const what=String(val('as_'+n+'_what')||'').trim(), prev=Array.isArray(it.actRows) ? it.actRows : [];
+      const pr=((Array.isArray(meta.rows) && Array.isArray(meta.rows[idx])) ? meta.rows[idx] : _asRowsAsPrinted(it)).map(p=>{ p=p||{};
+        const a=_asIdOf(p.a), was=a ? prev.find(x=>x && x.a===a) : null;
+        return { a, c:_asIdOf(p.c), who:String(p.who||'').trim(), due:_top5ParseDate(p.due)||'', t:String(p.t||(was&&was.t)||'').trim() }; });
+      const old=(it.resp && Array.isArray(it.resp.rows)) ? it.resp.rows : [];
+      const rows=[];
+      pr.forEach((p,j)=>{
+        const k=j+1, g=x=>String(val('as_'+n+'_r'+k+'_'+x)||'').trim();
+        const row=_asRowMake(it, k, p, g('cmt'), g('who'), g('due'));
+        if(!_asRowWritten(row)) return;
+        // a line already done keeps its mark, so a sheet imported twice never does it twice - but only while it
+        // says what was done: a corrected copy (another comment, who or when) comes back with its button
+        const same=(x,y)=>String(x.cmt||'').trim()===String(y.cmt||'').trim() && _ownersOf(x.who).join(',').toLowerCase()===_ownersOf(y.who).join(',').toLowerCase()
+          && (x.due||String(x.dueText||'').trim())===(y.due||String(y.dueText||'').trim());
+        const was=old.find(x=>x && x.applied && x.k===k && (x.a||null)===row.a && (x.c||null)===row.c && same(x,row));
+        if(was){ row.applied=was.applied; row.newId=was.newId||''; }
+        rows.push(row);
+      });
+      if(!what && !rows.length) return;                // left blank: keep whatever is already recorded
+      if(it.decision){ settled++; return; }            // decided already: the decision stands
+      lines+=rows.length; filled++;
+      // ... and a line already done stays, as it was, when this copy leaves its row blank
+      old.forEach(o=>{ if(o && o.applied && !rows.some(x=>x.k===o.k)) rows.push(o); });
+      rows.sort((x,y)=>x.k-y.k);
+      it.actRows=pr;
+      it.resp={ outcome:'', what, date:'', by:'', rows, src:'form' };
       return;
     }
     const what=String(val('as_'+n+'_what')||'').trim();
@@ -24478,7 +24919,7 @@ async function _asReadForm(bytes, fname){
   // the second form asks for no name: a blank one leaves what is recorded
   const from=name+(role?(' ('+role+')'):'');
   s.returnedAt=_asToday(); s.returnedBy=from||s.returnedBy||''; s.file=fname; if(general) s.general=general;
-  return { kind:_asKindOf(s), msg:_asName(s)+': '+filled+' answer'+(filled!==1?'s':'')+' in'+(lines?(' ('+lines+' line'+(lines!==1?'s':'')+' against the controls)'):'')+(clash?(' ('+clash+' with more than one box ticked - choose the outcome yourself)'):'')+(settled?(' ('+settled+' already decided - left as decided)'):'')
+  return { kind:_asKindOf(s), msg:_asName(s)+': '+filled+' answer'+(filled!==1?'s':'')+' in'+(lines?(' ('+lines+' line'+(lines!==1?'s':'')+' against the '+(v3?'actions':'controls')+')'):'')+(clash?(' ('+clash+' with more than one box ticked - choose the outcome yourself)'):'')+(settled?(' ('+settled+' already decided - left as decided)'):'')
     +(mIn?(' + '+mIn+' meeting action'+(mIn!==1?'s':'')+' into the quick minutes (Done there puts '+(mIn!==1?'them':'it')+' on the plan)'):'')+(mHad?(' ('+mHad+' already in the minutes)'):'') };
 }
 

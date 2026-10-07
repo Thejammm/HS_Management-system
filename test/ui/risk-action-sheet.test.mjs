@@ -11,6 +11,10 @@
 //  and by when) and a comments box, laid out exactly as on the Top 5 sheet;
 //  the cover has no name or role; the Top 5 Risks report and the button to
 //  the proposals form are gone (the form's code and data stay).
+//  Then, after seeing it live: the table's rows are the risk's open actions,
+//  framed as tab 4 frames them (under the control each puts in place), with
+//  who and by when printed from the plan (as__meta v3); the pages say RISK n
+//  OF N; the meeting part follows straight on when it fits.
 //  Ladder ticks -> toolbar -> read-only -> Reports card -> a risk sheet
 //  (gaps, no cap, one draft) -> its PDF -> quick minutes -> From the meeting
 //  -> the sheet back with meeting rows -> the proposals form, no way in from
@@ -85,7 +89,9 @@ const inject = () => page.evaluate(() => {
     let meta = {}; try { meta = JSON.parse(form.getTextField('as__meta').getText()); } catch (e) {}
     let multi = null; try { multi = form.getTextField('as__m1_what').isMultiline(); } catch (e) {}
     const ml = n => { try { return form.getTextField(n).isMultiline(); } catch (e) { return null; } };
-    return { said, names: form.getFields().map(f => f.getName()), meta, pages: doc.getPageCount(), multi, multiCmt: ml('as_1_c1_cmt'), multiWhat: ml('as_1_what'),
+    const val = n => { try { return form.getTextField(n).getText() || ''; } catch (e) { return null; } };
+    return { said, names: form.getFields().map(f => f.getName()), meta, pages: doc.getPageCount(), multi, multiCmt: ml('as_1_r1_cmt'), multiWhat: ml('as_1_what'),
+      vals: { w11: val('as_1_r1_who'), d11: val('as_1_r1_due'), w12: val('as_1_r2_who'), d12: val('as_1_r2_due'), w22: val('as_2_r2_who'), d22: val('as_2_r2_due') },
       rects: { what: rect('as__m1_what'), who: rect('as__m1_who'), due: rect('as__m1_due') } };
   };
   // the minute taker's inputs for one action, by the field each one writes
@@ -105,10 +111,11 @@ const inject = () => page.evaluate(() => {
 await inject();
 // The shape of a sheet's form, whatever its length: each line's fields with
 // the line and row numbers taken out (the meeting rows are the risk sheet's own).
-const shape = names => [...new Set(names.filter(n => !/^as__m\d/.test(n)).map(n => n.replace(/^as_\d+_/, 'as_N_').replace(/^as_N_c\d+_/, 'as_N_cK_')))].sort().join(',');
-const SHAPE = ['as__meta', 'as__general', 'as_N_what', 'as_N_cK_cmt', 'as_N_cK_who', 'as_N_cK_due'].sort().join(',');
+const shape = names => [...new Set(names.filter(n => !/^as__m\d/.test(n)).map(n => n.replace(/^as_\d+_/, 'as_N_').replace(/^as_N_r\d+_/, 'as_N_rK_')))].sort().join(',');
+const SHAPE = ['as__meta', 'as__general', 'as_N_what', 'as_N_rK_cmt', 'as_N_rK_who', 'as_N_rK_due'].sort().join(',');
 // The headings every sheet of either kind carries, cover and pages alike.
-const HEADS = ['PURPOSE', 'WHAT WE NEED FROM YOU', 'HOW TO READ THE SCORES', 'YOUR CONTROLS - TELL US WHAT YOU THINK', 'COMMENTS ON THIS RISK', 'ANYTHING ELSE TO TELL US'];
+const HEADS = ['PURPOSE', 'WHAT WE NEED FROM YOU', 'HOW TO READ THE SCORES', 'YOUR ACTIONS - TELL US WHAT YOU THINK', 'COMMENTS ON THIS RISK', 'ANYTHING ELSE TO TELL US'];
+const dmy = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';
 const heads = said => HEADS.filter(h => said.some(x => String(x).trim().toUpperCase() === h)).concat(said.some(x => /AT A GLANCE$/.test(String(x).trim().toUpperCase())) ? ['AT A GLANCE'] : []).join('|');
 let riskShape = '', riskHeads = '';
 
@@ -368,30 +375,39 @@ if (!sid) await R.done(browser, errors);
 
 // ── 6. the sheet the client works from ──
 {
-  const t = await page.evaluate(async sid => { const b = await __build(sid); b.items = _asSheet(sid).items.length; return b; }, sid);
+  const t = await page.evaluate(async sid => { const b = await __build(sid), s = _asSheet(sid); b.items = s.items.length;
+    // each line's risk's open actions, as tab 4 lists them (none of these risks has a control on tab 3)
+    b.want = s.items.map(it => { const r = _execRiskOf({ ref: it.ref }); return ((r && r.actions) || []).filter(a => a && !a.deleted && !a.hideFromPlan && String(a.desc || '').trim() && a.status !== 'Complete' && a.status !== 'Accepted').map(a => a.id); });
+    return b; }, sid);
   // pdf-lib widens a widget's rectangle by its 0.8 border, so allow a point
   const s = t.said, near = (a, b) => Math.abs(a - b) <= 1;
   const CW = 595.28 - 80, MR = 595.28 - 40;
   R.ok([1, 2, 3, 4].every(n => ['what', 'who', 'due'].every(f => t.names.includes('as__m' + n + '_' + f))) && !t.names.includes('as__m5_what'), 'the sheet ends with four rows for the meeting\'s actions - what, who, by when');
-  // none of these risks has a control on tab 3, so each line has the one row: the control we recommend
-  const lines = Array.from({ length: t.items }, (_, i) => i + 1);
-  R.ok(lines.every(n => ['c1_cmt', 'c1_who', 'c1_due', 'what'].every(f => t.names.includes('as_' + n + '_' + f)) && !t.names.includes('as_' + n + '_c2_cmt')) && t.names.includes('as__general'),
-    'every line has the two-way table - comments, who and by when against the control - and a comments box, as on the Top 5 sheet');
+  // none of these risks has a control on tab 3, so each line's rows are its risk's open actions
+  const lines = Array.from({ length: t.items }, (_, i) => i + 1), want = n => t.want[n - 1] || [];
+  R.ok(want(1).join(',') === 'a1,a2' && want(2).join(',') === 'a3,b1,b2' && want(3).length === 1, 'setup: r1 has two open actions, r2 three, r3 the one written on the sheet');
+  R.ok(lines.every(n => want(n).every((a, k) => ['cmt', 'who', 'due'].every(f => t.names.includes('as_' + n + '_r' + (k + 1) + '_' + f))) && !t.names.includes('as_' + n + '_r' + (want(n).length + 1) + '_cmt') && t.names.includes('as_' + n + '_what'))
+    && t.names.includes('as__general') && !t.names.some(n => /^as_\d+_c\d+_/.test(n)),
+    'every line has the two-way table - a row for each of its risk\'s open actions, with comments, who and by when - and a comments box, as on the Top 5 sheet');
   R.ok(!t.names.some(n => /^as__(name|role)$/.test(n) || /^as_\d+_(o_\w+|date|by)$/.test(n)), 'no name or role on the cover, and no what-happened ticks or done / date / by whom boxes');
   R.ok(t.multiCmt === true && t.multiWhat === true, 'the comments and the comments box take several lines');
+  R.ok(t.vals.w11 === 'Dave' && t.vals.d11 === dmy(day(30)) && t.vals.w12 === 'Dave' && t.vals.d12 === dmy(day(-5)) && t.vals.w22 === '' && t.vals.d22 === '',
+    'who and by when come printed from the plan, the date as dd/mm/yyyy, blank where the plan has none (' + JSON.stringify(t.vals) + ')');
   R.ok(!!t.rects.what && near(t.rects.what.w, CW - 214) && near(t.rects.what.h, 26) && t.multi === true
     && !!t.rects.who && near(t.rects.who.x, MR - 204) && near(t.rects.who.w, 96) && near(t.rects.who.h, 20)
     && !!t.rects.due && near(t.rects.due.x, MR - 100) && near(t.rects.due.w, 100) && near(t.rects.due.h, 20), 'the rows are laid out as agreed: what (several lines), who, by when');
-  R.ok(t.meta.v === 2 && t.meta.kind === 'risk' && t.meta.no === 1 && t.meta.sheet === sid && (t.meta.keys || []).length === t.items && t.meta.client === 'Fairbank Fabrications Ltd'
-    && Array.isArray(t.meta.ctls) && t.meta.ctls.length === t.items && t.meta.ctls.every(c => JSON.stringify(c) === '[null]'), 'the sheet knows its kind, its number, its client, its lines and each line\'s control rows (v2)');
-  R.ok(t.pages >= 2 + t.items && t.pages <= 3 + t.items, 'a cover, a page a line, and the meeting part on a page of its own (' + t.pages + ' pages, ' + t.items + ' lines)');
+  R.ok(t.meta.v === 3 && !('ctls' in t.meta) && t.meta.kind === 'risk' && t.meta.no === 1 && t.meta.sheet === sid && (t.meta.keys || []).length === t.items && t.meta.client === 'Fairbank Fabrications Ltd'
+    && Array.isArray(t.meta.rows) && t.meta.rows.length === t.items && t.meta.rows.every((rs, i) => JSON.stringify((rs || []).map(r => r.a)) === JSON.stringify(t.want[i]) && (rs || []).every(r => r.c === null)),
+    'the sheet knows its kind, its number, its client, its lines and each line\'s action rows (v3)');
+  R.ok(t.pages >= 1 + t.items && t.pages <= 3 + t.items, 'a cover, a page a line, then the meeting part (' + t.pages + ' pages, ' + t.items + ' lines)');
+  R.ok(lines.every(n => s.some(x => new RegExp('^RISK ' + n + ' OF ' + t.items + '\\b').test(String(x).trim()))) && !s.some(x => /^ACTION \d+ OF \d+\b/.test(String(x).trim())), 'each page is headed RISK n OF ' + t.items + ', not ACTION n OF N');
   R.ok(s.includes('RISK ACTION SHEET') && !s.includes('TOP 5 ACTIONS'), 'the cover is titled Risk Action Sheet, not Top 5 Actions');
   {
     const U = x => String(x).trim().toUpperCase(), iOf = test => s.findIndex(x => test(U(x)));
-    const iP = iOf(x => x === 'PURPOSE'), iG = iOf(x => /^THE (\d+|ONE) AT A GLANCE$/.test(x)), iW = iOf(x => x === 'WHAT WE NEED FROM YOU'), iH = iOf(x => x === 'HOW TO READ THE SCORES'), iT = iOf(x => x === 'YOUR CONTROLS - TELL US WHAT YOU THINK');
+    const iP = iOf(x => x === 'PURPOSE'), iG = iOf(x => /^THE (\d+|ONE) AT A GLANCE$/.test(x)), iW = iOf(x => x === 'WHAT WE NEED FROM YOU'), iH = iOf(x => x === 'HOW TO READ THE SCORES'), iT = iOf(x => x === 'YOUR ACTIONS - TELL US WHAT YOU THINK');
     R.ok(iP >= 0 && iP < iG && iG < iW && iW < iH && iH < iT, 'the cover reads like a procedure: Purpose, at a glance, What we need from you, How to read the scores - then the pages');
     R.ok(!s.some(x => /in place today/i.test(x)) && !s.some(x => /what happened/i.test(x)), '"In place today" and "What happened" are gone');
-    R.ok(s.filter(x => U(x) === 'YOUR CONTROLS - TELL US WHAT YOU THINK').length >= t.items && s.filter(x => U(x) === 'COMMENTS ON THIS RISK').length >= t.items, 'every line\'s page has the controls table and Comments on this risk');
+    R.ok(s.filter(x => U(x) === 'YOUR ACTIONS - TELL US WHAT YOU THINK').length >= t.items && s.filter(x => U(x) === 'COMMENTS ON THIS RISK').length >= t.items, 'every line\'s page has the actions table and Comments on this risk');
   }
   riskShape = shape(t.names); riskHeads = heads(s);
   R.ok(riskShape === SHAPE, 'the form\'s shape, line by line: ' + riskShape);
@@ -523,24 +539,26 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
 {
   const t = await page.evaluate(async (sid, MACT) => {
     const bytes = await buildActionSheetPDF(sid);
-    const doc = await PDFLib.PDFDocument.load(bytes), form = doc.getForm();
-    form.getTextField('as_1_c1_cmt').setText('Rescue plan written and the hatch locked.');
-    form.getTextField('as_1_c1_who').setText('Dave Morley');
-    form.getTextField('as_1_c1_due').setText('20/10/2026');
-    form.getTextField('as__m1_what').setText(MACT.what);
-    form.getTextField('as__m1_who').setText(MACT.who);
-    form.getTextField('as__m1_due').setText(MACT.due);
+    const doc = await PDFLib.PDFDocument.load(bytes), form = doc.getForm(), missing = [];
+    const set = (n, v) => { try { form.getTextField(n).setText(v); } catch (e) { missing.push(n); } };
+    // line 1 is r1's overdue rescue-plan stop (a2) - its own row is the second, under the edge protection
+    set('as_1_r2_cmt', 'Rescue plan written and the hatch locked.');
+    set('as_1_r2_who', 'Dave Morley');
+    set('as_1_r2_due', '20/10/2030');
+    set('as__m1_what', MACT.what);
+    set('as__m1_who', MACT.who);
+    set('as__m1_due', MACT.due);
     const before = _decisions().length;
     await _asImportFiles([new File([await doc.save()], 'returned.pdf', { type: 'application/pdf' })]);
     const s = _asSheet(sid), d = _decisions().find(x => x.decision === MACT.what) || null, m = d ? S.meetings.find(x => x.id === d.meetingId) : null;
-    return { toast: document.getElementById('toast').textContent, item: JSON.parse(JSON.stringify(s.items[0])), returnedBy: s.returnedBy, d: d ? JSON.parse(JSON.stringify(d)) : null,
+    return { missing, toast: document.getElementById('toast').textContent, item: JSON.parse(JSON.stringify(s.items[0])), returnedBy: s.returnedBy, d: d ? JSON.parse(JSON.stringify(d)) : null,
       mq: !!(m && m.quick), mOpen: m ? m.status : '', grew: _decisions().length - before, cur: (_qmCurrent() || {}).id || '', quickN: S.meetings.filter(x => x && x.quick).length };
   }, sid, MACT);
   {
-    const c = ((t.item.resp || {}).ctls || [])[0] || {};
-    R.ok(((t.item.resp || {}).ctls || []).length === 1 && c.ctlId === null && c.ctlText === 'A written rescue plan, and the roof hatch locked until it is in place.'
-      && c.cmt === 'Rescue plan written and the hatch locked.' && c.who === 'Dave Morley' && c.due === '2026-10-20' && !t.item.resp.outcome && t.returnedBy === '',
-      'the line\'s answer comes in as on the Top 5 sheet - under the control we recommended, with who and by when; no name needed');
+    const rows = (t.item.resp || {}).rows || [], c = rows[0] || {};
+    R.ok(!t.missing.length && rows.length === 1 && c.a === 'a2' && c.c === null && c.text === 'Stop roof access until a rescue plan is written' && c.gap === false
+      && c.cmt === 'Rescue plan written and the hatch locked.' && c.who === 'Dave Morley' && c.whoChanged === true && c.due === '2030-10-20' && c.dueChanged === true && !t.item.resp.outcome && t.returnedBy === '',
+      'the line\'s answer comes in as on the Top 5 sheet - against its action, with who and by when as changed; the row left as printed is not counted; no name needed' + (t.missing.length ? ' - not on the sheet: ' + t.missing.join(', ') : ''));
   }
   R.ok(/\b1 meeting action\b/.test(t.toast) && !/Not imported/.test(t.toast), 'the import says one meeting action came in: ' + t.toast);
   R.ok(!!t.d && t.d.owner === 'Dave Morley' && t.d.due === '2026-11-15' && t.d.forum === 'Client meeting' && t.d.agendaItem === 0 && t.d.status === 'Agreed' && !t.d.raised,
@@ -554,9 +572,9 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
     form.getTextField('as__m2_what').setText('Check the yard lighting');
     await _asImportFiles([new File([await doc.save()], 'meeting-only.pdf', { type: 'application/pdf' })]);
     const d = _decisions().find(x => x.decision === 'Check the yard lighting');
-    return { toast: document.getElementById('toast').textContent, d: !!d, mid: d ? d.meetingId : '', ctls: JSON.parse(JSON.stringify((_asSheet(sid).items[0].resp || {}).ctls || [])) };
+    return { toast: document.getElementById('toast').textContent, d: !!d, mid: d ? d.meetingId : '', rows: JSON.parse(JSON.stringify((_asSheet(sid).items[0].resp || {}).rows || [])) };
   }, sid);
-  R.ok(!/Not imported|nothing filled in/.test(t.toast) && t.d && t.mid === qm2 && t.ctls.length === 1 && t.ctls[0].cmt === 'Rescue plan written and the hatch locked.',
+  R.ok(!/Not imported|nothing filled in/.test(t.toast) && t.d && t.mid === qm2 && t.rows.length === 1 && t.rows[0].cmt === 'Rescue plan written and the hatch locked.',
     'a sheet back with only a meeting row filled in is taken, and the answers already in are kept: ' + t.toast);
 }
 {
@@ -611,7 +629,7 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
     if (t5) {
       const b = await __build(t5.id);
       out.pdf = { m: b.names.filter(n => /^as__m\d/.test(n)).length, from: b.said.includes('FROM THE MEETING'), cover: b.said.includes('TOP 5 ACTIONS'), mast: b.said.some(x => /^TOP 5 ACTION SHEET 1\s/.test(x)), kind: b.meta.kind || '',
-        names: b.names, said: b.said, v: b.meta.v, ctls: b.meta.ctls, items: t5.items.length };
+        names: b.names, said: b.said, v: b.meta.v, rows: b.meta.rows, ctls: b.meta.ctls, items: t5.items.length };
       const saved = [], keep = window._sltSaveBlob; window._sltSaveBlob = (bl, f) => saved.push(f);
       try { await downloadActionSheet(t5.id); } finally { window._sltSaveBlob = keep; }
       out.name = saved[0] || '';
@@ -632,9 +650,10 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
   R.ok(!!t.pdf && t.pdf.m === 0 && !t.pdf.from && t.pdf.cover && t.pdf.mast && (t.pdf.kind === 'top5' || t.pdf.kind === ''), 'a Top 5 sheet prints as it always has - no From the meeting, no meeting rows, even with meetings minuted');
   {
     const all = HEADS.concat(['AT A GLANCE']).join('|'), t5Shape = t.pdf ? shape(t.pdf.names) : '', t5Heads = t.pdf ? heads(t.pdf.said) : '';
-    R.ok(!!t.pdf && t5Shape === SHAPE && t5Shape === riskShape && t.pdf.v === 2 && Array.isArray(t.pdf.ctls) && t.pdf.ctls.length === t.pdf.items,
-      'both kinds have the same form, line by line - the controls table and the comments box (' + t5Shape + ')');
+    R.ok(!!t.pdf && t5Shape === SHAPE && t5Shape === riskShape && t.pdf.v === 3 && t.pdf.ctls === undefined && Array.isArray(t.pdf.rows) && t.pdf.rows.length === t.pdf.items,
+      'both kinds have the same form, line by line - the actions table (v3) and the comments box (' + t5Shape + ')');
     R.ok(t5Heads === all && riskHeads === all, 'and the same cover and pages, heading for heading (' + t5Heads + ' / ' + riskHeads + ')');
+    R.ok(!!t.pdf && t.pdf.said.some(x => /^ACTION 1 OF \d+\b/.test(String(x).trim())) && !t.pdf.said.some(x => /^RISK \d+ OF \d+\b/.test(String(x).trim())), 'the Top 5 sheet\'s pages keep ACTION n OF N');
   }
   R.ok(/^top-5-action-sheet-1-/.test(t.name || '') && t.t5left === 0, 'it still downloads as top-5-action-sheet-1-..., and it can be deleted (' + t.name + ')');
   R.ok(!!t.r2 && t.r2.kind === 'risk' && !!t.r2.first && t.r2.first.key === t.k2 && t.r2.first.from === 1 && t.r2.first.rec === t.rec2 && t.riskN === 2,

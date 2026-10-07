@@ -1,15 +1,24 @@
 // ══════════════════════════════════════════════════════════════
 //  Top 5 action sheet: five actions out with the recommended controls; the
 //  leadership team's comments, who and by when come back against each of
-//  the risk's own controls (imported, or keyed in from a paper copy), and a
+//  the risk's open actions (imported, or keyed in from a paper copy), and a
 //  decision on each line - agreed, compromise, client accepts the risk, or
 //  carry.
 //  Simon, 2026-10-07: the cover loses the name and role and reads like a
 //  procedure, the five in their band colours; each page ends in a two-way
-//  table - my controls, printed and not editable, then the client's comments,
+//  table - printed and not editable on the left, then the client's comments,
 //  who and by when - and a comments box at the bottom that marries up with
 //  the app when the sheet comes back. Sheets already sent (v1: a tick for
 //  what happened) still come back, and can still be approved.
+//  Later the same day, after seeing it live: "you have put the high level
+//  control in the table to answer when it should be the action - frame it
+//  the same as it is in the Action delegation & timescale modal view". The
+//  table (v3) is the risk's open actions under the control each puts in
+//  place, as tab 4 shows them - a gap row for a control nothing puts in place
+//  yet - with who and by when printed from the plan, so a change comes back
+//  as a change: Apply to the plan, Add to the action's history, or a new
+//  action under the control. Sheets sent as the second form (v2: a row a
+//  control) still come back exactly as they did.
 //  Run: npm run test:ui
 // ══════════════════════════════════════════════════════════════
 import fs from 'node:fs';
@@ -49,21 +58,27 @@ const inject = () => page.evaluate(() => {
   window.__btn = (sid, i, test) => [...((__line(sid, i) || document.createElement('div')).querySelectorAll('button'))].find(b => test(b.textContent.trim(), b.getAttribute('onclick') || '')) || null;
   window.__decideBtn = (sid, i, k) => __btn(sid, i, (t, on) => new RegExp('asDecide\\([^)]*[\'"]' + k + '[\'"]').test(on));
   window.__addBtns = (sid, i) => [...((__line(sid, i) || document.createElement('div')).querySelectorAll('button'))].filter(b => /^[＋+]\s*Add to the plan under this control$/.test(b.textContent.trim()));
-  // the paper-copy inputs on a line: each control row's comment / who / date, by the field asCtlResp writes
-  window.__ctlIn = (sid, i) => {
-    const el = __line(sid, i), out = {}; if (!el) return out;
+  // the buttons on the rows that came back (not the decision bar, the line's head or a decided line's Undo), by their words
+  window.__rowBtns = (sid, i, re) => [...((__line(sid, i) || document.createElement('div')).querySelectorAll('button'))]
+    .filter(b => !b.closest('.as-btns, .as-ih, .as-decided') && (typeof re === 'function' ? re(b.textContent.trim()) : re.test(b.textContent.trim())));
+  // the paper-copy inputs on a v3 line: each row's comment / who / when, by the row and field asRowResp writes
+  window.__rowIn = (sid, i) => {
+    const el = __line(sid, i), out = { rows: {}, what: null }; if (!el) return out;
     el.querySelectorAll('input, textarea, select').forEach(x => {
       const h = ['oninput', 'onchange', 'onblur'].map(a => x.getAttribute(a) || '').join(' ');
-      const m = /asCtlResp\(\s*[^,]+,\s*[^,]+,\s*[^,]+,\s*['"](\w+)['"]/.exec(h); if (!m) return;
-      const f = x.type === 'date' ? 'date' : m[1];
-      (out[f] = out[f] || []).push(x);
+      const m = /asRowResp\(\s*[^,]+,\s*[^,]+,\s*(\d+)\s*,\s*['"](\w+)['"]/.exec(h); if (!m) return;
+      const k = +m[1], f = m[2];
+      if (!k) { if (f === 'what') out.what = x; return; }
+      const r = out.rows[k] = out.rows[k] || {};
+      r[/^(due|dueText|date|when)$/.test(f) ? 'due' : f] = x;
     });
     return out;
   };
   window.__respIn = (sid, i, f) => [...((__line(sid, i) || document.createElement('div')).querySelectorAll('input, textarea, select'))]
     .find(x => new RegExp('asResp\\([^)]*[\'"]' + f + '[\'"]').test(['oninput', 'onchange'].map(a => x.getAttribute(a) || '').join(' '))) || null;
-  // the comments box on a paper copy: through asResp(..., 'what') or asCtlResp(..., 'what') - either is the contract
-  window.__whatIn = (sid, i) => __respIn(sid, i, 'what') || ((__ctlIn(sid, i).what || [])[0]) || null;
+  // the comments box on a paper copy: through asRowResp(..., 0, 'what'), asResp(..., 'what') or asCtlResp(..., 0, 'what') - any is the contract
+  window.__whatIn = (sid, i) => __rowIn(sid, i).what || __respIn(sid, i, 'what') || [...((__line(sid, i) || document.createElement('div')).querySelectorAll('textarea'))]
+    .find(x => /asCtlResp\([^)]*['"]what['"]/.test(x.getAttribute('oninput') || '')) || null;
   window.__put = (el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
   // The sheet as built. pdf-lib cannot read text back, so what is drawn is
   // watched while it builds: every string (with its page, colour and place),
@@ -88,7 +103,8 @@ const inject = () => page.evaluate(() => {
     };
     const boxes = {};
     form.getFields().forEach(f => { const n = f.getName(); if (!/^as_/.test(n)) return;
-      try { const r = f.acroField.getWidgets()[0].getRectangle(); boxes[n] = { x: r.x, y: r.y, w: r.width, h: r.height, p: pageOf(f), multi: (typeof f.isMultiline === 'function') ? f.isMultiline() : null }; } catch (e) { boxes[n] = null; } });
+      let text = ''; try { text = f.getText() || ''; } catch (e) {}
+      try { const r = f.acroField.getWidgets()[0].getRectangle(); boxes[n] = { x: r.x, y: r.y, w: r.width, h: r.height, p: pageOf(f), multi: (typeof f.isMultiline === 'function') ? f.isMultiline() : null, text }; } catch (e) { boxes[n] = null; } });
     let meta = {}; try { meta = JSON.parse(form.getTextField('as__meta').getText()); } catch (e) {}
     let b = ''; bytes.forEach(x => { b += String.fromCharCode(x); });
     return { said, marks, names, boxes, meta, pages: pages.length, b64: btoa(b) };
@@ -159,17 +175,28 @@ await wait(page, 200);
 s1 = await sheet(1);
 R.ok(s1.items.every((it, i) => it.rec === RECS[i]), 'the consultant writes the recommended control against each action');
 
-// ── the risk's high level controls (tab 3) are the rows of the two-way table ──
-// r1 (lines 2 and 4) has three, plus a deleted one and one with no words -
-// neither of those is a control. r2 and r3 have none.
+// ── the rows: the risk's open actions, under the control each puts in place (tab 4) ──
+// r1 (lines 2 and 4) gets three controls, plus a deleted one and one with no
+// words - neither of those is a control. Its two actions put two of them in
+// place: the edge protection the guard rail, the rescue plan the harness
+// training; nothing puts the access permit in place yet, so it gets a gap
+// row. r2 and r3 have no controls: their rows are their open actions - the
+// training taken off this sheet included (it is still open on the plan) and
+// the speed signs, complete, left off.
 const CTLS = [
   { id: 'c1', desc: 'Guard rail on the roof edge', owner: 'Dave', due: '', status: 'Complete', completedDate: day(-20), hideFromPlan: true },
   { id: 'c2', desc: 'Roof access permit', owner: 'Dave', due: day(30), status: 'Not started', hideFromPlan: true },
   { id: 'cx', desc: 'Ladder tied at the top', owner: '', due: '', status: 'Not started', hideFromPlan: true, deleted: true },
   { id: 'cb', desc: '   ', owner: '', due: '', status: 'Not started', hideFromPlan: true },
   { id: 'c3', desc: 'Harness training for roof work', owner: '', due: '', status: 'In progress', hideFromPlan: true }];
-await page.evaluate(C => { S.riskProfile.find(r => r.id === 'r1').actions.push(...C); _asRender(); }, CTLS);
-const ROWS = { 1: ['c1'], 2: ['c1', 'c2', 'c3'], 3: ['c1'], 4: ['c1', 'c2', 'c3'], 5: ['c1'] };   // field rows per line: r2, r1, r3, r1, r3
+await page.evaluate(C => { const r1 = S.riskProfile.find(r => r.id === 'r1'); r1.actions.push(...C);
+  r1.actions.find(a => a.id === 'a1').forCtl = 'c1'; r1.actions.find(a => a.id === 'a2').forCtl = 'c3'; _asRender(); }, CTLS);
+// per line (r2, r1, r3, r1, r3): the action on each row (null: a gap row), the control it sits under, and the row of the line's own action
+const ROWS = { 1: ['a3', 'a4'], 2: ['a1', null, 'a2'], 3: ['a5', 'a6'], 4: ['a1', null, 'a2'], 5: ['a5', 'a6'] };
+const UNDER = { 1: [null, null], 2: ['c1', 'c2', 'c3'], 3: [null, null], 4: ['c1', 'c2', 'c3'], 5: [null, null] };
+const OWN = { 1: 1, 2: 1, 3: 1, 4: 3, 5: 2 };
+const dmy = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';
+const GAP = 'No action yet - what will be done?';      // one line in the action column
 
 // ── the sheet itself ──
 const pdfPath = path.join(os.tmpdir(), 'action-sheet-test.pdf');
@@ -179,49 +206,73 @@ const BAND = { Critical: 'DC2626', High: 'EA580C', Medium: 'F59E0B', Low: '16A34
     const b = await __build(sid), s = _asSheet(sid);
     b.bands = s.items.map(it => { const r = _execRiskOf({ ref: it.ref }); return r ? (_riskScore(r).priority || '') : ''; });
     b.since = _pdfAscii(fmtDate(S.riskProfile.find(r => r.id === 'r1').actions.find(a => a.id === 'c1').completedDate));
+    b.permitBy = _pdfAscii(fmtDate(S.riskProfile.find(r => r.id === 'r1').actions.find(a => a.id === 'c2').due));
     return b;
   }, s1.id);
   fs.writeFileSync(pdfPath, Buffer.from(t.b64, 'base64'));
   const S_ = t.said.map(x => x.s), U = x => String(x).trim().toUpperCase();
   const has = n => t.names.includes(n);
-  const rowsOf = n => t.names.filter(x => new RegExp('^as_' + n + '_c\\d+_cmt$').test(x)).length;
-  const per = n => has('as_' + n + '_what') && ROWS[n].every((c, k) => ['cmt', 'who', 'due'].every(f => has('as_' + n + '_c' + (k + 1) + '_' + f)));
-  R.ok([1, 2, 3, 4, 5].every(per) && has('as__general'), 'each page has comments, who and by when against each of the risk’s controls, and a comments box for the risk');
+  const rowsOf = n => t.names.filter(x => new RegExp('^as_' + n + '_r\\d+_cmt$').test(x)).length;
+  const per = n => has('as_' + n + '_what') && ROWS[n].every((a, k) => ['cmt', 'who', 'due'].every(f => has('as_' + n + '_r' + (k + 1) + '_' + f))) && !has('as_' + n + '_r' + (ROWS[n].length + 1) + '_cmt');
+  R.ok([1, 2, 3, 4, 5].every(per) && has('as__general'), 'each page has a comment, who and by when on every row of its table, and a comments box for the risk');
   R.ok(!has('as__name') && !has('as__role'), 'the cover no longer asks for a name or a role');
   R.ok(!t.names.some(n => /^as_\d+_(o_\w+|date|by)$/.test(n)), 'the what-happened ticks and the what was done / date done / by whom boxes are gone');
-  R.ok(t.names.filter(n => /^as_\d+_/.test(n)).every(n => /^as_\d+_(c\d+_(cmt|who|due)|what)$/.test(n)), 'the control itself is printed, never a field - the only boxes are the client’s');
-  // three controls on tab 3: three rows, in tab 3's order - the deleted and the blank left off
-  const order = n => ROWS[n].map((c, k) => t.boxes['as_' + n + '_c' + (k + 1) + '_cmt']).every((b, k, a) => !!b && (k === 0 || a[k - 1].p < b.p || (a[k - 1].p === b.p && a[k - 1].y > b.y)));
-  R.ok(rowsOf(2) === 3 && rowsOf(4) === 3 && JSON.stringify((t.meta.ctls || [])[1]) === '["c1","c2","c3"]' && JSON.stringify((t.meta.ctls || [])[3]) === '["c1","c2","c3"]' && order(2) && order(4),
-    'a risk with three controls gets three rows, in the order of tab 3 (' + JSON.stringify(t.meta.ctls) + ')');
-  R.ok([1, 3, 5].every(n => rowsOf(n) === 1 && JSON.stringify((t.meta.ctls || [])[n - 1]) === '[null]'), 'a risk with no controls gets one row - the control we recommend');
-  R.ok(t.meta.v === 2 && Array.isArray(t.meta.ctls) && t.meta.ctls.length === 5 && t.meta.sheet === s1.id && t.meta.no === 1 && (t.meta.keys || []).length === 5 && t.meta.kind === 'top5' && t.meta.client === 'Fairbank Fabrications Ltd' && !!t.meta.made,
-    'it knows which client, which sheet, which lines and which control each row is (v2)');
+  R.ok(t.names.filter(n => /^as_\d+_/.test(n)).every(n => /^as_\d+_(r\d+_(cmt|who|due)|what)$/.test(n)), 'the action itself is printed, never a field - the only boxes are the client’s, a row an action (no control rows)');
+  // tab 4's order: under each control its actions, a gap row for the permit - the deleted and the blank left off
+  const mrows = n => ((t.meta.rows || [])[n - 1] || []);
+  const order = n => ROWS[n].map((a, k) => t.boxes['as_' + n + '_r' + (k + 1) + '_cmt']).every((b, k, arr) => !!b && (k === 0 || arr[k - 1].p < b.p || (arr[k - 1].p === b.p && arr[k - 1].y > b.y)));
+  const same = n => JSON.stringify(mrows(n).map(r => r.a || null)) === JSON.stringify(ROWS[n]) && JSON.stringify(mrows(n).map(r => r.c || null)) === JSON.stringify(UNDER[n]);
+  R.ok([2, 4].every(n => rowsOf(n) === 3 && order(n) && same(n)),
+    'a risk with controls: its open actions under the control each puts in place, in tab 4’s order, and a gap row for a control nothing puts in place yet (' + JSON.stringify((t.meta.rows || []).map(rs => rs.map(r => r.a || ('gap:' + r.c)))) + ')');
+  R.ok([1, 3, 5].every(n => rowsOf(n) === 2 && order(n) && same(n)), 'a risk with no controls: its open actions - one taken off the sheet is still a row on its risk’s page, a completed one is not');
+  R.ok(t.meta.v === 3 && !('ctls' in t.meta) && Array.isArray(t.meta.rows) && t.meta.rows.length === 5 && t.meta.sheet === s1.id && t.meta.no === 1 && (t.meta.keys || []).length === 5 && t.meta.kind === 'top5' && t.meta.client === 'Fairbank Fabrications Ltd' && !!t.meta.made,
+    'it knows which client, which sheet, which lines and which action and control each row is (v3, no control rows)');
+  // who and by when, printed from the plan into the boxes
+  const PRE = { as_1_r1: ['Sam', day(10)], as_1_r2: ['', day(60)], as_2_r1: ['Dave', day(30)], as_2_r2: ['', ''], as_2_r3: ['', ''], as_3_r1: ['Dave', day(-5)], as_5_r2: ['', day(20)] };
+  R.ok(Object.keys(PRE).every(k => (t.boxes[k + '_who'] || {}).text === PRE[k][0] && (t.boxes[k + '_due'] || {}).text === dmy(PRE[k][1]) && (t.boxes[k + '_cmt'] || {}).text === '')
+    && mrows(1)[0].who === 'Sam' && mrows(1)[0].due === day(10) && mrows(2)[1].who === '' && mrows(2)[1].due === '',
+    'who and by when come filled in from the plan - the owner, and the due date as dd/mm/yyyy; a gap row is left blank');
   // a page an action, after a one-page cover; the comments box at the bottom of the risk's pages
-  R.ok([1, 2, 3, 4, 5].every(n => (t.boxes['as_' + n + '_c1_cmt'] || {}).p === n) && t.pages >= 6 && t.pages <= 7, 'a cover, then a page an action that stands on its own (' + t.pages + ' pages)');
-  const below = n => { const k = ROWS[n].length, last = t.boxes['as_' + n + '_c' + k + '_cmt'], w = t.boxes['as_' + n + '_what']; return !!last && !!w && (w.p > last.p || (w.p === last.p && w.y + w.h <= last.y + 1)); };
-  R.ok([1, 2, 3, 4, 5].every(below), 'the comments on the risk come at the bottom, under the table');
+  R.ok([1, 2, 3, 4, 5].every(n => (t.boxes['as_' + n + '_r1_cmt'] || {}).p === n) && t.pages >= 6 && t.pages <= 7, 'a cover, then a page an action that stands on its own (' + t.pages + ' pages)');
+  const below = n => { const k = ROWS[n].length, last = t.boxes['as_' + n + '_r' + k + '_cmt'], w = t.boxes['as_' + n + '_what']; return !!last && !!w && w.p === last.p && w.y + w.h <= last.y + 1; };
+  R.ok([1, 2, 3, 4, 5].every(below), 'the comments on the risk come at the bottom, under the table, on the same page');
   {
-    const CW = 595.28 - 80, ML = 40, MR = 595.28 - 40, c = t.boxes.as_2_c1_cmt, w = t.boxes.as_2_c1_who, d = t.boxes.as_2_c1_due, k = t.boxes.as_2_what;
+    const CW = 595.28 - 80, ML = 40, MR = 595.28 - 40, c = t.boxes.as_2_r1_cmt, w = t.boxes.as_2_r1_who, d = t.boxes.as_2_r1_due, k = t.boxes.as_2_what;
     const near = (v, lo, hi) => v >= lo && v <= hi;
-    R.ok(!!c && !!w && !!d && c.x >= ML + 0.33 * CW && c.x < w.x && w.x < d.x && d.x + d.w <= MR + 1.5 && near(c.w, 0.25 * CW, 0.42 * CW) && near(w.w, 0.08 * CW, 0.18 * CW) && near(d.w, 0.08 * CW, 0.18 * CW) && c.multi === true,
-      'the columns: the control (printed) on the left, then comments (several lines), who and by when');
-    R.ok(!!k && k.w >= 0.9 * CW && near(k.h, 45, 80) && k.multi === true, 'the comments box runs the full width, about 60pt tall, several lines');
+    R.ok(!!c && !!w && !!d && near(c.x, ML + 0.35 * CW, ML + 0.45 * CW) && c.x < w.x && w.x < d.x && d.x + d.w <= MR + 1.5 && near(c.w, 0.25 * CW, 0.35 * CW) && near(w.w, 0.10 * CW, 0.20 * CW) && near(d.w, 0.10 * CW, 0.20 * CW) && c.multi === true,
+      'the columns: the action (printed, about 40%) on the left, then comments (about 30%, several lines), who and by when (about 15% each)');
+    R.ok(!!k && k.w >= 0.9 * CW && near(k.h, 38, 80) && k.multi === true, 'the comments box runs the full width, several lines');
   }
   // what is printed
   const iOf = test => S_.findIndex(test);
-  const iP = iOf(x => U(x) === 'PURPOSE'), iG = iOf(x => /^THE (\d+|ONE|FIVE) AT A GLANCE$/.test(U(x))), iW = iOf(x => U(x) === 'WHAT WE NEED FROM YOU'), iH = iOf(x => U(x) === 'HOW TO READ THE SCORES'), iT = iOf(x => U(x) === 'YOUR CONTROLS - TELL US WHAT YOU THINK');
+  const iP = iOf(x => U(x) === 'PURPOSE'), iG = iOf(x => /^THE (\d+|ONE|FIVE) AT A GLANCE$/.test(U(x))), iW = iOf(x => U(x) === 'WHAT WE NEED FROM YOU'), iH = iOf(x => U(x) === 'HOW TO READ THE SCORES'), iT = iOf(x => U(x) === 'YOUR ACTIONS - TELL US WHAT YOU THINK');
   R.ok(iP >= 0 && iP < iG && iG < iW && iW < iH && iH < iT, 'the cover reads like a procedure: Purpose, the five at a glance, What we need from you, How to read the scores');
   const all = S_.join(' ');
   R.ok(['first priority for resource', 'never run on acceptance alone', 'must never sit at 1', 'managed with routine precautions'].every(p => new RegExp(p.replace(/ /g, '\\s+'), 'i').test(all))
     && ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].every(b => all.toUpperCase().indexOf(b) >= 0) && ['16-25', '10-15', '5-9', '1-4'].every(r => all.indexOf(r) >= 0),
     'how to read the scores: the four bands with their ranges, in the risk ladder’s own words');
   R.ok(!S_.some(x => /in place today/i.test(x)) && !S_.some(x => /what happened/i.test(x)), '"In place today" and "What happened" are gone from the sheet');
-  R.ok(S_.filter(x => U(x) === 'YOUR CONTROLS - TELL US WHAT YOU THINK').length >= 5 && S_.filter(x => U(x) === 'COMMENTS ON THIS RISK').length >= 5
-    && ['CONTROL', 'COMMENTS', 'WHO'].every(h => S_.some(x => U(x) === h)) && S_.some(x => /^BY WHEN/.test(U(x))) && S_.some(x => /dd\/mm\/yyyy/i.test(x)),
-    'every page has Your controls - tell us what you think (Control, Comments, Who, By when) and Comments on this risk');
-  R.ok(CTLS.filter(c => !c.deleted && c.desc.trim()).every(c => S_.some(x => x.indexOf(c.desc) >= 0)) && !S_.some(x => x.indexOf('Ladder tied at the top') >= 0), 'the controls are printed in the table, the deleted one is not');
-  R.ok(S_.some(x => /^In place since /.test(x) && x.indexOf(t.since) >= 0) && S_.some(x => /^Planned\b/.test(x) && /Dave/.test(x)), 'under each control, whether it is in place (since when) or planned (who, by when)');
+  R.ok(S_.filter(x => U(x) === 'YOUR ACTIONS - TELL US WHAT YOU THINK').length >= 5 && S_.filter(x => U(x) === 'COMMENTS ON THIS RISK').length >= 5
+    && ['ACTION', 'COMMENTS', 'WHO'].every(h => S_.some(x => U(x) === h)) && S_.some(x => /^BY WHEN/.test(U(x))) && S_.some(x => /dd\/mm\/yyyy/i.test(x))
+    && S_.filter(x => x.trim() === 'Who and when come from your plan - change them if they are wrong').length >= 5,
+    'every page has Your actions - tell us what you think (Action, Comments, Who, By when), with who and when from the plan, and Comments on this risk');
+  R.ok(!S_.some(x => U(x) === 'YOUR CONTROLS - TELL US WHAT YOU THINK') && !S_.some(x => /The controls are printed - write against each one/.test(x)), 'the controls table is gone');
+  const onPage = p => t.said.filter(x => x.p === p).map(x => x.s).join(' ').replace(/\s+/g, ' ');
+  R.ok(['Fit edge protection to the loading bay roof', 'Write a rescue plan for harness work'].every(d => onPage(2).indexOf(d) >= 0 && onPage(4).indexOf(d) >= 0)
+    && ['Buy a pallet truck for the stores', 'Manual handling training for stores staff'].every(d => onPage(1).indexOf(d) >= 0) && onPage(3).indexOf('Speed limit signs at the gate') < 0,
+    'each row prints the action itself - on r1’s pages both its actions, on r2’s the training taken off this sheet too; the completed speed signs are not printed');
+  R.ok(CTLS.filter(c => !c.deleted && c.desc.trim()).every(c => onPage(2).indexOf(c.desc) >= 0) && !S_.some(x => x.indexOf('Ladder tied at the top') >= 0)
+    && t.said.filter(x => x.p === 2 && /^CONTROL \d+\b/.test(x.s.trim())).length === 3 && [1, 3, 5].every(p => !t.said.some(x => x.p === p && /^CONTROL \d+\b/.test(x.s.trim()))),
+    'on r1’s page each control heads the actions that put it in place - CONTROL k and its words, the deleted one not printed; r2 and r3 have no headings');
+  R.ok(S_.some(x => /^In place since /.test(x) && x.indexOf(t.since) >= 0) && S_.some(x => /^Planned\b/.test(x) && /Dave/.test(x) && x.indexOf('by ' + t.permitBy) >= 0), 'under each control, whether it is in place (since when) or planned (who, by when) - as tab 4 heads it');
+  R.ok([2, 4].every(p => onPage(p).indexOf(GAP) >= 0) && [1, 3, 5].every(p => onPage(p).indexOf('No action yet') < 0), 'the permit, with nothing to put it in place, gets a gap row: ' + GAP);
+  {
+    // the line's own action is tagged in its row
+    const tag = n => { const own = t.boxes['as_' + n + '_r' + OWN[n] + '_cmt'], tg = t.said.filter(x => x.p === n && x.s.trim() === 'ON THIS SHEET');
+      return tg.length === 1 && !!own && tg[0].y >= own.y - 3 && tg[0].y <= own.y + own.h + 3 && tg[0].x < own.x; };
+    R.ok([1, 2, 3, 4, 5].every(tag), 'the line’s own action carries ON THIS SHEET in its row - the edge protection on page 2, the rescue plan on page 4');
+  }
+  R.ok([1, 2, 3, 4, 5].every(n => t.said.some(x => x.p === n && new RegExp('^ACTION ' + n + ' OF 5\\b').test(x.s.trim()))), 'each page is headed ACTION n OF 5');
   // the colour that shows each risk's level
   {
     const cov = t.said.filter(x => x.p === 0), yOf = test => (cov.find(x => test(U(x.s))) || {}).y;
@@ -233,9 +284,9 @@ const BAND = { Critical: 'DC2626', High: 'EA580C', Medium: 'F59E0B', Low: '16A34
     const bars = t.marks.filter(m => m.p === 0 && m.y < yG && m.y + m.h > yW && m.h >= 16 && ((m.k === 'r' && m.w >= 2.5 && m.w <= 6) || (m.k === 'l' && m.w < 0.5 && m.t >= 2.5 && m.t <= 6)) && Object.values(BAND).includes(m.c))
       .sort((a, b) => b.y - a.y).map(m => m.c);
     R.ok(bars.length >= 5 && want.every((c, i) => bars[i] === c), 'and a bar in its band’s colour down each row’s left edge (' + bars.join(',') + ')');
-    const pg2 = t.said.filter(x => x.p === 2), yT = (pg2.find(x => U(x.s) === 'YOUR CONTROLS - TELL US WHAT YOU THINK') || {}).y, yC = (pg2.find(x => U(x.s) === 'COMMENTS ON THIS RISK') || {}).y;
+    const pg2 = t.said.filter(x => x.p === 2), yT = (pg2.find(x => U(x.s) === 'YOUR ACTIONS - TELL US WHAT YOU THINK') || {}).y, yC = (pg2.find(x => U(x.s) === 'COMMENTS ON THIS RISK') || {}).y;
     const rule = t.marks.some(m => m.p === 2 && m.c === BAND[t.bands[1]] && m.h >= 30 && ((m.k === 'r' && m.w >= 1.5 && m.w <= 4.5) || (m.k === 'l' && m.w < 0.5 && m.t >= 1.5 && m.t <= 4.5)) && yT != null && yC != null && m.y + m.h <= yT + 2 && m.y >= yC - 2);
-    R.ok(rule, 'the controls table carries the risk’s band colour down its left edge');
+    R.ok(rule, 'the actions table carries the risk’s band colour down its left edge');
   }
 }
 await page.evaluate(sid => downloadActionSheet(sid), s1.id);
@@ -245,112 +296,184 @@ R.ok(/With the client since/.test(await page.evaluate(() => _asSheetStatus(S.act
 // ── what is refused on the way back ──
 const fill = (answers, edit) => page.evaluate(async (sid, answers, edit) => {
   const bytes = await buildActionSheetPDF(sid);
-  const doc = await PDFLib.PDFDocument.load(bytes); const form = doc.getForm();
-  Object.keys(answers).forEach(k => form.getTextField(k).setText(answers[k]));
+  const doc = await PDFLib.PDFDocument.load(bytes); const form = doc.getForm(), missing = [];
+  Object.keys(answers).forEach(k => { try { form.getTextField(k).setText(answers[k]); } catch (e) { missing.push(k); } });
+  if (missing.length) return 'NOT ON THE SHEET: ' + missing.join(', ');
   if (edit === 'other') { const m = JSON.parse(form.getTextField('as__meta').getText()); m.client = 'Other Co Ltd'; form.getTextField('as__meta').enableReadOnly(false); form.getTextField('as__meta').setText(JSON.stringify(m)); }
   if (edit === 'flat') form.flatten();
-  await _asImportFiles([new File([await doc.save()], (edit || 'returned') + '.pdf', { type: 'application/pdf' })]);
+  window.__lastCopy = await doc.save();       // the copy as sent back, to import again later
+  await _asImportFiles([new File([window.__lastCopy], (edit || 'returned') + '.pdf', { type: 'application/pdf' })]);
   return document.getElementById('toast').textContent;
 }, s1.id, answers, edit || '');
 {
-  const other = await fill({ as_1_c1_cmt: 'Fine by us.' }, 'other');
-  const flat = await fill({ as_1_c1_cmt: 'Fine by us.' }, 'flat');
+  const other = await fill({ as_1_r1_cmt: 'Fine by us.' }, 'other');
+  const flat = await fill({ as_1_r1_cmt: 'Fine by us.' }, 'flat');
   const blank = await fill({});
   R.ok(/this sheet is for Other Co Ltd, not Fairbank Fabrications Ltd/.test(other), 'another client’s sheet is refused, with the reason');
   R.ok(/boxes may have been flattened/.test(flat) && /enter the answers by hand/.test(flat), 'a flattened sheet is refused, and says the answers can be entered by hand');
-  R.ok(/nothing filled in/.test(blank), 'a sheet returned blank is refused');
-  R.ok(await page.evaluate(() => S.actionSheets.list[0].items.every(i => !_asHasResp(i) && !((i.resp || {}).ctls || []).length)), 'and none of those changed anything');
+  R.ok(/nothing filled in/.test(blank), 'a sheet returned blank - who and by when left as printed - is refused');
+  R.ok(await page.evaluate(() => S.actionSheets.list[0].items.every(i => !_asHasResp(i) && !((i.resp || {}).rows || []).length && !((i.resp || {}).ctls || []).length)), 'and none of those changed anything');
 }
 
-// ── the leadership team's comments come back, under each control ──
+// ── the leadership team's comments come back, against each action ──
+// Who and by when were printed from the plan: a box left as printed is no
+// change; one written over is. The dates are years out, so they never meet
+// the plan's own.
 const ANSWERS = {
-  as_1_c1_cmt: 'Bought and in use. On the pre-use check sheet.', as_1_c1_who: 'Sam', as_1_c1_due: '12/10/2026', as_1_what: 'The stores are clear now.',
-  as_2_c1_cmt: 'The landlord will not allow fixings into the roof.', as_2_c1_who: 'Dave Morley', as_2_c1_due: '9 Oct 2026',
-  as_2_c3_cmt: 'Agreed - book it with the access contractor.', as_2_c3_who: 'Dave', as_2_c3_due: 'end of Nov',
+  as_1_r1_cmt: 'Bought and in use. On the pre-use check sheet.', as_1_r1_due: '12/10/2030', as_1_what: 'The stores are clear now.',
+  as_1_r2_cmt: 'Training booked for November.',
+  as_2_r1_cmt: 'The landlord will not allow fixings into the roof.', as_2_r1_who: 'Dave Morley', as_2_r1_due: '9 Oct 2030',
+  as_2_r2_cmt: 'Agreed - book it with the access contractor.', as_2_r2_who: 'Dave', as_2_r2_due: 'end of Nov',
+  as_2_r3_cmt: 'Rescue plan is with the insurer.',
   as_2_what: 'Budget is tight for the roof this year.',
   as_3_what: 'Waiting for the line-marking contractor.',
-  as_4_c2_who: 'Dave Morley', as_4_c2_due: '31/10/2026',
+  as_4_r2_who: 'Sam', as_4_r2_due: '15/12/2030',
+  as_4_r3_who: 'Dave Morley', as_4_r3_due: '31/10/2030',
   as__general: 'Budget is tight until January.' };
-const before = { a3: (await act('a3')).status, a1: (await act('a1')).status };
+const before = { a3: (await act('a3')).status, a1: (await act('a1')).status, a1o: (await act('a1')).owner, a1d: (await act('a1')).due, a2o: (await act('a2')).owner, a2d: (await act('a2')).due };
 const order0 = await lineIds();
 {
   const msg = await fill(ANSWERS);
   s1 = await sheet(1);
-  const it = s1.items, c = n => ((it[n].resp || {}).ctls || []);
-  R.ok(/Sheet 1: 4 answers? in/.test(msg) && !/Not imported/.test(msg), 'the returned sheet imports - four lines answered, the fifth left blank (' + msg.slice(0, 90) + ')');
-  R.ok(c(0).length === 1 && c(0)[0].ctlId === null && c(0)[0].ctlText === RECS[0] && c(0)[0].cmt === ANSWERS.as_1_c1_cmt && c(0)[0].who === 'Sam' && c(0)[0].due === '2026-10-12' && c(0)[0].dueText === '12/10/2026' && c(0)[0].actId === ''
-    && it[0].resp.what === 'The stores are clear now.' && !it[0].resp.outcome, 'a risk with no controls: the comment, who and by when come back against the control we recommended, and the comments box as the risk’s comment');
-  R.ok(c(1).length === 2 && c(1).map(x => x.ctlId).join(',') === 'c1,c3' && c(1).map(x => x.ctlText).join('|') === 'Guard rail on the roof edge|Harness training for roof work' && it[1].resp.what === ANSWERS.as_2_what,
-    'each row comes back under the control it was written against - a row left blank is skipped');
-  R.ok(c(1)[0].due === '2026-10-09' && c(1)[1].due === '' && c(1)[1].dueText === 'end of Nov', 'a date written as words is read, and one that cannot be read is kept as written');
-  R.ok(c(2).length === 0 && it[2].resp.what === ANSWERS.as_3_what && c(3).length === 1 && c(3)[0].ctlId === 'c2' && c(3)[0].cmt === '' && c(3)[0].who === 'Dave Morley' && c(3)[0].due === '2026-10-31',
-    'a comment on the risk alone counts, and so does a row with only who and by when');
-  R.ok(await page.evaluate(() => [0, 1, 2, 3].every(i => _asHasResp(S.actionSheets.list[0].items[i])) && !_asHasResp(S.actionSheets.list[0].items[4])), 'four lines read as answered, the blank one does not');
+  const it = s1.items, c = n => ((it[n].resp || {}).rows || []);
+  R.ok(/Sheet 1: 4 answers? in/.test(msg) && !/Not imported/.test(msg), 'the returned sheet imports - four lines answered, the fifth left as printed (' + msg.slice(0, 90) + ')');
+  R.ok(c(0).length === 2 && c(0)[0].a === 'a3' && c(0)[0].c === null && c(0)[0].text === 'Buy a pallet truck for the stores' && c(0)[0].cmt === ANSWERS.as_1_r1_cmt && c(0)[0].who === 'Sam' && c(0)[0].whoChanged === false
+    && c(0)[0].due === '2030-10-12' && c(0)[0].dueText === '12/10/2030' && c(0)[0].dueChanged === true && c(0)[0].gap === false && !c(0)[0].applied
+    && c(0)[1].a === 'a4' && c(0)[1].cmt === 'Training booked for November.' && c(0)[1].whoChanged === false && c(0)[1].dueChanged === false
+    && it[0].resp.what === 'The stores are clear now.' && !it[0].resp.outcome && !(it[0].resp.ctls || []).length,
+    'each row comes back against its action: the comment, who and by when, and whether they differ from what was printed - a who left as printed is no change');
+  R.ok(c(1).length === 3 && c(1).map(x => x.a || 'gap').join(',') === 'a1,gap,a2' && c(1).map(x => x.c || '-').join(',') === 'c1,c2,c3' && c(1)[0].text === 'Fit edge protection to the loading bay roof'
+    && c(1)[0].whoChanged === true && c(1)[0].who === 'Dave Morley' && c(1)[1].gap === true && c(1)[1].cmt === ANSWERS.as_2_r2_cmt && c(1)[1].who === 'Dave' && c(1)[2].dueChanged === false && it[1].resp.what === ANSWERS.as_2_what,
+    'each row keeps its action and the control it sits under; a gap row comes back as a gap under its control');
+  R.ok(c(1).length === 3 && c(1)[0].due === '2030-10-09' && c(1)[0].dueChanged === true && c(1)[1].due === '' && c(1)[1].dueText === 'end of Nov' && c(1)[1].dueChanged === true, 'a date written as words is read, and one that cannot be read is kept as written');
+  R.ok(c(2).length === 0 && it[2].resp.what === ANSWERS.as_3_what && c(3).length === 2 && c(3)[0].gap === true && c(3)[0].c === 'c2' && c(3)[0].who === 'Sam' && c(3)[0].due === '2030-12-15'
+    && c(3)[1].a === 'a2' && c(3)[1].c === 'c3' && c(3)[1].cmt === '' && c(3)[1].who === 'Dave Morley' && c(3)[1].due === '2030-10-31' && c(3)[1].whoChanged && c(3)[1].dueChanged,
+    'a comment on the risk alone counts, and so does a row with only who and by when changed');
+  R.ok(await page.evaluate(() => [0, 1, 2, 3].every(i => _asHasResp(S.actionSheets.list[0].items[i])) && !_asHasResp(S.actionSheets.list[0].items[4])), 'four lines read as answered, the one left as printed does not');
   R.ok(s1.returnedBy === '' && s1.general === 'Budget is tight until January.' && !!s1.returnedAt, 'no name is needed to send it back; the general comment is kept');
-  R.ok((await act('a3')).status === before.a3 && (await act('a1')).status === before.a1, 'nothing changes on the plan until each line is decided');
+  const a1 = await act('a1'), a2 = await act('a2');
+  R.ok((await act('a3')).status === before.a3 && a1.status === before.a1 && a1.owner === before.a1o && a1.due === before.a1d && a2.owner === before.a2o && a2.due === before.a2d,
+    'nothing changes on the plan when it comes in - not even who and by when - until it is applied or decided');
   R.ok(JSON.stringify(await lineIds()) === JSON.stringify(order0), 'the lines stay exactly where they were');
   R.ok(/5 to decide/.test(await page.evaluate(() => _asSheetStatus(S.actionSheets.list[0]).label)), 'the sheet reads 5 to decide');
 }
 {
   await fill(ANSWERS);
-  const n = (await sheet(1)).items.map(i => ((i.resp || {}).ctls || []).length).join(',');
-  R.ok(n === '1,2,0,1,0', 'the same sheet imported again replaces what came back - never two copies (' + n + ')');
+  const n = (await sheet(1)).items.map(i => ((i.resp || {}).rows || []).length).join(',');
+  R.ok(n === '2,3,0,2,0', 'the same sheet imported again replaces what came back - never two copies (' + n + ')');
 }
 
-// ── the review: what came back, under each control ──
+// ── the review: what came back, against each action ──
+const rx = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const lc = s => String(s || '').toLowerCase();
 {
   const t = await page.evaluate(sid => {
-    const el = __line(sid, 1), btns = [...el.querySelectorAll('button')];
-    return { text: el.innerText, adds: __addBtns(sid, 1).length, approve: !!__decideBtn(sid, 1, 'approved'), agreed: (__decideBtn(sid, 1, 'agreed') || {}).textContent || '',
-      others: ['compromise', 'accepted', 'carry'].every(k => !!__decideBtn(sid, 1, k)), d9: fmtDate('2026-10-09'), n: btns.length };
+    const el = __line(sid, 1);
+    return { text: el.innerText, apply: __rowBtns(sid, 1, /^Apply to the plan$/).length, hist: __rowBtns(sid, 1, /^Add to the action.s history$/).length, adds: __addBtns(sid, 1).length,
+      approve: !!__decideBtn(sid, 1, 'approved'), agreed: (__decideBtn(sid, 1, 'agreed') || {}).textContent || '',
+      others: ['compromise', 'accepted', 'carry'].every(k => !!__decideBtn(sid, 1, k)), d30: fmtDate(S.riskProfile.find(r => r.id === 'r1').actions.find(a => a.id === 'a1').due), d9: fmtDate('2030-10-09') };
   }, s1.id);
   R.ok(t.text.indexOf(ANSWERS.as_2_what) >= 0, 'the comments on the risk are shown first');
-  // (innerText follows the house style's uppercase labels, so the label is matched in any case)
-  R.ok(/Control \d+\s*·\s*Guard rail on the roof edge/i.test(t.text) && /Control \d+\s*·\s*Harness training for roof work/i.test(t.text) && t.text.indexOf(ANSWERS.as_2_c1_cmt) >= 0 && t.text.indexOf('Dave Morley') >= 0 && t.text.toUpperCase().indexOf(t.d9.toUpperCase()) >= 0,
-    'then each control with the comment, who and by when written against it');
-  R.ok(/date as written: end of Nov/i.test(t.text), 'a date that could not be read says so, as written');
-  R.ok(t.adds === 2, 'each row has its own Add to the plan under this control');
+  // (innerText follows the house style's uppercase labels, so labels are matched in any case)
+  R.ok(/Action \d+\s*·\s*Fit edge protection to the loading bay roof/i.test(t.text) && /Action \d+\s*·\s*Write a rescue plan for harness work/i.test(t.text)
+    && lc(t.text).indexOf(lc(ANSWERS.as_2_r1_cmt)) >= 0 && lc(t.text).indexOf(lc(ANSWERS.as_2_r3_cmt)) >= 0, 'then each row: Action k · the action, and what they wrote against it');
+  R.ok(/Who:\s*Dave\s*→\s*Dave Morley/i.test(t.text) && new RegExp('By when:\\s*' + rx(t.d30) + '\\s*→\\s*' + rx(t.d9), 'i').test(t.text),
+    'a change shows what was printed and what came back - Who: Dave → Dave Morley, By when: ' + t.d30 + ' → ' + t.d9);
+  R.ok(/New action under Control 2\s*·\s*Roof access permit/i.test(t.text) && /date as written: end of Nov/i.test(t.text), 'a gap row reads New action under Control 2 · Roof access permit; a date that could not be read says so, as written');
+  R.ok(t.apply === 1 && t.hist === 1 && t.adds === 1, 'a change to an action offers Apply to the plan, a comment alone Add to the action’s history, a gap row ＋ Add to the plan under this control');
   R.ok(!t.approve && /Agreed/.test(t.agreed) && t.others, 'the decisions: Agreed, a compromise, the client accepts the risk, or carry - there is no Approve on a sheet like this');
 }
 
-// ── add to the plan under this control ──
+// ── apply to the plan: who and by when onto the action, the comment onto its history ──
+{
+  const t = await page.evaluate(sid => {
+    const a1 = S.riskProfile.find(r => r.id === 'r1').actions.find(a => a.id === 'a1'), n0 = (a1.log || []).length;
+    const b = __rowBtns(sid, 1, /^Apply to the plan$/)[0]; if (b) b.click();
+    const it = _asSheet(sid).items[1];
+    return { owner: a1.owner, due: a1.due, status: a1.status, log: (a1.log || []).slice(n0).map(l => l.type + ': ' + l.text), applied: (((it.resp || {}).rows || [])[0] || {}).applied,
+      text: __line(sid, 1).innerText, left: __rowBtns(sid, 1, /^Apply to the plan$/).length };
+  }, s1.id);
+  R.ok(t.owner === 'Dave Morley' && t.due === '2030-10-09' && t.status === before.a1, 'Apply to the plan sets the action’s owner and target date to what came back - its status untouched');
+  R.ok(t.log.some(l => /^comment: From .*\b1, returned .+: The landlord will not allow fixings into the roof\.( \(.*\))?$/.test(l)), 'and writes the comment on its history - which sheet, when it came back, what was said (' + (t.log.slice(-1)[0] || 'nothing') + ')');
+  R.ok(!!t.applied && /✓\s*Done/i.test(t.text) && t.left === 0, 'the row now reads ✓ Done, and cannot be applied twice');
+}
+{
+  // the rescue plan's own row, against an action since taken off the risk: only a new action is offered
+  const t = await page.evaluate(sid => {
+    const r1 = S.riskProfile.find(r => r.id === 'r1'), at = r1.actions.findIndex(a => a.id === 'a2'), a2 = r1.actions.splice(at, 1)[0];
+    _asRender();
+    const text = __line(sid, 1).innerText, others = __rowBtns(sid, 1, /^(Apply to the plan|Add to the action.s history)$/).length, add = __rowBtns(sid, 1, /^[＋+]\s*Add as a new action$/);
+    const n0 = r1.actions.length; if (add[0]) add[0].click();
+    const made = r1.actions.slice(n0).map(a => JSON.parse(JSON.stringify(a)));
+    r1.actions.splice(at, 0, a2); _asRender();
+    return { text, others, add: add.length, made, applied: (((_asSheet(sid).items[1].resp || {}).rows || [])[2] || {}).applied, after: __rowBtns(sid, 1, /Add as a new action/).length };
+  }, s1.id);
+  const a = t.made[0] || {};
+  R.ok(/no longer/i.test(t.text) && t.add === 1 && t.others === 0, 'an action gone from the plan since the sheet went out: the row says so and offers only ＋ Add as a new action');
+  R.ok(t.made.length === 1 && a.desc === ANSWERS.as_2_r3_cmt && !a.deleted && !a.hideFromPlan && a.status === 'Not started' && !!t.applied && t.after === 0, 'which puts what they wrote on the plan as a new action, once');
+}
+{
+  // a comment alone goes on the action's history
+  const t = await page.evaluate(sid => {
+    const a4 = S.riskProfile.find(r => r.id === 'r2').actions.find(a => a.id === 'a4'), n0 = (a4.log || []).length, was = a4.owner + '|' + a4.due;
+    const b = __rowBtns(sid, 0, /^Add to the action.s history$/)[0]; if (b) b.click();
+    return { log: (a4.log || []).slice(n0).map(l => l.type + ': ' + l.text), same: a4.owner + '|' + a4.due === was, applied: (((_asSheet(sid).items[0].resp || {}).rows || [])[1] || {}).applied,
+      left: __rowBtns(sid, 0, /^Add to the action.s history$/).length, apply: __rowBtns(sid, 0, /^Apply to the plan$/).length };
+  }, s1.id);
+  R.ok(t.log.some(l => /^comment: From .*\b1, returned .+: Training booked for November\.( \(.*\))?$/.test(l)) && t.same && !!t.applied && t.left === 0,
+    'Add to the action’s history writes the comment on the training - its owner and date untouched - and the row is done');
+  R.ok(t.apply === 1, 'the pallet truck’s row, with a new date, still offers Apply to the plan');
+}
+
+// ── a gap row onto the plan, under its control ──
 {
   const t = await page.evaluate(sid => {
     const r1 = S.riskProfile.find(r => r.id === 'r1'), n0 = r1.actions.length;
-    __addBtns(sid, 1)[0].click();
-    const made = r1.actions.slice(n0).map(a => JSON.parse(JSON.stringify(a))), it = _asSheet(sid).items[1];
-    return { made, actId: it.resp.ctls[0].actId, prio: _suggestPriority(r1), onPlan: made.length ? _execActions().some(x => x.ref && x.ref.b === made[0].id) : false,
-      text: __line(sid, 1).innerText, adds: __addBtns(sid, 1).length };
+    const b = __addBtns(sid, 3)[0]; if (b) b.click();
+    const made = r1.actions.slice(n0).map(a => JSON.parse(JSON.stringify(a))), it = _asSheet(sid).items[3];
+    return { made, prio: _suggestPriority(r1), onPlan: made.length ? _execActions().some(x => x.ref && x.ref.b === made[0].id) : false,
+      applied: (((it.resp || {}).rows || [])[0] || {}).applied, adds: __addBtns(sid, 3).length, text: __line(sid, 3).innerText };
   }, s1.id);
   const a = t.made[0] || {};
-  R.ok(t.made.length === 1 && a.forCtl === 'c1' && a.desc === ANSWERS.as_2_c1_cmt && a.owner === 'Dave Morley' && a.due === '2026-10-09' && a.status === 'Not started' && a.priority === t.prio && !!a.createdAt && !a.hideFromPlan && t.onPlan,
-    'Add to the plan makes a real action under that control - the comment, who and by when as written, priority from the risk');
-  R.ok((a.log || []).some(l => l.type === 'raised' && /^From .*1, returned .+: The landlord will not allow fixings into the roof\.$/.test(l.text)), 'its history says which sheet it came from, when, and what was said');
-  R.ok(t.actId === a.id && /✓\s*On the plan/i.test(t.text) && t.adds === 1, 'the row now reads On the plan, and cannot be added twice');
+  R.ok(t.made.length === 1 && a.desc === 'Put in place: Roof access permit' && a.forCtl === 'c2' && a.owner === 'Sam' && a.due === '2030-12-15' && a.status === 'Not started' && a.priority === t.prio && !!a.createdAt && !a.hideFromPlan && t.onPlan,
+    '＋ Add to the plan under this control makes a real action under the permit, as tab 4 would - no comment, so Put in place: Roof access permit, with who and by when as written');
+  R.ok((a.log || []).some(l => /^From .*\b1, returned /.test(l.text)), 'its history says which sheet it came from');
+  R.ok(!!t.applied && t.adds === 0 && /✓\s*Done/i.test(t.text), 'and the row reads ✓ Done - it cannot go on twice');
 }
 {
-  // the control has gone from tab 3 since the sheet went out: the action goes on the plan, not linked
+  // the permit taken off tab 3 since the sheet went out: the gap row's action still goes on the plan, not linked
   const t = await page.evaluate(sid => {
-    const r1 = S.riskProfile.find(r => r.id === 'r1'), c3 = r1.actions.find(a => a.id === 'c3'), n0 = r1.actions.length;
-    c3.deleted = true; _asRender();
-    __addBtns(sid, 1)[0].click();
+    const r1 = S.riskProfile.find(r => r.id === 'r1'), c2 = r1.actions.find(a => a.id === 'c2'), n0 = r1.actions.length;
+    c2.deleted = true; _asRender();
+    // its button may drop "under this control" now there is no control to go under
+    const b = __rowBtns(sid, 1, /^[＋+]\s*Add to the plan( under this control)?$/)[0]; if (b) b.click();
     const made = r1.actions.slice(n0).map(a => JSON.parse(JSON.stringify(a)));
-    delete c3.deleted; _asRender();
-    return { made, adds: __addBtns(sid, 1).length, actId: _asSheet(sid).items[1].resp.ctls[1].actId };
+    delete c2.deleted; _asRender();
+    return { made, adds: __addBtns(sid, 1).length, applied: (((_asSheet(sid).items[1].resp || {}).rows || [])[1] || {}).applied };
   }, s1.id);
   const a = t.made[0] || {};
-  R.ok(t.made.length === 1 && !a.forCtl && a.desc === ANSWERS.as_2_c3_cmt && a.owner === 'Dave' && a.due === '' && t.actId === a.id && t.adds === 0, 'a control deleted since the sheet went out: the action still goes on the plan, not linked to a control');
+  R.ok(t.made.length === 1 && !a.forCtl && a.desc === ANSWERS.as_2_r2_cmt && a.owner === 'Dave' && a.due === '' && !!t.applied && t.adds === 0,
+    'a control deleted since the sheet went out: the action still goes on the plan from what they wrote, not linked to a control');
 }
 {
+  // a who-and-when change with no comment applies too
   const t = await page.evaluate(sid => {
-    const r1 = S.riskProfile.find(r => r.id === 'r1'), r2 = S.riskProfile.find(r => r.id === 'r2'), n1 = r1.actions.length, n2 = r2.actions.length;
-    __addBtns(sid, 3)[0].click();
-    __addBtns(sid, 0)[0].click();
-    return { m1: r1.actions.slice(n1).map(a => JSON.parse(JSON.stringify(a))), m2: r2.actions.slice(n2).map(a => JSON.parse(JSON.stringify(a))) };
+    const b = __rowBtns(sid, 3, /^Apply to the plan$/)[0]; if (b) b.click();
+    const a2 = S.riskProfile.find(r => r.id === 'r1').actions.find(a => a.id === 'a2');
+    return { owner: a2.owner, due: a2.due, applied: (((_asSheet(sid).items[3].resp || {}).rows || [])[1] || {}).applied };
   }, s1.id);
-  const a = t.m1[0] || {}, b = t.m2[0] || {};
-  R.ok(t.m1.length === 1 && a.desc === 'Put in place: Roof access permit' && a.forCtl === 'c2' && a.owner === 'Dave Morley' && a.due === '2026-10-31', 'a row with no comment puts the control itself on the plan - Put in place: Roof access permit');
-  R.ok(t.m2.length === 1 && !b.forCtl && b.desc === ANSWERS.as_1_c1_cmt && b.owner === 'Sam' && b.due === '2026-10-12', 'the row against our recommendation (no control on tab 3) goes on its risk’s plan, not linked');
+  R.ok(t.owner === 'Dave Morley' && t.due === '2030-10-31' && !!t.applied, 'a row with only who and by when written over applies them to the rescue plan');
+}
+{
+  // the same copy imported again once its rows are on the plan: they stay done - nothing goes on twice
+  const t = await page.evaluate(async sid => {
+    const r1 = S.riskProfile.find(r => r.id === 'r1'), n0 = r1.actions.length;
+    await _asImportFiles([new File([window.__lastCopy], 'returned-again.pdf', { type: 'application/pdf' })]);
+    const done = n => (((_asSheet(sid).items[n].resp || {}).rows) || []).map(r => !!r.applied).join(',');
+    return { d1: done(1), d3: done(3), grew: r1.actions.length - n0,
+      offers: [1, 3].reduce((m, i) => m + __addBtns(sid, i).length + __rowBtns(sid, i, /^(Apply to the plan|Add to the action.s history|[＋+]\s*Add (to the plan|as a new action).*)$/).length, 0) };
+  }, s1.id);
+  R.ok(t.d1 === 'true,true,true' && t.d3 === 'true,true' && t.grew === 0 && t.offers === 0, 'the same copy imported again keeps every row done - nothing goes on the plan twice (' + t.d1 + ' / ' + t.d3 + ')');
 }
 
 // ── agreed: the action stays open and the client's comments go on its history ──
@@ -403,22 +526,26 @@ R.ok((await sheet(1)).items[2].decision === 'carry' && (await act('a5')).status 
 // ── client accepts the risk: keyed in by hand, as from a paper copy ──
 {
   const t = await page.evaluate(sid => {
-    const f = __ctlIn(sid, 4);
-    return { cmt: (f.cmt || []).length, who: (f.who || []).length, date: (f.date || f.due || []).length, what: !!__whatIn(sid, 4), outcome: !!__respIn(sid, 4, 'outcome'), approve: !!__decideBtn(sid, 4, 'approved') };
+    const f = __rowIn(sid, 4), ks = Object.keys(f.rows).map(Number).sort((a, b) => a - b), v = (k, n) => ((f.rows[k] || {})[n] || {}).value;
+    return { ks, full: ks.every(k => ['cmt', 'who', 'due'].every(n => !!f.rows[k][n])), who: ks.map(k => v(k, 'who')), due: ks.map(k => v(k, 'due')), cmt: ks.map(k => v(k, 'cmt')),
+      what: !!__whatIn(sid, 4), outcome: !!__respIn(sid, 4, 'outcome'), approve: !!__decideBtn(sid, 4, 'approved') };
   }, s1.id);
-  R.ok(t.cmt === 1 && t.who === 1 && t.date === 1 && t.what && !t.outcome && !t.approve, 'a line with nothing back can be keyed in from paper: comment, who and date against each control row, and the comments box - no what-happened choice');
+  const dueOk = (v, iso) => v === iso || v === dmy(iso);
+  R.ok(t.ks.join(',') === '1,2' && t.full && t.what && !t.outcome && !t.approve, 'a line with nothing back can be keyed in from paper: comment, who and by when on each row as printed, and the comments box - no what-happened choice');
+  R.ok(t.who.join('|') === 'Dave|' && dueOk(t.due[0], day(-5)) && dueOk(t.due[1], day(20)) && t.cmt.every(c => c === ''), 'who and by when start as they were printed, so only what the copy changes needs typing (' + t.who.join('|') + ' / ' + t.due.join('|') + ')');
 }
 {
   const t = await page.evaluate(sid => {
-    const put = (f, v) => { const l = __ctlIn(sid, 4)[f] || (f === 'date' ? __ctlIn(sid, 4).due : null) || []; if (l[0]) __put(l[0], v); return !!l[0]; };
-    const done = [put('cmt', 'Reversing is under ten movements a week.'), put('who', 'Dave Morley'), put('date', '2026-10-20')];
+    const f = k => __rowIn(sid, 4).rows[k] || {};
+    const put = (k, n, v) => { const el = f(k)[n]; if (!el) return false; __put(el, n === 'due' && el.type !== 'date' ? v.slice(8, 10) + '/' + v.slice(5, 7) + '/' + v.slice(0, 4) : v); return true; };
+    const done = [put(2, 'cmt', 'Reversing is under ten movements a week.'), put(2, 'who', 'Dave Morley'), put(2, 'due', '2030-10-20')];
     const w = __whatIn(sid, 4); if (w) __put(w, 'We accept this one.');
     const it = _asSheet(sid).items[4];
     return { done, resp: JSON.parse(JSON.stringify(it.resp || {})), back: _asHasResp(it) };
   }, s1.id);
-  const r = (t.resp.ctls || [])[0] || {};
-  R.ok(t.done.every(Boolean) && (t.resp.ctls || []).length === 1 && r.ctlId === null && r.cmt === 'Reversing is under ten movements a week.' && r.who === 'Dave Morley' && r.due === '2026-10-20' && t.resp.what === 'We accept this one.' && t.back,
-    'what is keyed in is kept against the control row, as an import would keep it');
+  const r = (t.resp.rows || []).find(x => x.a === 'a6') || {};
+  R.ok(t.done.every(Boolean) && r.cmt === 'Reversing is under ten movements a week.' && r.who === 'Dave Morley' && r.due === '2030-10-20' && t.resp.what === 'We accept this one.' && t.back && !(t.resp.ctls || []).length,
+    'what is keyed in is kept against its action’s row, as an import would keep it (' + JSON.stringify(r).slice(0, 120) + ')');
   await page.evaluate(() => _asRender());       // the screen as it is drawn when it is opened again
   await page.evaluate(sid => { document.getElementById('asA-' + sid + '-4').value = ''; [...__line(sid, 4).querySelectorAll('.as-btns button')].find(x => /Client accepts the risk/.test(x.textContent)).click(); }, s1.id);
   await wait(page, 200);
@@ -489,7 +616,7 @@ let s2;
   }, s2.id);
   const r = n => t.items[n].resp || {};
   R.ok(/Sheet 2: 3 answers in/.test(t.toast) && /1 with more than one box ticked/.test(t.toast), 'an old sheet imports as it always did, and says one line needs a choice (' + t.toast.slice(0, 90) + ')');
-  R.ok(r(0).outcome === 'done' && r(0).date === '2026-10-14' && r(0).by === 'Sam' && /counterweighted rail is up/.test(r(0).what) && !(r(0).ctls || []).length, 'tick, date and name are read off it - no control rows');
+  R.ok(r(0).outcome === 'done' && r(0).date === '2026-10-14' && r(0).by === 'Sam' && /counterweighted rail is up/.test(r(0).what) && !(r(0).ctls || []).length && !(r(0).rows || []).length, 'tick, date and name are read off it - no control or action rows');
   R.ok(r(1).outcome === 'diff' && r(2).outcome === '' && /More than one box was ticked: Done as recommended, Cannot be done/.test(r(2).what), 'two ticks are not guessed at: the line says so and waits for a choice');
   R.ok(t.returnedBy === 'Dave Morley (Operations Director)' && t.general === 'Sent back on the old form.', 'who returned it and their general comment are kept');
   R.ok(!!t.approve[0] && t.approve[0].t === 'Approve' && !t.approve[0].dis && !!t.approve[1] && t.approve[1].t === 'Approve what was done instead' && !!t.approve[2] && t.approve[2].dis,
@@ -534,9 +661,10 @@ await seed(page, { riskProfile: RISKS.concat([{ id: 'r4', activity: 'Asbestos in
   R.ok(/In the Top 5 with nothing to send: .*Asbestos in the plant room/.test(t.gap) && /add one on the risk/.test(t.gap), 'a Top 5 risk with no open action is named, not silently left off');
   await page.evaluate(() => closeActionSheets());
 }
-// ── after review (7 October 2026): a paper copy keyed in, a control taken off
-//    the risk after printing, copies imported more than once, an agreed line
-//    and the next five, a very long control ──
+// ── after review (7 October 2026): a sheet sent as the second form (v2, a row
+//    a control) still comes back as it did - a control taken off the risk
+//    after printing, copies imported more than once; an agreed line and the
+//    next five; a v3 paper copy keyed in row by row; a very long control ──
 await seed(page, { riskProfile: [
   { id: 'q1', activity: 'Roof work', likelihood: '4', severity: '5', personsAtRisk: ['Employees'], actions: [
     { id: 'k1', desc: 'Guard rail', owner: 'Dave', due: '', status: 'Not started', hideFromPlan: true },
@@ -553,63 +681,103 @@ let q;
     openActionSheets('top5'); asNewSheet();
     const s = _asList('top5')[0], i = s.items.findIndex(x => x.key === 'risk:q1:q1a:');
     s.items.forEach(it => { it.rec = 'Our control for ' + it.desc; });
-    await downloadActionSheet(s.id);
-    const before = __addBtns(s.id, i).length, n0 = S.riskProfile[0].actions.length;
-    asCtlToPlan(s.id, s.items[i].key, 1);                       // what the button calls, on a row with nothing written
-    const refused = { made: S.riskProfile[0].actions.length - n0, toast: document.getElementById('toast').textContent };
-    __put(__ctlIn(s.id, i).cmt[1], 'We already have a permit system.');
-    const f = __ctlIn(s.id, i);
-    return { sid: s.id, i, before, refused, after: __addBtns(s.id, i).length, open: !!f.cmt && !f.cmt[0].disabled && !f.cmt[2].disabled };
+    // sent before 7 October on the second form: what its download kept - the
+    // form, and each line's control rows as printed, with their words
+    const ctls = s.items.map(it => { const r = _execRiskOf({ ref: it.ref }), c = (r ? _riskCtlRows(r) : []).filter(x => String(x.desc || '').trim());
+      it.ctlIds = c.length ? c.map(x => x.id) : [null];
+      if (c.length) { it.ctlPrinted = {}; c.forEach(x => { it.ctlPrinted[x.id] = String(x.desc).trim(); }); }
+      return it.ctlIds.slice(); });
+    s.issuedAt = _asToday(); s.formV = 2;
+    // the second form as it came back: as__meta v2 with each line's control row ids, and a comment, who and by when a control row
+    window.__v2 = async vals => {
+      const pdf = await PDFLib.PDFDocument.create(), pg = pdf.addPage([595.28, 841.89]), form = pdf.getForm();
+      let k = 0; const tf = (n, v) => { const f = form.createTextField(n); f.addToPage(pg, { x: 40 + (k % 4) * 130, y: 800 - Math.floor(k / 4) * 24, width: 120, height: 20 }); k++; if (v) f.setText(v); return f; };
+      tf('as__meta', JSON.stringify({ v: 2, kind: 'top5', client: _sltClient(), sheet: s.id, no: s.no, made: _asToday(), keys: s.items.map(x => x.key), ctls })).enableReadOnly();
+      s.items.forEach((it, j) => { const n = j + 1;
+        ctls[j].forEach((c, r) => ['cmt', 'who', 'due'].forEach(f => { const nm = 'as_' + n + '_c' + (r + 1) + '_' + f; tf(nm, vals[nm] || ''); }));
+        tf('as_' + n + '_what', vals['as_' + n + '_what'] || ''); });
+      tf('as__general', vals.as__general || '');
+      await _asImportFiles([new File([await pdf.save()], 'second-form.pdf', { type: 'application/pdf' })]);
+      return document.getElementById('toast').textContent;
+    };
+    return { sid: s.id, i, ctls };
   });
   q = t;
-  R.ok(t.before === 0, 'a paper copy keyed in: no Add to the plan under a row with nothing written on it');
-  R.ok(t.refused.made === 0 && /Type in what the copy says/.test(t.refused.toast), 'and nothing goes on the plan from an empty row - the rows stay open to type in');
-  R.ok(t.after === 1 && t.open, 'a row with something written gets its Add to the plan straight away; the other rows stay open');
+  R.ok(q.i >= 0 && JSON.stringify(q.ctls[q.i]) === '["k1","k2","k3"]', 'setup: a sheet sent on the second form, its roof line printed with three control rows');
 }
 {
   const t = await page.evaluate(async (sid, i) => {
-    const s = _asSheet(sid), n = i + 1;
-    window.__bytes = await buildActionSheetPDF(sid);
-    window.__fill = async vals => { const doc = await PDFLib.PDFDocument.load(__bytes), f = doc.getForm(); Object.keys(vals).forEach(k => f.getTextField(k).setText(vals[k]));
-      await _asImportFiles([new File([await doc.save()], 'back.pdf', { type: 'application/pdf' })]); return document.getElementById('toast').textContent; };
-    S.riskProfile[0].actions.find(a => a.id === 'k2').deleted = true;          // taken off the risk after the sheet went out
-    const v = {}; v['as_' + n + '_c1_cmt'] = 'Already fitted on the front'; v['as_' + n + '_c2_cmt'] = 'Permit is overkill for us'; v['as_' + n + '_c3_cmt'] = 'Book it'; v['as_' + n + '_c3_who'] = 'Sam';
+    const s = _asSheet(sid), n = i + 1, it = s.items[i], q1 = S.riskProfile[0];
+    q1.actions.find(a => a.id === 'k2').deleted = true;          // taken off the risk after the sheet went out
+    const v = {}; v['as_' + n + '_c1_cmt'] = 'Already fitted on the front'; v['as_' + n + '_c2_cmt'] = 'Permit is overkill for us'; v['as_' + n + '_c3_cmt'] = 'Book it';
+    v['as_' + n + '_c3_who'] = 'Sam'; v['as_' + n + '_c3_due'] = '30/11/2030'; v['as_' + n + '_what'] = 'Roof work is rare for us.';
     window.__v = v;
-    const m1 = await __fill(v);
-    const it = s.items[i], text2 = (it.resp.ctls.find(c => c.k === 2) || {}).ctlText;
-    const q1 = S.riskProfile[0], n0 = q1.actions.length;
-    asCtlToPlan(sid, it.key, 1); asCtlToPlan(sid, it.key, 3);
-    const made = q1.actions.slice(n0).map(a => ({ desc: a.desc, owner: a.owner, forCtl: a.forCtl || '' }));
+    const m1 = await __v2(v);
+    const resp = JSON.parse(JSON.stringify(it.resp || {}));
+    const text = (__line(sid, i) || {}).innerText || '', adds = __addBtns(sid, i).length, agreed = !!__decideBtn(sid, i, 'agreed'), approve = !!__decideBtn(sid, i, 'approved');
+    const n0 = q1.actions.length;
+    let b = __addBtns(sid, i)[0]; if (b) b.click();                             // row 1
+    b = __addBtns(sid, i).slice(-1)[0]; if (b) b.click();                       // row 3, the last one left
+    const made = q1.actions.slice(n0).map(a => ({ desc: a.desc, owner: a.owner, due: a.due, forCtl: a.forCtl || '' }));
     const v2 = {}; v2['as_' + n + '_c2_cmt'] = 'Permit is overkill for us';
-    await __fill(v2);                                                           // a second copy: rows 1 and 3 left blank
-    const kept = it.resp.ctls.map(c => c.k + (c.actId ? ':on' : ':-')).join(',');
-    await __fill(v);                                                            // and the first copy again
-    const again = it.resp.ctls.map(c => c.k + (c.actId ? ':on' : ':-')).join(',');
-    return { m1, text2, made, kept, again, btns: __addBtns(sid, i).length, n: q1.actions.filter(a => !a.hideFromPlan && /^(Book it|Already fitted)/.test(a.desc)).length };
+    await __v2(v2);                                                             // a second copy: rows 1 and 3 left blank
+    const kept = ((it.resp || {}).ctls || []).map(c => c.k + (c.actId ? ':on' : ':-')).join(',');
+    await __v2(v);                                                              // and the first copy again
+    const again = ((it.resp || {}).ctls || []).map(c => c.k + (c.actId ? ':on' : ':-')).join(',');
+    return { m1, resp, text, adds, agreed, approve, made, kept, again, btns: __addBtns(sid, i).length, n: q1.actions.filter(a => !a.hideFromPlan && /^(Book it|Already fitted)/.test(a.desc)).length };
   }, q.sid, q.i);
-  R.ok(/answers? in/.test(t.m1) && t.text2 === 'Roof access permit', 'a control taken off the risk after the sheet went out still reads as it was printed (' + t.text2 + ')');
-  R.ok(t.made.length === 2 && t.made[0].desc === 'Already fitted on the front' && t.made[0].owner === '' && t.made[0].forCtl === 'k1' && t.made[1].owner === 'Sam',
-    'Add to the plan gives the action to who the client named - nobody, when they named nobody (' + JSON.stringify(t.made) + ')');
+  const c = t.resp.ctls || [];
+  R.ok(/answers? in/.test(t.m1) && c.length === 3 && c.map(x => x.ctlId).join(',') === 'k1,k2,k3' && c[2].who === 'Sam' && c[2].due === '2030-11-30' && c[2].dueText === '30/11/2030'
+    && t.resp.what === 'Roof work is rare for us.' && !(t.resp.rows || []).length,
+    'a sheet sent on the second form (v2) still comes back exactly as before - each comment, who and by when under its control (' + t.m1.slice(0, 80) + ')');
+  R.ok(c.map(x => x.ctlText).join('|') === 'Guard rail|Roof access permit|Harness training', 'a control taken off the risk after the sheet went out still reads as it was printed (' + c.map(x => x.ctlText).join('|') + ')');
+  R.ok(/Control 1\s*·\s*Guard rail/i.test(t.text) && t.adds === 3 && t.agreed && !t.approve, 'and reads on screen as it did: Control k · the control, an Add to the plan under each row written on, Agreed - no Approve');
+  R.ok(t.made.length === 2 && t.made[0].desc === 'Already fitted on the front' && t.made[0].owner === '' && t.made[0].forCtl === 'k1' && t.made[1].desc === 'Book it' && t.made[1].owner === 'Sam' && t.made[1].due === '2030-11-30' && t.made[1].forCtl === 'k3',
+    'Add to the plan under this control still puts each row on the plan under its control, given to who the client named - nobody, when they named nobody (' + JSON.stringify(t.made) + ')');
   R.ok(t.kept === '1:on,2:-,3:on' && t.again === '1:on,2:-,3:on' && t.n === 2 && t.btns === 1,
     'a copy that leaves a row blank keeps that row on the plan, so another copy cannot put it there twice (' + t.kept + ' / ' + t.again + ')');
 }
 {
-  const t = await page.evaluate(async sid => {
+  const t = await page.evaluate(async (sid, d40) => {
     const s = _asSheet(sid);
-    s.items.forEach((it, i) => { if (!it.decision) { if (!_asHasResp(it)) asCtlResp(sid, it.key, 0, 'what', 'Fine by us.'); asDecide(sid, it.key, 'agreed', i); } });
+    s.items.forEach((it, i) => { if (!it.decision) { if (!_asHasResp(it)) it.resp = { outcome: '', what: 'Fine by us.', date: '', by: '', ctls: [] }; asDecide(sid, it.key, 'agreed', i); } });
     const recs = {}; s.items.forEach(it => { recs[it.key] = it.rec; });
-    const msg = await __fill(__v);                                              // the same copy once every line is decided
-    S.riskProfile.find(r => r.id === 'q2').actions.push({ id: 'q2b', desc: 'Speed limit signs at the gate', owner: '', due: '', status: 'Not started' });
+    const msg = await __v2(__v);                                                // the same copy once every line is decided
+    S.riskProfile.find(r => r.id === 'q2').actions.push({ id: 'q2b', desc: 'Speed limit signs at the gate', owner: 'Dave', due: d40, status: 'Not started' });
     asNewSheet();
     const s2 = _asList('top5').find(x => x.no === 2);
     return { decided: s.items.every(it => it.decision === 'agreed'), agreedKeys: s.items.map(it => it.key), msg, recs,
       next: s2 ? s2.items.map(it => ({ key: it.key, rec: it.rec, from: it.carriedFrom || 0 })) : [] };
-  }, q.sid);
+  }, q.sid, day(40));
   const tail = t.next.slice(-t.agreedKeys.length);
   R.ok(t.decided && /every line answered on it has been decided already/.test(t.msg), 'a copy whose answered lines are all decided says so: ' + t.msg.slice(0, 120));
   R.ok(t.next.length === 5 && !t.agreedKeys.includes(t.next[0].key) && tail.every(x => t.agreedKeys.includes(x.key)),
     'a line agreed with the client waits at the back of the queue - the next five moves on down the list (' + t.next.map(x => x.key).join(' ') + ')');
   R.ok(t.next.filter(x => t.agreedKeys.includes(x.key)).every(x => x.rec === t.recs[x.key] && !!x.rec && x.from === 0), 'and when it goes out again it takes the control it was agreed with');
+}
+{
+  // the next sheet goes out as the third form; its paper copy is keyed in row by row
+  const t = await page.evaluate(async () => {
+    const s = _asList('top5').find(x => x.no === 2), i = s.items.findIndex(x => x.key === 'risk:q2:q2b:');
+    await downloadActionSheet(s.id);
+    const f = k => __rowIn(s.id, i).rows[k] || {}, out = { i, before: s.returnedAt || '', today: _asToday() };
+    out.ks = Object.keys(__rowIn(s.id, i).rows).map(Number).sort((a, b) => a - b);
+    out.pre = [1, 2].map(k => [(f(k).who || {}).value, (f(k).due || {}).value]);
+    if (f(2).cmt) __put(f(2).cmt, 'Signs ordered.');                           // the first entry
+    out.after = s.returnedAt || '';
+    const el = f(2).cmt; if (el) { el.setAttribute('data-t', 'q3cmt'); __put(el, 'Signs ordered and fitted.'); }     // and typing on
+    const kept = document.querySelector('[data-t=q3cmt]'); out.same = !!kept && kept === el && kept.isConnected;
+    if (f(2).who) __put(f(2).who, 'Sam Line');
+    const it = s.items[i]; out.resp = JSON.parse(JSON.stringify(it.resp || {})); out.back = _asHasResp(it);
+    return out;
+  });
+  const dueOk = (v, iso) => v === iso || v === dmy(iso);
+  R.ok(t.i >= 0 && t.ks.join(',') === '1,2' && t.pre[0][0] === '' && dueOk(t.pre[0][1], day(20)) && t.pre[1][0] === 'Dave' && dueOk(t.pre[1][1], day(40)),
+    'a paper copy of the third form is keyed in row by row - the walkways and the signs, who and by when starting as printed (' + JSON.stringify(t.pre) + ')');
+  R.ok(t.before === '' && t.after === t.today, 'the first entry marks the sheet as back today');
+  R.ok(t.same, 'typing saves without redrawing - the box being typed in stays where it is');
+  const r = (t.resp.rows || []).find(x => x.a === 'q2b') || {};
+  R.ok(r.cmt === 'Signs ordered and fitted.' && r.who === 'Sam Line' && t.back, 'and what is typed is kept against its action’s row (' + JSON.stringify(r).slice(0, 120) + ')');
 }
 {
   const t = await page.evaluate(async () => {
@@ -619,9 +787,9 @@ let q;
     r.actions.push({ id: 'k9', desc: LONG, owner: '', due: '', status: 'Not started', hideFromPlan: true });
     asNewSheet(); const s = _asList('top5')[0]; s.items.forEach(it => { it.rec = LONG.slice(0, 1500); });
     const b = await __build(s.id);
-    return { low: Object.entries(b.boxes).filter(([n, x]) => x && n !== 'as__meta' && x.y < 59).map(([n]) => n), cut: b.said.some(x => x.size === 8.8 && / \.\.\.$/.test(x.s)), off: b.said.filter(x => x.y < 40 && x.size > 7).length };
+    return { low: Object.entries(b.boxes).filter(([n, x]) => x && n !== 'as__meta' && x.y < 59).map(([n]) => n), cut: b.said.some(x => / \.\.\.$/.test(x.s)), off: b.said.filter(x => x.y < 40 && x.size > 7).length };
   });
-  R.ok(!t.low.length && !t.off && t.cut, 'a control too long for a page is cut to fit, ending ...; its boxes stay on the page (' + t.low.join(',') + ')');
+  R.ok(!t.low.length && !t.off && t.cut, 'a control or recommendation too long for a page is cut to fit, ending ...; its boxes stay on the page (' + t.low.join(',') + ')');
 }
 console.log('  sheet written to ' + pdfPath);
 await R.done(browser, errors);

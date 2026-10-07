@@ -4513,6 +4513,8 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
       .pw-filters .pw-fbtn{min-width:0;flex:1 1 40%;}
       .jny-mac-r{margin-left:0;}
     }
+    .as-why{border-color:var(--border);color:var(--text-muted);background:transparent;}
+    .as-why-tick{border-color:#B45309;color:#B45309;}
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
     /* Quick links to other apps */
     .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;}
@@ -23190,8 +23192,10 @@ function setBoardSection(id, hide){
 function _top5Five(){
   const H=_holdSummary(), month=_top5Month();
   const chosenIds=new Set(); (S.riskProfile||[]).forEach(r=>{ if(r&&(r.actions||[]).some(a=>a&&!a.deleted&&a.top5===month)) chosenIds.add(r.id); });
-  const chosen=H.rows.filter(z=>chosenIds.has(z.id)).sort(_holdWorstFirst).slice(0,5);
-  const ranked=H.breaches.concat(H.nextWorst).filter(z=>!chosenIds.has(z.id));
+  // in the risk ladder's own order (_riskRankCmp), so the sheet and the ladder can never show a different five
+  const byLadder=(a,b)=>_riskRankCmp(a.r,b.r);
+  const chosen=H.rows.filter(z=>chosenIds.has(z.id)).sort(byLadder).slice(0,5);
+  const ranked=H.rows.filter(z=>!chosenIds.has(z.id) && z.r && _riskScore(z.r).rating).sort(byLadder);
   return chosen.map(z=>({ z, chosen:true })).concat(ranked.slice(0,5-chosen.length).map(z=>({ z, chosen:false })));
 }
 function _top5Open(r){
@@ -23751,8 +23755,7 @@ function _asRiskOrder(){
   const H=_holdSummary(), seen=new Set(), out=[];
   const add=z=>{ if(z && !seen.has(z.id)){ seen.add(z.id); out.push(z.id); } };
   _top5Five().forEach(f=>add(f.z));
-  H.breaches.concat(H.nextWorst).forEach(add);
-  H.rows.slice().sort(_holdWorstFirst).forEach(add);
+  H.rows.slice().sort((a,b)=>_riskRankCmp(a.r,b.r)).forEach(add);
   return out;
 }
 // What goes on the next sheet, in order: anything carried back from the last
@@ -23770,9 +23773,9 @@ function _asRiskOrder(){
 // does go out again it takes the control it was agreed with.
 function _asCandidates(exceptSheetId, kind){
   const K=_asK(kind), risk=_asPerRisk(K);
-  const live=new Set(), carried={}, agreed={};
+  const live=new Set(), liveSame=new Set(), carried={}, agreed={};
   _asList().forEach(s=>(s.items||[]).forEach(it=>{
-    if(s.id!==exceptSheetId && _asLive(it)) live.add(it.key);
+    if(s.id!==exceptSheetId && _asLive(it)){ live.add(it.key); if(_asKindOf(s)===K) liveSame.add(it.key); }
     // agreed with the client: settled there, so an older carry ends (only the latest word counts)
     if(it.decision==='agreed'){ delete carried[it.key]; agreed[it.key]={ rec:String(it.rec||''), from:s.no }; }
     else if(it.decision) delete agreed[it.key];
@@ -23789,8 +23792,8 @@ function _asCandidates(exceptSheetId, kind){
   const press=(x,y)=>(x.late-y.late) || String(x.a.due||'9999').localeCompare(String(y.a.due||'9999'));
   const byRank=(x,y)=>(x.rank-y.rank) || press(x,y);
   const all=_asOpenActions()
-    .map(a=>{ const key=_asKey(a.ref), r=_execRiskOf(a); return { a, key, band:_epBandOf(a), carry:carried[key]||null, agreed:(!carried[key] && agreed[key])||null, top:!risk && a.top5===month, riskId:r?r.id:'', rank:rankOf(r?r.id:''), late:a.rag==='red'?0:1 }; })
-    .filter(c=>!live.has(c.key) && !held.has(c.key) && (!risk || c.carry || c.rank<9999));
+    .map(a=>{ const key=_asKey(a.ref), r=_execRiskOf(a); return { a, key, kind:K, band:_epBandOf(a), carry:carried[key]||null, agreed:(!carried[key] && agreed[key])||null, top:!risk && a.top5===month, riskId:r?r.id:'', rank:rankOf(r?r.id:''), late:a.rag==='red'?0:1 }; })
+    .filter(c=>(!live.has(c.key) || (c.top && !liveSame.has(c.key))) && !held.has(c.key) && (!risk || c.carry || c.rank<9999));
   const out=[], used=new Set(), risksIn=new Set();
   const take=c=>{ if(used.has(c.key)) return; used.add(c.key); out.push(c); if(c.riskId) risksIn.add(c.riskId); };
   // the lines agreed with the client wait until everything else is out
@@ -23843,6 +23846,7 @@ function _asItemFrom(c){
   const r=_execRiskOf(c.a);
   return { key:c.key, ref:c.a.ref, desc:c.a.desc||'', risk:(r?(r.activity||r.hazard||''):(c.a.sourceLabel||c.a.source||'')), riskRef:(r?_riskRefOf(r):''), band:c.band||'',
     owner:c.a.owner||'', due:c.a.due||'', rec:(c.carry?c.carry.rec:(c.agreed?c.agreed.rec:'')), carriedFrom:(c.carry?c.carry.from:0),
+    why:(c.kind==='top5' && !c.carry) ? (c.top?'tick':'ladder') : '',
     resp:{ outcome:'', what:'', date:'', by:'' }, decision:'', decidedAt:'', dnote:'', acceptedBy:'' };
 }
 
@@ -23983,7 +23987,7 @@ function _asItemHTML(s, it, i, locked, ro, dis){
       +'</div>';
   }
   return '<div class="as-item'+(done?' as-done':'')+'" id="asI-'+esc(s.id)+'-'+i+'">'
-    +'<div class="as-ih"><span class="as-no">'+(i+1)+'</span><div class="as-desc">'+esc(it.desc||'(no description)')+(it.carriedFrom?(' <span class="as-tag as-out">carried from '+esc(_asName({ kind:s.kind, no:it.carriedFrom }).toLowerCase())+'</span>'):'')+'</div>'
+    +'<div class="as-ih"><span class="as-no">'+(i+1)+'</span><div class="as-desc">'+esc(it.desc||'(no description)')+(it.carriedFrom?(' <span class="as-tag as-out">carried from '+esc(_asName({ kind:s.kind, no:it.carriedFrom }).toLowerCase())+'</span>'):'')+({ tick:' <span class="as-tag as-why as-why-tick" title="Ticked in the Top 5 column on the cockpit risk ladder">Ticked Top 5</span>', ladder:' <span class="as-tag as-why" title="Fewer than five are ticked, so the sheet is topped up with the next highest current rating on the risk ladder">Next highest on the ladder</span>', added:' <span class="as-tag as-why">Added from the plan</span>' }[it.why]||'')+'</div>'
     +((locked||ro)?'':'<button class="trn-x" onclick="asRemoveItem('+sid+','+key+')" title="Take this action off the sheet - it stays on the plan">×</button>')+'</div>'
     +'<div class="slt-muted as-meta">'+meta+'</div>'+gone+thinMsg+((!ro && _asSameRiskBefore(s,it)>=0)?('<div class="as-warn">Same risk as line '+(_asSameRiskBefore(s,it)+1)+': its actions table prints once, on that line\u2019s page. This page lists this action only.</div>'):'')
     +'<div class="slt-lab">Note on this action (optional - printed under it in the recommended actions table)</div>'+recBox+resp+decide+'</div>';
@@ -24124,7 +24128,7 @@ function asAddItem(sid){
   const K=_asKindOf(s);
   if(K==='top5' && s.items.length>=AS_MAX){ showToast('Five is the sheet - take one off first','info'); return; }
   const c=_asCandidates(s.id, K).find(x=>x.key===sel.value); if(!c || s.items.some(i=>i.key===c.key)) return;
-  s.items.push(_asItemFrom(c)); saveData(); _asRender();
+  const it=_asItemFrom(c); if(it.why==='ladder') it.why='added'; s.items.push(it); saveData(); _asRender();
 }
 // A ticked risk with no open action: what needs to be done, typed on the
 // risk action sheet, becomes a real action on the risk (the shape a new

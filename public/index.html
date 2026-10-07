@@ -4318,6 +4318,30 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .t5r-ok{color:var(--success);font-weight:700;font-size:11px;}
     .t5r-no{color:#B45309;font-weight:700;font-size:11px;}
     @media (max-width:760px){ .t5r-row{grid-template-columns:20px 1fr;} }
+    .act-table tr.act-grp td{background:var(--muted-bg);border-left:3px solid var(--accent);padding:7px 10px;}
+    .act-grp-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;cursor:pointer;}
+    .act-grp-k{flex:0 0 auto;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);}
+    .act-grp-t{flex:1 1 260px;min-width:0;font-size:12.5px;font-weight:700;color:var(--text);}
+    .act-grp-m{flex:0 0 auto;font-size:11px;color:var(--text-muted);}
+    .act-table tr.act-grp-none td{border-left-color:var(--border);}
+    .act-grp-none .act-grp-k{color:var(--text-muted);}
+    .act-grp-none .act-grp-h{cursor:default;}
+    .act-table tr.act-grp-add td{padding:5px 8px 12px;}
+    .act-grp-gap{margin-left:10px;font-size:11.5px;color:#B45309;}
+    .act-for{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);}
+    .act-for span{white-space:nowrap;}
+    .act-table .act-for select{flex:1 1 auto;width:auto;min-width:0;padding:3px 24px 3px 5px;text-overflow:ellipsis;font-size:11.5px;font-weight:400;text-transform:none;letter-spacing:0;border-radius:0;}
+    .act-link{display:flex;align-items:center;gap:8px;margin-top:5px;font-size:11.5px;}
+    .act-link a{color:var(--text-muted);text-decoration:none;border-bottom:1px dotted var(--text-muted);}
+    .act-link-add{border:1px solid var(--border);border-radius:0;background:transparent;color:var(--accent);font-size:11px;font-weight:700;padding:2px 7px;cursor:pointer;}
+    .own-cell{display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-height:30px;padding:3px;border:1px solid var(--border);background:var(--input-bg);}
+    .own-cell:focus-within{border-color:var(--accent);}
+    .own-chip{display:inline-flex;align-items:center;gap:2px;padding:1px 2px 1px 7px;border:1px solid var(--border);background:var(--muted-bg);font-size:12px;line-height:1.5;white-space:nowrap;}
+    .own-chip button{border:0;background:transparent;color:var(--text-muted);cursor:pointer;font-size:13px;line-height:1;padding:0 4px;}
+    .own-chip button:hover{color:#DC2626;}
+    .act-table .own-cell input{flex:1 1 90px;width:auto;min-width:80px;border:0;border-radius:0;background:transparent;padding:3px 4px;outline:none;box-shadow:none;}
+    .own-ro{min-height:0;padding:0;border:0;background:transparent;}
+    .own-none{font-size:12px;color:var(--text-muted);}
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
     /* Quick links to other apps */
     .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;}
@@ -15275,7 +15299,7 @@ function _epFilter(){ const f=(S.config&&S.config.epFilter)||{}; return { owner:
 function _epFilterOn(f){ f=f||_epFilter(); return !!(f.owner||f.from||f.to); }
 function _epFilterMatch(a, f){
   f=f||_epFilter();
-  if(f.owner && String(a.owner||'').trim()!==f.owner) return false;
+  if(f.owner && String(a.owner||'').trim()!==f.owner && !_ownersOf(a.owner).includes(f.owner)) return false;
   if(f.from||f.to){
     const d=String(a.due||'');
     if(!d) return false;                       // no target date, no place in a dated window
@@ -15293,7 +15317,7 @@ function _epFilterLabel(){
   else if(f.to) p.push('target to '+fmtDate(f.to));
   return p.join(' - ');
 }
-function _epOwners(){ return [...new Set(_execActions().map(a=>String(a.owner||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+function _epOwners(){ return [...new Set(_execActions().flatMap(a=>_ownersOf(a.owner)))].sort((a,b)=>a.localeCompare(b)); }
 function setEpFilter(field, value){
   if(_blockIfReadOnly()) return;
   if(!S.config) S.config={};
@@ -19672,7 +19696,9 @@ function _rowMoveHTML(upCall, downCall, first, last){
 function _riskActionMove(rid, aid, dir, which){
   if(_blockIfReadOnly()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r||!Array.isArray(r.actions)) return;
-  const peers=r.actions.map((a,i)=>({a,i})).filter(x=>!x.a.deleted && (which==='ctl' ? !!x.a.hideFromPlan : which==='plan' ? !x.a.hideFromPlan : true));
+  const me=r.actions.find(a=>a&&a.id===aid), grp=a=>{ const c=_ctlOfAction(r,a); return c?c.id:''; };
+  // on tab 4 an action moves among the actions of its own control
+  const peers=r.actions.map((a,i)=>({a,i})).filter(x=>!x.a.deleted && (which==='ctl' ? !!x.a.hideFromPlan : which==='plan' ? (!x.a.hideFromPlan && grp(x.a)===grp(me)) : true));
   const at=peers.findIndex(x=>x.a.id===aid); if(at<0) return;
   const to=at+(dir<0?-1:1); if(to<0||to>=peers.length) return;
   const i=peers[at].i, j=peers[to].i;
@@ -19743,6 +19769,119 @@ function updateRiskAction(rid, aid, field, value){
   // Closing an action → offer to link the evidence that shows it was dealt with.
   if(field==='status' && (value==='Complete'||value==='Accepted')) _promptActionEvidence(a, r);
 }
+// ── CONTROLS TO ACTIONS, AND MORE THAN ONE OWNER (Simon, 2026-10-07) ──
+// "I have to copy or remember what I wrote in the previous tab." A plan
+// action now says which high level control - a row of the control table on
+// 3 · Controls & rating - it puts in place: a.forCtl is that row's id. Tab 4
+// groups the actions under their control, with the control's own words
+// above them, and "＋ Action for control n" starts a row already linked and
+// worded from the control, ready to edit. A deleted control lets its actions
+// fall back to "Not linked to a control"; nothing is lost.
+// Owners: a.owner stays ONE string, so every report, sheet and filter that
+// reads it keeps working; more than one owner is written "Name, Name".
+// _ownersOf is the one place that splits it.
+function _ownersOf(v){ const s=(v&&typeof v==='object')?v.owner:v; return String(s||'').split(/\s*[,;]\s*/).map(x=>x.trim()).filter(Boolean); }
+function _riskCtlRows(r){ return ((r&&r.actions)||[]).filter(a=>a&&!a.deleted&&a.hideFromPlan); }
+function _ctlOfAction(r, a){ if(!a||!a.forCtl) return null; return _riskCtlRows(r).find(c=>c.id===a.forCtl)||null; }
+function _ctlActions(r, c){ return ((r&&r.actions)||[]).filter(a=>a&&!a.deleted&&!a.hideFromPlan&&a.forCtl===c.id); }
+function _actClosed(a){ const s=_actionStatus(a); return s==='Complete'||s==='Accepted'; }
+function _riskActFind(rid, aid){ const r=(S.riskProfile||[]).find(x=>x.id===rid); const a=r&&(r.actions||[]).find(x=>x.id===aid); return (r&&a)?{ r, a }:null; }
+// The names offered when an owner is added: the leadership team, key
+// personnel and staff, then anyone already named as an owner on a risk.
+function _ownerPeople(){
+  const seen=new Set(), out=[];
+  const add=n=>{ n=String(n||'').trim(); if(!n) return; const k=n.toLowerCase(); if(seen.has(k)) return; seen.add(k); out.push(n); };
+  _sltPeople(null).forEach(p=>add(p.name));
+  (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>{ if(a&&!a.deleted) _ownersOf(a).forEach(add); }));
+  return out;
+}
+function _ownerListEnsure(){
+  if(typeof document==='undefined') return;
+  let dl=document.getElementById('ownPeople');
+  if(!dl){ dl=document.createElement('datalist'); dl.id='ownPeople'; document.body.appendChild(dl); }
+  dl.innerHTML=_ownerPeople().map(n=>'<option value="'+esc(n)+'"></option>').join('');
+}
+// The owner cell: one chip a name, × to take a name off, and a box to add
+// another (pick from the list, or type and press Enter or a comma).
+function _ownerCellHTML(rid, aid, owner, dis){
+  const names=_ownersOf(owner);
+  if(dis) return '<div class="own-cell own-ro">'+(names.length?names.map(n=>'<span class="own-chip">'+esc(n)+'</span>').join(''):'<span class="own-none">No owner</span>')+'</div>';
+  const q="'"+rid+"','"+aid+"'";
+  return '<div class="own-cell" id="own-'+rid+'-'+aid+'">'
+    +names.map((n,i)=>'<span class="own-chip">'+esc(n)+'<button type="button" title="Take '+esc(n)+' off this row" onclick="_ownDel('+q+','+i+')">×</button></span>').join('')
+    +'<input type="text" list="ownPeople" placeholder="'+(names.length?'＋ another owner':'Owner / role')+'" title="Pick a name, or type one and press Enter - add as many owners as you need"'
+    +' onkeydown="if(event.key===\'Enter\'||event.key===\',\'||event.key===\';\'){event.preventDefault();_ownAdd('+q+',this);}"'
+    +' oninput="if(!event.inputType||event.inputType===\'insertReplacementText\')_ownAdd('+q+',this);"'
+    +' onchange="_ownAdd('+q+',this)"></div>';
+}
+function _ownSet(rid, aid, names, refocus){
+  const f=_riskActFind(rid,aid); if(!f) return;
+  updateRiskAction(rid, aid, 'owner', names.join(', '));
+  const cell=document.getElementById('own-'+rid+'-'+aid);
+  if(cell){ cell.outerHTML=_ownerCellHTML(rid, aid, f.a.owner, ''); if(refocus){ const i=document.querySelector('#own-'+rid+'-'+aid+' input'); if(i) i.focus(); } }
+  _ownerListEnsure();
+}
+function _ownAdd(rid, aid, inp){
+  if(_roLocked() || !inp) return;
+  const f=_riskActFind(rid,aid); if(!f) return;
+  const add=_ownersOf(inp.value); inp.value='';
+  if(!add.length) return;
+  const names=_ownersOf(f.a.owner), seen=new Set(names.map(n=>n.toLowerCase()));
+  add.forEach(n=>{ if(!seen.has(n.toLowerCase())){ seen.add(n.toLowerCase()); names.push(n); } });
+  _ownSet(rid, aid, names, true);
+}
+function _ownDel(rid, aid, i){
+  if(_roLocked()) return;
+  const f=_riskActFind(rid,aid); if(!f) return;
+  const names=_ownersOf(f.a.owner); names.splice(i,1);
+  _ownSet(rid, aid, names, false);
+}
+// Under a control on tab 3: how many actions put it in place, and a button
+// that starts one on tab 4 without leaving the control's words behind.
+function _ctlLinkLineHTML(r, c, dis){
+  const acts=_ctlActions(r,c), done=acts.filter(_actClosed).length;
+  const txt=acts.length ? (acts.length+' action'+(acts.length!==1?'s':'')+' on 4 · '+done+' done') : 'No action on 4 yet';
+  return '<div class="act-link"><a href="#" onclick="_riskDetailTab(\'actions\');return false;" title="The actions that put this control in place, on 4 · Action delegation &amp; timescale">'+txt+'</a>'
+    +(dis?'':'<button type="button" class="act-link-add no-print" onclick="addCtlAction(\''+r.id+'\',\''+c.id+'\',true)" title="Start an action for this control on 4 · Action delegation &amp; timescale - worded from the control, ready to edit">＋ Action</button>')
+    +'</div>';
+}
+// Under an action on tab 4: the control it puts in place (move it here).
+function _actForSelectHTML(r, a, dis, ctls){
+  if(!ctls.length) return '';
+  const cur=_ctlOfAction(r,a);
+  const clip=t=>{ t=String(t||'').trim()||'(not written yet)'; return t.length>60?(t.slice(0,59)+'…'):t; };
+  return '<div class="act-for"><span>Puts in place</span><select'+dis+' onchange="_actLinkCtl(\''+r.id+'\',\''+a.id+'\',this.value)" title="The high level control on 3 · Controls &amp; rating that this action puts in place"><option value="">- not linked -</option>'
+    +ctls.map((c,i)=>'<option value="'+esc(c.id)+'"'+(cur&&cur.id===c.id?' selected':'')+'>'+(i+1)+' · '+esc(clip(c.desc))+'</option>').join('')+'</select></div>';
+}
+function _ctlGroupHeadHTML(r, c, ci, cols, rows){
+  const done=rows.filter(_actClosed).length;
+  const meta=[ _ownersOf(c).join(', ')||'No owner', c.due?('Target '+fmtDate(c.due)):'', _actionStatus(c), rows.length?(done+' of '+rows.length+' done'):'' ].filter(Boolean).map(esc).join(' · ');
+  return '<tr class="act-grp"><td colspan="'+cols+'"><div class="act-grp-h" onclick="_riskDetailTab(\'rating\')" title="Edit this control on 3 · Controls &amp; rating">'
+    +'<span class="act-grp-k">Control '+(ci+1)+'</span><span class="act-grp-t">'+esc(String(c.desc||'').trim()||'(not written yet)')+'</span><span class="act-grp-m">'+meta+'</span></div></td></tr>';
+}
+function _actLinkCtl(rid, aid, cid){
+  if(_blockIfReadOnly()) return;
+  const f=_riskActFind(rid,aid); if(!f) return;
+  if(cid && _riskCtlRows(f.r).some(c=>c.id===cid)) f.a.forCtl=cid; else delete f.a.forCtl;
+  _stamp(f.a,'updated'); _stamp(f.r,'updated'); saveData(); _keepScroll(renderRiskProfile);
+}
+// A new action for a control: worded from the control and owned by the
+// control's owner, so the row starts where tab 3 left off. The words come up
+// selected - type to replace them, or press an arrow key to keep and add.
+function addCtlAction(rid, cid, jump){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r) return;
+  const c=_riskCtlRows(r).find(x=>x.id===cid); if(!c) return;
+  if(!Array.isArray(r.actions)) r.actions=[];
+  const a={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:String(c.desc||'').trim(), owner:c.owner||'', due:'', status:'Not started', priority:_suggestPriority(r), forCtl:c.id };
+  _stamp(a,'created'); r.actions.push(a);
+  r.raised=(r.raised||0)+1;
+  _stamp(r,'updated'); saveData();
+  if(jump) _riskSelTab='actions';
+  _keepScroll(renderRiskProfile);
+  try{ if(typeof updateActionBadges==='function') updateActionBadges(); }catch(e){}
+  setTimeout(()=>{ const t=document.getElementById('actd-'+r.id+'-'+a.id); if(t){ try{ t.scrollIntoView({ block:'center' }); }catch(e){} t.focus(); t.select(); } }, 80);
+}
 function _riskActionsHTML(r, dis, which){
   // which='ctl' - the Control table (rows flagged hideFromPlan: they stay on
   // the risk and never reach the execution plan). which='plan' - everything
@@ -19751,7 +19890,10 @@ function _riskActionsHTML(r, dis, which){
   const acts=(r.actions||[]).filter(a=>!a.deleted).filter(a=> which==='ctl' ? !!a.hideFromPlan : which==='plan' ? !a.hideFromPlan : true);
   const stOpts=(cur)=>RISK_ACTION_STATUS.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
   const prOpts=(cur)=>['Critical','High','Medium','Low'].map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
-  const body = acts.map((a,_ix)=>{
+  const cols=(which==='ctl'?4:5)+(dis?0:2);
+  const ctls=(which==='plan')?_riskCtlRows(r):[];
+  if(!dis) _ownerListEnsure();
+  const rowHTML=(a, first, last)=>{
     const st=_actionStatus(a);
     const evd=_actionEvidence(r, a.id);
     const evHtml=(st==='Complete'||st==='Accepted')
@@ -19760,15 +19902,32 @@ function _riskActionsHTML(r, dis, which){
           : (dis?'':`<button type="button" class="btn btn-ghost btn-xs no-print" style="color:#B45309;padding:1px 6px;" title="No evidence linked yet - add the document that shows how this is now managed" onclick="_promptActionEvidenceById('${r.id}','${a.id}')">＋📎</button>`))
       : '';
     return `<tr>
-      <td><textarea${dis} rows="2" placeholder="${which==='ctl'?'High level control - in risk-assessment language':'Action description'}" oninput="updateRiskAction('${r.id}','${a.id}','desc',this.value)">${esc(a.desc||'')}</textarea></td>
-      <td><input type="text"${dis} value="${esc(a.owner||'')}" placeholder="Owner / role" oninput="updateRiskAction('${r.id}','${a.id}','owner',this.value)"></td>
+      <td><textarea${dis} rows="2" id="actd-${r.id}-${a.id}" placeholder="${which==='ctl'?'High level control - in risk-assessment language':'Action description'}" oninput="updateRiskAction('${r.id}','${a.id}','desc',this.value)">${esc(a.desc||'')}</textarea>${which==='ctl'?_ctlLinkLineHTML(r,a,dis):_actForSelectHTML(r,a,dis,ctls)}</td>
+      <td>${_ownerCellHTML(r.id, a.id, a.owner, dis)}</td>
       <td><input type="date"${dis} value="${esc(a.due||'')}" onchange="updateRiskAction('${r.id}','${a.id}','due',this.value)"></td>
       <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','status',this.value)">${stOpts(a.status||'Not started')}</select><div class="act-status ${_actionStatusClass(st)}" id="actst-${r.id}-${a.id}" style="margin-top:4px;"><span>${st}</span>${evHtml}</div></td>
       ${which==='ctl'?'':`<td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','priority',this.value)"><option value="">-</option>${prOpts(a.priority||'')}</select></td>`}
-      ${dis?'':`<td class="act-mv">${_rowMoveHTML(`_riskActionMove('${r.id}','${a.id}',-1,'${which||'all'}')`,`_riskActionMove('${r.id}','${a.id}',1,'${which||'all'}')`,_ix===0,_ix===acts.length-1)}</td>`}
+      ${dis?'':`<td class="act-mv">${_rowMoveHTML(`_riskActionMove('${r.id}','${a.id}',-1,'${which||'all'}')`,`_riskActionMove('${r.id}','${a.id}',1,'${which||'all'}')`,first,last)}</td>`}
       ${dis?'':`<td style="text-align:center;"><button class="btn btn-ghost btn-xs" title="Delete action" onclick="deleteRiskAction('${r.id}','${a.id}')">${_ic('trash',13)}</button></td>`}
     </tr>`;
-  }).join('');
+  };
+  // Tab 4 with a control table behind it: each control heads its own
+  // actions, in the control table's order; anything not linked comes last.
+  let body='';
+  if(which==='plan' && ctls.length){
+    const grpOf=a=>{ const c=_ctlOfAction(r,a); return c?c.id:''; };
+    ctls.forEach((c,ci)=>{
+      const rows=acts.filter(a=>grpOf(a)===c.id);
+      body+=_ctlGroupHeadHTML(r,c,ci,cols,rows);
+      body+=rows.map((a,i)=>rowHTML(a,i===0,i===rows.length-1)).join('');
+      if(!dis) body+=`<tr class="act-grp-add"><td colspan="${cols}"><button type="button" class="btn btn-outline btn-xs no-print" onclick="addCtlAction('${r.id}','${c.id}')" title="A new action for this control - worded from the control, ready to edit">＋ Action for control ${ci+1}</button>${rows.length?'':'<span class="act-grp-gap">Nothing puts this control in place yet</span>'}</td></tr>`;
+    });
+    const loose=acts.filter(a=>!grpOf(a));
+    if(loose.length){
+      body+=`<tr class="act-grp act-grp-none"><td colspan="${cols}"><div class="act-grp-h"><span class="act-grp-k">Not linked to a control</span><span class="act-grp-m">Choose the control each one puts in place, under its description</span></div></td></tr>`;
+      body+=loose.map((a,i)=>rowHTML(a,i===0,i===loose.length-1)).join('');
+    }
+  } else body=acts.map((a,i)=>rowHTML(a,i===0,i===acts.length-1)).join('');
   return `<table class="act-table${which==='ctl'?' act-ctl':''}"><thead><tr><th>${which==='ctl'?'High level control':'Action'}</th><th>Owner</th><th>Target date</th><th>Status</th>${which==='ctl'?'':'<th>Priority</th>'}${dis?'':'<th class="act-mv" title="Move a row up or down - the order here is the order it prints in">Order</th><th style="width:34px;"></th>'}</tr></thead>
     <tbody>${body || `<tr><td colspan="${(which==='ctl'?4:5)+(dis?0:2)}" style="color:var(--text-muted);">${which==='ctl'?'No controls listed yet - add them below.':which==='plan'?'Nothing raised to the plan yet.':'No actions yet.'}</td></tr>`}</tbody></table>
     ${dis?'':(which==='ctl'
@@ -22600,7 +22759,7 @@ function buildActionPlanReport(){
     K.tiles([{num:items.length,label:'Actions',color:NAVY,sub:'Total'},{num:apDone,label:'Complete',color:apDone?[22,120,60]:NAVY,sub:'Delivered'},{num:apAccepted,label:'Risk accepted',color:apAccepted?[107,114,128]:NAVY,sub:'Tolerated'},{num:apOutstanding,label:'Outstanding',color:apOutstanding?AMBER:NAVY,sub:'Still open'},{num:apOverdue,label:'Overdue',color:apOverdue?RED:NAVY,sub:'Past target'}]);
   }
   // group by owner ('Unassigned' first), overdue rows to the top within each group
-  const byOwner={}; items.forEach(x=>{ const o=(x.a.owner&&x.a.owner.trim())||'Unassigned'; (byOwner[o]=byOwner[o]||[]).push(x); });
+  const byOwner={}; items.forEach(x=>{ const os=_ownersOf(x.a.owner); (os.length?os:['Unassigned']).forEach(o=>{ (byOwner[o]=byOwner[o]||[]).push(x); }); });
   const owners=Object.keys(byOwner).sort((a,b)=> a==='Unassigned'?-1 : b==='Unassigned'?1 : a.localeCompare(b));
   owners.forEach(o=>{
     const rows=byOwner[o].slice().sort((a,b)=>{ if((a.status==='Overdue')!==(b.status==='Overdue')) return a.status==='Overdue'?-1:1; return String(a.a.due||'9999').localeCompare(String(b.a.due||'9999')); });

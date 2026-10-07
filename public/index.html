@@ -4373,6 +4373,38 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .qm .qm-row input{width:auto;}
     .qm-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);}
     @media (max-width:760px){ .qm-ov{padding:12px 8px;} .qm{padding:14px 12px;} .qm-add{grid-template-columns:1fr;} .qm-act{grid-template-columns:minmax(0,1fr) 140px 26px;padding-bottom:8px;border-bottom:1px solid var(--border);} .qm-act .qm-a-what{grid-column:1/-1;} }
+    /* The plan's shop bar - sort, risk level, specialism (Simon, 2026-10-07): square, flat, ruled */
+    .ep-shop{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px 10px;border:1px solid var(--border);background:var(--muted-bg);margin:0 0 14px;}
+    .ep-shop-grp{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;}
+    .ep-shop-lab{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-right:2px;}
+    .ep-lv,.ep-spec{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:var(--text);font-family:inherit;font-size:12px;line-height:1.4;padding:3px 8px;cursor:pointer;}
+    .ep-lv:hover,.ep-spec:hover{border-color:var(--accent);}
+    .ep-lv i{display:inline-block;flex:0 0 10px;width:10px;height:10px;box-sizing:border-box;}
+    .ep-lv.on,.ep-spec.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-weight:700;}
+    .ep-spec::after{content:"\25BE";font-size:10px;color:var(--text-muted);}
+    #epSortSel{width:auto;min-width:0;border:1px solid var(--border);border-radius:0;background-color:var(--surface);font-size:12px;padding:4px 28px 4px 8px;}
+    .ep-shop-end{margin-left:auto;gap:10px;}
+    .ep-shop-n{font-size:12px;color:var(--text-muted);}
+    .ep-shop-clr{border:1px solid var(--border);border-radius:0;background:var(--surface);color:var(--accent);font-family:inherit;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:4px 9px;cursor:pointer;}
+    .ep-shop-clr:hover{border-color:var(--accent);}
+    .ep-lvl-name{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;}
+    .as-cr{margin:6px 0 0;padding:8px 10px;border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:0;background:var(--surface);}
+    .as-cr-h{font-size:12.5px;line-height:1.45;color:var(--text-muted);overflow-wrap:anywhere;}
+    .as-cr-k{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-dark,var(--accent));}
+    .as-cr-kb{display:block;margin:10px 0 4px;}
+    .as-cr-c{font-size:13px;line-height:1.5;margin-top:3px;white-space:pre-wrap;overflow-wrap:anywhere;}
+    .as-cr-m{font-size:12px;color:var(--text-muted);margin-top:3px;}
+    .as-cr-b{margin-top:6px;}
+    .as-cr-b .btn{border-radius:0;}
+    .as-cr-on{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--success);border:1px solid currentColor;border-radius:0;padding:2px 7px;}
+    .as-amber{color:var(--warning);font-weight:700;}
+    .as-cr-what{margin:0 0 6px;}
+    .as-cr-what .as-cr-k{display:block;margin-bottom:2px;}
+    .as-cr-g{display:grid;grid-template-columns:minmax(0,1fr) 180px 150px;gap:6px;margin-top:6px;}
+    .as-cr-g textarea,.as-cr-g input{font:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;width:100%;box-sizing:border-box;}
+    .as-cr-g textarea{resize:vertical;min-height:36px;}
+    .as-d-agreed{border-left-color:var(--accent);}
+    @media (max-width:760px){ .as-cr-g{grid-template-columns:1fr;} }
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
     /* Quick links to other apps */
     .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;}
@@ -15173,13 +15205,8 @@ const COCKPIT_WIDGETS = {
       // a solid bar between them, and an empty rung says so. Each band label
       // explains what that level DEMANDS - the same rule _holdBreach enforces
       // - and shows the tenant's own score range, so neither can drift.
-      const MEAN={
-        Critical:'requires 3 \u00b7 Managed or better; first priority for resource',
-        High:'requires 3 \u00b7 Managed or better; never run on acceptance alone',
-        Medium:'must never sit at 1 \u00b7 Uncontrolled',
-        Low:'managed with routine precautions' };
-      const _bnd=_riskCfg().bands;
-      const RANGE={ Critical:_bnd.crit+'-25', High:_bnd.high+'-'+(_bnd.crit-1), Medium:_bnd.med+'-'+(_bnd.high-1), Low:'1-'+(_bnd.med-1) };
+      const MEAN={}, RANGE={};      // _bandRule / _bandRange: the action sheet's legend reads the same two
+      ['Critical','High','Medium','Low'].forEach(b=>{ MEAN[b]=_bandRule(b); RANGE[b]=_bandRange(b); });
       const WASH={ Critical:'2E', High:'24', Medium:'1C', Low:'14' };   // the wash cools down the ladder
       const rung=(band)=>{ const on=B.rows.filter(z=>z.sc.priority===band);
         const c=_RISK_PRIO_COLOR[band];
@@ -15204,8 +15231,7 @@ const COCKPIT_WIDGETS = {
         +'<span class="ckl-head ckl-head-sh" title="The risks on the Risk Action Sheet for '+esc(_top5MonthLabel(m5))+' - tick as many as you like">Sheet · '+sh.length+'</span></div>'
         // One row of tools, so the cockpit is the only screen open in the meeting.
         +(tools?('<div class="ckl-tools no-print">'
-          +'<button class="btn btn-outline btn-xs" onclick="openTopFivePrint()" title="The Top 5 Risks report for the SLT - these five, a page each">⭳ Top 5 report</button>'
-          +'<button class="btn btn-outline btn-xs" onclick="openActionSheets(\'top5\')" title="Five actions out to the client with your recommended controls, the outcome back, a decision each">Top 5 action sheet</button>'
+          +'<button class="btn btn-outline btn-xs" onclick="openActionSheets(\'top5\')" title="Five actions out to the leadership team with the controls we recommend; their comments, who and by when come back against each control, a decision each">Top 5 action sheet</button>'
           +'<button class="btn btn-outline btn-xs" onclick="openActionSheets(\'risk\')" title="The risks ticked in the Sheet column, one action each with the control you recommend, and what came up at the client meeting">Risk action sheet</button>'
           +'<button class="btn btn-outline btn-xs" onclick="openQuickMinutes()" title="Quick minutes for the client meeting - who is there, notes and actions; Done puts the actions on the plan">✎ Minutes</button></div>'):'')
         +'<div>'+['Critical','High','Medium','Low'].map(rung).join('')+'</div>'
@@ -15519,21 +15545,21 @@ function renderReports(){
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
       desc:'For the leadership meeting, defaulted to what HSG65 says a review draws on: the position and decisions, incidents and investigations, active monitoring, training, worker-raised issues, statutory checks, successes and movement since the baseline.',
       tags:['Directors','HSG65 review','Sign-off'] },
-    { title:'Top 5 Risks', accent:'#B45309', tint:'#FBF0E6', fn:'openTopFivePrint()',
-      meta:(function(){ try{ const n=(S.riskProfile||[]).filter(r=>_riskTop5Picked(r)).length; return n?(n+' of 5 chosen for '+_top5MonthLabel(_top5Month())):'None chosen yet - it ranks the worst five'; }catch(e){ return 'The five to deal with first'; } })(),
-      icon:svg('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
-      desc:'The five risks to deal with first, for the SLT: the five ticked on the cockpit\'s risk ladder for the month (topped up from the system\'s own ranking if fewer are chosen). A page each - where it stands, why it is on the list, the controls, what will be done by whom and when, and what the SLT is asked to do.',
-      tags:['SLT','Top 5','A page each'] },
     { title:'Top 5 Action Sheet', accent:'#B45309', tint:'#FBF0E6', fn:'openActionSheets()',
-      meta:(function(){ try{ const l=_asList('top5'); if(!l.length) return 'Five actions out, the outcome back, a decision each'; const s=l.slice().sort((a,b)=>b.no-a.no)[0]; return 'Sheet '+s.no+' - '+_asSheetStatus(s).label; }catch(e){ return 'Five actions at a time'; } })(),
+      meta:(function(){ try{ const l=_asList('top5'); if(!l.length) return 'Five actions out, comments back against each control, a decision each'; const s=l.slice().sort((a,b)=>b.no-a.no)[0]; return 'Sheet '+s.no+' - '+_asSheetStatus(s).label; }catch(e){ return 'Five actions at a time'; } })(),
       icon:svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
-      desc:'The next five actions with the control you recommend, as a working sheet for the client - fillable on screen, or printed and written on. Import what comes back, then decide each line: approve it, go back with a compromise, record that the client accepts the risk, or carry it forward. Then send the next five.',
-      tags:['Client','Fillable','Approve or compromise'] },
+      desc:'The month\'s Top 5 for the leadership team, five actions at a time: a cover with the five at a glance, then a page an action with its risk, the controls we recommend and, against each control, the leadership team\'s comments, who will do it and by when. Fillable on screen, or printed and written on. Import the returned file and each comment lands back under its own control, ready to go on the plan - then decide each line and send the next five.',
+      tags:['Client','Fillable','Comments by control'] },
     { title:'Risk Action Sheet', accent:'#B45309', tint:'#FBF0E6', fn:"openActionSheets('risk')",
       meta:(function(){ try{ const m=_top5Month(), n=_sheetRisks(m).length, k=_asList('risk').length; return n?(n+' risk'+(n!==1?'s':'')+' ticked for '+_top5MonthLabel(m)+(k?(' · '+k+' sheet'+(k!==1?'s':'')):'')):'Nothing ticked yet - tick the Sheet column on the cockpit ladder'; }catch(e){ return 'Any number of risks, for the client meeting'; } })(),
       icon:svg('<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>'),
-      desc:"As many risks as you tick on the cockpit's risk ladder, one action each with the control you recommend, built like the Top 5 action sheet - then what came up at the client meeting, from the quick minute taker. The client says what happened and sends it back; you decide each line.",
+      desc:"As many risks as you tick on the cockpit's risk ladder, laid out like the Top 5 action sheet: a page a risk with the controls we recommend and, against each control, the leadership team's comments, who will do it and by when - then what came up at the client meeting, from the quick minute taker. Import the returned file and each comment lands back under its own control, ready to go on the plan.",
       tags:['Client meeting','Any number of risks','From the meeting'] },
+    { title:'Client Meeting Notes', accent:'#475569', tint:'#EDF1F5', fn:'downloadClientNotes()',
+      meta:(function(){ try{ const n=_clientNoteMeetings().length; return n?(n+' meeting'+(n!==1?'s':'')+' minuted'):'Nothing minuted yet - ✎ Minutes on the cockpit ladder'; }catch(e){ return 'Your own notes from client meetings'; } })(),
+      icon:svg('<path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.38 5.63a1 1 0 1 0-3-3l-5.01 5.01a2 2 0 0 0-.51.86l-.84 2.87a.5.5 0 0 0 .62.62l2.87-.84a2 2 0 0 0 .86-.51z"/>'),
+      desc:'Your own notes from client meetings, taken with the quick minute taker on the cockpit: who was there, what was said and the actions agreed, newest first.',
+      tags:['Personal notes','Client meetings'] },
     { title:'Leadership Briefing', accent:'#DC2626', tint:'#FCE9E9', fn:'openBoardBriefingPrint()', meta:'Ten agenda items, one page each',
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
       desc:'The board report arranged as the SLT agenda - position, incidents, key risks, design and CDM, projects, competence, audits, wellbeing, objectives, and the decisions required. One page an item: what to cover, the live figures, and ruled lines for notes.',
@@ -16110,9 +16136,14 @@ function _bandFor(rating){
   const b = _riskCfg().bands;
   return rating>=b.crit ? 'Critical' : rating>=b.high ? 'High' : rating>=b.med ? 'Medium' : 'Low';
 }
+// A band's score range on this client's matrix ("10-15") - the one place it is
+// worked out, for the scoring key, the risk ladder and the action sheet's legend.
+function _bandRange(b){
+  const d=_riskCfg().bands;
+  return ({ Critical:d.crit+'-25', High:d.high+'-'+(d.crit-1), Medium:d.med+'-'+(d.high-1), Low:'1-'+(d.med-1) })[b]||'';
+}
 function _bandRangeText(){
-  const b=_riskCfg().bands;
-  return `Low 1-${b.med-1} · Medium ${b.med}-${b.high-1} · High ${b.high}-${b.crit-1} · Critical ${b.crit}-25`;
+  return ['Low','Medium','High','Critical'].map(k=>k+' '+_bandRange(k)).join(' · ');
 }
 
 // ── Two ratings: the risk as it stands, and the projection after the plan.
@@ -16300,7 +16331,7 @@ function _top5BannerHTML(){
   return '<div class="no-print" style="border:1.5px solid #B4530955;background:#B4530910;border-radius:9px;padding:10px 14px;margin-bottom:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">'
     + '<span style="font-weight:700;color:#B45309;">Top 5 for '+_top5MonthLabel(m)+'</span>'
     + '<span style="font-size:12.5px;color:var(--text-muted);">'+mid+'</span>'
-    + last + '<button type="button" class="btn btn-outline btn-sm" style="'+(last?'':'margin-left:auto;')+'" onclick="openActionSheets()" title="Five actions out to the client with your recommended controls, the outcome back, a decision each">Action sheet</button></div>';
+    + last + '<button type="button" class="btn btn-outline btn-sm" style="'+(last?'':'margin-left:auto;')+'" onclick="openActionSheets()" title="Five actions out to the leadership team with the controls we recommend; their comments, who and by when come back against each control, a decision each">Action sheet</button></div>';
 }
 
 function _execOpenCount(){ return _execActions().filter(x=>x.status!=='Complete' && x.status!=='Accepted').length; }
@@ -16793,7 +16824,8 @@ function _epThemeGroups(){
     return { k:k, list:list, total:mine.length, done:mine.filter(shut).length,
       overdue:list.filter(x=>x.rag==='red').length,
       colour:k?_macroColour(k):'#9CA3AF',
-      name:k?_macroName(k):'Not tied to a risk theme yet',
+      // the same words the Specialism pick list uses: one name for the group
+      name:_epThemeNameOf(mine[0]),
       riskLine:(k&&r)?((r.g.worst?(_riskPrioBadge(r.g.worst,null)+' '):'')+esc(r.g.roll)):'',
       ord:r?r.i:(k?900:999) };
   }).sort((a,b)=>(a.ord-b.ord)||String(a.name).localeCompare(String(b.name)));
@@ -16866,13 +16898,15 @@ function _epWhatHTML(a){
 function toggleExecRow(rk){ _execRowOpen[rk]=!_execRowOpen[rk]; renderExecPlan(); }
 // ── AutoFilter for the plan - same engine, same conventions as the CAS tab.
 //    View state only, never saved. ──
-var _epXF = { src: [], own: [], pri: [], sts: [] };
-function _epXFActive(){ return !!(_epXF.src.length || _epXF.own.length || _epXF.pri.length || _epXF.sts.length); }
-function clearEpXF(){ _epXF = { src: [], own: [], pri: [], sts: [] }; _closeCasXFPop(); renderExecPlan(); }
+var _epXF = { src: [], own: [], pri: [], sts: [], band: [], theme: [] };
+function _epXFActive(){ return !!(_epXF.src.length || _epXF.own.length || _epXF.pri.length || _epXF.sts.length || (_epXF.band || []).length || (_epXF.theme || []).length); }
+function clearEpXF(){ _epXF = { src: [], own: [], pri: [], sts: [], band: [], theme: [] }; _closeCasXFPop(); renderExecPlan(); }
 function _epVal(a, col){
   if(col === 'src') return a.source || '(no source)';
   if(col === 'own') return a.owner || '(no owner)';
   if(col === 'pri') return a.priority || '(no priority)';
+  if(col === 'band') return _epBandName(a);
+  if(col === 'theme') return _epThemeNameOf(a);
   return a.raw || 'Not started';
 }
 function _epXFPass(a){
@@ -16880,6 +16914,8 @@ function _epXFPass(a){
   if(_epXF.own.length && !_epXF.own.includes(_epVal(a, 'own'))) return false;
   if(_epXF.pri.length && !_epXF.pri.includes(_epVal(a, 'pri'))) return false;
   if(_epXF.sts.length && !_epXF.sts.includes(_epVal(a, 'sts'))) return false;
+  if((_epXF.band || []).length && !_epXF.band.includes(_epVal(a, 'band'))) return false;
+  if((_epXF.theme || []).length && !_epXF.theme.includes(_epVal(a, 'theme'))) return false;
   return true;
 }
 function _epXFTh(label, col){
@@ -16893,8 +16929,9 @@ function openEpXFPop(ev, col){
   const STS = ['Not started', 'In progress', 'Complete', 'Accepted'];
   const order = col === 'pri' ? PRI.filter(v => counts[v] != null)
     : col === 'sts' ? STS.filter(v => counts[v] != null)
+    : col === 'theme' ? Object.keys(counts).filter(v => v !== 'No risk theme').sort((a, b) => a.localeCompare(b)).concat(counts['No risk theme'] != null ? ['No risk theme'] : [])
     : Object.keys(counts).sort((a, b) => a.localeCompare(b));
-  openXFPop(ev, order, counts, _epXF[col],
+  openXFPop(ev, order, counts, _epXF[col] || [],
     list => { _epXF[col] = list; renderExecPlan(); },
     () => { _epXF[col] = []; renderExecPlan(); });
 }
@@ -16951,7 +16988,8 @@ function renderExecPlan(){
   const gbChip=(k,label,tip)=>'<button type="button" class="no-print ep-gb'+(_epGroupBy===k?' on':'')+'" onclick="setEpGroupBy(\''+k+'\')" title="'+esc(tip)+'">'+esc(label)+'</button>';
   const groupBy='<span class="no-print ep-gb-wrap"><span class="ep-gb-lab">Group by</span>'
     +gbChip('theme','Risk theme','Read the plan by the high level risk category each action belongs to - what each part of the business is moving')
-    +gbChip('month','Target date','Read the plan as a delivery timeline, month by month')+'</span>';
+    +gbChip('month','Target date','Read the plan as a delivery timeline, month by month')
+    +gbChip('level','Risk level','Read the plan by how serious the risk behind each action is - one block a band, in the order you sort by')+'</span>';
   const fDelivered=delivered.filter(_epXFPass);
   const byMonth={};
   open.filter(_epXFPass).forEach(a=>{ const k=_actionMonthKey(a.due); (byMonth[k]=byMonth[k]||[]).push(a); });
@@ -16961,7 +16999,7 @@ function renderExecPlan(){
   // opens the place it is built from).
   const tile=(num,label,color,target)=>`<button type="button" class="ep-tile" onclick="_epJump('${target}')" title="See the actions behind this number" style="flex:1;min-width:110px;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center;background:var(--surface);cursor:pointer;font-family:inherit;"><div style="font-size:26px;font-weight:800;color:${color};line-height:1;">${num}</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">${label}</div></button>`;
   const focus = (fOverdue.length||fDueThis.length)
-    ? epTable(fOverdue.concat(fDueThis),true)
+    ? epTable(_epSortList(fOverdue.concat(fDueThis)),true)
     : `<div class="ck-pending" style="padding:8px 0;">Nothing overdue or due this month${_epXFActive()&&(overdue.length||dueThis.length)?' matches the filters':''}.</div>`;
   root.innerHTML = `
     <div class="rep-hero"><h2>Client execution plan</h2><p>All actions from the risk profile, legal duties, assurance and accreditation - owned, dated and tracked. The mark beside each action is the band of the risk it belongs to - <b style="color:${_RISK_PRIO_COLOR.Critical};">Critical</b>, <b style="color:${_RISK_PRIO_COLOR.High};">High</b>, <b style="color:${_RISK_PRIO_COLOR.Medium};">Medium</b>; a low risk is left unmarked so nothing here reads as finished when it is not. A late or undated action shows on its <b style="color:${RAG_COLOR.red};">target date</b>.</p></div>
@@ -16997,9 +17035,9 @@ function renderExecPlan(){
       <div class="card-body">${focus}</div>
     </div>
     <div class="card" id="epYearCard">
-      <div class="card-band"><h3><span class="dot">&#9679;</span> ${_epGroupBy==='theme'?'Everything on your plan - by risk theme':'The full year - everything on your plan'}</h3>${groupBy}</div>
+      <div class="card-band"><h3><span class="dot">&#9679;</span> ${_epGroupBy==='theme'?'Everything on your plan - by risk theme':_epGroupBy==='level'?'Everything on your plan - by risk level':'The full year - everything on your plan'}</h3>${groupBy}</div>
       <div class="card-body">
-        ${_epGroupBy==='theme' ? _epThemeBodyHTML(epTable) : (monthKeys.length ? monthKeys.map(k=>`<div style="margin-bottom:14px;"><div style="font-weight:700;font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;border-bottom:1.5px solid var(--border);padding-bottom:4px;">${monthName(k)} <span style="font-weight:600;">(${byMonth[k].length})</span></div>${epTable(byMonth[k],true)}</div>`).join('') : `<div class="ck-pending" style="padding:8px 0;">${open.length&&_epXFActive()?'Nothing on the plan matches the filters.':'No open actions yet. As actions are identified in your risk profile, legal duties, assurance and accreditation, they appear here to plan.'}</div>`)}
+        ${_epShopHTML(acts)}${_epGroupBy==='theme' ? _epThemeBodyHTML(epTable) : ((_epGroupBy==='level' ? _epLevelBodyHTML(open.filter(_epXFPass),epTable) : monthKeys.map(k=>`<div style="margin-bottom:14px;"><div style="font-weight:700;font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;border-bottom:1.5px solid var(--border);padding-bottom:4px;">${monthName(k)} <span style="font-weight:600;">(${byMonth[k].length})</span></div>${epTable(_epSortList(byMonth[k]),true)}</div>`).join('')) || `<div class="ck-pending" style="padding:8px 0;">${open.length&&_epXFActive()?'Nothing on the plan matches the filters.':'No open actions yet. As actions are identified in your risk profile, legal duties, assurance and accreditation, they appear here to plan.'}</div>`)}
       </div>
     </div>
     ${delivered.length?`<div class="card" id="epDeliveredCard" style="margin-top:18px;border-left:3px solid ${RAG_COLOR.green};">
@@ -17013,13 +17051,98 @@ function renderExecPlan(){
 }
 // How the plan is read. View state only, never saved - like the column filters.
 var _epGroupBy='theme';
-function setEpGroupBy(m){ _epGroupBy=(m==='month')?'month':'theme'; renderExecPlan(); }
+function setEpGroupBy(m){ _epGroupBy=(m==='month'||m==='level')?m:'theme'; renderExecPlan(); }
+// ── Sort and narrow the plan the way a shop does (Simon, 2026-10-07) ──
+// "Organised into the risk hierarchy from the highest to the lowest, or a
+// filter option to show high to low risk, low to high risks, risks by
+// specialism - mirrored on how shopping web sites do this." View state only,
+// never saved, like the grouping and the column filters. _epSortList is the
+// ONE sort every open list on the plan goes through. _epBandName and
+// _epThemeNameOf are the one reading of an action's band and theme: the
+// filter, the chips, the risk-level blocks and the sort all use them.
+var _EP_SORTS=[ ['risk-high','Highest risk first'], ['risk-low','Lowest risk first'], ['due','Target date - soonest first'], ['raised','Most recently raised'] ];
+var _epSort='risk-high';
+function _epBandName(a){ return _epBandOf(a)||'Not rated'; }
+function _epThemeNameOf(a){ return _epThemeName(a)||'No risk theme'; }
+// The bands in reading order: worst first, or least serious first for
+// "Lowest risk first". Not rated is always last - it is not a level.
+function _epBandOrder(sort){ return (sort||_epSort)==='risk-low' ? ['Low','Medium','High','Critical','Not rated'] : ['Critical','High','Medium','Low','Not rated']; }
+// The colour a band is shown in on the plan. Low has none on purpose - a
+// green mark on a plan reads as done (Simon) - so its swatch is an empty
+// square and its block keeps the plain rule colour.
+function _epBandColour(b){ return b==='Low' ? '' : (_RISK_PRIO_COLOR[b==='Not rated'?'':b]||_RISK_PRIO_COLOR['']); }
+// A sorted copy. Highest risk first: band, then overdue, then the soonest
+// target date (undated last). Lowest risk first: the same from Low up, with
+// Not rated still last. Target date: soonest first (undated last), then
+// band. Most recently raised: newest first (undated last), then band.
+// Anything still level keeps the order it came in.
+function _epSortList(list){
+  const hi=_epBandOrder('risk-high'), ord=_epBandOrder();
+  const rows=(list||[]).map((a,i)=>{ const b=_epBandName(a), r=hi.indexOf(b), p=ord.indexOf(b);
+    return { a, i, rank:(r<0?hi.length-1:r), pos:(p<0?ord.length-1:p), od:(a.rag==='red'?0:1), due:(a.due||''), raised:(a.raisedAt||'') }; });
+  const cmp=(x,y)=>(x<y?-1:x>y?1:0);
+  const byDue=(x,y)=>((x.due?0:1)-(y.due?0:1)) || cmp(x.due,y.due);
+  rows.sort((x,y)=>{
+    if(_epSort==='due') return byDue(x,y) || (x.rank-y.rank) || (x.i-y.i);
+    if(_epSort==='raised') return ((x.raised?0:1)-(y.raised?0:1)) || cmp(y.raised,x.raised) || (x.rank-y.rank) || (x.i-y.i);
+    return (x.pos-y.pos) || (x.od-y.od) || byDue(x,y) || (x.i-y.i);
+  });
+  return rows.map(x=>x.a);
+}
+function setEpSort(v){ _epSort=_EP_SORTS.some(s=>s[0]===v)?v:'risk-high'; renderExecPlan(); }
+function toggleEpBand(b){ const cur=_epXF.band||[]; _epXF.band=cur.includes(b)?cur.filter(x=>x!==b):cur.concat([b]); renderExecPlan(); }
+// The shop bar above the full plan: sort, risk level, specialism, and how
+// many actions are showing. The chip counts are over every action, the way
+// a shop shows how many are in each price band whatever else is ticked. It
+// is a view, so it works the same for the consultant and a read-only client.
+function _epShopHTML(acts){
+  if(!acts.length) return '';
+  const n={}; acts.forEach(a=>{ const b=_epBandName(a); n[b]=(n[b]||0)+1; });
+  const band=_epXF.band||[], theme=_epXF.theme||[];
+  const lv=_epBandOrder('risk-high').filter(b=>n[b]||band.includes(b)).map(b=>{
+    const c=_epBandColour(b), on=band.includes(b);
+    const what=(b==='Not rated')?'the actions not tied to a rated risk':('the actions on '+b+' risks');
+    return '<button type="button" class="ep-lv'+(on?' on':'')+'" onclick="toggleEpBand(\''+b+'\')" title="'+esc(on?('Showing '+what+' - click to take this off'):('Show only '+what+' - pick more than one to see them together'))+'">'
+      +'<i style="'+(c?('background:'+c+';'):'border:1px solid var(--text-muted);')+'"></i>'+esc(b)+' ('+(n[b]||0)+')</button>';
+  }).join('');
+  const on=_epXFActive();
+  return '<div class="ep-shop no-print">'
+    +'<span class="ep-shop-grp"><label class="ep-shop-lab" for="epSortSel">Sort by</label><select id="epSortSel" onchange="setEpSort(this.value)" title="The order of every open list on the plan">'
+    +_EP_SORTS.map(s=>'<option value="'+s[0]+'"'+(s[0]===_epSort?' selected':'')+'>'+esc(s[1])+'</option>').join('')+'</select></span>'
+    +'<span class="ep-shop-grp"><span class="ep-shop-lab">Risk level</span>'+lv+'</span>'
+    +'<button type="button" class="ep-spec'+(theme.length?' on':'')+'" onclick="openEpXFPop(event,\'theme\')" title="'+esc(theme.length?('Showing '+theme.join(', ')+' - click to change'):'Show only the actions in the risk themes you pick - the high level risk categories on your risk profile')+'">Specialism'+(theme.length?(' ('+theme.length+')'):'')+'</button>'
+    +(on?('<span class="ep-shop-grp ep-shop-end"><span class="ep-shop-n">Showing '+acts.filter(_epXFPass).length+' of '+acts.length+' action'+(acts.length!==1?'s':'')+'</span><button type="button" class="ep-shop-clr" onclick="clearEpXF()" title="Take every filter off the plan">Clear all</button></span>'):'')
+    +'</div>';
+}
+// The plan by risk level: one block a band, in the order of the sort, each
+// headed in its band colour with its count and anything overdue. Empty
+// bands are left out. epTable is passed in so there is one table.
+function _epLevelBodyHTML(list, epTable){
+  const live=_epBandOrder().map(b=>({ b, rows:_epSortList((list||[]).filter(a=>_epBandName(a)===b)) })).filter(g=>g.rows.length);
+  return live.map((g,i)=>{
+    const c=_epBandColour(g.b), od=g.rows.filter(a=>a.rag==='red').length;
+    return '<div class="ep-theme ep-lvl" style="border-left-color:'+(c||'var(--border)')+';">'
+      +'<div class="ep-theme-head"><span class="ep-lvl-name" style="color:'+(c||'var(--text)')+';">'+esc(g.b)+'</span>'
+      +(od?'<span class="ep-theme-od" style="color:'+RAG_COLOR.red+';">'+od+' overdue</span>':'')
+      +'<span class="ep-theme-n" style="color:var(--text-muted);">'+g.rows.length+' open</span></div>'
+      +epTable(g.rows,true,i>0)+'</div>';
+  }).join('');
+}
 // The plan by theme: one block per high level risk category, each showing how
 // much of its work is done. epTable is passed in so there is one table.
 function _epThemeBodyHTML(epTable){
   const gs=_epThemeGroups();
-  const live=gs.filter(g=>g.list.length), shut=gs.filter(g=>!g.list.length && g.total);
-  if(!gs.length) return '<div class="ck-pending" style="padding:8px 0;">No actions yet. As actions are identified in your risk profile, legal duties, assurance and accreditation, they appear here under the risk theme they move.</div>';
+  const shut=gs.filter(g=>!g.list.length && g.total);
+  // Highest or lowest risk first: the theme blocks follow their worst open
+  // action (ties keep the register's order). By date or raised, the
+  // register's order stays. Each block's own list goes through the one sort.
+  let live=gs.filter(g=>g.list.length).map(g=>Object.assign({}, g, { list:_epSortList(g.list) }));
+  if(_epSort==='risk-high' || _epSort==='risk-low'){
+    const hi=_epBandOrder('risk-high'), ord=_epBandOrder();
+    const worst=g=>{ let k=hi.length-1; g.list.forEach(a=>{ const r=hi.indexOf(_epBandName(a)); if(r>=0 && r<k) k=r; }); return ord.indexOf(hi[k]); };
+    live=live.map((g,i)=>({ g, i, w:worst(g) })).sort((x,y)=>(x.w-y.w)||(x.i-y.i)).map(x=>x.g);
+  }
+  if(!gs.length) return '<div class="ck-pending" style="padding:8px 0;">'+((_epXFActive()&&_execActions().length)?'Nothing on the plan matches the filters.':'No actions yet. As actions are identified in your risk profile, legal duties, assurance and accreditation, they appear here under the risk theme they move.')+'</div>';
   const intro='<div style="font-size:12.5px;color:var(--text-muted);margin:-2px 0 14px;">Each block is one of the high level risk categories on your risk profile. The bar is how much of that theme is done, so you can see which part of the business is moving and which is not. Click a theme name to open it in the register.</div>';
   const block=(g,i)=>{
     const pct=g.total?Math.round(g.done/g.total*100):0;
@@ -18585,6 +18708,15 @@ const HOLD_STATES = {
 // "4 · Assured" - the level and the word together, used wherever a compact
 // label is shown (bars, chips, tables, PDFs).
 function _hsLevel(k){ const st=HOLD_STATES[k]; return st ? (st.level+' · '+st.label) : ''; }
+// What each risk band demands of its control state, in words - one source for
+// the cockpit risk ladder's band lines and the action sheet's score legend, so
+// renaming a state (or rewording a line) changes both together.
+function _bandRule(b){
+  return ({ Critical:'requires '+_hsLevel('working')+' or better; first priority for resource',
+    High:'requires '+_hsLevel('working')+' or better; never run on acceptance alone',
+    Medium:'must never sit at '+_hsLevel('notheld'),
+    Low:'managed with routine precautions' })[b]||'';
+}
 const HOLD_ORDER = ['held','working','slipping','notheld'];
 function _riskHold(r){
   const sc=_riskScore(r);
@@ -22333,11 +22465,11 @@ const REPORT_DOCS = [
   { key:'riskPathway',      title:'Risk Pathway',                 code:'RPW' },
   { key:'keptInPlace',      title:'Controls Kept in Place',       code:'KIP' },
   { key:'boardReport',      title:'Board Report',                 code:'BR'  },
-  { key:'topFive',          title:'Top 5 Risks',                  code:'T5'  },
   { key:'managementPlan',   title:'H&S Management Plan',          code:'MP'  },
   { key:'bizStatus',        title:'Business Status Report',       code:'BSR' },
   { key:'decisions',        title:'Management Decisions',         code:'MD'  },
   { key:'meetingMinutes',   title:'Meeting Minutes',              code:'MM'  },
+  { key:'clientNotes',      title:'Client Meeting Notes',         code:'CMN' },
   { key:'riskProfile',      title:'Risk Profile',                 code:'RP'  },
   { key:'executionPlan',    title:'Client Execution Plan',        code:'EP'  },
   { key:'completedActions', title:'Completed Actions',            code:'CA'  },
@@ -22880,24 +23012,30 @@ function setBoardSection(id, hide){
   if(hide) h[id]=true; else delete h[id];
   saveData();
 }
-// The five risks to deal with first, for the SLT (2026-10-01) - the same
-// five the risk ladder's ticks choose, a page each.
-async function openTopFivePrint(){ return _openEngineReport('top-five','Top 5 risks report', null); }
+// The Top 5 Risks report (2026-10-01) was retired on 7 October 2026 - Simon:
+// "Remove the Top 5 Risks report - it now serves no purpose." The leadership
+// team get the Top 5 action sheet instead (buildActionSheetPDF): the same
+// pages as the Risk action sheet, with the two-way controls table they fill
+// in and send back. The month's Top 5 ticks still choose its first five.
 // ══════════════════════════════════════════════════════════════
 //  TOP 5 RESPONSES (Simon, 2026-10-01): "add editable fields so the client
 //  can enter their actions and comments and send it back to me - I might
 //  get three or four different responses but I want to choose the best, add
 //  my knowledge and then import the actions into the app using the correct
 //  fields and structure". The fillable form (pdf-lib, like the execution
-//  plan) carries the same five as the Top 5 Risks report. Each return lands
+//  plan) carries the month's five. Each return lands
 //  in a holding list (S.top5Resp) - never straight onto the risks. The
 //  review screen sets the proposals side by side; Simon ticks the ones to
 //  keep, edits them, adds his own and a note, and Add to the plan makes real
 //  risk actions - the first on each risk taking the month's Top 5 mark.
+//  Its button went on 7 October 2026 - the action sheets now carry the
+//  two-way controls table - but openTop5Review and S.top5Resp stay, so
+//  nothing stored is lost.
 // ══════════════════════════════════════════════════════════════
-// The five, read the way the report reads them (templates/top-five.js
-// topFiveOf): the risks behind this month's ticks, worst first, topped up
-// from the ranking - needs attention first, then the next worst.
+// The month's five: the risks behind this month's ticks, worst first, topped
+// up from the ranking - needs attention first, then the next worst. The Top 5
+// action sheet leads with them (_asRiskOrder). The retired Top 5 Risks report
+// (templates/top-five.js, removed 7 October 2026) read them the same way.
 function _top5Five(){
   const H=_holdSummary(), month=_top5Month();
   const chosenIds=new Set(); (S.riskProfile||[]).forEach(r=>{ if(r&&(r.actions||[]).some(a=>a&&!a.deleted&&a.top5===month)) chosenIds.add(r.id); });
@@ -22910,7 +23048,7 @@ function _top5Open(r){
   return ((r&&r.actions)||[]).filter(a=>a&&!a.deleted&&!a.hideFromPlan&&String(a.desc||'').trim()&&a.status!=='Complete'&&a.status!=='Accepted')
     .sort((a,b)=>(late(b)-late(a))||String(a.due||'9999').localeCompare(String(b.due||'9999')));
 }
-// What the SLT is asked to do - the report's own rule (topFiveOf asks).
+// What the SLT is asked to do - the rule the retired Top 5 Risks report used.
 function _top5Asks(r){
   const today=new Date().toISOString().slice(0,10), late=a=>!!(a.due&&a.due<today);
   const open=_top5Open(r), now=_riskScore(r).rating, tgt=_riskTarget(r).rating, asks=[];
@@ -23197,24 +23335,31 @@ function t5Apply(rid){
   showToast('✓ '+made.length+' action'+(made.length!==1?'s':'')+' added to '+(_riskRefOf(r)||'the risk')+markMsg,'success',6000);
 }
 // ══════════════════════════════════════════════════════════════
-//  TOP 5 ACTION SHEET - five actions out, the outcome back, a decision each.
+//  TOP 5 ACTION SHEET - five actions out, comments back against each
+//  control, a decision each.
 //
 //  Simon, 5 October 2026, from a client's own request: "give me the first top
 //  five actions with your recommendations for the controls". The client gets
-//  a working sheet (fillable PDF, or printed and written on), reports what
-//  happened against each action and sends it back. The consultant then
-//  decides, line by line: approve it, go back with a compromise, record that
-//  the client accepts the risk, or carry it forward - and sends the next five.
+//  a working sheet (fillable PDF, or printed and written on) and, since 7
+//  October 2026, writes their comments, who and by when against each of the
+//  risk's controls (the second form - the first asked what happened against
+//  each action) and sends it back. The consultant then decides, line by
+//  line: agree it (approve it, on the first form), go back with a compromise,
+//  record that the client accepts the risk, or carry it forward - and sends
+//  the next five.
 //
 //  The sheet is a lens on the plan, never a copy of it: each item points at
 //  its action on the execution plan, and every decision is written on that
 //  action (status, who, when, its log). An accepted risk is the plan's own
 //  'Accepted', so it reads on the Risk Acceptance Register by itself.
 //
-//  Store: S.actionSheets = { list:[ { id, no, createdAt, issuedAt, returnedAt,
-//    returnedBy, file, items:[ { key, ref, desc, risk, riskRef, band, owner,
-//    due, rec, resp:{ outcome, what, date, by }, decision, decidedAt, dnote,
-//    acceptedBy } ] } ] }   - created when the first sheet is started.
+//  Store: S.actionSheets = { list:[ { id, kind, no, formV, createdAt,
+//    issuedAt, returnedAt, returnedBy, file, general, items:[ { key, ref,
+//    desc, risk, riskRef, band, owner, due, rec, carriedFrom, ctlIds,
+//    ctlPrinted, resp:{ outcome, what, date, by, ctls, src }, decision,
+//    decidedAt, dnote, acceptedBy } ] } ] }   - created when the first sheet
+//    is started. resp.ctls and the rest of the second form: THE SECOND FORM,
+//    below.
 //
 //  RISK ACTION SHEET (Simon, 7 October 2026): the same sheet, bespoke - the
 //  risks ticked in the Sheet column of the cockpit's risk ladder (as many as
@@ -23231,7 +23376,7 @@ var AS_OUTCOMES = [
   { k:'cannot', f:'cannot', label:'Cannot be done' },
   { k:'notyet', f:'notyet', label:'Not done yet' }
 ];
-var AS_DECISIONS = { approved:'Approved', compromise:'Compromise sent back', accepted:'Client accepts the risk', carry:'Carried to the next sheet' };
+var AS_DECISIONS = { approved:'Approved', agreed:'Agreed with the client', compromise:'Compromise sent back', accepted:'Client accepts the risk', carry:'Carried to the next sheet' };
 // Which sheets: kind 'top5' (also every sheet saved without a kind) or 'risk'.
 function _asKindOf(s){ return (s && s.kind==='risk') ? 'risk' : 'top5'; }
 // _asList() is every sheet of both kinds - the live-sheet rule spans them;
@@ -23258,7 +23403,59 @@ function _asKey(ref){ return ref ? [ref.t, ref.a, ref.b||'', ref.c||''].join(':'
 function _asSheet(id){ return _asList().find(s=>s.id===id)||null; }
 function _asItem(sid, key){ const s=_asSheet(sid); return s ? (s.items||[]).find(i=>i.key===key)||null : null; }
 function _asOutcomeLabel(k){ const o=AS_OUTCOMES.find(x=>x.k===k); return o?o.label:''; }
-function _asHasResp(it){ const r=it&&it.resp; return !!(r && (r.outcome || String(r.what||'').trim() || r.date || String(r.by||'').trim())); }
+function _asHasResp(it){ const r=it&&it.resp; return !!(r && (r.outcome || String(r.what||'').trim() || r.date || String(r.by||'').trim() || (Array.isArray(r.ctls) && r.ctls.some(_asCtlWritten)))); }
+// ── THE SECOND FORM: the controls table (Simon, 7 October 2026) ──
+// "A table which shows my controls on one side that cannot be edited, then a
+// comments box for the client to complete, then a who, then a date ... keep
+// the comments box at the bottom." Each page of a sheet now lists the risk's
+// high level controls, and the leadership team write a comment, who and by
+// when against each, with a comments box for the risk at the foot.
+// What comes back: it.resp = { outcome:'', what (the comments box), date:'',
+// by:'', ctls:[ { k (row number as printed), ctlId (null for the one row a
+// risk with no control table gets), ctlText, cmt, who, due, dueText, actId
+// (the plan action made from it) } ], src:'form' when imported }.
+// it.ctlIds holds the rows as printed (set when the sheet is downloaded), so
+// a paper copy typed in here lines up with the page it came from, and
+// it.ctlPrinted keeps each control's words as printed, by id;
+// s.formV=2 marks a sheet sent as the second form. Sheets sent before still
+// come back, and read, exactly as the first form did.
+// A line of the controls table that came back with something written on it.
+function _asCtlWritten(c){ return !!(c && (String(c.cmt||'').trim() || String(c.who||'').trim() || c.due || String(c.dueText||'').trim())); }
+// The rows of a sheet line's controls table - one derivation for the sheet,
+// a paper copy typed in here and the return trip: the risk's high level
+// controls (the control table on 3 · Controls & rating) that have words, in
+// their order; with none, one row - the control we recommend, or the action.
+function _asSheetCtlRows(it){
+  const r=_execRiskOf({ ref:it.ref });
+  const rows=(r?_riskCtlRows(r):[]).map(c=>({ id:c.id, text:String(c.desc||'').trim(), c })).filter(x=>x.text);
+  return rows.length ? rows : [{ id:null, text:String(it.rec||'').trim()||String(it.desc||'').trim(), c:null }];
+}
+// The row ids as they were printed, or as they would print now.
+function _asPrintedCtls(it){ return (Array.isArray(it.ctlIds) && it.ctlIds.length) ? it.ctlIds : _asSheetCtlRows(it).map(x=>x.id); }
+// A row's control in the app's own words now; a control since removed reads
+// as it was printed (it.ctlPrinted, kept by id when the sheet is downloaded);
+// the one row of a risk with no control table reads as the recommendation,
+// or the action.
+function _asCtlText(it, id){
+  const r=id ? _execRiskOf({ ref:it.ref }) : null, c=r ? _riskCtlRows(r).find(x=>x.id===id) : null;
+  const printed=(id && it.ctlPrinted && typeof it.ctlPrinted==='object') ? String(it.ctlPrinted[id]||'').trim() : '';
+  return (c && String(c.desc||'').trim()) || printed || String(it.rec||'').trim() || String(it.desc||'').trim();
+}
+// Which form a line is answered on: the second once its controls rows are in,
+// the first once anything else is (what happened); with nothing back yet, the
+// form the sheet was sent as.
+function _asV2(s, it){ const r=it&&it.resp; if(r && Array.isArray(r.ctls)) return true; if(_asHasResp(it)) return false; return !!(s && +s.formV>=2); }
+// What the client wrote on the second form, in one line - for the action's history.
+function _asCtlSaid(it){
+  const tidy=t=>String(t||'').trim().replace(/[.;,\s]+$/,'');
+  const r=it.resp||{}, out=[], w=tidy(r.what);
+  if(w) out.push('comments: '+w);
+  (Array.isArray(r.ctls)?r.ctls:[]).filter(_asCtlWritten).forEach(c=>{
+    const t=tidy(c.ctlText), cm=tidy(c.cmt), who=tidy(c.who), when=c.due?fmtDate(c.due):tidy(c.dueText);
+    out.push('control '+c.k+(t?(' ('+(t.length>60?(t.slice(0,59)+'…'):t)+')'):'')+': '+(cm||'no comment')+(who?(', '+who):'')+(when?(', by '+when):''));
+  });
+  return out.length ? out.join('; ') : 'nothing written';
+}
 // Still in play: on a sheet and not yet finished with. An action sits on one
 // live sheet at a time, so the same action is never out twice.
 function _asLive(it){ return !it.decision; }
@@ -23270,10 +23467,10 @@ function _asSheetStatus(s){
   if(s.issuedAt) return { k:'out', label:'With the client since '+fmtDate(s.issuedAt) };
   return { k:'draft', label:'Draft - not sent yet' };
 }
-// The risks in the Top 5's own order: the five the Top 5 report shows (those
-// ticked on the risk ladder or the plan, topped up by the system's ranking),
-// then on down that same ranking. One list, so the ladder, the Top 5 report
-// and this sheet can never show a different five.
+// The risks in the Top 5's own order: the month's five (those ticked on the
+// risk ladder or the plan, topped up by the system's ranking - _top5Five),
+// then on down that same ranking. One list, so the ladder and this sheet can
+// never show a different five.
 function _asRiskOrder(){
   const H=_holdSummary(), seen=new Set(), out=[];
   const add=z=>{ if(z && !seen.has(z.id)){ seen.add(z.id); out.push(z.id); } };
@@ -23291,12 +23488,18 @@ function _asRiskOrder(){
 // back from the last risk action sheet (even if its risk is no longer
 // ticked), then one action a ticked risk in the ladder's order, then the rest
 // of the ticked risks' actions a round at a time. Nothing else goes on it.
-// A carry only ever goes on to the next sheet of its own kind.
+// A carry only ever goes on to the next sheet of its own kind. A line agreed
+// with the client stays open on the plan while it is done: it waits at the
+// back of the queue, so the next sheet moves on down the list, and when it
+// does go out again it takes the control it was agreed with.
 function _asCandidates(exceptSheetId, kind){
   const K=(kind==='risk')?'risk':'top5', risk=(K==='risk');
-  const live=new Set(), carried={};
+  const live=new Set(), carried={}, agreed={};
   _asList().forEach(s=>(s.items||[]).forEach(it=>{
     if(s.id!==exceptSheetId && _asLive(it)) live.add(it.key);
+    // agreed with the client: settled there, so an older carry ends (only the latest word counts)
+    if(it.decision==='agreed'){ delete carried[it.key]; agreed[it.key]={ rec:String(it.rec||''), from:s.no }; }
+    else if(it.decision) delete agreed[it.key];
     if(it.decision==='compromise' || it.decision==='carry') carried[it.key]={ rec:(it.decision==='compromise' && String(it.dnote||'').trim()) ? it.dnote : (it.rec||''), from:s.no, decision:it.decision, kind:_asKindOf(s) };
   }));
   // a later sheet may have finished the action off: only the latest word counts
@@ -23310,17 +23513,21 @@ function _asCandidates(exceptSheetId, kind){
   const press=(x,y)=>(x.late-y.late) || String(x.a.due||'9999').localeCompare(String(y.a.due||'9999'));
   const byRank=(x,y)=>(x.rank-y.rank) || press(x,y);
   const all=_asOpenActions()
-    .map(a=>{ const key=_asKey(a.ref), r=_execRiskOf(a); return { a, key, band:_epBandOf(a), carry:carried[key]||null, top:!risk && a.top5===month, riskId:r?r.id:'', rank:rankOf(r?r.id:''), late:a.rag==='red'?0:1 }; })
+    .map(a=>{ const key=_asKey(a.ref), r=_execRiskOf(a); return { a, key, band:_epBandOf(a), carry:carried[key]||null, agreed:(!carried[key] && agreed[key])||null, top:!risk && a.top5===month, riskId:r?r.id:'', rank:rankOf(r?r.id:''), late:a.rag==='red'?0:1 }; })
     .filter(c=>!live.has(c.key) && !held.has(c.key) && (!risk || c.carry || c.rank<9999));
   const out=[], used=new Set(), risksIn=new Set();
   const take=c=>{ if(used.has(c.key)) return; used.add(c.key); out.push(c); if(c.riskId) risksIn.add(c.riskId); };
-  all.filter(c=>c.carry).sort(byRank).forEach(take);
-  all.filter(c=>c.top).sort(byRank).forEach(take);
-  const perRisk={}; all.filter(c=>c.riskId && !used.has(c.key)).forEach(c=>{ (perRisk[c.riskId]=perRisk[c.riskId]||[]).push(c); });
+  // the lines agreed with the client wait until everything else is out
+  // ... except a line ticked for this month's Top 5: the tick outranks an earlier agreement
+  const fresh=all.filter(c=>!c.agreed || c.top);
+  fresh.filter(c=>c.carry).sort(byRank).forEach(take);
+  fresh.filter(c=>c.top).sort(byRank).forEach(take);
+  const perRisk={}; fresh.filter(c=>c.riskId && !used.has(c.key)).forEach(c=>{ (perRisk[c.riskId]=perRisk[c.riskId]||[]).push(c); });
   Object.keys(perRisk).forEach(id=>perRisk[id].sort(press));
   order.forEach(id=>{ if(!risksIn.has(id) && perRisk[id] && perRisk[id].length) take(perRisk[id].shift()); });
   for(let more=true; more; ){ more=false; order.forEach(id=>{ const l=perRisk[id]; if(l && l.length){ take(l.shift()); more=true; } }); }
-  all.filter(c=>!used.has(c.key)).sort(press).forEach(take);
+  fresh.filter(c=>!used.has(c.key)).sort(press).forEach(take);
+  all.filter(c=>c.agreed).sort(byRank).forEach(take);
   return out;
 }
 // The plan's open actions - all a sheet of either kind can carry.
@@ -23358,7 +23565,7 @@ function _asThin(it){
 function _asItemFrom(c){
   const r=_execRiskOf(c.a);
   return { key:c.key, ref:c.a.ref, desc:c.a.desc||'', risk:(r?(r.activity||r.hazard||''):(c.a.sourceLabel||c.a.source||'')), riskRef:(r?_riskRefOf(r):''), band:c.band||'',
-    owner:c.a.owner||'', due:c.a.due||'', rec:(c.carry?c.carry.rec:''), carriedFrom:(c.carry?c.carry.from:0),
+    owner:c.a.owner||'', due:c.a.due||'', rec:(c.carry?c.carry.rec:(c.agreed?c.agreed.rec:'')), carriedFrom:(c.carry?c.carry.from:0),
     resp:{ outcome:'', what:'', date:'', by:'' }, decision:'', decidedAt:'', dnote:'', acceptedBy:'' };
 }
 
@@ -23384,8 +23591,7 @@ function _asRender(){
   const bar=risk
     ? '<div class="slt-bar">'+kinds+'<div class="slt-t"><div class="slt-k">Risk action sheet</div><div class="slt-h">'+esc(_sltClient())+'</div></div>'
       +(ro?'':'<button class="btn btn-primary btn-sm" onclick="asNewSheet(\'risk\')"'+(draftOpen?' disabled title="Finish the draft sheet first"':' title="The risks ticked on the cockpit\'s risk ladder, one action each, plus anything carried back"')+'>＋ New risk action sheet</button>'
-        +'<button class="btn btn-outline btn-sm" onclick="importActionSheet()" title="A sheet the client filled in on screen and sent back">⭱ Import a returned sheet</button>'
-        +'<button class="btn btn-outline btn-sm" onclick="openTop5Review()" title="The fillable form the leadership team fill in with their own proposed actions, and what comes back">Proposals from the leadership team</button>')
+        +'<button class="btn btn-outline btn-sm" onclick="importActionSheet()" title="A sheet the client filled in on screen and sent back">⭱ Import a returned sheet</button>')
       +'<button class="btn btn-ghost btn-sm" onclick="closeActionSheets()">Close</button></div>'
     : '<div class="slt-bar">'+kinds+'<div class="slt-t"><div class="slt-k">Top 5 action sheet</div><div class="slt-h">'+esc(_sltClient())+'</div></div>'
       +(ro?'':'<button class="btn btn-primary btn-sm" onclick="asNewSheet()"'+(draftOpen?' disabled title="Finish the draft sheet first"':' title="The Top 5 as ticked on the risk ladder, then on down the same ranking - anything carried back goes on first"')+'>＋ '+(sheets.length?'Next five':'First five')+'</button>'
@@ -23394,13 +23600,13 @@ function _asRender(){
   let intro;
   if(risk){
     const month=_top5Month(), mLabel=_top5MonthLabel(month), ticked=_sheetRisks(month);
-    intro='<div class="slt-muted" style="margin:0 0 6px;line-height:1.55;">As many risks as you tick on the cockpit\'s risk ladder, one action each with the control you recommend - add more from the plan if you want them. The sheet ends with what came up at the client meeting, from the quick minute taker. The client works from it, says what happened and sends it back; you decide each line as on the Top 5 sheet.</div>'
+    intro='<div class="slt-muted" style="margin:0 0 6px;line-height:1.55;">As many risks as you tick on the cockpit\'s risk ladder, one action each with the control you recommend - add more from the plan if you want them. Each risk gets a page with its controls; against each control the leadership team write their comments, who will do it and by when, and anything else goes in the comments box at the bottom of the page. The sheet ends with what came up at the client meeting, from the quick minute taker. Import the returned file and each comment lands under its own control, ready to go on the plan; you decide each line as on the Top 5 sheet.</div>'
       +'<div class="slt-muted" style="margin:0 0 12px;line-height:1.55;">'
       +(ticked.length
         ? ('<b>Ticked for '+esc(mLabel)+' ('+ticked.length+'):</b> '+ticked.map(z=>{ const ref=_riskRefOf(z.r); return esc((ref?(ref+' '):'')+z.name); }).join('; '))
         : ('<b>Nothing ticked for '+esc(mLabel)+' yet.</b> Tick the Sheet column on the cockpit\'s risk ladder.'))
       +'</div>';
-  } else intro='<div class="slt-muted" style="margin:0 0 12px;line-height:1.55;">Five actions at a time, each with the control you recommend. The first sheet is the Top 5 - the risks ticked on the risk ladder, topped up the way the Top 5 report tops them up - and each next sheet carries on down the same list. The client works from the sheet, says what happened and sends it back. You then decide each line: approve it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Every decision is written on the action in the execution plan.</div>';
+  } else intro='<div class="slt-muted" style="margin:0 0 12px;line-height:1.55;">Five actions at a time, each with the control you recommend. The first sheet is the Top 5 - the risks ticked on the risk ladder, topped up from the system\'s own ranking (needs attention first, then the next worst) - and each next sheet carries on down the same list. Each action gets a page, with its risk and the controls on that risk; against each control the leadership team write their comments, who will do it and by when, and send the sheet back. Import it and each comment lands under its own control, ready to go on the plan. You then decide each line: agree it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Every decision is written on the action in the execution plan.</div>';
   const people=_sltPeople(null);
   const body=sheets.length ? sheets.map((s,idx)=>_asSheetHTML(s, idx===0, ro, dis)).join('')
     : '<section class="slt-sec"><div class="slt-muted">'+(risk
@@ -23454,7 +23660,7 @@ function _asSheetHTML(s, latest, ro, dis){
     : '<details class="slt-sec as-old" id="asS-'+esc(s.id)+'"'+(st.k==='reviewed'?'':' open')+'><summary>'+esc(nm)+' · '+esc(st.label)+'</summary>'+inner+'</details>';
 }
 function _asItemHTML(s, it, i, locked, ro, dis){
-  const sid=_asQ(s.id), key=_asQ(it.key), r=it.resp||{}, back=_asHasResp(it), done=!!it.decision;
+  const sid=_asQ(s.id), key=_asQ(it.key), r=it.resp||{}, back=_asHasResp(it), done=!!it.decision, v2=_asV2(s, it);
   const o=_execOrigin(it.ref);
   const gone=!o ? '<div class="as-warn">This action is no longer on the plan.</div>' : '';
   const thin=(!locked && !ro && o) ? _asThin(it) : [];
@@ -23465,7 +23671,8 @@ function _asItemHTML(s, it, i, locked, ro, dis){
     : '<textarea class="slt-notes" rows="2" placeholder="The control you recommend, in the words the client will read" oninput="asRec('+sid+','+key+',this.value)">'+esc(it.rec||'')+'</textarea>';
   const opt=AS_OUTCOMES.map(x=>'<option value="'+x.k+'"'+(r.outcome===x.k?' selected':'')+'>'+esc(x.label)+'</option>').join('');
   const lockResp=(done||ro)?' disabled':'';
-  const resp=!s.issuedAt && !back ? '' :
+  // the second form brings back the controls table, a line a control; the first, what happened
+  const resp=!s.issuedAt && !back ? '' : v2 ? _asCtlRespHTML(s, it, i, ro) :
     '<div class="slt-lab">What came back'+(back?'':' - import the returned sheet, or enter it here from a paper copy')+'</div>'
     +'<div class="as-resp"><select'+lockResp+' onchange="asResp('+sid+','+key+',\'outcome\',this.value)"><option value="">- what happened -</option>'+opt+'</select>'
     +'<input type="date"'+lockResp+' value="'+esc(r.date||'')+'" onchange="asResp('+sid+','+key+',\'date\',this.value)" title="Date done">'
@@ -23477,11 +23684,15 @@ function _asItemHTML(s, it, i, locked, ro, dis){
       +(it.decision==='accepted'&&it.acceptedBy?(' · accepted by '+esc(it.acceptedBy)):'')+(it.dnote?('<div>'+esc(it.dnote)+'</div>'):'')
       +(ro?'':'<button class="btn btn-ghost btn-sm" onclick="asUndo('+sid+','+key+')" title="Take this decision back and reopen the action">Undo</button>')+'</div>';
   } else if(back && !ro){
-    const canApprove=(r.outcome==='done'||r.outcome==='diff');
+    // Approve closes the action on what was done - the first form only; the
+    // second brings comments on the controls, so the line is Agreed instead
+    const canApprove=!v2 && (r.outcome==='done'||r.outcome==='diff');
     decide='<div class="slt-lab">Your decision</div>'
-      +'<textarea class="slt-notes" id="asN-'+esc(s.id)+'-'+i+'" rows="2" placeholder="Your note. For a compromise: the control you will settle for. For an accepted risk: why the client accepts it.">'+esc(it.dnote||'')+'</textarea>'
+      +'<textarea class="slt-notes" id="asN-'+esc(s.id)+'-'+i+'" rows="2" placeholder="'+(v2?'Your note. Agreed: anything to add, written on the action’s history. ':'Your note. ')+'For a compromise: the control you will settle for. For an accepted risk: why the client accepts it.">'+esc(it.dnote||'')+'</textarea>'
       +'<div class="as-btns">'
-      +'<button class="btn btn-primary btn-sm" onclick="asDecide('+sid+','+key+',\'approved\','+i+')"'+(canApprove?'':' disabled title="Nothing has been done yet to approve"')+'>'+(r.outcome==='diff'?'Approve what was done instead':'Approve')+'</button>'
+      +(v2
+        ? '<button class="btn btn-primary btn-sm" onclick="asDecide('+sid+','+key+',\'agreed\','+i+')" title="The action stays open on the plan; the client’s comments are written on its history">Agreed</button>'
+        : '<button class="btn btn-primary btn-sm" onclick="asDecide('+sid+','+key+',\'approved\','+i+')"'+(canApprove?'':' disabled title="Nothing has been done yet to approve"')+'>'+(r.outcome==='diff'?'Approve what was done instead':'Approve')+'</button>')
       +'<button class="btn btn-outline btn-sm" onclick="asDecide('+sid+','+key+',\'compromise\','+i+')" title="Stays open; your compromise goes on the next sheet as its recommended control">Go back with a compromise</button>'
       +'<span class="as-acc"><input list="asPeople" id="asA-'+esc(s.id)+'-'+i+'" value="'+esc(it.acceptedBy||r.by||s.returnedBy||'')+'" placeholder="Accepted by (name, role)">'
       +'<button class="btn btn-outline btn-sm" onclick="asDecide('+sid+','+key+',\'accepted\','+i+')" title="Closes the action as an accepted risk, on the Risk Acceptance Register">Client accepts the risk</button></span>'
@@ -23493,6 +23704,44 @@ function _asItemHTML(s, it, i, locked, ro, dis){
     +((locked||ro)?'':'<button class="trn-x" onclick="asRemoveItem('+sid+','+key+')" title="Take this action off the sheet - it stays on the plan">×</button>')+'</div>'
     +'<div class="slt-muted as-meta">'+meta+'</div>'+gone+thinMsg
     +'<div class="slt-lab">Recommended control</div>'+recBox+resp+decide+'</div>';
+}
+// What came back on the second form, a line under each control. An imported
+// sheet reads as it was written, each line with a button that puts it on the
+// plan under its control; a paper copy is typed in here, a box a field, until
+// the line is decided.
+function _asCtlRespHTML(s, it, i, ro){
+  const sid=_asQ(s.id), key=_asQ(it.key), r=it.resp||{}, back=_asHasResp(it), done=!!it.decision;
+  const rows=(Array.isArray(r.ctls)?r.ctls:[]), what=String(r.what||'').trim();
+  const head=row=>'<div class="as-cr-h"><span class="as-cr-k">Control '+row.k+'</span> · '+esc(row.ctlText||'')+'</div>';
+  const when=row=>row.due ? ('By '+esc(fmtDate(row.due))) : (String(row.dueText||'').trim() ? ('<span class="as-amber">date as written: '+esc(row.dueText)+'</span>') : 'No date');
+  const plan=row=>ro ? '' : ('<div class="as-cr-b">'+(row.actId
+      ? '<span class="as-cr-on">✓ On the plan</span>'
+      : '<button type="button" class="btn btn-outline btn-xs" onclick="asCtlToPlan('+sid+','+key+','+row.k+')" title="A new action on the plan for this risk, under this control - worded from what the client wrote">＋ Add to the plan under this control</button>')+'</div>');
+  if(!ro && !done && r.src!=='form'){
+    const ids=_asPrintedCtls(it), f=k=>'asC-'+esc(s.id)+'-'+i+'-'+k;
+    return '<div class="slt-lab">What came back'+(back?' - from a paper copy':' - import the returned sheet, or enter it here from a paper copy')+'</div>'
+      +ids.map((id,j)=>{
+        const k=j+1, row=rows.find(x=>x.k===k)||{ k, ctlId:id||null, ctlText:_asCtlText(it, id||null), cmt:'', who:'', due:'', dueText:'', actId:'' }, lk=row.actId?' disabled':'';
+        const on=fld=>' oninput="asCtlResp('+sid+','+key+','+k+',\''+fld+'\',this.value)"';
+        return '<div class="as-cr as-cr-in">'+head(row)
+          +'<div class="as-cr-g"><textarea id="'+f(k)+'-cmt" rows="2"'+lk+' placeholder="What they wrote about this control"'+on('cmt')+'>'+esc(row.cmt||'')+'</textarea>'
+          +'<input id="'+f(k)+'-who" list="asPeople"'+lk+' value="'+esc(row.who||'')+'" placeholder="Who"'+on('who')+'>'
+          +'<input id="'+f(k)+'-due" type="date"'+lk+' value="'+esc(row.due||'')+'" title="By when" onchange="asCtlResp('+sid+','+key+','+k+',\'due\',this.value)"></div>'
+          +((!row.due && String(row.dueText||'').trim()) ? ('<div class="as-cr-m">'+when(row)+'</div>') : '')
+          +((row.actId || _asCtlWritten(row)) ? plan(row) : '')+'</div>';      // a row goes on the plan once something is written on it
+      }).join('')
+      +'<div class="as-cr-k as-cr-kb">Comments on this risk</div>'
+      +'<textarea class="slt-notes" id="'+f(0)+'-what" rows="2" placeholder="What they wrote in the comments box at the foot of the page" oninput="asCtlResp('+sid+','+key+',0,\'what\',this.value)">'+esc(r.what||'')+'</textarea>';
+  }
+  if(!back) return '<div class="slt-lab">What came back</div><div class="slt-muted">Nothing back yet.</div>';
+  const shown=rows.filter(x=>_asCtlWritten(x) || x.actId);      // a line on the plan stays in view
+  return '<div class="slt-lab">What came back</div>'
+    +(what?('<div class="as-fixed as-cr-what"><span class="as-cr-k">Comments on this risk</span>'+esc(what)+'</div>'):'')
+    +shown.map(row=>'<div class="as-cr">'+head(row)
+      +'<div class="as-cr-c">'+(String(row.cmt||'').trim()?esc(row.cmt):'<span class="slt-muted">No comment written</span>')+'</div>'
+      +'<div class="as-cr-m">'+(String(row.who||'').trim()?esc(row.who):'No one named')+' · '+when(row)+'</div>'
+      +plan(row)+'</div>').join('')
+    +((!what && !shown.length)?'<div class="slt-muted">Nothing was written on this page.</div>':'');
 }
 
 // ── building a sheet ──
@@ -23569,6 +23818,87 @@ function asResp(sid, key, f, v){
   if(f==='outcome' || f==='date' || first){ saveData(); _asRender(); } else scheduleAutoSave();
 }
 
+// The second form typed in from a paper copy: k is the row as printed (0 is
+// the comments box). Typing only saves; the first entry stamps the sheet back
+// and, as the line comes back - or as a row is first written on, or cleared,
+// so its Add to the plan button comes or goes - redraws with the cursor where
+// it was.
+function asCtlResp(sid, key, k, f, v){
+  if(_roLocked()) return;
+  const s=_asSheet(sid), it=_asItem(sid,key); if(!s||!it||it.decision||!_asV2(s,it)) return;
+  if(it.resp && it.resp.src==='form') return;          // an imported sheet reads as it was written
+  const was=_asHasResp(it);
+  _asRespCtls(it);
+  let flip=false;
+  if(f==='what') it.resp.what=v;
+  else {
+    const row=_asCtlRowGet(it, k, true); if(!row || row.actId) return;
+    const had=_asCtlWritten(row);
+    if(f==='due'){ row.due=v||''; row.dueText=''; }
+    else if(f==='cmt' || f==='who') row[f]=v;
+    else return;
+    flip=(had!==_asCtlWritten(row));
+  }
+  const first=!s.returnedAt;
+  if(first) s.returnedAt=_asToday();
+  if(first || flip || was!==_asHasResp(it)){ saveData(); _asRedrawKeep(); } else scheduleAutoSave();
+}
+// Only ever called on a line answered on the second form (_asV2).
+function _asRespCtls(it){ if(!it.resp || !Array.isArray(it.resp.ctls)) it.resp={ outcome:'', what:String((it.resp&&it.resp.what)||''), date:'', by:'', ctls:[] }; return it.resp; }
+function _asCtlRowGet(it, k, make){
+  const l=(it.resp && Array.isArray(it.resp.ctls)) ? it.resp.ctls : null; if(!l) return null;
+  let row=l.find(x=>x.k===k); if(row || !make) return row||null;
+  const ids=_asPrintedCtls(it); if(!(k>=1 && k<=ids.length)) return null;
+  const id=ids[k-1]||null;
+  row={ k, ctlId:id, ctlText:_asCtlText(it, id), cmt:'', who:'', due:'', dueText:'', actId:'' };
+  l.push(row); l.sort((a,b)=>a.k-b.k); return row;
+}
+// A line of the controls table onto the plan: a real action on the risk, in
+// the shape addCtlAction gives one - under its control while that control is
+// still on the risk, otherwise not linked. Worded from the client's comment
+// (or the control itself when they wrote none), owned by who they named, due
+// when they said; its history says where it came from. With no risk behind
+// the action it goes on the plan as one added directly.
+function asCtlToPlan(sid, key, k){
+  if(_blockIfReadOnly()) return;
+  const s=_asSheet(sid), it=_asItem(sid,key); if(!s||!it||!_asV2(s,it)) return;
+  const row=_asCtlRowGet(it, k, false);
+  if(row && row.actId){ showToast('That line is already on the plan','info'); return; }
+  // only a line with something written on it goes on the plan - from a paper copy, type it in first
+  if(!row || !_asCtlWritten(row)){ showToast('Type in what the copy says against this control first','info'); return; }
+  const cmt=String(row.cmt||'').trim(), who=String(row.who||'').trim(), ctlText=String(row.ctlText||'').trim()||_asCtlText(it, row.ctlId);
+  const desc=(cmt||('Put in place: '+ctlText)).slice(0,240);
+  const r=_execRiskOf({ ref:it.ref });
+  let a, c=null;
+  if(r){
+    c=row.ctlId ? (_riskCtlRows(r).find(x=>x.id===row.ctlId)||null) : null;
+    if(!Array.isArray(r.actions)) r.actions=[];
+    a={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc, owner:who, due:row.due||'', status:'Not started', priority:_suggestPriority(r) };
+    if(c) a.forCtl=c.id;
+    _stamp(a,'created'); r.actions.push(a);
+    r.raised=(r.raised||0)+1;
+    _stamp(r,'updated');
+  } else {
+    if(!Array.isArray(S.actionPlan)) S.actionPlan=[];
+    a={ id:_reqUid('act'), desc, owner:who, due:row.due||'', status:'Not started', priority:'', source:'Added directly', sourceLabel:_asTitle(s) };
+    _stamp(a,'created'); S.actionPlan.push(a);
+  }
+  _logAdd(a,'raised','From '+_asTitle(s)+', returned '+fmtDate(s.returnedAt||_asToday())+': '+(cmt||desc));
+  row.actId=a.id;
+  saveData(); try{ _refreshActionViews(); }catch(e){}
+  _asRedrawKeep();
+  showToast('✓ On the plan'+(r?(' - '+(_riskRefOf(r)||'the risk')+(c?', under its control':', not linked to a control')):' - added directly')+((a.owner&&a.due)?'':' - set its owner and target date there'),'success',6000);
+}
+// Redraw the sheets and put the cursor back where it was, so a box being
+// typed in survives the redraw.
+function _asRedrawKeep(){
+  const el=document.activeElement, id=(el&&el.id)||'';
+  let a=null, b=null; try{ a=el.selectionStart; b=el.selectionEnd; }catch(e){}
+  _asRender();
+  const n=id ? document.getElementById(id) : null; if(!n) return;
+  try{ n.focus({ preventScroll:true }); if(a!=null && typeof n.setSelectionRange==='function') n.setSelectionRange(a,b); }catch(e){}
+}
+
 // ── the decision, written on the action itself ──
 function asDecide(sid, key, decision, i){
   if(_blockIfReadOnly()) return;
@@ -23577,15 +23907,22 @@ function asDecide(sid, key, decision, i){
   const by=String(((document.getElementById('asA-'+sid+'-'+i)||{}).value)||'').trim();
   const o=_execOrigin(it.ref);
   if(!o){ showToast('That action is no longer on the plan - nothing to decide','error'); return; }
-  const said=(_asOutcomeLabel(r.outcome)||'No outcome given')+(String(r.what||'').trim()?(' - '+String(r.what).trim()):'');
+  // the second form says it under each control; the first, what happened
+  const v2=_asV2(s, it);
+  const said=v2 ? ('Client comments - '+_asCtlSaid(it)) : ((_asOutcomeLabel(r.outcome)||'No outcome given')+(String(r.what||'').trim()?(' - '+String(r.what).trim()):''));
   const tag=_asLogTag(s)+': ';
   if(decision==='approved'){
+    if(v2){ showToast('This sheet brings comments on the controls, not an outcome - choose Agreed','info'); return; }
     if(r.outcome!=='done' && r.outcome!=='diff'){ showToast('Nothing has been done yet to approve','info'); return; }
     o.status='Complete'; _stampActionCompletion(o,'Complete');
     if(r.date) o.completedDate=r.date;
     if(String(r.by||'').trim()) o.completedBy=String(r.by).trim();
     _logAdd(o,'completed', tag+said+'. Approved'+(note?(' - '+note):'')+'.');
     const rk=_execRiskOf({ ref:it.ref }); if(rk) _ctlOnActionClosed(rk, o);
+  } else if(decision==='agreed'){
+    // the action stays open as it is; what the client wrote goes on its history
+    if(!v2) return;
+    _logAdd(o,'comment', (tag+'agreed - '+_asCtlSaid(it)+(note?('. '+note):'')).replace(/[.\s]+$/,'')+'.');
   } else if(decision==='compromise'){
     if(!note){ showToast('Write the compromise first - it goes to the client on the next sheet','info'); return; }
     if(o.status==='Not started' || !o.status) o.status='In progress';
@@ -23613,7 +23950,7 @@ function asUndo(sid, key){
   const was=it.decision, o=_execOrigin(it.ref);
   // a later sheet already carries this action: taking the decision back here would put it on two
   // (only a sheet started after this one counts - an earlier sheet that carried the action here is history)
-  if((was==='compromise'||was==='carry') && _asList().some(x=>x.id!==sid && String(x.createdAt||'')>String(s.createdAt||'') && (x.items||[]).some(j=>j.key===key))){ showToast('This action is already on a later sheet - change it there','info'); return; }
+  if((was==='compromise'||was==='carry'||was==='agreed') && _asList().some(x=>x.id!==sid && String(x.createdAt||'')>String(s.createdAt||'') && (x.items||[]).some(j=>j.key===key))){ showToast('This action is already on a later sheet - change it there','info'); return; }
   if(o && (was==='approved'||was==='accepted')){
     o.status='In progress'; _stampActionCompletion(o,'In progress');
     if(was==='accepted'){ o.acceptReason=''; }
@@ -23633,16 +23970,23 @@ function asUndo(sid, key){
 // something written in it counts (_qmWritten).
 function _asQuickMeetings(month){
   month=month||_asToday().slice(0,7);
-  return (S.meetings||[]).filter(m=>m && m.quick && String(m.date||'').slice(0,7)===month && _qmWritten(m)).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  return _clientNoteMeetings().filter(m=>String(m.date||'').slice(0,7)===month);
 }
 // ── the sheet the client works from ──
 // The first real deliverable a client holds, so it is built like the risk
-// itself and shows the journey: a cover with the five at a glance, then a
-// page an action - what is wrong, who it affects, where the risk stands today,
-// what is in place, the control we recommend, and where the risk will stand
-// once it is done - with the client's answer boxes on the same page. Every
-// page stands alone, so it can be handed to whoever owns that action.
-// Fillable on screen, and it prints to write on.
+// itself, set out like one of our procedures: a cover - what the sheet is
+// for, the risks at a glance in their band's colour, what we need back and
+// how to read a score - then a page an action: what is wrong, who it affects,
+// where the risk stands today and where it will stand, what needs to be done
+// and the control we recommend, then the two-way part (Simon, 7 October
+// 2026): the risk's high level controls, printed and not to be edited, with
+// the client's comments, who and by when against each, and a box for the
+// comments on the risk at the foot of its page. Every page stands alone, so
+// it can be handed to whoever owns that action. Fillable on screen, and it
+// prints to write on. Fields: as_<n>_c<k>_cmt / _who / _due a control row,
+// as_<n>_what the comments on the risk; as__meta (v:2) carries each item's
+// control row ids in row order (ctls, null for a row that is not one), so
+// the import puts every answer back under its own control.
 //
 // The look is the board report's light one (Simon, twice now: no big dark
 // banners): a white page, ink text, an accent rule across the top, the
@@ -23680,7 +24024,7 @@ async function buildActionSheetPDF(sid){
     let lines=wrap(t,f,size,w); if(o.max) lines=clip(lines,o.max);
     lines.forEach(ln=>{ ensure(lh); page.drawText(ln,{x,y:y-size,size,font:f,color:o.color||INK}); y-=lh; }); y-=(o.gap==null?2:o.gap); };
   const field=(name,x,yTop,w,h,o)=>{ o=o||{}; const tf=form.createTextField(name); if(o.multi) tf.enableMultiline();
-    tf.addToPage(page,{x,y:yTop-h,width:w,height:h,borderColor:HAIR,borderWidth:0.8}); tf.setFontSize(o.size||9); return tf; };
+    tf.addToPage(page,{x,y:yTop-h,width:w,height:h,borderColor:HAIR,borderWidth:o.bare?0:0.8}); tf.setFontSize(o.size||9); return tf; };
   const bandOf=sc=>(sc&&sc.rating)?(sc.priority||''):'';
   // a score, as a solid block in its band's colour
   const chip=(x,yTop,w,h,sc,none)=>{
@@ -23691,6 +24035,11 @@ async function buildActionSheetPDF(sid){
     else { const b=A(none||'NOT SET').toUpperCase(); page.drawText(b,{x:x+(w-bold.widthOfTextAtSize(b,6.4))/2,y:yTop-h/2-2.5,size:6.4,font:bold,color:GREY}); }
   };
   const tri=(x,yy,path,col)=>page.drawSvgPath(path,{x,y:yy,color:col,borderWidth:0});
+  // a band colour washed out on white (a=0.08 is 8% of the colour)
+  const wash=(c,a)=>L.rgb(1-a*(1-c.red),1-a*(1-c.green),1-a*(1-c.blue));
+  // wrap, keeping the app's middle dot ("3 · Managed") that A turns into a
+  // dash, and keeping "3 · Managed" on one line
+  const wrapK=(t,f,size,w)=>wrap(String(t==null?'':t).replace(/ · /g,'¦•¦').replace(/·/g,'•'),f,size,w).map(l=>l.replace(/¦/g,' ').replace(/•/g,'·'));
 
   // a page an action, in the order they sit on the sheet; the risk behind
   // each is told in full on its page
@@ -23698,9 +24047,28 @@ async function buildActionSheetPDF(sid){
   const gName=g=>g.r?String(g.r.activity||g.r.hazard||'Risk'):String(g.items[0].it.risk||'Action');
   const gRef=g=>g.r?_riskRefOf(g.r):'';
 
+  // The rows of each page's table come from _asSheetCtlRows - the one
+  // derivation the screen, a paper copy typed in and the return trip use too:
+  // the risk's high level controls (the control table on 3 · Controls &
+  // rating, in its order); a risk with none, or an action with no risk, gets
+  // one row - the control we recommend, or failing that the action itself.
+  // Only how a row reads on paper is set here: its words, and under a control
+  // whether it is in place or planned. The cover's meta records the row ids.
+  const ctlSt=c=>(c.status==='Complete')
+    ? ('In place'+(c.completedDate?(' since '+fmtDate(c.completedDate)):''))
+    : ['Planned', String(c.owner||'').trim(), c.due?('by '+fmtDate(c.due)):''].filter(Boolean).join(' · ');
+  const rowsFor=s.items.map(it=>_asSheetCtlRows(it).map(x=>x.c
+    ? { id:x.id, text:x.text, st:ctlSt(x.c) }
+    : { id:null, text:x.text||'The control we recommend', st:String(it.rec||'').trim()?'Our recommendation':'The action above' }));
+
   // ══ the cover: light, as the board report's - an accent rule, the
-  //    organisation in the accent, a large ink title ══
+  //    organisation in the accent, a large ink title - then set out like one
+  //    of our procedures (Simon, 7 October 2026): what the sheet is for, the
+  //    risks at a glance in their band's colour, what we need back, and how
+  //    to read a score. Each part is measured before it is drawn, so a short
+  //    sheet fills the page and a long list runs on - never clipped. ══
   addPage(false);
+  const cover=page;
   page.drawRectangle({x:0,y:H-7,width:W,height:7,color:ACC});
   y=H-46;
   clip(wrap(client.toUpperCase(),bold,9.5,CW),1).forEach(ln=>{ page.drawText(ln,{x:ML,y:y-9.5,size:9.5,font:bold,color:ACC}); }); y-=22;
@@ -23710,35 +24078,81 @@ async function buildActionSheetPDF(sid){
     : ('The '+(groups.length===1?'action':groups.length+' actions')+' to deal with first, and the control we recommend for each'), ML, y-11, 11.5); y-=24;
   T(_asName(s)+'      Issued '+fmtDate(issued)+'      Prepared by '+producer, ML, y-8, 8.5, { color:GREY }); y-=18;
   rule(y, INK, 0.8); y-=20;
-  para(risk ? 'These are the actions on the risks we picked out with you, drawn from your risk profile. Each has its own page: what is wrong, who it affects, where the risk stands today, the control we recommend, and where the risk will stand once it is in place. The last part is what came up at our meeting, with room to write in anything else agreed. Work through them, tell us on each page what happened, and send this sheet back.'
-    : 'These are the actions to deal with first, drawn from your risk profile. Each has its own page: what is wrong, who it affects, where the risk stands today, the control we recommend, and where the risk will stand once it is in place. Work through them, tell us on each page what happened, and send this sheet back.',10,{ lh:1.5, gap:16 });
-  caps('The '+(groups.length>1?groups.length:'one')+' at a glance', ML, y-7, { size:7.6, color:ACC });
-  caps('Today', MR-176+18, y-7, { size:6.6 }); caps('Once done', MR-70+12, y-7, { size:6.6 }); y-=13; rule(y, INK, 0.8);
-  groups.forEach((g,gi)=>{
-    const rowH=50; ensure(rowH+4);
-    const sc=g.r?_riskScore(g.r):null, tg=g.r?_riskTarget(g.r):null, ref=gRef(g);
-    page.drawText(String(gi+1),{x:ML,y:y-31,size:20,font:bold,color:ACC});
-    const tx=ML+30, tw=MR-190-tx;
-    const nm=clip(wrap((ref?(ref+'   '):'')+gName(g),bold,10.5,tw),1)[0];
-    page.drawText(nm,{x:tx,y:y-17,size:10.5,font:bold,color:INK});
-    clip(wrap(g.items.map(x=>x.it.desc).join('  |  '),font,8.6,tw),2).forEach((ln,k)=>page.drawText(ln,{x:tx,y:y-30-k*11,size:8.6,font,color:GREY}));
-    chip(MR-176,y-7,70,36,sc,'Not rated');
-    page.drawLine({start:{x:MR-100,y:y-25},end:{x:MR-80,y:y-25},thickness:1.4,color:INK}); tri(MR-76,y-25,'M 0 0 L -6 -3.6 L -6 3.6 Z',INK);
-    chip(MR-70,y-7,70,36,tg,'No target');
-    y-=rowH; rule(y);
-  });
-  y-=16; ensure(150);
-  caps('How to use this sheet', ML, y-7, { size:7.6, color:ACC }); y-=16;
-  [ 'Read each page. It says what is wrong, what we recommend, and what the risk will come down to.',
-    'Do the work - or, if it cannot be done the way we recommend, say so. We will agree a compromise with you, or record that the business accepts the risk.',
-    'On each page tick what happened and say what was done. Then save this file and email it back, or print it, write on it and send a copy.' ]
-    .forEach((t,i)=>{ const top=y; page.drawText(String(i+1),{x:ML,y:y-11,size:11,font:bold,color:ACC}); para(t,9.6,{ x:ML+18, lh:1.42, gap:5 }); if(top-y<16) y=top-16; });
-  y-=8; ensure(46);
-  caps('Your name', ML, y-7); caps('Your role', ML+266, y-7); y-=11;
-  field('as__name',ML,y,256,20,{ size:10 }); field('as__role',ML+266,y,CW-266,20,{ size:10 }); y-=28;
+  const head=t=>{ caps(t, ML, y-7, { size:7.6, color:ACC }); y-=17; };
+
+  // 1 - what the sheet is for
+  const pL=wrap(risk
+    ? 'This sheet sets out the controls we recommend for the risks we picked out with you, drawn from your risk profile. It is for your leadership team to respond to: each risk has a page of its own, with our controls in a table and room against each one for your comments, who will do it and by when. When it comes back, your answers go into your plan under each control.'
+    : 'This sheet sets out the controls we recommend for the risks that matter most to your business right now, drawn from your risk profile. It is for your leadership team to respond to: each action has a page of its own, with the risk behind it, our controls in a table and room against each one for your comments, who will do it and by when. When it comes back, your answers go into your plan under each control.', font, 10, CW);
+  const pPurpose={ h:17+pL.length*14.6, draw(){ head('Purpose'); pL.forEach(ln=>{ page.drawText(ln,{x:ML,y:y-10,size:10,font,color:INK}); y-=14.6; }); } };
+
+  // 2 - the risks at a glance, each row in its band's colour: a bar down
+  //     the left edge, the number in the band, a pale wash of it behind
+  let ROW=44; const gx1=MR-182, gx2=MR-76;      // the today and once-done chips (a short list's rows grow - see below)
+  const gHead=more=>{ caps('The '+(groups.length>1?groups.length:'one')+' at a glance'+(more?' (continued)':''), ML, y-7, { size:7.6, color:ACC });
+    [['Today',gx1],['Once done',gx2]].forEach(c=>caps(c[0], c[1]+(70-bold.widthOfTextAtSize(c[0].toUpperCase(),6.6))/2, y-7, { size:6.6 }));
+    y-=13; rule(y, INK, 0.8); y-=3; };
+  const gRow=(g,gi)=>{
+    const sc=g.r?_riskScore(g.r):null, tg=g.r?_riskTarget(g.r):null, ref=gRef(g), col=BAND[bandOf(sc)], top=y, h=ROW-3;
+    page.drawRectangle({x:ML,y:top-h,width:CW,height:h,color:wash(col,0.08)});
+    page.drawRectangle({x:ML,y:top-h,width:4,height:h,color:col});
+    const off=(ROW-44)/2;      // a taller row keeps its words in the middle
+    page.drawText(String(gi+1),{x:ML+13,y:top-27-off,size:18,font:bold,color:col});
+    const tx=ML+42, tw=gx1-12-tx;
+    page.drawText(clip(wrap((ref?(ref+'   '):'')+gName(g),bold,10.5,tw),1)[0],{x:tx,y:top-15-off,size:10.5,font:bold,color:INK});
+    clip(wrap(g.items.map(x=>x.it.desc).join('  |  '),font,8.4,tw),2).forEach((ln,k)=>page.drawText(ln,{x:tx,y:top-27.5-off-k*10.4,size:8.4,font,color:GREY}));
+    chip(gx1,top-4,70,h-8,sc,'Not rated');
+    const ay=top-h/2; page.drawLine({start:{x:gx1+76,y:ay},end:{x:gx2-10,y:ay},thickness:1.4,color:INK}); tri(gx2-4,ay,'M 0 0 L -6 -3.6 L -6 3.6 Z',INK);
+    chip(gx2,top-4,70,h-8,tg,'No target');
+    y-=ROW;
+  };
+  const pGlance={ h:16+groups.length*ROW, draw(flow){ gHead(false); groups.forEach((g,gi)=>{ if(flow && y-ROW<BOT){ addPage(true); gHead(true); } gRow(g,gi); }); } };
+
+  // 3 - what we need back
+  const steps=[
+    'Read each page: what is wrong, who it affects, where the risk stands and the control we recommend.',
+    'Against each of our controls in the table, tell us what you think, who will do it and by when.',
+    'Anything else about a risk goes in the comments box at the bottom of its page'+(risk?'; anything agreed at our meeting goes on the meeting page at the end':'')+'.',
+    'Save this file and email it back to us - or print it, write on it and send us a photo.' ];
+  const sL=steps.map(t=>wrap(t,font,9.4,CW-22)), sH=l=>Math.max(16,l.length*13)+5;
+  const pBack={ h:17+sL.reduce((a,l)=>a+sH(l),0), draw(){ head('What we need from you');
+    sL.forEach((l,i)=>{ const top=y; page.drawText(String(i+1),{x:ML,y:top-10.5,size:11,font:bold,color:ACC});
+      l.forEach((ln,k)=>page.drawText(ln,{x:ML+22,y:top-9.6-k*13,size:9.4,font,color:INK})); y=top-sH(l); }); } };
+
+  // 4 - how to read a score: the cockpit risk ladder's own words for what
+  //     each band demands, over the tenant's own score ranges
+  const LEG=['Critical','High','Medium','Low'].map(b=>[b, _bandRange(b), _bandRule(b)]);
+  const lI=wrapK('Each risk is scored likelihood x severity, 1 to 25. Its band sets how well it must be controlled ('+_hsLevel('notheld')+' to '+_hsLevel('held')+').',font,8.8,CW);
+  const LW=(CW-30)/4, lL=LEG.map(b=>wrapK(b[2],font,8.2,LW-14)), lN=Math.max(...lL.map(l=>l.length)), lB=16+8+lN*10.6+2;
+  const pLegend={ h:17+lI.length*12.2+6+lB, draw(){ head('How to read the scores');
+    lI.forEach(ln=>{ page.drawText(ln,{x:ML,y:y-8.8,size:8.8,font,color:INK}); y-=12.2; }); y-=6;
+    const top=y;
+    LEG.forEach((b,i)=>{ const x=ML+i*(LW+10), col=BAND[b[0]];
+      page.drawRectangle({x,y:top-lB,width:LW,height:lB,color:wash(col,0.08)});
+      page.drawRectangle({x,y:top-16,width:LW,height:16,color:col});
+      page.drawText(b[0].toUpperCase(),{x:x+7,y:top-11,size:7.4,font:bold,color:WHITE});
+      page.drawText(b[1],{x:x+LW-7-bold.widthOfTextAtSize(b[1],7.4),y:top-11,size:7.4,font:bold,color:WHITE});
+      lL[i].forEach((ln,k)=>page.drawText(ln,{x:x+7,y:top-16-6-8.2-k*10.6+2,size:8.2,font,color:INK})); });
+    y=top-lB; } };
+
+  const parts=[pPurpose, pGlance, pBack, pLegend], room=y-BOT, total=parts.reduce((a,p)=>a+p.h,0);
+  if(total+3*10<=room){
+    // it all fits: what is left is spread between the parts, so the cover is
+    // a full page - a short list's rows grow a little first (up to 60pt) and
+    // its gaps open up to 52pt, so one or two risks still fill the page
+    const grow=Math.min(16, Math.max(0, (room-total-3*34)/groups.length));
+    ROW+=grow; pGlance.h+=grow*groups.length;
+    const gap=Math.min(grow?52:34,(room-total-grow*groups.length)/3);
+    parts.forEach((p,i)=>{ if(i) y-=gap; p.draw(false); });
+  } else {
+    // a long list runs on to the next page, and the parts after it follow it
+    pPurpose.draw(); y-=14;
+    pGlance.draw(true);
+    [pBack, pLegend].forEach(p=>{ y-=14; if(y-p.h<BOT) addPage(true); p.draw(); });
+  }
   const meta=form.createTextField('as__meta');
-  meta.setText(JSON.stringify({ v:1, kind:_asKindOf(s), client:client, sheet:s.id, no:s.no, made:issued, keys:s.items.map(i=>i.key) }));
-  meta.addToPage(page,{x:ML,y:BOT-8,width:1,height:1,borderWidth:0}); meta.enableReadOnly();
+  meta.setText(JSON.stringify({ v:2, kind:_asKindOf(s), client:client, sheet:s.id, no:s.no, made:issued, keys:s.items.map(i=>i.key), ctls:rowsFor.map(rs=>rs.map(x=>x.id)) }));
+  meta.addToPage(cover,{x:ML,y:BOT-8,width:1,height:1,borderWidth:0}); meta.enableReadOnly();
 
   // ══ a page an action ══
   groups.forEach((g,gi)=>{
@@ -23803,23 +24217,38 @@ async function buildActionSheetPDF(sid){
       if(bi){ y-=4; caps('What it could cost the business', rx, y-7, { size:6.6 }); y-=13; para(bi,8.8,{ x:rx, w:rw, lh:1.4, max:5 }); }
       y=Math.min(leftEnd,y)-6;
       page.drawLine({start:{x:rx-10,y:top2-2},end:{x:rx-10,y:y+6},thickness:0.6,color:HAIR});
-      rule(y); y-=12;
-
-      // ── in place today ──
-      caps('In place today', ML, y-7, { size:7.2, color:ACC }); y-=15;
-      const ctl=String(r.controls||'').trim();
-      if(ctl) para(ctl,9.2,{ lh:1.42, max:5, gap:6 }); else para('Nothing is recorded as in place yet.',9.2,{ color:GREY, gap:6 });
       rule(y); y-=14;
     } else {
       para('Where this comes from: '+(g.items[0].it.risk||'the execution plan')+'. No risk score sits behind this action.',9.6,{ color:GREY, gap:12 });
     }
 
-    // ── what needs to be done, the control we recommend, and the answer ──
+    // ── what needs to be done and the control we recommend (the control
+    //    title), then the two-way part: our controls, printed and not to be
+    //    edited, the client's comments, who and by when against each, and the
+    //    comments on the risk at the foot of its page ──
+    const kick=()=>{ let t=A(('Action '+(gi+1)+' of '+groups.length+(ref?('    '+ref):'')+'    '+gName(g)).toUpperCase()), cut=false;
+      while(t.length>8 && bold.widthOfTextAtSize(t+' ... (CONTINUED)',7)>CW){ t=t.slice(0,-1); cut=true; }
+      caps(t.replace(/\s+$/,'')+(cut?' ...':'')+' (continued)', ML, y-7, { size:7, color:ACC }); y-=18; };
+    const bandCol=BAND[bandOf(sc)];
+    const CWS=[CW*0.40, CW*0.34, CW*0.13, CW*0.13], CX=[ML, ML+CWS[0], ML+CWS[0]+CWS[1], ML+CWS[0]+CWS[1]+CWS[2]];
+    const HDR=22, CSZ=8.8, CLH=11.4, SSZ=7, SLH=9, MINR=34, CP=86, COMM=12+CP, CPS=66, COMMS=6+CPS;   // COMM: the comments on the risk, with the gap above; COMMS: the same, squeezed to keep a risk on its page
     g.items.forEach((x,k)=>{
       const it=x.it, n=x.n;
-      const dLines=wrap(it.desc||'(no description)',bold,12.5,CW), rLines=wrap(it.rec||'No recommendation written.',font,10,CW-24);
-      const rh=rLines.length*14+24, need=14+dLines.length*16.4+14+rh+10+24+13+62+10;
-      if(y-need<BOT){ addPage(true); caps('Action '+(gi+1)+' of '+groups.length+(ref?('    '+ref):'')+'    '+gName(g)+' (continued)', ML, y-7, { size:7, color:ACC }); y-=18; }
+      // the last page of a Top 5 sheet also holds Anything else to tell us
+      const tail=(!risk && gi===groups.length-1 && k===g.items.length-1) ? 116 : 0;
+      const dLines=clip(wrap(it.desc||'(no description)',bold,12.5,CW),4), rLines=clip(wrap(it.rec||'No recommendation written.',font,10,CW-24),18);
+      const rh=rLines.length*14+24;
+      // the table's rows, measured: the control as printed, and its state on the control table
+      const rows=rowsFor[n-1].map((c,j)=>{ const lines=clip(wrap(c.text,font,CSZ,CWS[0]-30),40), st=c.st?clip(wrapK(c.st,font,SSZ,CWS[0]-30),2):[];
+        return { k:j+1, lines, st, h:Math.max(MINR, 8+lines.length*CLH+(st.length?(2+st.length*SLH):0)+5) }; });
+      // the first row has to fit on a fresh page under the parts above it: a
+      // control too long for that is cut to fit, ending ' ...' (the rows after
+      // it run on over the pages as they need)
+      { const r0=rows[0], sH=r0.st.length?(2+r0.st.length*SLH):0;
+        const room0=(H-58-18)-BOT-(15+dLines.length*16.4+18+rh+14+14+HDR)-(rows.length===1?COMMS:0);
+        if(r0.h>room0){ r0.lines=clip(r0.lines, Math.max(1, Math.floor((room0-8-sH-5)/CLH))); r0.h=Math.max(MINR, 8+r0.lines.length*CLH+sH+5); } }
+      const need=15+dLines.length*16.4+18+rh+14+14+HDR+rows[0].h+(rows.length===1?COMMS:0);
+      if(y-need<BOT){ addPage(true); kick(); }
       caps('What needs to be done', ML, y-7, { size:7.2, color:ACC }); y-=15;
       dLines.forEach(ln=>{ page.drawText(ln,{x:ML,y:y-12.5,size:12.5,font:bold,color:INK}); y-=16.4; });
       T('Owner: '+(it.owner||'to be named')+'     Target: '+(it.due?fmtDate(it.due):'to be agreed'), ML, y-9, 8.4, { color:GREY }); y-=18;
@@ -23827,16 +24256,57 @@ async function buildActionSheetPDF(sid){
       page.drawRectangle({x:ML,y:y-rh,width:4,height:rh,color:ACC});
       caps('The control we recommend', ML+14, y-13, { size:7, color:ACC });
       rLines.forEach((ln,j)=>page.drawText(ln,{x:ML+14,y:y-28-j*14,size:10,font,color:INK}));
-      y-=rh+12;
-      caps('What happened - tick one', ML, y-7, { size:6.8 }); y-=12;
-      let cx=ML;
-      AS_OUTCOMES.forEach(oc=>{ const cb=form.createCheckBox('as_'+n+'_o_'+oc.f); cb.addToPage(page,{x:cx,y:y-12,width:12,height:12,borderColor:GREY,borderWidth:1});
-        page.drawText(A(oc.label),{x:cx+17,y:y-10,size:8.8,font,color:INK}); cx+=17+font.widthOfTextAtSize(A(oc.label),8.8)+18; });
-      y-=24;
-      caps('What was done, or why it could not be', ML, y-7, { size:6.8 }); caps('Date done (dd/mm/yyyy)', MR-204, y-7, { size:6.8 }); caps('By whom', MR-100, y-7, { size:6.8 }); y-=11;
-      field('as_'+n+'_what',ML,y,CW-214,58,{ multi:true, size:9 });
-      field('as_'+n+'_date',MR-204,y,96,20,{ size:9 }); field('as_'+n+'_by',MR-100,y,100,20,{ size:9 });
-      y-=66;
+      y-=rh+14;
+      // ... and its foot as well, when the whole table fits there with it
+      const floor=BOT+((tail && y-(14+HDR+rows.reduce((a,rw)=>a+rw.h,0))-COMM-tail>=BOT) ? tail : 0);
+
+      // ── your controls - tell us what you think ──
+      caps('Your controls - tell us what you think', ML, y-7, { size:7.2, color:ACC });
+      const hint='The controls are printed - write against each one';
+      page.drawText(hint,{x:MR-font.widthOfTextAtSize(hint,7),y:y-7,size:7,font,color:GREY}); y-=14;
+      let segTop=0, cuts=[];
+      // the header row, shaded, with an accent rule under it (repeated on a new page)
+      const tHead=()=>{ segTop=y; cuts=[];
+        page.drawRectangle({x:ML,y:y-HDR,width:CW,height:HDR,color:PANEL});
+        ['Control','Comments','Who','By when'].forEach((t,i)=>caps(t, CX[i]+(i?7:10), y-(i===3?9.5:13.5), { size:6.8, color:ACC }));
+        page.drawText('dd/mm/yyyy',{x:CX[3]+7,y:y-18,size:6,font,color:GREY});
+        y-=HDR; };
+      // close the table on this page: hairline rows and columns, the accent
+      // rule under the header, the outer border, the band's rule down the left
+      const tShut=()=>{ const top=segTop, bot=y;
+        cuts.slice(0,-1).forEach(cy=>page.drawLine({start:{x:ML,y:cy},end:{x:MR,y:cy},thickness:0.5,color:HAIR}));
+        [1,2,3].forEach(i=>page.drawLine({start:{x:CX[i],y:top},end:{x:CX[i],y:bot},thickness:0.5,color:HAIR}));
+        page.drawLine({start:{x:ML,y:top-HDR},end:{x:MR,y:top-HDR},thickness:1.2,color:ACC});
+        page.drawRectangle({x:ML,y:bot,width:CW,height:top-bot,borderColor:ACC,borderWidth:0.8});
+        page.drawRectangle({x:ML,y:bot,width:3,height:top-bot,color:bandCol}); };
+      tHead();
+      rows.forEach((row,j)=>{
+        const last=(j===rows.length-1);
+        if(cuts.length && y-row.h-(last?COMMS:0)<floor){ tShut(); const co='Continued overleaf'; page.drawText(co,{x:MR-font.widthOfTextAtSize(co,7),y:y-10,size:7,font,color:GREY}); addPage(true); kick(); tHead(); }
+        const top=y, h=row.h, f='as_'+n+'_c'+row.k+'_', b0=top-8-CSZ+1;
+        page.drawRectangle({x:ML,y:top-h,width:CWS[0],height:h,color:GROUND});
+        page.drawText(String(row.k),{x:ML+10,y:b0,size:CSZ,font:bold,color:ACC});
+        row.lines.forEach((ln,q)=>page.drawText(ln,{x:ML+22,y:b0-q*CLH,size:CSZ,font,color:INK}));
+        row.st.forEach((ln,q)=>page.drawText(ln,{x:ML+22,y:b0-row.lines.length*CLH-2-q*SLH,size:SSZ,font,color:GREY}));
+        field(f+'cmt',CX[1]+2,top-2,CWS[1]-4,h-4,{ multi:true, size:8.6, bare:true });
+        field(f+'who',CX[2]+2,top-2,CWS[2]-4,h-4,{ size:8.6, bare:true });
+        field(f+'due',CX[3]+2,top-2,CWS[3]-4,h-4,{ size:8.6, bare:true });
+        y-=h; cuts.push(y);
+      });
+      tShut();
+
+      // ── the comments on this risk, at the foot of its page ──
+      let cp=CP, cgap=12;
+      if(y-COMM<floor){ if(y-COMMS>=floor){ cp=CPS; cgap=6; y=floor+COMMS; } else { addPage(true); kick(); } } else y=floor+COMM;
+      y-=cgap;
+      const cTop=y;
+      page.drawRectangle({x:ML,y:cTop-cp,width:CW,height:cp,color:PANEL});
+      page.drawRectangle({x:ML,y:cTop-cp,width:4,height:cp,color:ACC});
+      caps('Comments on this risk', ML+14, cTop-13, { size:7.2, color:ACC });
+      const ch='Anything else about this risk';
+      page.drawText(ch,{x:MR-10-font.widthOfTextAtSize(ch,7),y:cTop-13,size:7,font,color:GREY});
+      field('as_'+n+'_what',ML+14,cTop-20,CW-24,cp-26,{ multi:true, size:9 });
+      y=cTop-cp-6;
       if(k<g.items.length-1){ rule(y); y-=14; }
     });
   });
@@ -23859,7 +24329,7 @@ async function buildActionSheetPDF(sid){
       const note=String(m.note||'').trim();
       para(note||'No notes.',9.4,{ lh:1.45, gap:6, color:note?INK:GREY });
       _sltActions(m).filter(d=>String(d.decision||'').trim()).forEach(d=>
-        para('- '+String(d.decision).trim()+' ('+(String(d.owner||'').trim()||'to be named')+', '+(d.due?fmtDate(d.due):'no date')+') · '+(d.raised?'On the plan':'Agreed'),9.2,{ x:ML+8, lh:1.4, gap:2 }));
+        para('- '+String(d.decision).trim()+' ('+(String(d.owner||'').trim()||'to be named')+', '+(d.due?fmtDate(d.due):'no date')+') · '+_qmActWord(d),9.2,{ x:ML+8, lh:1.4, gap:2 }));
       y-=10;
     });
     ensure(14+16+11+4*32+6);
@@ -23889,7 +24359,14 @@ async function downloadActionSheet(sid){
     const bytes=await buildActionSheetPDF(sid);
     const safe=_sltClient().replace(/[^a-z0-9]+/gi,'-').toLowerCase();
     _sltSaveBlob(new Blob([bytes],{type:'application/pdf'}), _asTitle(s).toLowerCase().replace(/\s+/g,'-')+'-'+safe+'-'+_asToday()+'.pdf');
-    s.issuedAt=_asToday(); saveData(); _asRender();
+    s.issuedAt=_asToday(); s.formV=2;
+    (s.items||[]).forEach(it=>{
+      const rows=_asSheetCtlRows(it), named=rows.filter(x=>x.id);
+      // each control's words as printed, by id - a control taken off the risk later still reads as the client saw it
+      if(named.length){ it.ctlPrinted=Object.assign({}, it.ctlPrinted||{}); named.forEach(x=>{ it.ctlPrinted[x.id]=x.text; }); }
+      if(!it.decision && !_asHasResp(it)) it.ctlIds=rows.map(x=>x.id);
+    });
+    saveData(); _asRender();
     showToast('✓ '+_asName(s)+' made - send it to the client, then import what comes back','success',6000);
   }catch(e){ console.error('Action sheet failed',e); showToast('Could not build the sheet - see console','error'); }
 }
@@ -23926,16 +24403,47 @@ async function _asReadForm(bytes, fname){
   if(meta.client && meta.client!==_sltClient()) return { error:'this sheet is for '+meta.client+', not '+_sltClient() };
   const s=_asSheet(meta.sheet);
   if(!s) return { error:'this sheet is not one of this client’s - it may have been deleted since it was sent' };
-  let filled=0, clash=0;
+  // which form came back: the first asked what happened (boxes to tick); the
+  // second is the controls table - a comment, who and by when against each
+  // control, and the comments box at the foot of the page. A sheet sent as the
+  // first form still comes back the first way.
+  const v1=!(+meta.v>=2) || fields.some(f=>/^as_\d+_o_/.test(f.getName()));
+  let filled=0, clash=0, lines=0, settled=0;
   (meta.keys||[]).forEach((key,idx)=>{
-    const it=(s.items||[]).find(i=>i.key===key); if(!it || it.decision) return;
-    const n=idx+1, ticked=AS_OUTCOMES.filter(oc=>val('as_'+n+'_o_'+oc.f)===true);
-    const what=String(val('as_'+n+'_what')||'').trim(), dText=String(val('as_'+n+'_date')||'').trim(), by=String(val('as_'+n+'_by')||'').trim();
-    if(!ticked.length && !what && !dText && !by) return;                // left blank: keep whatever is already recorded
-    if(ticked.length>1) clash++;
-    const date=_top5ParseDate(dText);
-    it.resp={ outcome:(ticked.length===1?ticked[0].k:''), what:what+(ticked.length>1?((what?' ':'')+'[More than one box was ticked: '+ticked.map(t=>t.label).join(', ')+']'):'')+(dText&&!date?((what||ticked.length>1?' ':'')+'[Date as written: '+dText+']'):''), date:date, by:by };
-    filled++;
+    const it=(s.items||[]).find(i=>i.key===key); if(!it) return;
+    const n=idx+1;
+    if(v1){
+      const ticked=AS_OUTCOMES.filter(oc=>val('as_'+n+'_o_'+oc.f)===true);
+      const what=String(val('as_'+n+'_what')||'').trim(), dText=String(val('as_'+n+'_date')||'').trim(), by=String(val('as_'+n+'_by')||'').trim();
+      if(!ticked.length && !what && !dText && !by) return;                // left blank: keep whatever is already recorded
+      if(it.decision){ settled++; return; }                               // decided already: the decision stands
+      if(ticked.length>1) clash++;
+      const date=_top5ParseDate(dText);
+      it.resp={ outcome:(ticked.length===1?ticked[0].k:''), what:what+(ticked.length>1?((what?' ':'')+'[More than one box was ticked: '+ticked.map(t=>t.label).join(', ')+']'):'')+(dText&&!date?((what||ticked.length>1?' ':'')+'[Date as written: '+dText+']'):''), date:date, by:by };
+      filled++;
+      return;
+    }
+    const what=String(val('as_'+n+'_what')||'').trim();
+    const ids=(Array.isArray(meta.ctls) && Array.isArray(meta.ctls[idx])) ? meta.ctls[idx] : null;
+    let count=ids ? ids.length : 0;
+    if(!ids) while(fields.some(f=>f.getName()==='as_'+n+'_c'+(count+1)+'_cmt')) count++;
+    // a line already put on the plan keeps its link, so a sheet imported twice never puts it there twice
+    const old=(it.resp && Array.isArray(it.resp.ctls)) ? it.resp.ctls : [];
+    const rows=[];
+    for(let k=1;k<=count;k++){
+      const cmt=String(val('as_'+n+'_c'+k+'_cmt')||'').trim(), who=String(val('as_'+n+'_c'+k+'_who')||'').trim(), dueText=String(val('as_'+n+'_c'+k+'_due')||'').trim();
+      if(!cmt && !who && !dueText) continue;
+      const ctlId=ids ? (ids[k-1]||null) : null, was=old.find(x=>x.k===k && (x.ctlId||null)===ctlId);
+      rows.push({ k, ctlId, ctlText:_asCtlText(it, ctlId), cmt, who, due:_top5ParseDate(dueText), dueText, actId:(was&&was.actId)||'' });
+    }
+    if(!what && !rows.length) return;                // left blank: keep whatever is already recorded
+    if(it.decision){ settled++; return; }            // decided already: the decision stands
+    lines+=rows.length; filled++;
+    // ... and a line already on the plan stays, as it was, when this copy leaves its row blank
+    old.forEach(o=>{ if(o && o.actId && !rows.some(x=>x.k===o.k)) rows.push(o); });
+    rows.sort((a,b)=>a.k-b.k);
+    if(ids) it.ctlIds=ids.slice();
+    it.resp={ outcome:'', what, date:'', by:'', ctls:rows, src:'form' };
   });
   // a risk action sheet also brings back what was agreed at the meeting: each
   // row written in goes into the quick minutes once, and on to the plan when
@@ -23943,8 +24451,8 @@ async function _asReadForm(bytes, fname){
   const mRows=[];
   if(_asKindOf(s)==='risk') [1,2,3,4].forEach(n=>{ const what=String(val('as__m'+n+'_what')||'').trim(); if(!what) return;
     mRows.push({ what:what, who:String(val('as__m'+n+'_who')||'').trim(), dueText:String(val('as__m'+n+'_due')||'').trim() }); });
-  if(!filled && !mRows.length) return { error:'the sheet came back with nothing filled in' };
   const name=String(val('as__name')||'').trim(), role=String(val('as__role')||'').trim(), general=String(val('as__general')||'').trim();
+  if(!filled && !mRows.length && !general) return { error:settled ? ('every line answered on it has been decided already - '+(settled===1?'that decision stands':'those decisions stand')) : 'the sheet came back with nothing filled in' };
   let mIn=0, mHad=0;
   if(mRows.length && typeof _qmEnsureOpen==='function' && typeof _qmNewAction==='function'){
     // a row whose date could not be read is kept with the words it was written
@@ -23967,8 +24475,10 @@ async function _asReadForm(bytes, fname){
       mIn=fresh.length;
     }
   }
-  s.returnedAt=_asToday(); s.returnedBy=name+(role?(' ('+role+')'):''); s.file=fname; if(general) s.general=general;
-  return { kind:_asKindOf(s), msg:_asName(s)+': '+filled+' answer'+(filled!==1?'s':'')+' in'+(clash?(' ('+clash+' with more than one box ticked - choose the outcome yourself)'):'')
+  // the second form asks for no name: a blank one leaves what is recorded
+  const from=name+(role?(' ('+role+')'):'');
+  s.returnedAt=_asToday(); s.returnedBy=from||s.returnedBy||''; s.file=fname; if(general) s.general=general;
+  return { kind:_asKindOf(s), msg:_asName(s)+': '+filled+' answer'+(filled!==1?'s':'')+' in'+(lines?(' ('+lines+' line'+(lines!==1?'s':'')+' against the controls)'):'')+(clash?(' ('+clash+' with more than one box ticked - choose the outcome yourself)'):'')+(settled?(' ('+settled+' already decided - left as decided)'):'')
     +(mIn?(' + '+mIn+' meeting action'+(mIn!==1?'s':'')+' into the quick minutes (Done there puts '+(mIn!==1?'them':'it')+' on the plan)'):'')+(mHad?(' ('+mHad+' already in the minutes)'):'') };
 }
 
@@ -30253,6 +30763,7 @@ function _qmRender(){
     +'<datalist id="qmPeopleList">'+people.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.role||'')+'</option>').join('')+'</datalist>'
     +'<div class="qm-foot"><button class="btn btn-primary" id="qmDoneBtn" onclick="qmDone()">'+esc(_qmDoneLabel(m))+'</button>'
     +'<button class="btn btn-ghost" onclick="closeQuickMinutes()">Close - keep for later</button>'
+    +'<button class="btn btn-ghost" onclick="saveData();downloadClientNotes('+q(m.id)+')" title="Print this meeting on its own - who was here, the notes and the actions - for your own notes">⭳ Print notes</button>'
     +'<span class="slt-muted">The notes and actions print under From the meeting on this month’s Risk Action Sheet.</span></div>';
   ov.scrollTop=top;
 }
@@ -30536,7 +31047,7 @@ function _sltMinutesPdf(m){
   const NAVY=[30,58,95], GREY=[110,116,126], RED=[197,32,32], AMBER=[180,110,10];
   const acts=_sltActions(m).slice().sort((a,b)=>(a.agendaItem||0)-(b.agendaItem||0)), AG=_sltAgenda(), today=new Date().toISOString().slice(0,10);
   K.kv('Meeting', (m.forum||'Meeting')+', '+fmtDate(m.date));
-  K.kv('Present', (m.attendees||[]).map(a=>a.name+(a.role?(' ('+a.role+')'):'')).join(', ')||'Not recorded');
+  K.kv('Present', _mtgPresentLine(m));
   K.kv('Minutes by', (typeof _actor==='function'&&_actor().name)?_actor().name:'');
   K.section('Actions agreed'+(acts.length?(' - '+acts.length):''), NAVY);
   if(acts.length){
@@ -30581,6 +31092,71 @@ function downloadLastMinutes(){
   if(!m){ showToast('No meeting has been finished yet','info'); return; }
   try{ const p=_sltMinutesPdf(m); _sltSaveBlob(p.blob, p.fname); showToast('✓ Minutes of '+fmtDate(m.date)+' saved','success'); }
   catch(e){ console.error('Minutes failed', e); showToast('Could not build the minutes - see console','error'); }
+}
+// ══════════════════════════════════════════════════════════════
+//  CLIENT MEETING NOTES (Simon, 2026-10-07): "The minutes just need their
+//  own report to be printed out for my own personal notes." Every client
+//  meeting taken with the quick minute taker on the cockpit, newest first
+//  under its month: who was there, the notes in full and the actions agreed.
+//  The look is the leadership meeting's minutes (_sltMinutesPdf). The minute
+//  taker's ⭳ Print notes prints its one meeting, open or finished.
+//  An action's status: _decisionAction keeps no link from a decision to the
+//  plan action it raises (only the decision's raised count), so the word is
+//  read off the decision itself - its own status once it has moved on from
+//  Agreed on the Management decisions register, else On the plan once
+//  raised, else Agreed. The Risk Action Sheet's From the meeting reads the
+//  same word (_qmActWord).
+// ══════════════════════════════════════════════════════════════
+// Who was there - the leadership minutes and these notes print it the same.
+function _mtgPresentLine(m){ return ((m&&m.attendees)||[]).map(a=>a.name+(a.role?(' ('+a.role+')'):'')).join(', ')||'Not recorded'; }
+// The client meetings minuted - quick ones with something written in them,
+// newest first. The notes report, its Reports card and (a month of them) the
+// Risk Action Sheet's From the meeting all read this one list.
+function _clientNoteMeetings(){ return (S.meetings||[]).filter(m=>m && m.quick && _qmWritten(m)).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))); }
+function _qmActWord(d){ const s=String((d&&d.status)||'Agreed'); return s!=='Agreed' ? s : ((d&&d.raised) ? 'On the plan' : 'Agreed'); }
+function _clientNotesPdf(meetingId){
+  const client=_sltClient(), dc=_docFor('clientNotes');
+  const list=meetingId ? (S.meetings||[]).filter(m=>m && m.quick && m.id===meetingId) : _clientNoteMeetings();
+  const dates=list.map(m=>String(m.date||'')).filter(Boolean).sort();
+  const sub=!dates.length ? '' : (dates[0]===dates[dates.length-1] ? fmtDate(dates[0]) : (fmtDate(dates[0])+' to '+fmtDate(dates[dates.length-1])));
+  const K=_mkPdf('Client Meeting Notes', client, dc, sub);
+  const NAVY=[30,58,95], GREY=[110,116,126], RED=[197,32,32], INK=[45,45,45];
+  if(!list.length) K.text('No client meeting notes yet - take them with the Minutes button on the cockpit risk ladder.', 9.5, {color:GREY});
+  // newest first under a heading a month; one meeting printed on its own has
+  // its date in the subtitle already, so it needs no month over it
+  let month=null;
+  list.forEach(m=>{
+    const mo=String(m.date||'').slice(0,7);
+    if(!meetingId && mo!==month){
+      // room for the heading (about 3.3mm once drawn) and the 44mm its first
+      // meeting asks for, so a month never sits alone at the foot of a page
+      K.st.y+=(month===null?2:8); month=mo; K.ensure(48);
+      K.text(mo?_top5MonthLabel(mo):'Undated', 14, {bold:true, color:NAVY});
+      K.st.y-=4;      // the meeting's own section rule follows close under its month
+    }
+    const note=String(m.note||'').trim(), acts=_sltActions(m).filter(x=>String(x.decision||'').trim());
+    K.ensure(44);      // the meeting's heading, who was there and the start of its notes stay together
+    K.section(fmtDate(m.date)+' - client meeting'+(m.status!=='finished'?' - still open':''), NAVY);
+    K.kv('Present', _mtgPresentLine(m));
+    K.st.y+=1;
+    K.text('Notes', 8.4, {bold:true, color:GREY, gap:0.6});
+    K.text(note||'No notes.', 9.5, {color:note?INK:GREY, gap:2});
+    K.ensure(26);      // and Actions agreed never sits alone at the foot of a page
+    K.text('Actions agreed', 8.4, {bold:true, color:GREY, gap:1});
+    if(acts.length){
+      K.table([{header:'ACTION',w:50},{header:'WHO',w:20},{header:'BY WHEN',w:14},{header:'STATUS',w:16}],
+        acts.map(x=>{ const late=_decisionOverdue(x);
+          return [{text:x.decision||'',bold:true}, x.owner?x.owner:{text:'not named',color:RED}, x.due?{text:fmtDate(x.due),color:late?RED:[55,55,55],bold:late}:{text:'no date',color:RED}, _qmActWord(x)]; }),
+        {headFill:NAVY, headText:[255,255,255], fs:8.5});
+    } else K.text('No actions agreed.', 9, {color:GREY, gap:1});
+  });
+  _pdfBrandFooter(K.doc, K.ML, K.RM);
+  return { blob:K.doc.output('blob'), fname:'client-meeting-notes-'+String(client).replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+_asToday()+'.pdf' };
+}
+// All the client meetings minuted, or (from the minute taker) just the one.
+function downloadClientNotes(meetingId){
+  try{ const p=_clientNotesPdf(meetingId); _sltSaveBlob(p.blob, p.fname); showToast('✓ Client meeting notes saved','success'); }
+  catch(e){ console.error('Client meeting notes failed', e); showToast('Could not build the client meeting notes - see console','error'); }
 }
 async function openBoardBriefingPrint(){ return _openEngineReport('board-briefing','Leadership briefing', null); }
 var _openDecisions=new Set();

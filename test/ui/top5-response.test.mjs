@@ -10,8 +10,13 @@
 //  the first taking the month's Top 5 mark.
 //  2026-10-07: the form is now the Risk Action Sheet's proposals form - it
 //  carries the risks ticked in the Sheet column on the cockpit's risk ladder
-//  (_sheetRisks), not the Top 5's five, and is reached from the Risk action
-//  sheet screen rather than a Responses button on the ladder.
+//  (_sheetRisks), not the Top 5's five.
+//  Later on 2026-10-07: the action sheet itself now carries the two-way
+//  table (Simon's controls, then the leadership team's comments, who and by
+//  when), so it is the one report the SLT gets and the button to this form
+//  is retired. The form, its import and review, and what has come back
+//  (S.top5Resp) all stay in the code, so nothing stored is lost - this suite
+//  drives them directly.
 //  Run: npm run test:ui
 // ══════════════════════════════════════════════════════════════
 import { openApp, seed, wait, reporter } from './harness.mjs';
@@ -164,21 +169,23 @@ const fill = (who, role, answers) => page.evaluate(async (who, role, answers) =>
   R.ok(t.doneRows === 3 && /3 actions added to .* - the first is this month.s Top 5 action/.test(t.toast) && t.closed, 'added rows are marked on the plan and cannot be added twice; Close puts the screen away');
 }
 
-// ── where it is reached from: the Risk action sheet screen, not the ladder ──
+// ── no way in from the screens any more; the code and what came back stay ──
 {
   const t = await page.evaluate(() => {
     renderCockpit();
     const ladder = [...document.querySelectorAll('.ckx-panel')].find(p => /Risk ladder/.test((p.querySelector('h4') || {}).textContent || ''));
     const old = [...ladder.querySelectorAll('button')].filter(b => /^(Responses|Forms)/.test(b.textContent.trim())).map(b => b.textContent.trim());
     openActionSheets('risk');
-    const prop = [...document.querySelectorAll('#asOv button')].some(b => b.textContent.trim() === 'Proposals from the leadership team');
+    const prop = [...document.querySelectorAll('#asOv button')].some(b => b.textContent.trim() === 'Proposals from the leadership team' || /openTop5Review\(/.test(b.getAttribute('onclick') || ''));
     closeActionSheets();
     switchTab('reports');
     const rep = document.getElementById('tab-reports').textContent;
-    return { old, prop, card: /Risk Action Sheet/.test(rep), oldCard: /Top 5 Responses/.test(rep), keys: _IMPORT_KEYS.includes('top5Resp') };
+    const fns = ['openTop5Review', 'closeTop5Review', 'buildTop5FormPDF', 'downloadTop5Form', '_top5ImportFiles', 't5Apply'].filter(n => { try { return new Function('return typeof ' + n)() !== 'function'; } catch (e) { return true; } });
+    return { old, prop, card: /Risk Action Sheet/.test(rep), oldCard: /Top 5 Responses/.test(rep), keys: _IMPORT_KEYS.includes('top5Resp'), fns, kept: _top5Resp().list.length };
   });
   R.ok(!t.old.length, 'the ladder has no Responses or Forms button' + (t.old.length ? ': ' + t.old.join(', ') : ''));
-  R.ok(t.prop, 'the Risk action sheet screen has a Proposals from the leadership team button');
+  R.ok(!t.prop, 'the Risk action sheet screen no longer has a Proposals from the leadership team button - the sheet carries the two-way table');
+  R.ok(!t.fns.length && t.kept === 2, 'the form, its import and review are still in the code, and the two responses are still held' + (t.fns.length ? ' - missing: ' + t.fns.join(', ') : ''));
   R.ok(t.card && !t.oldCard && t.keys, 'a Risk Action Sheet card on the Reports tab and no Top 5 Responses card; responses travel with the client');
 }
 

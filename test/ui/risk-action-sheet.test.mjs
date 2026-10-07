@@ -4,13 +4,17 @@
 //  as many risks as he likes in the Sheet column on the cockpit's risk
 //  ladder - and it ends with what came up at the client meeting, taken on
 //  the cockpit by the quick minute taker, so the cockpit is the only screen
-//  he needs open in the meeting. The directors' proposals form stays, inside
-//  the Risk Action Sheet area. The Top 5 ticks and the Top 5 sheets stay
+//  he needs open in the meeting. The Top 5 ticks and the Top 5 sheets stay
 //  separate.
+//  Later the same day: the sheet is the one report the leadership team gets.
+//  Each page ends in the two-way table (my controls, then their comments, who
+//  and by when) and a comments box, laid out exactly as on the Top 5 sheet;
+//  the cover has no name or role; the Top 5 Risks report and the button to
+//  the proposals form are gone (the form's code and data stay).
 //  Ladder ticks -> toolbar -> read-only -> Reports card -> a risk sheet
 //  (gaps, no cap, one draft) -> its PDF -> quick minutes -> From the meeting
-//  -> the sheet back with meeting rows -> the proposals form -> the two kinds
-//  kept apart -> a reload.
+//  -> the sheet back with meeting rows -> the proposals form, no way in from
+//  the sheet -> the two kinds kept apart, built the same -> a reload.
 //  Run: npm run test:ui
 // ══════════════════════════════════════════════════════════════
 import { openApp, seed, wait, reporter } from './harness.mjs';
@@ -80,7 +84,8 @@ const inject = () => page.evaluate(() => {
     const rect = n => { try { const r = form.getTextField(n).acroField.getWidgets()[0].getRectangle(); return { x: r.x, w: r.width, h: r.height }; } catch (e) { return null; } };
     let meta = {}; try { meta = JSON.parse(form.getTextField('as__meta').getText()); } catch (e) {}
     let multi = null; try { multi = form.getTextField('as__m1_what').isMultiline(); } catch (e) {}
-    return { said, names: form.getFields().map(f => f.getName()), meta, pages: doc.getPageCount(), multi,
+    const ml = n => { try { return form.getTextField(n).isMultiline(); } catch (e) { return null; } };
+    return { said, names: form.getFields().map(f => f.getName()), meta, pages: doc.getPageCount(), multi, multiCmt: ml('as_1_c1_cmt'), multiWhat: ml('as_1_what'),
       rects: { what: rect('as__m1_what'), who: rect('as__m1_who'), due: rect('as__m1_due') } };
   };
   // the minute taker's inputs for one action, by the field each one writes
@@ -98,6 +103,14 @@ const inject = () => page.evaluate(() => {
   window.__put = (el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
 });
 await inject();
+// The shape of a sheet's form, whatever its length: each line's fields with
+// the line and row numbers taken out (the meeting rows are the risk sheet's own).
+const shape = names => [...new Set(names.filter(n => !/^as__m\d/.test(n)).map(n => n.replace(/^as_\d+_/, 'as_N_').replace(/^as_N_c\d+_/, 'as_N_cK_')))].sort().join(',');
+const SHAPE = ['as__meta', 'as__general', 'as_N_what', 'as_N_cK_cmt', 'as_N_cK_who', 'as_N_cK_due'].sort().join(',');
+// The headings every sheet of either kind carries, cover and pages alike.
+const HEADS = ['PURPOSE', 'WHAT WE NEED FROM YOU', 'HOW TO READ THE SCORES', 'YOUR CONTROLS - TELL US WHAT YOU THINK', 'COMMENTS ON THIS RISK', 'ANYTHING ELSE TO TELL US'];
+const heads = said => HEADS.filter(h => said.some(x => String(x).trim().toUpperCase() === h)).concat(said.some(x => /AT A GLANCE$/.test(String(x).trim().toUpperCase())) ? ['AT A GLANCE'] : []).join('|');
+let riskShape = '', riskHeads = '';
 
 // ── 0. what the other builders agreed to provide ──
 {
@@ -164,19 +177,18 @@ await inject();
 {
   const t = await page.evaluate(() => {
     const L = __ladder(), tools = L.querySelector('.ckl-tools'), btns = tools ? [...tools.querySelectorAll('button')] : [];
-    const calls = [], keep = { r: window.openTopFivePrint, s: window.openActionSheets, m: window.openQuickMinutes };
-    window.openTopFivePrint = () => { calls.push('report'); };
+    const calls = [], keep = { s: window.openActionSheets, m: window.openQuickMinutes };
     window.openActionSheets = k => { calls.push('sheets:' + k); };
     window.openQuickMinutes = () => { calls.push('minutes'); };
-    try { btns.forEach(b => b.click()); } finally { window.openTopFivePrint = keep.r; window.openActionSheets = keep.s; window.openQuickMinutes = keep.m; }
+    try { btns.forEach(b => b.click()); } finally { window.openActionSheets = keep.s; window.openQuickMinutes = keep.m; }
     const head = L.querySelector('.ckl-headrow');
-    return { texts: btns.map(b => b.textContent.trim()), reportTitle: btns.length ? btns[0].title : '', calls,
+    return { texts: btns.map(b => b.textContent.trim()), calls, report: /Top 5 (risks )?report|Top 5 Risks/i.test(L.textContent + ' ' + btns.map(b => b.title).join(' ')), fn: __fn('openTopFivePrint'),
       under: !!tools && !!head && head.nextElementSibling === tools, headBtns: head ? head.querySelectorAll('button').length : -1,
       responses: /Responses/.test(L.outerHTML), key: /Tick the Sheet column for the Risk Action Sheet - as many as you like\./.test(L.textContent) };
   });
-  R.ok(JSON.stringify(t.texts) === JSON.stringify(['⭳ Top 5 report', 'Top 5 action sheet', 'Risk action sheet', '✎ Minutes']), 'under the head, one row of tools in order: ' + t.texts.join(' | '));
-  R.ok(t.calls.join(',') === 'report,sheets:top5,sheets:risk,minutes', 'each opens its own thing - the report, the Top 5 sheets, the risk sheets, the minutes (' + t.calls.join(',') + ')');
-  R.ok(/Top 5/.test(t.reportTitle), 'the Top 5 report button still says what it makes: ' + t.reportTitle);
+  R.ok(JSON.stringify(t.texts) === JSON.stringify(['Top 5 action sheet', 'Risk action sheet', '✎ Minutes']), 'under the head, one row of tools in order - the Top 5 report button gone: ' + t.texts.join(' | '));
+  R.ok(t.calls.join(',') === 'sheets:top5,sheets:risk,minutes', 'each opens its own thing - the Top 5 sheets, the risk sheets, the minutes (' + t.calls.join(',') + ')');
+  R.ok(!t.report && !t.fn, 'nothing on the ladder points at a Top 5 report, and the report is gone from the app');
   R.ok(t.under && t.headBtns === 0, 'the row sits directly under the head row, and the head row has no buttons left in it');
   R.ok(!t.responses, 'the word Responses is nowhere on the ladder');
   R.ok(t.key, 'the key says the Sheet column takes as many as you like');
@@ -206,9 +218,10 @@ await inject();
   const t = await page.evaluate(() => {
     switchTab('reports');
     const tab = document.getElementById('tab-reports');
-    const cards = [...tab.querySelectorAll('.rep-card')].map(c => ({ title: __text(c.querySelector('h3')), meta: __text(c.querySelector('.rep-meta')), c }));
-    const titles = cards.map(c => c.title), i = titles.indexOf('Risk Action Sheet');
-    const out = { titles, text: tab.textContent, next: i > 0 && titles[i - 1] === 'Top 5 Action Sheet', meta: i >= 0 ? cards[i].meta : '' };
+    const cards = [...tab.querySelectorAll('.rep-card')].map(c => ({ title: __text(c.querySelector('h3')), meta: __text(c.querySelector('.rep-meta')), desc: __text(c.querySelector('p')), c }));
+    const titles = cards.map(c => c.title), i = titles.indexOf('Risk Action Sheet'), j = titles.indexOf('Top 5 Action Sheet');
+    const out = { titles, text: tab.textContent, next: i > 0 && titles[i - 1] === 'Top 5 Action Sheet', meta: i >= 0 ? cards[i].meta : '',
+      descs: [i, j].map(k => (k >= 0 ? cards[k].desc : '')) };
     if (i >= 0) {
       cards[i].c.querySelector('.rep-btn').click();
       const ov = document.getElementById('asOv');
@@ -219,9 +232,10 @@ await inject();
     switchTab('cockpit');
     return out;
   });
-  R.ok(t.titles.includes('Risk Action Sheet') && t.titles.includes('Top 5 Risks') && t.titles.includes('Top 5 Action Sheet'), 'the Reports tab has the Risk Action Sheet card, and keeps Top 5 Risks and Top 5 Action Sheet');
+  R.ok(t.titles.includes('Risk Action Sheet') && t.titles.includes('Top 5 Action Sheet') && !t.titles.includes('Top 5 Risks'), 'the Reports tab has the Risk Action Sheet and Top 5 Action Sheet cards - and no Top 5 Risks card');
   R.ok(!t.titles.includes('Top 5 Responses') && !/Top 5 Responses/.test(t.text), 'the Top 5 Responses card is gone');
   R.ok(t.next, 'the card sits straight after the Top 5 Action Sheet card');
+  R.ok(t.descs.every(d => /control/i.test(d) && /comment/i.test(d) && /\bwho\b/i.test(d) && /by when/i.test(d)), 'both action sheet cards say what the pages now carry - the controls, the comments, who and by when: ' + t.descs.join(' / '));
   R.ok(t.meta === '5 risks ticked for ' + label, 'the card counts the risks ticked for the month: ' + t.meta);
   R.ok(t.opened === 'Risk action sheet' && t.store, 'its button opens the risk action sheets, and opening them adds nothing to the client record (' + t.opened + ')');
 }
@@ -247,16 +261,17 @@ await inject();
       sw: __switch(), accent: __accent(), kind: __asKind(), text: ov.textContent };
   });
   const find = re => t.bar.find(b => re.test(b.t)) || null;
-  const nb = find(/New risk action sheet$/), im = find(/Import a returned sheet$/), pr = find(/^Proposals from the leadership team$/), cl = find(/^Close$/);
+  const nb = find(/New risk action sheet$/), im = find(/Import a returned sheet$/), pr = find(/Proposals from the leadership team/), cl = find(/^Close$/);
   const at = b => t.bar.indexOf(b);
   R.ok(t.list.join(',') === 'r1,r2,r3', 'ticked for the sheet: r1, r2, r3 - worst first (' + t.list.join(',') + ')');
   R.ok(t.k === 'Risk action sheet' && t.h === 'Fairbank Fabrications Ltd', 'the screen reads Risk action sheet, for the client');
   R.ok(t.sw.has && t.sw.top5 !== t.sw.risk && t.kind === 'risk', 'two tabs at the top - Top 5 action sheets | Risk action sheets - with Risk action sheets the one showing (' + t.kind + ')');
   R.ok(t.sw.has && t.sw.risk.indexOf(t.accent) >= 0, 'the tab showing is in the accent (' + t.sw.risk + ' / accent ' + t.accent + ')');
-  R.ok(!!(nb && im && pr && cl) && at(nb) < at(im) && at(im) < at(pr) && at(pr) < at(cl), 'the bar: New risk action sheet, Import a returned sheet, Proposals from the leadership team, Close - in that order');
+  R.ok(!!(nb && im && cl) && at(nb) < at(im) && at(im) < at(cl), 'the bar: New risk action sheet, Import a returned sheet, Close - in that order');
+  R.ok(!pr && !/Proposals from the leadership team/.test(t.text), 'no Proposals from the leadership team button - the sheet itself carries the two-way table');
   R.ok(!!nb && !nb.dis && /^The risks ticked on the cockpit.s risk ladder, one action each, plus anything carried back$/.test(nb.title), 'New risk action sheet is live and says what goes on it: ' + (nb && nb.title));
-  R.ok(!!pr && pr.title === 'The fillable form the leadership team fill in with their own proposed actions, and what comes back', 'Proposals from the leadership team says what it is');
   R.ok(/As many risks as you tick on the cockpit.s risk ladder, one action each with the control you recommend/.test(t.text) && /quick minute taker/.test(t.text), 'the intro says how the sheet is made, and that it ends with the meeting');
+  R.ok(!/Top 5 report/i.test(t.text), 'and nothing on the screen points at a Top 5 report');
 }
 let sid;
 {
@@ -358,14 +373,28 @@ if (!sid) await R.done(browser, errors);
   const s = t.said, near = (a, b) => Math.abs(a - b) <= 1;
   const CW = 595.28 - 80, MR = 595.28 - 40;
   R.ok([1, 2, 3, 4].every(n => ['what', 'who', 'due'].every(f => t.names.includes('as__m' + n + '_' + f))) && !t.names.includes('as__m5_what'), 'the sheet ends with four rows for the meeting\'s actions - what, who, by when');
-  R.ok(t.names.includes('as_1_o_done') && t.names.includes('as_' + t.items + '_by') && t.names.includes('as__general') && t.names.includes('as__name'), 'and every line keeps its answer boxes, as on the Top 5 sheet');
+  // none of these risks has a control on tab 3, so each line has the one row: the control we recommend
+  const lines = Array.from({ length: t.items }, (_, i) => i + 1);
+  R.ok(lines.every(n => ['c1_cmt', 'c1_who', 'c1_due', 'what'].every(f => t.names.includes('as_' + n + '_' + f)) && !t.names.includes('as_' + n + '_c2_cmt')) && t.names.includes('as__general'),
+    'every line has the two-way table - comments, who and by when against the control - and a comments box, as on the Top 5 sheet');
+  R.ok(!t.names.some(n => /^as__(name|role)$/.test(n) || /^as_\d+_(o_\w+|date|by)$/.test(n)), 'no name or role on the cover, and no what-happened ticks or done / date / by whom boxes');
+  R.ok(t.multiCmt === true && t.multiWhat === true, 'the comments and the comments box take several lines');
   R.ok(!!t.rects.what && near(t.rects.what.w, CW - 214) && near(t.rects.what.h, 26) && t.multi === true
     && !!t.rects.who && near(t.rects.who.x, MR - 204) && near(t.rects.who.w, 96) && near(t.rects.who.h, 20)
     && !!t.rects.due && near(t.rects.due.x, MR - 100) && near(t.rects.due.w, 100) && near(t.rects.due.h, 20), 'the rows are laid out as agreed: what (several lines), who, by when');
-  R.ok(t.meta.kind === 'risk' && t.meta.no === 1 && t.meta.sheet === sid && (t.meta.keys || []).length === t.items && t.meta.client === 'Fairbank Fabrications Ltd', 'the sheet knows its kind, its number, its client and its lines');
-  R.ok(t.pages >= 1 + t.items && t.pages <= 2 + t.items, 'a cover, a page a line, and the meeting part on the last page or one more (' + t.pages + ' pages, ' + t.items + ' lines)');
+  R.ok(t.meta.v === 2 && t.meta.kind === 'risk' && t.meta.no === 1 && t.meta.sheet === sid && (t.meta.keys || []).length === t.items && t.meta.client === 'Fairbank Fabrications Ltd'
+    && Array.isArray(t.meta.ctls) && t.meta.ctls.length === t.items && t.meta.ctls.every(c => JSON.stringify(c) === '[null]'), 'the sheet knows its kind, its number, its client, its lines and each line\'s control rows (v2)');
+  R.ok(t.pages >= 2 + t.items && t.pages <= 3 + t.items, 'a cover, a page a line, and the meeting part on a page of its own (' + t.pages + ' pages, ' + t.items + ' lines)');
   R.ok(s.includes('RISK ACTION SHEET') && !s.includes('TOP 5 ACTIONS'), 'the cover is titled Risk Action Sheet, not Top 5 Actions');
-  R.ok(s.some(x => /^The \d+ risks? to deal with, and the control we recommend for each$/.test(x)), 'the cover says what it is: ' + (s.find(x => /to deal with/.test(x)) || '(none)'));
+  {
+    const U = x => String(x).trim().toUpperCase(), iOf = test => s.findIndex(x => test(U(x)));
+    const iP = iOf(x => x === 'PURPOSE'), iG = iOf(x => /^THE (\d+|ONE) AT A GLANCE$/.test(x)), iW = iOf(x => x === 'WHAT WE NEED FROM YOU'), iH = iOf(x => x === 'HOW TO READ THE SCORES'), iT = iOf(x => x === 'YOUR CONTROLS - TELL US WHAT YOU THINK');
+    R.ok(iP >= 0 && iP < iG && iG < iW && iW < iH && iH < iT, 'the cover reads like a procedure: Purpose, at a glance, What we need from you, How to read the scores - then the pages');
+    R.ok(!s.some(x => /in place today/i.test(x)) && !s.some(x => /what happened/i.test(x)), '"In place today" and "What happened" are gone');
+    R.ok(s.filter(x => U(x) === 'YOUR CONTROLS - TELL US WHAT YOU THINK').length >= t.items && s.filter(x => U(x) === 'COMMENTS ON THIS RISK').length >= t.items, 'every line\'s page has the controls table and Comments on this risk');
+  }
+  riskShape = shape(t.names); riskHeads = heads(s);
+  R.ok(riskShape === SHAPE, 'the form\'s shape, line by line: ' + riskShape);
   R.ok(s.some(x => /^RISK ACTION SHEET 1\s/.test(x)) && s.includes('Risk action sheet 1') && !s.some(x => /TOP 5 ACTION SHEET|Top 5 action sheet/.test(x)), 'every page\'s masthead and footer say Risk action sheet 1');
   const iFrom = s.indexOf('FROM THE MEETING'), iElse = s.indexOf('ANYTHING ELSE TO TELL US');
   R.ok(iFrom >= 0 && iFrom < iElse && s.includes('Nothing minuted this month yet.'), 'From the meeting comes before Anything else, and says so when nothing is minuted yet');
@@ -495,9 +524,9 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
   const t = await page.evaluate(async (sid, MACT) => {
     const bytes = await buildActionSheetPDF(sid);
     const doc = await PDFLib.PDFDocument.load(bytes), form = doc.getForm();
-    form.getTextField('as__name').setText('Dave Morley');
-    form.getCheckBox('as_1_o_done').check();
-    form.getTextField('as_1_what').setText('Rescue plan written and the hatch locked.');
+    form.getTextField('as_1_c1_cmt').setText('Rescue plan written and the hatch locked.');
+    form.getTextField('as_1_c1_who').setText('Dave Morley');
+    form.getTextField('as_1_c1_due').setText('20/10/2026');
     form.getTextField('as__m1_what').setText(MACT.what);
     form.getTextField('as__m1_who').setText(MACT.who);
     form.getTextField('as__m1_due').setText(MACT.due);
@@ -507,7 +536,12 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
     return { toast: document.getElementById('toast').textContent, item: JSON.parse(JSON.stringify(s.items[0])), returnedBy: s.returnedBy, d: d ? JSON.parse(JSON.stringify(d)) : null,
       mq: !!(m && m.quick), mOpen: m ? m.status : '', grew: _decisions().length - before, cur: (_qmCurrent() || {}).id || '', quickN: S.meetings.filter(x => x && x.quick).length };
   }, sid, MACT);
-  R.ok(t.item.resp.outcome === 'done' && /Rescue plan written/.test(t.item.resp.what) && t.returnedBy === 'Dave Morley', 'the line\'s answer comes in as on the Top 5 sheet');
+  {
+    const c = ((t.item.resp || {}).ctls || [])[0] || {};
+    R.ok(((t.item.resp || {}).ctls || []).length === 1 && c.ctlId === null && c.ctlText === 'A written rescue plan, and the roof hatch locked until it is in place.'
+      && c.cmt === 'Rescue plan written and the hatch locked.' && c.who === 'Dave Morley' && c.due === '2026-10-20' && !t.item.resp.outcome && t.returnedBy === '',
+      'the line\'s answer comes in as on the Top 5 sheet - under the control we recommended, with who and by when; no name needed');
+  }
   R.ok(/\b1 meeting action\b/.test(t.toast) && !/Not imported/.test(t.toast), 'the import says one meeting action came in: ' + t.toast);
   R.ok(!!t.d && t.d.owner === 'Dave Morley' && t.d.due === '2026-11-15' && t.d.forum === 'Client meeting' && t.d.agendaItem === 0 && t.d.status === 'Agreed' && !t.d.raised,
     'the row written on the sheet becomes an action of the quick minutes - what, who, and 15/11/2026 read as a date');
@@ -517,13 +551,13 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
   const t = await page.evaluate(async sid => {
     const bytes = await buildActionSheetPDF(sid);
     const doc = await PDFLib.PDFDocument.load(bytes), form = doc.getForm();
-    form.getTextField('as__name').setText('Dave Morley');
     form.getTextField('as__m2_what').setText('Check the yard lighting');
     await _asImportFiles([new File([await doc.save()], 'meeting-only.pdf', { type: 'application/pdf' })]);
     const d = _decisions().find(x => x.decision === 'Check the yard lighting');
-    return { toast: document.getElementById('toast').textContent, d: !!d, mid: d ? d.meetingId : '', outcome: _asSheet(sid).items[0].resp.outcome };
+    return { toast: document.getElementById('toast').textContent, d: !!d, mid: d ? d.meetingId : '', ctls: JSON.parse(JSON.stringify((_asSheet(sid).items[0].resp || {}).ctls || [])) };
   }, sid);
-  R.ok(!/Not imported|nothing filled in/.test(t.toast) && t.d && t.mid === qm2 && t.outcome === 'done', 'a sheet back with only a meeting row filled in is taken, and the answers already in are kept: ' + t.toast);
+  R.ok(!/Not imported|nothing filled in/.test(t.toast) && t.d && t.mid === qm2 && t.ctls.length === 1 && t.ctls[0].cmt === 'Rescue plan written and the hatch locked.',
+    'a sheet back with only a meeting row filled in is taken, and the answers already in are kept: ' + t.toast);
 }
 {
   const t = await page.evaluate(() => { openQuickMinutes(); const vals = [...document.querySelectorAll('#qmOv input')].map(i => i.value); const id = _qmCurrent().id; closeQuickMinutes(); return { vals, id }; });
@@ -536,15 +570,14 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
     'a meeting with actions and no notes is printed, saying No notes., with its actions as agreed');
 }
 
-// ── 10. the leadership team's proposals, inside the Risk Action Sheet area ──
+// ── 10. the leadership team's proposals: the code and what came back stay, the way in from the sheet is gone ──
 {
   const t = await page.evaluate(async () => {
     const out = {};
     openTop5Review(); out.k = __text(document.querySelector('#t5Ov .slt-bar .slt-k')); closeTop5Review();
     openActionSheets('risk');
-    const b = [...document.querySelectorAll('#asOv button')].find(x => x.textContent.trim() === 'Proposals from the leadership team');
-    out.btn = !!b; if (b) b.click(); out.review = !!document.getElementById('t5Ov');
-    closeTop5Review(); closeActionSheets();
+    out.btn = [...document.querySelectorAll('#asOv button')].some(x => x.textContent.trim() === 'Proposals from the leadership team' || /openTop5Review\(/.test(x.getAttribute('onclick') || ''));
+    closeActionSheets();
     const keep = S.riskProfile.map(r => r.sheet), saved = [], keepS = window._sltSaveBlob;
     window._sltSaveBlob = (bl, f) => saved.push(f);
     try {
@@ -557,8 +590,8 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
     out.ids = JSON.parse(doc.getForm().getTextField('t5__meta').getText()).ids; out.sheet = _sheetRisks().map(z => z.id);
     return out;
   });
-  R.ok(t.k === 'Risk action sheet · proposals from the leadership team · ' + label, 'the proposals screen is part of the risk action sheet: ' + t.k);
-  R.ok(t.btn && t.review, 'Proposals from the leadership team on the risk sheets screen opens it');
+  R.ok(t.k === 'Risk action sheet · proposals from the leadership team · ' + label, 'the proposals screen is still in the code, as part of the risk action sheet: ' + t.k);
+  R.ok(!t.btn, 'but the risk sheets screen no longer opens it - the sheet is the one report the leadership team gets');
   R.ok(/Tick risks for the sheet on the cockpit.s risk ladder first/.test(t.toast) && t.savedNone === 0, 'with nothing ticked there is no form to send, and it says why');
   R.ok(t.fname === 'risk-action-sheet-proposals-fairbank-fabrications-ltd-' + month + '.pdf', 'the form downloads as ' + t.fname);
   R.ok(t.ids.join(',') === t.sheet.join(',') && t.sheet.join(',') === 'r1,r2,r3', 'the form carries exactly the risks ticked for the sheet, in the sheet\'s order (' + t.ids.join(',') + ')');
@@ -577,7 +610,8 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
     out.clash = t5 ? t5.items.map(i => i.key).filter(k => live1.includes(k)) : [];
     if (t5) {
       const b = await __build(t5.id);
-      out.pdf = { m: b.names.filter(n => /^as__m\d/.test(n)).length, from: b.said.includes('FROM THE MEETING'), cover: b.said.includes('TOP 5 ACTIONS'), mast: b.said.some(x => /^TOP 5 ACTION SHEET 1\s/.test(x)), kind: b.meta.kind || '' };
+      out.pdf = { m: b.names.filter(n => /^as__m\d/.test(n)).length, from: b.said.includes('FROM THE MEETING'), cover: b.said.includes('TOP 5 ACTIONS'), mast: b.said.some(x => /^TOP 5 ACTION SHEET 1\s/.test(x)), kind: b.meta.kind || '',
+        names: b.names, said: b.said, v: b.meta.v, ctls: b.meta.ctls, items: t5.items.length };
       const saved = [], keep = window._sltSaveBlob; window._sltSaveBlob = (bl, f) => saved.push(f);
       try { await downloadActionSheet(t5.id); } finally { window._sltSaveBlob = keep; }
       out.name = saved[0] || '';
@@ -596,6 +630,12 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
   R.ok(!!t.t5 && t.t5.no === 1 && (t.t5.kind === 'top5' || t.t5.kind === ''), 'numbering is per kind: the first Top 5 sheet is Sheet 1 though risk sheet 1 exists');
   R.ok(!!t.t5 && t.t5.from.every(x => !x) && !t.clash.length && !t.t5.keys.includes(t.k2), 'a line carried on a risk sheet waits for the next risk sheet - it is not put on a Top 5 sheet, and no action is live on both');
   R.ok(!!t.pdf && t.pdf.m === 0 && !t.pdf.from && t.pdf.cover && t.pdf.mast && (t.pdf.kind === 'top5' || t.pdf.kind === ''), 'a Top 5 sheet prints as it always has - no From the meeting, no meeting rows, even with meetings minuted');
+  {
+    const all = HEADS.concat(['AT A GLANCE']).join('|'), t5Shape = t.pdf ? shape(t.pdf.names) : '', t5Heads = t.pdf ? heads(t.pdf.said) : '';
+    R.ok(!!t.pdf && t5Shape === SHAPE && t5Shape === riskShape && t.pdf.v === 2 && Array.isArray(t.pdf.ctls) && t.pdf.ctls.length === t.pdf.items,
+      'both kinds have the same form, line by line - the controls table and the comments box (' + t5Shape + ')');
+    R.ok(t5Heads === all && riskHeads === all, 'and the same cover and pages, heading for heading (' + t5Heads + ' / ' + riskHeads + ')');
+  }
   R.ok(/^top-5-action-sheet-1-/.test(t.name || '') && t.t5left === 0, 'it still downloads as top-5-action-sheet-1-..., and it can be deleted (' + t.name + ')');
   R.ok(!!t.r2 && t.r2.kind === 'risk' && !!t.r2.first && t.r2.first.key === t.k2 && t.r2.first.from === 1 && t.r2.first.rec === t.rec2 && t.riskN === 2,
     'the next risk sheet leads with the line carried back from risk sheet 1, its recommendation with it - though a Top 5 sheet was made in between');
@@ -621,7 +661,7 @@ R.ok(await snap() === saved, 'after a reload the ticks, the sheets, the quick mi
 {
   // two risk sheets and no Top 5 sheet: the Top 5 Action Sheet card must not show a risk sheet as its own
   const meta = await page.evaluate(() => { const c = [...document.querySelectorAll('#tab-reports .rep-card')].find(x => __text(x.querySelector('h3')) === 'Top 5 Action Sheet'); const m = c ? __text(c.querySelector('.rep-meta')) : ''; switchTab('cockpit'); return m; });
-  R.ok(meta === 'Five actions out, the outcome back, a decision each', 'the Top 5 Action Sheet card counts Top 5 sheets only: ' + meta);
+  R.ok(meta === 'Five actions out, comments back against each control, a decision each', 'the Top 5 Action Sheet card counts Top 5 sheets only: ' + meta);
 }
 
 // ── 13. after review: the screens stay true to each other, and nothing is recorded that did not happen ──
@@ -703,7 +743,6 @@ R.ok(await snap() === saved, 'after a reload the ticks, the sheets, the quick mi
     const s1 = _asList('risk').find(x => x.no === 1);
     const make = async () => {
       const doc = await PDFLib.PDFDocument.load(await buildActionSheetPDF(s1.id)), form = doc.getForm();
-      form.getTextField('as__name').setText('Dave Morley'); form.getTextField('as__role').setText('Site Manager');
       form.getTextField('as__m3_what').setText('Buy a harness'); form.getTextField('as__m3_who').setText('Dave'); form.getTextField('as__m3_due').setText('end of Nov');
       return new File([await doc.save()], 'again.pdf', { type: 'application/pdf' });
     };
@@ -716,7 +755,7 @@ R.ok(await snap() === saved, 'after a reload the ticks, the sheets, the quick mi
     out.n2 = harness().length; out.toast2 = __text(document.getElementById('toast'));
     return out;
   });
-  R.ok(!t.open && t.n1 === 1 && t.att === 0 && t.note === 'Written on the returned risk action sheet 1 by Dave Morley (Site Manager).', 'rows back with no meeting open get a meeting of their own - nobody put down as present, and a note of where they came from: ' + t.note);
+  R.ok(!t.open && t.n1 === 1 && t.att === 0 && t.note === 'Written on the returned risk action sheet 1.', 'rows back with no meeting open get a meeting of their own - nobody put down as present, and a note of where they came from (the sheet has no name on it now): ' + t.note);
   R.ok(/1 meeting action into the quick minutes \(Done there puts it on the plan\)/.test(t.toast1), 'the import says Done in the minutes puts it on the plan: ' + t.toast1);
   R.ok(t.n2 === 1 && /1 already in the minutes/.test(t.toast2), 'the same sheet imported again adds nothing twice, even a row whose date could not be read: ' + t.toast2);
 }

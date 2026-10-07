@@ -107,7 +107,7 @@ await wait(page, 450);
       backToTheme: !!document.querySelectorAll('#epYearCard .ep-theme').length,
       on: (document.querySelector('#epYearCard .ep-gb.on') || {}).textContent };
   });
-  R.ok(t.chips.length === 2 && /Risk theme/.test(t.chips[0]) && /Target date/.test(t.chips[1]), 'the card offers both readings: ' + t.chips.join(' / '));
+  R.ok(t.chips.length === 3 && /Risk theme/.test(t.chips[0]) && /Target date/.test(t.chips[1]) && /Risk level/.test(t.chips[2]), 'the card offers its three readings: ' + t.chips.join(' / '));
   R.ok(t.themeTitle && t.monthTitle && t.months && t.themesGone, 'switching to Target date gives the month-by-month plan back');
   R.ok(t.labels.length >= 3, 'and every dated line still names its theme above the action (' + t.labels.length + ' labelled)');
   R.ok(t.backToTheme && /Risk theme/.test(t.on || ''), 'the switch says which reading is on, and goes back');

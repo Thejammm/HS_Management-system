@@ -5,7 +5,8 @@
 //  into a top 5 it meant I had to search the whole app for the ref of that
 //  risk". The ladder now shows each risk's ref and a Top 5 tick; the tick
 //  marks the risk's most pressing open action, so the execution plan, the
-//  cockpit's five and the board report all read the same marks.
+//  cockpit's five, the Top 5 action sheet and the board report all read the
+//  same marks. (The Top 5 Risks report was removed on 2026-10-07.)
 //  Run: npm run test:ui
 // ══════════════════════════════════════════════════════════════
 import { openApp, seed, wait, reporter, RISKS } from './harness.mjs';
@@ -109,24 +110,34 @@ const ladder = () => page.evaluate(() => {
   R.ok(t.boxes === 0 && t.star === '★', 'read-only, the column shows a star on the five and no boxes');
 }
 
-// ── the Top 5 Risks report, from the ladder and the Reports tab ──
-// Simon, 2026-10-01: "I have been given a task to provide the top five risks
-// that need to be dealt with back to the SLT - can you provide one".
+// ── no Top 5 Risks report any more ──
+// Simon, 2026-10-07: "Remove the Top 5 Risks report - it now serves no
+// purpose." The month's five go to the SLT on the Top 5 action sheet; the
+// ticks here still choose them, and still lead the board report.
 {
   const t = await page.evaluate(() => {
-    const opened = []; const keep = window._openEngineReport;
-    window._openEngineReport = (id, label) => { opened.push(id + '|' + label); return Promise.resolve(); };
     renderCockpit();
-    // "⭳ Top 5 report" since the ladder's row of tools (2026-10-07)
-    const btn = [...document.querySelectorAll('.ckx-panel button')].find(b => /report/i.test(b.textContent) && /Top 5/.test(b.title));
-    if (btn) btn.click();
+    const panel = [...document.querySelectorAll('.ckx-panel')].find(p => /Risk ladder/.test(p.querySelector('h4') ? p.querySelector('h4').textContent : ''));
+    const said = el => el ? (el.textContent + ' ' + [...el.querySelectorAll('[title]')].map(x => x.title).join(' ')) : '';
+    const out = { tools: [...panel.querySelectorAll('.ckl-tools button')].map(b => b.textContent.trim()), cockpit: said(document.getElementById('tab-cockpit')) };
     switchTab('reports');
-    const reports = document.getElementById('tab-reports').textContent;
-    window._openEngineReport = keep;
-    return { btn: !!btn, opened, card: /Top 5 Risks/.test(reports), doc: REPORT_DOCS.some(d => d.key === 'topFive' && d.code === 'T5') };
+    const cards = [...document.querySelectorAll('#tab-reports .rep-card')];
+    out.titles = cards.map(c => ((c.querySelector('h3') || {}).textContent || '').trim());
+    out.cards = cards.map(said).join(' ');
+    openActionSheets('top5'); out.top5 = said(document.getElementById('asOv'));
+    asKind('risk'); out.risk = said(document.getElementById('asOv'));
+    closeActionSheets(); switchTab('cockpit');
+    try { out.fn = new Function('return typeof openTopFivePrint')() === 'function'; } catch (e) { out.fn = false; }
+    out.picks = _top5List().length;
+    return out;
   });
-  R.ok(t.btn && t.opened[0] === 'top-five|Top 5 risks report', 'the ladder has a Report button that makes the Top 5 Risks report');
-  R.ok(t.card && t.doc, 'and it is on the Reports tab, as a controlled document (T5)');
+  const REPORT = /Top 5 (risks )?report|Top 5 Risks/i;
+  R.ok(JSON.stringify(t.tools) === JSON.stringify(['Top 5 action sheet', 'Risk action sheet', '✎ Minutes']), 'the ladder\'s tools have no Top 5 report button: ' + t.tools.join(' | '));
+  R.ok(!REPORT.test(t.cockpit), 'nothing on the cockpit points at a Top 5 report');
+  R.ok(!t.titles.includes('Top 5 Risks') && t.titles.includes('Top 5 Action Sheet') && !REPORT.test(t.cards), 'the Reports tab has no Top 5 Risks card, and no card mentions one');
+  R.ok(!REPORT.test(t.top5) && !REPORT.test(t.risk), 'the action sheet screens no longer point at it');
+  R.ok(!t.fn, 'and the app has no Top 5 report to open');
+  R.ok(t.picks === 1, 'the month\'s ticks are still there - they choose the Top 5 action sheet\'s five');
 }
 
 await R.done(browser, errors);

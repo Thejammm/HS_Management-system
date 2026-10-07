@@ -3754,19 +3754,12 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .kip-cur{outline:2px solid var(--accent);outline-offset:1px;}
     .kip-miss{background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(127,127,127,.14) 4px 5px);}
     .kip-note{font-size:12px;color:var(--text-muted);flex:1;min-width:180px;}
-    .pw-card{border-radius:4px;margin-bottom:10px;transition:background .15s;}
-    .pw-sum{padding:12px 16px;cursor:pointer;list-style:none;}
     .pw-sum::-webkit-details-marker{display:none;}
-    .pw-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-    .pw-title{font-weight:700;font-size:13.5px;flex:1;min-width:200px;}
-    .pw-flag{font-weight:400;font-size:11px;color:var(--text-muted);}
-    .pw-why{font-size:10.5px;font-weight:700;color:#DC2626;}
     .pw-strip{display:flex;align-items:flex-start;margin:10px 0 2px;}
     .pw-node{display:flex;flex-direction:column;align-items:center;gap:3px;width:60px;flex:0 0 auto;}
     .pw-dot{width:20px;height:20px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:var(--surface,#fff);flex:0 0 auto;}
     .pw-lab{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
     .pw-link{flex:1;height:2px;margin-top:9px;min-width:10px;}
-    .pw-body{padding:6px 18px 12px;border-top:1px dashed var(--border);}
     .pw-st{padding:8px 0;border-bottom:1px solid var(--border);}
     .pw-st:last-child{border-bottom:none;}
     .pw-sthead{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:4px;flex-wrap:wrap;}
@@ -4458,6 +4451,67 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
       .ckl-line{padding:8px 8px 9px 10px;}
       .ckl-meta,.ckl-pick{margin-left:0;}
       .ckl-band-m{flex-basis:100%;order:3;}
+    }
+    .pw-wrap{container-type:inline-size;}
+    .pw-intro{font-size:12.5px;line-height:1.5;color:var(--text-muted);margin:0 0 8px;}
+    .pw-key{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11.5px;color:var(--text-muted);margin:0 0 12px;}
+    .pw-key i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;}
+    .pw-key i.pw-key-line{width:3px;height:12px;border-radius:0;background:#2563EB;vertical-align:-2px;}
+    .pw-key i.ckl-key-ops{width:16px;height:10px;border-radius:0;}
+    .pw-filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
+    .pw-fbtn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:baseline;gap:8px;min-width:150px;padding:7px 12px;border:1px solid var(--border);border-top:3px solid var(--c);background:var(--surface);}
+    .pw-fbtn b{font-size:19px;font-weight:800;color:var(--c);}
+    .pw-fbtn span{font-size:12px;color:var(--text-muted);}
+    .pw-fbtn:hover{background:var(--muted-bg);}
+    .pw-fbtn.on{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c);}
+    .pw-fbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+    .pw-seg{display:inline-flex;border:1px solid var(--border);}
+    .pw-seg button{all:unset;cursor:pointer;padding:4px 10px;font-size:12px;color:var(--text);border-left:1px solid var(--border);}
+    .pw-seg button:first-child{border-left:0;}
+    .pw-seg button:hover{background:var(--muted-bg);}
+    .pw-seg button.on{background:var(--accent);color:#fff;font-weight:700;}
+    .pw-group{margin:0 0 12px;}
+    .jny-macro{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0;padding:8px 12px;cursor:pointer;background:var(--muted-bg);border:1px solid var(--border);}
+    .jny-macro:hover{background:var(--border);}
+    .jny-mac-at{box-shadow:inset 4px 0 0 #16A34A;}
+    .jny-mac-n{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--text);}
+    .jny-mac-n i{display:inline-block;width:8px;height:8px;}
+    .jny-mac-r{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--text-muted);white-space:nowrap;}
+    .jny-mac-at .jny-mac-r{color:#15803d;}
+    .pw-list{border:1px solid var(--border);background:var(--surface);margin:0 0 12px;}
+    .pw-group .pw-list{margin:0;border-top:0;}
+    .pw-card{border-left:4px solid var(--pw);}
+    .pw-card+.pw-card{border-top:1px solid var(--border);}
+    .pw-card.pw-ops{outline:1px dashed #64748B;outline-offset:-4px;}
+    .pw-sum{display:block;padding:9px 12px 11px;cursor:pointer;list-style:none;}
+    .pw-sum::-webkit-details-marker{display:none;}
+    .pw-sum:hover{background:var(--muted-bg);}
+    .pw-sum:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+    .pw-head{display:grid;grid-template-columns:62px minmax(0,1fr) 46px minmax(120px,auto) 16px;grid-template-areas:"ref main score status chev";column-gap:10px;align-items:start;}
+    .pw-ref{grid-area:ref;display:flex;padding-top:1px;}
+    .pw-main{grid-area:main;min-width:0;}
+    .pw-title{font-size:13.5px;font-weight:600;line-height:1.35;color:var(--text);overflow-wrap:anywhere;}
+    .pw-meta{display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px;margin-top:3px;}
+    .pw-flag{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#B91C1C;border:1px solid #DC262680;padding:0 5px;line-height:15px;}
+    .pw-why{font-size:11px;font-weight:600;color:#DC2626;}
+    .pw-score{grid-area:score;justify-self:center;}
+    .pw-score-none{min-width:32px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);color:var(--text-muted);font-size:12px;}
+    .pw-status{grid-area:status;display:inline-flex;align-items:center;gap:6px;padding-top:3px;font-size:11.5px;font-weight:700;white-space:nowrap;}
+    .pw-status i{display:inline-block;width:8px;height:8px;border-radius:50%;}
+    .pw-chev{grid-area:chev;justify-self:center;width:7px;height:7px;margin-top:7px;border-right:2px solid var(--text-muted);border-bottom:2px solid var(--text-muted);transform:rotate(-45deg);}
+    details[open]>.pw-sum .pw-chev{transform:rotate(45deg);margin-top:4px;}
+    .pw-track{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:end;margin:8px 0 0 72px;}
+    .pw-track .pw-strip{margin:0;}
+    .pw-body{padding:8px 16px 12px 88px;border-top:1px solid var(--border);}
+    @container (max-width:900px){ .pw-track{grid-template-columns:minmax(0,1fr);gap:4px;} }
+    @container (max-width:600px){
+      .pw-head{grid-template-columns:minmax(0,1fr) 40px auto 14px;grid-template-areas:"ref score status chev" "main main main main";row-gap:4px;}
+      .pw-track{margin-left:0;}
+      .pw-body{padding-left:14px;}
+      .pw-node{width:48px;}
+      .pw-lab{font-size:8.5px;}
+      .pw-filters .pw-fbtn{min-width:0;flex:1 1 40%;}
+      .jny-mac-r{margin-left:0;}
     }
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
     /* Quick links to other apps */
@@ -15247,8 +15301,7 @@ const COCKPIT_WIDGETS = {
       // "fire seems to be near the bottom but it's one of the most risky things this business does" -
       // each band held its risks in the order they were added to the register). Ties: the worse
       // severity, then could kill or seriously injure, then the likelier, then by name.
-      const rank=(a,b)=>((b.sc.rating||0)-(a.sc.rating||0)) || ((+b.sc.s||0)-(+a.sc.s||0))
-        || ((_riskFlagOn(b.r)?1:0)-(_riskFlagOn(a.r)?1:0)) || ((+b.sc.l||0)-(+a.sc.l||0)) || a.name.localeCompare(b.name);
+      const rank=(a,b)=>_riskRankCmp(a.r, b.r);
       // the controls judgement each dot carries (the key at the foot says the same)
       const ctlOf=z=>z.unc?{ k:'unc', t:'Uncontrolled' }:(z.part?{ k:'part', t:'No residual target set' }:(z.reviewDue?{ k:'rev', t:'Controlled - review due' }:{ k:'ok', t:'Controlled as reasonably practicable' }));
       // One row a risk: its ref, the risk (title, then its theme - and, for an operational risk, a
@@ -19301,14 +19354,29 @@ function _pathwayStationsHTML(P, since){
     return '<div class="pw-st"><div class="pw-sthead"><span class="pw-dot" style="'+(s.state==='open'?('border-color:'+c+';color:'+c+';'):('background:'+c+';border-color:'+c+';color:#fff;'))+'">'+(s.state==='done'?'✓':s.state==='late'?'!':s.state==='part'?'◐':'')+'</span><b>'+esc(s.label)+'</b><span class="pw-stsum" style="color:'+c+';">'+esc(s.summary)+'</span></div>'+lines+'</div>';
   }).join('')+'</div>';
 }
-function _pathwayCardHTML(P, since){
-  const r=P.r, ov=P.overall;
-  const wash='linear-gradient(100deg,'+ov.colour+'1c,'+ov.colour+'06 62%,transparent)';
+// One risk on the pathway (redesigned 2026-10-07, after the risk ladder): a flat ruled row in its
+// theme's list. Its left rail carries the overall state colour (done / in progress / needs attention /
+// not started); the head reads ref, the risk (theme, operational tag, could-kill flag), the current
+// score in its band's colour and the overall state; under it the journey line - the six stations in
+// their colour codes - beside the score bar with its blue residual target. Opens to the stations.
+function _pathwayCardHTML(P, since, grouped){
+  const r=P.r, ov=P.overall, ops=_riskMode(r)==='ops', band=P.sc.priority||'';
   const why=(ov.state==='late'&&ov.reason&&!P.stations.some(s=>s.state==='late'))?'<span class="pw-why">'+esc(ov.reason)+'</span>':'';
-  return '<details class="card pw-card"'+(_pathwayOpenAll===true?' open':'')+' style="border-left:4px solid '+ov.colour+';background:'+wash+';">'
-    +'<summary class="pw-sum"><div class="pw-head">'+_riskRefChip(r)+'<span class="pw-title">'+esc(P.title)+(_riskFlagOn(r)?(' <span class="pw-flag">'+(_riskMode(r)==='ops'?'business-critical':'could kill or seriously injure')+'</span>'):'')+'</span>'
-    +_riskPrioBadge(P.sc.priority,P.sc.rating)+'<span class="badge" style="border-color:'+ov.colour+';color:'+ov.colour+';background:'+ov.colour+'1a;font-weight:700;">'+esc(ov.label)+'</span>'+why+'</div>'
-    +_pathwayStripHTML(P)+_journeyBarHTML(r)+'</summary>'
+  const flag=_riskFlagOn(r)?('<span class="pw-flag">'+(ops?'Business-critical':'Could kill or seriously injure')+'</span>'):'';
+  const theme=(P.theme&&!grouped)?('<span class="ckl-cat"><i style="background:'+_macroColour(P.theme)+';"></i>'+esc(P.themeName)+'</span>'):'';
+  const meta=(ops?'<span class="ckl-opstag" title="An operational (business) risk - not a health and safety risk">Operational</span>':'')+theme+flag+why;
+  const score=band
+    ? '<span class="ckl-score pw-score" style="background:'+(_RISK_PRIO_COLOR[band]||'#9CA3AF')+';" title="Current rating '+esc(String(P.sc.rating))+' ('+esc(band)+')">'+esc(String(P.sc.rating))+'</span>'
+    : '<span class="pw-score pw-score-none" title="Not yet rated">-</span>';
+  return '<details class="pw-card'+(ops?' pw-ops':'')+'"'+(_pathwayOpenAll===true?' open':'')+' style="--pw:'+ov.colour+';">'
+    +'<summary class="pw-sum"><div class="pw-head">'
+      +'<span class="pw-ref">'+_riskRefChip(r)+'</span>'
+      +'<div class="pw-main"><span class="pw-title">'+esc(P.title)+'</span>'+(meta?('<div class="pw-meta">'+meta+'</div>'):'')+'</div>'
+      +score
+      +'<span class="pw-status" style="color:'+ov.colour+';"><i style="background:'+ov.colour+';"></i>'+esc(ov.label)+'</span>'
+      +'<span class="pw-chev" aria-hidden="true"></span>'
+    +'</div>'
+    +'<div class="pw-track">'+_pathwayStripHTML(P)+'<div class="pw-bar">'+_journeyBarHTML(r)+'</div></div></summary>'
     +'<div class="pw-body">'+_pathwayStationsHTML(P, since)
     +(_empView()?'':'<button class="btn btn-outline btn-xs no-print" style="margin-top:10px;" onclick="_journeyOpenRisk(\''+r.id+'\')">Open in risk profile →</button>')+'</div></details>';
 }
@@ -19322,27 +19390,32 @@ function renderRiskJourney(){
   const rows=paths.filter(p=> _journeyFilter==='done'?p.overall.state==='done' : _journeyFilter==='late'?p.overall.state==='late' : _journeyFilter==='open'?(p.overall.state==='part'||p.overall.state==='open') : true);
   const st=_pathwayPeriodStats(paths, since);
   const perLbl=_pathwayDays===365?'12 months':(_pathwayDays+' days');
-  const tile=(n,lab,c,v)=>'<div class="ckx-kpi" style="cursor:pointer;'+(_journeyFilter===v?('outline:2px solid '+c+';'):'')+'" onclick="setJourneyFilter(\''+v+'\')" title="Show only these"><div style="font-size:24px;font-weight:800;color:'+c+';">'+n+'</div><div style="font-size:12px;color:var(--text-muted);">'+lab+'</div></div>';
-  const pbtn=(d)=>'<button class="btn '+(_pathwayDays===d?'btn-primary':'btn-outline')+' btn-xs" onclick="setPathwayPeriod('+d+')">'+(d===365?'12 months':(d+' days'))+'</button>';
+  const tile=(n,lab,c,v)=>'<button type="button" class="pw-fbtn'+(_journeyFilter===v?' on':'')+'" style="--c:'+c+';" onclick="setJourneyFilter(\''+v+'\')" title="Show only these" aria-pressed="'+(_journeyFilter===v)+'"><b>'+n+'</b><span>'+lab+'</span></button>';
+  const pbtn=(d)=>'<button type="button"'+(_pathwayDays===d?' class="on"':'')+' onclick="setPathwayPeriod('+d+')">'+(d===365?'12 months':(d+' days'))+'</button>';
   const bits=[ st.found?(st.found+' risk'+(st.found!==1?'s':'')+' identified'):'', st.scored?(st.scored+' score'+(st.scored!==1?'s':'')+' moved'):'',
     st.controls?(st.controls+' control'+(st.controls!==1?'s':'')+' put in place'):'', st.actions?(st.actions+' action'+(st.actions!==1?'s':'')+' closed'):'',
     st.kept?(st.kept+' thing'+(st.kept!==1?'s':'')+' filed to keep the work in place'):'', st.signed?(st.signed+' review'+(st.signed!==1?'s':'')+' or sign-off'+(st.signed!==1?'s':'')):'' ].filter(Boolean);
   const good=st.total
     ? '<b>In the last '+perLbl+':</b> '+bits.join(' · ')+' - across '+st.risks+' risk'+(st.risks!==1?'s':'')+'. Dated lines from this period are marked in <span style="color:var(--accent);font-weight:700;">teal</span> below.'
     : 'Nothing dated in the last '+perLbl+' - pick a longer period, or this is where the work starts.';
-  el.innerHTML='<div class="card" style="margin-bottom:14px;"><div class="card-band"><h3><span class="dot">●</span> Risk pathway</h3>'
+  const list=(l,grouped)=>'<div class="pw-list">'+l.map(p=>_pathwayCardHTML(p, since, grouped)).join('')+'</div>';
+  el.innerHTML='<div class="pw-wrap"><div class="card" style="margin-bottom:14px;"><div class="card-band"><h3><span class="dot">●</span> Risk pathway</h3>'
     +(_empView()?'':'<button class="btn btn-outline btn-sm no-print" onclick="downloadPathwayReport()" title="Every risk, station by station, in the words it was recorded in - what has been done and what has not, with this period\'s progress on the front">⭳ Pathway report</button>')+'</div>'
     +'<div class="card-body">'
-    +'<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Every risk walks the same six stations - <b>identified, assessed, controls, actions, kept in place, signed off</b>. Open one and each station shows what was recorded, in the words it was recorded in, and where it lives. <b>Kept in place</b> reads live: a routine gone overdue on Assurance records, a briefing not yet confirmed, or a document gone from the register turns it amber or red. Green is done, amber is in progress, red needs attention, grey has not started. The bar under each strip is the score: from the inherent score towards fully avoided, the <span style="color:#2563EB;font-weight:700;">blue line</span> being the residual target.</div>'
-    +'<div class="ckx-kpis" style="margin-bottom:12px;">'+tile(nDone,'Signed off',PW_COLOUR.done,'done')+tile(nMoving,'In progress',PW_COLOUR.part,'open')+tile(nLate,'Needs attention',PW_COLOUR.late,'late')+tile(paths.length,'All risks','var(--text)','all')+'</div>'
-    +'<div class="pw-period no-print"><span>Progress this period:</span>'+pbtn(30)+pbtn(90)+pbtn(180)+pbtn(365)+'<span style="margin-left:auto;display:flex;gap:6px;"><button class="btn btn-ghost btn-xs" onclick="pathwayToggleAll(true)">Expand all</button><button class="btn btn-ghost btn-xs" onclick="pathwayToggleAll(false)">Collapse all</button></span></div>'
+    +'<div class="pw-intro">Every risk walks the same six stations - <b>identified, assessed, controls, actions, kept in place, signed off</b>. Open a risk to see each station in the words it was recorded in, and where it lives. <b>Kept in place</b> reads live: a routine gone overdue on Assurance records, a briefing not yet confirmed or a document gone from the register turns it amber or red.</div>'
+    +'<div class="pw-key"><span><i style="background:'+PW_COLOUR.done+';"></i>Done</span><span><i style="background:'+PW_COLOUR.part+';"></i>In progress</span><span><i style="background:'+PW_COLOUR.late+';"></i>Needs attention</span><span><i style="background:'+PW_COLOUR.open+';"></i>Not started</span>'
+    +'<span><i class="pw-key-line"></i>score bar - the inherent score towards fully avoided, the <b style="color:#2563EB;">blue line</b> the residual target</span><span><i class="ckl-key-ops"></i>operational risk - not health and safety</span></div>'
+    +'<div class="pw-filters">'+tile(nDone,'Signed off',PW_COLOUR.done,'done')+tile(nMoving,'In progress',PW_COLOUR.part,'open')+tile(nLate,'Needs attention',PW_COLOUR.late,'late')+tile(paths.length,'All risks','var(--text)','all')+'</div>'
+    +'<div class="pw-period no-print"><span>Progress this period</span><span class="pw-seg">'+pbtn(30)+pbtn(90)+pbtn(180)+pbtn(365)+'</span><span style="margin-left:auto;display:flex;gap:6px;"><button class="btn btn-ghost btn-xs" onclick="pathwayToggleAll(true)">Expand all</button><button class="btn btn-ghost btn-xs" onclick="pathwayToggleAll(false)">Collapse all</button></span></div>'
     +'<div class="pw-good">'+good+'</div>'+_keptTrackerHTML()
     +'</div></div>'
     +(rows.length
       ? (_riskGroupMode==='macro'
-          ? _riskMacroGroups(rows,p=>p.r).map((g,i,arr)=>((i===0||arr[i-1].origin!==g.origin)?('<div class="jny-band">'+esc(_ORIGIN_LABEL[g.origin])+'</div>'):'')+_macroHeadHTML(g)+(_journeyMacroOpen(g.k)?g.list.map(p=>_pathwayCardHTML(p, since)).join(''):'')).join('')
-          : rows.map(p=>_pathwayCardHTML(p, since)).join(''))
-      : '<div class="card"><div class="card-body"><div class="empty"><h4>No risks '+(_journeyFilter==='done'?'signed off':_journeyFilter==='late'?'needing attention':_journeyFilter==='open'?'in progress':'yet')+'</h4><p>'+(paths.length?'Change the filter above.':'Add risks to the profile and their pathway appears here.')+'</p></div></div></div>');
+          ? _riskMacroGroups(rows,p=>p.r).map((g,i,arr)=>((i===0||arr[i-1].origin!==g.origin)?('<div class="jny-band">'+esc(_ORIGIN_LABEL[g.origin])+'</div>'):'')
+              +'<section class="pw-group">'+_macroHeadHTML(g)+(_journeyMacroOpen(g.k)?list(g.list,true):'')+'</section>').join('')
+          : list(rows))
+      : '<div class="card"><div class="card-body"><div class="empty"><h4>No risks '+(_journeyFilter==='done'?'signed off':_journeyFilter==='late'?'needing attention':_journeyFilter==='open'?'in progress':'yet')+'</h4><p>'+(paths.length?'Change the filter above.':'Add risks to the profile and their pathway appears here.')+'</p></div></div></div>')
+    +'</div>';
 }
 // ── Controls Kept in Place: the monthly record ────────────────
 // Simon, 2026-09-29: "this is the only thing the client will have left, i
@@ -25404,10 +25477,18 @@ function _profBoardReport_dead(){
 // The ONE display order for risks - highest priority first, then rating, ties
 // in the order they were added. The register AND the risk journey both use
 // this, so the two pages always read as the same list.
+// One ranking of risks, worst first (Simon, 2026-10-07): the current (residual) rating, then the worse
+// severity, then could kill or seriously injure, then the likelier, then by name. The risk ladder and
+// the display order (the pathway, the register's order of work) read the same rule.
+function _riskRankCmp(a, b){
+  const sa=_riskScore(a), sb=_riskScore(b);
+  return ((sb.rating||0)-(sa.rating||0)) || ((+sb.s||0)-(+sa.s||0)) || ((_riskFlagOn(b)?1:0)-(_riskFlagOn(a)?1:0))
+    || ((+sb.l||0)-(+sa.l||0)) || String(a.activity||a.hazard||'').localeCompare(String(b.activity||b.hazard||''));
+}
 function _riskDisplayOrder(){
   return (S.riskProfile||[]).slice().sort((a,b)=>{
     const d = _RISK_PRIO_RANK[_riskScore(a).priority||''] - _RISK_PRIO_RANK[_riskScore(b).priority||''];
-    return d !== 0 ? d : ((_riskScore(b).rating||0) - (_riskScore(a).rating||0));
+    return d !== 0 ? d : _riskRankCmp(a, b);
   });
 }
 
@@ -25599,10 +25680,13 @@ function _riskMacroGroups(rows, rOf){
     return String(a.k?a.name:'').localeCompare(String(b.k?b.name:''));
   });
 }
+// A theme's heading on the pathway: flat and ruled like the risk ladder's bands - the theme in its
+// colour, how many are controlled, the worst band; green rail when every risk in it is controlled.
 function _macroHeadHTML(g){
-  return '<div class="jny-macro'+(g.allAt?' jny-mac-at':'')+'" onclick="_journeyMacroToggle(\''+g.k+'\')" title="Click to collapse or expand this category" style="cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px;padding:8px 12px;border-left:4px solid '+(g.allAt?'#16A34A':'var(--border)')+';background:'+(g.allAt?'linear-gradient(100deg,#16A34A22,#16A34A08 62%,transparent)':'var(--muted-bg)')+';">'
-    +'<span style="font-weight:700;font-size:13px;">'+(_journeyMacroOpen(g.k)?'\u25be':'\u25b8')+' '+esc(g.name)+'</span>'
-    +'<span style="margin-left:auto;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(g.atT?'#15803d':'var(--text-muted)')+';">'+((g.k&&g.worst)?_riskPrioBadge(g.worst,null)+' ':'')+esc(g.roll)+'</span></div>';
+  const open=_journeyMacroOpen(g.k);
+  return '<div class="jny-macro'+(g.allAt?' jny-mac-at':'')+'" onclick="_journeyMacroToggle(\''+g.k+'\')" title="Click to collapse or expand this category" role="button" aria-expanded="'+(open?'true':'false')+'">'
+    +'<span class="jny-mac-n">'+(open?'▾':'▸')+(g.k?(' <i style="background:'+_macroColour(g.k)+';"></i>'):' ')+esc(g.name)+'</span>'
+    +'<span class="jny-mac-r">'+((g.k&&g.worst)?_riskPrioBadge(g.worst,null)+' ':'')+esc(g.roll)+'</span></div>';
 }
 function _macroIsOpen(k){ return !!_riskMacroOpen[k||'_'] || !!_riskSearch; }
 function _macroToggle(k){

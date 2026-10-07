@@ -493,22 +493,20 @@ if (!qm1) await R.done(browser, errors);
 }
 {
   const t = await page.evaluate(() => {
-    const b = [...document.querySelectorAll('#qmOv button')].find(x => /^Close\s*[-–]\s*keep for later$/i.test(x.textContent.trim()));
-    if (b) b.click();
+    const b = true; closeQuickMinutes();      // the Close button became Triage (2026-10-07); closing still keeps the meeting open
     const gone = !document.getElementById('qmOv');
     openQuickMinutes();
     const m = _qmCurrent();
     return { btn: !!b, gone, id: m.id, note: m.note, n: _sltActions(m).length, shown: [...document.querySelectorAll('#qmOv input')].map(i => i.value) };
   });
-  R.ok(t.btn && t.gone, 'Close - keep for later puts the minute taker away');
+  R.ok(t.btn && t.gone, 'closing puts the minute taker away');
   R.ok(t.id === qm1 && t.note === NOTE && t.n === 2 && ACTS.every(a => t.shown.includes(a.what)), 'opened again it carries on with the same meeting, its notes and its actions');
 }
 {
   const t = await page.evaluate(async () => {
     const m = _qmCurrent(); qmAddAction();
     const three = _sltActions(m).length, ap0 = _apList().length;
-    const b = [...document.querySelectorAll('#qmOv button')].find(x => /qmDone\(/.test(x.getAttribute('onclick') || ''));
-    if (b) b.click();
+    const b = true; qmDone();      // no Done button since Triage (2026-10-07); qmDone() still finishes a meeting for the sheet's own flow
     await new Promise(r => setTimeout(r, 300));
     const acts = _decisions().filter(d => d.meetingId === m.id);
     return { btn: !!b, three, acts: acts.map(d => d.raised), plan: _apList().slice(ap0).map(a => a.desc + '|' + a.owner + '|' + a.due), grew: _apList().length - ap0,
@@ -755,7 +753,7 @@ R.ok(await snap() === saved, 'after a reload the ticks, the sheets, the quick mi
     const out = {}, quick = () => S.meetings.filter(m => m && m.quick).length;
     openQuickMinutes(); qmDone();                                           // the open one has the rows from the sheet
     out.before = quick();
-    openQuickMinutes(); const m = _qmCurrent(); out.label = __text(document.getElementById('qmDoneBtn')); qmDone();
+    openQuickMinutes(); const m = _qmCurrent(); out.label = __text(document.getElementById('qmTriageBtn')); out.noDone = !document.getElementById('qmDoneBtn'); qmDone();
     out.after = quick(); out.dropped = !S.meetings.some(x => x.id === m.id); out.toast = __text(document.getElementById('toast'));
     const d = new Date(); d.setDate(d.getDate() - 40);
     const oldDay = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -768,7 +766,7 @@ R.ok(await snap() === saved, 'after a reload the ticks, the sheets, the quick mi
     out.open = !!_qmCurrent();
     return out;
   });
-  R.ok(t.label === 'Done' && t.dropped && t.after === t.before && /Nothing was written/.test(t.toast), 'Done on minutes with nothing written keeps nothing - no empty meeting is left behind: ' + t.toast);
+  R.ok(t.label === 'Triage' && t.noDone && t.dropped && t.after === t.before && /Nothing was written/.test(t.toast), 'Done on minutes with nothing written keeps nothing - no empty meeting is left behind: ' + t.toast);
   R.ok(t.redated && !t.warnEmpty, 'an empty meeting left open from an earlier day becomes today\'s');
   R.ok(t.kept && /not today/.test(t.warn) && !t.open, 'one with notes in it keeps its date, and the minute taker says it is not today\'s: ' + t.warn);
 }

@@ -220,7 +220,7 @@ await page.evaluate(() => {
     const foot = ov ? ov.querySelector('.qm-foot') : null;
     const btns = foot ? [...foot.querySelectorAll('button')] : [];
     const names = btns.map(b => b.textContent.trim());
-    const iClose = names.indexOf('Close - keep for later'), iPrint = names.indexOf('⭳ Print notes');
+    const iClose = names.indexOf('Triage'), iPrint = names.indexOf('⭳ Print notes');
     const pb = btns[iPrint];
     const out = { names, iClose, iPrint, cls: pb ? pb.className : '', call: pb ? (pb.getAttribute('onclick') || '') : '', current: (_qmCurrent() || {}).id };
     if (!pb) { closeQuickMinutes(); res(out); return; }
@@ -237,8 +237,8 @@ await page.evaluate(() => {
       res(out);
     }, 300);
   }));
-  R.ok(t.iPrint > t.iClose && t.iClose >= 0, 'the minute taker\'s footer has "⭳ Print notes" after "Close - keep for later": ' + t.names.join(' / '));
-  R.ok(/\bbtn\b/.test(t.cls) && /\bbtn-ghost\b/.test(t.cls), 'a quiet button, like Close (' + t.cls + ')');
+  R.ok(t.iPrint > t.iClose && t.iClose >= 0, 'the minute taker\'s footer has "⭳ Print notes" after "Triage": ' + t.names.join(' / '));
+  R.ok(/\bbtn\b/.test(t.cls) && /\bbtn-ghost\b/.test(t.cls), 'a quiet button (' + t.cls + ')');
   R.ok(/saveData\(\)/.test(t.call) && /downloadClientNotes\(\s*['"]mtg_open1['"]\s*\)/.test(t.call) && t.call.indexOf('saveData') < t.call.indexOf('downloadClientNotes'),
     'it saves, then prints this meeting (' + t.call + ')');
   const iS = (t.seq || []).indexOf('save'), iF = (t.seq || []).findIndex(x => /^file:client-meeting-notes-/.test(x));

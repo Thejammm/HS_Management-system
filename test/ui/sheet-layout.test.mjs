@@ -18,7 +18,7 @@
 //  the closing parts straight on when they fit.
 //  After the rendered pages (the orchestrator): a control already in place
 //  with nothing open has its heading alone - no gap row; a gap row reads, on
-//  one line, "No action yet - what will be done?".
+//  one line, "No action identified - please propose".
 //  The matrix: Top 5 with five risks (0, 1, 3 and 9 controls; 1 to 12 open
 //  actions; a long action, a long control, a very long recommendation; two
 //  controls in place with nothing open), Top 5 with one free action, a risk
@@ -49,8 +49,8 @@ const INK = '1D1F20', ACC = '5980A6', GROUND = 'F2F2F3', PANEL = 'E6EDF4';
 const BANDC = { Critical: 'DC2626', High: 'EA580C', Medium: 'F59E0B', Low: '16A34A', '': '9CA3AF' };
 // one line in the action column (the orchestrator, after the rendered pages): the same words under a control
 // not yet in place and for a risk with nothing open and no controls
-const GAP_CTL = 'No action yet - what will be done?';
-const GAP_NONE = 'No action yet - what will be done?';
+const GAP_CTL = 'No action identified - please propose';
+const GAP_NONE = 'No action identified - please propose';
 
 const pad = n => String(n).padStart(2, '0');
 const ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
@@ -228,12 +228,12 @@ function checkSheet(tag, b, x, opt = {}) {
           if (line.indexOf(norm(r.text).slice(0, 40)) < 0) bad.push(it.n + '.' + g.k + ' action "' + short(r.text) + '" not in its cell ("' + short(line) + '")');
           if (!r.stat.some(s => line.indexOf(s) >= 0) || (r.prio && line.indexOf(r.prio) < 0)) bad.push(it.n + '.' + g.k + ' no "' + r.stat[0] + ' · ' + r.prio + '" line ("' + short(line) + '")');
         } else if (line.indexOf(r.text) < 0) bad.push(it.n + '.' + g.k + ' gap row does not say "' + r.text + '" ("' + short(line) + '")');
-        if (r.own !== (line.indexOf('ON THIS SHEET') >= 0)) tag2.push(it.n + '.' + g.k + (r.own ? ' has no tag' : ' tagged but not the sheet line'));
+        if (r.own !== (line.indexOf('PRIORITY') >= 0)) tag2.push(it.n + '.' + g.k + (r.own ? ' has no tag' : ' tagged but not the sheet line'));
         // the region above the row, up to the row above it on the page (or the header rule)
         const prev = rs[k - 1] && rs[k - 1].p === g.p ? rs[k - 1].bot : Math.min(TOPIN, ...E.filter(e => e.p === g.p && e.k === 'l' && e.c === ACC && e.t >= 1 && e.x1 - e.x0 > 0.9 * CW && e.y > g.top).map(e => e.y).concat([TOPIN]));
         const above = texts.filter(e => e.p === g.p && e.y > g.top - 0.6 && e.y < prev);
         const firstOnPage = !(rs[k - 1] && rs[k - 1].p === g.p);
-        const ctlT = above.filter(e => /^CONTROL \d+\b/.test(norm(e.s))), loose = above.some(e => /NOT LINKED TO A CONTROL/.test(norm(e.s).toUpperCase()));
+        const ctlT = above.filter(e => /^CONTROL \d+\b/.test(norm(e.s))), loose = above.some(e => /OTHER ACTIONS/.test(norm(e.s).toUpperCase()));
         const reg = norm(above.map(e => e.s).join(' '));
         if (r.head && r.head.kind === 'ctl') {
           const num = ctlT.map(e => +/^CONTROL (\d+)/.exec(norm(e.s))[1]);
@@ -242,11 +242,11 @@ function checkSheet(tag, b, x, opt = {}) {
           if (!num.some(v => r.head.nums.includes(v)) || reg.indexOf(words) < 0 || !wEl || !wEl.bold || wEl.c !== INK || !stOk)
             heads.push(it.n + '.' + g.k + ' CONTROL ' + r.head.nums[0] + ' heading (' + (num.join('/') || 'none') + ', words ' + (reg.indexOf(words) >= 0) + ', bold ink ' + !!(wEl && wEl.bold && wEl.c === INK) + ', status ' + stOk + ')');
           else if (!E.some(e => e.p === g.p && e.k === 'r' && e.c === PANEL && e.x1 - e.x0 >= 0.9 * CW && e.y0 <= ctlT[0].y && e.y1 >= ctlT[0].y)) heads.push(it.n + '.' + g.k + ' heading row is not tinted');
-        } else if (r.head && r.head.kind === 'loose') { if (!loose) heads.push(it.n + '.' + g.k + ' no NOT LINKED TO A CONTROL heading'); }
+        } else if (r.head && r.head.kind === 'loose') { if (!loose) heads.push(it.n + '.' + g.k + ' no OTHER ACTIONS heading'); }
         else if (!firstOnPage && (ctlT.length || loose)) noHeads.push(it.n + '.' + g.k + ' has a heading over it');
         else if (firstOnPage && ctlT.length && r.grp && r.grp.kind === 'ctl' && !ctlT.some(e => r.grp.nums.includes(+/^CONTROL (\d+)/.exec(norm(e.s))[1]))) noHeads.push(it.n + '.' + g.k + ' sits under another control\'s heading');
       });
-      if (!it.ctlN && texts.some(e => geo[it.n].some(g => g.p === e.p) && (/^CONTROL \d+\b/.test(norm(e.s)) || /NOT LINKED TO A CONTROL/i.test(e.s)))) noHeads.push('item ' + it.n + ' has no controls but prints a heading');
+      if (!it.ctlN && texts.some(e => geo[it.n].some(g => g.p === e.p) && (/^CONTROL \d+\b/.test(norm(e.s)) || /OTHER ACTIONS/i.test(e.s)))) noHeads.push('item ' + it.n + ' has no controls but prints a heading');
     });
     R.ok(!bad.length, T('each data row prints its action and a "status · priority" line in the ACTION column; a gap row says "' + GAP_CTL + '"' + (bad.length ? ' - ' + bad.slice(0, 3).join(' | ') : '')));
     // a gap row's words sit on one line of the action column
@@ -256,8 +256,8 @@ function checkSheet(tag, b, x, opt = {}) {
         if (ls.length !== 1 || norm(ls[0].s) !== r.text) gl.push(it.n + '.' + (k + 1) + ' ' + ls.length + ' lines ("' + short(ls.map(e => e.s).join(' / ')) + '")'); }));
       R.ok(!gl.length, T('a gap row\'s words fit on one line of the action column' + (gl.length ? ' - ' + gl.slice(0, 3).join(' | ') : '')));
     }
-    R.ok(!tag2.length, T('the sheet line\'s own action, and only it, carries ON THIS SHEET in its cell' + (tag2.length ? ' - ' + tag2.slice(0, 3).join(' | ') : '')));
-    R.ok(!heads.length, T('each control heads its actions as in tab 4: a tinted row, CONTROL k, its words in bold ink and In place since / Planned, owner, by when - then NOT LINKED TO A CONTROL' + (heads.length ? ' - ' + heads.slice(0, 3).join(' | ') : '')));
+    R.ok(!tag2.length, T('the sheet line\'s own action, and only it, carries PRIORITY in its cell' + (tag2.length ? ' - ' + tag2.slice(0, 3).join(' | ') : '')));
+    R.ok(!heads.length, T('each control heads its actions as in tab 4: a tinted row, CONTROL k, its words in bold ink and In place since / Planned, owner, by when - then OTHER ACTIONS' + (heads.length ? ' - ' + heads.slice(0, 3).join(' | ') : '')));
     R.ok(!noHeads.length, T('no heading anywhere else - none on a risk with no controls, and a heading never left behind its first row' + (noHeads.length ? ' - ' + noHeads.slice(0, 3).join(' | ') : '')));
     // a control already in place with nothing open: its heading alone - tinted, CONTROL k, its words, In place
     // (since) - and no gap row asking what will be done (the rows above hold none for it)
@@ -286,9 +286,9 @@ function checkSheet(tag, b, x, opt = {}) {
     items.forEach(it2 => {
       const rs = geo[it2.n] || []; if (!rs.length) return;
       const p0 = rs[0].p, onP = texts.filter(e => e.p === p0).map(e => norm(e.s));
-      if (!onP.includes('YOUR ACTIONS - TELL US WHAT YOU THINK')) bad.push(it2.n + ' title');
-      if (!onP.includes('Who and when come from your plan - change them if they are wrong')) bad.push(it2.n + ' hint');
-      if (!['ACTION', 'COMMENTS', 'WHO'].every(h => onP.includes(h)) || !onP.some(s => /^BY WHEN/.test(s)) || !onP.some(s => /dd\/mm\/yyyy/.test(s))) bad.push(it2.n + ' header');
+      if (!onP.includes('RECOMMENDED ACTIONS')) bad.push(it2.n + ' title');
+      if (!onP.includes('Proposed owner and target date shown - amend where required')) bad.push(it2.n + ' hint');
+      if (!['RECOMMENDED ACTION', 'COMMENTS', 'OWNER'].every(h => onP.includes(h)) || !onP.some(s => /^TARGET DATE/.test(s)) || !onP.some(s => /dd\/mm\/yyyy/.test(s))) bad.push(it2.n + ' header');
       [...new Set(rs.map(g => g.p))].forEach(p => {
         const mine = rs.filter(g => g.p === p), top = Math.max(...mine.map(g => g.top)), bot = Math.min(...mine.map(g => g.bot));
         if (!E.some(e => e.p === p && e.k === 'l' && e.c === ACC && e.t >= 1 && e.x1 - e.x0 >= 0.9 * CW && e.y >= top - 1)) bad.push(it2.n + ' p' + (p + 1) + ' no accent rule under the header');
@@ -298,7 +298,7 @@ function checkSheet(tag, b, x, opt = {}) {
         mine.forEach(g => { const mid = (g.top + g.bot) / 2; if (!E.some(e => e.p === p && e.k === 'r' && e.c === GROUND && e.x0 <= ML + 4 && e.x1 >= ML + 0.3 * CW && e.y0 <= mid && e.y1 >= mid)) bad.push(it2.n + '.' + g.k + ' action cell not shaded'); });
       });
     });
-    R.ok(!bad.length, T('the table: YOUR ACTIONS - TELL US WHAT YOU THINK with its hint, ACTION / COMMENTS / WHO / BY WHEN (dd/mm/yyyy), the accent rule under the header, the accent border, the band rule down the left, the printed cells shaded'
+    R.ok(!bad.length, T('the table: RECOMMENDED ACTIONS with its hint, ACTION / COMMENTS / WHO / BY WHEN (dd/mm/yyyy), the accent rule under the header, the accent border, the band rule down the left, the printed cells shaded'
       + (bad.length ? ' - ' + bad.slice(0, 4).join(' | ') : '')));
   }
   // ── the content box: nothing above the masthead rule but the masthead, nothing below BOT but the footer ──
@@ -330,7 +330,7 @@ function checkSheet(tag, b, x, opt = {}) {
   // ── each risk on a fresh page, its kicker first: RISK n OF N / ACTION n OF N ──
   const first = {};
   {
-    const re = x.kind === 'risk' ? /^RISK (\d+) OF (\d+)\b/ : /^ACTION (\d+) OF (\d+)\b/, other = x.kind === 'risk' ? /^ACTION \d+ OF \d+\b/ : /^RISK \d+ OF \d+\b/;
+    const re = x.kind === 'risk' ? /^RISK (\d+) OF (\d+)\b/ : /^PRIORITY (\d+) OF (\d+)\b/, other = x.kind === 'risk' ? /^PRIORITY \d+ OF \d+\b/ : /^RISK \d+ OF \d+\b/;
     const bad = [];
     items.forEach(it => {
       const k = texts.find(e => { const m = re.exec(norm(e.s)); return m && +m[1] === it.n && +m[2] === N && !/CONTINUED/i.test(e.s); });
@@ -341,7 +341,7 @@ function checkSheet(tag, b, x, opt = {}) {
       if (it.n > 1) { const prevWhat = fld('as_' + (it.n - 1) + '_what'); if (prevWhat && prevWhat.p >= k.p) bad.push(it.kick + ' shares a page with the risk before it'); }
       if (fieldList.some(f => f.p === k.p && new RegExp('^as_(?!' + it.n + '_)\\d+_').test(f.n))) bad.push(it.kick + ' page holds another risk\'s boxes');
     });
-    R.ok(!bad.length && !texts.some(e => other.test(norm(e.s))), T('each risk starts on a fresh page, headed ' + (x.kind === 'risk' ? 'RISK n OF N (never ACTION n OF N)' : 'ACTION n OF N') + (bad.length ? ' - ' + bad.slice(0, 3).join(' | ') : '')));
+    R.ok(!bad.length && !texts.some(e => other.test(norm(e.s))), T('each risk starts on a fresh page, headed ' + (x.kind === 'risk' ? 'RISK n OF N (never PRIORITY n OF N)' : 'PRIORITY n OF N') + (bad.length ? ' - ' + bad.slice(0, 3).join(' | ') : '')));
   }
   // ── white space: the table starts on the risk's first page; the comments box right under it; breaks only when needed ──
   {
@@ -371,7 +371,7 @@ function checkSheet(tag, b, x, opt = {}) {
         const head = E.filter(e => e.p === nx.p && e.k === 'r' && e.c === PANEL && e.x1 - e.x0 >= 0.9 * CW && e.y0 >= nx.top - 4 && e.y0 <= nx.top + 4).sort((p, q) => q.y1 - p.y1)[0];
         const unit = (nx.top - nx.bot) + ((it.rows[k + 1] || {}).head ? (head ? head.y1 - head.y0 : 18) : 0) + (k + 1 === rs.length - 1 ? 72 : 0);
         if (room >= unit + 18) bad.push(it.n + '.' + nx.k + ' moved to page ' + (nx.p + 1) + ' with ' + room.toFixed(0) + 'pt left for ' + unit.toFixed(0));
-        if (texts.some(e => e.p === a.p && e.y < a.bot && e.y > BOT && (/^CONTROL \d+\b/.test(norm(e.s)) || /NOT LINKED TO A CONTROL/i.test(e.s)))) strand.push(it.n + ': a heading left at the foot of page ' + (a.p + 1));
+        if (texts.some(e => e.p === a.p && e.y < a.bot && e.y > BOT && (/^CONTROL \d+\b/.test(norm(e.s)) || /OTHER ACTIONS/i.test(e.s)))) strand.push(it.n + ': a heading left at the foot of page ' + (a.p + 1));
       }
     });
     R.ok(!bad.length, T('a page breaks inside a table only when the next row (with its heading, and with the squeezed comments box for the last row) truly does not fit' + (bad.length ? ' - ' + bad.slice(0, 3).join(' | ') : '')));
@@ -380,7 +380,7 @@ function checkSheet(tag, b, x, opt = {}) {
   // ── the closing parts: straight on when they fit whole, else a new page - never a half-empty page before them ──
   {
     const bad = [];
-    const titles = (x.kind === 'risk' ? ['FROM THE MEETING'] : []).concat(['ANYTHING ELSE TO TELL US']);
+    const titles = (x.kind === 'risk' ? ['MEETING RECORD'] : []).concat(['GENERAL COMMENTS']);
     const starts = titles.map(t => { const e = texts.find(z => norm(z.s) === t); if (!e) return null; let i = e.i;
       // a rule drawn just before the title opens the part
       for (let j = i - 1; j >= 0 && j >= e.i - 3; j--) { const z = E[j]; if (z && z.ph === 'body' && z.k === 'l' && z.p === e.p && !isMast(z) && z.y - e.y < 26 && z.y > e.y) i = j; else break; }
@@ -391,13 +391,13 @@ function checkSheet(tag, b, x, opt = {}) {
       const part = content.filter(e => e.i >= s.i && e.i < end), partTop = Math.max(...part.filter(e => e.p === s.p).map(e => e.k === 't' ? e.y + 0.72 * e.size : e.y1));
       const before = content.filter(e => e.i < s.i), last = before[before.length - 1];
       const prevP = last ? last.p : 0;
-      const fBefore = fieldList.filter(f => f.n !== 'as__meta' && f.p === prevP && !(s.t === 'ANYTHING ELSE TO TELL US' && f.n === 'as__general') && (prevP !== s.p || f.y > s.e.y));
+      const fBefore = fieldList.filter(f => f.n !== 'as__meta' && f.p === prevP && !(s.t === 'GENERAL COMMENTS' && f.n === 'as__general') && (prevP !== s.p || f.y > s.e.y));
       const prevBot = Math.min(...before.filter(e => e.p === prevP).map(e => e.k === 't' ? e.y : e.y0).concat(fBefore.map(f => f.y)));
       diag.closing.push(s.t.toLowerCase() + (s.p === prevP ? ' straight on' : ' on a new page') + (part.some(e => e.p > s.p) ? ', running over' : ''));
       if (s.p === prevP) { const gap = prevBot - partTop; if (gap < -1 || gap > 30) bad.push(s.t + ' follows on ' + gap.toFixed(0) + 'pt under what comes before it');
         if (part.some(e => e.p > s.p)) bad.push(s.t + ' follows on but runs over the page - it did not fit whole, so it should start the next page'); }
       else {
-        const spans = part.some(e => e.p > s.p), fPart = fieldList.filter(f => f.p === s.p && (s.t === 'FROM THE MEETING' ? /^as__m\d/.test(f.n) : f.n === 'as__general'));
+        const spans = part.some(e => e.p > s.p), fPart = fieldList.filter(f => f.p === s.p && (s.t === 'MEETING RECORD' ? /^as__m\d/.test(f.n) : f.n === 'as__general'));
         const partBot = Math.min(...part.filter(e => e.p === s.p).map(e => e.k === 't' ? e.y : e.y0).concat(fPart.map(f => f.y)));
         const h = spans ? Infinity : partTop - partBot, room = prevBot - BOT;
         if (s.p !== prevP + 1) bad.push(s.t + ' leaves a blank page before it');
@@ -425,7 +425,7 @@ function checkSheet(tag, b, x, opt = {}) {
   // line's leading (about 4pt), so it never passes 23pt
   {
     const c0 = content.filter(e => e.p === 0 && !(e.x0 <= 0.5 && e.x1 >= W - 0.5)), hd = t => texts.find(z => z.p === 0 && (t instanceof RegExp ? t.test(norm(z.s)) : norm(z.s) === t));
-    const P = hd('PURPOSE'), G = hd(/AT A GLANCE$/), Wn = hd('WHAT WE NEED FROM YOU');
+    const P = hd('PURPOSE'), G = hd(/^SUMMARY OF (PRIORITY )?RISKS$/), Wn = hd('RESPONSE REQUIRED');
     const band = (a, b) => { if (!a || !b) return null; const inner = c0.filter(e => e.i > a.i && e.i < b.i && e.y1 <= a.y + 1); if (!inner.length) return null;
       return Math.min(...inner.map(e => e.k === 't' ? e.y - 0.21 * e.size : e.y0)) - (b.y + 0.72 * b.size); };
     const b1 = band(P, G), b2 = band(G, Wn), bad = [];
@@ -710,7 +710,7 @@ for (const k of ['top5', 'risk']) {
 }
 
 // ══ G. The last comments box squeezed so the closing part follows straight on: a Top 5 sheet of one action,
-//    its risk's open actions and its recommendation tried a size at a time until "Anything else to tell us"
+//    its risk's open actions and its recommendation tried a size at a time until "General comments"
 //    fits under the squeezed box but would not under the full one - a page saved, nothing half empty ══
 {
   const acts = Array.from({ length: 9 }, (_, i) => act('Ga' + (i + 1), 'Check shelf ' + (i + 1) + ' and tag it', { owner: 'Sam Line', due: day(5 + i), priority: i ? 'Low' : 'High' }));
@@ -729,7 +729,7 @@ for (const k of ['top5', 'risk']) {
   R.ok(!!best, 'setup: a Top 5 sheet whose last comments box is squeezed so Anything else follows on' + (best ? ' (' + best.nOpen + ' open actions, ' + best.L + ' lines of recommendation, a ' + best.h.toFixed(0) + 'pt writing box, ' + best.t.b.pages + ' pages)' : ''));
   if (best) {
     checkSheet('Top 5, the closing part squeezed on', best.t.b, best.t.x);
-    R.ok(best.t.b.pages === 2, '[Top 5, the closing part squeezed on] a cover and one page - no page of its own for Anything else to tell us (' + best.t.b.pages + ' pages)');
+    R.ok(best.t.b.pages === 2, '[Top 5, the closing part squeezed on] a cover and one page - no page of its own for General comments (' + best.t.b.pages + ' pages)');
   }
 }
 

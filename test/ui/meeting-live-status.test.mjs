@@ -69,7 +69,7 @@ await wait(page, 400);
     return out;
   });
   R.ok(t.length === 2 && t.every(x => /Simon Archer/.test(x.text || '')), 'both rows carry all four owners in the WHO box (' + t.length + ')');
-  R.ok(t.every(x => x.size > 0 && x.size <= 7.2), 'four names print a size smaller (' + t.map(x => x.size).join(', ') + ')');
+  R.ok(t.every(x => x.size === 8.6), 'four names print at the original size (' + t.map(x => x.size).join(', ') + ')');
   // four names in a box this wide wrap to about four lines: the box must hold them all
   R.ok(t.every(x => x.h >= 4 * x.size * 1.15 + 6), 'and the row is tall enough for every line (' + t.map(x => Math.round(x.h)).join(', ') + 'pt)');
 }

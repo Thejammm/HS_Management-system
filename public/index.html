@@ -23789,7 +23789,6 @@ function _asSheetHTML(s, latest, ro, dis){
   }
   const foot=ro?'':'<div class="as-foot">'
     +'<button class="btn btn-primary btn-sm" onclick="downloadActionSheet('+sid+')"'+(items.length?'':' disabled')+' title="A fillable PDF - it can also be printed and written on">⭳ '+(s.issuedAt?'Download the sheet again':'Download the sheet to send')+'</button>'
-    +(missing&&items.length?'<span class="slt-muted">'+missing+' action'+(missing!==1?'s have':' has')+' no recommended control yet</span>':'')
     +(!locked?'<button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="asDeleteSheet('+sid+')">Delete this sheet</button>':'')
     +'</div>';
   const inner=head+(rows||'<div class="slt-muted">'+(K==='risk'?'No actions on it yet.':'No open actions to put on it.')+'</div>')+gap+add+foot;
@@ -23805,7 +23804,7 @@ function _asItemHTML(s, it, i, locked, ro, dis){
   const meta=[it.riskRef, it.risk, it.band?(it.band+' risk'):'', it.owner?('Owner: '+it.owner):'No owner', it.due?('Target: '+fmtDate(it.due)):'No target date'].filter(Boolean).map(esc).join(' · ');
   const recBox=(locked||ro)
     ? '<div class="as-fixed">'+(String(it.rec||'').trim()?esc(it.rec):'<span class="slt-muted">No recommendation was written.</span>')+'</div>'
-    : '<textarea class="slt-notes" rows="2" placeholder="The control you recommend, in the words the client will read" oninput="asRec('+sid+','+key+',this.value)">'+esc(it.rec||'')+'</textarea>';
+    : '<textarea class="slt-notes" rows="2" placeholder="Anything the leadership team should know about this action" oninput="asRec('+sid+','+key+',this.value)">'+esc(it.rec||'')+'</textarea>';
   const opt=AS_OUTCOMES.map(x=>'<option value="'+x.k+'"'+(r.outcome===x.k?' selected':'')+'>'+esc(x.label)+'</option>').join('');
   const lockResp=(done||ro)?' disabled':'';
   // the third form brings back the actions table, a line an action; the second, the controls table; the first, what happened
@@ -23840,7 +23839,7 @@ function _asItemHTML(s, it, i, locked, ro, dis){
     +'<div class="as-ih"><span class="as-no">'+(i+1)+'</span><div class="as-desc">'+esc(it.desc||'(no description)')+(it.carriedFrom?(' <span class="as-tag as-out">carried from '+esc(_asName({ kind:s.kind, no:it.carriedFrom }).toLowerCase())+'</span>'):'')+'</div>'
     +((locked||ro)?'':'<button class="trn-x" onclick="asRemoveItem('+sid+','+key+')" title="Take this action off the sheet - it stays on the plan">×</button>')+'</div>'
     +'<div class="slt-muted as-meta">'+meta+'</div>'+gone+thinMsg+((!ro && _asSameRiskBefore(s,it)>=0)?('<div class="as-warn">Same risk as line '+(_asSameRiskBefore(s,it)+1)+': its actions table prints once, on that line\u2019s page. This page lists this action only.</div>'):'')
-    +'<div class="slt-lab">Recommended control</div>'+recBox+resp+decide+'</div>';
+    +'<div class="slt-lab">Note on this action (optional - printed under it in the recommended actions table)</div>'+recBox+resp+decide+'</div>';
 }
 // What came back on the second form, a line under each control. An imported
 // sheet reads as it was written, each line with a button that puts it on the
@@ -24246,7 +24245,7 @@ function _asQuickMeetings(month){
 // controls: one gap row. An action with no risk behind it: one row, itself.
 // A gap row's words - one line in the action column. The sheet, a paper copy
 // typed in and the review all read them from here.
-const AS_GAP='No action yet - what will be done?';
+const AS_GAP='No action identified - please propose';
 function _asGapText(c){ return AS_GAP; }
 // A control is in place once its row on the control table is Complete: its
 // heading says In place since, and it asks for no action under it.
@@ -24273,7 +24272,7 @@ function _asSheetActRows(it){
   // line's page; this page lists its own action, under a note saying where the rest are
   const sh=_asList().find(x=>(x.items||[]).indexOf(it)>=0), before=_asSameRiskBefore(sh, it);
   if(before>=0){
-    out.push({ head:true, c:null, j:0, text:'', note:'The other actions on this risk are on the page for '+(_asKindOf(sh)==='risk'?'Risk ':'Action ')+(before+1) });
+    out.push({ head:true, c:null, j:0, text:'', note:'Further recommended actions for this risk are listed under '+(_asKindOf(sh)==='risk'?'Risk ':'Priority ')+(before+1) });
     if(live(own)) row(own, null, 0);
     return out;
   }
@@ -24430,78 +24429,84 @@ async function buildActionSheetPDF(sid){
   page.drawRectangle({x:0,y:H-7,width:W,height:7,color:ACC});
   at(H-46);
   { const t=take(22); clip(wrap(client.toUpperCase(),bold,9.5,CW),1,bold,9.5,CW).forEach(ln=>{ page.drawText(ln,{x:ML,y:t-9.5,size:9.5,font:bold,color:ACC}); }); }
-  { const t=take(52); page.drawText(risk?'RISK ACTION SHEET':'TOP 5 ACTIONS',{x:ML,y:t-38,size:40,font:bold,color:INK}); }
+  { const t=take(52), tt=risk?'RISK ACTION SHEET':'TOP 5 PRIORITY RISKS', ts=Math.min(40, 40*CW/bold.widthOfTextAtSize(tt,40)); page.drawText(tt,{x:ML,y:t-38,size:ts,font:bold,color:INK}); }
   const nRisk=new Set(groups.map(g=>g.r?g.r.id:g.id)).size;
-  { const t=take(24); T(risk ? ('The '+nRisk+' risk'+(nRisk!==1?'s':'')+' to deal with, and the actions in your plan for each')
-    : ('The '+(groups.length===1?'action':groups.length+' actions')+' to deal with first, and the plan behind each'), ML, t-11, 11.5); }
-  { const t=take(18); T(_asName(s)+'      Issued '+fmtDate(issued)+'      Prepared by '+producer, ML, t-8, 8.5, { color:GREY }); }
+  { const t=take(24); T(risk ? 'Selected risks and recommended actions for senior leadership review' : 'Priority risks and recommended actions for senior leadership review', ML, t-11, 11.5); }
+  { const t=take(18); T('Issue '+s.no+'      Issued '+fmtDate(issued)+'      Prepared by '+producer, ML, t-8, 8.5, { color:GREY }); }
   { const t=take(20); rule(t, INK, 0.8); }
   const head=tt=>{ const t=take(17); caps(tt, ML, t-7, { size:7.6, color:ACC }); };
 
   // 1 - what the sheet is for
-  const pL=wrap(risk
-    ? 'This sheet sets out the actions in your plan for the risks we picked out with you, drawn from your risk profile. It is for your leadership team to respond to: each risk has a page of its own, with its actions in a table - grouped under the control each one puts in place, as in your plan - and room against each one for your comments, who will do it and by when. When it comes back, your answers go into your plan.'
-    : 'This sheet sets out the actions that matter most to your business right now, drawn from your risk profile. It is for your leadership team to respond to: each action has a page of its own, with the risk behind it, the control we recommend and the actions on that risk in a table - grouped under the control each one puts in place - with room against each one for your comments, who will do it and by when. When it comes back, your answers go into your plan.', font, 10, CW);
+  const pL=wrap((risk
+    ? 'This document sets out the risks selected for review with '+client+' and the actions we recommend to control each one.'
+    : 'This document identifies the risks we consider to require the most urgent attention, drawn from '+client+'\u2019s risk profile, and the actions we recommend to control each one.')
+    +' Each risk is set out on its own page with its current and target risk ratings, the hazard, the persons at risk and the recommended actions, grouped under the control measure each action supports. The senior leadership team is asked to review the recommendations and to record, against each action, its comments, the accountable owner and the target date. On return, the agreed position will be entered into the health and safety execution plan.', font, 10, CW);
   const pPurpose={ first:17+pL.length*14.6, draw(){ head('Purpose'); pL.forEach(ln=>{ const t=take(14.6); page.drawText(ln,{x:ML,y:t-10,size:10,font,color:INK}); }); } };
 
   // 2 - the risks at a glance, each row in its band's colour: a bar down
   //     the left edge, the number in the band, a pale wash of it behind
   // ROW a row of the list and G the gap between parts - tightened below when
   // that keeps the whole cover on its page (see the stacking at the end)
-  let ROW=44, G=18; const gx1=MR-182, gx2=MR-76;      // the today and once-done chips
-  const gHead=more=>{ const t=take(16); caps('The '+(groups.length>1?groups.length:'one')+' at a glance'+(more?' (continued)':''), ML, t-7, { size:7.6, color:ACC });
-    [['Today',gx1],['Once done',gx2]].forEach(c=>caps(c[0], c[1]+(70-bold.widthOfTextAtSize(c[0].toUpperCase(),6.6))/2, t-7, { size:6.6 }));
+  let ROW=44, G=18; const gx1=MR-182, gx2=MR-76;      // the current and target chips
+  // each risk's full title, wrapped - a row grows to show all of it
+  const gTw=(gx1-12)-(ML+42), gLines=groups.map(g=>{ const ref=gRef(g); return wrap((ref?(ref+'   '):'')+gName(g),bold,10.5,gTw); });
+  const gRowH=(gi,row)=>Math.max(row==null?ROW:row, 18+gLines[gi].length*13);
+  const gHead=more=>{ const t=take(16); caps((risk?'Summary of risks':'Summary of priority risks')+(more?' (continued)':''), ML, t-7, { size:7.6, color:ACC });
+    [['Current',gx1],['Target',gx2]].forEach(c=>caps(c[0], c[1]+(70-bold.widthOfTextAtSize(c[0].toUpperCase(),6.6))/2, t-7, { size:6.6 }));
     rule(t-13, INK, 0.8); };
   const gRow=(g,gi)=>{
-    const sc=g.r?_riskScore(g.r):null, tg=g.r?_riskTarget(g.r):null, ref=gRef(g), col=BAND[bandOf(sc)], top=take(ROW), h=ROW-3;
-    const tY=top-15+(44-ROW)/2, dMax=ROW>=44?2:1;      // a tighter row keeps one line of the action
+    const sc=g.r?_riskScore(g.r):null, tg=g.r?_riskTarget(g.r):null, col=BAND[bandOf(sc)], rh=gRowH(gi), top=take(rh), h=rh-3, gl=gLines[gi];
     page.drawRectangle({x:ML,y:top-h,width:CW,height:h,color:wash(col,0.08)});
     page.drawRectangle({x:ML,y:top-h,width:4,height:h,color:col});
     page.drawText(String(gi+1),{x:ML+13,y:top-h/2-6.5,size:18,font:bold,color:col});
     const tx=ML+42, tw=gx1-12-tx;
-    page.drawText(clip(wrap((ref?(ref+'   '):'')+gName(g),bold,10.5,tw),1,bold,10.5,tw)[0],{x:tx,y:tY,size:10.5,font:bold,color:INK});
-    clip(wrap(g.items.map(x=>x.it.desc).join('  |  '),font,8.4,tw),dMax,font,8.4,tw).forEach((ln,k)=>page.drawText(ln,{x:tx,y:tY-12.5-k*10.4,size:8.4,font,color:GREY}));
-    chip(gx1,top-4,70,h-8,sc,'Not rated');
+    gl.forEach((ln,k)=>page.drawText(ln,{x:tx,y:top-h/2+gl.length*6.5-10-k*13,size:10.5,font:bold,color:INK}));
+    chip(gx1,top-4,70,Math.min(h-8,36),sc,'Not rated');
     const ay=top-h/2; page.drawLine({start:{x:gx1+76,y:ay},end:{x:gx2-10,y:ay},thickness:1.4,color:INK}); tri(gx2-4,ay,'M 0 0 L -6 -3.6 L -6 3.6 Z',INK);
-    chip(gx2,top-4,70,h-8,tg,'No target');
+    chip(gx2,top-4,70,Math.min(h-8,36),tg,'No target');
   };
-  const pGlance={ get first(){ return 16+ROW; }, draw(){ gHead(false); ctx={ open:()=>gHead(true) }; groups.forEach(gRow); ctx=null; } };
+  const pGlance={ get first(){ return 16+gRowH(0); }, draw(){ gHead(false); ctx={ open:()=>gHead(true) }; groups.forEach(gRow); ctx=null; } };
 
   // 3 - what we need back
   const steps=[
-    'Read each page: what is wrong, who it affects, where the risk stands and the control we recommend.',
-    'Against each action in the table, tell us what you think. Who and by when come filled in from your plan - change them if they are wrong. Where a control has no action yet, tell us what will be done.',
-    'Anything else about a risk goes in the comments box under its table'+(risk?'; anything agreed at our meeting goes in the meeting part at the end':'')+'.',
-    'Save this file and email it back to us - or print it, write on it and send us a photo.' ];
+    'Review each risk page: the hazard and risk, the persons at risk, the current and target risk ratings, and the recommended actions.',
+    'Against each recommended action, record your comments and confirm or amend the proposed owner and target date. Where no action has yet been identified for a control measure, please propose one.',
+    'Record any further observations in the comments box at the foot of each risk page.'+(risk?' Matters agreed at our meeting are recorded in the final section.':''),
+    'Save the completed document and return it by email. A scanned copy of the completed printed document is also acceptable.' ];
   const sL=steps.map(t=>wrap(t,font,9.4,CW-22)), sH=l=>Math.max(16,l.length*13)+5;
-  const pBack={ first:17+sL.reduce((a,l)=>a+sH(l),0), draw(){ head('What we need from you');
+  const pBack={ first:17+sL.reduce((a,l)=>a+sH(l),0), draw(){ head('Response required');
     sL.forEach((l,i)=>{ const top=take(sH(l)); page.drawText(String(i+1),{x:ML,y:top-10.5,size:11,font:bold,color:ACC});
       l.forEach((ln,k)=>page.drawText(ln,{x:ML+22,y:top-9.6-k*13,size:9.4,font,color:INK})); }); } };
 
   // 4 - how to read a score: the cockpit risk ladder's own words for what
   //     each band demands, over the tenant's own score ranges
   const LEG=['Critical','High','Medium','Low'].map(b=>[b, _bandRange(b), _bandRule(b)]);
-  const lI=wrapK('Each risk is scored likelihood x severity, 1 to 25. Its band sets how well it must be controlled ('+_hsLevel('notheld')+' to '+_hsLevel('held')+').',font,8.8,CW);
+  const lI=wrapK('Each risk is rated as likelihood x severity on a scale of 1 to 25. The rating band sets the minimum standard of control required ('+_hsLevel('notheld')+' to '+_hsLevel('held')+').',font,8.8,CW);
   const LW=(CW-30)/4, lL=LEG.map(b=>wrapK(b[2],font,8.2,LW-14)), lN=Math.max(...lL.map(l=>l.length)), lB=16+8+lN*10.6+2;
-  const pLegend={ first:17+lI.length*12.2+6+lB, draw(){ head('How to read the scores');
+  // LC: the compact key (each band and its range on one bar, without the words) - used only when the
+  // full key would otherwise go over on to a page of its own
+  let LC=false, NOKEY=false; const lBx=()=>LC?16:lB;
+  const pLegend={ get first(){ return 17+lI.length*12.2+6+lBx(); }, draw(){ head('Risk rating key');
     lI.forEach(ln=>{ const t=take(12.2); page.drawText(ln,{x:ML,y:t-8.8,size:8.8,font,color:INK}); }); skip(6);
-    const top=take(lB);
+    const hB=lBx(), top=take(hB);
     LEG.forEach((b,i)=>{ const x=ML+i*(LW+10), col=BAND[b[0]];
-      page.drawRectangle({x,y:top-lB,width:LW,height:lB,color:wash(col,0.08)});
+      if(!LC) page.drawRectangle({x,y:top-hB,width:LW,height:hB,color:wash(col,0.08)});
       page.drawRectangle({x,y:top-16,width:LW,height:16,color:col});
       page.drawText(b[0].toUpperCase(),{x:x+7,y:top-11,size:7.4,font:bold,color:WHITE});
       page.drawText(b[1],{x:x+LW-7-bold.widthOfTextAtSize(b[1],7.4),y:top-11,size:7.4,font:bold,color:WHITE});
-      lL[i].forEach((ln,k)=>page.drawText(ln,{x:x+7,y:top-16-6-8.2-k*10.6+2,size:8.2,font,color:INK})); }); } };
+      if(!LC) lL[i].forEach((ln,k)=>page.drawText(ln,{x:x+7,y:top-16-6-8.2-k*10.6+2,size:8.2,font,color:INK})); }); } };
 
   // stacked with fixed gaps (18pt). When that would push the last part on to
   // a page of its own, the gaps close to 12 or 10 and the list's rows to 40 or
   // 36 - whichever first keeps the whole cover on its page; a list too long
   // for even that runs on over the pages it needs, each part (the list: its
   // heading and first row) starting where it fits
-  { const fixed=pPurpose.first+16+pBack.first+pLegend.first;
-    const cfg=[[18,44],[12,44],[12,40],[10,36]].find(c=>fixed+groups.length*c[1]+3*c[0]<=y-BOT+0.01);
-    if(cfg){ G=cfg[0]; ROW=cfg[1]; } }
-  [pPurpose, pGlance, pBack, pLegend].forEach((p,i)=>{ if(i) skip(G); keep(p.first); p.draw(); });
+  { const fitsC=c=>{ LC=!!c[2]; return pPurpose.first+16+pBack.first+pLegend.first+groups.reduce((a,g,gi)=>a+gRowH(gi,c[1]),0)+3*c[0]<=y-BOT+0.01; };
+    // rows never below 38pt, so a score box keeps its number clear of its band; when even the compact key
+    // will not fit, the cover goes without it rather than leave it alone on a page (the score boxes carry the bands)
+    const cfg=[[18,44,0],[12,44,0],[12,40,0],[10,40,0],[12,44,1],[10,40,1],[8,38,1]].find(fitsC);
+    if(cfg){ G=cfg[0]; ROW=cfg[1]; LC=!!cfg[2]; } else { G=8; ROW=38; LC=true; NOKEY=true; } }
+  [pPurpose, pGlance, pBack].concat(NOKEY?[]:[pLegend]).forEach((p,i)=>{ if(i) skip(G); keep(p.first); p.draw(); });
   const meta=form.createTextField('as__meta');
   // the rows as printed, without their words; the JSON kept to plain ASCII (\u escapes) so a client's name in
   // any alphabet can neither stop the sheet nor come back changed
@@ -24519,12 +24524,12 @@ async function buildActionSheetPDF(sid){
   // CPS squeezed (6pt under) and COMMS that with its gap - what the last row must take with it; CONT the room
   // "Continued overleaf" needs under any other row
   const HDR=20, CSZ=8.8, CLH=11, SSZ=7, SLH=9, HR=18, MINR=30, CP=76, CPS=66, COMMS=6+CPS, CONT=12, AW=CWS[0]-30;
-  const TAG='ON THIS SHEET', TAGW=bold.widthOfTextAtSize(TAG,5.6)+8;
+  const TAG='PRIORITY', TAGW=bold.widthOfTextAtSize(TAG,5.6)+8;
   // a heading: CONTROL k, the control's words in bold ink and where it stands in grey - at the right of the
   // words' first line when that is no taller, else under them. A page the table runs on to repeats the
   // heading of the rows it carries on with, "(continued)", on one line.
   const headOf=(e,cont)=>{
-    const label=A((e.note?e.note:(e.c?('Control '+e.j):'Not linked to a control'))+(cont?' (continued)':'')).toUpperCase(), tx=ML+10+bold.widthOfTextAtSize(label,6.8)+8, full=MR-10-tx;
+    const label=A((e.note?e.note:(e.c?('Control '+e.j):'Other actions'))+(cont?' (continued)':'')).toUpperCase(), tx=ML+10+bold.widthOfTextAtSize(label,6.8)+8, full=MR-10-tx;
     if(!e.c || cont) return { e, label, tx, words:e.c?clip(wrap(e.text,bold,CSZ,full),1,bold,CSZ,full):[], st:'', same:true, h:HR };
     const st0=K(ctlSt(e.c)), stW=font.widthOfTextAtSize(st0,SSZ), sw=full-stW-14;
     const sA=(stW<=full*0.6) ? wrap(e.text,bold,CSZ,sw) : null, uA=wrap(e.text,bold,CSZ,full);
@@ -24534,16 +24539,17 @@ async function buildActionSheetPDF(sid){
     return { e, label, tx, words, st:fitW(st0,font,SSZ,full), same:false, h:HR+(words.length-1)*CLH+SLH+1 };
   };
   // how each row reads on paper, measured
+  let curRec='';      // the line's note (written on the draft screen), printed under its own action
   const measure=list=>list.map(e=>{
     if(e.head) return headOf(e,false);
     const f=e.gap?ital:font, lines=clip(wrap(e.text||'(no description)',f,CSZ,AW),40,f,CSZ,AW);
     const st0=e.gap?'':K([_actionStatus(e.a), String(e.a.priority||'').trim()].filter(Boolean).join(' · '));
     const st=st0?fitW(st0,font,SSZ,AW-(e.own?TAGW+5:0)):'', hasSt=!!(st||e.own);
-    // who: the names as the box will wrap them - a size smaller past three lines - and the row tall enough to show them all
-    const wW=CWS[2]-10, wl=s2=>e.who?wrap(e.who,font,s2,wW).length:0;
-    let ws=8.6, wn=wl(8.6); if(wn>3){ ws=7.2; wn=wl(7.2); }
+    // who: the names at full size as the box will wrap them, and the row tall enough to show them all
+    const ws=8.6, wW=CWS[2]-10, wn=e.who?wrap(e.who,font,ws,wW).length:0;
     const wh=wn ? (8+wn*ws*1.22+4) : 0;
-    return { e, lines, st, hasSt, ws, h:Math.max(MINR, (hasSt?31:19)+(lines.length-1)*CLH, wh) };
+    const note=(e.own && String(curRec||'').trim()) ? clip(wrap('Note: '+String(curRec).trim(),font,SSZ,AW),6,font,SSZ,AW) : [];
+    return { e, lines, st, hasSt, ws, note, h:Math.max(MINR, (hasSt?31:19)+(lines.length-1)*CLH+(note.length?(2+note.length*SLH):0), wh) };
   });
   // the most a unit of rows may be: what a fresh page holds under its kicker, the table's header, a
   // repeated heading and the squeezed comments box
@@ -24556,29 +24562,29 @@ async function buildActionSheetPDF(sid){
   //    its own, opened by the masthead's rule. The last risk's comments box is
   //    squeezed when that is what lets the first of them follow on. ══
   const JOIN=20;
-  const SAVE='Save this file (File > Save, or the download button in your browser viewer) and email it back. Printing it to PDF, or some phone apps, can flatten the boxes - if that happens, send the saved file, or a photo of the printed sheet.';
+  const SAVE='Please save the completed document and return it by email. Printing to PDF or editing in some mobile applications can remove the form fields; if this occurs, please return the saved file or a scanned copy of the completed printed document.';
   const anyH=12+50+paraH(SAVE,7.8,{ gap:2 });
   // the month's quick minutes, then four rows to write in anything else agreed -
   // read back into the quick minutes when the sheet is imported
   const mtgs=risk ? _asQuickMeetings(_asMonthOf(s)) : [];      // the sheet's own month, so it prints the same every time it is downloaded
   const mi=mtgs.map(m=>{ const present=(m.attendees||[]).map(a=>String((a&&a.name)||'').trim()).filter(Boolean), note=String(m.note||'').trim();
-    return { hd:fmtDate(m.date)+' · present: '+(present.length?present.join(', '):'nobody recorded'), note,
-      dec:_sltActions(m).filter(d=>String(d.decision||'').trim()).map(d=>'- '+String(d.decision).trim()+' ('+(String(d.owner||'').trim()||'to be named')+', '+(d.due?fmtDate(d.due):'no date')+') · '+_qmActWord(d)) }; });
-  const NONE='Nothing minuted this month yet.', WR=14+16+11+4*32;
-  const mtH=(x,i)=>(i?12:0)+paraH(x.hd,9.6,{ bold:true, gap:4 })+paraH(x.note||'No notes.',9.4,{ lh:1.45, gap:6 })+x.dec.reduce((a,t)=>a+paraH(t,9.2,{ x:ML+8, lh:1.4, gap:2 }),0)+10;
+    return { hd:fmtDate(m.date)+' · Attendees: '+(present.length?present.join(', '):'not recorded'), note,
+      dec:_sltActions(m).filter(d=>String(d.decision||'').trim()).map(d=>'- '+String(d.decision).trim()+' ('+(String(d.owner||'').trim()||'owner to be confirmed')+', '+(d.due?fmtDate(d.due):'date to be confirmed')+') · '+_qmActWord(d)) }; });
+  const NONE='No meeting notes recorded for this period.', WR=14+16+11+4*32;
+  const mtH=(x,i)=>(i?12:0)+paraH(x.hd,9.6,{ bold:true, gap:4 })+paraH(x.note||'No notes recorded.',9.4,{ lh:1.45, gap:6 })+x.dec.reduce((a,t)=>a+paraH(t,9.2,{ x:ML+8, lh:1.4, gap:2 }),0)+10;
   const meetH=18+30+(mi.length?mi.reduce((a,x,i)=>a+mtH(x,i),0):paraH(NONE,9.4,{ gap:10 }))+WR;
-  const closeH=risk ? meetH : anyH;
+  const closeH=risk ? (meetH+JOIN+anyH) : anyH;      // the meeting record and the general comments stay together - neither left alone on a page
   const opener=h=>{ if(fits(JOIN+h)){ skip(10); const t=take(10); rule(t, INK, 0.8); } else addPage(true); };
 
   groups.forEach((g,gi)=>{
     addPage(true); ctx=null;
     const r=g.r, sc=r?_riskScore(r):{ rating:null, priority:'' }, tg=r?_riskTarget(r):{ rating:null, priority:'' }, ref=gRef(g);
-    const kw=(risk?'Risk ':'Action ')+(gi+1)+' of '+groups.length;
+    const kw=(risk?'Risk ':'Priority ')+(gi+1)+' of '+groups.length;
     { const t=take(18);
       caps(kw+(ref?('    '+ref):'')+(g.items.some(x=>x.it.carriedFrom)?('    carried from '+_asName({ kind:s.kind, no:g.items.find(x=>x.it.carriedFrom).it.carriedFrom }).toLowerCase()):''), ML, t-8, { size:7.6, color:ACC });
-      if(r && typeof _riskFlagOn==='function' && _riskFlagOn(r)){ const tg2=A((typeof _riskMode==='function'&&_riskMode(r)==='ops')?'BUSINESS-CRITICAL':'COULD KILL OR SERIOUSLY INJURE');
+      if(r && typeof _riskFlagOn==='function' && _riskFlagOn(r)){ const tg2=A((typeof _riskMode==='function'&&_riskMode(r)==='ops')?'BUSINESS-CRITICAL':'POTENTIAL FOR SERIOUS INJURY OR FATALITY');
         const tw2=bold.widthOfTextAtSize(tg2,6.6)+12; page.drawRectangle({x:MR-tw2,y:t-13,width:tw2,height:13,color:BAND.Critical}); page.drawText(tg2,{x:MR-tw2+6,y:t-9.2,size:6.6,font:bold,color:WHITE}); } }
-    clip(wrap(gName(g),bold,16,CW),2,bold,16,CW).forEach(ln=>{ const t=take(19.5); page.drawText(ln,{x:ML,y:t-16,size:16,font:bold,color:INK}); });
+    clip(wrap(gName(g),bold,16,CW),3,bold,16,CW).forEach(ln=>{ const t=take(19.5); page.drawText(ln,{x:ML,y:t-16,size:16,font:bold,color:INK}); });
     skip(6);
 
     if(r){
@@ -24594,24 +24600,24 @@ async function buildActionSheetPDF(sid){
           page.drawText(A('Likelihood '+p.l+' x Severity '+p.s),{x:x+10,y:top-58,size:6.8,font,color:GREY}); }
         else { page.drawText(A(none),{x:x+10,y:top-35,size:10.5,font:bold,color:GREY}); wrap(sub,font,7,tw-20).slice(0,2).forEach((ln,k)=>page.drawText(ln,{x:x+10,y:top-47-k*8.5,size:7,font,color:GREY})); }
       };
-      tile(ML,'Where it stands today',sc,'Not rated yet','The score is set on the risk profile.');
-      tile(MR-tw,'Once the control is in place',tg,'No target set','We will agree the target with you.');
+      tile(ML,'Current risk rating',sc,'Not yet rated','To be assessed on the risk profile.');
+      tile(MR-tw,'Target risk rating',tg,'Target not yet set','To be agreed with the leadership team.');
       const sx=ML+tw+20, sw=CW-2*tw-40, by=top-41, bh=11, cw=sw/25;
-      caps('The journey', sx, top-12, { size:6.2, color:ACC });
+      caps('Risk reduction', sx, top-12, { size:6.2, color:ACC });
       for(let n=1;n<=25;n++) page.drawRectangle({x:sx+(n-1)*cw,y:by,width:cw-0.7,height:bh,color:BAND[(typeof _bandFor==='function'?_bandFor(n):'')||'']});
       page.drawText('1',{x:sx,y:by-9,size:6.2,font,color:GREY}); page.drawText('25',{x:sx+sw-font.widthOfTextAtSize('25',6.2),y:by-9,size:6.2,font,color:GREY});
       const px=p=>sx+(p.rating-0.5)*cw;
       if(sc.rating){ const xn=px(sc); tri(xn,by+bh+8,'M -4.5 0 L 4.5 0 L 0 7.5 Z',INK);
-        const lb='TODAY '+sc.rating; page.drawText(lb,{x:Math.max(sx,Math.min(sx+sw-bold.widthOfTextAtSize(lb,6.4),xn-bold.widthOfTextAtSize(lb,6.4)/2)),y:by+bh+12,size:6.4,font:bold,color:INK}); }
+        const lb='CURRENT '+sc.rating; page.drawText(lb,{x:Math.max(sx,Math.min(sx+sw-bold.widthOfTextAtSize(lb,6.4),xn-bold.widthOfTextAtSize(lb,6.4)/2)),y:by+bh+12,size:6.4,font:bold,color:INK}); }
       if(tg.rating){ const xt=px(tg); tri(xt,by-1,'M 0 0 L 4.5 7.5 L -4.5 7.5 Z',ACC);
         const lb='TARGET '+tg.rating; page.drawText(lb,{x:Math.max(sx,Math.min(sx+sw-bold.widthOfTextAtSize(lb,6.4),xt-bold.widthOfTextAtSize(lb,6.4)/2)),y:by-19,size:6.4,font:bold,color:ACC}); }
       if(sc.rating && tg.rating && sc.rating!==tg.rating){ const xn=px(sc), xt=px(tg), d=xt<xn?-1:1, ay=by+bh+3.5;
         page.drawLine({start:{x:xn+d*7,y:ay},end:{x:xt-d*5,y:ay},thickness:1.3,color:INK}); tri(xt,ay,d<0?'M 0 0 L 6 -3.4 L 6 3.4 Z':'M 0 0 L -6 -3.4 L -6 3.4 Z',INK); }
       skip(8);
       const drop=(sc.rating&&tg.rating) ? (tg.rating<sc.rating
-          ? ('Today this risk scores '+sc.rating+' ('+sc.priority+'). With the control below in place it is expected to come down to '+tg.rating+' ('+tg.priority+').')
-          : ('Today this risk scores '+sc.rating+' ('+sc.priority+'). The control below is to hold it there.'))
-        : sc.rating ? ('Today this risk scores '+sc.rating+' ('+sc.priority+'). No target has been set for it yet.') : 'This risk has not been scored yet.';
+          ? ('Current rating '+sc.rating+' ('+sc.priority+'). On completion of the recommended actions, the residual rating is expected to reduce to '+tg.rating+' ('+tg.priority+').')
+          : ('Current rating '+sc.rating+' ('+sc.priority+'). The recommended actions are required to maintain this rating.'))
+        : sc.rating ? ('Current rating '+sc.rating+' ('+sc.priority+'). A target rating has not yet been set.') : 'This risk has not yet been rated.';
       para(drop,9.6,{ bold:true, gap:8 });
 
       // ── what is wrong | who it affects ──
@@ -24620,22 +24626,22 @@ async function buildActionSheetPDF(sid){
       const hz=String(r.hazard||'').trim(), as2=String(r.assocRisk||'').trim(), hm=String(r.harm||'').trim();
       if(hz && hz.toLowerCase()!==String(r.activity||'').trim().toLowerCase()) wrong.push(hz);
       if(as2) wrong.push(as2);
-      if(hm) wrong.push('What could happen: '+hm);
-      if(!wrong.length) wrong.push('The detail of this risk is on your risk profile.');
-      { const t=take(14); caps('What is wrong', ML, t-7, { size:7.2, color:ACC }); }
-      wrong.forEach(t=>para(t,9.4,{ w:lw, lh:1.38, gap:3, max:6 }));
+      if(hm) wrong.push('Potential consequence: '+hm);
+      if(!wrong.length) wrong.push('Further detail is recorded on the risk profile.');
+      { const t=take(14); caps('Hazard and risk', ML, t-7, { size:7.2, color:ACC }); }
+      wrong.forEach(t=>para(t,9.4,{ x:ML+10, w:lw-10, lh:1.38, gap:3, max:6, dot:ML }));
       const leftEnd=y; at(top2);
-      { const t=take(14); caps('Who it affects', rx, t-7, { size:7.2, color:ACC }); }
+      { const t=take(14); caps('Persons at risk', rx, t-7, { size:7.2, color:ACC }); }
       const who=(Array.isArray(r.personsAtRisk)?r.personsAtRisk:[]).filter(Boolean);
       if(who.length) who.slice(0,7).forEach(p=>para(p,9.4,{ x:rx+10, w:rw-10, lh:1.38, gap:1, dot:rx }));
-      else para('Not recorded yet.',9.4,{ x:rx, w:rw, color:GREY });
+      else para('Not yet recorded.',9.4,{ x:rx, w:rw, color:GREY });
       const bi=String(r.businessImpact||'').trim();
-      if(bi){ skip(3); { const t=take(12); caps('What it could cost the business', rx, t-7, { size:6.6 }); } para(bi,8.8,{ x:rx, w:rw, lh:1.36, max:5 }); }
+      if(bi){ skip(3); { const t=take(12); caps('Business impact', rx, t-7, { size:6.6 }); } para(bi,8.8,{ x:rx, w:rw, lh:1.36, max:5 }); }
       const end=Math.min(leftEnd,y); at(end); take(4);
       page.drawLine({start:{x:rx-10,y:top2-2},end:{x:rx-10,y:end},thickness:0.6,color:HAIR});
       rule(y); skip(10);
     } else {
-      para('Where this comes from: '+(g.items[0].it.risk||'the execution plan')+'. No risk score sits behind this action.',9.6,{ color:GREY, gap:10 });
+      para('Raised from: '+(g.items[0].it.risk||'the execution plan')+'. This action is not linked to a rated risk.',9.6,{ color:GREY, gap:10 });
     }
 
     // ── what needs to be done and the control we recommend (the control
@@ -24653,6 +24659,7 @@ async function buildActionSheetPDF(sid){
       // very end stay with the row above them. The unit with the last row
       // takes the comments box with it (squeezed, if that is what keeps it).
       const units=[]; let cur=null, waiting=false;
+      curRec=it.rec||'';
       measure(actRows[n-1]).forEach(m=>{
         if(cur && waiting && (!m.e.head || cur.h+m.h<=UMAX/2)){ cur.rows.push(m); cur.h+=m.h; waiting=m.e.head; return; }
         cur={ rows:[m], h:m.h }; units.push(cur); waiting=m.e.head; });
@@ -24665,28 +24672,12 @@ async function buildActionSheetPDF(sid){
       // over the page; it only moves itself when even one line of each will
       // not fit here
       ctx={ open:kick };
-      const dAll=wrap(it.desc||'(no description)',bold,12.5,CW), rAll=wrap(it.rec||'No recommendation written.',font,10,CW-24);
-      const hh=sp=>14+Math.min(dAll.length,sp[0])*15.6+16+Math.min(rAll.length,sp[1])*13.4+20+10;
-      const STEPS=[[4,18],[4,8],[3,5],[2,3],[1,1]], whole=14+HDR+units.reduce((a,u)=>a+u.h,0)+COMMS;
-      let sp=STEPS.slice(0,4).find(p=>fits(hh(p)+whole)) || STEPS.slice(0,3).find(p=>fits(hh(p)+firstNeed)) || STEPS.find(p=>fits(hh(p)));
-      if(!sp){ brk(); sp=STEPS[0]; }
-      const dLines=clip(dAll,sp[0],bold,12.5,CW), rLines=clip(rAll,sp[1],font,10,CW-24), rh=rLines.length*13.4+20;
-      { const t=take(14); caps('What needs to be done', ML, t-7, { size:7.2, color:ACC }); }
-      dLines.forEach(ln=>{ const t=take(15.6); page.drawText(ln,{x:ML,y:t-12,size:12.5,font:bold,color:INK}); });
-      { const t=take(16); T('Owner: '+(it.owner||'to be named')+'     Target: '+(it.due?fmtDate(it.due):'to be agreed'), ML, t-9.5, 8.4, { color:GREY }); }
-      { const t=take(rh);
-        page.drawRectangle({x:ML,y:t-rh,width:CW,height:rh,color:PANEL});
-        page.drawRectangle({x:ML,y:t-rh,width:4,height:rh,color:ACC});
-        caps('The control we recommend', ML+14, t-12, { size:7, color:ACC });
-        rLines.forEach((ln,j)=>page.drawText(ln,{x:ML+14,y:t-25-j*13.4,size:10,font,color:INK})); }
-      skip(10);
-
-      // ── your actions - tell us what you think ──
+      // ── recommended actions ──
       let segTop=0, cuts=[], lastHead=null, nextU=null;
       // the header row, shaded, with an accent rule under it (repeated on a new page)
       const tHead=()=>{ const t=take(HDR); segTop=t; cuts=[];
         page.drawRectangle({x:ML,y:t-HDR,width:CW,height:HDR,color:PANEL});
-        ['Action','Comments','Who','By when'].forEach((c,i)=>caps(c, CX[i]+(i?7:10), t-(i===3?8.5:12.5), { size:6.8, color:ACC }));
+        ['Recommended action','Comments','Owner','Target date'].forEach((c,i)=>caps(c, CX[i]+(i?7:10), t-(i===3?8.5:12.5), { size:6.8, color:ACC }));
         page.drawText('dd/mm/yyyy',{x:CX[3]+7,y:t-16.5,size:6,font,color:GREY}); };
       // close the table on this page: hairline rows, the accent rule under
       // the header, the outer border, the band's rule down the left
@@ -24711,14 +24702,15 @@ async function buildActionSheetPDF(sid){
         if(m.hasSt){ const sb=b0-(m.lines.length-1)*CLH-11; let sx=ML+24;
           if(e.own){ page.drawRectangle({x:sx,y:sb-2,width:TAGW,height:8.4,color:ACC}); page.drawText(TAG,{x:sx+4,y:sb,size:5.6,font:bold,color:WHITE}); sx+=TAGW+5; }
           if(m.st) page.drawText(m.st,{x:sx,y:sb,size:SSZ,font,color:GREY}); }
+        if(m.note && m.note.length){ const nb=b0-(m.lines.length-1)*CLH-(m.hasSt?11:0)-SLH-2; m.note.forEach((ln,q)=>page.drawText(ln,{x:ML+24,y:nb-q*SLH,size:SSZ,font,color:GREY})); }
         [1,2,3].forEach(i=>page.drawLine({start:{x:CX[i],y:top},end:{x:CX[i],y:top-h},thickness:0.5,color:HAIR}));
         field(f+'cmt',CX[1]+2,top-2,CWS[1]-4,h-4,{ multi:true, size:8.6, bare:true });
         field(f+'who',CX[2]+2,top-2,CWS[2]-4,h-4,{ multi:true, size:(m.ws||8.6), bare:true, text:e.who });
         field(f+'due',CX[3]+2,top-2,CWS[3]-4,h-4,{ multi:true, size:8.6, bare:true, text:_asDMY(e.due) });
         cuts.push(y); };
       keep(firstNeed);                 // the table never starts without its first row
-      { const t=take(14); caps('Your actions - tell us what you think', ML, t-7, { size:7.2, color:ACC });
-        const hint='Who and when come from your plan - change them if they are wrong';
+      { const t=take(14); caps('Recommended actions', ML, t-7, { size:7.2, color:ACC });
+        const hint='Proposed owner and target date shown - amend where required';
         page.drawText(hint,{x:MR-font.widthOfTextAtSize(hint,7),y:t-7,size:7,font,color:GREY}); }
       tHead();
       // a page the table runs on to: the kicker, the header and - when its first row carries on under a
@@ -24738,8 +24730,8 @@ async function buildActionSheetPDF(sid){
       const cTop=take(cg+cp)-cg;
       page.drawRectangle({x:ML,y:cTop-cp,width:CW,height:cp,color:PANEL});
       page.drawRectangle({x:ML,y:cTop-cp,width:4,height:cp,color:ACC});
-      caps(r?'Comments on this risk':'Comments on this action', ML+14, cTop-12, { size:7.2, color:ACC });
-      const ch=r?'Anything else about this risk':'Anything else about this action';
+      caps('Further comments', ML+14, cTop-12, { size:7.2, color:ACC });
+      const ch=r?'Any other observations on this risk':'Any other observations on this action';
       page.drawText(ch,{x:MR-10-font.widthOfTextAtSize(ch,7),y:cTop-12,size:7,font,color:GREY});
       field('as_'+n+'_what',ML+14,cTop-18,CW-24,cp-24,{ multi:true, size:9 });
       ctx=null;
@@ -24749,23 +24741,23 @@ async function buildActionSheetPDF(sid){
 
   // ══ the closing parts (measured above) ══
   if(risk){
-    opener(meetH);
-    { const t=take(18); caps('From the meeting', ML, t-8, { size:7.6, color:ACC }); }
-    { const t=take(30); page.drawText('What came up at the meeting',{x:ML,y:t-19,size:20,font:bold,color:INK}); }
-    ctx={ open:()=>{ const t=take(18); caps('From the meeting (continued)', ML, t-7, { size:7, color:ACC }); } };
+    opener(closeH);
+    { const t=take(18); caps('Meeting record', ML, t-8, { size:7.6, color:ACC }); }
+    { const t=take(30); page.drawText('Matters arising',{x:ML,y:t-19,size:20,font:bold,color:INK}); }
+    ctx={ open:()=>{ const t=take(18); caps('Meeting record (continued)', ML, t-7, { size:7, color:ACC }); } };
     if(!mi.length) para(NONE,9.4,{ color:GREY, gap:10 });
     mi.forEach((x,i)=>{
       keep((i?12:0)+paraH(x.hd,9.6,{ bold:true, gap:4 })+13.6);       // a meeting's heading never sits alone
       if(i){ const t=take(12); rule(t); }
       para(x.hd,9.6,{ bold:true, gap:4 });
-      para(x.note||'No notes.',9.4,{ lh:1.45, gap:6, color:x.note?INK:GREY });
+      para(x.note||'No notes recorded.',9.4,{ lh:1.45, gap:6, color:x.note?INK:GREY });
       x.dec.forEach(t=>para(t,9.2,{ x:ML+8, lh:1.4, gap:2 }));
       skip(10);
     });
     keep(WR);
     { const t=take(14); rule(t); }
-    { const t=take(16); caps('Actions from this meeting - write them here', ML, t-7, { size:7.2, color:ACC }); }
-    { const t=take(11); caps('What', ML, t-7, { size:6.8 }); caps('Who', MR-204, t-7, { size:6.8 }); caps('By when (dd/mm/yyyy)', MR-100, t-7, { size:6.8 }); }
+    { const t=take(16); caps('Additional actions agreed', ML, t-7, { size:7.2, color:ACC }); }
+    { const t=take(11); caps('Action', ML, t-7, { size:6.8 }); caps('Owner', MR-204, t-7, { size:6.8 }); caps('Target date (dd/mm/yyyy)', MR-100, t-7, { size:6.8 }); }
     [1,2,3,4].forEach(q=>{ const t=take(32);
       field('as__m'+q+'_what',ML,t,CW-214,26,{ multi:true, size:9 });
       field('as__m'+q+'_who',MR-204,t,96,20,{ size:9 }); field('as__m'+q+'_due',MR-100,t,100,20,{ size:9 }); });
@@ -24773,7 +24765,7 @@ async function buildActionSheetPDF(sid){
   }
   // ══ anything else ══
   opener(anyH);
-  { const t=take(12); caps('Anything else to tell us', ML, t-7, { size:7.2, color:ACC }); }
+  { const t=take(12); caps('General comments', ML, t-7, { size:7.2, color:ACC }); }
   { const t=take(50); field('as__general',ML,t,CW,44,{ multi:true, size:9 }); }
   para(SAVE,7.8,{ color:GREY, gap:2 });
   _pdfFormFooter(pdf,{ font, W, ML, MR, mid:_asTitle(s) });

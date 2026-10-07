@@ -114,9 +114,9 @@ await inject();
 const shape = names => [...new Set(names.filter(n => !/^as__m\d/.test(n)).map(n => n.replace(/^as_\d+_/, 'as_N_').replace(/^as_N_r\d+_/, 'as_N_rK_')))].sort().join(',');
 const SHAPE = ['as__meta', 'as__general', 'as_N_what', 'as_N_rK_cmt', 'as_N_rK_who', 'as_N_rK_due'].sort().join(',');
 // The headings every sheet of either kind carries, cover and pages alike.
-const HEADS = ['PURPOSE', 'WHAT WE NEED FROM YOU', 'HOW TO READ THE SCORES', 'YOUR ACTIONS - TELL US WHAT YOU THINK', 'COMMENTS ON THIS RISK', 'ANYTHING ELSE TO TELL US'];
+const HEADS = ['PURPOSE', 'RESPONSE REQUIRED', 'RISK RATING KEY', 'RECOMMENDED ACTIONS', 'FURTHER COMMENTS', 'GENERAL COMMENTS'];
 const dmy = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';
-const heads = said => HEADS.filter(h => said.some(x => String(x).trim().toUpperCase() === h)).concat(said.some(x => /AT A GLANCE$/.test(String(x).trim().toUpperCase())) ? ['AT A GLANCE'] : []).join('|');
+const heads = said => HEADS.filter(h => said.some(x => String(x).trim().toUpperCase() === h)).concat(said.some(x => /^SUMMARY OF (PRIORITY )?RISKS$/.test(String(x).trim().toUpperCase())) ? ['AT A GLANCE'] : []).join('|');
 let riskShape = '', riskHeads = '';
 
 // ── 0. what the other builders agreed to provide ──
@@ -401,8 +401,8 @@ if (!sid) await R.done(browser, errors);
   {
     // a later line's page says where the rest of its risk's table is - by RISK n, this being a risk sheet
     const iOf = n => { const i = s.findIndex(x => new RegExp('^RISK ' + n + ' OF ' + t.items + '\\b').test(String(x).trim())); return i < 0 ? Infinity : i; };
-    const notes = s.map((x, i) => ({ x: String(x).trim(), i })).filter(o => /^THE OTHER ACTIONS ON THIS RISK/.test(o.x));
-    const at = (n, f) => notes.filter(o => o.x === 'THE OTHER ACTIONS ON THIS RISK ARE ON THE PAGE FOR RISK ' + f && o.i > iOf(n) && o.i < iOf(n + 1)).length === 1;
+    const notes = s.map((x, i) => ({ x: String(x).trim(), i })).filter(o => /^FURTHER RECOMMENDED ACTIONS FOR THIS RISK/.test(o.x));
+    const at = (n, f) => notes.filter(o => o.x === 'FURTHER RECOMMENDED ACTIONS FOR THIS RISK ARE LISTED UNDER RISK ' + f && o.i > iOf(n) && o.i < iOf(n + 1)).length === 1;
     R.ok(notes.length === 3 && at(4, 1) && at(5, 2) && at(6, 2), 'a later line\'s page says where the rest of its risk\'s table is - on the page for Risk 1 or Risk 2 (' + notes.map(o => o.x).join(' | ') + ')');
   }
   R.ok(!t.names.some(n => /^as__(name|role)$/.test(n) || /^as_\d+_(o_\w+|date|by)$/.test(n)), 'no name or role on the cover, and no what-happened ticks or done / date / by whom boxes');
@@ -420,16 +420,16 @@ if (!sid) await R.done(browser, errors);
   R.ok(s.includes('RISK ACTION SHEET') && !s.includes('TOP 5 ACTIONS'), 'the cover is titled Risk Action Sheet, not Top 5 Actions');
   {
     const U = x => String(x).trim().toUpperCase(), iOf = test => s.findIndex(x => test(U(x)));
-    const iP = iOf(x => x === 'PURPOSE'), iG = iOf(x => /^THE (\d+|ONE) AT A GLANCE$/.test(x)), iW = iOf(x => x === 'WHAT WE NEED FROM YOU'), iH = iOf(x => x === 'HOW TO READ THE SCORES'), iT = iOf(x => x === 'YOUR ACTIONS - TELL US WHAT YOU THINK');
-    R.ok(iP >= 0 && iP < iG && iG < iW && iW < iH && iH < iT, 'the cover reads like a procedure: Purpose, at a glance, What we need from you, How to read the scores - then the pages');
+    const iP = iOf(x => x === 'PURPOSE'), iG = iOf(x => /^SUMMARY OF (PRIORITY )?RISKS$/.test(x)), iW = iOf(x => x === 'RESPONSE REQUIRED'), iH = iOf(x => x === 'RISK RATING KEY'), iT = iOf(x => x === 'RECOMMENDED ACTIONS');
+    R.ok(iP >= 0 && iP < iG && iG < iW && iW < iH && iH < iT, 'the cover reads like a procedure: Purpose, at a glance, Response required, Risk rating key - then the pages');
     R.ok(!s.some(x => /in place today/i.test(x)) && !s.some(x => /what happened/i.test(x)), '"In place today" and "What happened" are gone');
-    R.ok(s.filter(x => U(x) === 'YOUR ACTIONS - TELL US WHAT YOU THINK').length >= t.items && s.filter(x => U(x) === 'COMMENTS ON THIS RISK').length >= t.items, 'every line\'s page has the actions table and Comments on this risk');
+    R.ok(s.filter(x => U(x) === 'RECOMMENDED ACTIONS').length >= t.items && s.filter(x => U(x) === 'FURTHER COMMENTS').length >= t.items, 'every line\'s page has the actions table and Further comments');
   }
   riskShape = shape(t.names); riskHeads = heads(s);
   R.ok(riskShape === SHAPE, 'the form\'s shape, line by line: ' + riskShape);
   R.ok(s.some(x => /^RISK ACTION SHEET 1\s/.test(x)) && s.includes('Risk action sheet 1') && !s.some(x => /TOP 5 ACTION SHEET|Top 5 action sheet/.test(x)), 'every page\'s masthead and footer say Risk action sheet 1');
-  const iFrom = s.indexOf('FROM THE MEETING'), iElse = s.indexOf('ANYTHING ELSE TO TELL US');
-  R.ok(iFrom >= 0 && iFrom < iElse && s.includes('Nothing minuted this month yet.'), 'From the meeting comes before Anything else, and says so when nothing is minuted yet');
+  const iFrom = s.indexOf('MEETING RECORD'), iElse = s.indexOf('GENERAL COMMENTS');
+  R.ok(iFrom >= 0 && iFrom < iElse && s.includes('No meeting notes recorded for this period.'), 'From the meeting comes before Anything else, and says so when nothing is minuted yet');
 }
 {
   const t = await page.evaluate(async sid => {
@@ -540,14 +540,14 @@ if (!qm1) await R.done(browser, errors);
     const b = await __build(sid), m = S.meetings.find(x => x.id === qm1);
     return { said: b.said, fmt: fmtDate(m.date), dues: ACTS.map(a => fmtDate(a.due)) };
   }, sid, qm1, ACTS);
-  const s = t.said, iFrom = s.indexOf('FROM THE MEETING'), iElse = s.indexOf('ANYTHING ELSE TO TELL US');
+  const s = t.said, iFrom = s.indexOf('MEETING RECORD'), iElse = s.indexOf('GENERAL COMMENTS');
   R.ok(iFrom >= 0 && iFrom < iElse, 'the sheet carries From the meeting, before Anything else');
-  R.ok(s.some(x => x.indexOf(t.fmt) >= 0 && /present: .*Jo Fine.*Sam Line/.test(x)), 'each meeting is headed with its date and who was there');
+  R.ok(s.some(x => x.indexOf(t.fmt) >= 0 && /Attendees: .*Jo Fine.*Sam Line/.test(x)), 'each meeting is headed with its date and who was there');
   R.ok(s.includes(NOTE), 'the notes are printed');
   R.ok(ACTS.every((a, i) => s.some(x => x.indexOf(a.what) >= 0 && x.indexOf(a.who) >= 0 && x.indexOf(t.dues[i]) >= 0 && /Not started/.test(x))), 'each action is a line - what, who, by when, and where it stands on the plan, live (Not started)');
   // the second meeting was opened and closed with nothing written: it never happened, so it is not printed
-  R.ok(!s.includes('No notes.') && !s.includes('Nothing minuted this month yet.') && s.filter(x => /present:/.test(x)).length === 1, 'a meeting opened and left empty is not printed - only the one minuted');
-  R.ok(s.some(x => /^ACTIONS FROM THIS MEETING/i.test(x)) && ['WHAT', 'WHO', 'BY WHEN (DD/MM/YYYY)'].every(c => s.some(x => x.toUpperCase() === c)), 'then the rows for the meeting\'s actions, under What, Who and By when');
+  R.ok(!s.includes('No notes recorded.') && !s.includes('No meeting notes recorded for this period.') && s.filter(x => /Attendees:/.test(x)).length === 1, 'a meeting opened and left empty is not printed - only the one minuted');
+  R.ok(s.some(x => /^ADDITIONAL ACTIONS AGREED/i.test(x)) && ['ACTION', 'OWNER', 'TARGET DATE (DD/MM/YYYY)'].every(c => s.some(x => x.toUpperCase() === c)), 'then the rows for the meeting\'s actions, under What, Who and By when');
 }
 
 // ── 9. the sheet comes back, with an action from the meeting written on it ──
@@ -600,7 +600,7 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
 {
   // the meeting with no notes now has actions in it, so it prints - saying No notes.
   const s = await page.evaluate(async sid => (await __build(sid)).said, sid);
-  R.ok(s.includes('No notes.') && s.some(x => /Get the yard gate fixed \(Dave Morley, .+\).*Agreed/.test(x)) && s.filter(x => /present:/.test(x)).length === 2,
+  R.ok(s.includes('No notes recorded.') && s.some(x => /Get the yard gate fixed \(Dave Morley, .+\).*Agreed/.test(x)) && s.filter(x => /Attendees:/.test(x)).length === 2,
     'a meeting with actions and no notes is printed, saying No notes., with its actions as agreed');
 }
 
@@ -644,7 +644,7 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
     out.clash = t5 ? t5.items.map(i => i.key).filter(k => live1.includes(k)) : [];
     if (t5) {
       const b = await __build(t5.id);
-      out.pdf = { m: b.names.filter(n => /^as__m\d/.test(n)).length, from: b.said.includes('FROM THE MEETING'), cover: b.said.includes('TOP 5 ACTIONS'), mast: b.said.some(x => /^TOP 5 ACTION SHEET 1\s/.test(x)), kind: b.meta.kind || '',
+      out.pdf = { m: b.names.filter(n => /^as__m\d/.test(n)).length, from: b.said.includes('MEETING RECORD'), cover: b.said.includes('TOP 5 PRIORITY RISKS'), mast: b.said.some(x => /^TOP 5 ACTION SHEET 1\s/.test(x)), kind: b.meta.kind || '',
         names: b.names, said: b.said, v: b.meta.v, rows: b.meta.rows, ctls: b.meta.ctls, items: t5.items.length };
       const saved = [], keep = window._sltSaveBlob; window._sltSaveBlob = (bl, f) => saved.push(f);
       try { await downloadActionSheet(t5.id); } finally { window._sltSaveBlob = keep; }
@@ -669,7 +669,7 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
     R.ok(!!t.pdf && t5Shape === SHAPE && t5Shape === riskShape && t.pdf.v === 3 && t.pdf.ctls === undefined && Array.isArray(t.pdf.rows) && t.pdf.rows.length === t.pdf.items,
       'both kinds have the same form, line by line - the actions table (v3) and the comments box (' + t5Shape + ')');
     R.ok(t5Heads === all && riskHeads === all, 'and the same cover and pages, heading for heading (' + t5Heads + ' / ' + riskHeads + ')');
-    R.ok(!!t.pdf && t.pdf.said.some(x => /^ACTION 1 OF \d+\b/.test(String(x).trim())) && !t.pdf.said.some(x => /^RISK \d+ OF \d+\b/.test(String(x).trim())), 'the Top 5 sheet\'s pages keep ACTION n OF N');
+    R.ok(!!t.pdf && t.pdf.said.some(x => /^PRIORITY 1 OF \d+\b/.test(String(x).trim())) && !t.pdf.said.some(x => /^RISK \d+ OF \d+\b/.test(String(x).trim())), 'the Top 5 sheet\'s pages are headed PRIORITY n OF N');
   }
   R.ok(/^top-5-action-sheet-1-/.test(t.name || '') && t.t5left === 0, 'it still downloads as top-5-action-sheet-1-..., and it can be deleted (' + t.name + ')');
   R.ok(!!t.r2 && t.r2.kind === 'risk' && !!t.r2.first && t.r2.first.key === t.k2 && t.r2.first.from === 1 && t.r2.first.rec === t.rec2 && t.riskN === 2,

@@ -43,7 +43,7 @@ const t = await page.evaluate(async () => {
 R.ok(t.n === 2, 'the sheet carries both actions on the one risk (' + t.n + ')');
 R.ok(Array.isArray(t.rows) && t.rows[0].length >= 3, 'the first line\'s page has the risk\'s full table: both actions and the gap row (' + (t.rows && t.rows[0].length) + ' rows)');
 R.ok(t.rows && t.rows[1].length === 1 && !!t.rows[1][0].a, 'the second line lists only its own action - no gap row, nothing twice');
-R.ok(t.said.some(x => /OTHER ACTIONS ON THIS RISK ARE ON THE PAGE FOR ACTION 1/.test(x)), 'its page says where the rest of the table is');
+R.ok(t.said.some(x => /FURTHER RECOMMENDED ACTIONS FOR THIS RISK ARE LISTED UNDER PRIORITY 1/.test(x)), 'its page says where the rest of the table is');
 R.ok(!t.names.some(f => /^as_2_r2_/.test(f)), 'the second page has one row of boxes');
 R.ok(/Same risk as line 1/.test(t.screen), 'the draft screen warns on the second line');
 

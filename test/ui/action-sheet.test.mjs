@@ -203,9 +203,9 @@ const UNDER = { 1: [null, null], 2: ['c1', 'c2', 'c3'], 3: [null, null], 4: [nul
 const OWN = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 };
 // a later line on a risk already on the sheet: the line whose page carries the risk's table
 const FIRST = { 4: 2, 5: 3 };
-const NOTE = n => 'THE OTHER ACTIONS ON THIS RISK ARE ON THE PAGE FOR ACTION ' + n;
+const NOTE = n => 'FURTHER RECOMMENDED ACTIONS FOR THIS RISK ARE LISTED UNDER PRIORITY ' + n;
 const dmy = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';
-const GAP = 'No action yet - what will be done?';      // one line in the action column
+const GAP = 'No action identified - please propose';      // one line in the action column
 
 // ── the sheet itself ──
 const pdfPath = path.join(os.tmpdir(), 'action-sheet-test.pdf');
@@ -236,7 +236,7 @@ const BAND = { Critical: 'DC2626', High: 'EA580C', Medium: 'F59E0B', Low: '16A34
   R.ok([1, 3].every(n => rowsOf(n) === 2 && order(n) && same(n)), 'a risk with no controls: its open actions - one taken off the sheet is still a row on its risk’s page, a completed one is not');
   {
     // a later line on a risk already on the sheet: one row, its own action, under a note naming the first line's page
-    const notes = t.said.filter(x => /^THE OTHER ACTIONS ON THIS RISK/.test(x.s.trim()));
+    const notes = t.said.filter(x => /^FURTHER RECOMMENDED ACTIONS FOR THIS RISK/.test(x.s.trim()));
     R.ok([4, 5].every(n => rowsOf(n) === 1 && same(n) && mrows(n).length === 1 && mrows(n)[0].a === ROWS[n][0]),
       'a later line on a risk already on the sheet lists its own action alone - the rescue plan on page 4, the banksman on page 5 - nothing printed twice (' + JSON.stringify([4, 5].map(mrows)) + ')');
     R.ok(notes.length === 2 && [4, 5].every(n => notes.filter(x => x.p === n && x.s.trim() === NOTE(FIRST[n])).length === 1),
@@ -262,17 +262,17 @@ const BAND = { Critical: 'DC2626', High: 'EA580C', Medium: 'F59E0B', Low: '16A34
   }
   // what is printed
   const iOf = test => S_.findIndex(test);
-  const iP = iOf(x => U(x) === 'PURPOSE'), iG = iOf(x => /^THE (\d+|ONE|FIVE) AT A GLANCE$/.test(U(x))), iW = iOf(x => U(x) === 'WHAT WE NEED FROM YOU'), iH = iOf(x => U(x) === 'HOW TO READ THE SCORES'), iT = iOf(x => U(x) === 'YOUR ACTIONS - TELL US WHAT YOU THINK');
-  R.ok(iP >= 0 && iP < iG && iG < iW && iW < iH && iH < iT, 'the cover reads like a procedure: Purpose, the five at a glance, What we need from you, How to read the scores');
+  const iP = iOf(x => U(x) === 'PURPOSE'), iG = iOf(x => /^SUMMARY OF (PRIORITY )?RISKS$/.test(U(x))), iW = iOf(x => U(x) === 'RESPONSE REQUIRED'), iH = iOf(x => U(x) === 'RISK RATING KEY'), iT = iOf(x => U(x) === 'RECOMMENDED ACTIONS');
+  R.ok(iP >= 0 && iP < iG && iG < iW && iW < iH && iH < iT, 'the cover reads like a procedure: Purpose, Summary of priority risks, Response required, Risk rating key');
   const all = S_.join(' ');
   R.ok(['first priority for resource', 'never run on acceptance alone', 'must never sit at 1', 'managed with routine precautions'].every(p => new RegExp(p.replace(/ /g, '\\s+'), 'i').test(all))
     && ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].every(b => all.toUpperCase().indexOf(b) >= 0) && ['16-25', '10-15', '5-9', '1-4'].every(r => all.indexOf(r) >= 0),
     'how to read the scores: the four bands with their ranges, in the risk ladder’s own words');
   R.ok(!S_.some(x => /in place today/i.test(x)) && !S_.some(x => /what happened/i.test(x)), '"In place today" and "What happened" are gone from the sheet');
-  R.ok(S_.filter(x => U(x) === 'YOUR ACTIONS - TELL US WHAT YOU THINK').length >= 5 && S_.filter(x => U(x) === 'COMMENTS ON THIS RISK').length >= 5
-    && ['ACTION', 'COMMENTS', 'WHO'].every(h => S_.some(x => U(x) === h)) && S_.some(x => /^BY WHEN/.test(U(x))) && S_.some(x => /dd\/mm\/yyyy/i.test(x))
-    && S_.filter(x => x.trim() === 'Who and when come from your plan - change them if they are wrong').length >= 5,
-    'every page has Your actions - tell us what you think (Action, Comments, Who, By when), with who and when from the plan, and Comments on this risk');
+  R.ok(S_.filter(x => U(x) === 'RECOMMENDED ACTIONS').length >= 5 && S_.filter(x => U(x) === 'FURTHER COMMENTS').length >= 5
+    && ['RECOMMENDED ACTION', 'COMMENTS', 'OWNER'].every(h => S_.some(x => U(x) === h)) && S_.some(x => /^TARGET DATE/.test(U(x))) && S_.some(x => /dd\/mm\/yyyy/i.test(x))
+    && S_.filter(x => x.trim() === 'Proposed owner and target date shown - amend where required').length >= 5,
+    'every page has Recommended actions (Action, Comments, Who, By when), with who and when from the plan, and Further comments');
   R.ok(!S_.some(x => U(x) === 'YOUR CONTROLS - TELL US WHAT YOU THINK') && !S_.some(x => /The controls are printed - write against each one/.test(x)), 'the controls table is gone');
   const onPage = p => t.said.filter(x => x.p === p).map(x => x.s).join(' ').replace(/\s+/g, ' ');
   R.ok(['Fit edge protection to the loading bay roof', 'Write a rescue plan for harness work'].every(d => onPage(2).indexOf(d) >= 0)
@@ -288,15 +288,15 @@ const BAND = { Critical: 'DC2626', High: 'EA580C', Medium: 'F59E0B', Low: '16A34
   R.ok(onPage(2).indexOf(GAP) >= 0 && [1, 3, 4, 5].every(p => onPage(p).indexOf('No action yet') < 0), 'the permit, with nothing to put it in place, gets a gap row - once, on r1’s first page: ' + GAP);
   {
     // the line's own action is tagged in its row
-    const tag = n => { const own = t.boxes['as_' + n + '_r' + OWN[n] + '_cmt'], tg = t.said.filter(x => x.p === n && x.s.trim() === 'ON THIS SHEET');
+    const tag = n => { const own = t.boxes['as_' + n + '_r' + OWN[n] + '_cmt'], tg = t.said.filter(x => x.p === n && x.s.trim() === 'PRIORITY');
       return tg.length === 1 && !!own && tg[0].y >= own.y - 3 && tg[0].y <= own.y + own.h + 3 && tg[0].x < own.x; };
-    R.ok([1, 2, 3, 4, 5].every(tag), 'the line’s own action carries ON THIS SHEET in its row - the edge protection on page 2, the rescue plan on page 4');
+    R.ok([1, 2, 3, 4, 5].every(tag), 'the line’s own action carries PRIORITY in its row - the edge protection on page 2, the rescue plan on page 4');
   }
-  R.ok([1, 2, 3, 4, 5].every(n => t.said.some(x => x.p === n && new RegExp('^ACTION ' + n + ' OF 5\\b').test(x.s.trim()))), 'each page is headed ACTION n OF 5');
+  R.ok([1, 2, 3, 4, 5].every(n => t.said.some(x => x.p === n && new RegExp('^PRIORITY ' + n + ' OF 5\\b').test(x.s.trim()))), 'each page is headed PRIORITY n OF 5');
   // the colour that shows each risk's level
   {
     const cov = t.said.filter(x => x.p === 0), yOf = test => (cov.find(x => test(U(x.s))) || {}).y;
-    const yG = yOf(x => /AT A GLANCE$/.test(x)), yW = yOf(x => x === 'WHAT WE NEED FROM YOU');
+    const yG = yOf(x => /^SUMMARY OF (PRIORITY )?RISKS$/.test(x)), yW = yOf(x => x === 'RESPONSE REQUIRED');
     const glance = cov.filter(x => yG != null && yW != null && x.y < yG && x.y > yW);
     const num = n => glance.find(x => new RegExp('^0?' + n + '\\.?$').test(x.s.trim())) || {};
     const want = t.bands.map(b => BAND[b] || '');
@@ -304,7 +304,7 @@ const BAND = { Critical: 'DC2626', High: 'EA580C', Medium: 'F59E0B', Low: '16A34
     const bars = t.marks.filter(m => m.p === 0 && m.y < yG && m.y + m.h > yW && m.h >= 16 && ((m.k === 'r' && m.w >= 2.5 && m.w <= 6) || (m.k === 'l' && m.w < 0.5 && m.t >= 2.5 && m.t <= 6)) && Object.values(BAND).includes(m.c))
       .sort((a, b) => b.y - a.y).map(m => m.c);
     R.ok(bars.length >= 5 && want.every((c, i) => bars[i] === c), 'and a bar in its band’s colour down each row’s left edge (' + bars.join(',') + ')');
-    const pg2 = t.said.filter(x => x.p === 2), yT = (pg2.find(x => U(x.s) === 'YOUR ACTIONS - TELL US WHAT YOU THINK') || {}).y, yC = (pg2.find(x => U(x.s) === 'COMMENTS ON THIS RISK') || {}).y;
+    const pg2 = t.said.filter(x => x.p === 2), yT = (pg2.find(x => U(x.s) === 'RECOMMENDED ACTIONS') || {}).y, yC = (pg2.find(x => U(x.s) === 'FURTHER COMMENTS') || {}).y;
     const rule = t.marks.some(m => m.p === 2 && m.c === BAND[t.bands[1]] && m.h >= 30 && ((m.k === 'r' && m.w >= 1.5 && m.w <= 4.5) || (m.k === 'l' && m.w < 0.5 && m.t >= 1.5 && m.t <= 4.5)) && yT != null && yC != null && m.y + m.h <= yT + 2 && m.y >= yC - 2);
     R.ok(rule, 'the actions table carries the risk’s band colour down its left edge');
   }

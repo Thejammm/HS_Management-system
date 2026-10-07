@@ -48,4 +48,31 @@ R.ok(t.risks.length === 5 && t.risks.slice(3).join(',') === 'a,b', 'two short, i
 R.ok(t.why.join(',') === 'tick,tick,tick,ladder,ladder', 'each line knows why it is there (' + t.why.join(',') + ')');
 R.ok(t.tags.slice(0, 3).every(x => /Ticked Top 5/.test(x.t)) && t.tags.slice(3).every(x => /Next highest on the ladder/.test(x.t)), 'and the draft says so on each line');
 
+// ── the ticks come after a sheet was already made (Simon: "no, it's still not working - my ticks are missing") ──
+{
+  const u = await page.evaluate(async () => {
+    delete S.actionSheets;
+    S.riskProfile.forEach(r => { r.sheet = ''; (r.actions || []).forEach(a => { a.top5 = ''; }); });
+    asNewSheet();                                       // sheet 1, before any tick: the top of the ladder
+    const s1 = _asList('top5').slice(-1)[0]; s1.issuedAt = s1.createdAt.slice(0, 10);    // downloaded - with the client
+    const first = s1.items.map(i => i.ref.a);
+    ['f', 'g', 'h'].forEach(id => toggleRiskTop5(id));  // then Simon ticks his Top 5 on the ladder
+    openActionSheets('top5'); await new Promise(x => setTimeout(x, 150));
+    const warn = ((document.querySelector('#asOv .as-ticks') || {}).textContent) || '';
+    const btn = !!document.querySelector('#asOv .as-ticks button');
+    asRebuild(s1.id);                                   // the earlier sheet, rebuilt from the ticks
+    const rebuilt = s1.items.map(i => i.ref.a), issued = s1.issuedAt;
+    s1.issuedAt = s1.createdAt.slice(0, 10);            // sent again
+    asNewSheet();                                       // Next five
+    const s2 = _asList('top5').slice(-1)[0], second = s2.items.map(i => i.ref.a);
+    closeActionSheets();
+    return { first, warn, btn, second, rebuilt, issued };
+  });
+  R.ok(u.first.join(',') === 'a,b,c,d,e', 'a sheet made before any tick is the top of the ladder (' + u.first.join(',') + ')');
+  R.ok(/Ticked Top 5 on the risk ladder but not on this sheet/.test(u.warn) && /Manual handling/.test(u.warn) && /Display screens/.test(u.warn) && /Slips and trips/.test(u.warn) && u.btn,
+    'once risks are ticked, that sheet names the ticks it does not carry and offers to rebuild');
+  R.ok(u.rebuilt.slice(0, 3).join(',') === 'f,g,h' && u.rebuilt.length === 5 && u.issued === '', 'Rebuild re-takes the earlier sheet from the ticks, topped up from the ladder, and makes it a draft to send again (' + u.rebuilt.join(',') + ')');
+  R.ok(!['f', 'g', 'h'].some(id => u.second.indexOf(id) >= 0) && u.second.length > 0, 'the next sheet then moves on down the ladder - an action is never on two Top 5 sheets at once (' + u.second.join(',') + ')');
+}
+
 await R.done(browser, errors);

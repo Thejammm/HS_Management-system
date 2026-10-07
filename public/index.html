@@ -23937,6 +23937,10 @@ function _asSheetHTML(s, latest, ro, dis){
   } else {
     const noAct=(!locked && latest) ? _asTop5Missing() : [];
     gap=noAct.length ? '<div class="as-warn" style="margin:10px 0 0;">In the Top 5 with nothing to send: '+noAct.map(esc).join('; ')+'. '+(noAct.length===1?'It has':'They have')+' no open action - add one on the risk and it is offered here.</div>' : '';
+    // the ladder's ticks have moved on since this sheet was started: say which, and offer to rebuild it
+    const miss=(!locked && latest) ? _asTicksMissing(s) : [];
+    if(miss.length) gap+='<div class="as-warn as-ticks" style="margin:10px 0 0;"><b>Ticked Top 5 on the risk ladder but not on this sheet:</b> '+miss.map(esc).join('; ')+'.'
+      +(ro?'':' <button class="btn btn-outline btn-sm" style="margin-left:6px;" onclick="asRebuild('+sid+')" title="Re-takes this sheet\'s lines from the ladder\'s Top 5 ticks, topped up from the ladder - any notes you have written stay with their actions">↻ Rebuild from the ladder\'s Top 5</button>')+'</div>';
   }
   const foot=ro?'':'<div class="as-foot">'
     +'<button class="btn btn-primary btn-sm" onclick="downloadActionSheet('+sid+')"'+(items.length?'':' disabled')+' title="A fillable PDF - it can also be printed and written on">⭳ '+(s.issuedAt?'Download the sheet again':'Download the sheet to send')+'</button>'
@@ -24152,6 +24156,26 @@ function asAddRiskAction(sid, riskId){
 }
 function asRemoveItem(sid, key){ if(_blockIfReadOnly()) return; const s=_asSheet(sid); if(!s) return; s.items=s.items.filter(i=>i.key!==key); saveData(); _asRender(); }
 function asRec(sid, key, v){ if(_roLocked()) return; const it=_asItem(sid,key); if(!it) return; it.rec=v; scheduleAutoSave(); }
+// The month's ticked Top 5 actions a Top 5 sheet does not carry, named by their risk.
+function _asTicksMissing(s){
+  const on=new Set((s.items||[]).map(i=>i.key));
+  return _top5List(_top5Month()).filter(a=>!on.has(_asKey(a.ref))).map(a=>{ const r=_execRiskOf(a), ref=r?_riskRefOf(r):''; return (ref?(ref+' '):'')+(r?String(r.activity||r.hazard||''):String(a.desc||'')); });
+}
+// Rebuild a Top 5 sheet that has not come back from the ladder's ticks, topped up from the ladder. A note
+// written on a line stays with its action; the sheet goes back to a draft to be downloaded again.
+function asRebuild(sid){
+  if(_blockIfReadOnly()) return;
+  const s=_asSheet(sid); if(!s || _asKindOf(s)!=='top5') return;
+  if((s.items||[]).some(i=>_asHasResp(i) || i.decision)){ showToast('This sheet has come back - start the next one instead','info'); return; }
+  const notes={}; (s.items||[]).forEach(i=>{ if(String(i.rec||'').trim()) notes[i.key]=i.rec; });
+  const picks=_asCandidates(s.id,'top5').slice(0,AS_MAX);
+  if(!picks.length){ showToast('Nothing open on the execution plan to put on a sheet','info'); return; }
+  s.items=picks.map(c=>{ const it=_asItemFrom(c); if(notes[it.key] && !String(it.rec||'').trim()) it.rec=notes[it.key]; return it; });
+  s.issuedAt='';
+  saveData(); _asRender();
+  const t=s.items.filter(i=>i.why==='tick').length;
+  showToast('✓ '+_asName(s)+' rebuilt - '+t+' ticked Top 5'+(s.items.length>t?(', '+(s.items.length-t)+' next highest on the ladder'):'')+'. Download it again to send.','success',7000);
+}
 function asDeleteSheet(sid){
   if(_blockIfReadOnly()) return;
   const s=_asSheet(sid); if(!s) return;

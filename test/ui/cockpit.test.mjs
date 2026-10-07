@@ -24,7 +24,7 @@ await wait(page, 700);
     const rows = _boardModel().rows;
     const want = ['Critical', 'High', 'Medium', 'Low'].map(b => ({ b, n: rows.filter(z => z.sc.priority === b).length }));
     return { txt, want,
-      counted: want.every(w => new RegExp('\\b' + w.n + ' ' + w.b.toUpperCase() + ' · score \\d+-\\d+').test(txt)),
+      counted: want.every(w => new RegExp(w.b.toUpperCase() + '\\s*' + w.n + ' risks?\\b').test(txt)) && /score \d+-\d+/.test(txt),
       demands: /first priority for resource/.test(txt) && /must never sit at 1 · Uncontrolled/.test(txt),
       named: /Fire breaking out at the premises/.test(txt) && /A fall from height during survey work/.test(txt),
       unrated: /1 risk not yet rated/.test(txt),

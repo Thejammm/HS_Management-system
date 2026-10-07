@@ -4303,12 +4303,9 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     @media (max-width:760px){ .slt-act,.slt-add{grid-template-columns:1fr;} .slt-cover,.slt-facts{margin-left:0;} }
     .ckl-headrow{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:-2px 0 8px;}
     .ckl-head{margin-left:auto;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#B45309;}
-    .ckl-line{display:flex;align-items:center;gap:8px;width:100%;}
-    .ckl-ref{flex:0 0 44px;display:flex;}
     .ckl-ref:empty::before{content:'';}
     .ckl-t5{flex:0 0 40px;display:flex;justify-content:center;align-items:center;color:#B45309;font-weight:800;}
     .ckl-t5 input{width:16px;height:16px;margin:0;cursor:pointer;accent-color:#B45309;}
-    .ckl-pick{font-size:11px;font-weight:600;color:#B45309;margin:-3px 48px 2px 52px;overflow-wrap:anywhere;}
     .t5r-row{display:grid;grid-template-columns:20px minmax(0,3fr) minmax(0,1.2fr) 140px minmax(0,1fr) 26px;gap:6px;align-items:center;margin-bottom:6px;}
     .t5r-row input[type=checkbox]{width:16px;height:16px;margin:0;cursor:pointer;accent-color:var(--accent);}
     .t5r-row input:not([type=checkbox]){font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font-family:inherit;width:100%;min-width:0;}
@@ -4348,7 +4345,6 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .ckl-tools{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px;}
     .ckl-tools .btn,.qm .btn,.as-gap .btn{border-radius:0;}
     .qm-stale{margin:10px 0 0;padding:7px 10px;border:1px solid var(--warning-brd);border-left:3px solid var(--warning);background:var(--warning-bg);font-size:12.5px;line-height:1.45;}
-    .ckl-pick{margin-right:96px;}
     .as-kinds{flex-basis:100%;display:flex;gap:4px;flex-wrap:wrap;margin:0 0 6px;}
     .as-kind{padding:5px 12px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:var(--text-muted);font:inherit;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;}
     .as-kind:hover{color:var(--text);}
@@ -4411,6 +4407,58 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .as-rr-g0{background:var(--muted-bg,var(--bg));border-left-color:var(--border);}
     .as-rr-g0 .as-cr-k{color:var(--text-muted);}
     .as-cr-gone{font-size:12px;font-weight:700;color:var(--danger);margin-top:3px;}
+    .ckl{container-type:inline-size;}
+    .ckl-sub{font-size:11.5px;color:var(--text-muted);}
+    .ckl-wrap{border:1px solid var(--border);background:var(--surface);}
+    .ckl-cols,.ckl-line{display:grid;grid-template-columns:62px minmax(0,1fr) 46px 50px 50px;grid-template-areas:"ref main score t5 sh";column-gap:10px;}
+    .ckl-cols{padding:6px 10px 6px 16px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);background:var(--muted-bg);border-bottom:1px solid var(--border);}
+    .ckl-c-ref{grid-area:ref}.ckl-c-risk{grid-area:main}.ckl-c-sc{grid-area:score;text-align:center}.ckl-c-t5{grid-area:t5;text-align:center;color:#B45309}.ckl-c-sh{grid-area:sh;text-align:center;color:var(--accent-dark, var(--accent))}
+    .ckl-band{border-left:4px solid var(--band);}
+    .ckl-band+.ckl-band{border-top:1px solid var(--border);}
+    .ckl-band-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;padding:8px 10px 7px 12px;background:var(--surface);border-bottom:1px solid var(--border);}
+    .ckl-band-n{font-size:12px;font-weight:800;letter-spacing:.07em;color:var(--band);}
+    .ckl-band-c{font-size:12px;font-weight:700;color:var(--text);}
+    .ckl-band-m{flex:1 1 220px;min-width:0;font-size:11.5px;color:var(--text-muted);}
+    .ckl-band-r{font-size:11px;color:var(--text-muted);white-space:nowrap;}
+    .ckl-none{padding:8px 12px;font-size:12px;color:var(--text-muted);}
+    .ckl-line{width:auto;align-items:start;padding:8px 10px 8px 12px;border-top:1px solid var(--border);}
+    .ckl-band-h+.ckl-line{border-top:0;}
+    .ckl-line:hover{background:var(--muted-bg);}
+    .ckl-line.ckl-on5{background:#B453090B;}
+    .ckl-line.ckl-on5:hover{background:#B4530914;}
+    .ckl-line.ckl-ops{outline:1px dashed #64748B;outline-offset:-4px;}
+    .ckl-ref{grid-area:ref;display:flex;padding-top:1px;}
+    .ckl-main{grid-area:main;min-width:0;}
+    .ckl-name{all:unset;display:flex;align-items:baseline;gap:8px;cursor:pointer;max-width:100%;}
+    .ckl-name:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+    .ckl-title{font-size:13.5px;font-weight:600;line-height:1.35;color:var(--text);overflow-wrap:anywhere;}
+    .ckl-name:hover .ckl-title{text-decoration:underline;text-underline-offset:2px;}
+    .ckl-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:0 0 auto;transform:translateY(-1px);margin-right:0;}
+    .ckl-dot-unc{background:#DC2626}.ckl-dot-part{background:#F59E0B}.ckl-dot-ok{background:#16A34A}.ckl-dot-rev{background:#D97706}
+    .ckl-meta{display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px;margin:3px 0 0 16px;}
+    .ckl-cat{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);}
+    .ckl-cat i{display:inline-block;width:7px;height:7px;flex:0 0 auto;}
+    .ckl-opstag{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#475569;border:1px solid #64748B;padding:0 5px;line-height:15px;}
+    .ckl-pick{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;margin:6px 0 0 16px;padding:5px 9px;border-left:3px solid #B45309;background:#B4530910;font-size:inherit;font-weight:400;color:inherit;overflow-wrap:anywhere;}
+    .ckl-pick-k{font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#B45309;white-space:nowrap;}
+    .ckl-pick-t{font-size:12.5px;font-weight:500;color:var(--text);min-width:0;}
+    .ckl-pick-m{font-size:11.5px;color:var(--text-muted);white-space:nowrap;}
+    .ckl-score{grid-area:score;justify-self:center;min-width:32px;height:22px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;}
+    .ckl-t5,.ckl-sh{align-self:start;min-height:22px;}
+    .ckl-t5{grid-area:t5;}
+    .ckl-sh{grid-area:sh;}
+    .ckl-unrated{font-size:11.5px;color:var(--text-muted);padding:8px 0 0;}
+    .ckl-key{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11.5px;color:var(--text-muted);margin-top:10px;}
+    .ckl-key .ckl-dot{margin-right:5px;}
+    .ckl-key-ops{display:inline-block;width:16px;height:10px;border:1px dashed #64748B;margin-right:5px;vertical-align:-1px;}
+    .ckl-key-note{flex-basis:100%;}
+    @container (max-width:600px){
+      .ckl-cols,.ckl-line{grid-template-columns:minmax(0,1fr) 40px 44px 44px;grid-template-areas:"ref score t5 sh" "main main main main";row-gap:4px;}
+      .ckl-c-risk{display:none}
+      .ckl-line{padding:8px 8px 9px 10px;}
+      .ckl-meta,.ckl-pick{margin-left:0;}
+      .ckl-band-m{flex-basis:100%;order:3;}
+    }
     .rar-empty{grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:26px;border:1px dashed var(--border);border-radius:12px;}
     /* Quick links to other apps */
     .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;}
@@ -15195,44 +15243,48 @@ const COCKPIT_WIDGETS = {
       // The Sheet column (Simon, 2026-10-07): the risks for the Risk Action
       // Sheet, as many as he likes - read from the one list the sheet reads.
       const sh=_sheetRisks(m5), shIds=new Set(sh.map(s=>s.id)), tools=!t5ro&&_isConsultantish();
-      const chip=z=>{
-        const pick=_riskTop5Picked(z.r, m5), onSh=shIds.has(z.id);
-        return '<div class="ckl-line"><span class="ckl-ref">'+_riskRefChip(z.r)+'</span>'
-        +'<button type="button" class="ckl-name" onclick="_gotoRisk(\''+z.id+'\')" title="'+(z.unc?'Uncontrolled':(z.part?'No target set':(z.reviewDue?'Controlled - review due':'Controlled as reasonably practicable')))+' - click to open" '
-        +'style="all:unset;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;white-space:normal;overflow-wrap:anywhere;flex:1;min-width:0;color:'+(z.unc||z.part?'var(--text)':(z.reviewDue?'#B45309':'#16A34A'))+';padding:2px 0;">'
-        +'<span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:'+(z.unc?'#DC2626':(z.part?'#F59E0B':(z.reviewDue?'#D97706':'#16A34A')))+';"></span><span>'+esc(z.name)+_macroTagHTML(z.r)+'</span></button>'
-        +'<span class="ckl-t5">'+(t5ro?(pick?'★':'')
-          :('<input type="checkbox" '+(pick?'checked ':'')+'onchange="toggleRiskTop5(\''+z.id+'\')" title="'+(pick?'One of the five for '+esc(_top5MonthLabel(m5))+' - untick to take it off':'Make this one of the five priorities for '+esc(_top5MonthLabel(m5))+' - its most pressing open action is marked on the execution plan')+'">'))+'</span>'
-        +'<span class="ckl-sh">'+(t5ro?(onSh?'★':'')
-          :('<input type="checkbox" '+(onSh?'checked ':'')+'onchange="toggleRiskSheet(\''+z.id+'\')" title="Put this risk on the Risk Action Sheet for '+esc(_top5MonthLabel(m5))+' - as many as you like">'))+'</span></div>'
-        +(pick?('<div class="ckl-pick">Top 5 · '+esc(String(pick.desc||'').slice(0,90))+(pick.owner?(' · '+esc(pick.owner)):'')+(pick.due?(' · by '+esc(fmtDate(pick.due))):'')+'</div>'):''); };
-      // A real ladder: the rails run unbroken down the left (tinted with each
-      // band's colour, so the ladder itself grades red to green), the rung is
-      // a solid bar between them, and an empty rung says so. Each band label
-      // explains what that level DEMANDS - the same rule _holdBreach enforces
-      // - and shows the tenant's own score range, so neither can drift.
+      // Ranked by the current (residual) rating, highest first, inside each band (Simon, 2026-10-07:
+      // "fire seems to be near the bottom but it's one of the most risky things this business does" -
+      // each band held its risks in the order they were added to the register). Ties: the worse
+      // severity, then could kill or seriously injure, then the likelier, then by name.
+      const rank=(a,b)=>((b.sc.rating||0)-(a.sc.rating||0)) || ((+b.sc.s||0)-(+a.sc.s||0))
+        || ((_riskFlagOn(b.r)?1:0)-(_riskFlagOn(a.r)?1:0)) || ((+b.sc.l||0)-(+a.sc.l||0)) || a.name.localeCompare(b.name);
+      // the controls judgement each dot carries (the key at the foot says the same)
+      const ctlOf=z=>z.unc?{ k:'unc', t:'Uncontrolled' }:(z.part?{ k:'part', t:'No residual target set' }:(z.reviewDue?{ k:'rev', t:'Controlled - review due' }:{ k:'ok', t:'Controlled as reasonably practicable' }));
+      // One row a risk: its ref, the risk (title, then its theme - and, for an operational risk, a
+      // dashed outline and its tag: not a health and safety risk), its Top 5 action right under it,
+      // the current score in the band's colour, and the two ticks in columns of their own.
+      const row=(z,band)=>{
+        const pick=_riskTop5Picked(z.r, m5), onSh=shIds.has(z.id), ops=_riskMode(z.r)==='ops', c=ctlOf(z), col=_RISK_PRIO_COLOR[band];
+        const mk=_riskMacroOf(z.r), cat=mk?('<span class="ckl-cat"><i style="background:'+_macroColour(mk)+';"></i>'+esc(_macroName(mk))+'</span>'):'';
+        const meta=(ops?'<span class="ckl-opstag" title="An operational (business) risk - not a health and safety risk">Operational</span>':'')+cat;
+        return '<div class="ckl-line'+(ops?' ckl-ops':'')+(pick?' ckl-on5':'')+'">'
+          +'<span class="ckl-ref">'+_riskRefChip(z.r)+'</span>'
+          +'<div class="ckl-main">'
+            +'<button type="button" class="ckl-name" onclick="_gotoRisk(\''+z.id+'\')" title="'+esc(c.t)+' - click to open">'
+              +'<span class="ckl-dot ckl-dot-'+c.k+'" aria-hidden="true"></span><span class="ckl-title">'+esc(z.name)+'</span></button>'
+            +(meta?('<div class="ckl-meta">'+meta+'</div>'):'')
+            +(pick?('<div class="ckl-pick"><span class="ckl-pick-k">Top 5 action</span><span class="ckl-pick-t">'+esc(String(pick.desc||'').slice(0,160))+'</span>'
+              +((pick.owner||pick.due)?('<span class="ckl-pick-m">'+[pick.owner?esc(pick.owner):'', pick.due?('by '+esc(fmtDate(pick.due))):''].filter(Boolean).join(' · ')+'</span>'):'')+'</div>'):'')
+          +'</div>'
+          +'<span class="ckl-score" style="background:'+col+';" title="Current rating '+esc(String(z.sc.rating||''))+' ('+esc(band)+')'+((z.sc.l&&z.sc.s)?(' - likelihood '+esc(String(z.sc.l))+' x severity '+esc(String(z.sc.s))):'')+'">'+esc(String(z.sc.rating||''))+'</span>'
+          +'<span class="ckl-t5">'+(t5ro?(pick?'★':'')
+            :('<input type="checkbox" '+(pick?'checked ':'')+'onchange="toggleRiskTop5(\''+z.id+'\')" aria-label="Top 5 for '+esc(_top5MonthLabel(m5))+': '+esc(z.name)+'" title="'+(pick?'One of the five for '+esc(_top5MonthLabel(m5))+' - untick to take it off':'Make this one of the five priorities for '+esc(_top5MonthLabel(m5))+' - its most pressing open action is marked on the execution plan')+'">'))+'</span>'
+          +'<span class="ckl-sh">'+(t5ro?(onSh?'★':'')
+            :('<input type="checkbox" '+(onSh?'checked ':'')+'onchange="toggleRiskSheet(\''+z.id+'\')" aria-label="Risk Action Sheet: '+esc(z.name)+'" title="Put this risk on the Risk Action Sheet for '+esc(_top5MonthLabel(m5))+' - as many as you like">'))+'</span>'
+          +'</div>'; };
+      // A band: its level in its colour, how many, what that level demands (the same rule _holdBreach
+      // enforces) and the tenant's own score range - then its risks, worst first. The band's colour
+      // runs down its left edge, so the page still grades red to green as a ladder.
       const MEAN={}, RANGE={};      // _bandRule / _bandRange: the action sheet's legend reads the same two
       ['Critical','High','Medium','Low'].forEach(b=>{ MEAN[b]=_bandRule(b); RANGE[b]=_bandRange(b); });
-      const WASH={ Critical:'2E', High:'24', Medium:'1C', Low:'14' };   // the wash cools down the ladder
-      const rung=(band)=>{ const on=B.rows.filter(z=>z.sc.priority===band);
-        const c=_RISK_PRIO_COLOR[band];
-        const w0='linear-gradient(100deg,'+c+WASH[band]+','+c+'08 62%,transparent)';
-        const w1='linear-gradient(100deg,'+c+'3D,'+c+'12 62%,transparent)';
-        return '<div style="display:flex;align-items:stretch;gap:12px;border-radius:4px;background:'+w0+';transition:background .15s;" onmouseover="this.style.background=\''+w1+'\'" onmouseout="this.style.background=\''+w0+'\'">'
-          +'<div style="flex:0 0 56px;position:relative;min-height:56px;">'
-            +'<div style="position:absolute;left:9px;top:0;bottom:0;width:5px;background:'+c+'55;"></div>'
-            +'<div style="position:absolute;right:9px;top:0;bottom:0;width:5px;background:'+c+'55;"></div>'
-            +'<div style="position:absolute;left:9px;right:9px;top:50%;transform:translateY(-50%);height:10px;border-radius:5px;background:'+c+';box-shadow:0 1px 2px rgba(0,0,0,.18);"></div>'
-          +'</div>'
-          +'<div style="flex:0 0 200px;align-self:center;padding:6px 0;">'
-            +'<div style="font-size:11px;font-weight:800;letter-spacing:.03em;color:'+c+';"><span style="font-size:14px;letter-spacing:0;">'+on.length+'</span> '+band.toUpperCase()
-              +' <span style="font-weight:600;color:var(--text-muted);letter-spacing:0;">\u00b7 score '+RANGE[band]+'</span></div>'
-            +'<div style="font-size:10.5px;color:var(--text-muted);line-height:1.35;margin-top:1px;">'+MEAN[band]+'</div>'
-          +'</div>'
-          +'<div style="display:flex;flex-direction:column;gap:5px;align-items:stretch;flex:1;min-width:0;align-self:center;padding:8px 14px 8px 0;">'
-            +(on.length?on.map(chip).join(''):'<span style="font-size:11.5px;color:var(--text-muted);">None at this level.</span>')+'</div></div>'; };
+      const band=b=>{ const on=B.rows.filter(z=>z.sc.priority===b).sort(rank);
+        return '<section class="ckl-band" style="--band:'+_RISK_PRIO_COLOR[b]+';">'
+          +'<div class="ckl-band-h"><span class="ckl-band-n">'+b.toUpperCase()+'</span><span class="ckl-band-c">'+on.length+' risk'+(on.length!==1?'s':'')+'</span>'
+          +'<span class="ckl-band-m">'+MEAN[b]+'</span><span class="ckl-band-r">score '+RANGE[b]+'</span></div>'
+          +(on.length?on.map(z=>row(z,b)).join(''):'<div class="ckl-none">None at this level.</div>')+'</section>'; };
       const unrated=B.rows.filter(z=>!z.sc.priority);
-      return '<div class="ckx-panel"><h4>Risk ladder</h4><div class="ckl-headrow"><span style="font-size:11px;color:var(--text-muted);">Risk to the business, Critical to Low</span>'
+      return '<div class="ckx-panel ckl"><h4>Risk ladder</h4><div class="ckl-headrow"><span class="ckl-sub">Ranked by current risk rating, highest first</span>'
         +'<span class="ckl-head" title="This month’s five priorities - the same five as the Top 5 on the execution plan">Top 5 · '+n5+' of '+TOP5_MAX+' for '+esc(_top5MonthLabel(m5))+'</span>'
         +'<span class="ckl-head ckl-head-sh" title="The risks on the Risk Action Sheet for '+esc(_top5MonthLabel(m5))+' - tick as many as you like">Sheet · '+sh.length+'</span></div>'
         // One row of tools, so the cockpit is the only screen open in the meeting.
@@ -15240,14 +15292,14 @@ const COCKPIT_WIDGETS = {
           +'<button class="btn btn-outline btn-xs" onclick="openActionSheets(\'top5\')" title="Five actions out to the leadership team with the controls we recommend; their comments, who and by when come back against each control, a decision each">Top 5 action sheet</button>'
           +'<button class="btn btn-outline btn-xs" onclick="openActionSheets(\'risk\')" title="The risks ticked in the Sheet column, one action each with the control you recommend, and what came up at the client meeting">Risk action sheet</button>'
           +'<button class="btn btn-outline btn-xs" onclick="openQuickMinutes()" title="Quick minutes for the client meeting - who is there, notes and actions; Done puts the actions on the plan">✎ Minutes</button></div>'):'')
-        +'<div>'+['Critical','High','Medium','Low'].map(rung).join('')+'</div>'
-        +(unrated.length?('<div style="font-size:11.5px;color:var(--text-muted);padding:8px 0 0;border-top:1px solid var(--border);margin-top:2px;">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name)).join(', ')+'</div>'):'')
-        +'<div style="display:flex;gap:18px;font-size:11.5px;color:var(--text-muted);margin-top:8px;flex-wrap:wrap;">'
-        +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#DC2626;margin-right:5px;"></span>uncontrolled</span>'
-        +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#F59E0B;margin-right:5px;"></span>no residual target set</span>'
-        +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#16A34A;margin-right:5px;"></span>controlled as reasonably practicable</span>'
-        +'<span><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:#D97706;margin-right:5px;"></span>controlled - review due</span>'
-        +'<span>Select a risk to open it.'+(t5ro?'':' Tick up to five as this month’s priorities. Tick the Sheet column for the Risk Action Sheet - as many as you like.')+'</span></div></div>';
+        +'<div class="ckl-wrap"><div class="ckl-cols" aria-hidden="true"><span class="ckl-c-ref">Ref</span><span class="ckl-c-risk">Risk</span><span class="ckl-c-sc">Score</span>'
+        +'<span class="ckl-c-t5" title="This month’s five priorities">Top 5</span><span class="ckl-c-sh" title="The Risk Action Sheet">Sheet</span></div>'
+        +['Critical','High','Medium','Low'].map(band).join('')+'</div>'
+        +(unrated.length?('<div class="ckl-unrated">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name)).join(', ')+'</div>'):'')
+        +'<div class="ckl-key"><span><i class="ckl-dot ckl-dot-unc"></i>uncontrolled</span><span><i class="ckl-dot ckl-dot-part"></i>no residual target set</span>'
+        +'<span><i class="ckl-dot ckl-dot-ok"></i>controlled as reasonably practicable</span><span><i class="ckl-dot ckl-dot-rev"></i>controlled - review due</span>'
+        +'<span><i class="ckl-key-ops"></i>operational risk - not health and safety</span>'
+        +'<span class="ckl-key-note">Select a risk to open it.'+(t5ro?'':' Tick up to five as this month’s priorities. Tick the Sheet column for the Risk Action Sheet - as many as you like.')+'</span></div></div>';
     } },
   boardFive: { id:'boardFive', label:'Putting us at risk today', group:'Board', render:x=>{
       const B=_boardModel(); const H=_holdSummary();

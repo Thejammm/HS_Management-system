@@ -55,7 +55,7 @@ const ladder = () => page.evaluate(() => {
   R.ok(t.marks === 'v2a1:,v2a2:' + month + ',v2a3:', 'ticking a risk marks its most pressing open action - the overdue one, not the later or the done one (' + t.marks + ')');
   R.ok(t.plan === 'Survey every skylight before work starts', 'and it is in the execution plan\'s Top 5');
   R.ok(after.lines.find(l => /fall from height/.test(l.name)).on && /Top 5 · 1 of 5/.test(after.head), 'the tick stays and the head counts it: ' + after.head);
-  R.ok(after.picks.some(p => /Top 5 · Survey every skylight before work starts · Surveyor · by /.test(p)), 'the line says which action is the priority');
+  R.ok(after.picks.some(p => /Top 5 action\s*Survey every skylight before work starts\s*Surveyor · by /.test(p)), 'the line says which action is the priority');
   R.ok(after.lines.map(l => l.name).join('|') === before, 'nothing on the ladder moves when a box is ticked');
   R.ok(/This month.s five priorities[\s\S]*fall from height/.test(after.five), 'the cockpit\'s five priorities shows it straight away');
 }

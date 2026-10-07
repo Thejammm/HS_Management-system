@@ -337,11 +337,15 @@ if (!sid) await R.done(browser, errors);
       { id: 'b2', desc: 'Manual handling training for the stores staff', owner: 'Sam', due: '', status: 'Not started' });
     _asRender();
     const more = [__addFromPlan(sid, 'risk:r2:b1:'), __addFromPlan(sid, 'risk:r2:b2:')];
-    return { opts, first, more, items: _asSheet(sid).items.map(i => i.key) };
+    // the draft screen on each line: the line whose page carries its risk's table, when that is an earlier line
+    const same = _asSheet(sid).items.map((it, i) => { const el = document.getElementById('asI-' + sid + '-' + i), m = /Same risk as line (\d+): its actions table prints once, on that line.s page\. This page lists this action only\./i.exec(el ? el.innerText : '');
+      return m ? +m[1] : 0; });
+    return { opts, first, more, items: _asSheet(sid).items.map(i => i.key), same };
   }, sid);
   R.ok(t.opts.includes('risk:r1:a1:') && !t.opts.some(v => /^risk:(r4|r5|r6|r7):/.test(v)), 'Add from the plan offers the ticked risks\' other actions, and nothing from a risk not ticked');
   R.ok(t.first === 'ok' && t.items[3] === 'risk:r1:a1:', 'r1\'s second action goes on as the fourth line');
   R.ok(t.more.join(',') === 'ok,ok' && t.items.length === 6, 'and on past five - a risk sheet has no cap (' + t.items.length + ' lines)');
+  R.ok(t.same.join(',') === '0,0,0,1,2,2', 'the draft screen warns on each later line on a risk already on the sheet, naming the line whose page carries the table (' + t.same.join(',') + ')');
 }
 {
   const t = await page.evaluate(sid => {
@@ -376,8 +380,11 @@ if (!sid) await R.done(browser, errors);
 // ── 6. the sheet the client works from ──
 {
   const t = await page.evaluate(async sid => { const b = await __build(sid), s = _asSheet(sid); b.items = s.items.length;
-    // each line's risk's open actions, as tab 4 lists them (none of these risks has a control on tab 3)
-    b.want = s.items.map(it => { const r = _execRiskOf({ ref: it.ref }); return ((r && r.actions) || []).filter(a => a && !a.deleted && !a.hideFromPlan && String(a.desc || '').trim() && a.status !== 'Complete' && a.status !== 'Accepted').map(a => a.id); });
+    // each line's risk's open actions, as tab 4 lists them (none of these risks has a control on tab 3) - on
+    // the first line on each risk; a later line on a risk already on the sheet lists its own action alone
+    b.first = s.items.map((it, i) => s.items.findIndex(j => j.ref && it.ref && j.ref.a === it.ref.a));
+    b.want = s.items.map((it, i) => { if (b.first[i] < i) return [it.ref.b];
+      const r = _execRiskOf({ ref: it.ref }); return ((r && r.actions) || []).filter(a => a && !a.deleted && !a.hideFromPlan && String(a.desc || '').trim() && a.status !== 'Complete' && a.status !== 'Accepted').map(a => a.id); });
     return b; }, sid);
   // pdf-lib widens a widget's rectangle by its 0.8 border, so allow a point
   const s = t.said, near = (a, b) => Math.abs(a - b) <= 1;
@@ -386,9 +393,18 @@ if (!sid) await R.done(browser, errors);
   // none of these risks has a control on tab 3, so each line's rows are its risk's open actions
   const lines = Array.from({ length: t.items }, (_, i) => i + 1), want = n => t.want[n - 1] || [];
   R.ok(want(1).join(',') === 'a1,a2' && want(2).join(',') === 'a3,b1,b2' && want(3).length === 1, 'setup: r1 has two open actions, r2 three, r3 the one written on the sheet');
+  R.ok(t.first.join(',') === '0,1,2,0,1,1' && want(4).join(',') === 'a1' && want(5).join(',') === 'b1' && want(6).join(',') === 'b2',
+    'setup: lines 4, 5 and 6 are later lines on r1 and r2 - each lists its own action alone (' + t.first.join(',') + ')');
   R.ok(lines.every(n => want(n).every((a, k) => ['cmt', 'who', 'due'].every(f => t.names.includes('as_' + n + '_r' + (k + 1) + '_' + f))) && !t.names.includes('as_' + n + '_r' + (want(n).length + 1) + '_cmt') && t.names.includes('as_' + n + '_what'))
     && t.names.includes('as__general') && !t.names.some(n => /^as_\d+_c\d+_/.test(n)),
-    'every line has the two-way table - a row for each of its risk\'s open actions, with comments, who and by when - and a comments box, as on the Top 5 sheet');
+    'every line has the two-way table - a row for each of its risk\'s open actions (a later line on the same risk, its own action alone), with comments, who and by when - and a comments box, as on the Top 5 sheet');
+  {
+    // a later line's page says where the rest of its risk's table is - by RISK n, this being a risk sheet
+    const iOf = n => { const i = s.findIndex(x => new RegExp('^RISK ' + n + ' OF ' + t.items + '\\b').test(String(x).trim())); return i < 0 ? Infinity : i; };
+    const notes = s.map((x, i) => ({ x: String(x).trim(), i })).filter(o => /^THE OTHER ACTIONS ON THIS RISK/.test(o.x));
+    const at = (n, f) => notes.filter(o => o.x === 'THE OTHER ACTIONS ON THIS RISK ARE ON THE PAGE FOR RISK ' + f && o.i > iOf(n) && o.i < iOf(n + 1)).length === 1;
+    R.ok(notes.length === 3 && at(4, 1) && at(5, 2) && at(6, 2), 'a later line\'s page says where the rest of its risk\'s table is - on the page for Risk 1 or Risk 2 (' + notes.map(o => o.x).join(' | ') + ')');
+  }
   R.ok(!t.names.some(n => /^as__(name|role)$/.test(n) || /^as_\d+_(o_\w+|date|by)$/.test(n)), 'no name or role on the cover, and no what-happened ticks or done / date / by whom boxes');
   R.ok(t.multiCmt === true && t.multiWhat === true, 'the comments and the comments box take several lines');
   R.ok(t.vals.w11 === 'Dave' && t.vals.d11 === dmy(day(30)) && t.vals.w12 === 'Dave' && t.vals.d12 === dmy(day(-5)) && t.vals.w22 === '' && t.vals.d22 === '',

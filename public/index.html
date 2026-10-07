@@ -23839,7 +23839,7 @@ function _asItemHTML(s, it, i, locked, ro, dis){
   return '<div class="as-item'+(done?' as-done':'')+'" id="asI-'+esc(s.id)+'-'+i+'">'
     +'<div class="as-ih"><span class="as-no">'+(i+1)+'</span><div class="as-desc">'+esc(it.desc||'(no description)')+(it.carriedFrom?(' <span class="as-tag as-out">carried from '+esc(_asName({ kind:s.kind, no:it.carriedFrom }).toLowerCase())+'</span>'):'')+'</div>'
     +((locked||ro)?'':'<button class="trn-x" onclick="asRemoveItem('+sid+','+key+')" title="Take this action off the sheet - it stays on the plan">×</button>')+'</div>'
-    +'<div class="slt-muted as-meta">'+meta+'</div>'+gone+thinMsg
+    +'<div class="slt-muted as-meta">'+meta+'</div>'+gone+thinMsg+((!ro && _asSameRiskBefore(s,it)>=0)?('<div class="as-warn">Same risk as line '+(_asSameRiskBefore(s,it)+1)+': its actions table prints once, on that line\u2019s page. This page lists this action only.</div>'):'')
     +'<div class="slt-lab">Recommended control</div>'+recBox+resp+decide+'</div>';
 }
 // What came back on the second form, a line under each control. An imported
@@ -24251,6 +24251,15 @@ function _asGapText(c){ return AS_GAP; }
 // A control is in place once its row on the control table is Complete: its
 // heading says In place since, and it asks for no action under it.
 function _ctlInPlace(c){ return _actionStatus(c)==='Complete'; }
+// The first earlier line on the same sheet that sits on the same risk, or -1.
+// One answer for the sheet, its import and the draft screen.
+function _asSameRiskBefore(s, it){
+  const sh=s || _asList().find(x=>(x.items||[]).indexOf(it)>=0); if(!sh) return -1;
+  const r=_execRiskOf({ ref:it&&it.ref }); if(!r) return -1;
+  const items=sh.items||[], me=items.indexOf(it);
+  for(let i=0;i<me;i++){ const rx=_execRiskOf({ ref:items[i]&&items[i].ref }); if(rx && rx.id===r.id) return i; }
+  return -1;
+}
 function _asSheetActRows(it){
   const ref=it&&it.ref, r=_execRiskOf({ ref }), own=_execOrigin(ref)||null;
   const live=a=>!!(a && !a.deleted);
@@ -24260,6 +24269,14 @@ function _asSheetActRows(it){
   const row=(a,c,j)=>{ k++; out.push({ head:false, k, a:a||null, c:c||null, aid:a?a.id:null, cid:c?c.id:null, j:j||0,
     text:a?String(a.desc||'').trim():_asGapText(c), who:a?_ownersOf(a).join(', '):'', due:a?String(a.due||''):'', gap:!a, own:!!(a && a===own) }); };
   if(!r){ row(live(own)?own:null, null, 0); return out; }
+  // a later line on a risk already on the sheet: the risk's table prints on the first
+  // line's page; this page lists its own action, under a note saying where the rest are
+  const sh=_asList().find(x=>(x.items||[]).indexOf(it)>=0), before=_asSameRiskBefore(sh, it);
+  if(before>=0){
+    out.push({ head:true, c:null, j:0, text:'', note:'The other actions on this risk are on the page for '+(_asKindOf(sh)==='risk'?'Risk ':'Action ')+(before+1) });
+    if(live(own)) row(own, null, 0);
+    return out;
+  }
   // the risk's open plan actions in tab 4's order (a free action raised
   // against the risk, while it is open, sits with them, at the end)
   const acts=(r.actions||[]).filter(open);
@@ -24507,7 +24524,7 @@ async function buildActionSheetPDF(sid){
   // words' first line when that is no taller, else under them. A page the table runs on to repeats the
   // heading of the rows it carries on with, "(continued)", on one line.
   const headOf=(e,cont)=>{
-    const label=A((e.c?('Control '+e.j):'Not linked to a control')+(cont?' (continued)':'')).toUpperCase(), tx=ML+10+bold.widthOfTextAtSize(label,6.8)+8, full=MR-10-tx;
+    const label=A((e.note?e.note:(e.c?('Control '+e.j):'Not linked to a control'))+(cont?' (continued)':'')).toUpperCase(), tx=ML+10+bold.widthOfTextAtSize(label,6.8)+8, full=MR-10-tx;
     if(!e.c || cont) return { e, label, tx, words:e.c?clip(wrap(e.text,bold,CSZ,full),1,bold,CSZ,full):[], st:'', same:true, h:HR };
     const st0=K(ctlSt(e.c)), stW=font.widthOfTextAtSize(st0,SSZ), sw=full-stW-14;
     const sA=(stW<=full*0.6) ? wrap(e.text,bold,CSZ,sw) : null, uA=wrap(e.text,bold,CSZ,full);

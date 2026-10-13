@@ -640,7 +640,8 @@
     inspection: { label: 'Workplace inspection', qids: ['HS-15'], source: 'Compass inspection' },
     toolbox:    { label: 'Toolbox talk', qids: ['HS-17'], source: 'Toolbox talks' },
     cpd:        { label: 'CPD', qids: ['HS-12', 'QA-05'], source: 'CPD library' },
-    monthly:    { label: 'Monthly figures', qids: ['HS-15', 'HS-18'], source: 'Monthly assurance figures' }
+    monthly:    { label: 'Monthly figures', qids: ['HS-15', 'HS-18'], source: 'Monthly assurance figures' },
+    service:    { label: 'AHS Ltd service', qids: [], source: 'AHS Ltd' }
   };
   function evTagsOf(state, key) { var t = state && state.evidenceTags && state.evidenceTags[key]; return (t && typeof t === 'object') ? t : null; }
   function validQids(list) { return (Array.isArray(list) ? list : []).map(String).filter(function (id) { return !!itemById(id); }); }
@@ -686,6 +687,11 @@
       if (!p || !p.id) return;
       var kind = p.type === 'Toolbox talk' ? 'toolbox' : p.type === 'Training / CPD' ? 'cpd' : null; if (!kind) return;
       push(kind, kind + ':' + p.id, { id: p.id, title: p.title || EV_KINDS[kind].label, dated: p.delivered || '', source: EV_KINDS[kind].source + (p.presenter ? ', ' + p.presenter : ''), file: p.link || '' });
+    });
+    serviceLog(state).forEach(function (e) {
+      if (!e || !e.done) return; var s = serviceOf(e.code);
+      push('service', 'service:' + e.id, { id: e.id, title: (e.title || (s ? s.name : 'Service')) + (e.month ? ', ' + e.month : ''), dated: e.done,
+        qids: s ? s.qids : [], source: 'AHS Ltd service ' + e.code + (e.by ? ', ' + e.by : ''), file: e.link || '' });
     });
     var months = state.monitoring && state.monitoring.months;
     if (months && typeof months === 'object') Object.keys(months).sort().forEach(function (m) {
@@ -773,7 +779,111 @@
     return out.sort(function (a, b) { return String(b.query.at).localeCompare(String(a.query.at)); });
   }
 
+  // ══════════════════════════════════════════════════════════════
+  //  Packages and the service calendar (Monthly tab). The services and the
+  //  three packages are the AHS Accreditation Service costing workbook
+  //  (Services and Costs, Packages), 13 October 2026. Prices are AHS Ltd's to
+  //  enter: there are none here. Each service knows the CAS questions its
+  //  output answers, so a completed service files a dated record into the
+  //  evidence register against them.
+  //    accred.package     { id, start: 'YYYY-MM', off: {code:true}, prices: {code:n}, dayRate }
+  //    accred.serviceLog  [{ id, key, code, due, done, by, title, link }]
+  //  months: the months of the plan year (0 = the start month) a service falls in.
+  // ══════════════════════════════════════════════════════════════
+  var SERVICES = [
+    { code: 'S1', group: 'Set-up and submissions', name: 'Constructionline health check', what: 'We log in, go through every Gold question and expiry date, and show you in red, amber and green what is fine, what is due and what is missing.', who: 'Both', often: 'Once at the start', hours: 4, unit: 'per client', times: 1, answers: 'All sections', qids: [], months: [0] },
+    { code: 'S2', group: 'Set-up and submissions', name: 'Document pack refresh', what: 'We review and rewrite your policies and procedures so they match how your business actually works, with the right address, directors and dates.', who: 'Both', often: 'Once, then yearly', hours: 24, unit: 'per pack', times: 1, answers: 'Policies across all sections', qids: ['HS-02', 'HS-03', 'HS-04', 'HS-06', 'HS-07', 'HS-08'], months: [0] },
+    { code: 'S3', group: 'Set-up and submissions', name: 'Submission and assessor feedback', what: 'We answer the questions, upload the evidence and deal with the assessor’s feedback until each section is verified.', who: 'Both', often: 'As each section expires', hours: 8, unit: 'per renewal', times: 1, answers: 'All sections', qids: [], months: [0], bySection: true },
+    { code: 'S4', group: 'Set-up and submissions', name: 'SSIP / CHAS renewal', what: 'We complete your SSIP assessment so your certificate stays in date. Constructionline needs it for the Health and Safety sections.', who: 'Both', often: 'Yearly', hours: 6, unit: 'per renewal', times: 1, answers: 'H&S Third Party, SSIP', qids: ['SS-01'], months: [0] },
+    { code: 'C1', group: 'Monthly evidence (contractors)', name: 'Site safety inspection and report', what: 'We visit a live site, check it against the rules and give you a dated report with actions. It shows you check and improve safety.', who: 'Contractor', often: 'Monthly', hours: 4, unit: 'per visit', times: 12, answers: 'SSIP Q6 monitoring; Q3.3 adviser advice', qids: ['HS-15', 'HS-11'], months: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
+    { code: 'C2', group: 'Monthly evidence (contractors)', name: 'Toolbox talk pack with signed register', what: 'A ready-to-deliver talk each month on a relevant topic, with a sign-in sheet. It proves you talk to your workforce about safety.', who: 'Contractor', often: 'Monthly', hours: 1, unit: 'per talk', times: 12, answers: 'SSIP Q7.4 consultation', qids: ['HS-17'], months: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
+    { code: 'C3', group: 'Monthly evidence (contractors)', name: 'Quarterly safety meeting', what: 'We chair a short meeting with your supervisors and write the minutes. It is the strongest evidence of two-way consultation and of reviewing performance.', who: 'Contractor', often: 'Quarterly', hours: 3, unit: 'per meeting', times: 4, answers: 'SSIP Q7.4, Q6', qids: ['HS-17', 'HS-15'], months: [2, 5, 8, 11] },
+    { code: 'C4', group: 'Monthly evidence (contractors)', name: 'RAMS and COSHH writing or review', what: 'We write or check the risk assessments, method statements and COSHH assessments for a project. Constructionline wants two recent examples from two projects.', who: 'Contractor', often: 'Per project', hours: 4, unit: 'per project', times: 4, answers: 'SSIP Q10.1, Q10.2', qids: ['CN-01', 'CN-02'], months: [0, 3, 6, 9] },
+    { code: 'C5', group: 'Monthly evidence (contractors)', name: 'Pre-start meeting record', what: 'A simple pre-start form that records who provides welfare and how you will talk to the main contractor. It covers two questions in one document.', who: 'Contractor', often: 'Per project', hours: 1, unit: 'per project', times: 4, answers: 'SSIP Q12 welfare; Q11 two-way communication', qids: ['CN-05', 'CN-04'], months: [0, 3, 6, 9] },
+    { code: 'C6', group: 'Monthly evidence (contractors)', name: 'Accident and near miss figures', what: 'We keep your accident figures up to date every quarter, so the 3-year statistics are ready when needed.', who: 'Contractor', often: 'Quarterly', hours: 1, unit: 'per quarter', times: 4, answers: 'SSIP Q8', qids: ['HS-18'], months: [2, 5, 8, 11] },
+    { code: 'C7', group: 'Monthly evidence (contractors)', name: 'Plant and LOLER check register', what: 'We turn your daily and weekly plant checks into a register that shows equipment is checked and in date.', who: 'Contractor', often: 'Quarterly', hours: 1, unit: 'per quarter', times: 4, answers: 'Supports SSIP Q6', qids: ['HS-15'], months: [2, 5, 8, 11] },
+    { code: 'D1', group: 'Evidence for designers', name: 'CDM designer good practice audit', what: 'We audit one live project against your designer duties and give you a scored report with actions.', who: 'Designer', often: 'Yearly', hours: 6, unit: 'per audit', times: 1, answers: 'Designer HS-15 monitoring', qids: ['HS-15'], months: [6] },
+    { code: 'D2', group: 'Evidence for designers', name: 'Design risk assessment review', what: 'We review your design risk assessment for a project and check that residual risks are passed to the Principal Designer.', who: 'Designer', often: 'Per project', hours: 3, unit: 'per project', times: 2, answers: 'Designer Q10.2, Q10.3', qids: ['DS-02', 'DS-03'], months: [0, 6] },
+    { code: 'D3', group: 'Evidence for designers', name: 'Client duties letter', what: 'A letter for each new project telling your client their legal duties, in plain English, produced from the PDBR app.', who: 'Designer', often: 'Per project', hours: 1, unit: 'per letter', times: 4, answers: 'Designer Q10.1; BSA client awareness', qids: ['DS-01', 'BS-02'], months: [0, 3, 6, 9] },
+    { code: 'D4', group: 'Evidence for designers', name: 'CPD session', what: 'A short training session for your designers, recorded on the CPD app with attendance.', who: 'Designer', often: 'Quarterly', hours: 2, unit: 'per session', times: 4, answers: 'Training matrix CPD; keeping up to date', qids: ['HS-12', 'QA-05'], months: [1, 4, 7, 10] },
+    { code: 'B1', group: 'Evidence for both', name: 'Training matrix and card expiry check', what: 'We keep your training matrix up to date and remind you before cards and certificates run out.', who: 'Both', often: 'Quarterly', hours: 1, unit: 'per quarter', times: 4, answers: 'SSIP Q4, Q5; designer HS-12', qids: ['HS-12', 'HS-13'], months: [1, 4, 7, 10] },
+    { code: 'B2', group: 'Evidence for both', name: 'Legislation and standards bulletin', what: 'A short update on changes to the law and standards, which you log as read. It proves you keep up to date.', who: 'Both', often: 'Quarterly', hours: 0.5, unit: 'per bulletin', times: 4, answers: 'Quality: keeping up to date', qids: ['QA-05'], months: [1, 4, 7, 10] },
+    { code: 'B3', group: 'Evidence for both', name: 'Supervision and instruction log', what: 'A simple log showing that supervisors brief, check and sign off work. Constructionline asks for this under the Building Regulations.', who: 'Both', often: 'Monthly', hours: 0.5, unit: 'per month', times: 12, answers: 'Quality: supervision, instruction and information', qids: ['QA-07'], months: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
+    { code: 'B4', group: 'Evidence for both', name: 'Building Safety Act pack', what: 'A defect reporting register, records of working with other duty holders, and information ready to hand over. The Building Safety Act sections renew every year.', who: 'Both', often: 'Yearly', hours: 6, unit: 'per year', times: 1, answers: 'BSA Building Safety, Fire Precautions', qids: ['BS-02', 'BS-03', 'BS-04', 'BS-10', 'BS-11'], months: [3] },
+    { code: 'B5', group: 'Evidence for both', name: 'Fire awareness training', what: 'We arrange the free CITB fire safety eLearning, or deliver a short session, and file the certificates.', who: 'Both', often: 'Every 3 years', hours: 2, unit: 'per group', times: 1, answers: 'BSA fire training examples', qids: ['BS-12'], months: [2] },
+    { code: 'B6', group: 'Evidence for both', name: 'Carbon data and Carbon Reduction Plan', what: 'We update your carbon figures and Carbon Reduction Plan every year. Main contractors ask for this too.', who: 'Both', often: 'Yearly', hours: 4, unit: 'per year', times: 1, answers: 'Environment & Sustainability', qids: ['EN-05'], months: [9] },
+    { code: 'B7', group: 'Evidence for both', name: 'Annual health and safety review', what: 'A yearly sit-down to review the year, record the advice given and plan the next year.', who: 'Both', often: 'Yearly', hours: 3, unit: 'per year', times: 1, answers: 'SSIP Q3.3 adviser advice; Q6', qids: ['HS-11', 'HS-15'], months: [11] },
+    { code: 'B8', group: 'Evidence for both', name: 'Compass access', what: 'Your own Compass login showing your Constructionline status, what is due and what you need to do.', who: 'Both', often: 'Monthly', hours: 0, unit: 'per month', times: 12, answers: 'Keeps everything in date', qids: [], months: [], noTask: true }
+  ];
+  var PACKAGES = [
+    { id: 'essentials', label: 'Essentials', codes: ['S1', 'S2', 'S3', 'S4', 'B2', 'B7', 'B8'] },
+    { id: 'standard', label: 'Standard', codes: ['S1', 'S2', 'S3', 'S4', 'C1', 'C2', 'C5', 'C6', 'D1', 'D3', 'B1', 'B2', 'B4', 'B7', 'B8'] },
+    { id: 'complete', label: 'Complete', codes: SERVICES.map(function (s) { return s.code; }) }
+  ];
+  function serviceOf(code) { return SERVICES.find(function (s) { return s.code === code; }) || null; }
+  function packageOf(id) { return PACKAGES.find(function (p) { return p.id === id; }) || null; }
+  function pkgCfg(state) {
+    var a = (state && state.accred) || {}, p = (a.package && typeof a.package === 'object') ? a.package : {};
+    return { id: packageOf(p.id) ? p.id : '', start: /^\d{4}-\d{2}$/.test(p.start || '') ? p.start : '', off: (p.off && typeof p.off === 'object') ? p.off : {},
+      prices: (p.prices && typeof p.prices === 'object') ? p.prices : {}, dayRate: p.dayRate };
+  }
+  function serviceLog(state) { var a = (state && state.accred) || {}; return Array.isArray(a.serviceLog) ? a.serviceLog : []; }
+  // The services a client receives: the package's, for the client's role, less any AHS switched off.
+  function clientServices(state) {
+    var c = pkgCfg(state), pk = packageOf(c.id); if (!pk) return [];
+    var roles = askedRoles(cfgOf(state)), set = clSetFor(state);
+    var isD = roles.indexOf('designer') >= 0 || set === 'designer', isC = roles.indexOf('contractor') >= 0 || set === 'contractor';
+    if (!isD && !isC) { isD = true; isC = true; }   // no role yet: show everything the package holds
+    return pk.codes.map(serviceOf).filter(function (s) {
+      if (!s || c.off[s.code]) return false;
+      return s.who === 'Both' || (s.who === 'Contractor' && isC) || (s.who === 'Designer' && isD);
+    });
+  }
+  function num2(v) { var n = parseFloat(String(v == null ? '' : v).replace(/[^\d.]/g, '')); return isNaN(n) ? null : n; }
+  // Price per unit used: the price AHS typed, else hours at the day rate (7.5 hours a day), else nothing.
+  function servicePrice(state, s) {
+    var c = pkgCfg(state), own = num2(c.prices[s.code]), rate = num2(c.dayRate);
+    var each = own != null ? own : (rate != null && s.hours ? Math.round(s.hours * rate / 7.5 * 100) / 100 : null);
+    return { each: each, typed: own != null, yearly: each != null ? Math.round(each * s.times * 100) / 100 : null };
+  }
+  function packageValue(state) {
+    var list = clientServices(state), total = 0, missing = 0;
+    list.forEach(function (s) { var p = servicePrice(state, s); if (p.yearly == null) { if (s.hours) missing++; } else total += p.yearly; });
+    return { yearly: Math.round(total * 100) / 100, monthly: Math.round(total / 12 * 100) / 100, unpriced: missing };
+  }
+  function monthAdd(ym, n) { var y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + String(m + 1).padStart(2, '0'); }
+  function monthEnd(ym) { var y = +ym.slice(0, 4), m = +ym.slice(5, 7); return iso(new Date(Date.UTC(y, m, 0, 12))); }
+  // The calendar for the plan year from the start month: one line per service per occurrence.
+  function serviceSchedule(state, today) {
+    today = today || todayIso();
+    var c = pkgCfg(state); if (!c.id || !c.start) return [];
+    var log = serviceLog(state), out = [];
+    var view = clOn(state) ? clView(state, today) : null;
+    clientServices(state).forEach(function (s) {
+      if (s.noTask) return;
+      var months = s.months.slice();
+      if (s.bySection && view) {
+        // a submission a month before each section's valid until date in the plan year
+        var ms = [];
+        view.blocks.forEach(function (b) { [b.hsValid, b.ssipValid].forEach(function (v) {
+          if (!parse(v)) return; var off = (+v.slice(0, 4) - +c.start.slice(0, 4)) * 12 + (+v.slice(5, 7) - +c.start.slice(5, 7)) - 1;
+          if (off >= 0 && off <= 11 && ms.indexOf(off) < 0) ms.push(off);
+        }); });
+        if (ms.length) months = ms.sort(function (a, b) { return a - b; });
+      }
+      months.forEach(function (off) {
+        var ym = monthAdd(c.start, off), due = monthEnd(ym), key = s.code + '|' + ym;
+        var done = log.find(function (e) { return e && e.key === key && e.done; }) || null;
+        var status = done ? 'done' : due < today ? 'overdue' : ym === today.slice(0, 7) ? 'due' : 'upcoming';
+        out.push({ key: key, code: s.code, name: s.name, month: ym, due: due, status: status, done: done, qids: s.qids.slice(), answers: s.answers });
+      });
+    });
+    return out.sort(function (a, b) { return a.month.localeCompare(b.month) || a.code.localeCompare(b.code); });
+  }
+
   var api = { MASTER: MASTER, AREAS: AREAS, ROLES: ROLES, SCHEMES: SCHEMES, STATUS: STATUS, STATUS_ORDER: STATUS_ORDER, DUE_DAYS: DUE_DAYS,
+    SERVICES: SERVICES, PACKAGES: PACKAGES, serviceOf: serviceOf, packageOf: packageOf, pkgCfg: pkgCfg, clientServices: clientServices, servicePrice: servicePrice,
+    packageValue: packageValue, serviceSchedule: serviceSchedule, serviceLog: serviceLog, monthAdd: monthAdd,
     docVersionKey: docVersionKey, approvalOf: approvalOf, openQueries: openQueries,
     EV_KINDS: EV_KINDS, EV_STALE_MONTHS: EV_STALE_MONTHS, evidenceItems: evidenceItems, evidenceByQuestion: evidenceByQuestion, evFlag: evFlag, evStale: evStale, ssipQOf: ssipQOf,
     FACTS: FACTS, factOfField: factOfField, factDef: factDef, factImpact: factImpact, factConflicts: factConflicts,

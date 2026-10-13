@@ -266,3 +266,66 @@ prove CHAS and SMAS clients see exactly what they saw before.
   with neither is "unversioned".
 - Approve and sign is a logged, confirmed click by the signed-in user, not a drawn
   signature. A drawn signature can be added later without changing the log.
+
+---
+
+## Step 5: Packages and service calendar
+
+**What was built**
+
+- The 23 services and the three packages (Essentials, Standard, Complete) from the
+  costing workbook, in `accred-core.js` (`SERVICES`, `PACKAGES`). The services
+  keep the workbook's code, name, plain-English description, who it is for, how
+  often, hours, unit, times a year and "Constructionline questions it answers".
+  Each also names the CAS questions its output answers (for example, C1 site
+  inspection is HS-15 and HS-11; C2 toolbox talk is HS-17).
+- Company setup: an "AHS Ltd service package" card (consultant), with the package
+  and the month the calendar starts. Stored in `S.accred.package`.
+- Monthly tab: a "Service calendar" card. It shows the year from the start month,
+  built from the package for the client's role, grouped by month, with counts of
+  overdue, due this month, done and planned services. Contractor-only and
+  designer-only services follow the role, and AHS Ltd can switch any service off
+  for one client. The Monthly tab now also shows for a client on a package; for
+  everyone else it is hidden or shown exactly as before.
+- Prices: editable price per unit and day rate fields, with no prices filled in.
+  As in the workbook, a typed price wins; otherwise the hours are priced at the
+  day rate (7.5 hours a day). The yearly value and monthly equivalent of the
+  package follow as prices are typed. Prices are stored per client in
+  `S.accred.package.prices` and `dayRate`.
+- "Mark done" on a service records the date, who and what was produced (and a
+  link) in `S.accred.serviceLog`. The record is filed straight into the evidence
+  register against the service's CAS questions (kind "AHS Ltd service"), so it
+  also counts on the Accreditation tab.
+- S3 (submission and assessor feedback) falls a month before each Constructionline
+  section's valid until date when those are entered, otherwise in the first
+  month.
+
+**How to test**
+
+- `npm test` runs `test/service-calendar.test.mjs`, which covers:
+  - the packages match the workbook ticks;
+  - no default prices; price and day-rate rules;
+  - Standard schedules twelve C1 and twelve C2 for a contractor;
+  - role filter and switch-off;
+  - statuses;
+  - a completed service is a tagged evidence record;
+  - S3 by section expiry.
+- `node test/ui/service-calendar.test.mjs`: choose Standard in Company setup, the
+  Monthly tab appears with twelve inspections and twelve toolbox talks, enter a
+  price, mark an inspection done and find it in the evidence register tagged
+  SSIP Q6.
+
+**Assumptions**
+
+- The month each service falls in (`months`) is set out so the year is spread
+  evenly. Monthly services run every month. Quarterly ones come at the end of
+  each quarter (meetings and figures), or early in it (training, bulletins,
+  CPD). "Per project" services come every three or six months, to match the
+  workbook's times a year. Yearly ones are spread across the year, with the
+  annual review last. Change a service's `months` to move it.
+- Prices are held per client, as the client copy tracker's price list is per
+  client. A practice-wide price list could be added later.
+- B8 Compass access is a monthly charge, not a task, so it is priced but not
+  scheduled.
+- The service calendar is the consultant's to work: the client sees the calendar
+  and the package but cannot enter prices or mark services done.

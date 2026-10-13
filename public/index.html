@@ -3001,6 +3001,32 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ap-send{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .ap-send select{flex:1;min-width:240px;font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:0}
 .ap-reg{font-size:10.5px;font-weight:700;color:#38A8C2;margin-top:2px}
+/* service calendar (Monthly tab) */
+.svc-card .svc-counts,.svc-card .svc-tot{margin:12px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));border:1px solid var(--border)}
+.svc-card .acl-counts div{padding:8px 12px;border-right:1px solid var(--border)}
+.svc-card .acl-counts div:last-child{border-right:0}
+.svc-card .acl-counts b{display:block;font-size:20px;font-weight:800}
+.svc-card .acl-counts span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);font-weight:700}
+.svc-pk{margin:10px 0 14px;border:1px solid var(--border);padding:8px 12px}
+.svc-pk summary{cursor:pointer;font-weight:700;font-size:13px;color:#38A8C2}
+.svc-rate{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;font-size:12.5px}
+.svc-rate label{font-weight:700}
+.svc-rate input,.svc-price{width:110px;font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:0}
+.svc-t td small{max-width:420px}
+.svc-t tr.svc-off td{opacity:.45}
+.svc-t input[type=checkbox]{width:auto;margin:0}
+.svc-cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.svc-month{border:1px solid var(--border)}
+.svc-mh{background:#38A8C2;color:#fff;font-weight:800;font-size:12.5px;padding:6px 10px}
+.svc-line{padding:8px 10px;border-top:1px solid var(--border);font-size:12.5px}
+.svc-line:first-of-type{border-top:0}
+.svc-lt{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.svc-st{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;color:#3A3A3A;background:var(--muted-bg)}
+.svc-st.svc-done{background:#D8EEDA} .svc-st.svc-overdue{background:#F6D6D6} .svc-st.svc-due{background:#FBE8C4}
+.svc-done{font-size:11.5px;color:var(--text-muted);margin-top:4px}
+.svc-form{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.svc-form input{flex:1 1 120px;min-width:0;font:inherit;font-size:12px;padding:4px 6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:0}
+.svc-form input[type=date]{flex:0 0 130px}
 .ev-more summary{cursor:pointer;font-size:12.5px;font-weight:700;color:#38A8C2;margin-bottom:4px}
 .ev-pick{max-height:260px;overflow-y:auto;border:1px solid var(--border);padding:6px 8px;font-size:12px}
 .ev-qa{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:8px 0 3px}
@@ -4806,6 +4832,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
        TAB 3 - MONTHLY REPORT
   ══════════════════════════════════════ -->
   <div id="tab-monthly" class="tab-panel">
+    <div id="serviceCalendar"></div>
     <div class="card no-print" style="margin-bottom:20px;">
       <div class="card-band"><h3><span class="dot">●</span> Report filters</h3></div>
       <div class="card-body">
@@ -6382,7 +6409,7 @@ function switchTab(id) {
   if(id==='cas')      { renderCAS(); }
   if(id==='inspection'){ renderInspectionTypeGrid(); renderActiveInspectionBody(); }
   if(id==='actions')  { renderActions(); renderActionStats(); }
-  if(id==='monthly')  { populateReportLocationFilter(); renderMonthlyReport(); }
+  if(id==='monthly')  { try{ renderServiceCalendar(); }catch(e){ console.error('service calendar', e); } populateReportLocationFilter(); renderMonthlyReport(); }
   if(id==='audit')    { renderAuditSections(); populateAuditForm(); if(typeof renderAuditProgress==='function') renderAuditProgress(); }
   if(id==='setup')    { showSetupTab(); }
   if(id==='admin')    { renderAdminPane(); }
@@ -14480,8 +14507,10 @@ function applyViewMode(){
   const _hasLink = Array.isArray(S.linkedApps) && S.linkedApps.some(l=>l && l.kind==='inspections' && l.remoteTenantId);
   const _hasInspData = (Array.isArray(S.inspections) && S.inspections.length>0) || (Array.isArray(S.actions) && S.actions.length>0);
   const _linkedShow = _hasLink || _hasInspData;
+  // A client on an AHS service package has its service calendar on the Monthly tab.
+  const _hasPkg = !!(S.accred && S.accred.package && S.accred.package.id);
   if(!_linkedShow){
-    ['actions','monthly'].forEach(t=>{ const b=document.querySelector('.tab-btn[data-tab="'+t+'"]'); if(b) b.style.display='none'; });
+    ['actions','monthly'].forEach(t=>{ if(t==='monthly' && _hasPkg) return; const b=document.querySelector('.tab-btn[data-tab="'+t+'"]'); if(b) b.style.display='none'; });
   }
   const _ln=document.getElementById('navLinkedNote'); if(_ln) _ln.style.display=_linkedShow?'':'none';
   // A phase group with every button hidden is an empty box - hide the group.
@@ -14499,7 +14528,7 @@ function applyViewMode(){
     // sent away from it - but NOT the signed-out offline copy, which is the
     // consultant's own. Testing "not a consultant" would have evicted that too.
     const _hideSetup = insp || ((Auth.user()?.role||'consultant') !== 'consultant');
-    if(_at==='inspection' || (_at==='setup' && _hideSetup) || (!_linkedShow && (_at==='actions'||_at==='monthly'))) switchTab(insp?'signoff':'cockpit');
+    if(_at==='inspection' || (_at==='setup' && _hideSetup) || (!_linkedShow && (_at==='actions'||(_at==='monthly'&&!_hasPkg)))) switchTab(insp?'signoff':'cockpit');
   }
   if(insp){ const cp=document.getElementById('consultantPicker'); if(cp) cp.classList.remove('on'); }
   const ib=document.getElementById('inspectorBar'); if(ib) ib.classList.toggle('on', insp && _canSwitchView());
@@ -14912,6 +14941,116 @@ function setFactHeadIsReg(on){
   saveData(); renderCompany();
 }
 
+// ══════════════════════════════════════════════════════════════
+//  SERVICE PACKAGE + CALENDAR - accreditation engine step 5.
+//  The client's AHS Ltd package (Essentials, Standard or Complete, from the
+//  costing workbook) is set in Company setup; the Monthly tab turns it into
+//  the year's calendar. Prices are AHS Ltd's to enter - none are filled in.
+//  Marking a service done files its output into the evidence register
+//  against the CAS questions the service answers (S.accred.serviceLog).
+// ══════════════════════════════════════════════════════════════
+function _pkgState(){ const a = _accredState(); if(!a.package || typeof a.package !== 'object') a.package = {}; return a.package; }
+function _pkgIsConsultant(){ return _apRole() === 'consultant' && !_empView(); }
+function _pkgCard(dis){
+  const A = _acjCore(); if(!A) return '';
+  const c = A.pkgCfg(S), cons = _pkgIsConsultant();
+  if(!cons && !c.id) return '';
+  const btns = A.PACKAGES.map(p => `<button type="button" class="fs-btn" aria-pressed="${c.id === p.id}"${dis || (cons ? '' : ' disabled')} onclick="setPkg('id','${p.id}')">${esc(p.label)}</button>`).join('');
+  return `<div class="card fs-card" id="coPkgCard" style="margin-bottom:16px;"><div class="card-band"><h3>AHS Ltd service package</h3></div><div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;line-height:1.5;">The package AHS Ltd delivers for this client. The Monthly tab turns it into the year's service calendar, and each service done is filed as evidence against the accreditation questions it answers.</div>
+      <div class="co-grid">
+        <div class="co-field"><label>Package</label><div class="fs-seg">${btns}</div></div>
+        <div class="co-field"><label>Calendar starts</label><input type="month" value="${esc(c.start)}"${dis || (cons ? '' : ' disabled')} onchange="setPkg('start',this.value)"></div>
+      </div>
+      ${c.id ? `<div style="margin-top:10px;"><button type="button" class="acj-link" onclick="switchTab('monthly')">Open the service calendar on the Monthly tab</button></div>` : ''}
+    </div></div>`;
+}
+function setPkg(field, v){
+  if(_blockIfReadOnly()) return;
+  const p = _pkgState();
+  if(field === 'id'){ p.id = (p.id === v) ? '' : v; if(p.id && !p.start){ const d = new Date(); p.start = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); } }
+  else p[field] = v;
+  if(!p.id && !p.start && !p.prices && !p.off) delete _accredState().package;
+  saveData(); try{ applyViewMode(); }catch(e){}
+  if(document.getElementById('tab-company').classList.contains('active')) renderCompany(); else renderServiceCalendar();
+}
+function setSvcPrice(code, v){
+  if(_roLocked() || !_pkgIsConsultant()) return;
+  const p = _pkgState(); p.prices = Object.assign({}, p.prices);
+  if(String(v).trim() === '') delete p.prices[code]; else p.prices[code] = v;
+  scheduleAutoSave(); _svcRefreshTotals();
+}
+function setSvcDayRate(v){ if(_roLocked() || !_pkgIsConsultant()) return; const p = _pkgState(); if(String(v).trim() === '') delete p.dayRate; else p.dayRate = v; scheduleAutoSave(); _svcRefreshTotals(true); }
+function toggleSvcOff(code, on){ if(_blockIfReadOnly()) return; const p = _pkgState(); p.off = Object.assign({}, p.off); if(on) delete p.off[code]; else p.off[code] = true; saveData(); renderServiceCalendar(); }
+// Totals change as a price is typed: refresh them, never the box being typed in.
+function _svcRefreshTotals(all){
+  const A = _acjCore(); if(!A) return;
+  const v = A.packageValue(S), m = n => n == null ? '-' : '£' + n.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  const t = document.getElementById('svcTotals'); if(t) t.innerHTML = _svcTotalsInner(A);
+  A.clientServices(S).forEach(s => { const el = document.getElementById('svcY-' + s.code); if(el) el.textContent = m(A.servicePrice(S, s).yearly); if(all){ const u = document.getElementById('svcU-' + s.code); if(u) u.textContent = m(A.servicePrice(S, s).each); } });
+}
+function _svcTotalsInner(A){
+  const v = A.packageValue(S), m = n => '£' + n.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  return `<div><b>${v.yearly ? m(v.yearly) : '-'}</b><span>Yearly value</span></div><div><b>${v.yearly ? m(v.monthly) : '-'}</b><span>Monthly equivalent</span></div><div><b>${v.unpriced}</b><span>Services without a price</span></div>`;
+}
+function renderServiceCalendar(){
+  const el = document.getElementById('serviceCalendar'); if(!el) return;
+  const A = _acjCore(); if(!A){ el.innerHTML = ''; return; }
+  const c = A.pkgCfg(S);
+  if(!c.id){ el.innerHTML = ''; return; }
+  const today = _acjToday(), ro = _roLocked(), cons = _pkgIsConsultant(), pk = A.packageOf(c.id);
+  const list = A.clientServices(S), sched = A.serviceSchedule(S, today);
+  const m = n => n == null ? '-' : '£' + n.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  const all = pk.codes.map(A.serviceOf).filter(s => s && (s.who === 'Both' || list.some(x => x.who === s.who) || c.off[s.code]));
+  const svcRows = all.map(s => {
+    const on = !c.off[s.code], pr = A.servicePrice(S, s);
+    return `<tr class="${on ? '' : 'svc-off'}">
+      <td>${cons && !ro ? `<input type="checkbox"${on ? ' checked' : ''} onchange="toggleSvcOff('${s.code}',this.checked)" title="Deliver this service to this client">` : ''}</td>
+      <td><b>${esc(s.code)}</b></td><td>${esc(s.name)}<small>${esc(s.what)}</small></td><td>${esc(s.who)}</td><td>${esc(s.often)}</td><td>${s.times}</td>
+      <td>${s.qids.length ? s.qids.map(id => `<span class="ev-tag">${esc(_evQidLabel(A, id))}</span>`).join(' ') : `<span class="acj-muted">${esc(s.answers)}</span>`}</td>
+      <td>${cons && !ro ? `<input type="number" min="0" step="0.01" class="svc-price" value="${esc(c.prices[s.code] == null ? '' : c.prices[s.code])}" placeholder="${pr.each != null && !pr.typed ? esc(String(pr.each)) : '£'}" oninput="setSvcPrice('${s.code}',this.value)">` : `<span id="svcU-${s.code}">${m(pr.each)}</span>`}</td>
+      <td id="svcY-${s.code}">${m(pr.yearly)}</td>
+    </tr>`;
+  }).join('');
+  const months = []; sched.forEach(x => { if(months.indexOf(x.month) < 0) months.push(x.month); });
+  const monthLabel = ym => { try{ return new Date(ym + '-01T12:00:00').toLocaleDateString('en-GB', { month:'long', year:'numeric' }); }catch(e){ return ym; } };
+  const chip = st => `<span class="svc-st svc-${st}">${st === 'done' ? 'Done' : st === 'overdue' ? 'Overdue' : st === 'due' ? 'Due this month' : 'Planned'}</span>`;
+  const cal = months.map(ym => `<div class="svc-month"><div class="svc-mh">${esc(monthLabel(ym))}</div>${sched.filter(x => x.month === ym).map(x => {
+      const k = esc(JSON.stringify(x.key));
+      return `<div class="svc-line svc-l-${x.status}"><div class="svc-lt"><b>${esc(x.code)}</b> ${esc(x.name)}${chip(x.status)}</div>
+        ${x.done ? `<div class="svc-done">Done ${esc(fmtDate(x.done.done))}${x.done.by ? ' by ' + esc(x.done.by) : ''}${x.done.title ? ': ' + esc(x.done.title) : ''}. ${x.qids.length ? 'Filed in the evidence register against ' + esc(x.qids.map(id => _evQidLabel(A, id)).join(', ')) + '.' : 'Nothing to file as evidence.'}${cons && !ro ? ` <button type="button" class="acj-link" onclick="undoServiceDone(${k})">Undo</button>` : ''}</div>`
+          : (cons && !ro ? `<div class="svc-form"><input type="date" id="svcD-${esc(x.key.replace(/[^A-Za-z0-9]/g, ''))}" value="${today}"><input type="text" id="svcT-${esc(x.key.replace(/[^A-Za-z0-9]/g, ''))}" placeholder="What was produced, e.g. Site inspection report, Genesis"><input type="text" id="svcL-${esc(x.key.replace(/[^A-Za-z0-9]/g, ''))}" placeholder="Link or file location (optional)"><button class="btn btn-outline btn-xs" onclick="markServiceDone(${k})">Mark done</button></div>` : '')}
+      </div>`; }).join('')}</div>`).join('');
+  const counts = { overdue:0, due:0, done:0 }; sched.forEach(x => { if(counts[x.status] != null) counts[x.status]++; });
+  el.innerHTML = `<div class="card svc-card" style="margin-bottom:20px;"><div class="card-band"><h3><span class="dot">●</span> Service calendar: ${esc(pk.label)} package</h3><span class="badge badge-muted">${sched.length} services this year</span></div>
+    <div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;">The year from ${esc(monthLabel(c.start || today.slice(0, 7)))}, built from the package for this client's role. Marking a service done files what it produced into the evidence register against the questions it answers. Change the package in <button type="button" class="acj-link" onclick="switchTab('company')">Company setup</button>.</div>
+      <div class="acl-counts svc-counts"><div><b>${counts.overdue}</b><span>Overdue</span></div><div><b>${counts.due}</b><span>Due this month</span></div><div><b>${counts.done}</b><span>Done</span></div><div><b>${sched.length - counts.done - counts.overdue - counts.due}</b><span>Planned</span></div></div>
+      <details class="svc-pk"${cons ? '' : ''}><summary>Services and prices (${list.length} in use)</summary>
+        ${cons && !ro ? `<div class="svc-rate"><label>Day rate (£, 7.5 hours)</label><input type="number" min="0" step="1" value="${esc(c.dayRate == null ? '' : c.dayRate)}" placeholder="Not set" oninput="setSvcDayRate(this.value)"><span class="acj-muted">A price per unit typed against a service wins; otherwise the hours are priced at the day rate. No prices are filled in for you.</span></div>` : ''}
+        <div style="overflow-x:auto;"><table class="ev-t svc-t"><thead><tr><th></th><th>Code</th><th>Service</th><th>For</th><th>How often</th><th>Times a year</th><th>Accreditation questions</th><th>Price per unit</th><th>Yearly value</th></tr></thead><tbody>${svcRows}</tbody></table></div>
+        <div class="acl-counts svc-tot" id="svcTotals">${_svcTotalsInner(A)}</div>
+      </details>
+      <div class="svc-cal">${cal || '<div class="acj-muted">Nothing scheduled.</div>'}</div>
+    </div></div>`;
+}
+function markServiceDone(key){
+  if(_blockIfReadOnly()) return;
+  const A = _acjCore(); if(!A) return;
+  const x = A.serviceSchedule(S, _acjToday()).find(y => y.key === key); if(!x) return;
+  const k = key.replace(/[^A-Za-z0-9]/g, ''), g = id => ((document.getElementById(id + k) || {}).value || '').trim();
+  const a = _accredState(); if(!Array.isArray(a.serviceLog)) a.serviceLog = [];
+  const e = { id:'svc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), key, code:x.code, month:x.month, due:x.due, done:g('svcD-') || _acjToday(), by:_actor().name, title:g('svcT-') || x.name, link:g('svcL-') };
+  a.serviceLog.push(e); saveData(); renderServiceCalendar();
+  showToast('✓ ' + x.name + ' done' + (x.qids.length ? ' - filed in the evidence register' : ''), 'success');
+}
+function undoServiceDone(key){
+  if(_blockIfReadOnly()) return;
+  const a = _accredState(); if(!Array.isArray(a.serviceLog)) return;
+  if(!confirm('Undo this service? Its record leaves the evidence register.')) return;
+  a.serviceLog = a.serviceLog.filter(e => e.key !== key); saveData(); renderServiceCalendar();
+}
+
 function renderCompany(){
   const cont = document.getElementById('companyContainer');
   if(!cont) return;
@@ -15010,7 +15149,8 @@ function renderCompany(){
 
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Notes</h3></div><div class="card-body"><div class="co-grid">
       ${ta('notes','Any other useful background','')}
-    </div></div></div>`;
+    </div></div></div>
+    ${_pkgCard(dis)}`;
 }
 function uploadOrgChart(input){
   if(_roLocked()) return;

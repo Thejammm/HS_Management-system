@@ -472,7 +472,7 @@
     return "";
   }
   function clDefaultEvidence(it) {
-    if (it.cas) { var q = byId(it.cas); var t = q.text.replace(/\.$/, ''); return t + '.' + (q.fresh ? ' ' + q.fresh.replace(/\.$/, '') + '.' : ''); }
+    if (it.cas) { var q = byId(it.cas); var t = q.text.replace(/\.$/, ''); return t + (/[?!]$/.test(t) ? '' : '.') + (q.fresh ? ' ' + q.fresh.replace(/\.$/, '') + '.' : ''); }
     if (it.fact) return 'From the client fact sheet.';
     return CL_TYPE_EVIDENCE[it.type] || 'Answer in the portal.';
   }

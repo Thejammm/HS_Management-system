@@ -15,6 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="reports/cl-bank.js"></script>
 <script src="reports/accred-core.js"></script>
+<script src="reports/cl-pack.js"></script>
 <script>/* pdf-lib v1.17.1 (MIT) - inlined so the fillable Discovery Questionnaire builds and imports offline */
 !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t=t||self).PDFLib={})}(this,(function(t){"use strict";
 /*! *****************************************************************************
@@ -2966,7 +2967,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .acl-counts span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);font-weight:700;margin-top:2px}
 .acl-tools{font-size:12px;color:var(--text-muted);margin:12px 0 8px}
 .acl-warn{margin:12px 0 0}
+.acl-pack{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-left:4px solid #38A8C2}
 /* evidence register (Documents tab) */
+.ev-imports{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 0;padding-top:10px;border-top:1px solid var(--border)}
 .ev-card .ev-chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
 .ev-chip{border:1px solid var(--border);background:transparent;color:var(--text);padding:5px 10px;font:inherit;font-size:12px;cursor:pointer;border-radius:0}
 .ev-chip b{font-weight:800}
@@ -33377,6 +33380,11 @@ function renderEvidenceRegister(){
   el.innerHTML = `<div class="card ev-card" style="margin-top:18px;"><div class="card-band"><h3><span class="dot">●</span> Evidence register</h3><span class="badge badge-muted">${items.length} record${items.length === 1 ? '' : 's'}</span></div>
     <div class="card-body">
       <div style="font-size:13px;color:var(--text-muted);line-height:1.5;">Every record with its date, the accreditation questions it answers and where it came from. Site inspections, process assurance visits, toolbox talks, CPD and the monthly figures are tagged by what they are; documents are tagged when they are added or edited. Anything older than ${A.EV_STALE_MONTHS} months is flagged, a month before the 12-month limit.</div>
+      ${ro ? '' : `<div class="ev-imports"><span class="acj-lbl" style="margin:0;">Import from the other AHS apps</span>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('evPdbrPick').click()" title="The Word letters PDBR AllProject Flow made: filed against Q10.1">Client duties letters (PDBR)</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('evDrmPick').click()" title="The DRA workbooks the DRM app exported: filed against Q10.2 and Q10.3">Design risk assessments (DRM)</button>
+        <input type="file" id="evPdbrPick" accept=".docx" multiple style="display:none" onchange="importPdbrLetters(this)">
+        <input type="file" id="evDrmPick" accept=".xlsx" multiple style="display:none" onchange="importDrmDras(this)"></div>`}
       <div class="ev-chips">${chip('all', items.length, 'records')}${chip('stale', stale, 'older than ' + A.EV_STALE_MONTHS + ' months')}${chip('undated', undated, 'without a date')}${chip('untagged', untagged, 'not tagged')}</div>
       ${shown.length ? `<div style="overflow-x:auto;"><table class="ev-t"><thead><tr><th>Record</th><th>Dated</th><th>Source</th><th>Answers</th><th>Flag</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="acj-muted" style="margin:10px 0;">Nothing to show.</div>'}
       ${started ? `<div class="ev-qgrid">
@@ -33387,6 +33395,76 @@ function renderEvidenceRegister(){
     </div></div>`;
 }
 function setEvFilter(k){ _evFilter = (_evFilter === k) ? 'all' : k; renderEvidenceRegister(); }
+// ── Imports from the other AHS apps (accreditation engine step 6) ──
+// Neither app exports its data, so each import reads the files the app makes:
+//   PDBR AllProject Flow: the Word letters, named <project ref>_<template>.docx
+//   DRM: the design risk assessment workbook, DRA_<project no>_<location>_Rev<n>_<date>.xlsx
+// Each file becomes a document in the register, dated and filed against the
+// designer questions: a client duties letter Q10.1 (DS-01, and BS-02 for the
+// Building Safety Act); a design risk assessment Q10.2 and Q10.3 (DS-02, DS-03).
+const _MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+function _isoOf(ms){ const d = new Date(ms); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+// The text of one part inside a .docx (a ZIP): stored or deflated.
+async function _zipPartText(buf, want){
+  const u = new Uint8Array(buf), dv = new DataView(buf); let p = 0;
+  while(p + 30 <= u.length && dv.getUint32(p, true) === 0x04034b50){
+    const method = dv.getUint16(p + 8, true), csize = dv.getUint32(p + 18, true), nlen = dv.getUint16(p + 26, true), xlen = dv.getUint16(p + 28, true);
+    const name = new TextDecoder().decode(u.subarray(p + 30, p + 30 + nlen)), start = p + 30 + nlen + xlen;
+    if(name === want){
+      const data = u.subarray(start, start + csize);
+      if(method === 0) return new TextDecoder().decode(data);
+      if(method === 8 && typeof DecompressionStream !== 'undefined'){ const s = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw')); return await new Response(s).text(); }
+      return '';
+    }
+    if(!csize) break;   // sizes in a trailing descriptor: give up quietly
+    p = start + csize;
+  }
+  return '';
+}
+function _letterDate(text){
+  const m = /\b(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\b/i.exec(text || '');
+  return m ? m[3] + '-' + String(_MONTHS.indexOf(m[2].toLowerCase()) + 1).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0') : '';
+}
+function _importDoc(o){
+  if(!Array.isArray(S.documents)) S.documents = [];
+  let d = S.documents.find(x => x && (x.name || '').trim().toLowerCase() === o.name.toLowerCase());
+  const fresh = !d;
+  if(!d){ d = { id:'doc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), category:o.category || '', owner:'', reviewDate:'', link:'' }; _stamp(d, 'created'); S.documents.push(d); }
+  Object.assign(d, { name:o.name, version:o.version || d.version || '', dated:o.dated || d.dated || '', source:o.source, addedFrom:o.addedFrom });
+  d.qids = Array.from(new Set([].concat(d.qids || [], o.qids)));
+  if(!fresh) _stamp(d, 'updated');
+  return fresh;
+}
+async function importPdbrLetters(input){
+  if(_blockIfReadOnly()) return;
+  const files = [...(input.files || [])]; input.value = ''; if(!files.length) return;
+  let added = 0, updated = 0;
+  for(const f of files){
+    const base = f.name.replace(/\.docx$/i, ''), i = base.indexOf('_');
+    const ref = i > 0 ? base.slice(0, i).replace(/-/g, ' ') : '', title = (i > 0 ? base.slice(i + 1) : base).replace(/-/g, ' ').trim() || 'Client duties letter';
+    let dated = '';
+    try{ dated = _letterDate((await _zipPartText(await f.arrayBuffer(), 'word/document.xml')).replace(/<[^>]+>/g, ' ')); }catch(e){}
+    if(!dated && f.lastModified) dated = _isoOf(f.lastModified);
+    const isNew = _importDoc({ name:title + (ref ? ', ' + ref : ''), dated, qids:['DS-01', 'BS-02'], source:'PDBR AllProject Flow', addedFrom:'PDBR AllProject Flow (' + f.name + ')', category:'' });
+    if(isNew) added++; else updated++;
+  }
+  saveData(); renderDocuments();
+  showToast('✓ ' + (added ? added + ' letter' + (added === 1 ? '' : 's') + ' added' : '') + (added && updated ? ', ' : '') + (updated ? updated + ' updated' : '') + ': filed against Q10.1 (DS-01) and BS-02', 'success');
+}
+async function importDrmDras(input){
+  if(_blockIfReadOnly()) return;
+  const files = [...(input.files || [])]; input.value = ''; if(!files.length) return;
+  let added = 0, updated = 0;
+  for(const f of files){
+    const m = /^DRA_(.*?)_Rev([^_]+)_(\d{4}-\d{2}-\d{2})\.xlsx$/i.exec(f.name);
+    const where = m ? m[1].replace(/_/g, ' ').trim() : f.name.replace(/\.xlsx$/i, '').replace(/[_-]+/g, ' ').trim();
+    const name = 'Design risk assessment' + (where ? ', ' + where : '');
+    const isNew = _importDoc({ name, version:m ? 'Rev ' + m[2] : '', dated:m ? m[3] : (f.lastModified ? _isoOf(f.lastModified) : ''), qids:['DS-02', 'DS-03'], source:'DRM app', addedFrom:'DRM app (' + f.name + ')', category:'' });
+    if(isNew) added++; else updated++;
+  }
+  saveData(); renderDocuments();
+  showToast('✓ ' + (added ? added + ' design risk assessment' + (added === 1 ? '' : 's') + ' added' : '') + (added && updated ? ', ' : '') + (updated ? updated + ' updated' : '') + ': filed against Q10.2 and Q10.3 (DS-02, DS-03)', 'success');
+}
 function openEvTags(key){
   if(_blockIfReadOnly()) return;
   const A = _acjCore(); if(!A) return;
@@ -35969,6 +36047,7 @@ function _aclSectionView(A, ro){
         </div>
       </div>
       ${(() => { const cf = A.factConflicts(S, today); return cf.length ? `<div class="fs-warn acl-warn"><div class="fs-h">Facts that disagree with an answer or a date</div><ul>${cf.map(x => `<li><b>${esc(x.label)}.</b> ${esc(x.text)}</li>`).join('')}</ul><button type="button" class="acj-link" onclick="switchTab('company')">Open the fact sheet in Company setup</button></div>` : ''; })()}
+      ${ro ? '' : `<div class="acl-pack"><button type="button" class="acj-btn pri" onclick="downloadSubmissionPack()">Download the submission pack</button><span class="acj-muted">A ZIP with the AHS tracker, the client copy with its price list, the folders 01 to ${v.set === 'contractor' ? '13' : '12'} and 99 with every tagged record filed, and the client issue PDF (print only).${(S.accred && S.accred.issueRef) ? ' Reference ' + esc(S.accred.issueRef) + '.' : ''}</span></div>`}
       <div class="acl-tools"><button type="button" class="acj-link" onclick="setAclAllOpen(true)">Open every section</button> · <button type="button" class="acj-link" onclick="setAclAllOpen(false)">Close every section</button></div>
       ${blocks}
     </div>
@@ -36003,6 +36082,187 @@ function toggleAclBlock(id){
   _aclOpen[id] = !cur; _keepScroll(renderAccred);
 }
 function setAclAllOpen(on){ const A = _acjCore(); if(!A) return; A.clView(S, _acjToday(), _aclShort()).blocks.forEach(b => { _aclOpen[b.id] = !!on; }); _keepScroll(renderAccred); }
+
+// ══════════════════════════════════════════════════════════════
+//  SUBMISSION PACK - accreditation engine step 6. One ZIP:
+//    00 <short> CL Submission Tracker.xlsx              (the AHS tracker)
+//    00 <short> CL Submission Tracker - Client Copy.xlsx ("AHS Ltd will...", price list)
+//    01 Company Information ... 13 Site Evidence, 99 Do Not Upload - Old Versions
+//       each tagged record filed as a shortcut to where it lives, with an index
+//    Client Issue/  the client copy as a protected PDF (image pages, watermark,
+//       copyright and AI-use footer, print only) and as Excel
+//  Built in the page: the trackers with ExcelJS (loaded from cdnjs when first
+//  needed) through reports/cl-pack.js, the PDF with jsPDF. Compass holds
+//  links to documents, not the files, so a folder holds a shortcut to each.
+// ══════════════════════════════════════════════════════════════
+const _EXCELJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+function _loadScriptOnce(url, globalName){
+  if(window[globalName]) return Promise.resolve(window[globalName]);
+  return new Promise((ok, fail) => {
+    const s = document.createElement('script'); s.src = url; s.async = true;
+    s.onload = () => window[globalName] ? ok(window[globalName]) : fail(new Error(globalName + ' did not load'));
+    s.onerror = () => fail(new Error('Could not load ' + url + ' - check the internet connection'));
+    document.head.appendChild(s);
+  });
+}
+// A plain (stored) ZIP with folders and binary files; names in UTF-8.
+function _packZip(files){
+  const enc = new TextEncoder(), out = [], cen = []; let off = 0;
+  const bytes = d => d == null ? new Uint8Array(0) : typeof d === 'string' ? enc.encode(d) : d instanceof Uint8Array ? d : new Uint8Array(d);
+  const now = new Date(), dt = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate(), tm = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  files.forEach(f => {
+    const nm = enc.encode(f.n), d = bytes(f.d), c = d.length ? _acjCrc32(d) : 0, dir = /\/$/.test(f.n);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true); h.setUint16(10, tm, true); h.setUint16(12, dt, true);
+    h.setUint32(14, c, true); h.setUint32(18, d.length, true); h.setUint32(22, d.length, true); h.setUint16(26, nm.length, true);
+    out.push(new Uint8Array(h.buffer), nm, d);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true); ch.setUint16(12, tm, true); ch.setUint16(14, dt, true);
+    ch.setUint32(16, c, true); ch.setUint32(20, d.length, true); ch.setUint32(24, d.length, true); ch.setUint16(28, nm.length, true); ch.setUint32(38, dir ? 0x10 : 0, true); ch.setUint32(42, off, true);
+    cen.push(new Uint8Array(ch.buffer), nm);
+    off += 30 + nm.length + d.length;
+  });
+  const cenLen = cen.reduce((n, a) => n + a.length, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cenLen, true); e.setUint32(16, off, true);
+  return new Blob([...out, ...cen, new Uint8Array(e.buffer)], { type:'application/zip' });
+}
+// One reference per client, made the first time a pack is issued and kept.
+function _clIssueRef(){
+  const a = _accredState();
+  if(!a.issueRef) a.issueRef = CLPack.issueRef(_aclShort(), _acjToday());
+  return a.issueRef;
+}
+const _AHS_LEGAL = 'AHS Compliance Consulting Ltd';
+function _clIssueFooter(data){ return '© ' + data.year + ' ' + _AHS_LEGAL + '. All rights reserved. Prepared for ' + data.legal + ' only. No part may be copied, altered, shared or used with AI tools without written permission. Ref: ' + data.ref; }
+// The client copy tracker drawn as page images, then the watermark and footer
+// on top, print only. The pages are pictures, so the text cannot be lifted.
+function _clIssuePdf(data){
+  const { jsPDF } = window.jspdf;
+  const W = 2339, H = 1654, ML = 70, MT = 80, MB = 130, TW = W - 2 * ML;
+  const ratio = [5, 40, 46, 46, 20, 16, 14, 14, 14, 10], sum = ratio.reduce((a, b) => a + b, 0), cw = ratio.map(r => r / sum * TW);
+  const FS = 15, LH = 19, PAD = 6, today = data.today;
+  const pastel = { red:'#F8D7DA', amber:'#FFE8B3', green:'#DFF0D8' }, stFill = { client:'#FFF4C2', ahs_sign:'#FFF4C2', ahs:'#D7EEF4', covered:'#DFF0D8', already:'#DFF0D8' };
+  const pages = []; let cv, g, y;
+  const fd = d => /^\d{4}-\d{2}-\d{2}/.test(d || '') ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : (d || '');
+  function wrap(text, width, font){
+    g.font = font; const out = [];
+    String(text == null ? '' : text).split('\n').forEach(par => {
+      let line = '';
+      par.split(/\s+/).forEach(w => { const t = line ? line + ' ' + w : w; if(g.measureText(t).width <= width) line = t; else { if(line) out.push(line); line = w; while(g.measureText(line).width > width && line.length > 1){ let k = line.length; while(k > 1 && g.measureText(line.slice(0, k)).width > width) k--; out.push(line.slice(0, k)); line = line.slice(k); } } });
+      out.push(line);
+    });
+    return out;
+  }
+  function newPage(){ cv = document.createElement('canvas'); cv.width = W; cv.height = H; g = cv.getContext('2d'); g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H); g.textBaseline = 'top'; pages.push(cv); y = MT; }
+  function cellBox(x, w, h, fill){ if(fill){ g.fillStyle = fill; g.fillRect(x, y, w, h); } g.strokeStyle = '#C8C8C8'; g.lineWidth = 1; g.strokeRect(x + .5, y + .5, w, h); }
+  function header(){
+    const heads = ['No', 'Constructionline question', 'Expected evidence', 'Action', 'Status', 'H&S ref (and other sections)', 'Valid until (Constructionline)', 'SSIP ref', 'SSIP valid until (Constructionline)', 'Done'];
+    const font = 'bold ' + FS + 'px Arial', ls = heads.map((h, i) => wrap(h, cw[i] - 2 * PAD, font));
+    const h = Math.max.apply(null, ls.map(l => l.length)) * LH + 2 * PAD; let x = ML;
+    heads.forEach((t, i) => { const tint = (i === 5 || i === 6) ? '#38A8C2' : (i === 7 || i === 8) ? '#8E7CC3' : '#E3EBF0'; cellBox(x, cw[i], h, tint);
+      g.fillStyle = tint === '#E3EBF0' ? '#3A3A3A' : '#FFFFFF'; g.font = font; ls[i].forEach((l, k) => g.fillText(l, x + PAD, y + PAD + k * LH)); x += cw[i]; });
+    y += h;
+  }
+  newPage();
+  g.fillStyle = '#3A3A3A'; g.font = 'bold 26px Arial'; g.fillText(data.short + ' & AHS Ltd: Constructionline Gold, ' + data.month + ' (client copy)', ML, y); y += 50;
+  const lines = data.rows.filter(r => r.type === 'line');
+  const cnt = [[data.short + ' to do', lines.filter(r => !r.done && (r.st === 'client' || r.st === 'ahs_sign')).length, '#FFF4C2'], ['AHS Ltd to do', lines.filter(r => !r.done && r.st === 'ahs').length, '#D7EEF4'],
+    ['Covered or already in Constructionline', lines.filter(r => !r.done && (r.st === 'covered' || r.st === 'already')).length, '#DFF0D8'], ['Ticked done', lines.filter(r => !!r.done).length, '#FFFFFF']];
+  cnt.forEach(c => { const x = ML + cw[0]; cellBox(x, 420, 26, c[2]); g.fillStyle = '#3A3A3A'; g.font = 'bold ' + FS + 'px Arial'; g.fillText(c[0], x + PAD, y + 5); cellBox(x + 420, 320, 26, null); g.font = FS + 'px Arial'; g.fillText(String(c[1]), x + 420 + PAD, y + 5); y += 26; });
+  y += 22; header();
+  data.rows.forEach(r => {
+    if(r.type === 'section'){
+      if(y + 34 + LH * 2 > H - MB){ newPage(); header(); }
+      g.fillStyle = '#38A8C2'; g.fillRect(ML, y, TW, 30); g.fillStyle = '#FFFFFF'; g.font = 'bold 17px Arial'; g.fillText(r.text, ML + PAD, y + 6); y += 30; return;
+    }
+    const vals = [String(r.no), r.q, r.ev, CLPack.willWording(r.act), r.stLabel, r.hsRefs, fd(r.hsValid), r.ssipRefs, fd(r.ssipValid), fd(r.done)];
+    const font = FS + 'px Arial', ls = vals.map((v, i) => wrap(v, cw[i] - 2 * PAD, font));
+    const h = Math.max(1, Math.max.apply(null, ls.map(l => l.length))) * LH + 2 * PAD;
+    if(y + h > H - MB){ newPage(); header(); }
+    let x = ML;
+    vals.forEach((v, i) => {
+      let fill = null;
+      if(i === 4) fill = stFill[r.st] || null;
+      if(i === 5 && r.hsRefs) fill = '#D7EEF4';
+      if(i === 7 && r.ssipRefs) fill = '#E8E4F3';
+      if((i === 6 && (r.hsRefs || r.hsValid)) || (i === 8 && (r.ssipRefs || r.ssipValid))){ const d = i === 6 ? r.hsValid : r.ssipValid; if(d) fill = pastel[AccredCore.clExpiry(/^\d{4}/.test(d) ? d : '', today).k]; }
+      cellBox(x, cw[i], h, fill); g.fillStyle = '#3A3A3A'; g.font = font;
+      ls[i].forEach((l, k) => { const tx = (i === 0) ? x + cw[i] - PAD - g.measureText(l).width : (i === 6 || i === 8 || i === 9) ? x + (cw[i] - g.measureText(l).width) / 2 : x + PAD; g.fillText(l, tx, y + PAD + k * LH); });
+      x += cw[i];
+    });
+    y += h;
+  });
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4', compress:true,
+    encryption:{ userPassword:'', ownerPassword:'AHS-' + Math.random().toString(36).slice(2) + Date.now().toString(36), userPermissions:['print'] } });
+  doc.setProperties({ title: data.short + ' CL Submission Tracker - Client Issue', subject: 'Prepared for ' + data.legal + ' | Ref ' + data.ref, author: _AHS_LEGAL, creator: 'AHS Compass' });
+  const foot = _clIssueFooter(data), ang = 28, rad = ang * Math.PI / 180;
+  pages.forEach((p, i) => {
+    if(i) doc.addPage('a4', 'landscape');
+    doc.addImage(p.toDataURL('image/jpeg', 0.86), 'JPEG', 0, 0, 297, 210, undefined, 'FAST');
+    // the watermark: the company, the client and the reference, across the page
+    try{ doc.saveGraphicsState(); doc.setGState(new doc.GState({ opacity:0.12 })); }catch(e){}
+    doc.setTextColor(120, 120, 120);
+    [[_AHS_LEGAL, 46, 0], ['Prepared for ' + data.legal + ' | Ref ' + data.ref, 18, 16]].forEach(([t, sz, dy]) => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(sz);
+      const w = doc.getTextWidth(t), cx = 148.5 + Math.sin(rad) * dy, cy = 105 + Math.cos(rad) * dy;
+      doc.text(t, cx - Math.cos(rad) * w / 2, cy + Math.sin(rad) * w / 2, { angle: ang });
+    });
+    try{ doc.restoreGraphicsState(); }catch(e){}
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(90, 90, 90);
+    doc.text(foot, 8, 205);
+  });
+  return new Uint8Array(doc.output('arraybuffer'));
+}
+async function buildSubmissionPack(){
+  const A = _acjCore(); if(!A || typeof CLPack === 'undefined') throw new Error('the accreditation files did not load');
+  if(!A.clOn(S)) throw new Error('tick Constructionline and a role at step 01 first');
+  const ExcelJS = await _loadScriptOnce(_EXCELJS_URL, 'ExcelJS');
+  const today = _acjToday(), ref = _clIssueRef();
+  const data = CLPack.packData(A, S, today, { ref });
+  const bufA = await CLPack.buildTracker(ExcelJS, data, false, A).xlsx.writeBuffer();
+  const bufC = await CLPack.buildTracker(ExcelJS, data, true, A).xlsx.writeBuffer();
+  const pdf = _clIssuePdf(data);
+  const short = CLPack.safeName(data.short), root = short + ' CL Submission ' + data.year + '/';
+  const files = [{ n:root }];
+  files.push({ n:root + '00 ' + short + ' CL Submission Tracker.xlsx', d:bufA });
+  files.push({ n:root + '00 ' + short + ' CL Submission Tracker - Client Copy.xlsx', d:bufC });
+  const used = {};
+  data.folders.forEach(f => {
+    files.push({ n:root + f + '/' });
+    const mine = data.files.filter(x => x.folder === f);
+    if(!mine.length) return;
+    const lines = [f, '', 'Filed by AHS Compass on ' + fmtDate(today) + ' for ' + data.legal + ' (ref ' + ref + ').', f === '99 Do Not Upload - Old Versions' ? 'These records are more than 12 months old. Keep them, but do not upload them.' : 'Each record below has a shortcut in this folder to where the file lives. Put the file itself here before uploading.', ''];
+    mine.forEach(x => {
+      const it = x.item;
+      lines.push(it.title, '  Dated: ' + (it.dated ? fmtDate(it.dated) : 'not recorded'), '  Source: ' + (it.source || 'not recorded'),
+        '  Answers: ' + (it.qids.length ? it.qids.map(id => _evQidLabel(A, id)).join(', ') : 'not tagged'), it.refs.length ? '  Constructionline REF: ' + it.refs.join(', ') : '', '  Where it lives: ' + (it.file || 'not recorded'), '');
+      if(x.shortcut){ let nm = x.name, k = 2; while(used[f + '/' + nm]) nm = x.name + ' (' + (k++) + ')'; used[f + '/' + nm] = 1; files.push({ n:root + f + '/' + nm + '.url', d:x.shortcut }); }
+    });
+    files.push({ n:root + f + '/00 In this folder.txt', d:lines.filter(l => l !== null).join('\r\n') });
+  });
+  files.push({ n:root + 'Client Issue/' });
+  files.push({ n:root + 'Client Issue/00 ' + short + ' CL Submission Tracker - Client Issue.pdf', d:pdf });
+  files.push({ n:root + 'Client Issue/00 ' + short + ' CL Submission Tracker - Client Issue.xlsx', d:bufC });
+  const unfiled = data.files.filter(x => !x.folder);
+  files.push({ n:root + '00 Pack contents.txt', d:[short + ' Constructionline submission pack', 'Prepared by AHS Ltd for ' + data.legal + ' on ' + fmtDate(today) + '.', 'Reference: ' + ref, 'Question set: ' + (data.set === 'designer' ? 'Designer' : 'Contractor'), '',
+    'Trackers: the AHS tracker and the client copy (with the price list). Client Issue: the client copy as a protected PDF (print only) and as Excel.',
+    'Folders: each holds a shortcut to every tagged record filed there, and "00 In this folder.txt" listing them.', '',
+    unfiled.length ? 'Not filed, because they are not tagged to a question (tag them on the Documents tab):\r\n' + unfiled.map(x => '  ' + x.item.title).join('\r\n') : 'Every record in the evidence register is filed.'].join('\r\n') });
+  return { blob:_packZip(files), name:short + ' CL Submission ' + data.year + '.zip', data, files, ref };
+}
+async function downloadSubmissionPack(){
+  if(_blockIfReadOnly()) return;
+  try{
+    showToast('Building the submission pack…', 'info');
+    const p = await buildSubmissionPack();
+    const a = _accredState(); a.issues = (Array.isArray(a.issues) ? a.issues : []).concat([{ ref:p.ref, at:new Date().toISOString(), by:_actor().name }]);
+    saveData();
+    const el = document.createElement('a'); el.href = URL.createObjectURL(p.blob); el.download = p.name;
+    document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => { try{ URL.revokeObjectURL(el.href); }catch(e){} }, 60000);
+    showToast('✓ ' + p.name + ' downloaded (ref ' + p.ref + ')', 'success');
+  }catch(e){ console.error('submission pack', e); showToast('Could not build the pack: ' + e.message, 'error'); }
+}
 
 function renderCAS(){
   try{ renderAccred(); }catch(e){ console.error('accreditation journey', e); }

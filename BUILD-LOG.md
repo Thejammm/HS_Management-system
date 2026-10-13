@@ -10,6 +10,90 @@ Backup taken before any change: `C:\Users\arche\dev\compass-backups\2026-10-13\`
 c8118d5). `app\` in the same folder is a runnable copy of the original app, used to
 prove CHAS and SMAS clients see exactly what they saw before.
 
+## Summary (read this first)
+
+All six steps are built, tested and committed on `accreditation-engine`, and the
+branch is pushed to GitHub. **It is not merged and not deployed.** The live site
+still runs `main` (c8118d5).
+
+| Step | What it adds | Where |
+|---|---|---|
+| 1 | Every Constructionline REF mapped to a CAS question or a Constructionline extra; the section view (portal mirror), with valid until dates and pastel red, amber and green | Accreditation tab, under step 01, when Constructionline is ticked |
+| 2 | Accreditation fact sheet: offices, directors, H&S lead, headcount band, PAYE, subcontractors, duty holder roles, higher-risk buildings, SSIP and insurance dates. Warnings where a fact disagrees with an answer or date; changed facts list what to update | Company setup |
+| 3 | Evidence register: every record dated, tagged to CAS questions (REFs follow), with its source; 11-month flags; questions with no evidence | Documents tab |
+| 4 | Client approve and sign, or send a query, logged per click with date, user and version; queries go to Triage | Sign-off tab, Triage |
+| 5 | Essentials, Standard and Complete packages; the year's service calendar; prices left blank for AHS Ltd; a completed service files tagged evidence | Company setup (package), Monthly tab (calendar) |
+| 6 | Submission pack ZIP: both trackers, folders 01 to 13 and 99 with records filed, and the protected client issue PDF; PDBR and DRM imports | Accreditation tab (pack), Documents tab (imports) |
+
+**Tests:** `npm test` (127 Node tests and the three report checks) and
+`npm run test:ui` (37 browser suites, 8 of them new) all pass.
+
+**CHAS and SMAS are unchanged.** `test/ui/_cmp_chas.mjs` compares the
+Accreditation tab of the original app
+(`C:\Users\arche\dev\compass-backups\2026-10-13\app`) with this branch, for a
+CHAS client, an SSIP-only client and a blank client. All three are identical,
+character for character. Re-run it after any change:
+
+    OLD_APP=C:/Users/arche/dev/compass-backups/2026-10-13/app/index.html NEW_APP=C:/Users/arche/dev/hs-management-system/public/index.html node test/ui/_cmp_chas.mjs
+
+**Client data:** nothing existing is moved, renamed or migrated. Everything is
+new and optional, and is created only when something is first recorded:
+
+- `S.accred.cl`, `.package`, `.serviceLog`, `.issueRef`, `.issues`;
+- the `S.company` fact fields and `.factLog`;
+- `documents[].qids`, `.source`, `.approval`, `.approvalLog`;
+- `S.evidenceTags`.
+
+`evidenceTags` is added to the client export and import keys. The rest sit
+inside keys already exported (`accred`, `company`, `documents`). A client who
+never uses the engine has nothing added.
+
+**Decisions for AHS Ltd** (none of them blocked the build):
+
+1. Prices are blank for every client until entered: Monthly tab, "Services and
+   prices" (price per unit, or a day rate).
+2. Prices are held per client, as the client copy price list is. Say if a
+   practice-wide price list is wanted instead.
+3. The month each service falls in (`SERVICES[].months` in `accred-core.js`)
+   is a first spread across the year. Adjust to taste.
+4. The PDF footer names AHS Compliance Consulting Ltd, as the October 2026
+   client issue PDF does. Everything else says AHS Ltd.
+
+## Release steps (once approved)
+
+1. Merge into `main` and push. This auto-deploys through Coolify to Hetzner.
+
+       cd C:\Users\arche\dev\hs-management-system
+       git checkout main
+       git pull
+       git merge --no-ff accreditation-engine
+       git push origin main
+
+2. Check the live site:
+   - `git status -sb` shows no `[ahead N]`;
+   - compass.archerhs.co.uk returns 200;
+   - `curl -s https://compass.archerhs.co.uk/ | md5sum` matches the md5 of
+     `public/index.html` (allow a minute or two for Coolify);
+   - `/reports/cl-bank.js` and `/reports/cl-pack.js` load.
+
+   Then open a test client, tick Constructionline and a role, and check the
+   sections appear.
+3. Save the released app back to
+   `C:\Users\arche\OneDrive - Archer Health and Safey\AHS\App builder\Completed_Working\H&S_Compass\`:
+   - `public/index.html` → `H&S_Compass\index.html`;
+   - `public/reports\` → `H&S_Compass\reports\`. The app needs the new
+     `cl-bank.js` and `cl-pack.js` there.
+
+   Confirm with an md5 that the master matches the deployed file.
+4. Leave nothing else in that folder. `fonts\` and `icons\` belong to the app.
+   It also holds files that are not part of the release. This build deleted
+   nothing, so moving them out is yours to do:
+   - `Discovery_Question_Triage*.xlsx`;
+   - `_repo_snapshot.tgz`;
+   - `password.txt`;
+   - `compass testing\`;
+   - `super seeded\`.
+
 ---
 
 ## Step 1: Constructionline mapping on the CAS core, and the section view
@@ -329,3 +413,113 @@ prove CHAS and SMAS clients see exactly what they saw before.
   scheduled.
 - The service calendar is the consultant's to work: the client sees the calendar
   and the package but cannot enter prices or mark services done.
+
+---
+
+## Step 6: Submission pack export, and links to other apps
+
+**What was built**
+
+- Accreditation tab, Constructionline sections: **Download the submission
+  pack**. It builds one ZIP, `<short> CL Submission <year>.zip`, laid out like
+  the RSSC and MVL submissions:
+  - `00 <short> CL Submission Tracker.xlsx`, the AHS tracker;
+  - `00 <short> CL Submission Tracker - Client Copy.xlsx`, with "AHS Ltd
+    will…" wording and the price list;
+  - `01 Company Information` to `12 Social Value and Wellbeing`,
+    `13 Site Evidence` for a contractor, and
+    `99 Do Not Upload - Old Versions`;
+  - `Client Issue/`, the client copy as a protected PDF and as Excel;
+  - `00 Pack contents.txt`, with the reference and any record not filed because
+    it is not tagged.
+- The trackers (`public/reports/cl-pack.js`, built with ExcelJS) follow the
+  RSSC and MVL layout:
+  - Arial throughout;
+  - the title, and the four counts as live COUNTIFS formulas;
+  - the ten columns at the same widths, with cyan H&S and purple SSIP headers;
+  - cyan merged section rows and the status fills;
+  - expiry colours by Excel conditional formatting, worked out on the day the
+    file is opened;
+  - the header frozen at row 8, landscape, fit to width.
+- What goes in each tracker:
+  - sections in date for more than 90 days collapse into "Already verified in
+    Constructionline (no action now)", one line each, as in the trackers;
+  - the Building Safety Act sections come last;
+  - the Annual Service Plan comes from the package, and the question bank is a
+    sheet of its own;
+  - the client copy adds the Price List: day rate, days per service, cost
+    formulas, subtotal, VAT and total.
+- Folders: records are filed by the question they answer, following the
+  example folders:
+  - site inspections and RAMS go to 13 for a contractor, 03 for a designer;
+  - drug and alcohol and mental health policies go to 12;
+  - records over 12 months old go to 99.
+
+  Compass holds links, not files. Each folder holds a Windows shortcut (`.url`)
+  to where each file lives, and `00 In this folder.txt` listing every record
+  with its date, source, questions, REFs and location.
+- Client issue PDF: the client copy drawn as image pages, so the text cannot be
+  lifted. On every page:
+  - a diagonal watermark naming AHS Compliance Consulting Ltd, the client and
+    the reference;
+  - the footer "© <year> AHS Compliance Consulting Ltd. All rights reserved.
+    Prepared for <client> only. No part may be copied, altered, shared or used
+    with AI tools without written permission. Ref: <ref>".
+
+  The PDF opens without a password and allows printing only: no copying,
+  changing or annotating. Its text layer matches the October 2026 RSSC client
+  issue PDF word for word.
+- Reference: `AHS-<SHORT>-<YYMM>-<4 hex>`. It is made the first time a pack is
+  built for a client and then kept (`S.accred.issueRef`). Each download is
+  logged (`S.accred.issues`).
+- Imports (Documents tab, Evidence register). Importing the same file again
+  updates the document rather than adding a second one.
+  - **Client duties letters (PDBR)** reads the Word letters PDBR AllProject Flow
+    makes (`<project ref>_<template>.docx`). Each is dated from the letter's own
+    text (else the file date) and filed against Q10.1 (DS-01) and BS-02.
+  - **Design risk assessments (DRM)** reads the workbooks DRM exports
+    (`DRA_<project no>_<location>_Rev<n>_<date>.xlsx`). Each is filed with its
+    project, revision and date against Q10.2 and Q10.3 (DS-02, DS-03).
+
+**How to test**
+
+- `npm test` runs `test/submission-pack.test.mjs`. It covers the folders
+  against both examples, the filing rules, the "will" wording, the reference
+  and the shortcuts. It also checks the tracker layout against the RSSC layout,
+  and the Price List.
+- `node test/ui/submission-pack.test.mjs` builds a designer pack and a
+  contractor pack in the app and opens them. It checks:
+  - the folders match the RSSC and MVL submissions;
+  - both workbooks open in ExcelJS;
+  - the PDF is encrypted and print only, with an image on every page;
+  - the reference is kept between packs;
+  - a PDBR letter and a DRM assessment import, dated and tagged.
+
+  ExcelJS is injected from `node_modules`, so the test needs no network.
+- By hand: Accreditation tab, Constructionline sections, "Download the
+  submission pack". Open both trackers in Excel and the PDF in a reader: the
+  PDF prints, but will not let you copy or edit.
+
+**Assumptions**
+
+- Compass stores links to documents, not the documents. The pack files a
+  shortcut to each record in its folder, with an index, and AHS Ltd drops the
+  files in before uploading.
+- The copyright footer names the legal entity, AHS Compliance Consulting Ltd, as
+  the October 2026 client issue PDF does.
+- ExcelJS is loaded from cdnjs (the same CDN as jsPDF) when a pack is first
+  built. Building a pack needs an internet connection, as the existing PDF
+  reports do.
+
+**Left open: what the other apps would need for a richer import**
+
+- **PDBR AllProject Flow** has no data export. Letters exist only as Word files,
+  and templates only in that browser's local storage. A JSON or CSV export of
+  issued letters would let Compass import them without reading file names. It
+  would need, per letter: the project ref and name, client, template, issue
+  date, and who signed it and when.
+- **DRM** exports Excel, but only the file name carries the project, revision
+  and date. A JSON export would let Compass also file the residual risk
+  communication to the Principal Designer (Q10.3) as its own dated record. It
+  would need: project, revision, issue date, lead designer, the count of
+  residual risks, and the date they were sent to the Principal Designer.

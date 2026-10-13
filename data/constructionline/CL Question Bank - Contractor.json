@@ -1,0 +1,2071 @@
+{
+ "set": "Contractor",
+ "source": "MVL account, read 13 Oct 2026",
+ "sections": [
+  {
+   "section": "SSIP Third Party Exemption",
+   "questions": [
+    [
+     "13129",
+     "Bool",
+     "Do you hold Once For All Health & Safety - (SSIP) certification?"
+    ],
+    [
+     "10321",
+     "Date",
+     "Please enter the expiry date of your Once For All Health & Safety - (SSIP) certification."
+    ]
+   ]
+  },
+  {
+   "section": "Once For All Health & Safety - (SSIP)",
+   "questions": [
+    [
+     "2813",
+     "Drop Down",
+     "Please select the Health and Safety question set applicable to your company."
+    ],
+    [
+     "2814",
+     "Drop Down",
+     "Please state the size of your company:"
+    ],
+    [
+     "384",
+     "Number",
+     "Company Address Details\nRegistration Number"
+    ],
+    [
+     "339",
+     "Text",
+     "Please provide your Trade Name."
+    ],
+    [
+     "2308",
+     "Text",
+     "Please provide your Legal Entity Name."
+    ],
+    [
+     "387",
+     "Text",
+     "Address Line 1"
+    ],
+    [
+     "388",
+     "Text",
+     "Address Line 2"
+    ],
+    [
+     "389",
+     "Text",
+     "Address Line 3"
+    ],
+    [
+     "390",
+     "Text",
+     "Address Line 4"
+    ],
+    [
+     "391",
+     "Text",
+     "Town"
+    ],
+    [
+     "392",
+     "Text",
+     "County"
+    ],
+    [
+     "393",
+     "Text",
+     "Postcode"
+    ],
+    [
+     "394",
+     "Text",
+     "Website"
+    ],
+    [
+     "395",
+     "Drop Down",
+     "Contact Details\nTitle"
+    ],
+    [
+     "396",
+     "Text",
+     "Forename"
+    ],
+    [
+     "397",
+     "Text",
+     "Surname"
+    ],
+    [
+     "398",
+     "Text",
+     "Telephone number"
+    ],
+    [
+     "399",
+     "Email",
+     "Email"
+    ],
+    [
+     "400",
+     "Multiline Text",
+     "Please enter a general description of the work that your company undertakes"
+    ],
+    [
+     "2827",
+     "Multiline Text",
+     "Question 1.1) Please provide details of the person with overall responsibility for Health and Safety in the organisation, who should be a Director of the Company (or equivalent)."
+    ],
+    [
+     "2828",
+     "Upload",
+     "Question 1.2) Please provide a copy of your Health and Safety Policy including a statement of intent that has been physically signed by the most senior person in your organisation (for example Managing Director)."
+    ],
+    [
+     "2829",
+     "Upload",
+     "Question 1.3) Please provide the Organisations' and roles and responsibilities section of your Health and Safety Policy for your Organisation."
+    ],
+    [
+     "2830",
+     "Upload",
+     "Question 2.1) Please provide your full HS Policy / Manual which also includes your Health and Safety arrangements/procedures for how the company will discharge their specific duties as a Contractor under CDM2015."
+    ],
+    [
+     "2831",
+     "Bool",
+     "Question 2.2) Are you a Member of a Fleet Operations/Management Scheme?"
+    ],
+    [
+     "2833",
+     "Bool",
+     "Question 2.4) Do you have a Drug & Alcohol Policy in place?"
+    ],
+    [
+     "2834",
+     "Upload",
+     "Question 2.5) Please supply a copy of your Drug & Alcohol Policy (which may be part of your Health and Safety Policy or through detailed within another document)."
+    ],
+    [
+     "2835",
+     "Bool",
+     "Question 2.6) Do you have policy arrangements which include occupational health issues including mental health and fatigue?"
+    ],
+    [
+     "2836",
+     "Upload",
+     "Question 2.7) Please supply a copy of you arrangements for occupational health issues including mental health and fatigue (which may be part of your Health and Safety Policy or through detailed within another document)."
+    ],
+    [
+     "2837",
+     "Bool",
+     "Question 2.8) Do you have policy arrangements which include behavioural management or a behavioural safety programme?"
+    ],
+    [
+     "2839",
+     "Multiline Text",
+     "Question 3.1) Please provide the name and contact details of the internal advisor, consultant, company, trade federation or association who provides your company with Health and Safety advice"
+    ],
+    [
+     "2840",
+     "Upload",
+     "Question 3.2) Please provide evidence of your H&S competent person's competencies (qualifications & experience). If you use someone external to your organisation, please also provide details of services retained."
+    ],
+    [
+     "2841",
+     "Upload",
+     "Question 3.3) Please provide an example of their advice provided to your organisation and details of how this was implemented into the business."
+    ],
+    [
+     "2842",
+     "Upload",
+     "Question 4) Please provide a copy of your up-to-date Training Matrix including expiry dates, or examples of individual employee training records."
+    ],
+    [
+     "2843",
+     "Upload",
+     "Question 5.1) Please provide examples of your Employees' AND Site Managers' current qualifications, H&S training/certificates, and valid skills cards relevant to the work you do. These should be in line with the information provided on your training matrix."
+    ],
+    [
+     "2844",
+     "Multiline Text",
+     "Question 5.2) Please provide details of number/percentage of people engaged in the organisation who holds a CSCS card?"
+    ],
+    [
+     "2845",
+     "Upload",
+     "Question 6) Please provide evidence on how you check, review and where necessary improve your health and safety performance?"
+    ],
+    [
+     "2846",
+     "Drop Down",
+     "Question 7.1) How many employees do you have?"
+    ],
+    [
+     "2849",
+     "Upload",
+     "Question 7.4) Please provide practical evidence demonstrating 2-way communication, of how you consult your workforce on Health and Safety matters."
+    ],
+    [
+     "2850",
+     "Upload",
+     "Question 8.1) Please upload your Health and Safety statistics for accidents, incidents and near misses covering the last 3 years."
+    ],
+    [
+     "2851",
+     "Bool",
+     "Question 8.2) Have you recorded any accidents or incidents in the last 3 years?"
+    ],
+    [
+     "2853",
+     "Bool",
+     "Question 8.4) In the last 5 years has there been any HSE Enforcement Action?"
+    ],
+    [
+     "2855",
+     "Bool",
+     "Question 9.1) Does your Organisation use Sub Contractors?"
+    ],
+    [
+     "2858",
+     "Upload",
+     "Question 10.1) Please provide two site-specific examples (2 separate projects) of Risk Assessments and accompanying Method Statements."
+    ],
+    [
+     "2859",
+     "Upload",
+     "Question 10.2) Please provide two completed examples of COSHH assessments for chemicals you use."
+    ],
+    [
+     "2860",
+     "Bool",
+     "Question 10.3) Do you automatically assume the role of Principal Contractor, by virtue of being the sole contractor, on any of your projects and therefore would be required to complete a Construction Phase Plan?"
+    ],
+    [
+     "2862",
+     "Upload",
+     "Question 11) Please provide an example of communication between yourself and another party concerning work being conducted/provided. This must clearly show a two-way conversation between parties. Example: on-site meeting notes or recent email correspondence with a Client."
+    ],
+    [
+     "2863",
+     "Upload",
+     "Question 12) Please provide evidence in the form of either a recent email confirmation of Welfare Facilities being made available by another Party, or pre-start meeting minutes where welfare provision was discussed."
+    ]
+   ]
+  },
+  {
+   "section": "Building Safety Act - Higher Risk Building Declaration",
+   "questions": [
+    [
+     "10452",
+     "Bool",
+     "Does your company work on, or intend to work on, any projects involving a Higher-Risk Building?"
+    ]
+   ]
+  },
+  {
+   "section": "BAM - Code of Conduct",
+   "questions": [
+    [
+     "14563",
+     "Radio Buttons",
+     "Do you confirm that you will comply with the BAM Vendor Code of Conduct?"
+    ]
+   ]
+  },
+  {
+   "section": "Insurances",
+   "questions": [
+    [
+     "25",
+     "Insurance",
+     "Please provide details of the insurances your company holds"
+    ]
+   ]
+  },
+  {
+   "section": "Health and Safety Third Party / Exemption certificates",
+   "questions": [
+    [
+     "13131",
+     "Bool",
+     "Do you hold a valid Safety Schemes in Procurement (SSIP) scheme certificate or ISO 45001 by a UKAS (or mutually recognised by UKAS) accredited certification body?"
+    ],
+    [
+     "13127",
+     "Drop Down",
+     "If 'Yes', please confirm whether the certificate you hold is for general health and safety (H&S) or specific to one of the CDM Dutyholder roles to reflect your organisation’s activity:"
+    ],
+    [
+     "373",
+     "Upload",
+     "Please upload your certificate"
+    ],
+    [
+     "13132",
+     "Drop Down",
+     "Please select the certificate you have uploaded"
+    ],
+    [
+     "375",
+     "Date",
+     "Start Date"
+    ],
+    [
+     "2319",
+     "Date",
+     "Expiry Date"
+    ],
+    [
+     "1463",
+     "Drop Down",
+     "Who is ultimately responsible for H&S within your company?\nPlease provide details below.\n\nTitle"
+    ],
+    [
+     "1464",
+     "Text",
+     "Forename"
+    ],
+    [
+     "1465",
+     "Text",
+     "Surname"
+    ],
+    [
+     "1466",
+     "Drop Down",
+     "Position"
+    ],
+    [
+     "1467",
+     "Text",
+     "Telephone number"
+    ],
+    [
+     "1468",
+     "Text",
+     "Mobile"
+    ],
+    [
+     "1469",
+     "Email",
+     "Email"
+    ]
+   ]
+  },
+  {
+   "section": "Health and Safety",
+   "questions": [
+    [
+     "13131",
+     "Bool",
+     "Do you hold a valid Safety Schemes in Procurement (SSIP) scheme certificate or ISO 45001 by a UKAS (or mutually recognised by UKAS) accredited certification body?"
+    ],
+    [
+     "13127",
+     "Drop Down",
+     "If 'Yes', please confirm whether the certificate you hold is for general health and safety (H&S) or specific to one of the CDM Dutyholder roles to reflect your organisation’s activity:"
+    ],
+    [
+     "373",
+     "Upload",
+     "Please upload your certificate"
+    ],
+    [
+     "13132",
+     "Drop Down",
+     "Please select the certificate you have uploaded"
+    ],
+    [
+     "375",
+     "Date",
+     "Start Date"
+    ],
+    [
+     "2319",
+     "Date",
+     "Expiry Date"
+    ]
+   ]
+  },
+  {
+   "section": "Primary Contact",
+   "questions": [
+    [
+     "291",
+     "Drop Down",
+     "Title (Mr, Mrs, Ms etc)"
+    ],
+    [
+     "292",
+     "Text",
+     "Forename"
+    ],
+    [
+     "293",
+     "Text",
+     "Family name"
+    ],
+    [
+     "294",
+     "Drop Down",
+     "Job title"
+    ],
+    [
+     "295",
+     "Text",
+     "Telephone number"
+    ],
+    [
+     "296",
+     "Text",
+     "Mobile"
+    ],
+    [
+     "297",
+     "Text",
+     "Fax number"
+    ],
+    [
+     "298",
+     "Email",
+     "E-mail"
+    ]
+   ]
+  },
+  {
+   "section": "Registered Office",
+   "questions": [
+    [
+     "299",
+     "Bool",
+     "Is your head office your registered office?\n(Your registered office is the address submitted on your company accounts. If you are not registered with Companies House simply select 'Yes')"
+    ]
+   ]
+  },
+  {
+   "section": "Head Office",
+   "questions": [
+    [
+     "318",
+     "Text",
+     "Office name"
+    ],
+    [
+     "319",
+     "Text",
+     "Head Office Address Line 1"
+    ],
+    [
+     "320",
+     "Text",
+     "Address line 2"
+    ],
+    [
+     "321",
+     "Text",
+     "Address line 3"
+    ],
+    [
+     "322",
+     "Text",
+     "Address line 4"
+    ],
+    [
+     "323",
+     "Text",
+     "Town"
+    ],
+    [
+     "324",
+     "Text",
+     "County"
+    ],
+    [
+     "325",
+     "Text",
+     "Postcode"
+    ],
+    [
+     "326",
+     "Drop Down",
+     "Country"
+    ],
+    [
+     "327",
+     "Text",
+     "Telephone number"
+    ],
+    [
+     "328",
+     "Text",
+     "Fax number"
+    ],
+    [
+     "329",
+     "Website",
+     "Website"
+    ]
+   ]
+  },
+  {
+   "section": "Branch Office",
+   "questions": [
+    [
+     "17",
+     "Bool",
+     "Do you have any Branch offices?"
+    ]
+   ]
+  },
+  {
+   "section": "Related Companies",
+   "questions": [
+    [
+     "331",
+     "Bool",
+     "Do you have any related or associated companies?"
+    ]
+   ]
+  },
+  {
+   "section": "Areas of Operation",
+   "questions": [
+    [
+     "333",
+     "AreaOfOperation",
+     "Please add the details of your areas of operation."
+    ]
+   ]
+  },
+  {
+   "section": "Enhanced Financial Information",
+   "questions": [
+    [
+     "1493",
+     "Text",
+     "Please provide your principal bankers address\n\nName of bank"
+    ],
+    [
+     "1494",
+     "Text",
+     "Address Line 1"
+    ],
+    [
+     "1495",
+     "Text",
+     "Address Line 2"
+    ],
+    [
+     "1496",
+     "Text",
+     "Address Line 3"
+    ],
+    [
+     "1497",
+     "Text",
+     "Address Line 4"
+    ],
+    [
+     "1498",
+     "Text",
+     "Town"
+    ],
+    [
+     "1499",
+     "Text",
+     "County"
+    ],
+    [
+     "1500",
+     "Text",
+     "Postcode"
+    ],
+    [
+     "1501",
+     "Drop Down",
+     "Country"
+    ],
+    [
+     "13094",
+     "Bool",
+     "Are you recognised under the Fair Payment Code (FPC)?"
+    ],
+    [
+     "9947",
+     "Bool",
+     "Do you employ subcontractors?"
+    ],
+    [
+     "9805",
+     "Bool",
+     "Are you legally required to report under the Reporting on Payment Practices and Performance Regulations?"
+    ]
+   ]
+  },
+  {
+   "section": "Enquiry Contact",
+   "questions": [
+    [
+     "309",
+     "Bool",
+     "Is the primary contact also the contact for business and/or pre-qualification enquiries?"
+    ],
+    [
+     "3635",
+     "Bool",
+     "Are there any other contacts for New Business?"
+    ],
+    [
+     "3636",
+     "Bool",
+     "Is the Supply Chain Manager the same as the Enquiry Contact?"
+    ]
+   ]
+  },
+  {
+   "section": "Enhanced Company Information",
+   "questions": [
+    [
+     "9802",
+     "Bool",
+     "Are you registered, based, and active in the UK, Channel Islands or Republic of Ireland?"
+    ],
+    [
+     "1490",
+     "Radio Buttons",
+     "Do you have any associated or group companies?"
+    ]
+   ]
+  },
+  {
+   "section": "Company and Financial Information",
+   "questions": [
+    [
+     "10399",
+     "Radio Buttons",
+     "Are you registered with Companies House?"
+    ],
+    [
+     "347",
+     "Text",
+     "Please provide your Companies House number."
+    ],
+    [
+     "348",
+     "Radio Buttons",
+     "Are you registered with a national equivalent to Companies House?"
+    ],
+    [
+     "2308",
+     "Text",
+     "Please provide your Legal Entity Name."
+    ],
+    [
+     "339",
+     "Text",
+     "Please provide your Trade Name."
+    ],
+    [
+     "337",
+     "Drop Down",
+     "Please select your Supplier Type."
+    ],
+    [
+     "9800",
+     "Drop Down",
+     "Please select your Organisation Type."
+    ],
+    [
+     "343",
+     "Date",
+     "Please select your incorporation date."
+    ],
+    [
+     "341",
+     "Date",
+     "Please select the date your organisation was set up."
+    ],
+    [
+     "350",
+     "Radio Buttons",
+     "Are you a registered charity?"
+    ],
+    [
+     "330",
+     "DirectorsPartners",
+     "Please add the details of the following individuals associated with your organisation:\n\nProprietors\nPartners\nDirectors\nCompany Secretary"
+    ],
+    [
+     "1971",
+     "FinancialAccounts",
+     "Please add the details of your financial accounts."
+    ],
+    [
+     "3603",
+     "Number",
+     "Please provide the total number of your direct employees (PAYE)."
+    ],
+    [
+     "3604",
+     "Number",
+     "Please provide the total number of your indirect personnel (non-PAYE)."
+    ],
+    [
+     "2307",
+     "Number",
+     "Please provide the total number of your workforce."
+    ],
+    [
+     "3369",
+     "Drop Down",
+     "Please select your Organisation Size."
+    ],
+    [
+     "344",
+     "Radio Buttons",
+     "Do you have a Unique Tax Reference?"
+    ],
+    [
+     "345",
+     "Text",
+     "Please provide your Unique Tax Reference."
+    ],
+    [
+     "352",
+     "Radio Buttons",
+     "Are you registered for VAT?"
+    ],
+    [
+     "353",
+     "Text",
+     "Please provide your VAT Registration number."
+    ],
+    [
+     "9801",
+     "Multiline Text",
+     "Please detail the percentage of your directly employed workforce that is in Earn and Learn positions."
+    ],
+    [
+     "29",
+     "Bool",
+     "Have you ever had any criminal or civil judgements against the organisation, or any of your Directors or Executive Officers in relation to its current business activities?"
+    ],
+    [
+     "32",
+     "Bool",
+     "Do you have any ongoing or pending criminal or civil actions against the organisation, or any of your Directors or Executive Officers in relation to its current business activities?"
+    ],
+    [
+     "35",
+     "Bool",
+     "Have you received any enforcement or remedial orders against the organisation, or any of your Directors or Executive Officers in the last 3 years that remain unresolved?"
+    ],
+    [
+     "9947",
+     "Bool",
+     "Do you employ subcontractors?"
+    ],
+    [
+     "2310",
+     "Bool",
+     "Do you operate as a sheltered workshop, social enterprise or social business or will you provide for the performance of the contract in the context of sheltered employment programmes?"
+    ],
+    [
+     "335",
+     "Bool",
+     "Do you hold any Trade Association or Professional Body Memberships?"
+    ],
+    [
+     "336",
+     "TradeAssociations",
+     "Please add your Trade Association or Professional Body Memberships."
+    ]
+   ]
+  },
+  {
+   "section": "Enhanced Corporate and Professional Standing",
+   "questions": [
+    [
+     "1602",
+     "Bool",
+     "Have you ever been found to be in breach of the Employment Relations Act 1999 (Blacklists) Regulations?"
+    ],
+    [
+     "1605",
+     "Bool",
+     "Are you the subject of ongoing or pending court action in relation to the Employment Relations Act 1999 (Blacklists) Regulations 2010?"
+    ],
+    [
+     "1608",
+     "Bool",
+     "Is any government entity, Public Official or Relevant Person a Principal of your organisation or do they exert any control over your organisation?"
+    ],
+    [
+     "1611",
+     "Bool",
+     "Does any Public Official or Relevant Person stand to benefit in any way as a result of being awarded work?"
+    ],
+    [
+     "9808",
+     "Bool",
+     "Do you have any involvement with any tax avoidance schemes on the Government’s list of named tax avoidance schemes, promoters, enablers, and suppliers?"
+    ],
+    [
+     "1621",
+     "Bool",
+     "Have any bodies made any allegations or complaints about the company infringing competition law which has led to an internal investigation within the last five years?"
+    ],
+    [
+     "1627",
+     "Radio Buttons",
+     "Are you in scope to CITB?"
+    ],
+    [
+     "1629",
+     "Bool",
+     "Have you been suspended or expelled from any Trade Association, Professional Body, or Trustmark in the last three years?"
+    ]
+   ]
+  },
+  {
+   "section": "Corporate and Professional Standing",
+   "questions": [
+    [
+     "10400",
+     "Bool",
+     "Are you or any connected person on the Government’s debarment list?"
+    ],
+    [
+     "13096",
+     "Bool",
+     "Have you or any connected person been subject to, a conviction, or an event, in relation to Schedule 6 of the Procurement Act (Mandatory Exclusions)?"
+    ],
+    [
+     "13103",
+     "Bool",
+     "Have you or any connected person been convicted of, subject to, or liable to a penalty under Schedule 7 of the Procurement Act (Discretionary Exclusions)?"
+    ]
+   ]
+  },
+  {
+   "section": "Corporate Responsibility and Governance",
+   "questions": [
+    [
+     "7352",
+     "Bool",
+     "Do you have an Anti-Bribery and Corruption policy?"
+    ],
+    [
+     "119",
+     "Upload",
+     "Please upload your Anti-Bribery and Corruption policy."
+    ],
+    [
+     "7353",
+     "Bool",
+     "Do you communicate your Anti-Bribery and Corruption policy to staff?"
+    ],
+    [
+     "121",
+     "Multiline Text",
+     "Please detail the process that the organisation has in place to communicate your anti-bribery and corruption policy to employees."
+    ],
+    [
+     "122",
+     "Upload",
+     "Please upload evidence that demonstrates you have communicated your anti-bribery and corruption policy to employees."
+    ],
+    [
+     "7348",
+     "Bool",
+     "Do you have a Whistleblowing Policy?"
+    ],
+    [
+     "1626",
+     "Upload",
+     "Please upload your Whistleblowing policy."
+    ],
+    [
+     "10429",
+     "Bool",
+     "Do you communicate your Whistleblowing policy to your workforce?"
+    ],
+    [
+     "10430",
+     "Multiline Text",
+     "Please detail the process that you have in place to communicate your Whistleblowing policy to your workforce."
+    ],
+    [
+     "10431",
+     "Upload",
+     "Please upload evidence that demonstrates you have communicated your Whistleblowing policy to your workforce."
+    ],
+    [
+     "13110",
+     "Bool",
+     "Do you have reasonable fraud prevention procedures in place as required under the Economic Crime and Corporate Transparency Act?"
+    ],
+    [
+     "13111",
+     "Upload",
+     "Please upload your fraud prevention procedures."
+    ],
+    [
+     "9807",
+     "Bool",
+     "Do you have arrangements in place in respect of the corporate criminal offences of failing to prevent those acting on its behalf from the criminal facilitation of tax evasion under the Criminal Finance Act?"
+    ],
+    [
+     "2391",
+     "Upload",
+     "Please upload any relevant documents."
+    ],
+    [
+     "2392",
+     "Upload",
+     "Please upload evidence that you check your workforce is legally entitled to work in the UK."
+    ],
+    [
+     "3613",
+     "Radio Buttons",
+     "Are you legally required to publish a Corporate Governance Statement?"
+    ],
+    [
+     "2394",
+     "Bool",
+     "Do you have an Environmental, Social and Governance (ESG) Policy?"
+    ],
+    [
+     "2395",
+     "Upload",
+     "Please upload your Environmental, Social and Governance (ESG) Policy."
+    ],
+    [
+     "13112",
+     "Radio Buttons",
+     "Do you have an Anti-Slavery and Human Trafficking statement?"
+    ],
+    [
+     "6847",
+     "Upload",
+     "Please upload your Anti-Slavery and Human Trafficking statement."
+    ],
+    [
+     "13113",
+     "Bool",
+     "Do you communicate your Anti-Slavery and Human Trafficking statement to your workforce?"
+    ],
+    [
+     "13114",
+     "Multiline Text",
+     "Please detail the process that you have in place to communicate your Anti-Slavery and Human Trafficking statement to your workforce."
+    ],
+    [
+     "13115",
+     "Upload",
+     "Please upload evidence that demonstrates you have communicated your Anti-Slavery and Human Trafficking statement to your workforce."
+    ],
+    [
+     "2398",
+     "Bool",
+     "Do you ensure that your supply chain is aware of, and abides by, Modern Slavery legislation?"
+    ],
+    [
+     "2399",
+     "Upload",
+     "Please upload your Modern Slavery arrangements."
+    ],
+    [
+     "2400",
+     "Bool",
+     "Do you pay your workforce, including labour agency workers, at least the National Minimum Wage or National Living Wage?"
+    ],
+    [
+     "9831",
+     "Bool",
+     "Do you pay your workforce the real Living Wage?"
+    ],
+    [
+     "9832",
+     "Bool",
+     "Do you have an Anti-Bullying and Harassment Policy?"
+    ],
+    [
+     "9833",
+     "Multiline Text",
+     "Please detail your Anti-Bullying and Harassment arrangements."
+    ],
+    [
+     "9834",
+     "Upload",
+     "Please upload your Anti-Bullying and Harassment Policy."
+    ],
+    [
+     "13116",
+     "Bool",
+     "Do you have arrangements in place for the prevention of sexual harassment under the Worker Protection (Amendment of Equality Act 2010) Act?"
+    ],
+    [
+     "13117",
+     "Upload",
+     "Please upload your arrangements for the prevention of sexual harassment."
+    ],
+    [
+     "2403",
+     "Radio Buttons",
+     "Are you legally required to publish a gender pay gap report?"
+    ],
+    [
+     "3626",
+     "Bool",
+     "Do you trade directly or knowingly have direct association with any regimes, entities, or individuals subject to any sanctions detailed in the UK Sanctions List?"
+    ]
+   ]
+  },
+  {
+   "section": "Information Security",
+   "questions": [
+    [
+     "7342",
+     "Bool",
+     "Do you hold a valid Cyber Essentials Plus Certificate or BS EN ISO 27001 (or equivalent) issued by a UKAS (or mutually recognised by UKAS) accredited certification body?"
+    ],
+    [
+     "7341",
+     "Bool",
+     "Do you have a cyber security policy?"
+    ],
+    [
+     "3611",
+     "Upload",
+     "Please upload your cyber security policy."
+    ],
+    [
+     "3610",
+     "Bool",
+     "Do you have a Data Protection Policy and Privacy Notice in place?"
+    ],
+    [
+     "2256",
+     "Upload",
+     "Please upload your Data Protection Policy and Privacy Notice."
+    ],
+    [
+     "7343",
+     "Radio Buttons",
+     "Do you ensure that any suppliers you engage have their own cyber security arrangements?"
+    ],
+    [
+     "9810",
+     "Bool",
+     "Do you ensure that any subcontractors you engage have their own Data Protection Policy and Privacy Notice?"
+    ],
+    [
+     "173",
+     "Bool",
+     "Have you documented the personal data you hold, where it came from and who you share it with, do you maintain appropriate records and registers of your data processing activities?"
+    ],
+    [
+     "174",
+     "Bool",
+     "Have you carried out a Data Protection Impact Assessment to establish what measures you need to take to comply with the General Data Protection Regulations and the Data Protection Act 2018, including measures to ensure compliance with EU Data Protection Laws for any personal data that is shared outside the European Economic Area?"
+    ],
+    [
+     "175",
+     "Bool",
+     "Do you have arrangements in place to ensure the rights of individuals, including how you handle subject access requests and requests for deletion of personal data?"
+    ],
+    [
+     "176",
+     "Bool",
+     "Do you have a Data Protection Officer or someone responsible for data protection?"
+    ],
+    [
+     "3612",
+     "Upload",
+     "Please upload evidence that your suppliers have their own cyber security arrangements."
+    ]
+   ]
+  },
+  {
+   "section": "Mental Health and Wellbeing",
+   "questions": [
+    [
+     "2320",
+     "Upload",
+     "What arrangements are in place within your organisation for the management of occupational health issues, including mental health and fatigue?"
+    ],
+    [
+     "2685",
+     "Bool",
+     "Is your company part of a mental health at work initiative?"
+    ],
+    [
+     "2687",
+     "Bool",
+     "Has your company implemented the mental health enhanced standards in Thriving at Work?"
+    ],
+    [
+     "2688",
+     "Bool",
+     "Does your company have an employee assistance programme?"
+    ],
+    [
+     "2689",
+     "Multiline Text",
+     "Please provide details."
+    ]
+   ]
+  },
+  {
+   "section": "Business Ownership",
+   "questions": [
+    [
+     "2668",
+     "Radio Buttons",
+     "Is your company more than 50% owned by people or a person who is an ex-member of the armed forces?"
+    ],
+    [
+     "2669",
+     "Radio Buttons",
+     "Is your company more than 50% owned by women or a woman?"
+    ],
+    [
+     "2670",
+     "Radio Buttons",
+     "Is your company more than 50% owned by people or a person from an ethnic minority background?"
+    ],
+    [
+     "2671",
+     "Radio Buttons",
+     "Is your company more than 50% owned by people or a person who identifies as LGBT?"
+    ],
+    [
+     "2672",
+     "Radio Buttons",
+     "Is your company more than 50% owned by people or a person with a disability or long term health condition?"
+    ]
+   ]
+  },
+  {
+   "section": "Environmental Management",
+   "questions": [
+    [
+     "13122",
+     "Bool",
+     "Do you hold a valid BS EN ISO 14001 certificate issued by a UKAS (or mutually recognised by UKAS) accredited certification body or a valid EMAS certificate?"
+    ],
+    [
+     "9815",
+     "Bool",
+     "Do you have an Environmental Management Policy?"
+    ],
+    [
+     "9816",
+     "Upload",
+     "Please upload your Environmental Management Policy."
+    ],
+    [
+     "2266",
+     "Radio Buttons",
+     "Do you have arrangements in place for ensuring that your environmental management procedures are effective in managing and mitigating impacts on the environment?"
+    ],
+    [
+     "2267",
+     "Upload",
+     "Please upload your arrangements for ensuring that your environmental management procedures are effective in managing and mitigating impacts on the environment."
+    ],
+    [
+     "2268",
+     "Radio Buttons",
+     "Do you have arrangements in place for providing relevant members of your workforce with training and information on construction-related environmental issues?"
+    ],
+    [
+     "2269",
+     "Upload",
+     "Please upload your arrangements for providing relevant members of your workforce with training and information on construction-related environmental issues."
+    ],
+    [
+     "2270",
+     "Radio Buttons",
+     "Do you have arrangements in place to check, review and, where necessary, improve your environmental management performance?"
+    ],
+    [
+     "2271",
+     "Upload",
+     "Please upload your arrangements for checking, reviewing, and improving your environmental management performance."
+    ],
+    [
+     "2264",
+     "Radio Buttons",
+     "Do you have arrangements in place for ensuring that your subcontractors have environmental management procedures to a standard appropriate to the activities that your company is likely to undertake?"
+    ],
+    [
+     "2265",
+     "Upload",
+     "Please upload your arrangements for ensuring that your subcontractors have environmental management procedures."
+    ],
+    [
+     "2272",
+     "Bool",
+     "Do you have access to competent environmental advice on environmental issues?"
+    ],
+    [
+     "10000",
+     "Multiline Text",
+     "Please detail the name of the source of your competent environmental advice and assistance."
+    ],
+    [
+     "10001",
+     "Multiline Text",
+     "Please detail the competency details of the source of your competent environmental advice and assistance."
+    ],
+    [
+     "10002",
+     "Upload",
+     "Please upload two examples of advice given and action taken from the last 12 months."
+    ],
+    [
+     "10003",
+     "Radio Buttons",
+     "Do you have a Waste Carrier, Broker or Dealer Licence or are you a Registered Professional Carrier and Transporter of Waste?"
+    ],
+    [
+     "241",
+     "Upload",
+     "Please upload the licence."
+    ],
+    [
+     "10004",
+     "Drop Down",
+     "Please choose the licence that you have uploaded."
+    ],
+    [
+     "243",
+     "Date",
+     "Start date"
+    ],
+    [
+     "244",
+     "Date",
+     "End date"
+    ],
+    [
+     "2273",
+     "Radio Buttons",
+     "Are you legally required to report your carbon emissions under the Streamlined Energy and Carbon Reporting (SECR) Regulations?"
+    ],
+    [
+     "3617",
+     "Radio Buttons",
+     "Do you have a carbon emissions reduction plan?"
+    ],
+    [
+     "2275",
+     "Bool",
+     "Do you operate in accordance with any nationally or industry-recognised sustainability Standards, pledges, charters, or good/best practice guidance?"
+    ]
+   ]
+  },
+  {
+   "section": "Environment & Sustainability",
+   "questions": [
+    [
+     "2699",
+     "Bool",
+     "Does your company help to promote biodiversity?"
+    ],
+    [
+     "2701",
+     "Bool",
+     "Does your company operate in accordance with any nationally or industry recognised sustainability standards, pledges, charters or good/best practice guidance?"
+    ],
+    [
+     "2702",
+     "Bool",
+     "Do you have arrangements for ensuring that any suppliers you engage apply environmental protection measures that are appropriate to the activity for which they are being engaged?"
+    ],
+    [
+     "2703",
+     "Bool",
+     "Does your company have a Net Zero Policy/Roadmap?"
+    ],
+    [
+     "2706",
+     "Bool",
+     "Do you monitor your Carbon Emissions?"
+    ],
+    [
+     "2707",
+     "Multiselect",
+     "If you do monitor Carbon Emissions, please select what Scope of Carbon Emissions is applicable to your company?"
+    ],
+    [
+     "2708",
+     "Multiline Text",
+     "Please explain how you monitor Carbon Emissions?"
+    ],
+    [
+     "2709",
+     "Bool",
+     "Do you have a Carbon Reduction Plan as described in PPN06/21?"
+    ],
+    [
+     "2711",
+     "Bool",
+     "Do you have a validated science-based target?"
+    ],
+    [
+     "2712",
+     "Bool",
+     "Does your company provide training and education to influence behaviour to reduce waste and use resources more efficiently?"
+    ],
+    [
+     "2713",
+     "Bool",
+     "Does your company engage with the community to support local environmental objectives?"
+    ],
+    [
+     "2714",
+     "Multiline Text",
+     "Please give examples."
+    ],
+    [
+     "2453",
+     "Bool",
+     "Do you make any efforts to reduce, re-use and / or re-cycle the amount of materials and / or products used by your company?"
+    ],
+    [
+     "2454",
+     "Multiline Text",
+     "Please describe your efforts to reduce, re-use and / or recycle materials and / or products."
+    ],
+    [
+     "2715",
+     "Bool",
+     "Do you monitor your fleet emissions?"
+    ],
+    [
+     "2717",
+     "Bool",
+     "Does your company commit to the UN Sustainable Development Goals (SDGs)?"
+    ]
+   ]
+  },
+  {
+   "section": "Quality",
+   "questions": [
+    [
+     "14564",
+     "Bool",
+     "Do you hold a valid BS EN ISO 9001 certification issued by a UKAS (or mutually recognised by UKAS) accredited certification body?"
+    ],
+    [
+     "247",
+     "Upload",
+     "Please upload your ISO 9001 certificate."
+    ],
+    [
+     "13125",
+     "Drop Down",
+     "Please choose the certificate that you have uploaded."
+    ],
+    [
+     "249",
+     "Date",
+     "Please select your ISO 9001 certificate start date."
+    ],
+    [
+     "250",
+     "Date",
+     "Please select your ISO 9001 certificate end date."
+    ],
+    [
+     "13091",
+     "Bool",
+     "Does your company hold a valid BS 99001 (or equivalent) issued by a UKAS (or mutually recognised by UKAS) accredited certification body?"
+    ],
+    [
+     "9950",
+     "Bool",
+     "Does your company have arrangements in place to manage and record evidence of competency (Skills, Knowledge, Experience and Behaviours) for your workforce and key sub-contractor roles?"
+    ],
+    [
+     "9958",
+     "Upload",
+     "Please provide evidence demonstrating your arrangements for managing and recording key competencies."
+    ],
+    [
+     "9951",
+     "Bool",
+     "Does your company have arrangements in place for your workforce and key sub-contractor roles under its control to receive appropriate supervision, instruction and information to ensure that any work your company undertakes meets relevant requirements?"
+    ],
+    [
+     "9959",
+     "Upload",
+     "Please provide evidence showing your procedures for providing appropriate supervision, instruction and information to your workforce and key sub-contractor roles under your control to ensure that any work your company undertakes meets relevant requirements."
+    ],
+    [
+     "261",
+     "Drop Down",
+     "Who is ultimately responsible for quality within your company?"
+    ],
+    [
+     "262",
+     "Text",
+     "Forename"
+    ],
+    [
+     "263",
+     "Text",
+     "Surname"
+    ],
+    [
+     "264",
+     "Drop Down",
+     "Position"
+    ],
+    [
+     "265",
+     "Text",
+     "Telephone number"
+    ],
+    [
+     "266",
+     "Email",
+     "Email"
+    ]
+   ]
+  },
+  {
+   "section": "Building Safety",
+   "questions": [
+    [
+     "9956",
+     "Bool",
+     "Do you carry out or intend to carry out any of the following building or design work related to a building in England or Wales?\n\nErection or Extension of a Building\nRenovation/Refurbishment/Structural Alteration\nMaintenance\nInstallation of Safety Critical Features\nThe provision or extension of a controlled service or fitting in or in connection with a building.\n\nWhich would therefore be regulated under The Building Regulations 2010.\n\nPlease note: If you are acting as a Subcontractor, you are considered a Contractor under the Building Regulations 2010 and therefore you should answer YES."
+    ],
+    [
+     "13091",
+     "Bool",
+     "Does your company hold a valid BS 99001 (or equivalent) issued by a UKAS (or mutually recognised by UKAS) accredited certification body?"
+    ],
+    [
+     "9952",
+     "Bool",
+     "Does your company have arrangements in place for ensuring the Client is aware of its duties under the Building Safety Act?"
+    ],
+    [
+     "9960",
+     "Upload",
+     "Please provide evidence of arrangements in place for ensuring the Client is aware of its duties under the Building Safety Act, including how you communicate relevant technical information to non-technical audiences."
+    ],
+    [
+     "9947",
+     "Bool",
+     "Do you employ subcontractors?"
+    ],
+    [
+     "9954",
+     "Bool",
+     "Does your company have arrangements in place to cooperate with other duty holders to ensure that any building work or design work (whichever is applicable) is compliant with relevant requirements?"
+    ],
+    [
+     "9963",
+     "Upload",
+     "Please provide the arrangements you have in place to communicate and cooperate with other duty holders to ensure that any work (building or design) is compliant with relevant requirements (e.g. Building Safety Act, Building Regulations, other legislation and industry standards)."
+    ],
+    [
+     "13092",
+     "Bool",
+     "Do you have arrangements in place to notify relevant stakeholders, manufacturers, suppliers and accountable persons, of any defects or issues found in construction products or systems which could impact building safety?"
+    ],
+    [
+     "13093",
+     "Upload",
+     "Please upload the arrangements you have to notify all stakeholders of any defects or issues found in construction products or systems which could impact building safety."
+    ],
+    [
+     "9955",
+     "Bool",
+     "Does your company work on, or intend to work on, any projects involving a Higher-Risk Building?"
+    ],
+    [
+     "10006",
+     "Multiselect",
+     "Considering the work you conduct, which of the following duty holder roles does your organisation fulfil, or intend to fulfil, under the Building Safety Act?"
+    ],
+    [
+     "10009",
+     "Upload",
+     "Please provide the arrangements you have in place to plan, manage and monitor the building work you undertake to ensure the work complies with relevant requirements (e.g. Building Safety Act, Building Regulations, other legislation and industry standards), in your duty holder role as a Principal Contractor and/or Contractor."
+    ],
+    [
+     "10007",
+     "Bool",
+     "Does your company have arrangements in place to provide other duty holders with relevant information about building work being carried out in your role as Contractor?"
+    ],
+    [
+     "10008",
+     "Upload",
+     "Please provide the arrangements you have in place to provide other duty holders with relevant information about building work being carried out in your role as Contractor."
+    ]
+   ]
+  },
+  {
+   "section": "Fairness, Inclusion and Respect",
+   "questions": [
+    [
+     "13118",
+     "Bool",
+     "Do you have a Fairness, Inclusion, and Respect (FIR) Policy?"
+    ],
+    [
+     "2261",
+     "Upload",
+     "Please upload your Fairness, Inclusion and Respect (FIR) Policy."
+    ],
+    [
+     "13119",
+     "Bool",
+     "Do you communicate your Fairness, Inclusion, and Respect (FIR) Policy to your workforce?"
+    ],
+    [
+     "13120",
+     "Upload",
+     "Please upload evidence that demonstrates you communicate your FIR policy to your workforce."
+    ],
+    [
+     "191",
+     "Bool",
+     "Have any finding of unlawful discrimination been made against your organisation by any court or industrial or employment tribunal or equivalent body, in the past three years?"
+    ],
+    [
+     "194",
+     "Bool",
+     "Have you been the subject to a compliance action by the Equality and Human Rights Commission or an equivalent body on grounds of alleged unlawful discrimination, in the past three years?"
+    ],
+    [
+     "197",
+     "Bool",
+     "Have you been found in breach of section 15 of the Immigration, Asylum and Nationality Act 2006, in the past three years?"
+    ],
+    [
+     "200",
+     "Bool",
+     "Have you been found in breach of section 21 of the Immigration, Asylum and Nationality Act 2006, in the past three years?"
+    ],
+    [
+     "203",
+     "Bool",
+     "Have you been found to be in breach of the National Minimum Wage Act 1998, in the past three years?"
+    ],
+    [
+     "9811",
+     "Bool",
+     "Do you have arrangements in place to ensure that FIR is embedded throughout your company and to promote good practice in terms of eliminating discrimination in all forms?"
+    ],
+    [
+     "9812",
+     "Upload",
+     "Please upload any relevant documents."
+    ],
+    [
+     "9813",
+     "Bool",
+     "Are your recruitment processes inclusive and accessible?"
+    ],
+    [
+     "9814",
+     "Upload",
+     "Please upload relevant advertisement or literature, which confirms that you actively promotes good practice in terms of eliminating discrimination in all forms through appropriate recruitment processes."
+    ],
+    [
+     "9947",
+     "Bool",
+     "Do you employ subcontractors?"
+    ]
+   ]
+  },
+  {
+   "section": "Information Management",
+   "questions": [
+    [
+     "9830",
+     "Bool",
+     "Do you work on, or intend to work on, any projects with a defined requirement for organised and digitised structured Information Management (IM)?"
+    ],
+    [
+     "3362",
+     "Bool",
+     "Do you hold valid BS EN ISO 19650-2 certificate issued by a UKAS (or mutually recognised by UKAS) accredited certification body?"
+    ],
+    [
+     "3363",
+     "Bool",
+     "If you act, or intend to act, as a Lead Appointed Party, does your company have the resources (people, processes and technologies) to undertake the Lead Appointed Party IM function as defined in BS EN ISO 19650-2?"
+    ],
+    [
+     "3620",
+     "Upload",
+     "Please upload evidence that you have the resources to undertake the Lead Appointed Part IM function."
+    ],
+    [
+     "3364",
+     "Bool",
+     "Do you have arrangements in place to control, authorise, approve, and exchange information compliant with BS EN ISO 19650-2?"
+    ],
+    [
+     "3621",
+     "Upload",
+     "Please upload arrangements you have in place to control, authorise, approve, and exchange information compliant with BS EN ISO 19650-2."
+    ],
+    [
+     "3365",
+     "Bool",
+     "Do you have a team and structure in place to generate, authorise, approve, and exchange information compliant with BS EN ISO 19650-2?"
+    ],
+    [
+     "3622",
+     "Upload",
+     "Please upload evidence of your overall organisational structure and number of employees identifying those carrying out Information Management delivery."
+    ],
+    [
+     "3366",
+     "Bool",
+     "Do you have arrangements in place to provide your workforce with education and training about IM processes and requirements as defined in BS EN ISO 19650-1 and BS EN ISO 19650-2?"
+    ],
+    [
+     "3623",
+     "Upload",
+     "Please upload your arrangements for implement training to ensure that your workforce has sufficient skills and understanding to carry out their various duties in line with BS EN ISO 19650-1 and BS EN ISO 19650-2."
+    ],
+    [
+     "3367",
+     "Bool",
+     "Do you commit to implementing the principles and procedures set out in the UK IM Framework, including BS EN ISO 19650-1 and BS EN ISO 19650-2, within your policies and processes?"
+    ],
+    [
+     "3624",
+     "Upload",
+     "Please upload arrangements for committing to implement the principles and procedures set out in the UK IM Framework."
+    ],
+    [
+     "3368",
+     "Bool",
+     "Do you use the information management processes set out in BS EN ISO 19650-2 to add value to a project and to your business and to deliver benefits for your clients?"
+    ],
+    [
+     "3625",
+     "Upload",
+     "Please upload two examples that include an explanation of how people, processes and technologies were used to deliver these benefits."
+    ]
+   ]
+  },
+  {
+   "section": "Social Value",
+   "questions": [
+    [
+     "2646",
+     "Bool",
+     "Is your company a start up, mutual, voluntary, community or charity?"
+    ],
+    [
+     "2647",
+     "Bool",
+     "Does your company report on Social Value?"
+    ],
+    [
+     "2649",
+     "Bool",
+     "Does your company have an EDI policy? (Equality, Diversity and Inclusion.)"
+    ],
+    [
+     "2650",
+     "Upload",
+     "Please provide a copy of your policy."
+    ],
+    [
+     "2651",
+     "Multiline Text",
+     "Please explain the impact your EDI policy has had on your company."
+    ],
+    [
+     "2652",
+     "Multiline Text",
+     "Please explain how your EDI policy has impacted recruitment within your company."
+    ],
+    [
+     "2653",
+     "Multiline Text",
+     "Please explain how your EDI policy has influenced the diversity of your workforce. If applicable, please include an example."
+    ],
+    [
+     "2654",
+     "Multiselect",
+     "Which of the following groups do you consider when recruiting for roles within the company:"
+    ],
+    [
+     "2655",
+     "Bool",
+     "Does your company engage in work experience placements?"
+    ],
+    [
+     "2656",
+     "Number",
+     "How many individuals in work experience placements have become full time employees?"
+    ],
+    [
+     "2657",
+     "Bool",
+     "Do you ensure that your supply chain meets the requirement of the positive equality duties in relation to the Equality Act 2010?"
+    ],
+    [
+     "2816",
+     "Multiline Text",
+     "Please provide examples of how you achieve supply chain resilience when delivering contracts (e.g. working with a diverse range of businesses or managing cyber security risks)"
+    ],
+    [
+     "2659",
+     "Multiselect",
+     "Please indicate which of the following company types you work with:"
+    ],
+    [
+     "2660",
+     "Bool",
+     "Does your company engage in an apprenticeship programme?"
+    ],
+    [
+     "2661",
+     "Number",
+     "How many of your apprentices found long-term employment within the company?"
+    ],
+    [
+     "2662",
+     "Bool",
+     "Are you able to provide a case study to demonstrate an employee joining as an apprentice and finding long term employment?"
+    ],
+    [
+     "2663",
+     "Bool",
+     "Are you an apprentice levy payer?"
+    ],
+    [
+     "2664",
+     "Bool",
+     "Do you use apprenticeship qualifications to upskill existing staff?"
+    ],
+    [
+     "2665",
+     "Drop Down",
+     "What is the minimum contract value you would require to take on an apprentice?"
+    ],
+    [
+     "2667",
+     "Bool",
+     "Is your organisation a member of the 5% club?"
+    ]
+   ]
+  },
+  {
+   "section": "Working Conditions",
+   "questions": [
+    [
+     "2644",
+     "Bool",
+     "Does your company pay national living wage or above, to all of your employees?"
+    ],
+    [
+     "2673",
+     "Bool",
+     "Does your organisation pay local national living wage?"
+    ],
+    [
+     "2675",
+     "Bool",
+     "Do you adhere to the Working Time Regulations 1998?"
+    ],
+    [
+     "2676",
+     "Bool",
+     "Are any of your employees on zero hour contracts?"
+    ],
+    [
+     "2678",
+     "Bool",
+     "Do you subscribe to and apply the terms of the CIJC Working Rule Agreement?"
+    ],
+    [
+     "2403",
+     "Radio Buttons",
+     "Are you legally required to publish a gender pay gap report?"
+    ],
+    [
+     "2679",
+     "Bool",
+     "Can you provide your company's mean gender pay gap?"
+    ],
+    [
+     "2681",
+     "Bool",
+     "Can you provide details of your median gender pay gap?"
+    ],
+    [
+     "2683",
+     "Bool",
+     "Has your company committed to the five foundational principles of good work?"
+    ],
+    [
+     "2684",
+     "Number",
+     "Please state the number of employees on PAYE."
+    ]
+   ]
+  },
+  {
+   "section": "Community Engagement",
+   "questions": [
+    [
+     "2690",
+     "Bool",
+     "Does your company engage with and support the local community?"
+    ],
+    [
+     "2691",
+     "Multiline Text",
+     "Please detail how you have engaged with and supported your local community within the past 2 years."
+    ],
+    [
+     "2692",
+     "Multiline Text",
+     "Over the past year, how many people hours were spent supporting local community integration, such as volunteering and other community-led initiatives?"
+    ],
+    [
+     "2693",
+     "Bool",
+     "Does your company support local groups and businesses?"
+    ],
+    [
+     "2694",
+     "Multiline Text",
+     "What initiatives do you have in place to support local groups/businesses?"
+    ],
+    [
+     "2695",
+     "Multiline Text",
+     "Please detail how your organisation has supported local groups and businesses including information relating to spend where applicable."
+    ],
+    [
+     "2696",
+     "Drop Down",
+     "What percentage of your company's profit was invested back into the community over the past 2 years?"
+    ],
+    [
+     "2697",
+     "Bool",
+     "Do you support companies and businesses to manage and recover from the impacts of COVID-19, including where new ways of working are required to deliver services?"
+    ],
+    [
+     "2698",
+     "Multiline Text",
+     "Please provide details."
+    ]
+   ]
+  },
+  {
+   "section": "Memberships & Accreditations",
+   "questions": [
+    [
+     "2138",
+     "Bool",
+     "Does your company hold Cyber Essentials Certification?"
+    ],
+    [
+     "2718",
+     "Bool",
+     "Has your company adopted the National Cyber Security Centres 10 steps?"
+    ],
+    [
+     "2719",
+     "Bool",
+     "Is your company a TrustMark registered business?"
+    ],
+    [
+     "2720",
+     "Bool",
+     "Is your company a member of the Considerate Constructors Scheme?"
+    ],
+    [
+     "2721",
+     "Bool",
+     "Is your company a member of the Supply Chain Sustainability School?"
+    ],
+    [
+     "2722",
+     "Drop Down",
+     "What level of membership do you hold?"
+    ]
+   ]
+  },
+  {
+   "section": "Building Safety Act - High Risk Building Infractions",
+   "questions": [
+    [
+     "7387",
+     "Bool",
+     "In the last 5 years has your organisation been subject to the issue of a compliance notice in relation to a contravention of Part A (Structural Failure) or Part B (Fire Safety) of Schedule 1 to the building regulations 2010?"
+    ],
+    [
+     "7389",
+     "Bool",
+     "In the last 5 years has your organisation been subject to the issue of a stop notice in relation to a contravention of any requirement of, or imposed under, the building regulations?"
+    ],
+    [
+     "7391",
+     "Bool",
+     "In the last 5 years has your organisation been subject to the conviction of an offence under the Health and Safety at Work Act 1974, the Building Safety Act 2022, the Building Act 1984, or the Regulatory Reform (Fire Safety) Order 2005?"
+    ],
+    [
+     "7393",
+     "Bool",
+     "In the last 5 years has your organisation been subject to a finding by a formal inquiry of behaviour that directly resulted in loss of life, the deliberate misleading of customers or amounted to the failure to meet regulatory requirements?"
+    ]
+   ]
+  },
+  {
+   "section": "Building Safety Act - Fire Precautions",
+   "questions": [
+    [
+     "10448",
+     "Multiselect",
+     "Considering the work you conduct, which of the following duty holder roles does your organisation fulfil, or intend to fulfil, under the Building Safety Act?"
+    ],
+    [
+     "7382",
+     "Multiline Text",
+     "Please describe how do you communicate technical information to non-technical audiences such as a client, a member of the public or a site visitor?"
+    ],
+    [
+     "7383",
+     "Bool",
+     "Does the organisation ensure communication is achieved through use of oral, written, drawn, digital or graphic information and in accessible formats to all parties involved in a project including but not limited to Clients, Designers, Contractors etc"
+    ],
+    [
+     "7367",
+     "Bool",
+     "Do you have documented arrangements to assess and manage fire safety risks when working on projects and other sites, such as the use of solvents or the risk of fire spread?"
+    ],
+    [
+     "7368",
+     "Upload",
+     "Please provide a copy of your documented arrangements for managing fire safety risks dated within the last 12 months."
+    ],
+    [
+     "7369",
+     "Upload",
+     "Please upload examples of Preventative Fire Safety Training that employees (including subcontractors) have received in relation to the work that they undertake."
+    ],
+    [
+     "7372",
+     "Bool",
+     "Does the work that you undertake impact on primary structure, secondary structure and/or fixings?"
+    ],
+    [
+     "10440",
+     "Bool",
+     "Do you have procedures in place for the notification of building operators, suppliers and manufacturers where defects or maloperation issues are found in construction products or building systems which impact on building safety?"
+    ],
+    [
+     "10441",
+     "Bool",
+     "Does the work that you undertake involve the development and application of fire strategies, practices and / or technological systems in buildings?"
+    ],
+    [
+     "10444",
+     "Bool",
+     "Does the work that you undertake involve the alteration or conversion of an existing building through construction activities or design input?"
+    ]
+   ]
+  },
+  {
+   "section": "Building Safety Act - Building Safety",
+   "questions": [
+    [
+     "9956",
+     "Bool",
+     "Do you carry out or intend to carry out any of the following building or design work related to a building in England or Wales?\n\nErection or Extension of a Building\nRenovation/Refurbishment/Structural Alteration\nMaintenance\nInstallation of Safety Critical Features\nThe provision or extension of a controlled service or fitting in or in connection with a building.\n\nWhich would therefore be regulated under The Building Regulations 2010.\n\nPlease note: If you are acting as a Subcontractor, you are considered a Contractor under the Building Regulations 2010 and therefore you should answer YES."
+    ],
+    [
+     "13091",
+     "Bool",
+     "Does your company hold a valid BS 99001 (or equivalent) issued by a UKAS (or mutually recognised by UKAS) accredited certification body?"
+    ],
+    [
+     "9952",
+     "Bool",
+     "Does your company have arrangements in place for ensuring the Client is aware of its duties under the Building Safety Act?"
+    ],
+    [
+     "9960",
+     "Upload",
+     "Please provide evidence of arrangements in place for ensuring the Client is aware of its duties under the Building Safety Act, including how you communicate relevant technical information to non-technical audiences."
+    ],
+    [
+     "9947",
+     "Bool",
+     "Do you employ subcontractors?"
+    ],
+    [
+     "9954",
+     "Bool",
+     "Does your company have arrangements in place to cooperate with other duty holders to ensure that any building work or design work (whichever is applicable) is compliant with relevant requirements?"
+    ],
+    [
+     "9963",
+     "Upload",
+     "Please provide the arrangements you have in place to communicate and cooperate with other duty holders to ensure that any work (building or design) is compliant with relevant requirements (e.g. Building Safety Act, Building Regulations, other legislation and industry standards)."
+    ],
+    [
+     "13092",
+     "Bool",
+     "Do you have arrangements in place to notify relevant stakeholders, manufacturers, suppliers and accountable persons, of any defects or issues found in construction products or systems which could impact building safety?"
+    ],
+    [
+     "13093",
+     "Upload",
+     "Please upload the arrangements you have to notify all stakeholders of any defects or issues found in construction products or systems which could impact building safety."
+    ],
+    [
+     "9955",
+     "Bool",
+     "Does your company work on, or intend to work on, any projects involving a Higher-Risk Building?"
+    ],
+    [
+     "10006",
+     "Multiselect",
+     "Considering the work you conduct, which of the following duty holder roles does your organisation fulfil, or intend to fulfil, under the Building Safety Act?"
+    ],
+    [
+     "10009",
+     "Upload",
+     "Please provide the arrangements you have in place to plan, manage and monitor the building work you undertake to ensure the work complies with relevant requirements (e.g. Building Safety Act, Building Regulations, other legislation and industry standards), in your duty holder role as a Principal Contractor and/or Contractor."
+    ],
+    [
+     "10007",
+     "Bool",
+     "Does your company have arrangements in place to provide other duty holders with relevant information about building work being carried out in your role as Contractor?"
+    ],
+    [
+     "10008",
+     "Upload",
+     "Please provide the arrangements you have in place to provide other duty holders with relevant information about building work being carried out in your role as Contractor."
+    ]
+   ]
+  }
+ ]
+}

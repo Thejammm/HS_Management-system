@@ -1,0 +1,1446 @@
+{
+ "RSSC": {
+  "set": "designer",
+  "rows": [
+   {
+    "no": 1,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Number of employees",
+    "status": "RSSC",
+    "hsRefs": [
+     "3374"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2814"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 2,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Person with overall responsibility for health and safety",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "3455"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2906"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 3,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Signed H&S Policy with statement of intent",
+    "status": "RSSC",
+    "hsRefs": [
+     "3456"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2907"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 4,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Organisation, roles and arrangements, including CDM designer duties",
+    "status": "Covered in another answer",
+    "hsRefs": [
+     "3457",
+     "3458"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2908",
+     "2909"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 5,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Member of a fleet operations or management scheme?",
+    "status": "RSSC",
+    "hsRefs": [
+     "3459"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2910"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 6,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Drug and alcohol policy",
+    "status": "RSSC",
+    "hsRefs": [
+     "3461",
+     "3462"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2912"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 7,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Occupational health, mental health and fatigue arrangements",
+    "status": "RSSC",
+    "hsRefs": [
+     "3463",
+     "3464"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2914",
+     "2915"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 8,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Behavioural safety programme",
+    "status": "Covered in another answer",
+    "hsRefs": [
+     "3465",
+     "3466"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2916",
+     "2917"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 9,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Health and safety adviser and their competence",
+    "status": "Already in Constructionline",
+    "hsRefs": [
+     "3467",
+     "3468"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2918",
+     "2919"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 10,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Example of the adviser's advice and how it was implemented",
+    "status": "RSSC",
+    "hsRefs": [
+     "3469"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2920"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 11,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Training matrix with expiry dates, CPD or training records",
+    "status": "RSSC",
+    "hsRefs": [
+     "3470"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2921"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 12,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Designers' qualifications, experience, CVs and professional memberships",
+    "status": "RSSC",
+    "hsRefs": [
+     "3471"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2922"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 13,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "How you check, review and improve health and safety performance",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "3472"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2923"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 14,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "How you consult employees on health and safety",
+    "status": "RSSC",
+    "hsRefs": [
+     "3473",
+     "3475"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2924",
+     "2927"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 15,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Accident, incident and near miss statistics; HSE enforcement",
+    "status": "RSSC",
+    "hsRefs": [
+     "3477",
+     "3478",
+     "3480"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2928",
+     "2929",
+     "2931"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 16,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Use of subcontractors",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "3482"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2933"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 17,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Evidence the client is aware of their CDM duties",
+    "status": "AHS Ltd, then RSSC signs",
+    "hsRefs": [
+     "3485"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2936"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 18,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Project design risk assessment and how residual risks reach the Principal Designer",
+    "status": "RSSC",
+    "hsRefs": [
+     "3486",
+     "3487"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2937",
+     "2938"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 19,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Designs for places of work under the Workplace Regulations 1992",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "3488",
+     "3489"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2939"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 20,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Cooperation with other designers, the Principal Designer and contractors",
+    "status": "RSSC",
+    "hsRefs": [
+     "3490"
+    ],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [
+     "2941"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 21,
+    "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
+    "question": "Risk assessments supporting the H&S Policy",
+    "status": "RSSC",
+    "hsRefs": [],
+    "hsValid": "2026-08-05",
+    "ssipRefs": [],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 22,
+    "section": "Mental Health and Wellbeing (expired)",
+    "question": "Arrangements for occupational health, mental health and fatigue",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "2320"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 23,
+    "section": "Mental Health and Wellbeing (expired)",
+    "question": "Part of a mental health at work initiative? Thriving at Work enhanced standards?",
+    "status": "RSSC",
+    "hsRefs": [
+     "2685",
+     "2687"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 24,
+    "section": "Mental Health and Wellbeing (expired)",
+    "question": "Employee assistance programme?",
+    "status": "RSSC",
+    "hsRefs": [
+     "2688"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 25,
+    "section": "Business Ownership (expired)",
+    "question": "Ownership declarations (ex-forces, women, ethnic minority, LGBT, disability)",
+    "status": "RSSC",
+    "hsRefs": [
+     "2668",
+     "2669",
+     "2670",
+     "2671",
+     "2672"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 26,
+    "section": "Environment & Sustainability (expired)",
+    "question": "Net zero policy, carbon monitoring and Carbon Reduction Plan",
+    "status": "RSSC",
+    "hsRefs": [
+     "2703",
+     "2706",
+     "2709"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 27,
+    "section": "Environment & Sustainability (expired)",
+    "question": "Supplier environmental measures, waste training, reduce, re-use and recycle",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "2702",
+     "2712",
+     "2453",
+     "2454"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 28,
+    "section": "Environment & Sustainability (expired)",
+    "question": "Biodiversity, sustainability standards, science-based target, community, fleet, UN goals",
+    "status": "RSSC",
+    "hsRefs": [
+     "2699",
+     "2701",
+     "2711",
+     "2713",
+     "2715",
+     "2717"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 29,
+    "section": "Social Value (expired)",
+    "question": "EDI policy and its impact on the company, recruitment and workforce",
+    "status": "RSSC",
+    "hsRefs": [
+     "2649",
+     "2650",
+     "2651",
+     "2652",
+     "2653"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 30,
+    "section": "Social Value (expired)",
+    "question": "Social value reporting, recruitment groups, work experience, company types, apprenticeships",
+    "status": "RSSC",
+    "hsRefs": [
+     "2647",
+     "2648",
+     "2654",
+     "2655",
+     "2659",
+     "2660"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 31,
+    "section": "Social Value (expired)",
+    "question": "Supply chain equality duties and supply chain resilience",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "2657",
+     "2816"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 32,
+    "section": "Social Value (expired)",
+    "question": "Start-up, mutual, voluntary, community or charity? 5% Club member?",
+    "status": "RSSC",
+    "hsRefs": [
+     "2646",
+     "2667"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 33,
+    "section": "Working Conditions (expired)",
+    "question": "National Living Wage, Working Time Regulations, CIJC, gender pay gap",
+    "status": "RSSC",
+    "hsRefs": [
+     "2644",
+     "2675",
+     "2678",
+     "2403",
+     "2679",
+     "2681"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 34,
+    "section": "Working Conditions (expired)",
+    "question": "Local living wage, zero hours contracts, good work principles, employees on PAYE",
+    "status": "RSSC",
+    "hsRefs": [
+     "2673",
+     "2676",
+     "2683",
+     "2684"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 35,
+    "section": "Memberships & Accreditations (expired)",
+    "question": "Cyber Essentials, NCSC 10 Steps, Supply Chain Sustainability School",
+    "status": "RSSC",
+    "hsRefs": [
+     "2138",
+     "2718",
+     "2721"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 36,
+    "section": "Memberships & Accreditations (expired)",
+    "question": "TrustMark registered? Considerate Constructors Scheme member?",
+    "status": "RSSC",
+    "hsRefs": [
+     "2719",
+     "2720"
+    ],
+    "hsValid": "2026-08-04",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 37,
+    "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
+    "question": "Insurances",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-03-24",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 38,
+    "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
+    "question": "Quality",
+    "status": "RSSC",
+    "hsRefs": [],
+    "hsValid": "2027-07-17",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 39,
+    "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
+    "question": "Corporate Responsibility and Governance",
+    "status": "RSSC",
+    "hsRefs": [],
+    "hsValid": "2027-09-02",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 40,
+    "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
+    "question": "Information Security",
+    "status": "RSSC",
+    "hsRefs": [],
+    "hsValid": "2027-07-20",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 41,
+    "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
+    "question": "Environmental Management",
+    "status": "RSSC",
+    "hsRefs": [],
+    "hsValid": "2027-05-11",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 42,
+    "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
+    "question": "Fairness, Inclusion and Respect",
+    "status": "RSSC",
+    "hsRefs": [],
+    "hsValid": "2027-08-12",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 43,
+    "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
+    "question": "Information Management",
+    "status": "RSSC",
+    "hsRefs": [],
+    "hsValid": "2027-03-18",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 44,
+    "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
+    "question": "Building Safety",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2026-12-15",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 45,
+    "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
+    "question": "Head office address",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "2027-03-27",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 46,
+    "section": "Building Safety Act - High Risk Building Infractions",
+    "question": "Compliance notices, stop notices, convictions or inquiry findings in the last 5 years",
+    "status": "RSSC",
+    "hsRefs": [
+     "7387",
+     "7389",
+     "7391",
+     "7393"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 47,
+    "section": "Building Safety Act - Fire Precautions",
+    "question": "Duty holder roles held under the Building Safety Act",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "10448"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 48,
+    "section": "Building Safety Act - Fire Precautions",
+    "question": "How technical information is communicated to non-technical audiences",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "7382"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 49,
+    "section": "Building Safety Act - Fire Precautions",
+    "question": "Communication in accessible formats",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "7383"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 50,
+    "section": "Building Safety Act - Fire Precautions",
+    "question": "Examples of preventative fire safety training received",
+    "status": "RSSC",
+    "hsRefs": [
+     "7369"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 51,
+    "section": "Building Safety Act - Fire Precautions",
+    "question": "Does your work affect primary or secondary structure or fixings?",
+    "status": "RSSC",
+    "hsRefs": [
+     "7372"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 52,
+    "section": "Building Safety Act - Fire Precautions",
+    "question": "Procedures to notify operators, suppliers and manufacturers of defects",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "10440"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 53,
+    "section": "Building Safety Act - Fire Precautions",
+    "question": "Does your work involve fire strategies, practices or systems?",
+    "status": "RSSC",
+    "hsRefs": [
+     "10441"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 54,
+    "section": "Building Safety Act - Fire Precautions",
+    "question": "Does your work involve altering or converting existing buildings?",
+    "status": "RSSC",
+    "hsRefs": [
+     "10444"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 55,
+    "section": "Building Safety Act - Higher Risk Building Declaration",
+    "question": "Do you work on, or intend to work on, higher-risk buildings?",
+    "status": "RSSC",
+    "hsRefs": [
+     "10452"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 56,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Do you carry out building or design work regulated by the Building Regulations?",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "9956"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 57,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Do you hold BS 99001?",
+    "status": "RSSC",
+    "hsRefs": [
+     "13091"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 58,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Arrangements so the client is aware of their Building Safety Act duties",
+    "status": "AHS Ltd, then RSSC signs",
+    "hsRefs": [
+     "9952",
+     "9960"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 59,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Do you employ subcontractors?",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "9947"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 60,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Arrangements to cooperate with other duty holders",
+    "status": "Covered in another answer",
+    "hsRefs": [
+     "9954",
+     "9963"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 61,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Arrangements to notify stakeholders, manufacturers and accountable persons of defects",
+    "status": "RSSC",
+    "hsRefs": [
+     "13092"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 62,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Do you work on, or intend to work on, higher-risk buildings?",
+    "status": "RSSC",
+    "hsRefs": [
+     "9955"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 63,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Golden thread and change control log for higher-risk buildings",
+    "status": "RSSC",
+    "hsRefs": [
+     "9964",
+     "9969",
+     "9965",
+     "9970"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 64,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Duty holder roles held under the Building Safety Act",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "9999"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 65,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Arrangements to plan, manage and monitor design work so it complies",
+    "status": "RSSC",
+    "hsRefs": [
+     "9985",
+     "9989",
+     "9990"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 66,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Products assessed and classified as part of a whole system",
+    "status": "Covered in another answer",
+    "hsRefs": [
+     "9991",
+     "9992"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 67,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Information for other duty holders about design, construction and maintenance",
+    "status": "RSSC",
+    "hsRefs": [
+     "9993",
+     "9994"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 68,
+    "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
+    "question": "Coordination with the Principal Designer to report breaches on higher-risk buildings",
+    "status": "Covered in another answer",
+    "hsRefs": [
+     "9995"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   }
+  ]
+ },
+ "MVL": {
+  "set": "contractor",
+  "rows": [
+   {
+    "no": 1,
+    "section": "Insurances (expires in 9 days)",
+    "question": "Details of the insurances the company holds",
+    "status": "MVL",
+    "hsRefs": [
+     "25"
+    ],
+    "hsValid": "2026-10-22",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 2,
+    "section": "Health and Safety and Health and Safety Third Party / Exemption certificates (expire in 15 days)",
+    "question": "Do you hold a valid SSIP certificate or ISO 45001?",
+    "status": "MVL",
+    "hsRefs": [
+     "13131",
+     "13127"
+    ],
+    "hsValid": "2026-10-28",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 3,
+    "section": "Health and Safety and Health and Safety Third Party / Exemption certificates (expire in 15 days)",
+    "question": "Upload the certificate, select it, and enter the start and expiry dates",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "373",
+     "13132",
+     "375",
+     "2319"
+    ],
+    "hsValid": "2026-10-28",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 4,
+    "section": "Health and Safety and Health and Safety Third Party / Exemption certificates (expire in 15 days)",
+    "question": "Who is ultimately responsible for health and safety?",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "1463",
+     "1464",
+     "1465",
+     "1466",
+     "1467",
+     "1468",
+     "1469"
+    ],
+    "hsValid": "2026-10-28",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 5,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Question set and size of company",
+    "status": "MVL",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2813",
+     "2814"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 6,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Person with overall responsibility for health and safety",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2827"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 7,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Health and Safety Policy with a statement of intent signed by the most senior person",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2828"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 8,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Organisation and responsibilities; arrangements for your duties as a Contractor under CDM 2015",
+    "status": "Covered in another answer",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2829",
+     "2830"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 9,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Member of a fleet operations or management scheme?",
+    "status": "MVL",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2831"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 10,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Drug and alcohol policy",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2833",
+     "2834"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 11,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Occupational health, mental health and fatigue arrangements",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2835",
+     "2836"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 12,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Behavioural safety programme",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2837"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 13,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Health and safety adviser and their competence",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2839",
+     "2840"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 14,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Example of the adviser's advice and how it was implemented",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2841"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 15,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Training matrix with expiry dates",
+    "status": "MVL",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2842"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 16,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Employees' and site managers' qualifications, training certificates and skills cards",
+    "status": "MVL",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2843"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 17,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Number or percentage of people holding a CSCS card",
+    "status": "MVL",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2844"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 18,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "How you check, review and improve health and safety performance",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2845"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 19,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Number of employees and practical evidence of two-way consultation",
+    "status": "MVL",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2846",
+     "2849"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 20,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Accident statistics for 3 years; HSE enforcement in 5 years",
+    "status": "MVL",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2850",
+     "2851",
+     "2853"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 21,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Use of subcontractors",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2855"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 22,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Two site-specific risk assessments and method statements from two projects",
+    "status": "MVL",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2858"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 23,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Two completed COSHH assessments for chemicals you use",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2859"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 24,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Do you act as Principal Contractor as the sole contractor on any project?",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2860"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 25,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Example of two-way communication with another party about the work",
+    "status": "AHS Ltd",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2862"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 26,
+    "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
+    "question": "Evidence that welfare is provided by another party",
+    "status": "MVL",
+    "hsRefs": [],
+    "hsValid": "",
+    "ssipRefs": [
+     "2863"
+    ],
+    "ssipValid": "2026-09-26"
+   },
+   {
+    "no": 27,
+    "section": "SSIP Third Party Exemption (expired)",
+    "question": "Do you hold Once For All SSIP? If so, its expiry date",
+    "status": "AHS Ltd",
+    "hsRefs": [
+     "13129",
+     "10321"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 28,
+    "section": "BAM - Code of Conduct (new)",
+    "question": "Do you confirm that you will comply with the BAM Vendor Code of Conduct?",
+    "status": "MVL",
+    "hsRefs": [
+     "14563"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 29,
+    "section": "Already verified in Constructionline (no action now)",
+    "question": "Company and Financial Information",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-07-31",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 30,
+    "section": "Already verified in Constructionline (no action now)",
+    "question": "Corporate and Professional Standing (standard and enhanced)",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-02-23",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 31,
+    "section": "Already verified in Constructionline (no action now)",
+    "question": "Corporate Responsibility and Governance",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-05-15",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 32,
+    "section": "Already verified in Constructionline (no action now)",
+    "question": "Information Security",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-05-15",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 33,
+    "section": "Already verified in Constructionline (no action now)",
+    "question": "Information Management",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-04-08",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 34,
+    "section": "Already verified in Constructionline (no action now)",
+    "question": "Quality",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-03-08",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 35,
+    "section": "Already verified in Constructionline (no action now)",
+    "question": "Environmental Management",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-05-15",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 36,
+    "section": "Already verified in Constructionline (no action now)",
+    "question": "Environment & Sustainability",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-04-08",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 37,
+    "section": "Already verified in Constructionline (no action now)",
+    "question": "Mental Health and Wellbeing",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-04-08",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 38,
+    "section": "Already verified in Constructionline (no action now)",
+    "question": "Fairness, Inclusion and Respect",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-03-15",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 39,
+    "section": "Already verified in Constructionline (no action now)",
+    "question": "Business Ownership, Social Value, Working Conditions, Community Engagement, Memberships",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-04-08",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 40,
+    "section": "Already verified in Constructionline (no action now)",
+    "question": "Company profile: contacts, offices, operating areas",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-02-09",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 41,
+    "section": "Building Safety Act - High Risk Building Infractions",
+    "question": "Compliance notices, stop notices, convictions or inquiry findings in the last 5 years",
+    "status": "Already in Constructionline",
+    "hsRefs": [
+     "7387",
+     "7389",
+     "7391",
+     "7393"
+    ],
+    "hsValid": "2027-08-13",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 42,
+    "section": "Building Safety Act - Fire Precautions",
+    "question": "Fire precautions, fire training and technical communication questions",
+    "status": "Already in Constructionline",
+    "hsRefs": [
+     "10448",
+     "7382",
+     "7383",
+     "7369",
+     "7372",
+     "10440",
+     "10441",
+     "10444"
+    ],
+    "hsValid": "2027-05-10",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 43,
+    "section": "Building Safety Act - Higher Risk Building Declaration (new)",
+    "question": "Do you work on, or intend to work on, higher-risk buildings?",
+    "status": "MVL",
+    "hsRefs": [
+     "10452"
+    ],
+    "hsValid": "Not yet valid",
+    "ssipRefs": [],
+    "ssipValid": ""
+   },
+   {
+    "no": 44,
+    "section": "Building Safety Act - Building Safety",
+    "question": "Building Safety Act duties: client awareness, cooperation, defects, competence, supervision, information",
+    "status": "Already in Constructionline",
+    "hsRefs": [],
+    "hsValid": "2027-02-02",
+    "ssipRefs": [],
+    "ssipValid": ""
+   }
+  ]
+ }
+}

@@ -13,7 +13,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="reports/cl-bank.js"></script>
 <script src="reports/accred-core.js"></script>
+<script src="reports/cl-pack.js"></script>
 <script>/* pdf-lib v1.17.1 (MIT) - inlined so the fillable Discovery Questionnaire builds and imports offline */
 !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t=t||self).PDFLib={})}(this,(function(t){"use strict";
 /*! *****************************************************************************
@@ -2952,6 +2954,123 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .tab-panel{display:block!important;}
 }
 </style>
+<style id="aclCss">
+/* ── Accreditation engine: AHS charcoal #3A3A3A, cyan #38A8C2, grey #787878.
+      Pastel red, amber and green are used for expiry status only. ── */
+.acl{--acl-ink:#3A3A3A;--acl-cyan:#38A8C2;--acl-grey:#787878;--acl-red:#F6D6D6;--acl-amber:#FBE8C4;--acl-green:#D8EEDA}
+.acl .acj-num{color:var(--acl-cyan);font-size:18px}
+.acl-top{display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;justify-content:space-between}
+.acl-counts{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));border:1px solid var(--border);flex:1 1 520px}
+.acl-counts div{padding:8px 12px;border-right:1px solid var(--border)}
+.acl-counts div:last-child{border-right:0}
+.acl-counts b{display:block;font-size:22px;font-weight:800;line-height:1.1}
+.acl-counts span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);font-weight:700;margin-top:2px}
+.acl-tools{font-size:12px;color:var(--text-muted);margin:12px 0 8px}
+.acl-warn{margin:12px 0 0}
+.acl-pack{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-left:4px solid #38A8C2}
+/* evidence register (Documents tab) */
+.ev-imports{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 0;padding-top:10px;border-top:1px solid var(--border)}
+.ev-card .ev-chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.ev-chip{border:1px solid var(--border);background:transparent;color:var(--text);padding:5px 10px;font:inherit;font-size:12px;cursor:pointer;border-radius:0}
+.ev-chip b{font-weight:800}
+.ev-chip.on{border-color:#38A8C2;box-shadow:inset 0 -3px 0 #38A8C2}
+.ev-t{width:100%;min-width:900px;border-collapse:collapse;font-size:12.5px}
+.ev-t th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);padding:6px 8px;border-bottom:2px solid var(--border);font-weight:800}
+.ev-t td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.ev-t td small{display:block;font-size:11px;color:var(--text-muted);margin-top:2px}
+.ev-tag{display:inline-block;border:1px solid var(--border);padding:0 5px;font-size:11px;font-weight:700;margin:0 2px 2px 0;white-space:nowrap}
+.ev-flag{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;color:#3A3A3A;white-space:nowrap}
+.ev-f-stale{background:#F6D6D6} .ev-f-ok{background:#D8EEDA} .ev-f-undated,.ev-f-untagged{background:var(--muted-bg);color:var(--text)}
+.ev-qgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-top:14px;border-top:1px solid var(--border);padding-top:6px}
+.ev-ql{margin:0;padding-left:18px;font-size:12.5px;line-height:1.5}
+.ap-doc{border:1px solid var(--border);border-left:4px solid var(--border);padding:10px 12px;margin-bottom:10px}
+.ap-doc.ap-awaiting,.ap-doc.ap-query{border-left-color:#38A8C2}
+.ap-doc.ap-approved{border-left-color:#3A3A3A}
+.ap-top{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.ap-top>div{flex:1;min-width:220px}
+.ap-top small{display:block;font-size:11.5px;color:var(--text-muted);margin-top:2px}
+.ap-pill{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border:1px solid #38A8C2;color:#38A8C2;padding:2px 7px;white-space:nowrap}
+.ap-approved .ap-pill{border-color:#3A3A3A;color:var(--text)}
+.ap-line{font-size:12.5px;margin-top:6px}
+.ap-qtext{white-space:pre-wrap;font-size:13px;margin-top:8px;padding:8px 10px;background:var(--muted-bg)}
+.ap-acts{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-top:10px}
+.ap-acts textarea{flex:1;min-width:220px;font:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:0;resize:vertical}
+.ap-logwrap{margin-top:8px}
+.ap-logwrap summary{cursor:pointer;font-size:12px;font-weight:700;color:#38A8C2}
+.ap-log{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.ap-log th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);padding:4px 6px;border-bottom:1px solid var(--border)}
+.ap-log td{padding:5px 6px;border-bottom:1px solid var(--border);vertical-align:top}
+.ap-log td small{display:block;font-size:10.5px;color:var(--text-muted)}
+.ap-send{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ap-send select{flex:1;min-width:240px;font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:0}
+.ap-reg{font-size:10.5px;font-weight:700;color:#38A8C2;margin-top:2px}
+/* service calendar (Monthly tab) */
+.svc-card .svc-counts,.svc-card .svc-tot{margin:12px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));border:1px solid var(--border)}
+.svc-card .acl-counts div{padding:8px 12px;border-right:1px solid var(--border)}
+.svc-card .acl-counts div:last-child{border-right:0}
+.svc-card .acl-counts b{display:block;font-size:20px;font-weight:800}
+.svc-card .acl-counts span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);font-weight:700}
+.svc-pk{margin:10px 0 14px;border:1px solid var(--border);padding:8px 12px}
+.svc-pk summary{cursor:pointer;font-weight:700;font-size:13px;color:#38A8C2}
+.svc-rate{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;font-size:12.5px}
+.svc-rate label{font-weight:700}
+.svc-rate input,.svc-price{width:110px;font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:0}
+.svc-t td small{max-width:420px}
+.svc-t tr.svc-off td{opacity:.45}
+.svc-t input[type=checkbox]{width:auto;margin:0}
+.svc-cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.svc-month{border:1px solid var(--border)}
+.svc-mh{background:#38A8C2;color:#fff;font-weight:800;font-size:12.5px;padding:6px 10px}
+.svc-line{padding:8px 10px;border-top:1px solid var(--border);font-size:12.5px}
+.svc-line:first-of-type{border-top:0}
+.svc-lt{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.svc-st{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;color:#3A3A3A;background:var(--muted-bg)}
+.svc-st.svc-done{background:#D8EEDA} .svc-st.svc-overdue{background:#F6D6D6} .svc-st.svc-due{background:#FBE8C4}
+.svc-done{font-size:11.5px;color:var(--text-muted);margin-top:4px}
+.svc-form{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.svc-form input{flex:1 1 120px;min-width:0;font:inherit;font-size:12px;padding:4px 6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:0}
+.svc-form input[type=date]{flex:0 0 130px}
+.ev-more summary{cursor:pointer;font-size:12.5px;font-weight:700;color:#38A8C2;margin-bottom:4px}
+.ev-pick{max-height:260px;overflow-y:auto;border:1px solid var(--border);padding:6px 8px;font-size:12px}
+.ev-qa{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:8px 0 3px}
+.ev-qa:first-child{margin-top:0}
+.ev-q{display:flex;gap:6px;align-items:flex-start;padding:2px 0;cursor:pointer;line-height:1.35}
+.ev-q input{width:auto!important;margin:2px 0 0}
+.ev-q i{font-style:normal;font-size:10px;font-weight:800;border:1px solid #38A8C2;color:#38A8C2;padding:0 3px;white-space:nowrap}
+.acl-block{border:1px solid var(--border);margin-bottom:8px}
+.acl-bhead{display:flex;align-items:center;gap:10px;width:100%;background:var(--acl-cyan);color:#fff;border:0;padding:8px 12px;text-align:left;cursor:pointer;font:inherit}
+.acl-bhead:hover{filter:brightness(.96)}
+.acl-chev{font-size:11px;width:12px}
+.acl-bname{font-weight:800;font-size:13px;flex:1}
+.acl-bname i{font-style:normal;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;border:1px solid #fff;padding:0 4px;margin-left:6px;vertical-align:1px}
+.acl-bmeta{font-size:11.5px;opacity:.95}
+.acl-pill{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;color:var(--acl-ink)}
+.acl-red{background:var(--acl-red)!important;color:var(--acl-ink)!important}
+.acl-amber{background:var(--acl-amber)!important;color:var(--acl-ink)!important}
+.acl-green{background:var(--acl-green)!important;color:var(--acl-ink)!important}
+.acl-dates{display:flex;flex-wrap:wrap;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border)}
+.acl-valid{display:flex;align-items:center;gap:8px;padding:4px 8px;font-size:12px}
+.acl-valid span{font-weight:700}
+.acl-valid b{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em}
+.acl-scroll{overflow-x:auto}
+.acl-t{width:100%;min-width:1150px;border-collapse:collapse;table-layout:fixed;font-size:12.5px}
+.acl-t th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);text-align:left;padding:6px 6px;border-bottom:2px solid var(--border);background:var(--surface);font-weight:800}
+.acl-t th:nth-child(1){width:38px} .acl-t th:nth-child(2){width:26%} .acl-t th:nth-child(3),.acl-t th:nth-child(4){width:19%}
+.acl-t th:nth-child(5){width:132px} .acl-t th:nth-child(6),.acl-t th:nth-child(8){width:70px} .acl-t th:nth-child(7),.acl-t th:nth-child(9){width:88px} .acl-t th:nth-child(10){width:118px}
+.acl-t td{padding:5px 6px;border-bottom:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere}
+.acl-t tr.acl-done td{opacity:.6}
+.acl-no{font-weight:800;color:var(--text-muted)}
+.acl-q{line-height:1.4}
+.acl-q small{display:block;font-size:10.5px;color:var(--text-muted);margin-top:3px;font-weight:700;letter-spacing:.03em}
+.acl-ref{font-size:12px;color:var(--acl-grey)}
+.acl-exp{font-size:12px;white-space:nowrap}
+.acl .acl-ed{width:100%;box-sizing:border-box;border:1px solid transparent;background:transparent;color:var(--text);font:inherit;font-size:12.5px;line-height:1.4;padding:2px 4px;resize:vertical;border-radius:0}
+.acl .acl-ed:hover:not(:disabled){border-color:var(--border)}
+.acl .acl-ed:focus{border-color:var(--acl-cyan);outline:0;background:var(--input-bg)}
+.acl .acl-ed.is-def{color:var(--text-muted)}
+.acl select.acl-st{font-size:12px;padding:4px 5px}
+.acl input.acl-donein{width:100%;box-sizing:border-box;font-size:12px}
+</style>
 <style id="acjCss">
 /* ── Accreditation journey: square, flat, ruled (AHS app design standard) ── */
 .acj{--acj-teal:#3E9DAF;--acj-teal2:#4bbfd6;--acj-grey:#757575;font-family:Inter,system-ui,sans-serif;color:var(--text);margin-bottom:18px}
@@ -3616,6 +3735,23 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .co-field label{font-size:12px;font-weight:600;color:var(--text-muted);}
     .co-field input,.co-field select,.co-field textarea{width:100%;font-family:inherit;font-size:13.5px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);}
     .co-field textarea{resize:vertical;min-height:70px;}
+    /* accreditation fact sheet: AHS charcoal, cyan and grey; pastel red and amber for the warnings only */
+    .fs-card .fs-seg{display:flex;flex-wrap:wrap;gap:6px}
+    .fs-btn{border:1px solid #38A8C2;background:transparent;color:#38A8C2;padding:7px 12px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border-radius:0}
+    .fs-btn[aria-pressed="true"]{background:#38A8C2;color:#fff}
+    .fs-btn:disabled{opacity:.5;cursor:default}
+    .fs-check{display:flex!important;align-items:center;gap:7px;font-weight:500!important;color:var(--text)!important;cursor:pointer}
+    .fs-check input{width:auto!important;margin:0}
+    .fs-wide{grid-column:1/-1}
+    .fs-warn,.fs-log{border:1px solid var(--border);padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.5;color:var(--text)}
+    .fs-warn{background:var(--muted-bg);border-left:4px solid #3A3A3A}
+    .fs-log{background:var(--muted-bg);border-left:4px solid #38A8C2}
+    .fs-warn ul{margin:4px 0 0;padding-left:18px}
+    .fs-h{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+    .fs-item{border-top:1px solid var(--border);padding:7px 0 2px}
+    .fs-item:first-of-type{border-top:0}
+    .fs-k{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-right:4px}
+    .fs-warn .acj-link,.fs-log .acj-link{background:none;border:0;padding:0 2px;color:#38A8C2;font-weight:700;cursor:pointer;text-decoration:underline;font-size:inherit}
     .co-field.co-wide{grid-column:1/-1;}
     .co-rowlist{display:flex;flex-direction:column;gap:8px;}
     .co-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:center;}
@@ -3941,6 +4077,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
 
   <div id="tab-signoff" class="tab-panel">
     <div class="rep-hero"><h2>Policy &amp; procedure sign-off</h2><p>Everything your client's people must sign for. Add it with where it lives, press Issue, and each person gets a link: they read it and confirm on their phone, and it lands on the tracker.</p></div>
+    <div id="clientApprovals"></div>
     <div id="signoffContainer"></div>
     <div id="riskDocControl" style="margin-top:18px;"></div>
   </div>
@@ -3959,6 +4096,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
       </div>
     </div>
     <div id="documentsContainer"></div>
+    <div id="evidenceRegister"></div>
 
     <!-- Risk assessment register (moved here from Assurance records so staff
          logins can read it - the Documents tab is in the employee view) -->
@@ -4585,6 +4723,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
        off the client's record until Simon deletes them
   ══════════════════════════════════════ -->
   <div id="tab-triage" class="tab-panel">
+    <div id="triageQueries"></div>
     <div class="card">
       <div class="card-band"><h3><span class="dot">●</span> Triage</h3></div>
       <div class="card-body">
@@ -4696,6 +4835,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
        TAB 3 - MONTHLY REPORT
   ══════════════════════════════════════ -->
   <div id="tab-monthly" class="tab-panel">
+    <div id="serviceCalendar"></div>
     <div class="card no-print" style="margin-bottom:20px;">
       <div class="card-band"><h3><span class="dot">●</span> Report filters</h3></div>
       <div class="card-body">
@@ -6272,7 +6412,7 @@ function switchTab(id) {
   if(id==='cas')      { renderCAS(); }
   if(id==='inspection'){ renderInspectionTypeGrid(); renderActiveInspectionBody(); }
   if(id==='actions')  { renderActions(); renderActionStats(); }
-  if(id==='monthly')  { populateReportLocationFilter(); renderMonthlyReport(); }
+  if(id==='monthly')  { try{ renderServiceCalendar(); }catch(e){ console.error('service calendar', e); } populateReportLocationFilter(); renderMonthlyReport(); }
   if(id==='audit')    { renderAuditSections(); populateAuditForm(); if(typeof renderAuditProgress==='function') renderAuditProgress(); }
   if(id==='setup')    { showSetupTab(); }
   if(id==='admin')    { renderAdminPane(); }
@@ -14370,8 +14510,10 @@ function applyViewMode(){
   const _hasLink = Array.isArray(S.linkedApps) && S.linkedApps.some(l=>l && l.kind==='inspections' && l.remoteTenantId);
   const _hasInspData = (Array.isArray(S.inspections) && S.inspections.length>0) || (Array.isArray(S.actions) && S.actions.length>0);
   const _linkedShow = _hasLink || _hasInspData;
+  // A client on an AHS service package has its service calendar on the Monthly tab.
+  const _hasPkg = !!(S.accred && S.accred.package && S.accred.package.id);
   if(!_linkedShow){
-    ['actions','monthly'].forEach(t=>{ const b=document.querySelector('.tab-btn[data-tab="'+t+'"]'); if(b) b.style.display='none'; });
+    ['actions','monthly'].forEach(t=>{ if(t==='monthly' && _hasPkg) return; const b=document.querySelector('.tab-btn[data-tab="'+t+'"]'); if(b) b.style.display='none'; });
   }
   const _ln=document.getElementById('navLinkedNote'); if(_ln) _ln.style.display=_linkedShow?'':'none';
   // A phase group with every button hidden is an empty box - hide the group.
@@ -14389,7 +14531,7 @@ function applyViewMode(){
     // sent away from it - but NOT the signed-out offline copy, which is the
     // consultant's own. Testing "not a consultant" would have evicted that too.
     const _hideSetup = insp || ((Auth.user()?.role||'consultant') !== 'consultant');
-    if(_at==='inspection' || (_at==='setup' && _hideSetup) || (!_linkedShow && (_at==='actions'||_at==='monthly'))) switchTab(insp?'signoff':'cockpit');
+    if(_at==='inspection' || (_at==='setup' && _hideSetup) || (!_linkedShow && (_at==='actions'||(_at==='monthly'&&!_hasPkg)))) switchTab(insp?'signoff':'cockpit');
   }
   if(insp){ const cp=document.getElementById('consultantPicker'); if(cp) cp.classList.remove('on'); }
   const ib=document.getElementById('inspectorBar'); if(ib) ib.classList.toggle('on', insp && _canSwitchView());
@@ -14680,6 +14822,238 @@ function _companyState(){
   return S.company;
 }
 
+// ══════════════════════════════════════════════════════════════
+//  ACCREDITATION FACT SHEET (Company setup) - accreditation engine step 2.
+//  The few facts behind most rejections, held once: every tracker, document
+//  and portal answer reads from here. The duty holder roles are the same
+//  roles the Accreditation tab uses (S.accred.roles), never a second copy.
+//  A fact that disagrees with an answer or a section date is listed in the
+//  warning panel; a fact that changes lists the portal sections and the
+//  documents that need updating (S.company.factLog) until AHS marks it done.
+// ══════════════════════════════════════════════════════════════
+const _FACT_DOC_RX = {
+  legalName: /polic|procedure|statement|plan|privacy|register|assessment/i,
+  regNo: /statement|organisation|privacy|ico|confirmation/i,
+  address: /polic|procedure|statement|plan|privacy|ico|insurance|assessment/i,
+  headOffice: /polic|procedure|statement|plan|privacy|ico|assessment/i,
+  directors: /health\s*(and|&)\s*safety polic|statement of intent|organisation|scope|bribery|slavery|whistleblow|responsib/i,
+  hsLead: /health\s*(and|&)\s*safety polic|statement of intent|organisation|scope|advice/i,
+  headBand: /health\s*(and|&)\s*safety polic|organisation|scope|training matrix|consult|briefing/i,
+  paye: /organisation|scope|training matrix|right to work|working/i,
+  employees: /health\s*(and|&)\s*safety polic|organisation|scope|training matrix|consult|briefing/i,
+  subcontractors: /health\s*(and|&)\s*safety polic|quality|building safety|supply chain|subcontract/i,
+  roles: /health\s*(and|&)\s*safety polic|building safety|building regulations|design|organisation|scope/i,
+  hrb: /building safety|information management|golden thread|building regulations/i,
+  ssip: /ssip|chas|smas|certificate|45001/i,
+  insurance: /insurance|liability|indemnity/i
+};
+function _factDocs(k){ const rx = _FACT_DOC_RX[k]; if(!rx) return []; return (S.documents || []).filter(d => d && rx.test(d.name || '')).map(d => d.name + (d.version ? ' ' + d.version : '')); }
+function _factVal(k){
+  const c = _companyState();
+  if(k === 'roles'){ const A = _acjCore(); const r = (S.accred && Array.isArray(S.accred.roles)) ? S.accred.roles : []; return r.map(x => ((A && A.ROLES.find(y => y.id === x)) || {}).label || x).join(', '); }
+  if(k === 'headOffice') return c.headIsReg ? 'Same as the registered office' : (c.headOffice || '');
+  if(k === 'hsLead') return [c.hsLead, c.hsLeadRole].filter(Boolean).join(', ');
+  if(k === 'headBand') return c.headBand === '5+' ? '5 or more' : c.headBand === '1-4' ? '1 to 4' : '';
+  if(k === 'subcontractors' || k === 'hrb') return c[k] === 'yes' ? 'Yes' : c[k] === 'no' ? 'No' : '';
+  if(k === 'ssip') return [c.ssipScheme, c.ssipStart ? 'from ' + fmtDate(c.ssipStart) : '', c.ssipExpiry ? 'to ' + fmtDate(c.ssipExpiry) : ''].filter(Boolean).join(' ');
+  if(k === 'insurance') return [c.elciRenewal ? 'EL ' + fmtDate(c.elciRenewal) : '', c.plRenewal ? 'PL ' + fmtDate(c.plRenewal) : '', c.piRenewal ? 'PI ' + fmtDate(c.piRenewal) : ''].filter(Boolean).join(', ');
+  return String(c[k] == null ? '' : c[k]);
+}
+// Remember what a fact was before it changed, so what it feeds can be put right.
+// A fact being filled in for the first time is not a change.
+function _factNoteChange(k, before){
+  const c = _companyState(); const now = _factVal(k);
+  if(!c.factLog || typeof c.factLog !== 'object') c.factLog = {};
+  const e = c.factLog[k];
+  if(e){ if(now === e.from) delete c.factLog[k]; else { e.to = now; e.at = new Date().toISOString(); } }
+  else if(String(before || '').trim() && now !== before) c.factLog[k] = { from: before, to: now, at: new Date().toISOString() };
+  if(!Object.keys(c.factLog).length) delete c.factLog;
+}
+function _factPanelsHTML(){
+  const A = _acjCore(); if(!A) return '';
+  const today = _acjToday(), c = _companyState();
+  const conf = A.factConflicts(S, today);
+  const log = c.factLog || {};
+  const ro = _roLocked();
+  let h = '';
+  if(conf.length) h += `<div class="fs-warn"><div class="fs-h">Facts that disagree with an answer or a date</div><ul>${conf.map(x => `<li><b>${esc(x.label)}.</b> ${esc(x.text)}</li>`).join('')}</ul></div>`;
+  const ks = Object.keys(log);
+  if(ks.length) h += `<div class="fs-log"><div class="fs-h">Changed facts: what needs updating</div>${ks.map(k => {
+      const e = log[k], d = A.factDef(k) || { label:k };
+      const imp = A.factImpact(S, k, today), docs = _factDocs(k);
+      const secs = imp.sections.length ? `<div><span class="fs-k">Portal sections</span> ${imp.sections.map(esc).join('; ')} <span class="acj-muted">(${imp.lines.length} question${imp.lines.length === 1 ? '' : 's'}: REF ${esc(imp.lines.map(l => l.refs.join(', ')).join('; '))})</span></div>`
+        : (imp.cas.length ? `<div><span class="fs-k">Accreditation questions</span> ${esc(imp.cas.join(', '))}</div>` : '');
+      const dd = `<div><span class="fs-k">Documents</span> ${docs.length ? docs.map(esc).join('; ') : '<span class="acj-muted">none in the document register name this fact</span>'}</div>`;
+      return `<div class="fs-item"><div><b>${esc(d.label)}</b> changed from "${esc(e.from)}" to "${esc(e.to || '(blank)')}" on ${esc(fmtDate(String(e.at).slice(0, 10)))}.
+        ${ro ? '' : `<button type="button" class="acj-link" onclick="clearFactChange('${esc(k)}')">Updated everywhere</button>`}</div>${secs}${dd}</div>`;
+    }).join('')}</div>`;
+  return h;
+}
+function _refreshFactPanels(){ const el = document.getElementById('coFactPanels'); if(el) el.innerHTML = _factPanelsHTML(); }
+function clearFactChange(k){ if(_blockIfReadOnly()) return; const c = _companyState(); if(c.factLog){ delete c.factLog[k]; if(!Object.keys(c.factLog).length) delete c.factLog; } saveData(); _refreshFactPanels(); }
+function setFactChoice(key, v){
+  if(_roLocked()) return;
+  const k = _acjCore() ? _acjCore().factOfField(key) : null; const before = k ? _factVal(k) : '';
+  const c = _companyState(); c[key] = (c[key] === v) ? '' : v;
+  if(k) _factNoteChange(k, before);
+  saveData(); renderCompany();
+}
+function toggleFactRole(r){
+  if(_blockIfReadOnly()) return;
+  const before = _factVal('roles');
+  const a = _accredState(); const i = a.roles.indexOf(r); if(i >= 0) a.roles.splice(i, 1); else a.roles.push(r);
+  _factNoteChange('roles', before);
+  saveData(); renderCompany();
+}
+function _factSheetCard(c, dis){
+  const A = _acjCore();
+  const f = (key, label, ph, type) => `<div class="co-field"><label>${label}</label><input type="${type || 'text'}" value="${esc(c[key] || '')}" placeholder="${esc(ph || '')}" oninput="updateCompanyField('${key}',this.value)"${dis}></div>`;
+  const ta = (key, label, ph) => `<div class="co-field"><label>${label}</label><textarea placeholder="${esc(ph || '')}" oninput="updateCompanyField('${key}',this.value)"${dis}>${esc(c[key] || '')}</textarea></div>`;
+  const seg = (key, label, opts) => `<div class="co-field"><label>${label}</label><div class="fs-seg">${opts.map(([v, t]) => `<button type="button" class="fs-btn" aria-pressed="${c[key] === v}"${dis} onclick="setFactChoice('${key}','${v}')">${t}</button>`).join('')}</div></div>`;
+  const roles = (S.accred && Array.isArray(S.accred.roles)) ? S.accred.roles : [];
+  const roleBtns = A ? A.ROLES.map(r => `<button type="button" class="fs-btn" aria-pressed="${roles.indexOf(r.id) >= 0}"${dis} onclick="toggleFactRole('${r.id}')">${esc(r.label)}</button>`).join('') : '';
+  return `<div class="card fs-card" id="coFactCard" style="margin-bottom:16px;"><div class="card-band"><h3>Accreditation fact sheet</h3></div><div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;line-height:1.5;">The facts behind most accreditation rejections, held once. Trackers, documents and portal answers read from here, and the Accreditation tab checks them against the answers and the section dates.</div>
+      <div id="coFactPanels">${_factPanelsHTML()}</div>
+      <div class="co-grid">
+        ${f('shortName', 'Short name (used in trackers)', 'e.g. RSSC')}
+        ${ta('address', 'Registered office', 'As filed at Companies House: street, town, postcode')}
+        <div class="co-field"><label>Head office</label>
+          <label class="fs-check"><input type="checkbox"${c.headIsReg ? ' checked' : ''}${dis} onchange="setFactHeadIsReg(this.checked)"> Same as the registered office</label>
+          ${c.headIsReg ? '' : `<textarea placeholder="Street, town, postcode" oninput="updateCompanyField('headOffice',this.value)"${dis}>${esc(c.headOffice || '')}</textarea>`}</div>
+        ${ta('directors', 'Directors', 'One per line')}
+        ${f('hsLead', 'Person responsible for health and safety', 'Name')}
+        ${f('hsLeadRole', 'Their position', 'e.g. Managing Director')}
+        ${seg('headBand', 'Headcount band', [['1-4', '1 to 4'], ['5+', '5 or more']])}
+        ${f('paye', 'Number on PAYE', 'e.g. 6', 'number')}
+        ${seg('subcontractors', 'Uses subcontractors', [['yes', 'Yes'], ['no', 'No']])}
+        ${seg('hrb', 'Works on higher-risk buildings', [['yes', 'Yes'], ['no', 'No']])}
+        <div class="co-field fs-wide"><label>Duty holder roles</label><div class="fs-seg">${roleBtns}</div><div class="acj-muted">The same roles as step 01 on the Accreditation tab.</div></div>
+        ${f('ssipScheme', 'SSIP scheme', 'e.g. CHAS, SMAS Worksafe, Constructionline SSIP')}
+        ${f('ssipStart', 'SSIP certificate start', '', 'date')}
+        ${f('ssipExpiry', 'SSIP certificate expiry', '', 'date')}
+      </div>
+      <div class="acj-muted" style="margin-top:8px;">Insurance renewal dates are kept in the Insurance card below. The number of employees is in Scale of the business.</div>
+    </div></div>`;
+}
+function setFactHeadIsReg(on){
+  if(_roLocked()) return;
+  const before = _factVal('headOffice');
+  _companyState().headIsReg = !!on;
+  _factNoteChange('headOffice', before);
+  saveData(); renderCompany();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SERVICE PACKAGE + CALENDAR - accreditation engine step 5.
+//  The client's AHS Ltd package (Essentials, Standard or Complete, from the
+//  costing workbook) is set in Company setup; the Monthly tab turns it into
+//  the year's calendar. Prices are AHS Ltd's to enter - none are filled in.
+//  Marking a service done files its output into the evidence register
+//  against the CAS questions the service answers (S.accred.serviceLog).
+// ══════════════════════════════════════════════════════════════
+function _pkgState(){ const a = _accredState(); if(!a.package || typeof a.package !== 'object') a.package = {}; return a.package; }
+function _pkgIsConsultant(){ return _apRole() === 'consultant' && !_empView(); }
+function _pkgCard(dis){
+  const A = _acjCore(); if(!A) return '';
+  const c = A.pkgCfg(S), cons = _pkgIsConsultant();
+  if(!cons && !c.id) return '';
+  const btns = A.PACKAGES.map(p => `<button type="button" class="fs-btn" aria-pressed="${c.id === p.id}"${dis || (cons ? '' : ' disabled')} onclick="setPkg('id','${p.id}')">${esc(p.label)}</button>`).join('');
+  return `<div class="card fs-card" id="coPkgCard" style="margin-bottom:16px;"><div class="card-band"><h3>AHS Ltd service package</h3></div><div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;line-height:1.5;">The package AHS Ltd delivers for this client. The Monthly tab turns it into the year's service calendar, and each service done is filed as evidence against the accreditation questions it answers.</div>
+      <div class="co-grid">
+        <div class="co-field"><label>Package</label><div class="fs-seg">${btns}</div></div>
+        <div class="co-field"><label>Calendar starts</label><input type="month" value="${esc(c.start)}"${dis || (cons ? '' : ' disabled')} onchange="setPkg('start',this.value)"></div>
+      </div>
+      ${c.id ? `<div style="margin-top:10px;"><button type="button" class="acj-link" onclick="switchTab('monthly')">Open the service calendar on the Monthly tab</button></div>` : ''}
+    </div></div>`;
+}
+function setPkg(field, v){
+  if(_blockIfReadOnly()) return;
+  const p = _pkgState();
+  if(field === 'id'){ p.id = (p.id === v) ? '' : v; if(p.id && !p.start){ const d = new Date(); p.start = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); } }
+  else p[field] = v;
+  if(!p.id && !p.start && !p.prices && !p.off) delete _accredState().package;
+  saveData(); try{ applyViewMode(); }catch(e){}
+  if(document.getElementById('tab-company').classList.contains('active')) renderCompany(); else renderServiceCalendar();
+}
+function setSvcPrice(code, v){
+  if(_roLocked() || !_pkgIsConsultant()) return;
+  const p = _pkgState(); p.prices = Object.assign({}, p.prices);
+  if(String(v).trim() === '') delete p.prices[code]; else p.prices[code] = v;
+  scheduleAutoSave(); _svcRefreshTotals();
+}
+function setSvcDayRate(v){ if(_roLocked() || !_pkgIsConsultant()) return; const p = _pkgState(); if(String(v).trim() === '') delete p.dayRate; else p.dayRate = v; scheduleAutoSave(); _svcRefreshTotals(true); }
+function toggleSvcOff(code, on){ if(_blockIfReadOnly()) return; const p = _pkgState(); p.off = Object.assign({}, p.off); if(on) delete p.off[code]; else p.off[code] = true; saveData(); renderServiceCalendar(); }
+// Totals change as a price is typed: refresh them, never the box being typed in.
+function _svcRefreshTotals(all){
+  const A = _acjCore(); if(!A) return;
+  const v = A.packageValue(S), m = n => n == null ? '-' : '£' + n.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  const t = document.getElementById('svcTotals'); if(t) t.innerHTML = _svcTotalsInner(A);
+  A.clientServices(S).forEach(s => { const el = document.getElementById('svcY-' + s.code); if(el) el.textContent = m(A.servicePrice(S, s).yearly); if(all){ const u = document.getElementById('svcU-' + s.code); if(u) u.textContent = m(A.servicePrice(S, s).each); } });
+}
+function _svcTotalsInner(A){
+  const v = A.packageValue(S), m = n => '£' + n.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  return `<div><b>${v.yearly ? m(v.yearly) : '-'}</b><span>Yearly value</span></div><div><b>${v.yearly ? m(v.monthly) : '-'}</b><span>Monthly equivalent</span></div><div><b>${v.unpriced}</b><span>Services without a price</span></div>`;
+}
+function renderServiceCalendar(){
+  const el = document.getElementById('serviceCalendar'); if(!el) return;
+  const A = _acjCore(); if(!A){ el.innerHTML = ''; return; }
+  const c = A.pkgCfg(S);
+  if(!c.id){ el.innerHTML = ''; return; }
+  const today = _acjToday(), ro = _roLocked(), cons = _pkgIsConsultant(), pk = A.packageOf(c.id);
+  const list = A.clientServices(S), sched = A.serviceSchedule(S, today);
+  const m = n => n == null ? '-' : '£' + n.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  const all = pk.codes.map(A.serviceOf).filter(s => s && (s.who === 'Both' || list.some(x => x.who === s.who) || c.off[s.code]));
+  const svcRows = all.map(s => {
+    const on = !c.off[s.code], pr = A.servicePrice(S, s);
+    return `<tr class="${on ? '' : 'svc-off'}">
+      <td>${cons && !ro ? `<input type="checkbox"${on ? ' checked' : ''} onchange="toggleSvcOff('${s.code}',this.checked)" title="Deliver this service to this client">` : ''}</td>
+      <td><b>${esc(s.code)}</b></td><td>${esc(s.name)}<small>${esc(s.what)}</small></td><td>${esc(s.who)}</td><td>${esc(s.often)}</td><td>${s.times}</td>
+      <td>${s.qids.length ? s.qids.map(id => `<span class="ev-tag">${esc(_evQidLabel(A, id))}</span>`).join(' ') : `<span class="acj-muted">${esc(s.answers)}</span>`}</td>
+      <td>${cons && !ro ? `<input type="number" min="0" step="0.01" class="svc-price" value="${esc(c.prices[s.code] == null ? '' : c.prices[s.code])}" placeholder="${pr.each != null && !pr.typed ? esc(String(pr.each)) : '£'}" oninput="setSvcPrice('${s.code}',this.value)">` : `<span id="svcU-${s.code}">${m(pr.each)}</span>`}</td>
+      <td id="svcY-${s.code}">${m(pr.yearly)}</td>
+    </tr>`;
+  }).join('');
+  const months = []; sched.forEach(x => { if(months.indexOf(x.month) < 0) months.push(x.month); });
+  const monthLabel = ym => { try{ return new Date(ym + '-01T12:00:00').toLocaleDateString('en-GB', { month:'long', year:'numeric' }); }catch(e){ return ym; } };
+  const chip = st => `<span class="svc-st svc-${st}">${st === 'done' ? 'Done' : st === 'overdue' ? 'Overdue' : st === 'due' ? 'Due this month' : 'Planned'}</span>`;
+  const cal = months.map(ym => `<div class="svc-month"><div class="svc-mh">${esc(monthLabel(ym))}</div>${sched.filter(x => x.month === ym).map(x => {
+      const k = esc(JSON.stringify(x.key));
+      return `<div class="svc-line svc-l-${x.status}"><div class="svc-lt"><b>${esc(x.code)}</b> ${esc(x.name)}${chip(x.status)}</div>
+        ${x.done ? `<div class="svc-done">Done ${esc(fmtDate(x.done.done))}${x.done.by ? ' by ' + esc(x.done.by) : ''}${x.done.title ? ': ' + esc(x.done.title) : ''}. ${x.qids.length ? 'Filed in the evidence register against ' + esc(x.qids.map(id => _evQidLabel(A, id)).join(', ')) + '.' : 'Nothing to file as evidence.'}${cons && !ro ? ` <button type="button" class="acj-link" onclick="undoServiceDone(${k})">Undo</button>` : ''}</div>`
+          : (cons && !ro ? `<div class="svc-form"><input type="date" id="svcD-${esc(x.key.replace(/[^A-Za-z0-9]/g, ''))}" value="${today}"><input type="text" id="svcT-${esc(x.key.replace(/[^A-Za-z0-9]/g, ''))}" placeholder="What was produced, e.g. Site inspection report, Genesis"><input type="text" id="svcL-${esc(x.key.replace(/[^A-Za-z0-9]/g, ''))}" placeholder="Link or file location (optional)"><button class="btn btn-outline btn-xs" onclick="markServiceDone(${k})">Mark done</button></div>` : '')}
+      </div>`; }).join('')}</div>`).join('');
+  const counts = { overdue:0, due:0, done:0 }; sched.forEach(x => { if(counts[x.status] != null) counts[x.status]++; });
+  el.innerHTML = `<div class="card svc-card" style="margin-bottom:20px;"><div class="card-band"><h3><span class="dot">●</span> Service calendar: ${esc(pk.label)} package</h3><span class="badge badge-muted">${sched.length} services this year</span></div>
+    <div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;">The year from ${esc(monthLabel(c.start || today.slice(0, 7)))}, built from the package for this client's role. Marking a service done files what it produced into the evidence register against the questions it answers. Change the package in <button type="button" class="acj-link" onclick="switchTab('company')">Company setup</button>.</div>
+      <div class="acl-counts svc-counts"><div><b>${counts.overdue}</b><span>Overdue</span></div><div><b>${counts.due}</b><span>Due this month</span></div><div><b>${counts.done}</b><span>Done</span></div><div><b>${sched.length - counts.done - counts.overdue - counts.due}</b><span>Planned</span></div></div>
+      <details class="svc-pk"${cons ? '' : ''}><summary>Services and prices (${list.length} in use)</summary>
+        ${cons && !ro ? `<div class="svc-rate"><label>Day rate (£, 7.5 hours)</label><input type="number" min="0" step="1" value="${esc(c.dayRate == null ? '' : c.dayRate)}" placeholder="Not set" oninput="setSvcDayRate(this.value)"><span class="acj-muted">A price per unit typed against a service wins; otherwise the hours are priced at the day rate. No prices are filled in for you.</span></div>` : ''}
+        <div style="overflow-x:auto;"><table class="ev-t svc-t"><thead><tr><th></th><th>Code</th><th>Service</th><th>For</th><th>How often</th><th>Times a year</th><th>Accreditation questions</th><th>Price per unit</th><th>Yearly value</th></tr></thead><tbody>${svcRows}</tbody></table></div>
+        <div class="acl-counts svc-tot" id="svcTotals">${_svcTotalsInner(A)}</div>
+      </details>
+      <div class="svc-cal">${cal || '<div class="acj-muted">Nothing scheduled.</div>'}</div>
+    </div></div>`;
+}
+function markServiceDone(key){
+  if(_blockIfReadOnly()) return;
+  const A = _acjCore(); if(!A) return;
+  const x = A.serviceSchedule(S, _acjToday()).find(y => y.key === key); if(!x) return;
+  const k = key.replace(/[^A-Za-z0-9]/g, ''), g = id => ((document.getElementById(id + k) || {}).value || '').trim();
+  const a = _accredState(); if(!Array.isArray(a.serviceLog)) a.serviceLog = [];
+  const e = { id:'svc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), key, code:x.code, month:x.month, due:x.due, done:g('svcD-') || _acjToday(), by:_actor().name, title:g('svcT-') || x.name, link:g('svcL-') };
+  a.serviceLog.push(e); saveData(); renderServiceCalendar();
+  showToast('✓ ' + x.name + ' done' + (x.qids.length ? ' - filed in the evidence register' : ''), 'success');
+}
+function undoServiceDone(key){
+  if(_blockIfReadOnly()) return;
+  const a = _accredState(); if(!Array.isArray(a.serviceLog)) return;
+  if(!confirm('Undo this service? Its record leaves the evidence register.')) return;
+  a.serviceLog = a.serviceLog.filter(e => e.key !== key); saveData(); renderServiceCalendar();
+}
+
 function renderCompany(){
   const cont = document.getElementById('companyContainer');
   if(!cont) return;
@@ -14731,11 +15105,12 @@ function renderCompany(){
       ${ta('description','Nature of business','A short description of what the business does')}
     </div></div></div>
 
+    ${_factSheetCard(c, dis)}
+
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Contact</h3></div><div class="card-body"><div class="co-grid">
       ${f('phone','Main phone','','tel')}
       ${f('email','Main email','name@company.co.uk','email')}
       ${f('website','Website','https://')}
-      ${ta('address','Registered / main address','Street, town, postcode')}
     </div></div></div>
 
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Scale of the business</h3></div><div class="card-body"><div class="co-grid">
@@ -14756,10 +15131,12 @@ function renderCompany(){
       ${dis?'':`<button class="btn btn-outline btn-sm no-print" style="margin-top:10px;" onclick="addCompanySite()">+ Add site</button>`}
     </div></div>
 
-    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Employers' liability insurance</h3></div><div class="card-body"><div class="co-grid">
-      ${f('elciInsurer','Insurer','')}
-      ${f('elciPolicy','Policy number','')}
-      ${f('elciRenewal','Renewal date','','date')}
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Insurance</h3></div><div class="card-body"><div class="co-grid">
+      ${f('elciInsurer','Employers\x27 liability insurer','')}
+      ${f('elciPolicy','Employers\x27 liability policy number','')}
+      ${f('elciRenewal','Employers\x27 liability renewal date','','date')}
+      ${f('plRenewal','Public liability renewal date','','date')}
+      ${f('piRenewal','Professional indemnity renewal date','Designers','date')}
     </div></div></div>
 
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Organisation chart</h3></div><div class="card-body">
@@ -14775,7 +15152,8 @@ function renderCompany(){
 
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Notes</h3></div><div class="card-body"><div class="co-grid">
       ${ta('notes','Any other useful background','')}
-    </div></div></div>`;
+    </div></div></div>
+    ${_pkgCard(dis)}`;
 }
 function uploadOrgChart(input){
   if(_roLocked()) return;
@@ -14865,7 +15243,11 @@ function buildCompanyProfileReportPDF(){
 
 function updateCompanyField(key, val){
   if(_roLocked()) return;
+  const fk = (typeof AccredCore !== 'undefined') ? AccredCore.factOfField(key) : null;
+  const before = fk ? _factVal(fk) : '';
   _companyState()[key] = val;
+  // a fact for accreditation: note the change and refresh the panels without a rebuild under the cursor
+  if(fk){ _factNoteChange(fk, before); _refreshFactPanels(); }
   // Mirror the client's name into branding.name so it flows to the header,
   // cockpit and report letterheads. Trading name wins, else the legal name.
   if(key === 'legalName' || key === 'tradingName'){
@@ -31535,6 +31917,7 @@ function triageDelete(id){
   showToast('Deleted from Triage','info');
 }
 function renderTriage(){
+  try{ _renderTriageQueries(); }catch(e){ console.error('client queries', e); }
   const el=document.getElementById('triageList'); if(!el) return;
   const list=_triageMeetings(), ro=_roLocked();
   if(!list.length){ el.innerHTML='<div class="slt-muted">Nothing in Triage. Minutes taken with ✎ Minutes on the cockpit land here when you press Triage.</div>'; return; }
@@ -32946,8 +33329,173 @@ function suggestDocumentsFromApp(){
   saveData(); renderDocuments();
   showToast(added?('✓ '+added+' document'+(added!==1?'s':'')+' added from the app - fill in where each one lives and its review date'):'Nothing new to add - everything the app knows about is already listed','success');
 }
+// ══════════════════════════════════════════════════════════════
+//  EVIDENCE REGISTER - accreditation engine step 3. Every record with its
+//  date, the CAS questions it answers (the Constructionline REFs follow) and
+//  its source. Built by AccredCore.evidenceItems from the documents and from
+//  what the other tabs make: site inspections, process assurance visits,
+//  workplace inspections, toolbox talks, CPD and the monthly figures, each
+//  tagged by what it is. AHS can change a record's questions; those changes
+//  live in S.evidenceTags, so a record that is re-synced keeps them.
+// ══════════════════════════════════════════════════════════════
+var _evFilter = 'all';    // view state, never saved
+function _evSourceDatalist(){
+  const c = (S.company && (S.company.shortName || S.company.tradingName || S.company.legalName)) || 'Client';
+  const opts = ['AHS Ltd', c, 'Site Inspection app', 'DRM app', 'PDBR AllProject Flow', 'CPD app', 'Toolbox talks', 'Process assurance', 'Monthly assurance figures'];
+  return `<datalist id="evSourceList">${opts.map(o => `<option value="${esc(o)}">`).join('')}</datalist>`;
+}
+function _evQidPicker(prefix, sel){
+  const A = _acjCore(); if(!A) return '';
+  const set = new Set(sel || []);
+  const areas = A.AREAS.map(a => {
+    const qs = A.MASTER.questions.filter(q => q.area === a); if(!qs.length) return '';
+    return `<div class="ev-qa">${esc(a)}</div>` + qs.map(q => { const n = A.ssipQOf(q.id);
+      return `<label class="ev-q"><input type="checkbox" data-ev="${prefix}" value="${esc(q.id)}"${set.has(q.id) ? ' checked' : ''}> <b>${esc(q.id)}</b>${n ? ' <i>SSIP Q' + esc(n) + '</i>' : ''} ${esc(q.text)}</label>`; }).join('');
+  }).join('');
+  return `<div class="ev-pick">${areas}</div>`;
+}
+function _evQidPicked(prefix){ return [...document.querySelectorAll('input[data-ev="' + prefix + '"]:checked')].map(i => i.value); }
+function _evQidLabel(A, id){ const n = A.ssipQOf(id); return id + (n ? ' (SSIP Q' + n + ')' : ''); }
+function renderEvidenceRegister(){
+  const el = document.getElementById('evidenceRegister'); if(!el) return;
+  const A = _acjCore(); if(!A){ el.innerHTML = ''; return; }
+  const today = _acjToday(), ro = _roLocked();
+  const items = A.evidenceItems(S).map(it => Object.assign(it, { flag: A.evFlag(it, today) }));
+  const byQ = A.evidenceByQuestion(S, today);
+  const stale = items.filter(i => i.flag.k === 'stale').length, untagged = items.filter(i => !i.qids.length).length, undated = items.filter(i => i.flag.k === 'undated').length;
+  const none = byQ.filter(q => q.flag.k === 'none'), qStale = byQ.filter(q => q.flag.k === 'stale'), step = byQ.filter(q => q.outOfStep.length);
+  const shown = items.filter(i => _evFilter === 'all' || (_evFilter === 'stale' && i.flag.k === 'stale') || (_evFilter === 'untagged' && !i.qids.length) || (_evFilter === 'undated' && i.flag.k === 'undated'))
+    .sort((a, b) => (a.flag.k === 'stale' ? 0 : 1) - (b.flag.k === 'stale' ? 0 : 1) || String(b.dated).localeCompare(String(a.dated)));
+  const chip = (k, n, label) => `<button type="button" class="ev-chip${_evFilter === k ? ' on' : ''}" onclick="setEvFilter('${k}')"><b>${n}</b> ${label}</button>`;
+  const rows = shown.map(it => `<tr class="ev-${it.flag.k}">
+      <td><b>${esc(it.title)}</b><small>${esc(it.kindLabel)}${it.file ? ' · ' + esc(it.file) : ''}</small></td>
+      <td>${it.dated ? esc(fmtDate(it.dated)) : '-'}</td>
+      <td>${esc(it.source || '-')}</td>
+      <td>${it.qids.length ? it.qids.map(id => `<span class="ev-tag">${esc(_evQidLabel(A, id))}</span>`).join(' ') : '<span class="acj-muted">None</span>'}${it.refs.length ? `<small>Constructionline REF ${esc(it.refs.join(', '))}</small>` : ''}</td>
+      <td><span class="ev-flag ev-f-${it.flag.k}">${esc(it.flag.label)}</span></td>
+      <td style="text-align:right;">${ro ? '' : it.kind === 'doc' ? `<button class="btn btn-outline btn-xs" onclick="openDocModal('${esc(it.id)}')">Tag</button>` : `<button class="btn btn-outline btn-xs" onclick="openEvTags(${esc(JSON.stringify(it.key))})">Tag</button>`}</td>
+    </tr>`).join('');
+  const qList = (list, why) => list.map(q => `<li><b>${esc(_evQidLabel(A, q.id))}</b> ${esc(q.text)}${why ? ' <span class="acj-muted">' + esc(why(q)) + '</span>' : ''}</li>`).join('');
+  const started = A.questions(S).length > 0;
+  el.innerHTML = `<div class="card ev-card" style="margin-top:18px;"><div class="card-band"><h3><span class="dot">●</span> Evidence register</h3><span class="badge badge-muted">${items.length} record${items.length === 1 ? '' : 's'}</span></div>
+    <div class="card-body">
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.5;">Every record with its date, the accreditation questions it answers and where it came from. Site inspections, process assurance visits, toolbox talks, CPD and the monthly figures are tagged by what they are; documents are tagged when they are added or edited. Anything older than ${A.EV_STALE_MONTHS} months is flagged, a month before the 12-month limit.</div>
+      ${ro ? '' : `<div class="ev-imports"><span class="acj-lbl" style="margin:0;">Import from the other AHS apps</span>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('evPdbrPick').click()" title="The Word letters PDBR AllProject Flow made: filed against Q10.1">Client duties letters (PDBR)</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('evDrmPick').click()" title="The DRA workbooks the DRM app exported: filed against Q10.2 and Q10.3">Design risk assessments (DRM)</button>
+        <input type="file" id="evPdbrPick" accept=".docx" multiple style="display:none" onchange="importPdbrLetters(this)">
+        <input type="file" id="evDrmPick" accept=".xlsx" multiple style="display:none" onchange="importDrmDras(this)"></div>`}
+      <div class="ev-chips">${chip('all', items.length, 'records')}${chip('stale', stale, 'older than ' + A.EV_STALE_MONTHS + ' months')}${chip('undated', undated, 'without a date')}${chip('untagged', untagged, 'not tagged')}</div>
+      ${shown.length ? `<div style="overflow-x:auto;"><table class="ev-t"><thead><tr><th>Record</th><th>Dated</th><th>Source</th><th>Answers</th><th>Flag</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="acj-muted" style="margin:10px 0;">Nothing to show.</div>'}
+      ${started ? `<div class="ev-qgrid">
+        <div><div class="acj-lbl">Questions with no evidence (${none.length})</div>${none.length ? (none.length > 12 ? `<details class="ev-more"><summary>Show all ${none.length}</summary><ul class="ev-ql">${qList(none)}</ul></details>` : `<ul class="ev-ql">${qList(none)}</ul>`) : '<div class="acj-muted">Every question that needs evidence has a record behind it.</div>'}</div>
+        <div><div class="acj-lbl">Questions whose newest evidence is older than ${A.EV_STALE_MONTHS} months (${qStale.length})</div>${qStale.length ? `<ul class="ev-ql">${qList(qStale, q => 'newest ' + fmtDate(q.newest.dated) + ': ' + q.newest.title)}</ul>` : '<div class="acj-muted">None.</div>'}</div>
+        ${step.length ? `<div><div class="acj-lbl">Out of step with the section expiry (${step.length})</div><ul class="ev-ql">${qList(step, q => 'the evidence will be over 12 months old when ' + q.outOfStep.join(' and ') + ' renews')}</ul></div>` : ''}
+      </div>` : '<div class="acj-muted" style="margin-top:10px;">Pick the scheme and role on the Accreditation tab to list the questions that have no evidence.</div>'}
+    </div></div>`;
+}
+function setEvFilter(k){ _evFilter = (_evFilter === k) ? 'all' : k; renderEvidenceRegister(); }
+// ── Imports from the other AHS apps (accreditation engine step 6) ──
+// Neither app exports its data, so each import reads the files the app makes:
+//   PDBR AllProject Flow: the Word letters, named <project ref>_<template>.docx
+//   DRM: the design risk assessment workbook, DRA_<project no>_<location>_Rev<n>_<date>.xlsx
+// Each file becomes a document in the register, dated and filed against the
+// designer questions: a client duties letter Q10.1 (DS-01, and BS-02 for the
+// Building Safety Act); a design risk assessment Q10.2 and Q10.3 (DS-02, DS-03).
+const _MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+function _isoOf(ms){ const d = new Date(ms); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+// The text of one part inside a .docx (a ZIP): stored or deflated.
+async function _zipPartText(buf, want){
+  const u = new Uint8Array(buf), dv = new DataView(buf); let p = 0;
+  while(p + 30 <= u.length && dv.getUint32(p, true) === 0x04034b50){
+    const method = dv.getUint16(p + 8, true), csize = dv.getUint32(p + 18, true), nlen = dv.getUint16(p + 26, true), xlen = dv.getUint16(p + 28, true);
+    const name = new TextDecoder().decode(u.subarray(p + 30, p + 30 + nlen)), start = p + 30 + nlen + xlen;
+    if(name === want){
+      const data = u.subarray(start, start + csize);
+      if(method === 0) return new TextDecoder().decode(data);
+      if(method === 8 && typeof DecompressionStream !== 'undefined'){ const s = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw')); return await new Response(s).text(); }
+      return '';
+    }
+    if(!csize) break;   // sizes in a trailing descriptor: give up quietly
+    p = start + csize;
+  }
+  return '';
+}
+function _letterDate(text){
+  const m = /\b(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\b/i.exec(text || '');
+  return m ? m[3] + '-' + String(_MONTHS.indexOf(m[2].toLowerCase()) + 1).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0') : '';
+}
+function _importDoc(o){
+  if(!Array.isArray(S.documents)) S.documents = [];
+  let d = S.documents.find(x => x && (x.name || '').trim().toLowerCase() === o.name.toLowerCase());
+  const fresh = !d;
+  if(!d){ d = { id:'doc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), category:o.category || '', owner:'', reviewDate:'', link:'' }; _stamp(d, 'created'); S.documents.push(d); }
+  Object.assign(d, { name:o.name, version:o.version || d.version || '', dated:o.dated || d.dated || '', source:o.source, addedFrom:o.addedFrom });
+  d.qids = Array.from(new Set([].concat(d.qids || [], o.qids)));
+  if(!fresh) _stamp(d, 'updated');
+  return fresh;
+}
+async function importPdbrLetters(input){
+  if(_blockIfReadOnly()) return;
+  const files = [...(input.files || [])]; input.value = ''; if(!files.length) return;
+  let added = 0, updated = 0;
+  for(const f of files){
+    const base = f.name.replace(/\.docx$/i, ''), i = base.indexOf('_');
+    const ref = i > 0 ? base.slice(0, i).replace(/-/g, ' ') : '', title = (i > 0 ? base.slice(i + 1) : base).replace(/-/g, ' ').trim() || 'Client duties letter';
+    let dated = '';
+    try{ dated = _letterDate((await _zipPartText(await f.arrayBuffer(), 'word/document.xml')).replace(/<[^>]+>/g, ' ')); }catch(e){}
+    if(!dated && f.lastModified) dated = _isoOf(f.lastModified);
+    const isNew = _importDoc({ name:title + (ref ? ', ' + ref : ''), dated, qids:['DS-01', 'BS-02'], source:'PDBR AllProject Flow', addedFrom:'PDBR AllProject Flow (' + f.name + ')', category:'' });
+    if(isNew) added++; else updated++;
+  }
+  saveData(); renderDocuments();
+  showToast('✓ ' + (added ? added + ' letter' + (added === 1 ? '' : 's') + ' added' : '') + (added && updated ? ', ' : '') + (updated ? updated + ' updated' : '') + ': filed against Q10.1 (DS-01) and BS-02', 'success');
+}
+async function importDrmDras(input){
+  if(_blockIfReadOnly()) return;
+  const files = [...(input.files || [])]; input.value = ''; if(!files.length) return;
+  let added = 0, updated = 0;
+  for(const f of files){
+    const m = /^DRA_(.*?)_Rev([^_]+)_(\d{4}-\d{2}-\d{2})\.xlsx$/i.exec(f.name);
+    const where = m ? m[1].replace(/_/g, ' ').trim() : f.name.replace(/\.xlsx$/i, '').replace(/[_-]+/g, ' ').trim();
+    const name = 'Design risk assessment' + (where ? ', ' + where : '');
+    const isNew = _importDoc({ name, version:m ? 'Rev ' + m[2] : '', dated:m ? m[3] : (f.lastModified ? _isoOf(f.lastModified) : ''), qids:['DS-02', 'DS-03'], source:'DRM app', addedFrom:'DRM app (' + f.name + ')', category:'' });
+    if(isNew) added++; else updated++;
+  }
+  saveData(); renderDocuments();
+  showToast('✓ ' + (added ? added + ' design risk assessment' + (added === 1 ? '' : 's') + ' added' : '') + (added && updated ? ', ' : '') + (updated ? updated + ' updated' : '') + ': filed against Q10.2 and Q10.3 (DS-02, DS-03)', 'success');
+}
+function openEvTags(key){
+  if(_blockIfReadOnly()) return;
+  const A = _acjCore(); if(!A) return;
+  const it = A.evidenceItems(S).find(x => x.key === key); if(!it) return;
+  openModal('Tag ' + it.kindLabel.toLowerCase(),
+    `<div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="font-size:13px;"><b>${esc(it.title)}</b>${it.dated ? ' · ' + esc(fmtDate(it.dated)) : ''}</div>
+      <div class="field-group"><label class="field-label">Source</label><input type="text" id="evTagSource" list="evSourceList" value="${esc(it.source)}">${_evSourceDatalist()}</div>
+      <div class="field-group"><label class="field-label">Answers these questions</label>${_evQidPicker('evT', it.qids)}
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${it.tagged ? 'Tagged by hand.' : 'Tagged by what it is: ' + esc(it.kindLabel.toLowerCase()) + '.'} Untick everything to take it off every question.</div></div>
+    </div>`,
+    `${it.tagged ? `<button class="btn btn-ghost" onclick="resetEvTags(${esc(JSON.stringify(key))})">Back to the default</button>` : ''}<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="saveEvTags(${esc(JSON.stringify(key))})">Save</button>`);
+}
+function saveEvTags(key){
+  if(_blockIfReadOnly()) return;
+  if(!S.evidenceTags || typeof S.evidenceTags !== 'object') S.evidenceTags = {};
+  const src = ((document.getElementById('evTagSource') || {}).value || '').trim();
+  const t = { qids: _evQidPicked('evT') }; if(src) t.source = src;
+  S.evidenceTags[key] = t; saveData(); closeModal(); renderDocuments();
+  showToast('✓ Tags saved', 'success');
+}
+function resetEvTags(key){
+  if(_blockIfReadOnly()) return;
+  if(S.evidenceTags){ delete S.evidenceTags[key]; if(!Object.keys(S.evidenceTags).length) delete S.evidenceTags; }
+  saveData(); closeModal(); renderDocuments();
+}
+
 function renderDocuments(){
   const cont = document.getElementById('documentsContainer'); if(!cont) return;
+  try{ renderEvidenceRegister(); }catch(e){ console.error('evidence register', e); }
   const docs = Array.isArray(S.documents) ? S.documents : [];
   renderDocSummary(docs);
   if(!docs.length){
@@ -32976,8 +33524,10 @@ function renderDocuments(){
             : `<span style="font-weight:600;">${esc(doc.name||'(untitled)')}</span>`;
           const attr = _attrLine(doc,'updated') || _attrLine(doc,'created');
           const from = doc.addedFrom?`<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">added from ${esc(doc.addedFrom)}</div>`:'';
+          const apv = (typeof AccredCore !== 'undefined') ? AccredCore.approvalOf(doc) : null;
+          const apLine = apv && apv.status !== 'none' ? `<div class="ap-reg">${esc(apv.label)}${apv.approved ? ' by ' + esc(apv.approved.by) + ', ' + esc(fmtDate(String(apv.approved.at).slice(0,10))) : ''}</div>` : '';
           return `<tr style="border-top:1px solid var(--border);background:${i%2?'transparent':'var(--muted-bg)'};">
-            <td style="padding:10px 12px;">${dot}${nameCell}${from}${attr?`<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${attr}</div>`:''}</td>
+            <td style="padding:10px 12px;">${dot}${nameCell}${apLine}${from}${attr?`<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${attr}</div>`:''}</td>
             <td style="padding:10px 12px;">${esc(doc.category||'-')}</td>
             <td style="padding:10px 12px;">${esc(doc.version||'-')}</td>
             <td style="padding:10px 12px;">${esc(doc.owner||'-')}</td>
@@ -33019,7 +33569,10 @@ function openDocModal(id){
          <div class="field-group"><label class="field-label">Signed by</label><input type="text" id="docSignedBy" placeholder="Name and role" value="${esc(v('signedBy'))}"></div>
          <div class="field-group"><label class="field-label">Signatory</label><label style="display:flex;align-items:center;gap:8px;font-size:13px;padding-top:8px;cursor:pointer;"><input type="checkbox" id="docSignedDirector" style="width:auto;margin:0;" ${doc&&doc.signedDirector?'checked':''}> Signed by a director</label></div>
        </div>
+       <div class="field-group"><label class="field-label">Source</label><input type="text" id="docSource" list="evSourceList" placeholder="Which app or which person produced it" value="${esc(v('source'))}">${_evSourceDatalist()}</div>
+       <div class="field-group"><label class="field-label">Answers these questions</label>${_evQidPicker('docQ', doc && Array.isArray(doc.qids) ? doc.qids : [])}<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">The CAS questions this document is evidence for. The Constructionline REFs follow from the mapping.</div></div>
        <div class="field-group"><label class="field-label">Link or file location</label><input type="text" id="docLink" placeholder="https://…   or   C:\\Folder\\file.pdf" value="${esc(v('link'))}"><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">A web link (OneDrive / SharePoint) opens in the browser; a local or network path (C:\\… or \\\\server\\…) gets a Copy button to paste into File Explorer. The file itself is not stored here.</div></div>
+       ${doc && typeof AccredCore !== 'undefined' && AccredCore.approvalOf(doc).log.length ? `<div class="field-group"><label class="field-label">Client approval log</label>${_apLogHTML(doc)}</div>` : ''}
      </div>`,
     `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="saveDocument(${doc?`'${esc(doc.id)}'`:'null'})">${doc?'Save changes':'Add document'}</button>`
@@ -33035,7 +33588,8 @@ function saveDocument(id){
   if(link && /^\s*(javascript|data|vbscript):/i.test(link)){ showToast('That link type is not allowed','error'); return; }
   if(!Array.isArray(S.documents)) S.documents = [];
   const fields = { name, category:g('docCategory'), version:g('docVersion'), owner:g('docOwner'), reviewDate:g('docReview'), link,
-    dated:g('docDated'), expires:g('docExpires'), signedBy:g('docSignedBy'), signedDirector:!!(document.getElementById('docSignedDirector')||{}).checked };
+    dated:g('docDated'), expires:g('docExpires'), signedBy:g('docSignedBy'), signedDirector:!!(document.getElementById('docSignedDirector')||{}).checked,
+    source:g('docSource'), qids:_evQidPicked('docQ') };
   let doc = id ? S.documents.find(d=>d.id===id) : null;
   if(doc){ Object.assign(doc, fields); _stamp(doc,'updated'); }
   else { doc = Object.assign({ id:'doc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6) }, fields); _stamp(doc,'created'); S.documents.push(doc); }
@@ -33873,8 +34427,127 @@ function psoAddSave(){
   if(row){ row.classList.add('psl-new'); try{ row.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(e){} setTimeout(()=>row.classList.remove('psl-new'),1600); }
   showToast('✓ Added - press Issue on its line to send it','success');
 }
+// ══════════════════════════════════════════════════════════════
+//  CLIENT APPROVAL - accreditation engine step 4. AHS Ltd sends a document
+//  from the Document register for the client to approve. The client either
+//  approves and signs it, or sends a query, which goes to AHS Ltd in Triage.
+//  Every click is logged on the document itself (documents[].approvalLog):
+//  the date and time, the user and their role, and the version it was
+//  about. That log is AHS Ltd's record that the client knew what it signed.
+//  Rules in AccredCore.approvalOf. Employees never see this card.
+// ══════════════════════════════════════════════════════════════
+function _apRole(){ const r = (typeof Auth !== 'undefined' && Auth.user && Auth.user()) ? Auth.user().role : ''; return r || 'consultant'; }
+function _apRoleLabel(r){ return r === 'client_user' ? _aclShort() : r === 'employee' ? 'Employee' : 'AHS Ltd'; }
+function _apLog(doc, action, extra){
+  if(!Array.isArray(doc.approvalLog)) doc.approvalLog = [];
+  const a = _actor();
+  const e = Object.assign({ id:'apl_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at:new Date().toISOString(), by:a.name, byId:a.id || null, role:_apRole(),
+    action, version:AccredCore.docVersionKey(doc), title:doc.name || '', dated:doc.dated || '' }, extra || {});
+  doc.approvalLog.push(e);
+  return e;
+}
+function _apActionText(e){
+  return e.action === 'sent' ? 'Sent for approval' : e.action === 'approved' ? 'Approved and signed' : e.action === 'query' ? 'Sent a query'
+    : e.action === 'answered' ? 'Query answered' : e.action === 'withdrawn' ? 'Taken off the approval list' : e.action;
+}
+function _apWhen(iso){ try{ return new Date(iso).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }); }catch(e){ return String(iso || ''); } }
+function _apLogHTML(doc){
+  const ap = AccredCore.approvalOf(doc);
+  if(!ap.log.length) return '<div class="acj-muted">Nothing logged yet.</div>';
+  return `<table class="ap-log"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Version</th><th></th></tr></thead><tbody>${ap.log.slice().reverse().map(e =>
+    `<tr><td>${esc(_apWhen(e.at))}</td><td>${esc(e.by || '')}<small>${esc(_apRoleLabel(e.role))}</small></td><td>${esc(_apActionText(e))}</td><td>${esc(e.version || '')}</td><td>${e.text ? esc(e.text) : ''}${e.action === 'query' && ap.answered[e.id] ? ' <span class="acj-muted">(answered ' + esc(_apWhen(ap.answered[e.id].at)) + ')</span>' : ''}</td></tr>`).join('')}</tbody></table>`;
+}
+function _renderClientApprovals(){
+  const el = document.getElementById('clientApprovals'); if(!el) return;
+  if(typeof AccredCore === 'undefined' || _empView()){ el.innerHTML = ''; return; }
+  const docs = (S.documents || []).filter(d => d && (AccredCore.approvalOf(d).required || AccredCore.approvalOf(d).log.length));
+  const ro = _roLocked(), client = _aclShort(), consultant = _apRole() === 'consultant';
+  const canSend = (S.documents || []).filter(d => d && !AccredCore.approvalOf(d).required);
+  if(!docs.length && !consultant){ el.innerHTML = ''; return; }
+  const rows = docs.map(d => {
+    const ap = AccredCore.approvalOf(d), id = esc(d.id), url = _safeUrl(d.link);
+    const act = (!ro && ap.required && ap.status !== 'approved') ? `<div class="ap-acts">
+        <button class="btn btn-primary btn-sm" onclick="approveDoc('${id}')">Approve and sign</button>
+        <textarea id="apQ-${id}" rows="2" placeholder="Your query for AHS Ltd"></textarea>
+        <button class="btn btn-outline btn-sm" onclick="queryDoc('${id}')">Send a query</button>
+      </div>` : '';
+    return `<div class="ap-doc ap-${ap.status}">
+      <div class="ap-top"><div><b>${url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(d.name || 'Untitled document')}</a>` : esc(d.name || 'Untitled document')}</b>
+        <small>Version ${esc(ap.version)}${d.dated ? ' · dated ' + esc(fmtDate(d.dated)) : ''}</small></div>
+        <span class="ap-pill">${esc(ap.label || 'Not for approval')}</span>
+        ${!ro && consultant && ap.required ? `<button class="btn btn-ghost btn-xs" onclick="withdrawDocApproval('${id}')">Take off the list</button>` : ''}</div>
+      ${ap.approved ? `<div class="ap-line">Approved and signed by ${esc(ap.approved.by)} for ${esc(_apRoleLabel(ap.approved.role))} on ${esc(_apWhen(ap.approved.at))}, version ${esc(ap.approved.version)}.</div>` : ''}
+      ${ap.openQueries.length ? `<div class="ap-line">${ap.openQueries.length} query open with AHS Ltd.</div>` : ''}
+      ${act}
+      <details class="ap-logwrap"><summary>Log (${ap.log.length})</summary>${_apLogHTML(d)}</details>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="card ap-card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Documents for ${esc(client)} to approve</h3><span class="badge badge-muted">${docs.filter(d => { const s = AccredCore.approvalOf(d).status; return s === 'awaiting' || s === 'query'; }).length} to do</span></div>
+    <div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;line-height:1.5;">AHS Ltd has prepared these documents. Approve and sign each one, or send a query to AHS Ltd. Every click is logged against the document and its version.</div>
+      ${rows || '<div class="acj-muted">No documents are waiting for approval.</div>'}
+      ${!ro && consultant ? `<div class="ap-send"><select id="apSendSel"><option value="">Send a document from the register for approval…</option>${canSend.map(d => `<option value="${esc(d.id)}">${esc((d.name || 'Untitled') + (d.version ? ' ' + d.version : ''))}</option>`).join('')}</select>
+        <button class="btn btn-outline btn-sm" onclick="sendDocForApproval(document.getElementById('apSendSel').value)">Send for approval</button></div>` : ''}
+    </div></div>`;
+}
+function _apDoc(id){ return (S.documents || []).find(d => d && d.id === id) || null; }
+function _apAfter(){ saveData(); _renderClientApprovals(); try{ if(document.getElementById('tab-documents').classList.contains('active')) renderDocuments(); }catch(e){} }
+function sendDocForApproval(id){
+  if(_blockIfReadOnly()) return;
+  const d = _apDoc(id); if(!d){ showToast('Pick a document from the register first', 'info'); return; }
+  d.approval = Object.assign({}, d.approval, { required:true, sentAt:new Date().toISOString(), sentBy:_actor().name });
+  _apLog(d, 'sent'); _apAfter();
+  showToast('✓ ' + (d.name || 'Document') + ' sent for approval', 'success');
+}
+function withdrawDocApproval(id){
+  if(_blockIfReadOnly()) return;
+  const d = _apDoc(id); if(!d) return;
+  d.approval = Object.assign({}, d.approval, { required:false });
+  _apLog(d, 'withdrawn'); _apAfter();
+}
+function approveDoc(id){
+  if(_blockIfReadOnly()) return;
+  const d = _apDoc(id); if(!d) return;
+  const v = AccredCore.docVersionKey(d), who = _actor().name;
+  if(!confirm('Approve and sign "' + (d.name || 'this document') + '", version ' + v + ', as ' + who + '?\n\nThis is logged with the date, your name and the version.')) return;
+  _apLog(d, 'approved', { link:d.link || '' }); _apAfter();
+  showToast('✓ Approved and signed - logged', 'success');
+}
+function queryDoc(id){
+  if(_blockIfReadOnly()) return;
+  const d = _apDoc(id); if(!d) return;
+  const t = ((document.getElementById('apQ-' + id) || {}).value || '').trim();
+  if(!t){ showToast('Write the query first - it goes to AHS Ltd', 'info'); return; }
+  _apLog(d, 'query', { text:t }); _apAfter();
+  showToast('✓ Query sent to AHS Ltd - logged', 'success');
+}
+function answerDocQuery(docId, qid){
+  if(_blockIfReadOnly()) return;
+  const d = _apDoc(docId); if(!d) return;
+  const t = ((document.getElementById('apA-' + qid) || {}).value || '').trim();
+  if(!t){ showToast('Write the answer first - it is logged with the query', 'info'); return; }
+  _apLog(d, 'answered', { re:qid, text:t }); saveData(); renderTriage();
+  showToast('✓ Answer logged against the query', 'success');
+}
+function _renderTriageQueries(){
+  const el = document.getElementById('triageQueries'); if(!el || typeof AccredCore === 'undefined') return;
+  const list = AccredCore.openQueries(S), ro = _roLocked();
+  el.innerHTML = `<div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Client queries</h3><span class="badge badge-muted">${list.length}</span></div>
+    <div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Queries ${esc(_aclShort())} sent from the Sign-off tab instead of approving a document. Answer each one here; the answer is logged on the document with the query.</div>
+      ${list.length ? list.map(x => `<div class="ap-doc ap-query">
+          <div class="ap-top"><div><b>${esc(x.title)}</b><small>Version ${esc(x.version)} · from ${esc(x.query.by || '')} (${esc(_apRoleLabel(x.query.role))}) · ${esc(_apWhen(x.query.at))}</small></div>
+            <button class="btn btn-ghost btn-xs" onclick="openDocModal('${esc(x.docId)}')">Open the document</button></div>
+          <div class="ap-qtext">${esc(x.query.text || '')}</div>
+          ${ro ? '' : `<div class="ap-acts"><textarea id="apA-${esc(x.query.id)}" rows="2" placeholder="The answer, as given to the client"></textarea>
+            <button class="btn btn-primary btn-sm" onclick="answerDocQuery('${esc(x.docId)}','${esc(x.query.id)}')">Log the answer</button></div>`}
+        </div>`).join('') : '<div class="slt-muted">No client queries waiting.</div>'}
+    </div></div>`;
+}
+
 function renderPolicySignoff(){
   const cont=document.getElementById('signoffContainer'); if(!cont) return;
+  try{ _renderClientApprovals(); }catch(e){ console.error('client approvals', e); }
   try{ _psoMigrateTrail(); }catch(e){}
   try{ _tbtMigrateDeliveries(); }catch(e){}   // talks signed for on paper before this register was the only place
   // Anything an employee confirmed by link since you last looked lands now.
@@ -35109,9 +35782,10 @@ function renderAccred(){
   el.innerHTML = `<div class="acj">
     <header class="acj-hero" id="acjHero">${_acjHeroInner(A, sum)}</header>
     ${ready ? `<nav class="acj-strip" id="acjStrip" aria-label="Steps">${_acjStripInner(A, qs)}</nav>` : ''}
-    ${_acjStage1(A, ro)}
+    ${_acjStage1(A, ro)}${A.clOn && A.clOn(S) ? '\n    ' + _aclSectionView(A, ro) : ''}
     ${body}
   </div>`;
+  if(A.clOn && A.clOn(S)) requestAnimationFrame(_aclFitAll);
 }
 
 // ── writes (each one saves loudly through saveData) ──
@@ -35290,6 +35964,304 @@ function downloadAccredPack(schemeId){
     setTimeout(() => { try{ URL.revokeObjectURL(a.href); }catch(e){} }, 60000);
     showToast('✓ ' + p.name + ' downloaded', 'success');
   }catch(e){ console.error('accreditation pack', e); showToast('Could not build the pack - ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  Constructionline sections - the portal mirror (accreditation engine)
+//  One line per portal question, in portal order, Building Safety Act
+//  sections last; the same columns as the AHS submission tracker. Built by
+//  AccredCore.clView from the question banks (reports/cl-bank.js). Shown only
+//  when the client holds Constructionline, so CHAS and SMAS work is unchanged.
+//  What AHS records lives in S.accred.cl, created on the first entry.
+// ══════════════════════════════════════════════════════════════
+var _aclOpen = {};      // which blocks are open - view state, never saved
+var _aclLast = {};      // the last view's lines by key, so typing compares against the default
+function _aclState(){ const a = _accredState(); if(!a.cl || typeof a.cl !== 'object') a.cl = {}; const c = a.cl; if(!c.valid || typeof c.valid !== 'object') c.valid = {}; if(!c.rows || typeof c.rows !== 'object') c.rows = {}; return c; }
+function _aclShort(){ const c = S.company || {}; return (c.shortName || '').trim() || _acjClient(); }
+function _aclExpCell(date, col){
+  if(!col) return '<td class="acl-exp"></td>';
+  return `<td class="acl-exp acl-${col.k}" title="${esc(col.label)}">${date ? esc(fmtDate(date)) : 'Not yet valid'}</td>`;
+}
+function _aclValidInput(sec, date, col, ro){
+  const id = 'aclV-' + String(sec).replace(/[^A-Za-z0-9]/g, '');
+  return `<label class="acl-valid acl-${col.k}" for="${id}"><span>${esc(sec)}</span>
+    <input type="date" id="${id}" value="${esc(date || '')}"${ro ? ' disabled' : ''} onchange="setAclValid(${esc(JSON.stringify(sec))},this.value)">
+    <b>${esc(col.label)}</b></label>`;
+}
+function _aclSectionView(A, ro){
+  const today = _acjToday(), short = _aclShort();
+  const v = A.clView(S, today, short);
+  const c = A.clCfg(S);
+  _aclLast = {};
+  const dis = ro ? ' disabled' : '';
+  const setBtns = ['designer', 'contractor'].map(k => `<button type="button" class="acj-btn" aria-pressed="${v.set === k}"${dis} onclick="setAclSet('${k}')">${k === 'designer' ? 'Designer' : 'Contractor'}</button>`).join('');
+  const stOpts = (cur) => A.CL_STATUS.map(s => `<option value="${s.k}"${s.k === cur ? ' selected' : ''}>${esc(A.clStatusLabel(s.k, short))}</option>`).join('');
+  const k = v.counts;
+  const blocks = v.blocks.map(b => {
+    const open = (b.id in _aclOpen) ? _aclOpen[b.id] : !(b.colour && b.colour.k === 'green');
+    const dates = b.hsSections.map(s => _aclValidInput(s, c.valid[s] || '', A.clExpiry(c.valid[s] || '', today), ro)).join('')
+      + (b.ssipSection ? _aclValidInput(b.ssipSection, c.valid[b.ssipSection] || '', A.clExpiry(c.valid[b.ssipSection] || '', today), ro) : '');
+    const todo = b.lines.filter(l => !l.done && l.st !== 'covered' && l.st !== 'already').length;
+    const rows = !open ? '' : b.lines.map(l => {
+      _aclLast[l.key] = l;
+      const tag = l.cas ? `${esc(l.cas)}${l.qno ? ' · SSIP Q' + esc(l.qno) : ''}` : 'Constructionline only';
+      const kk = esc(JSON.stringify(l.key));
+      return `<tr class="${l.done ? 'acl-done' : ''}">
+        <td class="acl-no">${l.no}</td>
+        <td class="acl-q">${esc(l.text)}<small>${tag}</small></td>
+        <td><textarea class="acl-ed${l.evSet ? '' : ' is-def'}" rows="2"${dis} oninput="setAclText(${kk},'ev',this)">${esc(l.evidence)}</textarea></td>
+        <td><textarea class="acl-ed${l.actSet ? '' : ' is-def'}" rows="2"${dis} oninput="setAclText(${kk},'act',this)">${esc(l.action)}</textarea></td>
+        <td><select class="acl-st st-${l.st}"${dis} onchange="setAclStatus(${kk},this.value)">${stOpts(l.st)}</select></td>
+        <td class="acl-ref">${esc(l.hsRefs.join(', '))}</td>
+        ${_aclExpCell(l.hsValid, l.hsColour)}
+        <td class="acl-ref">${esc(l.ssipRefs.join(', '))}</td>
+        ${_aclExpCell(l.ssipValid, l.ssipColour)}
+        <td><input type="date" class="acl-donein" value="${esc(l.done)}"${dis} onchange="setAclDone(${kk},this.value)"></td>
+      </tr>`;
+    }).join('');
+    return `<div class="acl-block${open ? ' open' : ''}" id="aclB-${esc(b.id.replace(/[^A-Za-z0-9]/g, ''))}">
+      <button type="button" class="acl-bhead" aria-expanded="${open}" onclick="toggleAclBlock(${esc(JSON.stringify(b.id))})">
+        <span class="acl-chev">${open ? '&#9662;' : '&#9656;'}</span>
+        <span class="acl-bname">${esc(b.name)}${b.bsa ? ' <i>Building Safety Act</i>' : ''}</span>
+        <span class="acl-bmeta">${b.lines.length} question${b.lines.length === 1 ? '' : 's'}${todo ? ' · ' + todo + ' to do' : ''}</span>
+        <span class="acl-pill acl-${b.colour ? b.colour.k : 'red'}">${esc(b.colour ? b.colour.label : 'Not yet valid')}</span>
+      </button>
+      ${open ? `<div class="acl-dates">${dates}</div>
+      <div class="acl-scroll"><table class="acl-t">
+        <thead><tr><th>No</th><th>Constructionline question</th><th>Expected evidence</th><th>Action</th><th>Status</th><th>H&amp;S ref</th><th>Valid until</th><th>SSIP ref</th><th>SSIP valid until</th><th>Done</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>` : ''}
+    </div>`;
+  }).join('');
+  return `<section class="acj-stage acl" id="aclSections">
+    <div class="acj-head"><div class="acj-num">CL</div><div><h3>Constructionline sections</h3>
+      <p>The portal, section by section: every question as Constructionline writes it, in portal order, with the Building Safety Act sections last. Enter each section's valid until date from the portal. Red is expired or not yet valid, amber is within ${A.CL_AMBER_DAYS} days, green is in date.</p></div></div>
+    <div class="acj-body">
+      <div class="acl-top">
+        <div><div class="acj-lbl">Question set</div><div class="acj-seg">${setBtns}</div>
+          <div class="acj-muted">${c.set ? 'Chosen by AHS Ltd.' : 'Worked out from the role at step 01.'}</div></div>
+        <div class="acl-counts">
+          <div><b>${k.client}</b><span>${esc(short)} to do</span></div>
+          <div><b>${k.ahs}</b><span>AHS Ltd to do</span></div>
+          <div><b>${k.covered}</b><span>Covered or already in Constructionline</span></div>
+          <div><b>${k.done}</b><span>Ticked done</span></div>
+        </div>
+      </div>
+      ${(() => { const cf = A.factConflicts(S, today); return cf.length ? `<div class="fs-warn acl-warn"><div class="fs-h">Facts that disagree with an answer or a date</div><ul>${cf.map(x => `<li><b>${esc(x.label)}.</b> ${esc(x.text)}</li>`).join('')}</ul><button type="button" class="acj-link" onclick="switchTab('company')">Open the fact sheet in Company setup</button></div>` : ''; })()}
+      ${ro ? '' : `<div class="acl-pack"><button type="button" class="acj-btn pri" onclick="downloadSubmissionPack()">Download the submission pack</button><span class="acj-muted">A ZIP with the AHS tracker, the client copy with its price list, the folders 01 to ${v.set === 'contractor' ? '13' : '12'} and 99 with every tagged record filed, and the client issue PDF (print only).${(S.accred && S.accred.issueRef) ? ' Reference ' + esc(S.accred.issueRef) + '.' : ''}</span></div>`}
+      <div class="acl-tools"><button type="button" class="acj-link" onclick="setAclAllOpen(true)">Open every section</button> · <button type="button" class="acj-link" onclick="setAclAllOpen(false)">Close every section</button></div>
+      ${blocks}
+    </div>
+  </section>`;
+}
+function _aclSave(){ saveData(); _keepScroll(renderAccred); }
+function setAclSet(k){ if(_blockIfReadOnly()) return; const c = _aclState(); c.set = (c.set === k) ? '' : k; _aclSave(); }
+function setAclValid(sec, date){ if(_blockIfReadOnly()) return; const c = _aclState(); if(date) c.valid[sec] = date; else delete c.valid[sec]; _aclSave(); }
+function _aclRow(key){ const c = _aclState(); return c.rows[key] = c.rows[key] || {}; }
+function _aclTidy(key){ const c = _aclState(); const r = c.rows[key]; if(r && !Object.keys(r).some(x => r[x] !== '' && r[x] != null)) delete c.rows[key]; }
+function setAclStatus(key, st){ if(_blockIfReadOnly()) return; const r = _aclRow(key); r.st = st; _aclSave(); }
+function setAclDone(key, d){ if(_blockIfReadOnly()) return; const r = _aclRow(key); if(d) r.done = d; else delete r.done; _aclTidy(key); _aclSave(); }
+// Typing keeps the line on screen: save quietly, no rebuild under the cursor.
+// Text left the same as the default is not stored, so the default can follow the status.
+function setAclText(key, field, el){
+  if(_roLocked()) return;
+  const l = _aclLast[key]; const r = _aclRow(key);
+  const def = l ? (field === 'ev' ? (l.evSet ? null : l.evidence) : (l.actSet ? null : l.action)) : null;
+  const v = el.value;
+  if(!v.trim() || (def != null && v === def)) delete r[field]; else r[field] = v;
+  el.classList.toggle('is-def', !(field in r));
+  _aclFit(el);
+  _aclTidy(key); scheduleAutoSave();
+}
+// A text box is as tall as what it holds, so nothing is cut off.
+function _aclFit(el){ el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; }
+function _aclFitAll(){ document.querySelectorAll('#aclSections .acl-ed').forEach(_aclFit); }
+function toggleAclBlock(id){
+  const A = _acjCore(); if(!A) return;
+  const b = A.clView(S, _acjToday(), _aclShort()).blocks.find(x => x.id === id);
+  const cur = (id in _aclOpen) ? _aclOpen[id] : !(b && b.colour && b.colour.k === 'green');
+  _aclOpen[id] = !cur; _keepScroll(renderAccred);
+}
+function setAclAllOpen(on){ const A = _acjCore(); if(!A) return; A.clView(S, _acjToday(), _aclShort()).blocks.forEach(b => { _aclOpen[b.id] = !!on; }); _keepScroll(renderAccred); }
+
+// ══════════════════════════════════════════════════════════════
+//  SUBMISSION PACK - accreditation engine step 6. One ZIP:
+//    00 <short> CL Submission Tracker.xlsx              (the AHS tracker)
+//    00 <short> CL Submission Tracker - Client Copy.xlsx ("AHS Ltd will...", price list)
+//    01 Company Information ... 13 Site Evidence, 99 Do Not Upload - Old Versions
+//       each tagged record filed as a shortcut to where it lives, with an index
+//    Client Issue/  the client copy as a protected PDF (image pages, watermark,
+//       copyright and AI-use footer, print only) and as Excel
+//  Built in the page: the trackers with ExcelJS (loaded from cdnjs when first
+//  needed) through reports/cl-pack.js, the PDF with jsPDF. Compass holds
+//  links to documents, not the files, so a folder holds a shortcut to each.
+// ══════════════════════════════════════════════════════════════
+const _EXCELJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+function _loadScriptOnce(url, globalName){
+  if(window[globalName]) return Promise.resolve(window[globalName]);
+  return new Promise((ok, fail) => {
+    const s = document.createElement('script'); s.src = url; s.async = true;
+    s.onload = () => window[globalName] ? ok(window[globalName]) : fail(new Error(globalName + ' did not load'));
+    s.onerror = () => fail(new Error('Could not load ' + url + ' - check the internet connection'));
+    document.head.appendChild(s);
+  });
+}
+// A plain (stored) ZIP with folders and binary files; names in UTF-8.
+function _packZip(files){
+  const enc = new TextEncoder(), out = [], cen = []; let off = 0;
+  const bytes = d => d == null ? new Uint8Array(0) : typeof d === 'string' ? enc.encode(d) : d instanceof Uint8Array ? d : new Uint8Array(d);
+  const now = new Date(), dt = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate(), tm = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  files.forEach(f => {
+    const nm = enc.encode(f.n), d = bytes(f.d), c = d.length ? _acjCrc32(d) : 0, dir = /\/$/.test(f.n);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true); h.setUint16(10, tm, true); h.setUint16(12, dt, true);
+    h.setUint32(14, c, true); h.setUint32(18, d.length, true); h.setUint32(22, d.length, true); h.setUint16(26, nm.length, true);
+    out.push(new Uint8Array(h.buffer), nm, d);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true); ch.setUint16(12, tm, true); ch.setUint16(14, dt, true);
+    ch.setUint32(16, c, true); ch.setUint32(20, d.length, true); ch.setUint32(24, d.length, true); ch.setUint16(28, nm.length, true); ch.setUint32(38, dir ? 0x10 : 0, true); ch.setUint32(42, off, true);
+    cen.push(new Uint8Array(ch.buffer), nm);
+    off += 30 + nm.length + d.length;
+  });
+  const cenLen = cen.reduce((n, a) => n + a.length, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cenLen, true); e.setUint32(16, off, true);
+  return new Blob([...out, ...cen, new Uint8Array(e.buffer)], { type:'application/zip' });
+}
+// One reference per client, made the first time a pack is issued and kept.
+function _clIssueRef(){
+  const a = _accredState();
+  if(!a.issueRef) a.issueRef = CLPack.issueRef(_aclShort(), _acjToday());
+  return a.issueRef;
+}
+const _AHS_LEGAL = 'AHS Compliance Consulting Ltd';
+function _clIssueFooter(data){ return '© ' + data.year + ' ' + _AHS_LEGAL + '. All rights reserved. Prepared for ' + data.legal + ' only. No part may be copied, altered, shared or used with AI tools without written permission. Ref: ' + data.ref; }
+// The client copy tracker drawn as page images, then the watermark and footer
+// on top, print only. The pages are pictures, so the text cannot be lifted.
+function _clIssuePdf(data){
+  const { jsPDF } = window.jspdf;
+  const W = 2339, H = 1654, ML = 70, MT = 80, MB = 130, TW = W - 2 * ML;
+  const ratio = [5, 40, 46, 46, 20, 16, 14, 14, 14, 10], sum = ratio.reduce((a, b) => a + b, 0), cw = ratio.map(r => r / sum * TW);
+  const FS = 15, LH = 19, PAD = 6, today = data.today;
+  const pastel = { red:'#F8D7DA', amber:'#FFE8B3', green:'#DFF0D8' }, stFill = { client:'#FFF4C2', ahs_sign:'#FFF4C2', ahs:'#D7EEF4', covered:'#DFF0D8', already:'#DFF0D8' };
+  const pages = []; let cv, g, y;
+  const fd = d => /^\d{4}-\d{2}-\d{2}/.test(d || '') ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : (d || '');
+  function wrap(text, width, font){
+    g.font = font; const out = [];
+    String(text == null ? '' : text).split('\n').forEach(par => {
+      let line = '';
+      par.split(/\s+/).forEach(w => { const t = line ? line + ' ' + w : w; if(g.measureText(t).width <= width) line = t; else { if(line) out.push(line); line = w; while(g.measureText(line).width > width && line.length > 1){ let k = line.length; while(k > 1 && g.measureText(line.slice(0, k)).width > width) k--; out.push(line.slice(0, k)); line = line.slice(k); } } });
+      out.push(line);
+    });
+    return out;
+  }
+  function newPage(){ cv = document.createElement('canvas'); cv.width = W; cv.height = H; g = cv.getContext('2d'); g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H); g.textBaseline = 'top'; pages.push(cv); y = MT; }
+  function cellBox(x, w, h, fill){ if(fill){ g.fillStyle = fill; g.fillRect(x, y, w, h); } g.strokeStyle = '#C8C8C8'; g.lineWidth = 1; g.strokeRect(x + .5, y + .5, w, h); }
+  function header(){
+    const heads = ['No', 'Constructionline question', 'Expected evidence', 'Action', 'Status', 'H&S ref (and other sections)', 'Valid until (Constructionline)', 'SSIP ref', 'SSIP valid until (Constructionline)', 'Done'];
+    const font = 'bold ' + FS + 'px Arial', ls = heads.map((h, i) => wrap(h, cw[i] - 2 * PAD, font));
+    const h = Math.max.apply(null, ls.map(l => l.length)) * LH + 2 * PAD; let x = ML;
+    heads.forEach((t, i) => { const tint = (i === 5 || i === 6) ? '#38A8C2' : (i === 7 || i === 8) ? '#8E7CC3' : '#E3EBF0'; cellBox(x, cw[i], h, tint);
+      g.fillStyle = tint === '#E3EBF0' ? '#3A3A3A' : '#FFFFFF'; g.font = font; ls[i].forEach((l, k) => g.fillText(l, x + PAD, y + PAD + k * LH)); x += cw[i]; });
+    y += h;
+  }
+  newPage();
+  g.fillStyle = '#3A3A3A'; g.font = 'bold 26px Arial'; g.fillText(data.short + ' & AHS Ltd: Constructionline Gold, ' + data.month + ' (client copy)', ML, y); y += 50;
+  const lines = data.rows.filter(r => r.type === 'line');
+  const cnt = [[data.short + ' to do', lines.filter(r => !r.done && (r.st === 'client' || r.st === 'ahs_sign')).length, '#FFF4C2'], ['AHS Ltd to do', lines.filter(r => !r.done && r.st === 'ahs').length, '#D7EEF4'],
+    ['Covered or already in Constructionline', lines.filter(r => !r.done && (r.st === 'covered' || r.st === 'already')).length, '#DFF0D8'], ['Ticked done', lines.filter(r => !!r.done).length, '#FFFFFF']];
+  cnt.forEach(c => { const x = ML + cw[0]; cellBox(x, 420, 26, c[2]); g.fillStyle = '#3A3A3A'; g.font = 'bold ' + FS + 'px Arial'; g.fillText(c[0], x + PAD, y + 5); cellBox(x + 420, 320, 26, null); g.font = FS + 'px Arial'; g.fillText(String(c[1]), x + 420 + PAD, y + 5); y += 26; });
+  y += 22; header();
+  data.rows.forEach(r => {
+    if(r.type === 'section'){
+      if(y + 34 + LH * 2 > H - MB){ newPage(); header(); }
+      g.fillStyle = '#38A8C2'; g.fillRect(ML, y, TW, 30); g.fillStyle = '#FFFFFF'; g.font = 'bold 17px Arial'; g.fillText(r.text, ML + PAD, y + 6); y += 30; return;
+    }
+    const vals = [String(r.no), r.q, r.ev, CLPack.willWording(r.act), r.stLabel, r.hsRefs, fd(r.hsValid), r.ssipRefs, fd(r.ssipValid), fd(r.done)];
+    const font = FS + 'px Arial', ls = vals.map((v, i) => wrap(v, cw[i] - 2 * PAD, font));
+    const h = Math.max(1, Math.max.apply(null, ls.map(l => l.length))) * LH + 2 * PAD;
+    if(y + h > H - MB){ newPage(); header(); }
+    let x = ML;
+    vals.forEach((v, i) => {
+      let fill = null;
+      if(i === 4) fill = stFill[r.st] || null;
+      if(i === 5 && r.hsRefs) fill = '#D7EEF4';
+      if(i === 7 && r.ssipRefs) fill = '#E8E4F3';
+      if((i === 6 && (r.hsRefs || r.hsValid)) || (i === 8 && (r.ssipRefs || r.ssipValid))){ const d = i === 6 ? r.hsValid : r.ssipValid; if(d) fill = pastel[AccredCore.clExpiry(/^\d{4}/.test(d) ? d : '', today).k]; }
+      cellBox(x, cw[i], h, fill); g.fillStyle = '#3A3A3A'; g.font = font;
+      ls[i].forEach((l, k) => { const tx = (i === 0) ? x + cw[i] - PAD - g.measureText(l).width : (i === 6 || i === 8 || i === 9) ? x + (cw[i] - g.measureText(l).width) / 2 : x + PAD; g.fillText(l, tx, y + PAD + k * LH); });
+      x += cw[i];
+    });
+    y += h;
+  });
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4', compress:true,
+    encryption:{ userPassword:'', ownerPassword:'AHS-' + Math.random().toString(36).slice(2) + Date.now().toString(36), userPermissions:['print'] } });
+  doc.setProperties({ title: data.short + ' CL Submission Tracker - Client Issue', subject: 'Prepared for ' + data.legal + ' | Ref ' + data.ref, author: _AHS_LEGAL, creator: 'AHS Compass' });
+  const foot = _clIssueFooter(data), ang = 28, rad = ang * Math.PI / 180;
+  pages.forEach((p, i) => {
+    if(i) doc.addPage('a4', 'landscape');
+    doc.addImage(p.toDataURL('image/jpeg', 0.86), 'JPEG', 0, 0, 297, 210, undefined, 'FAST');
+    // the watermark: the company, the client and the reference, across the page
+    try{ doc.saveGraphicsState(); doc.setGState(new doc.GState({ opacity:0.12 })); }catch(e){}
+    doc.setTextColor(120, 120, 120);
+    [[_AHS_LEGAL, 46, 0], ['Prepared for ' + data.legal + ' | Ref ' + data.ref, 18, 16]].forEach(([t, sz, dy]) => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(sz);
+      const w = doc.getTextWidth(t), cx = 148.5 + Math.sin(rad) * dy, cy = 105 + Math.cos(rad) * dy;
+      doc.text(t, cx - Math.cos(rad) * w / 2, cy + Math.sin(rad) * w / 2, { angle: ang });
+    });
+    try{ doc.restoreGraphicsState(); }catch(e){}
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(90, 90, 90);
+    doc.text(foot, 8, 205);
+  });
+  return new Uint8Array(doc.output('arraybuffer'));
+}
+async function buildSubmissionPack(){
+  const A = _acjCore(); if(!A || typeof CLPack === 'undefined') throw new Error('the accreditation files did not load');
+  if(!A.clOn(S)) throw new Error('tick Constructionline and a role at step 01 first');
+  const ExcelJS = await _loadScriptOnce(_EXCELJS_URL, 'ExcelJS');
+  const today = _acjToday(), ref = _clIssueRef();
+  const data = CLPack.packData(A, S, today, { ref });
+  const bufA = await CLPack.buildTracker(ExcelJS, data, false, A).xlsx.writeBuffer();
+  const bufC = await CLPack.buildTracker(ExcelJS, data, true, A).xlsx.writeBuffer();
+  const pdf = _clIssuePdf(data);
+  const short = CLPack.safeName(data.short), root = short + ' CL Submission ' + data.year + '/';
+  const files = [{ n:root }];
+  files.push({ n:root + '00 ' + short + ' CL Submission Tracker.xlsx', d:bufA });
+  files.push({ n:root + '00 ' + short + ' CL Submission Tracker - Client Copy.xlsx', d:bufC });
+  const used = {};
+  data.folders.forEach(f => {
+    files.push({ n:root + f + '/' });
+    const mine = data.files.filter(x => x.folder === f);
+    if(!mine.length) return;
+    const lines = [f, '', 'Filed by AHS Compass on ' + fmtDate(today) + ' for ' + data.legal + ' (ref ' + ref + ').', f === '99 Do Not Upload - Old Versions' ? 'These records are more than 12 months old. Keep them, but do not upload them.' : 'Each record below has a shortcut in this folder to where the file lives. Put the file itself here before uploading.', ''];
+    mine.forEach(x => {
+      const it = x.item;
+      lines.push(it.title, '  Dated: ' + (it.dated ? fmtDate(it.dated) : 'not recorded'), '  Source: ' + (it.source || 'not recorded'),
+        '  Answers: ' + (it.qids.length ? it.qids.map(id => _evQidLabel(A, id)).join(', ') : 'not tagged'), it.refs.length ? '  Constructionline REF: ' + it.refs.join(', ') : '', '  Where it lives: ' + (it.file || 'not recorded'), '');
+      if(x.shortcut){ let nm = x.name, k = 2; while(used[f + '/' + nm]) nm = x.name + ' (' + (k++) + ')'; used[f + '/' + nm] = 1; files.push({ n:root + f + '/' + nm + '.url', d:x.shortcut }); }
+    });
+    files.push({ n:root + f + '/00 In this folder.txt', d:lines.filter(l => l !== null).join('\r\n') });
+  });
+  files.push({ n:root + 'Client Issue/' });
+  files.push({ n:root + 'Client Issue/00 ' + short + ' CL Submission Tracker - Client Issue.pdf', d:pdf });
+  files.push({ n:root + 'Client Issue/00 ' + short + ' CL Submission Tracker - Client Issue.xlsx', d:bufC });
+  const unfiled = data.files.filter(x => !x.folder);
+  files.push({ n:root + '00 Pack contents.txt', d:[short + ' Constructionline submission pack', 'Prepared by AHS Ltd for ' + data.legal + ' on ' + fmtDate(today) + '.', 'Reference: ' + ref, 'Question set: ' + (data.set === 'designer' ? 'Designer' : 'Contractor'), '',
+    'Trackers: the AHS tracker and the client copy (with the price list). Client Issue: the client copy as a protected PDF (print only) and as Excel.',
+    'Folders: each holds a shortcut to every tagged record filed there, and "00 In this folder.txt" listing them.', '',
+    unfiled.length ? 'Not filed, because they are not tagged to a question (tag them on the Documents tab):\r\n' + unfiled.map(x => '  ' + x.item.title).join('\r\n') : 'Every record in the evidence register is filed.'].join('\r\n') });
+  return { blob:_packZip(files), name:short + ' CL Submission ' + data.year + '.zip', data, files, ref };
+}
+async function downloadSubmissionPack(){
+  if(_blockIfReadOnly()) return;
+  try{
+    showToast('Building the submission pack…', 'info');
+    const p = await buildSubmissionPack();
+    const a = _accredState(); a.issues = (Array.isArray(a.issues) ? a.issues : []).concat([{ ref:p.ref, at:new Date().toISOString(), by:_actor().name }]);
+    saveData();
+    const el = document.createElement('a'); el.href = URL.createObjectURL(p.blob); el.download = p.name;
+    document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => { try{ URL.revokeObjectURL(el.href); }catch(e){} }, 60000);
+    showToast('✓ ' + p.name + ' downloaded (ref ' + p.ref + ')', 'success');
+  }catch(e){ console.error('submission pack', e); showToast('Could not build the pack: ' + e.message, 'error'); }
 }
 
 function renderCAS(){
@@ -38263,7 +39235,8 @@ var _IMPORT_KEYS=['accred','actionSheets','company','riskDoc','riskConfig','requ
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
   'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance','buildingSafety','memberships',
-  'recycleBin'];   // the consultant's deleted-record trail is part of the client's record
+  'recycleBin',   // the consultant's deleted-record trail is part of the client's record
+  'evidenceTags'];   // accreditation engine: the questions AHS set by hand on a record
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

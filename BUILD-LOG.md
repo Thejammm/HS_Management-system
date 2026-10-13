@@ -215,3 +215,54 @@ prove CHAS and SMAS clients see exactly what they saw before.
 - Quick minutes in Triage are kept off the register, because they are held off
   the client's record until reviewed.
 - 11 months gives a month's warning before Constructionline's 12-month limit.
+
+---
+
+## Step 4: Client approve or query, with a log
+
+**What was built**
+
+- Sign-off tab: a "Documents for <client> to approve" card above the employee
+  sign-off register. AHS Ltd sends any document from the Document register for
+  approval. The client either:
+  - clicks **Approve and sign** (a confirm names the document, the version and
+    the person), or
+  - writes and sends a **query**.
+- Every click is logged on the document itself (`documents[].approvalLog`): date
+  and time, user name and id, role (shown as the company for a client login,
+  "AHS Ltd" for the consultant), the action, the version, the title and date of
+  the document, and the query or answer text. Sending, withdrawing and answering
+  are logged too.
+- An approval counts for the version approved only. A new version shows "New
+  version to approve", and the old approval stays on the log.
+- A query appears in Triage under a new "Client queries" card (consultant only).
+  AHS Ltd logs the answer there, and the query leaves Triage. The answer is on
+  the document's log with the query.
+- The log shows on the document in three places:
+  - the approval card ("Log");
+  - the document form ("Client approval log");
+  - a status line under the document's name in the Document register.
+- Employees never see the approval card. It is for the client company.
+- Rules in `accred-core.js`: `approvalOf`, `openQueries`, `docVersionKey`.
+
+**How to test**
+
+- `npm test` runs `test/client-approval.test.mjs`: statuses, version rule, open
+  and answered queries.
+- `node test/ui/client-approval.test.mjs`: AHS Ltd sends two documents; a client
+  login approves one and queries the other; the query is in Triage; AHS Ltd
+  answers; the log is on the document; a new version needs approving again; no
+  card in the employee view.
+- By hand: Sign-off tab, "Send a document from the register for approval". Sign
+  in as the client (or use View: Client) to approve or query. Open Triage to see
+  and answer the query.
+
+**Assumptions**
+
+- "The user" is the signed-in person; the log stores their name and id. The card
+  names the company ("Approved and signed by Robert Smith for RSSC"), so
+  client-facing wording leads with the company.
+- The document version is the version field, else the document date. A document
+  with neither is "unversioned".
+- Approve and sign is a logged, confirmed click by the signed-in user, not a drawn
+  signature. A drawn signature can be added later without changing the log.

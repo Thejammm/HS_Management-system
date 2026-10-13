@@ -741,7 +741,40 @@
     });
   }
 
+  // ══════════════════════════════════════════════════════════════
+  //  Client approval (Sign-off tab). A document AHS Ltd sends for approval
+  //  carries its own log: every click with the date, the user, their role
+  //  and the version it was about. Approve and sign counts for the version
+  //  approved only; a new version needs approving again. A query stays open
+  //  (and in Triage) until AHS Ltd answers it, which is logged too.
+  //    documents[].approval    { required, sentAt, sentBy }
+  //    documents[].approvalLog [{ id, at, by, byId, role, action, version, title, dated, text, re }]
+  //      action: 'sent' | 'approved' | 'query' | 'answered' | 'withdrawn'
+  // ══════════════════════════════════════════════════════════════
+  function docVersionKey(doc) { return String((doc && (doc.version || doc.dated)) || '').trim() || 'unversioned'; }
+  function approvalOf(doc) {
+    var log = Array.isArray(doc && doc.approvalLog) ? doc.approvalLog.filter(function (e) { return e && e.action; }) : [];
+    var ver = docVersionKey(doc), req = !!(doc && doc.approval && doc.approval.required);
+    var answered = {}; log.forEach(function (e) { if (e.action === 'answered' && e.re) answered[e.re] = e; });
+    var open = log.filter(function (e) { return e.action === 'query' && !answered[e.id]; });
+    var approvals = log.filter(function (e) { return e.action === 'approved'; });
+    var cur = null; approvals.forEach(function (e) { if (e.version === ver) cur = e; });
+    var last = approvals.length ? approvals[approvals.length - 1] : null;
+    var status = open.length ? 'query' : cur ? 'approved' : req ? 'awaiting' : 'none';
+    var label = status === 'query' ? 'Query open' : status === 'approved' ? 'Approved and signed' : status === 'awaiting' ? (last ? 'New version to approve' : 'Awaiting approval') : '';
+    return { required: req, status: status, label: label, version: ver, approved: cur, lastApproved: last, openQueries: open, answered: answered, log: log };
+  }
+  function openQueries(state) {
+    var out = [];
+    ((state && state.documents) || []).forEach(function (d) {
+      if (!d) return;
+      approvalOf(d).openQueries.forEach(function (q) { out.push({ docId: d.id, title: d.name || 'Untitled document', version: q.version, query: q }); });
+    });
+    return out.sort(function (a, b) { return String(b.query.at).localeCompare(String(a.query.at)); });
+  }
+
   var api = { MASTER: MASTER, AREAS: AREAS, ROLES: ROLES, SCHEMES: SCHEMES, STATUS: STATUS, STATUS_ORDER: STATUS_ORDER, DUE_DAYS: DUE_DAYS,
+    docVersionKey: docVersionKey, approvalOf: approvalOf, openQueries: openQueries,
     EV_KINDS: EV_KINDS, EV_STALE_MONTHS: EV_STALE_MONTHS, evidenceItems: evidenceItems, evidenceByQuestion: evidenceByQuestion, evFlag: evFlag, evStale: evStale, ssipQOf: ssipQOf,
     FACTS: FACTS, factOfField: factOfField, factDef: factDef, factImpact: factImpact, factConflicts: factConflicts,
     addMonths: addMonths, daysFrom: daysFrom, todayIso: todayIso, freshRule: freshRule, cfgOf: cfgOf, setsOn: setsOn, setsFor: setsFor, setRole: setRole, schemeOf: schemeOf,

@@ -2980,6 +2980,27 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ev-f-stale{background:#F6D6D6} .ev-f-ok{background:#D8EEDA} .ev-f-undated,.ev-f-untagged{background:var(--muted-bg);color:var(--text)}
 .ev-qgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-top:14px;border-top:1px solid var(--border);padding-top:6px}
 .ev-ql{margin:0;padding-left:18px;font-size:12.5px;line-height:1.5}
+.ap-doc{border:1px solid var(--border);border-left:4px solid var(--border);padding:10px 12px;margin-bottom:10px}
+.ap-doc.ap-awaiting,.ap-doc.ap-query{border-left-color:#38A8C2}
+.ap-doc.ap-approved{border-left-color:#3A3A3A}
+.ap-top{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.ap-top>div{flex:1;min-width:220px}
+.ap-top small{display:block;font-size:11.5px;color:var(--text-muted);margin-top:2px}
+.ap-pill{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border:1px solid #38A8C2;color:#38A8C2;padding:2px 7px;white-space:nowrap}
+.ap-approved .ap-pill{border-color:#3A3A3A;color:var(--text)}
+.ap-line{font-size:12.5px;margin-top:6px}
+.ap-qtext{white-space:pre-wrap;font-size:13px;margin-top:8px;padding:8px 10px;background:var(--muted-bg)}
+.ap-acts{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-top:10px}
+.ap-acts textarea{flex:1;min-width:220px;font:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:0;resize:vertical}
+.ap-logwrap{margin-top:8px}
+.ap-logwrap summary{cursor:pointer;font-size:12px;font-weight:700;color:#38A8C2}
+.ap-log{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.ap-log th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);padding:4px 6px;border-bottom:1px solid var(--border)}
+.ap-log td{padding:5px 6px;border-bottom:1px solid var(--border);vertical-align:top}
+.ap-log td small{display:block;font-size:10.5px;color:var(--text-muted)}
+.ap-send{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ap-send select{flex:1;min-width:240px;font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:0}
+.ap-reg{font-size:10.5px;font-weight:700;color:#38A8C2;margin-top:2px}
 .ev-more summary{cursor:pointer;font-size:12.5px;font-weight:700;color:#38A8C2;margin-bottom:4px}
 .ev-pick{max-height:260px;overflow-y:auto;border:1px solid var(--border);padding:6px 8px;font-size:12px}
 .ev-qa{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:8px 0 3px}
@@ -4027,6 +4048,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
 
   <div id="tab-signoff" class="tab-panel">
     <div class="rep-hero"><h2>Policy &amp; procedure sign-off</h2><p>Everything your client's people must sign for. Add it with where it lives, press Issue, and each person gets a link: they read it and confirm on their phone, and it lands on the tracker.</p></div>
+    <div id="clientApprovals"></div>
     <div id="signoffContainer"></div>
     <div id="riskDocControl" style="margin-top:18px;"></div>
   </div>
@@ -4672,6 +4694,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
        off the client's record until Simon deletes them
   ══════════════════════════════════════ -->
   <div id="tab-triage" class="tab-panel">
+    <div id="triageQueries"></div>
     <div class="card">
       <div class="card-band"><h3><span class="dot">●</span> Triage</h3></div>
       <div class="card-body">
@@ -31751,6 +31774,7 @@ function triageDelete(id){
   showToast('Deleted from Triage','info');
 }
 function renderTriage(){
+  try{ _renderTriageQueries(); }catch(e){ console.error('client queries', e); }
   const el=document.getElementById('triageList'); if(!el) return;
   const list=_triageMeetings(), ro=_roLocked();
   if(!list.length){ el.innerHTML='<div class="slt-muted">Nothing in Triage. Minutes taken with ✎ Minutes on the cockpit land here when you press Triage.</div>'; return; }
@@ -33282,8 +33306,10 @@ function renderDocuments(){
             : `<span style="font-weight:600;">${esc(doc.name||'(untitled)')}</span>`;
           const attr = _attrLine(doc,'updated') || _attrLine(doc,'created');
           const from = doc.addedFrom?`<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">added from ${esc(doc.addedFrom)}</div>`:'';
+          const apv = (typeof AccredCore !== 'undefined') ? AccredCore.approvalOf(doc) : null;
+          const apLine = apv && apv.status !== 'none' ? `<div class="ap-reg">${esc(apv.label)}${apv.approved ? ' by ' + esc(apv.approved.by) + ', ' + esc(fmtDate(String(apv.approved.at).slice(0,10))) : ''}</div>` : '';
           return `<tr style="border-top:1px solid var(--border);background:${i%2?'transparent':'var(--muted-bg)'};">
-            <td style="padding:10px 12px;">${dot}${nameCell}${from}${attr?`<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${attr}</div>`:''}</td>
+            <td style="padding:10px 12px;">${dot}${nameCell}${apLine}${from}${attr?`<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${attr}</div>`:''}</td>
             <td style="padding:10px 12px;">${esc(doc.category||'-')}</td>
             <td style="padding:10px 12px;">${esc(doc.version||'-')}</td>
             <td style="padding:10px 12px;">${esc(doc.owner||'-')}</td>
@@ -33328,6 +33354,7 @@ function openDocModal(id){
        <div class="field-group"><label class="field-label">Source</label><input type="text" id="docSource" list="evSourceList" placeholder="Which app or which person produced it" value="${esc(v('source'))}">${_evSourceDatalist()}</div>
        <div class="field-group"><label class="field-label">Answers these questions</label>${_evQidPicker('docQ', doc && Array.isArray(doc.qids) ? doc.qids : [])}<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">The CAS questions this document is evidence for. The Constructionline REFs follow from the mapping.</div></div>
        <div class="field-group"><label class="field-label">Link or file location</label><input type="text" id="docLink" placeholder="https://…   or   C:\\Folder\\file.pdf" value="${esc(v('link'))}"><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">A web link (OneDrive / SharePoint) opens in the browser; a local or network path (C:\\… or \\\\server\\…) gets a Copy button to paste into File Explorer. The file itself is not stored here.</div></div>
+       ${doc && typeof AccredCore !== 'undefined' && AccredCore.approvalOf(doc).log.length ? `<div class="field-group"><label class="field-label">Client approval log</label>${_apLogHTML(doc)}</div>` : ''}
      </div>`,
     `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="saveDocument(${doc?`'${esc(doc.id)}'`:'null'})">${doc?'Save changes':'Add document'}</button>`
@@ -34182,8 +34209,127 @@ function psoAddSave(){
   if(row){ row.classList.add('psl-new'); try{ row.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(e){} setTimeout(()=>row.classList.remove('psl-new'),1600); }
   showToast('✓ Added - press Issue on its line to send it','success');
 }
+// ══════════════════════════════════════════════════════════════
+//  CLIENT APPROVAL - accreditation engine step 4. AHS Ltd sends a document
+//  from the Document register for the client to approve. The client either
+//  approves and signs it, or sends a query, which goes to AHS Ltd in Triage.
+//  Every click is logged on the document itself (documents[].approvalLog):
+//  the date and time, the user and their role, and the version it was
+//  about. That log is AHS Ltd's record that the client knew what it signed.
+//  Rules in AccredCore.approvalOf. Employees never see this card.
+// ══════════════════════════════════════════════════════════════
+function _apRole(){ const r = (typeof Auth !== 'undefined' && Auth.user && Auth.user()) ? Auth.user().role : ''; return r || 'consultant'; }
+function _apRoleLabel(r){ return r === 'client_user' ? _aclShort() : r === 'employee' ? 'Employee' : 'AHS Ltd'; }
+function _apLog(doc, action, extra){
+  if(!Array.isArray(doc.approvalLog)) doc.approvalLog = [];
+  const a = _actor();
+  const e = Object.assign({ id:'apl_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at:new Date().toISOString(), by:a.name, byId:a.id || null, role:_apRole(),
+    action, version:AccredCore.docVersionKey(doc), title:doc.name || '', dated:doc.dated || '' }, extra || {});
+  doc.approvalLog.push(e);
+  return e;
+}
+function _apActionText(e){
+  return e.action === 'sent' ? 'Sent for approval' : e.action === 'approved' ? 'Approved and signed' : e.action === 'query' ? 'Sent a query'
+    : e.action === 'answered' ? 'Query answered' : e.action === 'withdrawn' ? 'Taken off the approval list' : e.action;
+}
+function _apWhen(iso){ try{ return new Date(iso).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }); }catch(e){ return String(iso || ''); } }
+function _apLogHTML(doc){
+  const ap = AccredCore.approvalOf(doc);
+  if(!ap.log.length) return '<div class="acj-muted">Nothing logged yet.</div>';
+  return `<table class="ap-log"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Version</th><th></th></tr></thead><tbody>${ap.log.slice().reverse().map(e =>
+    `<tr><td>${esc(_apWhen(e.at))}</td><td>${esc(e.by || '')}<small>${esc(_apRoleLabel(e.role))}</small></td><td>${esc(_apActionText(e))}</td><td>${esc(e.version || '')}</td><td>${e.text ? esc(e.text) : ''}${e.action === 'query' && ap.answered[e.id] ? ' <span class="acj-muted">(answered ' + esc(_apWhen(ap.answered[e.id].at)) + ')</span>' : ''}</td></tr>`).join('')}</tbody></table>`;
+}
+function _renderClientApprovals(){
+  const el = document.getElementById('clientApprovals'); if(!el) return;
+  if(typeof AccredCore === 'undefined' || _empView()){ el.innerHTML = ''; return; }
+  const docs = (S.documents || []).filter(d => d && (AccredCore.approvalOf(d).required || AccredCore.approvalOf(d).log.length));
+  const ro = _roLocked(), client = _aclShort(), consultant = _apRole() === 'consultant';
+  const canSend = (S.documents || []).filter(d => d && !AccredCore.approvalOf(d).required);
+  if(!docs.length && !consultant){ el.innerHTML = ''; return; }
+  const rows = docs.map(d => {
+    const ap = AccredCore.approvalOf(d), id = esc(d.id), url = _safeUrl(d.link);
+    const act = (!ro && ap.required && ap.status !== 'approved') ? `<div class="ap-acts">
+        <button class="btn btn-primary btn-sm" onclick="approveDoc('${id}')">Approve and sign</button>
+        <textarea id="apQ-${id}" rows="2" placeholder="Your query for AHS Ltd"></textarea>
+        <button class="btn btn-outline btn-sm" onclick="queryDoc('${id}')">Send a query</button>
+      </div>` : '';
+    return `<div class="ap-doc ap-${ap.status}">
+      <div class="ap-top"><div><b>${url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(d.name || 'Untitled document')}</a>` : esc(d.name || 'Untitled document')}</b>
+        <small>Version ${esc(ap.version)}${d.dated ? ' · dated ' + esc(fmtDate(d.dated)) : ''}</small></div>
+        <span class="ap-pill">${esc(ap.label || 'Not for approval')}</span>
+        ${!ro && consultant && ap.required ? `<button class="btn btn-ghost btn-xs" onclick="withdrawDocApproval('${id}')">Take off the list</button>` : ''}</div>
+      ${ap.approved ? `<div class="ap-line">Approved and signed by ${esc(ap.approved.by)} for ${esc(_apRoleLabel(ap.approved.role))} on ${esc(_apWhen(ap.approved.at))}, version ${esc(ap.approved.version)}.</div>` : ''}
+      ${ap.openQueries.length ? `<div class="ap-line">${ap.openQueries.length} query open with AHS Ltd.</div>` : ''}
+      ${act}
+      <details class="ap-logwrap"><summary>Log (${ap.log.length})</summary>${_apLogHTML(d)}</details>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="card ap-card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Documents for ${esc(client)} to approve</h3><span class="badge badge-muted">${docs.filter(d => { const s = AccredCore.approvalOf(d).status; return s === 'awaiting' || s === 'query'; }).length} to do</span></div>
+    <div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;line-height:1.5;">AHS Ltd has prepared these documents. Approve and sign each one, or send a query to AHS Ltd. Every click is logged against the document and its version.</div>
+      ${rows || '<div class="acj-muted">No documents are waiting for approval.</div>'}
+      ${!ro && consultant ? `<div class="ap-send"><select id="apSendSel"><option value="">Send a document from the register for approval…</option>${canSend.map(d => `<option value="${esc(d.id)}">${esc((d.name || 'Untitled') + (d.version ? ' ' + d.version : ''))}</option>`).join('')}</select>
+        <button class="btn btn-outline btn-sm" onclick="sendDocForApproval(document.getElementById('apSendSel').value)">Send for approval</button></div>` : ''}
+    </div></div>`;
+}
+function _apDoc(id){ return (S.documents || []).find(d => d && d.id === id) || null; }
+function _apAfter(){ saveData(); _renderClientApprovals(); try{ if(document.getElementById('tab-documents').classList.contains('active')) renderDocuments(); }catch(e){} }
+function sendDocForApproval(id){
+  if(_blockIfReadOnly()) return;
+  const d = _apDoc(id); if(!d){ showToast('Pick a document from the register first', 'info'); return; }
+  d.approval = Object.assign({}, d.approval, { required:true, sentAt:new Date().toISOString(), sentBy:_actor().name });
+  _apLog(d, 'sent'); _apAfter();
+  showToast('✓ ' + (d.name || 'Document') + ' sent for approval', 'success');
+}
+function withdrawDocApproval(id){
+  if(_blockIfReadOnly()) return;
+  const d = _apDoc(id); if(!d) return;
+  d.approval = Object.assign({}, d.approval, { required:false });
+  _apLog(d, 'withdrawn'); _apAfter();
+}
+function approveDoc(id){
+  if(_blockIfReadOnly()) return;
+  const d = _apDoc(id); if(!d) return;
+  const v = AccredCore.docVersionKey(d), who = _actor().name;
+  if(!confirm('Approve and sign "' + (d.name || 'this document') + '", version ' + v + ', as ' + who + '?\n\nThis is logged with the date, your name and the version.')) return;
+  _apLog(d, 'approved', { link:d.link || '' }); _apAfter();
+  showToast('✓ Approved and signed - logged', 'success');
+}
+function queryDoc(id){
+  if(_blockIfReadOnly()) return;
+  const d = _apDoc(id); if(!d) return;
+  const t = ((document.getElementById('apQ-' + id) || {}).value || '').trim();
+  if(!t){ showToast('Write the query first - it goes to AHS Ltd', 'info'); return; }
+  _apLog(d, 'query', { text:t }); _apAfter();
+  showToast('✓ Query sent to AHS Ltd - logged', 'success');
+}
+function answerDocQuery(docId, qid){
+  if(_blockIfReadOnly()) return;
+  const d = _apDoc(docId); if(!d) return;
+  const t = ((document.getElementById('apA-' + qid) || {}).value || '').trim();
+  if(!t){ showToast('Write the answer first - it is logged with the query', 'info'); return; }
+  _apLog(d, 'answered', { re:qid, text:t }); saveData(); renderTriage();
+  showToast('✓ Answer logged against the query', 'success');
+}
+function _renderTriageQueries(){
+  const el = document.getElementById('triageQueries'); if(!el || typeof AccredCore === 'undefined') return;
+  const list = AccredCore.openQueries(S), ro = _roLocked();
+  el.innerHTML = `<div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Client queries</h3><span class="badge badge-muted">${list.length}</span></div>
+    <div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Queries ${esc(_aclShort())} sent from the Sign-off tab instead of approving a document. Answer each one here; the answer is logged on the document with the query.</div>
+      ${list.length ? list.map(x => `<div class="ap-doc ap-query">
+          <div class="ap-top"><div><b>${esc(x.title)}</b><small>Version ${esc(x.version)} · from ${esc(x.query.by || '')} (${esc(_apRoleLabel(x.query.role))}) · ${esc(_apWhen(x.query.at))}</small></div>
+            <button class="btn btn-ghost btn-xs" onclick="openDocModal('${esc(x.docId)}')">Open the document</button></div>
+          <div class="ap-qtext">${esc(x.query.text || '')}</div>
+          ${ro ? '' : `<div class="ap-acts"><textarea id="apA-${esc(x.query.id)}" rows="2" placeholder="The answer, as given to the client"></textarea>
+            <button class="btn btn-primary btn-sm" onclick="answerDocQuery('${esc(x.docId)}','${esc(x.query.id)}')">Log the answer</button></div>`}
+        </div>`).join('') : '<div class="slt-muted">No client queries waiting.</div>'}
+    </div></div>`;
+}
+
 function renderPolicySignoff(){
   const cont=document.getElementById('signoffContainer'); if(!cont) return;
+  try{ _renderClientApprovals(); }catch(e){ console.error('client approvals', e); }
   try{ _psoMigrateTrail(); }catch(e){}
   try{ _tbtMigrateDeliveries(); }catch(e){}   // talks signed for on paper before this register was the only place
   // Anything an employee confirmed by link since you last looked lands now.

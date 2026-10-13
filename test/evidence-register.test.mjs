@@ -35,7 +35,7 @@ test('a document carries its date, its questions and its source; the REFs follow
 test('records from the other tabs are tagged by what they are, from the moment they exist', () => {
   const s = base({
     siteEvidence: { L1: { records: [{ inspectionId: 'i9', project: 'Genesis', date: '2026-09-15', inspector: 'Simon Archer', items: [{ qids: ['CN-01', 'HS-15'] }] }] } },
-    siteInspections: [{ id: 'v1', kind: 'Site inspection', site: 'HMP Lancaster', actual: '2026-08-01', outcome: 'Satisfactory' }, { id: 'v2', kind: 'Site inspection', planned: '2026-11-01' }],
+    siteInspections: [{ id: 'v1', kind: 'Site inspection', site: 'Riverside Depot', actual: '2026-08-01', outcome: 'Satisfactory' }, { id: 'v2', kind: 'Site inspection', planned: '2026-11-01' }],
     inspections: [{ id: 'w1', title: 'Garage inspection', periodTo: '2026-09-30', submittedBy: 'Jo' }],
     policySignoff: { policies: [{ id: 'p1', title: 'Working at height', type: 'Toolbox talk', delivered: '2026-09-20', presenter: 'Supervisor' }, { id: 'p2', title: 'BS 7273-4 update', type: 'Training / CPD', delivered: '2026-07-10' }, { id: 'p3', title: 'Lone working', type: 'Policy' }] },
     monitoring: { months: { '2026-09': { enteredAt: '2026-10-02' }, '2026-10': {} } }
@@ -53,7 +53,7 @@ test('records from the other tabs are tagged by what they are, from the moment t
 });
 
 test('a site inspection more than 11 months old needs replacing against SSIP Q6', () => {
-  const s = base({ siteInspections: [{ id: 'v1', kind: 'Site inspection', site: 'HMP Lancaster', actual: '2025-10-01', outcome: 'Satisfactory' }] });
+  const s = base({ siteInspections: [{ id: 'v1', kind: 'Site inspection', site: 'Riverside Depot', actual: '2025-10-01', outcome: 'Satisfactory' }] });
   const v = item(s, 'visit:v1');
   assert.equal(A.evFlag(v, TODAY).k, 'stale');
   assert.match(A.evFlag(v, TODAY).label, /Older than 11 months/);

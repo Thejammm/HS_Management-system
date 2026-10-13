@@ -10,13 +10,13 @@ const R = reporter('Evidence register - dated, tagged, flagged');
 const { browser, page, errors } = await openApp();
 await seed(page, { company: { tradingName: 'Test Contractor Ltd', shortName: 'TCL' },
   documents: [{ id: 'd1', name: '01 Health and Safety Policy', dated: '2026-09-01' }],
-  siteInspections: [{ id: 'v1', kind: 'Site inspection', site: 'HMP Lancaster', actual: '2025-10-01', outcome: 'Satisfactory', by: 'Simon Archer' }],
+  siteInspections: [{ id: 'v1', kind: 'Site inspection', site: 'Riverside Depot', actual: '2025-10-01', outcome: 'Satisfactory', by: 'Simon Archer' }],
   policySignoff: { policies: [{ id: 'p1', title: 'Working at height', type: 'Toolbox talk', delivered: '2026-09-20' }], staff: [], signed: {}, log: [], logMigrated: true },
   accred: { roles: ['contractor'], schemes: { cl: { on: true } }, answers: {} } }, 'documents');
 {
   const t = await page.evaluate(() => {
     const card = document.querySelector('#evidenceRegister .ev-card');
-    const row = [...card.querySelectorAll('tbody tr')].find(tr => /HMP Lancaster/.test(tr.textContent));
+    const row = [...card.querySelectorAll('tbody tr')].find(tr => /Riverside Depot/.test(tr.textContent));
     return { has: !!card, row: row ? row.innerText : '', cls: row ? row.className : '', text: card.innerText };
   });
   R.ok(t.has, 'the Documents tab has the evidence register');
@@ -52,7 +52,7 @@ await seed(page, { company: { tradingName: 'Test Contractor Ltd', shortName: 'TC
     return { tags: S.evidenceTags['toolbox:p1'], shown };
   });
   R.ok(t.tags.qids.join() === 'HS-17,BS-11', 'a toolbox talk can be tagged to another question too');
-  R.ok(t.shown.length === 1 && /HMP Lancaster/.test(t.shown[0]), 'the older-than-11-months filter shows only the site inspection');
+  R.ok(t.shown.length === 1 && /Riverside Depot/.test(t.shown[0]), 'the older-than-11-months filter shows only the site inspection');
 }
 {
   // the Accreditation journey sees the register

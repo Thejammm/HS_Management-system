@@ -5,13 +5,13 @@ Designer,Health and Safety,3,3374,Drop Down,Please state the size of your compan
 Designer,Health and Safety,4,384,Number,Company Address Details Registration Number,Constructionline extra CL-384,Not in CAS: shown only on the Constructionline view,,companyNo
 Designer,Health and Safety,5,339,Text,Please provide your Trade Name.,Constructionline extra CL-339,Not in CAS: shown only on the Constructionline view,,tradeName
 Designer,Health and Safety,6,2308,Text,Please provide your Legal Entity Name.,Constructionline extra CL-2308,Not in CAS: shown only on the Constructionline view,,legalName
-Designer,Health and Safety,7,387,Text,Address Line 1,Constructionline extra CL-387,Not in CAS: shown only on the Constructionline view,,
-Designer,Health and Safety,8,388,Text,Address Line 2,Constructionline extra CL-388,Not in CAS: shown only on the Constructionline view,,
-Designer,Health and Safety,9,389,Text,Address Line 3,Constructionline extra CL-389,Not in CAS: shown only on the Constructionline view,,
-Designer,Health and Safety,10,390,Text,Address Line 4,Constructionline extra CL-390,Not in CAS: shown only on the Constructionline view,,
-Designer,Health and Safety,11,391,Text,Town,Constructionline extra CL-391,Not in CAS: shown only on the Constructionline view,,
-Designer,Health and Safety,12,392,Text,County,Constructionline extra CL-392,Not in CAS: shown only on the Constructionline view,,
-Designer,Health and Safety,13,393,Text,Postcode,Constructionline extra CL-393,Not in CAS: shown only on the Constructionline view,,
+Designer,Health and Safety,7,387,Text,Address Line 1,Constructionline extra CL-387,Not in CAS: shown only on the Constructionline view,,hsAddress
+Designer,Health and Safety,8,388,Text,Address Line 2,Constructionline extra CL-388,Not in CAS: shown only on the Constructionline view,,hsAddress
+Designer,Health and Safety,9,389,Text,Address Line 3,Constructionline extra CL-389,Not in CAS: shown only on the Constructionline view,,hsAddress
+Designer,Health and Safety,10,390,Text,Address Line 4,Constructionline extra CL-390,Not in CAS: shown only on the Constructionline view,,hsAddress
+Designer,Health and Safety,11,391,Text,Town,Constructionline extra CL-391,Not in CAS: shown only on the Constructionline view,,hsAddress
+Designer,Health and Safety,12,392,Text,County,Constructionline extra CL-392,Not in CAS: shown only on the Constructionline view,,hsAddress
+Designer,Health and Safety,13,393,Text,Postcode,Constructionline extra CL-393,Not in CAS: shown only on the Constructionline view,,hsAddress
 Designer,Health and Safety,14,394,Text,Website,Constructionline extra CL-394,Not in CAS: shown only on the Constructionline view,,
 Designer,Health and Safety,15,395,Drop Down,Contact Details Title,Constructionline extra CL-395,Not in CAS: shown only on the Constructionline view,,
 Designer,Health and Safety,16,396,Text,Forename,Constructionline extra CL-396,Not in CAS: shown only on the Constructionline view,,
@@ -53,13 +53,13 @@ Designer,Once For All Health & Safety - (SSIP),2,2814,Drop Down,Please state the
 Designer,Once For All Health & Safety - (SSIP),3,384,Number,Company Address Details Registration Number,Constructionline extra CL-384,Not in CAS: shown only on the Constructionline view,,companyNo
 Designer,Once For All Health & Safety - (SSIP),4,339,Text,Please provide your Trade Name.,Constructionline extra CL-339,Not in CAS: shown only on the Constructionline view,,tradeName
 Designer,Once For All Health & Safety - (SSIP),5,2308,Text,Please provide your Legal Entity Name.,Constructionline extra CL-2308,Not in CAS: shown only on the Constructionline view,,legalName
-Designer,Once For All Health & Safety - (SSIP),6,387,Text,Address Line 1,Constructionline extra CL-387,Not in CAS: shown only on the Constructionline view,,
-Designer,Once For All Health & Safety - (SSIP),7,388,Text,Address Line 2,Constructionline extra CL-388,Not in CAS: shown only on the Constructionline view,,
-Designer,Once For All Health & Safety - (SSIP),8,389,Text,Address Line 3,Constructionline extra CL-389,Not in CAS: shown only on the Constructionline view,,
-Designer,Once For All Health & Safety - (SSIP),9,390,Text,Address Line 4,Constructionline extra CL-390,Not in CAS: shown only on the Constructionline view,,
-Designer,Once For All Health & Safety - (SSIP),10,391,Text,Town,Constructionline extra CL-391,Not in CAS: shown only on the Constructionline view,,
-Designer,Once For All Health & Safety - (SSIP),11,392,Text,County,Constructionline extra CL-392,Not in CAS: shown only on the Constructionline view,,
-Designer,Once For All Health & Safety - (SSIP),12,393,Text,Postcode,Constructionline extra CL-393,Not in CAS: shown only on the Constructionline view,,
+Designer,Once For All Health & Safety - (SSIP),6,387,Text,Address Line 1,Constructionline extra CL-387,Not in CAS: shown only on the Constructionline view,,hsAddress
+Designer,Once For All Health & Safety - (SSIP),7,388,Text,Address Line 2,Constructionline extra CL-388,Not in CAS: shown only on the Constructionline view,,hsAddress
+Designer,Once For All Health & Safety - (SSIP),8,389,Text,Address Line 3,Constructionline extra CL-389,Not in CAS: shown only on the Constructionline view,,hsAddress
+Designer,Once For All Health & Safety - (SSIP),9,390,Text,Address Line 4,Constructionline extra CL-390,Not in CAS: shown only on the Constructionline view,,hsAddress
+Designer,Once For All Health & Safety - (SSIP),10,391,Text,Town,Constructionline extra CL-391,Not in CAS: shown only on the Constructionline view,,hsAddress
+Designer,Once For All Health & Safety - (SSIP),11,392,Text,County,Constructionline extra CL-392,Not in CAS: shown only on the Constructionline view,,hsAddress
+Designer,Once For All Health & Safety - (SSIP),12,393,Text,Postcode,Constructionline extra CL-393,Not in CAS: shown only on the Constructionline view,,hsAddress
 Designer,Once For All Health & Safety - (SSIP),13,394,Text,Website,Constructionline extra CL-394,Not in CAS: shown only on the Constructionline view,,
 Designer,Once For All Health & Safety - (SSIP),14,395,Drop Down,Contact Details Title,Constructionline extra CL-395,Not in CAS: shown only on the Constructionline view,,
 Designer,Once For All Health & Safety - (SSIP),15,396,Text,Forename,Constructionline extra CL-396,Not in CAS: shown only on the Constructionline view,,
@@ -424,13 +424,13 @@ Contractor,Once For All Health & Safety - (SSIP),2,2814,Drop Down,Please state t
 Contractor,Once For All Health & Safety - (SSIP),3,384,Number,Company Address Details Registration Number,Constructionline extra CL-384,Not in CAS: shown only on the Constructionline view,,companyNo
 Contractor,Once For All Health & Safety - (SSIP),4,339,Text,Please provide your Trade Name.,Constructionline extra CL-339,Not in CAS: shown only on the Constructionline view,,tradeName
 Contractor,Once For All Health & Safety - (SSIP),5,2308,Text,Please provide your Legal Entity Name.,Constructionline extra CL-2308,Not in CAS: shown only on the Constructionline view,,legalName
-Contractor,Once For All Health & Safety - (SSIP),6,387,Text,Address Line 1,Constructionline extra CL-387,Not in CAS: shown only on the Constructionline view,,
-Contractor,Once For All Health & Safety - (SSIP),7,388,Text,Address Line 2,Constructionline extra CL-388,Not in CAS: shown only on the Constructionline view,,
-Contractor,Once For All Health & Safety - (SSIP),8,389,Text,Address Line 3,Constructionline extra CL-389,Not in CAS: shown only on the Constructionline view,,
-Contractor,Once For All Health & Safety - (SSIP),9,390,Text,Address Line 4,Constructionline extra CL-390,Not in CAS: shown only on the Constructionline view,,
-Contractor,Once For All Health & Safety - (SSIP),10,391,Text,Town,Constructionline extra CL-391,Not in CAS: shown only on the Constructionline view,,
-Contractor,Once For All Health & Safety - (SSIP),11,392,Text,County,Constructionline extra CL-392,Not in CAS: shown only on the Constructionline view,,
-Contractor,Once For All Health & Safety - (SSIP),12,393,Text,Postcode,Constructionline extra CL-393,Not in CAS: shown only on the Constructionline view,,
+Contractor,Once For All Health & Safety - (SSIP),6,387,Text,Address Line 1,Constructionline extra CL-387,Not in CAS: shown only on the Constructionline view,,hsAddress
+Contractor,Once For All Health & Safety - (SSIP),7,388,Text,Address Line 2,Constructionline extra CL-388,Not in CAS: shown only on the Constructionline view,,hsAddress
+Contractor,Once For All Health & Safety - (SSIP),8,389,Text,Address Line 3,Constructionline extra CL-389,Not in CAS: shown only on the Constructionline view,,hsAddress
+Contractor,Once For All Health & Safety - (SSIP),9,390,Text,Address Line 4,Constructionline extra CL-390,Not in CAS: shown only on the Constructionline view,,hsAddress
+Contractor,Once For All Health & Safety - (SSIP),10,391,Text,Town,Constructionline extra CL-391,Not in CAS: shown only on the Constructionline view,,hsAddress
+Contractor,Once For All Health & Safety - (SSIP),11,392,Text,County,Constructionline extra CL-392,Not in CAS: shown only on the Constructionline view,,hsAddress
+Contractor,Once For All Health & Safety - (SSIP),12,393,Text,Postcode,Constructionline extra CL-393,Not in CAS: shown only on the Constructionline view,,hsAddress
 Contractor,Once For All Health & Safety - (SSIP),13,394,Text,Website,Constructionline extra CL-394,Not in CAS: shown only on the Constructionline view,,
 Contractor,Once For All Health & Safety - (SSIP),14,395,Drop Down,Contact Details Title,Constructionline extra CL-395,Not in CAS: shown only on the Constructionline view,,
 Contractor,Once For All Health & Safety - (SSIP),15,396,Text,Forename,Constructionline extra CL-396,Not in CAS: shown only on the Constructionline view,,

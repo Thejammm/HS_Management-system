@@ -2965,6 +2965,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .acl-counts b{display:block;font-size:22px;font-weight:800;line-height:1.1}
 .acl-counts span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);font-weight:700;margin-top:2px}
 .acl-tools{font-size:12px;color:var(--text-muted);margin:12px 0 8px}
+.acl-warn{margin:12px 0 0}
 .acl-block{border:1px solid var(--border);margin-bottom:8px}
 .acl-bhead{display:flex;align-items:center;gap:10px;width:100%;background:var(--acl-cyan);color:#fff;border:0;padding:8px 12px;text-align:left;cursor:pointer;font:inherit}
 .acl-bhead:hover{filter:brightness(.96)}
@@ -3663,6 +3664,23 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .co-field label{font-size:12px;font-weight:600;color:var(--text-muted);}
     .co-field input,.co-field select,.co-field textarea{width:100%;font-family:inherit;font-size:13.5px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);}
     .co-field textarea{resize:vertical;min-height:70px;}
+    /* accreditation fact sheet: AHS charcoal, cyan and grey; pastel red and amber for the warnings only */
+    .fs-card .fs-seg{display:flex;flex-wrap:wrap;gap:6px}
+    .fs-btn{border:1px solid #38A8C2;background:transparent;color:#38A8C2;padding:7px 12px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border-radius:0}
+    .fs-btn[aria-pressed="true"]{background:#38A8C2;color:#fff}
+    .fs-btn:disabled{opacity:.5;cursor:default}
+    .fs-check{display:flex!important;align-items:center;gap:7px;font-weight:500!important;color:var(--text)!important;cursor:pointer}
+    .fs-check input{width:auto!important;margin:0}
+    .fs-wide{grid-column:1/-1}
+    .fs-warn,.fs-log{border:1px solid var(--border);padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.5;color:var(--text)}
+    .fs-warn{background:var(--muted-bg);border-left:4px solid #3A3A3A}
+    .fs-log{background:var(--muted-bg);border-left:4px solid #38A8C2}
+    .fs-warn ul{margin:4px 0 0;padding-left:18px}
+    .fs-h{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+    .fs-item{border-top:1px solid var(--border);padding:7px 0 2px}
+    .fs-item:first-of-type{border-top:0}
+    .fs-k{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-right:4px}
+    .fs-warn .acj-link,.fs-log .acj-link{background:none;border:0;padding:0 2px;color:#38A8C2;font-weight:700;cursor:pointer;text-decoration:underline;font-size:inherit}
     .co-field.co-wide{grid-column:1/-1;}
     .co-rowlist{display:flex;flex-direction:column;gap:8px;}
     .co-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:center;}
@@ -14727,6 +14745,128 @@ function _companyState(){
   return S.company;
 }
 
+// ══════════════════════════════════════════════════════════════
+//  ACCREDITATION FACT SHEET (Company setup) - accreditation engine step 2.
+//  The few facts behind most rejections, held once: every tracker, document
+//  and portal answer reads from here. The duty holder roles are the same
+//  roles the Accreditation tab uses (S.accred.roles), never a second copy.
+//  A fact that disagrees with an answer or a section date is listed in the
+//  warning panel; a fact that changes lists the portal sections and the
+//  documents that need updating (S.company.factLog) until AHS marks it done.
+// ══════════════════════════════════════════════════════════════
+const _FACT_DOC_RX = {
+  legalName: /polic|procedure|statement|plan|privacy|register|assessment/i,
+  regNo: /statement|organisation|privacy|ico|confirmation/i,
+  address: /polic|procedure|statement|plan|privacy|ico|insurance|assessment/i,
+  headOffice: /polic|procedure|statement|plan|privacy|ico|assessment/i,
+  directors: /health\s*(and|&)\s*safety polic|statement of intent|organisation|scope|bribery|slavery|whistleblow|responsib/i,
+  hsLead: /health\s*(and|&)\s*safety polic|statement of intent|organisation|scope|advice/i,
+  headBand: /health\s*(and|&)\s*safety polic|organisation|scope|training matrix|consult|briefing/i,
+  paye: /organisation|scope|training matrix|right to work|working/i,
+  employees: /health\s*(and|&)\s*safety polic|organisation|scope|training matrix|consult|briefing/i,
+  subcontractors: /health\s*(and|&)\s*safety polic|quality|building safety|supply chain|subcontract/i,
+  roles: /health\s*(and|&)\s*safety polic|building safety|building regulations|design|organisation|scope/i,
+  hrb: /building safety|information management|golden thread|building regulations/i,
+  ssip: /ssip|chas|smas|certificate|45001/i,
+  insurance: /insurance|liability|indemnity/i
+};
+function _factDocs(k){ const rx = _FACT_DOC_RX[k]; if(!rx) return []; return (S.documents || []).filter(d => d && rx.test(d.name || '')).map(d => d.name + (d.version ? ' ' + d.version : '')); }
+function _factVal(k){
+  const c = _companyState();
+  if(k === 'roles'){ const A = _acjCore(); const r = (S.accred && Array.isArray(S.accred.roles)) ? S.accred.roles : []; return r.map(x => ((A && A.ROLES.find(y => y.id === x)) || {}).label || x).join(', '); }
+  if(k === 'headOffice') return c.headIsReg ? 'Same as the registered office' : (c.headOffice || '');
+  if(k === 'hsLead') return [c.hsLead, c.hsLeadRole].filter(Boolean).join(', ');
+  if(k === 'headBand') return c.headBand === '5+' ? '5 or more' : c.headBand === '1-4' ? '1 to 4' : '';
+  if(k === 'subcontractors' || k === 'hrb') return c[k] === 'yes' ? 'Yes' : c[k] === 'no' ? 'No' : '';
+  if(k === 'ssip') return [c.ssipScheme, c.ssipStart ? 'from ' + fmtDate(c.ssipStart) : '', c.ssipExpiry ? 'to ' + fmtDate(c.ssipExpiry) : ''].filter(Boolean).join(' ');
+  if(k === 'insurance') return [c.elciRenewal ? 'EL ' + fmtDate(c.elciRenewal) : '', c.plRenewal ? 'PL ' + fmtDate(c.plRenewal) : '', c.piRenewal ? 'PI ' + fmtDate(c.piRenewal) : ''].filter(Boolean).join(', ');
+  return String(c[k] == null ? '' : c[k]);
+}
+// Remember what a fact was before it changed, so what it feeds can be put right.
+// A fact being filled in for the first time is not a change.
+function _factNoteChange(k, before){
+  const c = _companyState(); const now = _factVal(k);
+  if(!c.factLog || typeof c.factLog !== 'object') c.factLog = {};
+  const e = c.factLog[k];
+  if(e){ if(now === e.from) delete c.factLog[k]; else { e.to = now; e.at = new Date().toISOString(); } }
+  else if(String(before || '').trim() && now !== before) c.factLog[k] = { from: before, to: now, at: new Date().toISOString() };
+  if(!Object.keys(c.factLog).length) delete c.factLog;
+}
+function _factPanelsHTML(){
+  const A = _acjCore(); if(!A) return '';
+  const today = _acjToday(), c = _companyState();
+  const conf = A.factConflicts(S, today);
+  const log = c.factLog || {};
+  const ro = _roLocked();
+  let h = '';
+  if(conf.length) h += `<div class="fs-warn"><div class="fs-h">Facts that disagree with an answer or a date</div><ul>${conf.map(x => `<li><b>${esc(x.label)}.</b> ${esc(x.text)}</li>`).join('')}</ul></div>`;
+  const ks = Object.keys(log);
+  if(ks.length) h += `<div class="fs-log"><div class="fs-h">Changed facts: what needs updating</div>${ks.map(k => {
+      const e = log[k], d = A.factDef(k) || { label:k };
+      const imp = A.factImpact(S, k, today), docs = _factDocs(k);
+      const secs = imp.sections.length ? `<div><span class="fs-k">Portal sections</span> ${imp.sections.map(esc).join('; ')} <span class="acj-muted">(${imp.lines.length} question${imp.lines.length === 1 ? '' : 's'}: REF ${esc(imp.lines.map(l => l.refs.join(', ')).join('; '))})</span></div>`
+        : (imp.cas.length ? `<div><span class="fs-k">Accreditation questions</span> ${esc(imp.cas.join(', '))}</div>` : '');
+      const dd = `<div><span class="fs-k">Documents</span> ${docs.length ? docs.map(esc).join('; ') : '<span class="acj-muted">none in the document register name this fact</span>'}</div>`;
+      return `<div class="fs-item"><div><b>${esc(d.label)}</b> changed from "${esc(e.from)}" to "${esc(e.to || '(blank)')}" on ${esc(fmtDate(String(e.at).slice(0, 10)))}.
+        ${ro ? '' : `<button type="button" class="acj-link" onclick="clearFactChange('${esc(k)}')">Updated everywhere</button>`}</div>${secs}${dd}</div>`;
+    }).join('')}</div>`;
+  return h;
+}
+function _refreshFactPanels(){ const el = document.getElementById('coFactPanels'); if(el) el.innerHTML = _factPanelsHTML(); }
+function clearFactChange(k){ if(_blockIfReadOnly()) return; const c = _companyState(); if(c.factLog){ delete c.factLog[k]; if(!Object.keys(c.factLog).length) delete c.factLog; } saveData(); _refreshFactPanels(); }
+function setFactChoice(key, v){
+  if(_roLocked()) return;
+  const k = _acjCore() ? _acjCore().factOfField(key) : null; const before = k ? _factVal(k) : '';
+  const c = _companyState(); c[key] = (c[key] === v) ? '' : v;
+  if(k) _factNoteChange(k, before);
+  saveData(); renderCompany();
+}
+function toggleFactRole(r){
+  if(_blockIfReadOnly()) return;
+  const before = _factVal('roles');
+  const a = _accredState(); const i = a.roles.indexOf(r); if(i >= 0) a.roles.splice(i, 1); else a.roles.push(r);
+  _factNoteChange('roles', before);
+  saveData(); renderCompany();
+}
+function _factSheetCard(c, dis){
+  const A = _acjCore();
+  const f = (key, label, ph, type) => `<div class="co-field"><label>${label}</label><input type="${type || 'text'}" value="${esc(c[key] || '')}" placeholder="${esc(ph || '')}" oninput="updateCompanyField('${key}',this.value)"${dis}></div>`;
+  const ta = (key, label, ph) => `<div class="co-field"><label>${label}</label><textarea placeholder="${esc(ph || '')}" oninput="updateCompanyField('${key}',this.value)"${dis}>${esc(c[key] || '')}</textarea></div>`;
+  const seg = (key, label, opts) => `<div class="co-field"><label>${label}</label><div class="fs-seg">${opts.map(([v, t]) => `<button type="button" class="fs-btn" aria-pressed="${c[key] === v}"${dis} onclick="setFactChoice('${key}','${v}')">${t}</button>`).join('')}</div></div>`;
+  const roles = (S.accred && Array.isArray(S.accred.roles)) ? S.accred.roles : [];
+  const roleBtns = A ? A.ROLES.map(r => `<button type="button" class="fs-btn" aria-pressed="${roles.indexOf(r.id) >= 0}"${dis} onclick="toggleFactRole('${r.id}')">${esc(r.label)}</button>`).join('') : '';
+  return `<div class="card fs-card" id="coFactCard" style="margin-bottom:16px;"><div class="card-band"><h3>Accreditation fact sheet</h3></div><div class="card-body">
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;line-height:1.5;">The facts behind most accreditation rejections, held once. Trackers, documents and portal answers read from here, and the Accreditation tab checks them against the answers and the section dates.</div>
+      <div id="coFactPanels">${_factPanelsHTML()}</div>
+      <div class="co-grid">
+        ${f('shortName', 'Short name (used in trackers)', 'e.g. RSSC')}
+        ${ta('address', 'Registered office', 'As filed at Companies House: street, town, postcode')}
+        <div class="co-field"><label>Head office</label>
+          <label class="fs-check"><input type="checkbox"${c.headIsReg ? ' checked' : ''}${dis} onchange="setFactHeadIsReg(this.checked)"> Same as the registered office</label>
+          ${c.headIsReg ? '' : `<textarea placeholder="Street, town, postcode" oninput="updateCompanyField('headOffice',this.value)"${dis}>${esc(c.headOffice || '')}</textarea>`}</div>
+        ${ta('directors', 'Directors', 'One per line')}
+        ${f('hsLead', 'Person responsible for health and safety', 'Name')}
+        ${f('hsLeadRole', 'Their position', 'e.g. Managing Director')}
+        ${seg('headBand', 'Headcount band', [['1-4', '1 to 4'], ['5+', '5 or more']])}
+        ${f('paye', 'Number on PAYE', 'e.g. 6', 'number')}
+        ${seg('subcontractors', 'Uses subcontractors', [['yes', 'Yes'], ['no', 'No']])}
+        ${seg('hrb', 'Works on higher-risk buildings', [['yes', 'Yes'], ['no', 'No']])}
+        <div class="co-field fs-wide"><label>Duty holder roles</label><div class="fs-seg">${roleBtns}</div><div class="acj-muted">The same roles as step 01 on the Accreditation tab.</div></div>
+        ${f('ssipScheme', 'SSIP scheme', 'e.g. CHAS, SMAS Worksafe, Constructionline SSIP')}
+        ${f('ssipStart', 'SSIP certificate start', '', 'date')}
+        ${f('ssipExpiry', 'SSIP certificate expiry', '', 'date')}
+      </div>
+      <div class="acj-muted" style="margin-top:8px;">Insurance renewal dates are kept in the Insurance card below. The number of employees is in Scale of the business.</div>
+    </div></div>`;
+}
+function setFactHeadIsReg(on){
+  if(_roLocked()) return;
+  const before = _factVal('headOffice');
+  _companyState().headIsReg = !!on;
+  _factNoteChange('headOffice', before);
+  saveData(); renderCompany();
+}
+
 function renderCompany(){
   const cont = document.getElementById('companyContainer');
   if(!cont) return;
@@ -14778,11 +14918,12 @@ function renderCompany(){
       ${ta('description','Nature of business','A short description of what the business does')}
     </div></div></div>
 
+    ${_factSheetCard(c, dis)}
+
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Contact</h3></div><div class="card-body"><div class="co-grid">
       ${f('phone','Main phone','','tel')}
       ${f('email','Main email','name@company.co.uk','email')}
       ${f('website','Website','https://')}
-      ${ta('address','Registered / main address','Street, town, postcode')}
     </div></div></div>
 
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Scale of the business</h3></div><div class="card-body"><div class="co-grid">
@@ -14803,10 +14944,12 @@ function renderCompany(){
       ${dis?'':`<button class="btn btn-outline btn-sm no-print" style="margin-top:10px;" onclick="addCompanySite()">+ Add site</button>`}
     </div></div>
 
-    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Employers' liability insurance</h3></div><div class="card-body"><div class="co-grid">
-      ${f('elciInsurer','Insurer','')}
-      ${f('elciPolicy','Policy number','')}
-      ${f('elciRenewal','Renewal date','','date')}
+    <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Insurance</h3></div><div class="card-body"><div class="co-grid">
+      ${f('elciInsurer','Employers\x27 liability insurer','')}
+      ${f('elciPolicy','Employers\x27 liability policy number','')}
+      ${f('elciRenewal','Employers\x27 liability renewal date','','date')}
+      ${f('plRenewal','Public liability renewal date','','date')}
+      ${f('piRenewal','Professional indemnity renewal date','Designers','date')}
     </div></div></div>
 
     <div class="card" style="margin-bottom:16px;"><div class="card-band"><h3>Organisation chart</h3></div><div class="card-body">
@@ -14912,7 +15055,11 @@ function buildCompanyProfileReportPDF(){
 
 function updateCompanyField(key, val){
   if(_roLocked()) return;
+  const fk = (typeof AccredCore !== 'undefined') ? AccredCore.factOfField(key) : null;
+  const before = fk ? _factVal(fk) : '';
   _companyState()[key] = val;
+  // a fact for accreditation: note the change and refresh the panels without a rebuild under the cursor
+  if(fk){ _factNoteChange(fk, before); _refreshFactPanels(); }
   // Mirror the client's name into branding.name so it flows to the header,
   // cockpit and report letterheads. Trading name wins, else the legal name.
   if(key === 'legalName' || key === 'tradingName'){
@@ -35420,6 +35567,7 @@ function _aclSectionView(A, ro){
           <div><b>${k.done}</b><span>Ticked done</span></div>
         </div>
       </div>
+      ${(() => { const cf = A.factConflicts(S, today); return cf.length ? `<div class="fs-warn acl-warn"><div class="fs-h">Facts that disagree with an answer or a date</div><ul>${cf.map(x => `<li><b>${esc(x.label)}.</b> ${esc(x.text)}</li>`).join('')}</ul><button type="button" class="acj-link" onclick="switchTab('company')">Open the fact sheet in Company setup</button></div>` : ''; })()}
       <div class="acl-tools"><button type="button" class="acj-link" onclick="setAclAllOpen(true)">Open every section</button> · <button type="button" class="acj-link" onclick="setAclAllOpen(false)">Close every section</button></div>
       ${blocks}
     </div>

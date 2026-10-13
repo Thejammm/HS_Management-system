@@ -89,3 +89,63 @@ prove CHAS and SMAS clients see exactly what they saw before.
 
 - The bank files are refreshed once a year: replace the two JSON files and run
   `node scripts/build-constructionline.mjs`.
+
+---
+
+## Step 2: Client fact sheet in the Company set-up pages
+
+**What was built**
+
+- Company setup gains an "Accreditation fact sheet" card (no new tab): short name
+  (used in trackers, e.g. "RSSC to do"), registered office, head office (or "same
+  as the registered office"), directors, the person responsible for health and
+  safety and their position, headcount band (1 to 4, or 5 or more), number on
+  PAYE, uses subcontractors, works on higher-risk buildings, duty holder roles,
+  SSIP scheme and certificate start and expiry.
+- Insurance renewal dates: the Employers' liability card is now "Insurance", with
+  public liability and professional indemnity renewal dates beside the existing
+  employers' liability fields.
+- Held once:
+  - the registered office is the existing address field, moved from the Contact
+    card (no data moved);
+  - the duty holder roles are the Accreditation tab's roles (`S.accred.roles`);
+  - the number of employees stays in Scale of the business.
+- `accred-core.js` holds the fact registry (`FACTS`), what each fact feeds
+  (`factImpact`) and the conflict rules (`factConflicts`). The section view reads
+  its answers from the fact sheet: "From the client fact sheet: …", and for a
+  client fact "RSSC to confirm. Suggested answer: …".
+- Warning panel (on the fact sheet and above the Constructionline sections): a
+  fact that disagrees with an answer or a date:
+  - headcount band against employees, PAYE and the HS-16 answer;
+  - subcontractors against HS-20;
+  - higher-risk buildings against BS-08;
+  - the H&S lead against the HS-01 answer;
+  - the question set against the roles;
+  - the SSIP expiry against the Third Party section dates;
+  - insurance renewals against the Insurances section date.
+- Changed facts: when a fact that was already filled in changes, Compass lists it
+  with the portal sections and REFs it feeds and the documents in the register
+  that carry it, until AHS Ltd clicks "Updated everywhere"
+  (`S.company.factLog`).
+
+**How to test**
+
+- `npm test` runs `test/fact-sheet.test.mjs` (fields, impact, every conflict
+  rule, fact values in the section view).
+- `node test/ui/fact-sheet.test.mjs`: change the headcount band and the address
+  and see the sections, REFs and documents listed; roles shared with the
+  Accreditation tab; the warning above the sections.
+- By hand: Company setup, Accreditation fact sheet. Change the headcount band or
+  the registered office: the "Changed facts" panel lists what to update.
+
+**Assumptions**
+
+- Documents affected by a fact are found by name in the document register (e.g. a
+  headcount change lists the H&S policy, the organisation statement and the
+  training matrix). A document named differently will not be listed.
+- A fact filled in for the first time is not a change: only an edit of a value
+  already there is listed, so setting up a new client does not flood the panel.
+- The company address block the portal repeats inside the H&S sections (REF 387
+  to 393) is treated as the registered and head office address.
+- Pastel red and amber are kept for expiry status only, so the warning panels are
+  neutral grey with a charcoal or cyan edge.

@@ -35,6 +35,7 @@ const FACT_OF_REF = {
   '299': 'regIsHead',
   '301': 'regOffice', '302': 'regOffice', '303': 'regOffice', '304': 'regOffice', '305': 'regOffice', '306': 'regOffice', '307': 'regOffice',
   '319': 'headOffice', '320': 'headOffice', '321': 'headOffice', '322': 'headOffice', '323': 'headOffice', '324': 'headOffice', '325': 'headOffice',
+  '387': 'hsAddress', '388': 'hsAddress', '389': 'hsAddress', '390': 'hsAddress', '391': 'hsAddress', '392': 'hsAddress', '393': 'hsAddress',
   '330': 'directors',
   '2684': 'paye', '3603': 'paye',
   '2813': 'qset', '3373': 'qset',

@@ -13,7 +13,7 @@ const { browser, page, errors } = await openApp();
 const month = new Date().toISOString().slice(0, 7);
 const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 await seed(page, {
-  company: { legalName: 'Fineline Architects Ltd' },
+  company: { legalName: 'Example Architects Ltd' },
   riskProfile: [{ id: 'r1', activity: 'Disturbing asbestos on survey', hazard: 'Asbestos in void property', likelihood: '4', severity: '5', targetL: '1', targetS: '5',
     actions: [
       { id: 'c1', desc: 'Asbestos register checked before every survey', owner: 'Jo Fine', status: 'Not started', hideFromPlan: true },

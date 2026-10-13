@@ -19,9 +19,9 @@ const { browser, page, errors } = await openApp();
 
 const today = new Date().toISOString().slice(0, 10);
 await seed(page, {
-  company: { legalName: 'Fineline Architects Ltd', sector: 'Design / architecture / surveying',
-    personnel: [ { role: 'Managing Director', name: 'Jo Fine', contact: 'jo@fineline.example' },
-                 { role: 'Technical Director', name: 'Sam Line', contact: 'sam@fineline.example' },
+  company: { legalName: 'Example Architects Ltd', sector: 'Design / architecture / surveying',
+    personnel: [ { role: 'Managing Director', name: 'Jo Fine', contact: 'jo@examplearchitects.example' },
+                 { role: 'Technical Director', name: 'Sam Line', contact: 'sam@examplearchitects.example' },
                  { role: 'Office Manager', name: 'Alex Desk', contact: '01234 567890' } ] },
   riskProfile: [ { id: 'r1', activity: 'Site visits during the construction phase', likelihood: '3', severity: '4', actions: [] } ],
   decisions: [ { id: 'dec_old', date: '2026-06-01', forum: 'Board meeting', decision: 'Appoint a fire warden for the studio', owner: 'Jo Fine', due: '2026-07-01', status: 'Agreed', raised: 0 } ],
@@ -86,7 +86,7 @@ await wait(page, 300);
   });
   R.ok(t.open && t.nav === 11, 'Run the leadership meeting opens full screen, with the eleven items to jump between');
   R.ok(t.items[0] === 'Who is here' && t.items.slice(1).join('|') === SLT_AGENDA.map(a => a.title).join('|'), 'who is here, then the ten items in agenda order');
-  R.ok(t.att.join(';') === 'Jo Fine|Managing Director|jo@fineline.example;Sam Line|Technical Director|sam@fineline.example;Priya Nair|Architect|', 'the directors come in one click with their emails; anyone else by name - ' + t.att.join('; '));
+  R.ok(t.att.join(';') === 'Jo Fine|Managing Director|jo@examplearchitects.example;Sam Line|Technical Director|sam@examplearchitects.example;Priya Nair|Architect|', 'the directors come in one click with their emails; anyone else by name - ' + t.att.join('; '));
   R.ok(t.noteKept, 'notes are kept as they are typed, and the cursor stays put');
   R.ok(t.focusNew && t.dec.forum === 'Board meeting' && t.dec.status === 'Agreed' && t.dec.who === 'Sam Line' && t.dec.due === '2026-11-15' && /item 4: Design risk & CDM responsibilities/.test(t.dec.why), 'an action is a decision on the register - who, by when, and the item it came from');
   R.ok(t.navCounts === '4:1,6:1,9:1', 'the item buttons count the actions on each (' + t.navCounts + ')');
@@ -115,7 +115,7 @@ await wait(page, 300);
     out.status = m.status;
     out.pdf = _sltDone && _sltDone.pdf ? { size: _sltDone.pdf.blob.size, fname: _sltDone.pdf.fname } : null;
     const ov = document.getElementById('sltOv');
-    out.done = /2 actions agreed/.test(ov.innerText) && /To: jo@fineline\.example, sam@fineline\.example/.test(ov.innerText);
+    out.done = /2 actions agreed/.test(ov.innerText) && /To: jo@examplearchitects\.example, sam@examplearchitects\.example/.test(ov.innerText);
     // the email: the minutes saved, an email to those present with the actions written in
     const saved = [], opened = [];
     window._sltSaveBlob = (b, f) => saved.push(f + ':' + b.size);
@@ -143,9 +143,9 @@ await wait(page, 300);
   });
   R.ok(t.acts === '4:1,6:1', 'Finish drops the empty line and puts each action on the plan once (' + t.acts + ')');
   R.ok(t.plan.length === 2 && /pre-construction information/.test(t.plan[0]) && /Sam Line \| 2026-11-15/.test(t.plan[0]) && /item 4: Design risk/.test(t.plan[0]), 'on the execution plan with the owner, the date and where it was agreed');
-  R.ok(t.status === 'finished' && t.pdf && t.pdf.size > 3000 && /^meeting-minutes-fineline-architects-ltd-\d{4}-\d\d-\d\d\.pdf$/.test(t.pdf.fname), 'the minutes are made (' + (t.pdf && t.pdf.fname) + ', ' + (t.pdf && t.pdf.size) + ' bytes)');
+  R.ok(t.status === 'finished' && t.pdf && t.pdf.size > 3000 && /^meeting-minutes-example-architects-ltd-\d{4}-\d\d-\d\d\.pdf$/.test(t.pdf.fname), 'the minutes are made (' + (t.pdf && t.pdf.fname) + ', ' + (t.pdf && t.pdf.size) + ' bytes)');
   R.ok(t.done, 'the screen says what happened and who the email goes to');
-  R.ok(t.saved.length === 1 && t.to === 'jo@fineline.example,sam@fineline.example' && /^H&S leadership meeting - Fineline Architects Ltd - /.test(t.subject), 'Download + open an email: the minutes saved, an email to those present');
+  R.ok(t.saved.length === 1 && t.to === 'jo@examplearchitects.example,sam@examplearchitects.example' && /^H&S leadership meeting - Example Architects Ltd - /.test(t.subject), 'Download + open an email: the minutes saved, an email to those present');
   R.ok(/1\. Review the pre-construction information template with the design team - Sam Line, by 15 Nov 2026/.test(t.body) && /2\. Book DSE assessments for the studio - owner to be named/.test(t.body) && /minutes are attached \(meeting-minutes-/.test(t.body), 'with the actions written into it, and the file named to attach');
   R.ok(t.again && t.closed, 'Finish twice never doubles the plan; Close puts the screen away');
   R.ok(t.lastBtn && /^meeting-minutes-/.test(t.again2), 'the last meeting\'s minutes can be made again from the decisions register');
@@ -186,7 +186,7 @@ await wait(page, 300);
     const rows = document.querySelectorAll('#coSltCard .co-row'), last = rows[rows.length - 1].querySelectorAll('input');
     out.focus = document.activeElement === last[0];
     const put = (el, v) => { el.value = v; el.dispatchEvent(new Event('input')); };
-    put(last[0], 'Priya Nair'); put(last[1], 'Associate Director'); put(last[2], 'priya@fineline.example');
+    put(last[0], 'Priya Nair'); put(last[1], 'Associate Director'); put(last[2], 'priya@examplearchitects.example');
     out.noPrompt = !/Not added yet/.test((renderCompany(), document.getElementById('coSltCard').textContent));
     // the open meeting (nobody in it yet) fills itself from the team
     openSltMeeting(); const m = _sltCur();
@@ -204,16 +204,16 @@ await wait(page, 300);
     return out;
   });
   R.ok(t.prompt && t.fromBtn, 'Company setup prompts for the senior leadership team, and offers the leaders already on key personnel');
-  R.ok(t.slt === 'Jo Fine|Managing Director|jo@fineline.example;Sam Line|Technical Director|sam@fineline.example', 'the directors come across with their emails - not the office manager (' + t.slt + ')');
+  R.ok(t.slt === 'Jo Fine|Managing Director|jo@examplearchitects.example;Sam Line|Technical Director|sam@examplearchitects.example', 'the directors come across with their emails - not the office manager (' + t.slt + ')');
   R.ok(t.focus && t.noPrompt, 'Add a leader is ready to type into, and the prompt goes once there is a team');
-  R.ok(t.att === 'Jo Fine|jo@fineline.example;Sam Line|sam@fineline.example;Priya Nair|priya@fineline.example' && t.note, 'the leadership meeting opens with the team in the room, emails ready: ' + t.att);
+  R.ok(t.att === 'Jo Fine|jo@examplearchitects.example;Sam Line|sam@examplearchitects.example;Priya Nair|priya@examplearchitects.example' && t.note, 'the leadership meeting opens with the team in the room, emails ready: ' + t.att);
   R.ok(t.kept && t.teamBtn && t.back, 'anyone taken off stays off when the meeting is reopened, and one click brings them back');
   R.ok(t.pointer, 'with no team on Company setup, the meeting says where to add one');
 }
 
 // ── the briefing itself ──
 {
-  const rep = buildReport({ company: { legalName: 'Fineline Architects Ltd', sector: 'Design / architecture / surveying' } }, 'board-briefing', { today: '2026-10-01' });
+  const rep = buildReport({ company: { legalName: 'Example Architects Ltd', sector: 'Design / architecture / surveying' } }, 'board-briefing', { today: '2026-10-01' });
   const items = rep.pages.filter(p => p.agendaItem).map(p => p.agendaItem).join(',');
   const cover = rep.pages.filter(p => p.agendaItem).every(p => p.blocks.some(b => b.type === 'coverList') && p.blocks.some(b => b.type === 'titleBlock' && /^Item \d+ of 11$/.test(b.kicker)));
   const notes = rep.pages.filter(p => p.agendaItem).every(p => p.blocks.some(b => b.type === 'notesLines' || (b.type === 'dataTable' && /Agreed in the meeting/.test(b.title || ''))));

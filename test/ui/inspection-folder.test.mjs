@@ -20,7 +20,7 @@ const PDF_B64 = fs.readFileSync(path.join(here, '..', 'fixtures', 'wis-inspectio
 const R = reporter('Inspection reports folder - read for their summary');
 const { browser, page, errors } = await openApp();
 
-await seed(page, { company: { legalName: 'Easy Travel Service' }, inspRegister: [], inspFolder: { path: '', lastSync: '' } }, 'documents');
+await seed(page, { company: { legalName: 'Example Garage Service' }, inspRegister: [], inspFolder: { path: '', lastSync: '' } }, 'documents');
 await wait(page, 300);
 
 // ── the section is there, below the RA register ──
@@ -43,7 +43,7 @@ await wait(page, 300);
     const word = new File(['not really a word file'], 'Toolbox talk notes.docx', { lastModified: Date.parse('2026-09-10T10:00:00Z') });
     const other = new File([new window.jspdf.jsPDF().text('A letter about something else', 20, 20).output('arraybuffer')], 'Letter.pdf', { type: 'application/pdf', lastModified: Date.parse('2026-09-01T10:00:00Z') });
     const BS = String.fromCharCode(92);
-    document.getElementById('insrFolderPath').value = 'S:' + BS + 'Clients' + BS + 'Easy Travel' + BS + 'Inspections';
+    document.getElementById('insrFolderPath').value = 'S:' + BS + 'Clients' + BS + 'Example Garage' + BS + 'Inspections';
     const t0 = performance.now();
     await _insrSyncFiles([
       { name: report.name, rel: '2026' + BS + report.name, mtime: report.lastModified, file: report },
@@ -67,7 +67,7 @@ await wait(page, 300);
   R.ok(/^11 issues were identified during this period\. 1 has been resolved\. 10 actions remain outstanding\./.test(s.statement || ''), 'and the report\'s own summary, in its own words');
   R.ok(s.inspector === 'Gareth Hughes' && s.ref === 'GI-0922' && s.freq === 'Weekly' && s.period === '22 Sept 2026', 'who inspected it, the reference, how often, and when');
   R.ok(s.location === 'Main garage - Unit 4' && s.status === 'FINAL' && s.issued === '29 September 2026', 'the site, that it is final, and when it was issued');
-  R.ok(t.rep.loc === 'S:\\Clients\\Easy Travel\\Inspections\\2026\\Weekly garage walkround 22-09-26.pdf', 'its location is the folder path plus where it sits in the folder');
+  R.ok(t.rep.loc === 'S:\\Clients\\Example Garage\\Inspections\\2026\\Weekly garage walkround 22-09-26.pdf', 'its location is the folder path plus where it sits in the folder');
   R.ok(/IMPROVEMENT REQUIRED/.test(t.tile) && /11\s*issues raised/.test(t.tile) && /10\s*open/.test(t.tile) && /10 actions remain outstanding/.test(t.tile) && /Gareth Hughes/.test(t.tile) && /Final/i.test(t.tile),
     'the tile reads the summary: verdict, counts, the report\'s own statement, the inspector');
   R.ok(/insr-c-warn/.test(t.cls), 'coloured by the verdict - amber for improvement required');
@@ -118,7 +118,7 @@ await wait(page, 300);
 // ── the other verdicts, and a period report of several inspections ──
 {
   const t = await page.evaluate(() => {
-    const p1 = (verdict, n) => ['AC', 'AHS Compliance Consulting', 'DRAFT — FOR REVIEW', 'Monthly garage report', 'Inspection Report', 'CLIENT / BUSINESS', 'Easy Travel', 'LOCATION', 'Garage',
+    const p1 = (verdict, n) => ['AC', 'AHS Compliance Consulting', 'DRAFT — FOR REVIEW', 'Monthly garage report', 'Inspection Report', 'CLIENT / BUSINESS', 'Example Garage', 'LOCATION', 'Garage',
       'REPORTING PERIOD', '1 Sept 2026 – 30 Sept 2026', 'INSPECTIONS CONDUCTED', String(n), 'PREPARED BY', 'AHS', 'DATE ISSUED', '1 October 2026', verdict,
       String(n), 'INSPECTIONS', '40', 'ITEMS PASSED', '0', 'RECTIFIED ON SITE', '3', 'ISSUES RAISED', '3', 'RESOLVED', '0', 'OPEN ACTIONS', '0', 'OVERDUE'];
     const p2 = ['Compliance Statement', '3 issues were identified during this period.', 'LEGAL CONTEXT', 'Inspection Record', 'Weekly walkround', '8 Sept 2026 · Weekly · Gareth Hughes · Ref: W1'];

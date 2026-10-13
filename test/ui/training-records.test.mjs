@@ -18,7 +18,7 @@ const R = reporter('Training records - one tile per employee, linked to sign-off
 const { browser, page, errors } = await openApp();
 
 await seed(page, {
-  company: { legalName: 'Easy Travel Service' },
+  company: { legalName: 'Example Garage Service' },
   trainRegister: [], trainFolder: { path: '', lastSync: '' },
   policySignoff: { policies: [
       { id: 'p1', title: 'Health and Safety Policy', type: 'Policy', delivered: '2026-09-01', riskIds: [] },

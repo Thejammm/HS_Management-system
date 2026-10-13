@@ -21,7 +21,7 @@ risks[1].actions = [
   { id: 'v2a2', desc: 'Survey every skylight before work starts', owner: 'Surveyor', due: '2020-01-10', status: 'In progress' },   // overdue - the most pressing
   { id: 'v2a3', desc: 'Already done', owner: 'Site lead', due: '2020-01-01', status: 'Complete' } ];
 // v3, the road collision, has nothing open - it cannot be a priority yet
-await seed(page, { company: { legalName: 'Fineline Group Ltd' }, riskProfile: risks, actionPlan: [] }, 'cockpit');
+await seed(page, { company: { legalName: 'Example Architects Group Ltd' }, riskProfile: risks, actionPlan: [] }, 'cockpit');
 await wait(page, 700);
 
 const ladder = () => page.evaluate(() => {

@@ -15,7 +15,7 @@ const month = new Date().toISOString().slice(0, 7);
 const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 const r = (id, activity, l, s, extra) => Object.assign({ id, activity, likelihood: String(l), severity: String(s), targetL: '1', targetS: String(s),
   actions: [{ id: id + 'a', desc: 'Action on ' + activity, owner: 'Jo', due: day(20), status: 'Not started' }] }, extra || {});
-await seed(page, { company: { legalName: 'Fineline Group Ltd' }, riskProfile: [
+await seed(page, { company: { legalName: 'Example Architects Group Ltd' }, riskProfile: [
   r('a', 'Asbestos on intrusive surveys', 4, 5),        // 20 - top of the ladder
   r('b', 'Fall through a fragile roof', 4, 4),          // 16
   r('c', 'Fire at the studio', 3, 5),                   // 15

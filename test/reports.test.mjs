@@ -172,12 +172,12 @@ test('docFor resolves the register row with org-default fallbacks', () => {
   const state = { docControl: {
     defaults: { author: 'Simon Archer', approverName: 'J Board', approverRole: 'Managing Director', reviewMonths: 6, refPrefix: '' },
     docs: { boardReport: { version: '2.1' }, riskProfile: { ref: 'CUSTOM-1', author: 'A N Other', omit: false } },
-  }, branding: { name: 'Easy Travel' } };
+  }, branding: { name: 'Example Garage' } };
   const b = docFor(state, 'boardReport', { today: '2026-08-18' });
   assert.equal(b.author, 'Simon Archer');                 // org default fills the blank
   assert.equal(b.approverName, 'J Board');
   assert.equal(b.version, '2.1');
-  assert.equal(b.ref, 'AHS-EASY-BR');                     // auto ref: prefix + client code + doc code, no version
+  assert.equal(b.ref, 'AHS-EXAM-BR');                     // auto ref: prefix + client code + doc code, no version
   assert.equal(b.issued, '2026-08-18');                   // defaults to generation day
   assert.equal(b.nextReview, '2027-02-18');               // issued + reviewMonths
   const r = docFor(state, 'riskProfile', { today: '2026-08-18', clientName: 'Tenant Co' });

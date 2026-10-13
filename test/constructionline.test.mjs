@@ -1,6 +1,6 @@
 // Constructionline layer on the CAS core - the mapping, the extras and the
 // section view (the portal mirror). Checked against the REFs and dates in the
-// RSSC (designer) and MVL (contractor) trackers of October 2026, held in
+// EDL (designer) and ECL (contractor) trackers of October 2026, held in
 // test/fixtures/cl-trackers.json. Node only. Run: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -89,12 +89,12 @@ test('Building Safety Act sections come last, in portal order', () => {
     const order = BANK.sets[set].sections.map(s => s.name).filter(n => /^Building Safety Act/.test(n));
     assert.deepEqual(J(b.slice(first).map(x => x.id)), J(order));
   }
-  // the designer Health and Safety section carries the SSIP set in its own column, as the RSSC tracker does
+  // the designer Health and Safety section carries the SSIP set in its own column, as the EDL tracker does
   const d = A.clBlocks('designer')[0];
   assert.equal(d.name, 'Health and Safety and Once For All Health & Safety - (SSIP)');
   const hs01 = d.items.find(i => i.cas === 'HS-01');
   assert.deepEqual(J([hs01.hsRefs, hs01.ssipRefs]), [['3455'], ['2906']]);
-  // the contractor SSIP set stands on its own, as the MVL tracker does
+  // the contractor SSIP set stands on its own, as the ECL tracker does
   const c = A.clBlocks('contractor');
   assert.ok(c.some(b => b.name === 'Health and Safety and Health and Safety Third Party / Exemption certificates'));
   const ssip = c.find(b => b.id === 'Once For All Health & Safety - (SSIP)');
@@ -136,25 +136,25 @@ test('the colours match the trackers once their valid until dates are entered', 
       }
     }
   }
-  // MVL insurances, 9 days from 13 October: amber, as the tracker says
-  const v = A.clView(state(['contractor'], { valid: { Insurances: '2026-10-22' } }), TODAY, 'MVL');
+  // ECL insurances, 9 days from 13 October: amber, as the tracker says
+  const v = A.clView(state(['contractor'], { valid: { Insurances: '2026-10-22' } }), TODAY, 'ECL');
   assert.equal(v.blocks.find(b => b.id === 'Insurances').colour.k, 'amber');
 });
 
 test('statuses: the five values, defaults from the question, what AHS records wins, counts as the tracker counts them', () => {
   assert.deepEqual(J(A.CL_STATUS.map(s => s.k)), ['ahs', 'client', 'ahs_sign', 'covered', 'already']);
-  assert.equal(A.clStatusLabel('client', 'RSSC'), 'RSSC');
-  assert.equal(A.clStatusLabel('ahs_sign', 'RSSC'), 'AHS Ltd, then RSSC signs');
-  let v = A.clView(state(['designer']), TODAY, 'RSSC');
+  assert.equal(A.clStatusLabel('client', 'EDL'), 'EDL');
+  assert.equal(A.clStatusLabel('ahs_sign', 'EDL'), 'AHS Ltd, then EDL signs');
+  let v = A.clView(state(['designer']), TODAY, 'EDL');
   const hs = v.blocks[0].lines;
   assert.equal(hs.find(l => l.cas === 'HS-02').st, 'ahs_sign', 'a policy: AHS Ltd writes, the client signs');
   assert.equal(hs.find(l => l.cas === 'HS-01').st, 'ahs', 'a fact: AHS Ltd enters it');
   // a section in date for more than 90 days is already in Constructionline
-  v = A.clView(state(['designer'], { valid: { Insurances: '2027-03-24' } }), TODAY, 'RSSC');
+  v = A.clView(state(['designer'], { valid: { Insurances: '2027-03-24' } }), TODAY, 'EDL');
   assert.equal(v.blocks.find(b => b.id === 'Insurances').lines[0].st, 'already');
   // what AHS records wins, and Done takes the line out of the to-do counts
   const key = hs.find(l => l.cas === 'HS-02').key;
-  v = A.clView(state(['designer'], { rows: { [key]: { st: 'covered', act: 'Covered in item 3.', done: '2026-10-12' } } }), TODAY, 'RSSC');
+  v = A.clView(state(['designer'], { rows: { [key]: { st: 'covered', act: 'Covered in item 3.', done: '2026-10-12' } } }), TODAY, 'EDL');
   const l = v.blocks[0].lines.find(x => x.key === key);
   assert.equal(l.st, 'covered'); assert.equal(l.action, 'Covered in item 3.'); assert.equal(l.done, '2026-10-12');
   assert.equal(v.counts.done, 1);

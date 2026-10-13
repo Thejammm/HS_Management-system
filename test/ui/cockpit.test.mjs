@@ -10,7 +10,7 @@ const { browser, page, errors } = await openApp();
 const month = new Date().toISOString().slice(0, 7);
 const risks = RISKS();
 risks[1].actions = [{ id: 'v2a1', desc: 'Buy the edge protection kit', owner: 'Site lead', due: '2026-11-01', status: 'Not started', priority: 'High', top5: month }];
-await seed(page, { company: { legalName: 'Fineline Group Ltd', employees: '38' }, riskProfile: risks }, 'cockpit');
+await seed(page, { company: { legalName: 'Example Architects Group Ltd', employees: '38' }, riskProfile: risks }, 'cockpit');
 await wait(page, 700);
 
 // ── the ladder: a rung per band, counted, with the tenant's own score ranges ──
@@ -49,7 +49,7 @@ await wait(page, 700);
   R.ok(!t.noBtn && t.onRisk && t.sel === 'v1', 'clicking a risk on the ladder opens that risk');
 }
 
-await seed(page, { company: { legalName: 'Fineline Group Ltd', employees: '38' }, riskProfile: risks }, 'cockpit');
+await seed(page, { company: { legalName: 'Example Architects Group Ltd', employees: '38' }, riskProfile: risks }, 'cockpit');
 await wait(page, 700);
 
 // ── the risk journey: two readings, one population, an honest target flag ──
@@ -121,7 +121,7 @@ await wait(page, 700);
 }
 
 // ── the cockpit holds up with nothing recorded ──
-await seed(page, { company: { legalName: 'Fineline Group Ltd' }, riskProfile: [] }, 'cockpit');
+await seed(page, { company: { legalName: 'Example Architects Group Ltd' }, riskProfile: [] }, 'cockpit');
 await wait(page, 700);
 {
   const t = await page.evaluate(() => {
@@ -134,7 +134,7 @@ await wait(page, 700);
 }
 
 // ── the board report builds, and its ladder agrees with the cockpit ──
-await seed(page, { company: { legalName: 'Fineline Group Ltd', employees: '38' }, riskProfile: risks }, 'cockpit');
+await seed(page, { company: { legalName: 'Example Architects Group Ltd', employees: '38' }, riskProfile: risks }, 'cockpit');
 {
   const t = await page.evaluate(async () => {
     try {

@@ -157,7 +157,7 @@ await wait(page, 300);
 {
   const t = await page.evaluate(() => {
     S.branding = Object.assign({}, S.branding, { producer: 'Archer Health & Safety', certSignatory: 'Simon Archer CMIOSH CMaPS MCABE', certSignatoryRole: 'Managing Director, Archer Health & Safety' });
-    S.company = { legalName: 'Fineline Architectural Design' };
+    S.company = { legalName: 'Example Architectural Design' };
     S.policySignoff = { policies: [
         { id: 'p1', title: 'Health and Safety Essentials', type: 'Training / CPD', delivered: '2026-09-16', certLine: 'a one-hour continuing professional development session', certStrap: 'Legislation, risk assessment, policy, process and procedure', riskIds: [] },
         { id: 'p2', title: 'Fire Safety Policy', type: 'Policy', version: '3.1', delivered: '2026-08-12', riskIds: [] } ],
@@ -188,7 +188,7 @@ await wait(page, 300);
   R.ok(/^certificate-sophie-boyes-AHS-CPD-20260916-01\.pdf$/.test(t.names[0] || ''), 'named for the person and the number (' + t.names[0] + ')');
   R.ok(t.d.name === 'Sophie Boyes' && t.d.title === 'Health and Safety Essentials' && t.d.line === 'a one-hour continuing professional development session' && /^Legislation, risk assessment/.test(t.d.strap),
     'it carries the name, the session, and the two certificate lines');
-  R.ok(t.d.date === '2026-09-16' && t.d.producer === 'Archer Health & Safety' && t.d.client === 'Fineline Architectural Design',
+  R.ok(t.d.date === '2026-09-16' && t.d.producer === 'Archer Health & Safety' && t.d.client === 'Example Architectural Design',
     'delivered on the session date by the practice, working alongside the client');
   R.ok(t.d.signatory === 'Simon Archer CMIOSH CMaPS MCABE' && t.d.role === 'Managing Director, Archer Health & Safety', 'signed by the practice signatory, from branding');
   R.ok(t.d.ref === 'AHS-CPD-20260916-01' && t.pages === 4, 'and numbered - four pages drawn in all: one, the reprint, and the batch of two');

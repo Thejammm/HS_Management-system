@@ -17,14 +17,14 @@ const day = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
 const TRAINING = () => ({ filename: 'matrix.xlsx',
   sheets: [
     { name: 'Archer Ltd', group: 'staff', status: 'active', courses: [{ name: 'Fire Warden', col: 4 }, { name: 'First Aid', col: 5 }] },
-    { name: 'Fineline Ltd', group: 'staff', status: 'active', courses: [{ name: 'Asbestos Awareness', col: 4 }, { name: 'Working at Height', col: 5 }] },
+    { name: 'Example Architects Ltd', group: 'staff', status: 'active', courses: [{ name: 'Asbestos Awareness', col: 4 }, { name: 'Working at Height', col: 5 }] },
     { name: 'Leavers', group: 'staff', status: 'left', courses: [] } ],
   people: [
     { id: 'p1', sheet: 'Archer Ltd', row: 2, group: 'staff', status: 'active', lastName: 'Kane', firstName: 'Mick', badge: '', job: 'Supervisor', cells: { 'Fire Warden': { type: 'date', v: '2027-03-01' } } },
     { id: 'p2', sheet: 'Archer Ltd', row: 3, group: 'staff', status: 'active', lastName: 'Nair', firstName: 'Priya', badge: '', job: 'Fitter', cells: {} },
-    { id: 'p3', sheet: 'Fineline Ltd', row: 2, group: 'staff', status: 'active', lastName: 'Boyes', firstName: 'Sophie', badge: '', job: 'Architect', cells: { 'Asbestos Awareness': { type: 'date', v: '2027-01-10' } } },
-    { id: 'p4', sheet: 'Fineline Ltd', row: 3, group: 'staff', status: 'active', lastName: 'Barrett', firstName: 'Chloe', badge: '', job: 'Office Manager', cells: {} },
-    { id: 'p5', sheet: 'Fineline Ltd', row: 4, group: 'staff', status: 'active', lastName: 'Reid', firstName: 'Tom', badge: '', job: 'Surveyor', cells: {} },
+    { id: 'p3', sheet: 'Example Architects Ltd', row: 2, group: 'staff', status: 'active', lastName: 'Boyes', firstName: 'Sophie', badge: '', job: 'Architect', cells: { 'Asbestos Awareness': { type: 'date', v: '2027-01-10' } } },
+    { id: 'p4', sheet: 'Example Architects Ltd', row: 3, group: 'staff', status: 'active', lastName: 'Barrett', firstName: 'Chloe', badge: '', job: 'Office Manager', cells: {} },
+    { id: 'p5', sheet: 'Example Architects Ltd', row: 4, group: 'staff', status: 'active', lastName: 'Reid', firstName: 'Tom', badge: '', job: 'Surveyor', cells: {} },
     { id: 'p6', sheet: 'Leavers', row: 2, group: 'staff', status: 'left', lastName: 'Gone', firstName: 'Old', badge: '', job: '', cells: {} } ] });
 
 await seed(page, { company: { legalName: 'Archer Group' }, trainingData: TRAINING(),
@@ -39,8 +39,8 @@ await wait(page, 300);
     const heads = tables.map(tb => [...tb.querySelectorAll('thead th')].map(th => th.textContent.trim()).filter(Boolean).join('|'));
     return { secs, html: box.innerText, heads };
   });
-  R.ok(t.secs.length === 2 && /^Archer Ltd:/.test(t.secs[0]) && /^Fineline Ltd:/.test(t.secs[1]), 'the workbook\'s two active tabs are two lists, in workbook order - not one "Staff" (' + t.secs.join(', ') + ')');
-  R.ok(/Archer Ltd/.test(t.html) && /Fineline Ltd/.test(t.html), 'each table carries its own tab\'s name');
+  R.ok(t.secs.length === 2 && /^Archer Ltd:/.test(t.secs[0]) && /^Example Architects Ltd:/.test(t.secs[1]), 'the workbook\'s two active tabs are two lists, in workbook order - not one "Staff" (' + t.secs.join(', ') + ')');
+  R.ok(/Archer Ltd/.test(t.html) && /Example Architects Ltd/.test(t.html), 'each table carries its own tab\'s name');
   R.ok(t.heads.some(h => /Fire Warden/.test(h) && !/Asbestos/.test(h)) && t.heads.some(h => /Asbestos Awareness/.test(h) && !/Fire Warden/.test(h)),
     'and its own columns - one business\'s courses do not run into the other\'s');
 }
@@ -49,16 +49,16 @@ await wait(page, 300);
     trainingAddPerson();
     const ov = [...document.body.children].reverse().find(d => d.querySelector && d.querySelector('#_tpG'));
     const opts = [...ov.querySelectorAll('#_tpG option')].map(o => o.textContent);
-    const sel = ov.querySelector('#_tpG'); sel.value = [...sel.options].find(o => o.textContent === 'Fineline Ltd').value; sel.onchange();
+    const sel = ov.querySelector('#_tpG'); sel.value = [...sel.options].find(o => o.textContent === 'Example Architects Ltd').value; sel.onchange();
     const cols = [...ov.querySelectorAll('#_tpCols input[data-course]')].map(i => i.dataset.course);
     ov.querySelector('#_tpF').value = 'Daniel'; ov.querySelector('#_tpL').value = 'Ashworth';
     ov.querySelector('#_tpSave').onclick();
     const p = _trainingData().people.find(x => x.lastName === 'Ashworth');
     return { opts, cols, tab: p && p.tab, sec: p && _tSectionOf(p) };
   });
-  R.ok(t.opts.join('|') === 'Archer Ltd|Fineline Ltd', 'adding a person asks which tab they belong on (' + t.opts.join(', ') + ')');
+  R.ok(t.opts.join('|') === 'Archer Ltd|Example Architects Ltd', 'adding a person asks which tab they belong on (' + t.opts.join(', ') + ')');
   R.ok(t.cols.join('|') === 'Asbestos Awareness|Working at Height', 'and offers that tab\'s columns');
-  R.ok(t.tab === 'Fineline Ltd' && t.sec === 'sheet:Fineline Ltd', 'the person joins that tab, and the export puts them back into it');
+  R.ok(t.tab === 'Example Architects Ltd' && t.sec === 'sheet:Example Architects Ltd', 'the person joins that tab, and the export puts them back into it');
 }
 {
   const t = await page.evaluate(() => {
@@ -71,8 +71,8 @@ await wait(page, 300);
     return { open: !!ov, rows, staff: _psoState().staff.map(s => s.name).sort(), gone: !document.getElementById('tStaffPick') };
   });
   R.ok(t.open && t.rows.length === 2, 'with more than one tab, adding employees asks which tabs - a tick box each');
-  R.ok(t.rows.some(r => /Fineline Ltd.*4 people.*4 not on the register/i.test(r)), 'each says how many are on it and how many are new (' + t.rows.join(' / ') + ')');
-  R.ok(t.gone && t.staff.join('|') === 'Chloe Barrett|Daniel Ashworth|Sophie Boyes|Tom Reid', 'unticking Archer Ltd adds only the Fineline people (' + t.staff.join(', ') + ')');
+  R.ok(t.rows.some(r => /Example Architects Ltd.*4 people.*4 not on the register/i.test(r)), 'each says how many are on it and how many are new (' + t.rows.join(' / ') + ')');
+  R.ok(t.gone && t.staff.join('|') === 'Chloe Barrett|Daniel Ashworth|Sophie Boyes|Tom Reid', 'unticking Archer Ltd adds only the Example Architects people (' + t.staff.join(', ') + ')');
 }
 {
   const t = await page.evaluate(() => {
@@ -86,8 +86,8 @@ await wait(page, 300);
 }
 
 // ── 2 + 5. linked Inspection app ──
-await seed(page, { company: { legalName: 'Easy Travel Service' },
-  linkedApps: [{ id: 'la1', kind: 'inspections', label: 'Inspection app', baseUrl: 'https://inspections.archerhs.co.uk', remoteTenantId: 'easytravel', autoSync: false, lastSyncAt: '', lastStatus: '' }],
+await seed(page, { company: { legalName: 'Example Garage Service' },
+  linkedApps: [{ id: 'la1', kind: 'inspections', label: 'Inspection app', baseUrl: 'https://inspections.archerhs.co.uk', remoteTenantId: 'examplegarage', autoSync: false, lastSyncAt: '', lastStatus: '' }],
   inspections: [], actions: [{ id: 'own1', inspId: '', periodTo: day(3), location: 'Office', manager: 'Simon', sectionName: 'Office', itemId: 'x', itemName: 'Own action', issue: 'Raised in Compass', note: '', assignedTo: '', dueDate: day(-5), beforePhotos: [], resolved: false, resolvedBy: '', resolvedAt: '', resolvedNote: '', afterPhotos: [] }] }, 'links');
 await wait(page, 300);
 {
@@ -99,13 +99,13 @@ await wait(page, 300);
         submittedAt: d.a + 'T09:00:00.000Z', status: 'open', awaitingReview: true }],
       actions: [{ id: 'act_1', inspId: 'insp_1', periodTo: d.a, location: 'Main garage', manager: 'Gareth', sectionName: 'Workshop', itemId: 'a2', itemName: 'Guarding', issue: 'Guard missing', note: '', assignedTo: 'Mick', dueDate: d.b, beforePhotos: [], resolved: false, resolvedBy: '', resolvedAt: '', resolvedNote: '', afterPhotos: [] }] };
     let reply = { ok: true, status: 200, body: payload };
-    Auth.isSignedIn = () => true; Auth.activeTenantId = () => 'easytravel-compass';
+    Auth.isSignedIn = () => true; Auth.activeTenantId = () => 'examplegarage-compass';
     Auth.saveToServer = async () => { calls.push('save'); await new Promise(r => setTimeout(r, 30)); return { ok: true, updatedAt: new Date().toISOString() }; };
     const realFetch = window.fetch;
     window.fetch = async (url, o) => { if (String(url).indexOf('/api/linked/inspections') === 0) { calls.push('fetch'); await new Promise(r => setTimeout(r, 60)); return { ok: reply.ok, status: reply.status, json: async () => reply.body }; } return realFetch(url, o); };
     const out = {};
     // a tenant id typed a moment ago, then Sync now straight away
-    updateLinkedApp('la1', 'remoteTenantId', 'easytravel');
+    updateLinkedApp('la1', 'remoteTenantId', 'examplegarage');
     await syncLinkedApp('la1');
     out.order = calls.join(',');
     out.nInsp = S.inspections.length; out.nAct = S.actions.length;
@@ -178,7 +178,7 @@ await wait(page, 300);
 {
   const t = await page.evaluate(async () => {
     S.branding = Object.assign({}, S.branding, { producer: 'Archer Health & Safety', certSignatory: 'Simon Archer CMIOSH CMaPS MCABE' });
-    S.company = { legalName: 'Fineline Architectural Design' };
+    S.company = { legalName: 'Example Architectural Design' };
     S.policySignoff = { policies: [{ id: 'c1', title: 'Health and Safety Essentials', type: 'Training / CPD', delivered: '2026-09-16', riskIds: [] }],
       staff: [{ id: 's1', name: 'Sophie Boyes', role: 'Architect' }], signed: {}, log: [], logMigrated: true, certificates: [] };
     const e = _psoRecord('s1', 'c1', 'acknowledged', { method: 'link' }); _psoRebuildSigned();

@@ -6,8 +6,8 @@
 -- Tenants: each client business is one tenant.
 -- A consultant user has tenant_id NULL (sees all tenants).
 CREATE TABLE IF NOT EXISTS tenants (
-  id           TEXT PRIMARY KEY,           -- e.g. 'easy-travel'
-  name         TEXT NOT NULL,              -- display name e.g. 'Easy Travel Leeds'
+  id           TEXT PRIMARY KEY,           -- e.g. 'example-garage'
+  name         TEXT NOT NULL,              -- display name e.g. 'Example Garage Leeds'
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

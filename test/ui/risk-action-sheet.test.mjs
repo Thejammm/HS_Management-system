@@ -549,7 +549,7 @@ if (!qm1) await R.done(browser, errors);
 }
 
 // ── 9. the sheet comes back, with an action from the meeting written on it ──
-const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/2026' };
+const MACT = { what: 'Get the yard gate fixed', who: 'Dave Marlow', due: '15/11/2026' };
 {
   const t = await page.evaluate(async (sid, MACT) => {
     const bytes = await buildActionSheetPDF(sid);
@@ -557,7 +557,7 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
     const set = (n, v) => { try { form.getTextField(n).setText(v); } catch (e) { missing.push(n); } };
     // line 1 is r1's overdue rescue-plan stop (a2) - its own row is the second, under the edge protection
     set('as_1_r2_cmt', 'Rescue plan written and the hatch locked.');
-    set('as_1_r2_who', 'Dave Morley');
+    set('as_1_r2_who', 'Dave Marlow');
     set('as_1_r2_due', '20/10/2030');
     set('as__m1_what', MACT.what);
     set('as__m1_who', MACT.who);
@@ -571,11 +571,11 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
   {
     const rows = (t.item.resp || {}).rows || [], c = rows[0] || {};
     R.ok(!t.missing.length && rows.length === 1 && c.a === 'a2' && c.c === null && c.text === 'Stop roof access until a rescue plan is written' && c.gap === false
-      && c.cmt === 'Rescue plan written and the hatch locked.' && c.who === 'Dave Morley' && c.whoChanged === true && c.due === '2030-10-20' && c.dueChanged === true && !t.item.resp.outcome && t.returnedBy === '',
+      && c.cmt === 'Rescue plan written and the hatch locked.' && c.who === 'Dave Marlow' && c.whoChanged === true && c.due === '2030-10-20' && c.dueChanged === true && !t.item.resp.outcome && t.returnedBy === '',
       'the line\'s answer comes in as on the Top 5 sheet - against its action, with who and by when as changed; the row left as printed is not counted; no name needed' + (t.missing.length ? ' - not on the sheet: ' + t.missing.join(', ') : ''));
   }
   R.ok(/\b1 meeting action\b/.test(t.toast) && !/Not imported/.test(t.toast), 'the import says one meeting action came in: ' + t.toast);
-  R.ok(!!t.d && t.d.owner === 'Dave Morley' && t.d.due === '2026-11-15' && t.d.forum === 'Client meeting' && t.d.agendaItem === 0 && t.d.status === 'Agreed' && !t.d.raised,
+  R.ok(!!t.d && t.d.owner === 'Dave Marlow' && t.d.due === '2026-11-15' && t.d.forum === 'Client meeting' && t.d.agendaItem === 0 && t.d.status === 'Agreed' && !t.d.raised,
     'the row written on the sheet becomes an action of the quick minutes - what, who, and 15/11/2026 read as a date');
   R.ok(!!t.d && t.mq && t.mOpen === 'open' && t.d.meetingId === qm2 && t.cur === qm2 && t.grew === 1 && t.quickN === 2, 'it lands in the open client meeting, not a new one');
 }
@@ -593,12 +593,12 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Morley', due: '15/11/
 }
 {
   const t = await page.evaluate(() => { openQuickMinutes(); const vals = [...document.querySelectorAll('#qmOv input')].map(i => i.value); const id = _qmCurrent().id; closeQuickMinutes(); return { vals, id }; });
-  R.ok(t.id === qm2 && t.vals.includes(MACT.what) && t.vals.includes('Dave Morley') && t.vals.includes('2026-11-15') && t.vals.includes('Check the yard lighting'), 'opened again, the minute taker shows them, ready for Done');
+  R.ok(t.id === qm2 && t.vals.includes(MACT.what) && t.vals.includes('Dave Marlow') && t.vals.includes('2026-11-15') && t.vals.includes('Check the yard lighting'), 'opened again, the minute taker shows them, ready for Done');
 }
 {
   // the meeting with no notes now has actions in it, so it prints - saying No notes.
   const s = await page.evaluate(async sid => (await __build(sid)).said, sid);
-  R.ok(s.includes('No notes recorded.') && s.some(x => /Get the yard gate fixed \(Dave Morley, .+\).*Agreed/.test(x)) && s.filter(x => /Attendees:/.test(x)).length === 2,
+  R.ok(s.includes('No notes recorded.') && s.some(x => /Get the yard gate fixed \(Dave Marlow, .+\).*Agreed/.test(x)) && s.filter(x => /Attendees:/.test(x)).length === 2,
     'a meeting with actions and no notes is printed, saying No notes., with its actions as agreed');
 }
 

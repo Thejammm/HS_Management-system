@@ -24,7 +24,7 @@ const CHROME = (() => {
 })();
 const NAMES = [
   'Short Ltd',
-  'Easy Travel Service (Passenger Transport and Garage Services) Limited',
+  'Example Transport Service (Passenger Transport and Garage Services) Limited',
   'The Yorkshire and Humberside Integrated Passenger Transport, Vehicle Maintenance and Fleet Engineering Services Group Limited',
 ];
 const OPTS = { period: 'Q3 2026', today: '2026-08-18' };

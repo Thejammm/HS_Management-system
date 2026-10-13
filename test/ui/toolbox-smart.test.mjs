@@ -14,7 +14,7 @@ const R = reporter('Toolbox talks - by kind of work, and your own');
 const { browser, page, errors } = await openApp();
 
 await seed(page, {
-  company: { legalName: 'Easy Travel Service', sector: 'Motor trade' },
+  company: { legalName: 'Example Garage Service', sector: 'Motor trade' },
   profiler: { sectors: { motor: true, transportsvc: true } },
   toolbox: { custom: [{ id: 'tbt-old', cat: 'Construction', title: 'Our old site talk', mins: '10', why: 'Written before kinds of work.', points: ['One.'], ask: [], legal: '' }], hidden: [], deliveries: [], migratedAt: '2026-09-01' },
   policySignoff: { policies: [], staff: [{ id: 's1', name: 'Mick Kane' }, { id: 's2', name: 'Priya Nair' }], signed: {}, log: [], logMigrated: true } }, 'toolbox');
@@ -30,7 +30,7 @@ await wait(page, 300);
       view: document.getElementById('tbtView').value, write: [...card.querySelectorAll('button')].some(b => /Write your own talk/.test(b.textContent)),
       hero: document.querySelector('#tab-toolbox .rep-hero p').textContent };
   });
-  R.ok(t.title === 'Toolbox talks for Easy Travel Service', 'the tab is talks for the client: ' + t.title);
+  R.ok(t.title === 'Toolbox talks for Example Garage Service', 'the tab is talks for the client: ' + t.title);
   R.ok(/Vehicle repair or maintenance · Transport, passenger or delivery services/.test(t.kind) && /discovery/.test(t.kind), 'the kind of work is read the same way as the CPD tab');
   R.ok(t.groups.join('|') === 'Your own talks|Vehicle repair or maintenance|Transport, passenger or delivery services|Every business', 'your own talks first, then the work, then every business: ' + t.groups.join(' | '));
   R.ok(t.titles.some(x => /Vehicle lifts and jacking/.test(x)) && t.titles.some(x => /Daily walkaround checks/.test(x)) && t.titles.some(x => /Safeguarding - spotting and reporting/.test(x)) && !t.titles.some(x => /drone|Allergens|racking/i.test(x)), 'garage and passenger-transport talks - nothing for architects, kitchens or warehouses');
@@ -104,7 +104,7 @@ await wait(page, 300);
 // ── an architect, and a client with no kind of work yet ──
 {
   const t = await page.evaluate(() => {
-    S.company = { legalName: 'Fineline Architects', sector: 'Design / architecture / surveying' }; S.profiler.sectors = {}; S.toolbox.custom = [];
+    S.company = { legalName: 'Example Architects', sector: 'Design / architecture / surveying' }; S.profiler.sectors = {}; S.toolbox.custom = [];
     renderToolbox();
     const out = { groups: [...document.querySelectorAll('#toolboxContainer .cpt-grp')].map(g => g.textContent),
       titles: [...document.querySelectorAll('#toolboxContainer .cpt-title')].map(x => x.textContent) };

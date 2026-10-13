@@ -60,15 +60,15 @@ test('the warning panel lists a fact that disagrees with an answer or a date', (
 });
 
 test('the section view reads its answers from the fact sheet', () => {
-  const s = st({ address: '12A Walsh Lane\nLeeds\nLS12 5EJ', headBand: '1-4', subcontractors: 'no', hsLead: 'Robert Smith', hsLeadRole: 'Managing Director' });
-  const v = A.clView(s, TODAY, 'RSSC');
+  const s = st({ address: '1 Example Street\nLeeds\nLS1 1AA', headBand: '1-4', subcontractors: 'no', hsLead: 'Robert Smith', hsLeadRole: 'Managing Director' });
+  const v = A.clView(s, TODAY, 'EDL');
   const line = ref => { for (const b of v.blocks) for (const l of b.lines) if (l.hsRefs.includes(ref) || l.ssipRefs.includes(ref)) return l; };
-  assert.equal(line('301').evidence, 'From the client fact sheet: 12A Walsh Lane, Leeds, LS12 5EJ.');
+  assert.equal(line('301').evidence, 'From the client fact sheet: 1 Example Street, Leeds, LS1 1AA.');
   assert.match(line('3374').evidence, /Fact sheet: 1 to 4\./);
   assert.match(line('3482').evidence, /Fact sheet: No\./);
   assert.equal(line('3455').action, 'AHS Ltd enters it in the portal: Robert Smith, Managing Director.');
   // a client fact AHS Ltd suggests an answer for
   const sub = line('3482');
   assert.equal(sub.st, 'client');
-  assert.equal(sub.action, 'RSSC to confirm. Suggested answer: No.');
+  assert.equal(sub.action, 'EDL to confirm. Suggested answer: No.');
 });

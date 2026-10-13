@@ -3,8 +3,8 @@
 //  suggests topics for the kind of work the client does. Simon, 2026-09-30:
 //  "this will now be the sign off area for all sign offs so it will need to
 //  be split into toolbox talks and cpds sections but work the same ... make
-//  the tab smart and list potential cpd topics ... fineline are architects so
-//  they will need design based things, easytravel are vehicle repair
+//  the tab smart and list potential cpd topics ... examplearchitects are architects so
+//  they will need design based things, examplegarage are vehicle repair
 //  engineers so they will need their specific cpds".
 //  Run: npm run test:ui
 // ══════════════════════════════════════════════════════════════
@@ -14,7 +14,7 @@ const R = reporter('Sign-off sections and suggested CPD');
 const { browser, page, errors } = await openApp();
 
 const base = {
-  company: { legalName: 'Easy Travel Service', sector: 'Motor trade' },
+  company: { legalName: 'Example Garage Service', sector: 'Motor trade' },
   profiler: { sectors: { motor: true, transportsvc: true } },
   riskProfile: [{ id: 'r1', ref: 'R1', activity: 'Working under vehicles on lifts', hazard: 'Crushing' }],
   policySignoff: { policies: [
@@ -98,7 +98,7 @@ await wait(page, 300);
       evStatus: (document.querySelector('#cpt-mvr-ev .cpt-status') || {}).innerText || '', libStill: /CPD library/i.test(cont.innerText) && /This month, issued for sign-off/i.test(cont.innerText),
       hero: document.querySelector('#tab-cpd .rep-hero p').textContent };
   });
-  R.ok(t.title === 'Suggested CPD for Easy Travel Service', 'the tab leads with suggested CPD for the client: ' + t.title);
+  R.ok(t.title === 'Suggested CPD for Example Garage Service', 'the tab leads with suggested CPD for the client: ' + t.title);
   R.ok(/Vehicle repair or maintenance · Transport, passenger or delivery services/.test(t.kind) && /discovery/.test(t.kind), 'the kind of work comes from the sectors ticked in discovery');
   R.ok(t.groups.join('|') === 'Vehicle repair or maintenance|Transport, passenger or delivery services|Every business', 'grouped by the work, with every-business topics last: ' + t.groups.join(' | '));
   R.ok(t.titles.includes('Vehicle lifts and working under vehicles') && t.titles.includes('Isocyanates and paint spraying') && t.titles.includes('Daily vehicle walkaround checks') && !t.titles.some(x => /designers|drone/i.test(x)), 'vehicle repair and transport topics - nothing for architects');
@@ -135,7 +135,7 @@ await wait(page, 300);
 // ── an architect gets design topics; no kind of work means every topic ──
 {
   const t = await page.evaluate(() => {
-    S.company = { legalName: 'Fineline Architects', sector: 'Design / architecture / surveying' }; S.profiler.sectors = {};
+    S.company = { legalName: 'Example Architects', sector: 'Design / architecture / surveying' }; S.profiler.sectors = {};
     renderCPD();
     const card = document.querySelector('#cpdContainer .card');
     const out = { kind: card.querySelector('.cpt-kind').innerText, groups: [...card.querySelectorAll('.cpt-grp')].map(g => g.textContent),

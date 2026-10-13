@@ -10,7 +10,7 @@ import { openApp, seed, wait, reporter } from './harness.mjs';
 const R = reporter('Constructionline sections - the portal mirror');
 const { browser, page, errors } = await openApp({ width: 1500 });
 
-// a designer test client, as RSSC in October 2026
+// a designer test client, as EDL in October 2026
 await seed(page, { company: { tradingName: 'Test Designer Ltd', shortName: 'TDL' }, accred: { roles: ['designer'], schemes: { cl: { on: true } }, answers: {},
   cl: { valid: { 'Health and Safety': '2026-08-05', 'Once For All Health & Safety - (SSIP)': '2026-09-26', 'Insurances': '2027-03-24' } } } }, 'cas');
 {
@@ -54,7 +54,7 @@ await seed(page, { company: { tradingName: 'Test Designer Ltd', shortName: 'TDL'
   R.ok(t.valid === '2026-12-01' && /acl-amber/.test(t.bsaPill), 'a valid until date within 90 days turns the section amber');
   R.ok(t.done === '1', 'the done line is counted as ticked done');
 }
-// a contractor test client, as MVL
+// a contractor test client, as ECL
 await seed(page, { company: { tradingName: 'Test Contractor Ltd', shortName: 'TCL' }, accred: { roles: ['contractor'], schemes: { cl: { on: true } }, answers: {}, cl: { valid: { Insurances: '2026-10-22' } } } }, 'cas');
 {
   const t = await page.evaluate(() => {
@@ -66,7 +66,7 @@ await seed(page, { company: { tradingName: 'Test Contractor Ltd', shortName: 'TC
       set: [...document.querySelectorAll('#aclSections .acj-seg .acj-btn')].map(b => b.textContent + ':' + b.getAttribute('aria-pressed')).join(' ') };
   });
   R.ok(t.set === 'Designer:false Contractor:true', 'the contractor question set follows from the role');
-  R.ok(t.heads.includes('Health and Safety and Health and Safety Third Party / Exemption certificates'), 'the contractor Health and Safety section sits inside the Third Party section, as in the MVL tracker');
+  R.ok(t.heads.includes('Health and Safety and Health and Safety Third Party / Exemption certificates'), 'the contractor Health and Safety section sits inside the Third Party section, as in the ECL tracker');
   R.ok(/acl-amber/.test(t.ins), 'insurances valid until 22 October is amber');
   R.ok(t.q6.includes('2845') && /HS-15 · SSIP Q6/.test(t.q6[1]), 'SSIP Q6 is the CAS question HS-15, REF 2845 in the SSIP column');
 }

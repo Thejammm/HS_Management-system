@@ -17,9 +17,9 @@ const { browser, page, errors } = await openApp();
 
 const todayPlus = days => { const d = new Date(); d.setDate(d.getDate() + days); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const DOCS = [
-  { id: 'd-pol', name: 'H&S policy part 2', dated: todayPlus(-60), signedBy: 'J Morley, MD', signedDirector: true, link: 'C:\\MVL\\Policies\\HS policy.pdf' },
+  { id: 'd-pol', name: 'H&S policy part 2', dated: todayPlus(-60), signedBy: 'J Marlow, MD', signedDirector: true, link: 'C:\\ECL\\Policies\\HS policy.pdf' },
   { id: 'd-old', name: 'Drug and alcohol policy', dated: todayPlus(-400) },
-  { id: 'd-ab', name: 'Anti-bribery policy', dated: todayPlus(-30), signedBy: 'J Morley', signedDirector: true },
+  { id: 'd-ab', name: 'Anti-bribery policy', dated: todayPlus(-30), signedBy: 'J Marlow', signedDirector: true },
 ];
 const MEMS = [{ id: 'm-cl', name: 'Constructionline Gold', expiry: todayPlus(150) }];
 const OLD_CAS = { gates: { '21': true }, roles: {}, status: { '1-4': { v: 'ready', by: 'Simon', at: '2026-07-01T10:00:00Z' }, '71': { v: 'gap', by: 'Simon', at: '2026-07-01T10:00:00Z' } }, evidence: {} };
@@ -81,7 +81,7 @@ await wait(page, 350);
     saved: JSON.stringify(S.accred.answers),
   }));
   R.ok(/^EVIDENCED/i.test(t.hs02) && /in 30\d days|in 3\d\d days/.test(t.hs02exp), 'the status sits on the line with its countdown (' + t.hs02 + ' / ' + t.hs02exp.replace(/\s+/g, ' ') + ')');
-  R.ok(/J Morley, MD/.test(t.facts) && /a director/.test(t.facts) && /HS policy\.pdf/.test(t.facts), 'the evidence shows its date, who signed it and its file');
+  R.ok(/J Marlow, MD/.test(t.facts) && /a director/.test(t.facts) && /HS policy\.pdf/.test(t.facts), 'the evidence shows its date, who signed it and its file');
   R.ok(/Declared No/.test(t.hs05), 'a declaration is answered on its line');
   R.ok(!/"k"|evidenced|Evidenced/.test(t.saved), 'no status is stored - only the facts');
 }
@@ -152,7 +152,7 @@ await wait(page, 350);
 // ── answer once: HS-01 answered once, in every set that asks it ──
 await page.evaluate(() => { _acjOpen['HS-01'] = true; renderAccred(); });
 await wait(page, 250);
-await page.type('#acjL-HS-01 textarea.acj-in', 'J Morley, Managing Director');
+await page.type('#acjL-HS-01 textarea.acj-in', 'J Marlow, Managing Director');
 await page.evaluate(() => document.querySelector('#acjL-HS-01 textarea.acj-in').blur());
 await wait(page, 250);
 {
@@ -160,13 +160,13 @@ await wait(page, 250);
     pack: AccredCore.packRows(S, 'cl').flatMap(g => g.rows.filter(r => r.id === 'HS-01').map(r => g.set + '|' + r.answer)) }));
   R.ok(t.used.length === 2 && /REF 2827/.test(t.used[0]) && /REF 1463/.test(t.used[1]), 'the line shows everywhere its one answer is used');
   R.ok(/Evidenced/i.test(t.row), 'typing an answer updates its line without a rebuild');
-  R.ok(t.pack.length === 2 && t.pack.every(x => /J Morley, Managing Director$/.test(x)), 'the pack carries the one answer under both sets');
+  R.ok(t.pack.length === 2 && t.pack.every(x => /J Marlow, Managing Director$/.test(x)), 'the pack carries the one answer under both sets');
 }
 
 // ── site inspection evidence from the Site Safety Inspection link ──
 await page.evaluate(() => {
   addLinkedApp('siteinspection');
-  const l = S.linkedApps[S.linkedApps.length - 1]; l.remoteTenantId = 'MVL';
+  const l = S.linkedApps[S.linkedApps.length - 1]; l.remoteTenantId = 'ECL';
   _mergeSiteEvidence(l, { fetchedAt: new Date().toISOString(), records: [{ inspectionId: 'insp-1', project: 'Woldgate School', visit: 4, date: new Date().toISOString().slice(0, 10), inspector: 'Simon Archer', reportName: 'Safety Inspection Report - Woldgate School - visit 4',
     items: [{ qids: ['HS-17'], checkId: 'c25_5', check: 'Workforce consultation', note: 'Weekly toolbox talk signed by all six', photo: 'data:image/jpeg;base64,/9j/4AAQ' },
             { qids: ['HS-02'], checkId: 'x', check: 'Should not replace the chosen policy', note: '' },
@@ -194,11 +194,11 @@ await wait(page, 300);
 // ── the document register records date, signatory and expiry ──
 await page.evaluate(() => openDocModal('d-old'));
 await wait(page, 250);
-await page.evaluate(() => { document.getElementById('docDated').value = new Date().toISOString().slice(0, 10); document.getElementById('docSignedBy').value = 'J Morley'; document.getElementById('docSignedDirector').checked = true; saveDocument('d-old'); });
+await page.evaluate(() => { document.getElementById('docDated').value = new Date().toISOString().slice(0, 10); document.getElementById('docSignedBy').value = 'J Marlow'; document.getElementById('docSignedDirector').checked = true; saveDocument('d-old'); });
 await wait(page, 350);
 {
   const t = await page.evaluate(() => ({ d: S.documents.find(x => x.id === 'd-old'), st: AccredCore.statusOf(S, AccredCore.byId('HS-06')).k }));
-  R.ok(t.d.signedBy === 'J Morley' && t.d.signedDirector === true && !!t.d.dated, 'the document form records when it is dated and who signed it');
+  R.ok(t.d.signedBy === 'J Marlow' && t.d.signedDirector === true && !!t.d.dated, 'the document form records when it is dated and who signed it');
   R.ok(t.st === 'evidenced', 'dating the document brings its question back into date');
 }
 
@@ -216,7 +216,7 @@ const tmp = path.join(os.tmpdir(), 'acj-pack-test.docx');
   R.ok(['[Content_Types].xml', '_rels/.rels', 'word/_rels/document.xml.rels', 'word/document.xml', 'word/footer1.xml', 'word/styles.xml'].every(x => parts.includes(x)), 'it is a complete Word package');
   R.ok(wellFormed, 'its document XML is well formed');
   const iCl = xml.indexOf('OFA Health &amp; Safety (SSIP), Contractor set'), iCrg = xml.indexOf('Corporate Responsibility and Governance (5.0)');
-  R.ok(iCl > 0 && iCrg > iCl && xml.indexOf('2827') > iCl && /J Morley, Managing Director/.test(xml), 'it runs in the scheme\u2019s order with each REF, answer and evidence');
+  R.ok(iCl > 0 && iCrg > iCl && xml.indexOf('2827') > iCl && /J Marlow, Managing Director/.test(xml), 'it runs in the scheme\u2019s order with each REF, answer and evidence');
   R.ok(/HS policy\.pdf/.test(xml) && /w:orient="landscape"/.test(xml) && /NUMPAGES/.test(ftr) && /Prepared for/.test(ftr), 'evidence file names, landscape pages, and the house footer');
   R.ok(p.sets >= 15, 'every set the client answers is in it (' + p.sets + ')');
 }

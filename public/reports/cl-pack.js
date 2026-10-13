@@ -2,7 +2,7 @@
 //  Constructionline submission pack - accreditation engine step 6.
 //
 //  Builds what goes in the pack from AccredCore, and the two trackers in the
-//  layout of the October 2026 RSSC and MVL trackers. Plain script, no import
+//  layout of the October 2026 EDL and ECL trackers. Plain script, no import
 //  or export, like accred-core: the app loads it with ExcelJS from cdnjs,
 //  the tests load it in Node with the exceljs package.
 //    CLPack.packData(A, state, today, opts)   everything the pack holds
@@ -12,14 +12,14 @@
 (function (root) {
   'use strict';
 
-  // The submission folders, as in the RSSC and MVL submissions. 13 is for
+  // The submission folders, as in the EDL and ECL submissions. 13 is for
   // contractors (site evidence); designers file theirs under 03.
   var FOLDERS = ['01 Company Information', '02 Insurance', '03 Health and Safety and SSIP', '04 Training and Competence', '05 CDM and Building Safety',
     '06 Quality and Environment', '07 Equality and Harassment', '08 Anti-Bribery Fraud and Tax Evasion', '09 Modern Slavery and Right to Work',
     '10 Whistleblowing and Communication Evidence', '11 Data Protection', '12 Social Value and Wellbeing', '13 Site Evidence', '99 Do Not Upload - Old Versions'];
   var OLD = '99 Do Not Upload - Old Versions', SITE = '13 Site Evidence';
   function foldersFor(set) { return FOLDERS.filter(function (f) { return f !== SITE || set === 'contractor'; }); }
-  // Where a CAS question's evidence is filed (by the RSSC and MVL folders).
+  // Where a CAS question's evidence is filed (by the EDL and ECL folders).
   var Q_FOLDER = {
     '03 Health and Safety and SSIP': ['HS-01', 'HS-02', 'HS-03', 'HS-04', 'HS-05', 'HS-08', 'HS-09', 'HS-10', 'HS-11', 'HS-14', 'HS-15', 'HS-16', 'HS-18', 'HS-19', 'HS-20', 'SS-01'],
     '04 Training and Competence': ['HS-12', 'HS-13', 'QA-06', 'BS-12'],
@@ -150,7 +150,7 @@
       rows: rows, priceList: priceList, plan: plan, folders: folders, files: files, bank: bank, ref: opts.ref || '' };
   }
 
-  // ── the tracker workbook, in the RSSC and MVL layout ──
+  // ── the tracker workbook, in the EDL and ECL layout ──
   var INK = 'FF3A3A3A', CYAN = 'FF38A8C2', GREY = 'FF787878', PURPLE = 'FF8E7CC3', HEAD = 'FFE3EBF0', LINE = 'FFC8C8C8';
   var ST_FILL = { client: 'FFFFF4C2', ahs_sign: 'FFFFF4C2', ahs: 'FFD7EEF4', covered: 'FFDFF0D8', already: 'FFDFF0D8' };
   function fill(c) { return { type: 'pattern', pattern: 'solid', fgColor: { argb: c }, bgColor: { argb: c } }; }

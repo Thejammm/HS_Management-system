@@ -27,8 +27,8 @@ const { browser, page, errors } = await openApp();
 const month = new Date().toISOString().slice(0, 7);
 const risk = (id, name, l, s, extra) => Object.assign({ id, activity: name, likelihood: String(l), severity: String(s), targetL: '2', targetS: '2', actions: [] }, extra || {});
 const STATE = () => ({
-  company: { legalName: 'Fineline Architects Ltd', sector: 'Design / architecture / surveying',
-    slt: [ { name: 'Jo Fine', role: 'Managing Director', email: 'jo@fineline.example' }, { name: 'Sam Line', role: 'Technical Director', email: 'sam@fineline.example' } ] },
+  company: { legalName: 'Example Architects Ltd', sector: 'Design / architecture / surveying',
+    slt: [ { name: 'Jo Fine', role: 'Managing Director', email: 'jo@examplearchitects.example' }, { name: 'Sam Line', role: 'Technical Director', email: 'sam@examplearchitects.example' } ] },
   riskProfile: [
     // r1-r5 ticked for this month's Risk Action Sheet; r6 is not
     risk('r1', 'Asbestos disturbance on survey', 4, 4, { sheet: month, actions: [ { id: 'a1', desc: 'Get the R&D survey', owner: 'Jo Fine', due: '2026-09-01', status: 'Not started', top5: month } ] }),
@@ -56,7 +56,7 @@ await wait(page, 600);
   R.ok(t.meta.ids.join(',') === t.sheet.join(',') && t.sheet.slice().sort().join(',') === 'r1,r2,r3,r4,r5', 'the form carries the risks ticked for the Risk Action Sheet, in the sheet\'s own order (' + t.meta.ids.join(',') + ')');
   R.ok(t.kick.length === 5 && t.kick.filter(k => /THIS MONTH.S TOP 5/.test(k)).length === 1 && /THIS MONTH.S TOP 5/.test(t.kick[t.meta.ids.indexOf('r1')] || ''), 'each risk\'s page says it is on the action sheet, and r1\'s that it is this month\'s Top 5');
   R.ok(t.said.includes('RISK ACTION SHEET - YOUR PROPOSALS'), 'the form is titled as the Risk Action Sheet\'s proposals');
-  R.ok(t.pages === 6 && t.meta.client === 'Fineline Architects Ltd', 'a front page and a page a risk; the form knows which client it is for');
+  R.ok(t.pages === 6 && t.meta.client === 'Example Architects Ltd', 'a front page and a page a risk; the form knows which client it is for');
   R.ok(t.names.includes('t5__name') && t.names.includes('t5_r1_a1_what') && t.names.includes('t5_r1_a3_due') && t.names.includes('t5_r1_comment') && t.names.includes('t5_r1_agree'), 'each risk has three actions (what / who / by when), a comment box and an agree tick');
   R.ok(!t.names.includes('t5_r6_a1_what'), 'a risk not ticked for the sheet is not on the form');
 }
@@ -107,7 +107,7 @@ const fill = (who, role, answers) => page.evaluate(async (who, role, answers) =>
     return out;
   });
   R.ok(/noname\.pdf: no name was filled in/.test(t.noName), 'a form with no name is refused and says why');
-  R.ok(/other\.pdf: this form is for Other Co Ltd, not Fineline Architects Ltd/.test(t.other), 'another client\'s form is refused by name');
+  R.ok(/other\.pdf: this form is for Other Co Ltd, not Example Architects Ltd/.test(t.other), 'another client\'s form is refused by name');
   R.ok(/flat\.pdf: no answers could be read - the boxes may have been flattened/.test(t.flat) && t.n === 2, 'a flattened form is refused with the reason, and nothing was added');
 }
 

@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 //  Submission pack and imports - accreditation engine step 6. A pack for a
-//  designer and a contractor test client opens and matches the RSSC and MVL
+//  designer and a contractor test client opens and matches the EDL and ECL
 //  submission folders; the client issue PDF is image pages, print only, with
 //  the client's reference; PDBR letters and DRM assessments import against
 //  Q10.1 to Q10.3. ExcelJS comes from node_modules (the same build the app
@@ -28,49 +28,49 @@ async function pack(){
 }
 const top = (zip, rootName) => Object.keys(zip.files).filter(n => n.startsWith(rootName) && n !== rootName).map(n => n.slice(rootName.length)).filter(n => !n.slice(0, -1).includes('/')).sort();
 
-// a designer test client, as RSSC
-await seed(page, { company: { legalName: 'RS Security Consultants Ltd', shortName: 'RSSC' },
+// a designer test client, as EDL
+await seed(page, { company: { legalName: 'Example Design Ltd', shortName: 'EDL' },
   documents: [{ id: 'd1', name: '01 Health and Safety Policy', dated: '2026-10-01', qids: ['HS-02'], link: 'https://example.com/hs.pdf' }, { id: 'd2', name: 'Old advice record', dated: '2025-06-01', qids: ['HS-11'], link: 'https://example.com/old.pdf' }],
   accred: { roles: ['designer'], schemes: { cl: { on: true } }, answers: {}, cl: { valid }, package: { id: 'standard', start: '2026-11', dayRate: '500' } } }, 'cas');
 {
   const p = await pack();
-  const rootName = 'RSSC CL Submission 2026/';
-  R.ok(p.name === 'RSSC CL Submission 2026.zip', 'the designer pack is named for the client and year: ' + p.name);
-  const want = ['00 Pack contents.txt', '00 RSSC CL Submission Tracker - Client Copy.xlsx', '00 RSSC CL Submission Tracker.xlsx', '01 Company Information/', '02 Insurance/', '03 Health and Safety and SSIP/',
+  const rootName = 'EDL CL Submission 2026/';
+  R.ok(p.name === 'EDL CL Submission 2026.zip', 'the designer pack is named for the client and year: ' + p.name);
+  const want = ['00 Pack contents.txt', '00 EDL CL Submission Tracker - Client Copy.xlsx', '00 EDL CL Submission Tracker.xlsx', '01 Company Information/', '02 Insurance/', '03 Health and Safety and SSIP/',
     '04 Training and Competence/', '05 CDM and Building Safety/', '06 Quality and Environment/', '07 Equality and Harassment/', '08 Anti-Bribery Fraud and Tax Evasion/', '09 Modern Slavery and Right to Work/',
     '10 Whistleblowing and Communication Evidence/', '11 Data Protection/', '12 Social Value and Wellbeing/', '99 Do Not Upload - Old Versions/', 'Client Issue/'];
   const got = top(p.zip, rootName);
-  R.ok(JSON.stringify(got) === JSON.stringify(want), 'the folders and trackers match the RSSC submission: ' + got.join(' | '));
+  R.ok(JSON.stringify(got) === JSON.stringify(want.slice().sort()), 'the folders and trackers match the EDL submission: ' + got.join(' | '));
   R.ok(!!p.zip.file(rootName + '03 Health and Safety and SSIP/01 Health and Safety Policy 2026-10-01.url'), 'the tagged policy is filed in 03 as a shortcut');
   R.ok(!!p.zip.file(rootName + '99 Do Not Upload - Old Versions/Old advice record 2025-06-01.url'), 'the record over 12 months old is in 99');
-  for(const [f, sheets] of [['00 RSSC CL Submission Tracker.xlsx', 'Constructionline Gold,Annual Service Plan,CL Question Bank (Designer)'], ['00 RSSC CL Submission Tracker - Client Copy.xlsx', 'Constructionline Gold,Price List,Annual Service Plan,CL Question Bank (Designer)']]){
+  for(const [f, sheets] of [['00 EDL CL Submission Tracker.xlsx', 'Constructionline Gold,Annual Service Plan,CL Question Bank (Designer)'], ['00 EDL CL Submission Tracker - Client Copy.xlsx', 'Constructionline Gold,Price List,Annual Service Plan,CL Question Bank (Designer)']]){
     const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await p.zip.file(rootName + f).async('nodebuffer'));
     R.ok(wb.worksheets.map(w => w.name).join(',') === sheets, f + ' opens, with ' + sheets);
   }
-  const pdf = (await p.zip.file(rootName + 'Client Issue/00 RSSC CL Submission Tracker - Client Issue.pdf').async('nodebuffer')).toString('latin1');
+  const pdf = (await p.zip.file(rootName + 'Client Issue/00 EDL CL Submission Tracker - Client Issue.pdf').async('nodebuffer')).toString('latin1');
   const P = /\/P (-?\d+)/.exec(pdf), perm = P ? (+P[1] >>> 0) : 0;
   const pages = (pdf.match(/\/Type \/Page\b/g) || []).length, images = (pdf.match(/\/Subtype \/Image/g) || []).length;
   R.ok(pdf.startsWith('%PDF') && /\/Encrypt/.test(pdf), 'the client issue PDF is protected');
   R.ok((perm & 4) && !(perm & 8) && !(perm & 16) && !(perm & 32), 'printing is allowed; changing, copying and annotating are not (P ' + (P && P[1]) + ')');
   R.ok(pages > 0 && images === pages, 'every page is an image: ' + pages + ' pages, ' + images + ' images');
-  R.ok(/^AHS-RSSC-\d{4}-[0-9A-F]{4}$/.test(p.ref), 'the client reference: ' + p.ref);
+  R.ok(/^AHS-EDL-\d{4}-[0-9A-F]{4}$/.test(p.ref), 'the client reference: ' + p.ref);
   const again = await pack();
   R.ok(again.ref === p.ref, 'the same client keeps the same reference');
   const contents = await p.zip.file(rootName + '00 Pack contents.txt').async('string');
-  R.ok(contents.includes(p.ref) && contents.includes('RS Security Consultants Ltd'), 'the pack contents name the client and the reference');
+  R.ok(contents.includes(p.ref) && contents.includes('Example Design Ltd'), 'the pack contents name the client and the reference');
 }
-// a contractor test client, as MVL
-await seed(page, { company: { legalName: 'Morley Ventilation Ltd', shortName: 'MVL' },
+// a contractor test client, as ECL
+await seed(page, { company: { legalName: 'Example Contracting Ltd', shortName: 'ECL' },
   siteInspections: [{ id: 'v1', kind: 'Site inspection', site: 'Genesis', actual: '2026-09-15', outcome: 'Satisfactory', ref: 'https://example.com/genesis.pdf' }],
   accred: { roles: ['contractor'], schemes: { cl: { on: true } }, answers: {}, cl: { valid: { Insurances: '2026-10-22' } }, package: { id: 'standard', start: '2026-11' } } }, 'cas');
 {
   const p = await pack();
-  const rootName = 'MVL CL Submission 2026/';
+  const rootName = 'ECL CL Submission 2026/';
   const got = top(p.zip, rootName).filter(n => n.endsWith('/'));
-  R.ok(got.join('|') === '01 Company Information/|02 Insurance/|03 Health and Safety and SSIP/|04 Training and Competence/|05 CDM and Building Safety/|06 Quality and Environment/|07 Equality and Harassment/|08 Anti-Bribery Fraud and Tax Evasion/|09 Modern Slavery and Right to Work/|10 Whistleblowing and Communication Evidence/|11 Data Protection/|12 Social Value and Wellbeing/|13 Site Evidence/|99 Do Not Upload - Old Versions/|Client Issue/', 'the contractor pack has 01 to 13, 99 and Client Issue, as the MVL submission');
+  R.ok(got.join('|') === '01 Company Information/|02 Insurance/|03 Health and Safety and SSIP/|04 Training and Competence/|05 CDM and Building Safety/|06 Quality and Environment/|07 Equality and Harassment/|08 Anti-Bribery Fraud and Tax Evasion/|09 Modern Slavery and Right to Work/|10 Whistleblowing and Communication Evidence/|11 Data Protection/|12 Social Value and Wellbeing/|13 Site Evidence/|99 Do Not Upload - Old Versions/|Client Issue/', 'the contractor pack has 01 to 13, 99 and Client Issue, as the ECL submission');
   R.ok(!!p.zip.file(rootName + '13 Site Evidence/Site inspection, Genesis 2026-09-15.url'), 'the site inspection is filed in 13 Site Evidence');
-  const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await p.zip.file(rootName + '00 MVL CL Submission Tracker - Client Copy.xlsx').async('nodebuffer'));
-  R.ok(wb.worksheets[0].getCell('A1').value === 'MVL & AHS Ltd: Constructionline Gold, ' + (await page.evaluate(() => { const d = new Date(); return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); })) + ' (client copy)', 'the client copy title');
+  const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await p.zip.file(rootName + '00 ECL CL Submission Tracker - Client Copy.xlsx').async('nodebuffer'));
+  R.ok(wb.worksheets[0].getCell('A1').value === 'ECL & AHS Ltd: Constructionline Gold, ' + (await page.evaluate(() => { const d = new Date(); return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); })) + ' (client copy)', 'the client copy title');
 }
 // imports: a PDBR letter and a DRM assessment
 {

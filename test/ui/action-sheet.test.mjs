@@ -46,7 +46,7 @@ const RISKS = [
     { id: 'a6', desc: 'Banksman for reversing HGVs', owner: '', due: day(20), status: 'Not started' },
     { id: 'a7', desc: 'Speed limit signs at the gate', owner: 'Dave', due: day(-40), status: 'Complete' }] },
 ];
-await seed(page, { riskProfile: RISKS, company: { tradingName: 'Fairbank Fabrications Ltd', slt: [{ name: 'Dave Morley', role: 'Operations Director' }] } }, 'execplan');
+await seed(page, { riskProfile: RISKS, company: { tradingName: 'Fairbank Fabrications Ltd', slt: [{ name: 'Dave Marlow', role: 'Operations Director' }] } }, 'execplan');
 await page.evaluate(() => { delete S.actionSheets; });
 
 const act = id => page.evaluate(id => { for (const r of S.riskProfile) { const a = (r.actions || []).find(x => x.id === id); if (a) return JSON.parse(JSON.stringify(a)); } return null; }, id);
@@ -347,12 +347,12 @@ const fill = (answers, edit) => page.evaluate(async (sid, answers, edit) => {
 const ANSWERS = {
   as_1_r1_cmt: 'Bought and in use. On the pre-use check sheet.', as_1_r1_due: '12/10/2030', as_1_what: 'The stores are clear now.',
   as_1_r2_cmt: 'Training booked for November.',
-  as_2_r1_cmt: 'The landlord will not allow fixings into the roof.', as_2_r1_who: 'Dave Morley', as_2_r1_due: '9 Oct 2030',
+  as_2_r1_cmt: 'The landlord will not allow fixings into the roof.', as_2_r1_who: 'Dave Marlow', as_2_r1_due: '9 Oct 2030',
   as_2_r2_cmt: 'Agreed - book it with the access contractor.', as_2_r2_who: 'Dave', as_2_r2_due: 'end of Nov',
   as_2_r3_cmt: 'Rescue plan is with the insurer.',
   as_2_what: 'Budget is tight for the roof this year.',
   as_3_what: 'Waiting for the line-marking contractor.',
-  as_4_r1_who: 'Dave Morley', as_4_r1_due: '31/10/2030',      // line 4's one row: the rescue plan, only who and by when
+  as_4_r1_who: 'Dave Marlow', as_4_r1_due: '31/10/2030',      // line 4's one row: the rescue plan, only who and by when
   as__general: 'Budget is tight until January.' };
 const before = { a3: (await act('a3')).status, a1: (await act('a1')).status, a1o: (await act('a1')).owner, a1d: (await act('a1')).due, a2o: (await act('a2')).owner, a2d: (await act('a2')).due };
 const order0 = await lineIds();
@@ -367,11 +367,11 @@ const order0 = await lineIds();
     && it[0].resp.what === 'The stores are clear now.' && !it[0].resp.outcome && !(it[0].resp.ctls || []).length,
     'each row comes back against its action: the comment, who and by when, and whether they differ from what was printed - a who left as printed is no change');
   R.ok(c(1).length === 3 && c(1).map(x => x.a || 'gap').join(',') === 'a1,gap,a2' && c(1).map(x => x.c || '-').join(',') === 'c1,c2,c3' && c(1)[0].text === 'Fit edge protection to the loading bay roof'
-    && c(1)[0].whoChanged === true && c(1)[0].who === 'Dave Morley' && c(1)[1].gap === true && c(1)[1].cmt === ANSWERS.as_2_r2_cmt && c(1)[1].who === 'Dave' && c(1)[2].dueChanged === false && it[1].resp.what === ANSWERS.as_2_what,
+    && c(1)[0].whoChanged === true && c(1)[0].who === 'Dave Marlow' && c(1)[1].gap === true && c(1)[1].cmt === ANSWERS.as_2_r2_cmt && c(1)[1].who === 'Dave' && c(1)[2].dueChanged === false && it[1].resp.what === ANSWERS.as_2_what,
     'each row keeps its action and the control it sits under; a gap row comes back as a gap under its control');
   R.ok(c(1).length === 3 && c(1)[0].due === '2030-10-09' && c(1)[0].dueChanged === true && c(1)[1].due === '' && c(1)[1].dueText === 'end of Nov' && c(1)[1].dueChanged === true, 'a date written as words is read, and one that cannot be read is kept as written');
   R.ok(c(2).length === 0 && it[2].resp.what === ANSWERS.as_3_what && c(3).length === 1
-    && c(3)[0].a === 'a2' && c(3)[0].c === null && c(3)[0].gap === false && c(3)[0].cmt === '' && c(3)[0].who === 'Dave Morley' && c(3)[0].due === '2030-10-31' && c(3)[0].whoChanged && c(3)[0].dueChanged,
+    && c(3)[0].a === 'a2' && c(3)[0].c === null && c(3)[0].gap === false && c(3)[0].cmt === '' && c(3)[0].who === 'Dave Marlow' && c(3)[0].due === '2030-10-31' && c(3)[0].whoChanged && c(3)[0].dueChanged,
     'a comment on the risk alone counts, and so does a row with only who and by when changed - the rescue plan, the one row on r1’s later page');
   R.ok(await page.evaluate(() => [0, 1, 2, 3].every(i => _asHasResp(S.actionSheets.list[0].items[i])) && !_asHasResp(S.actionSheets.list[0].items[4])), 'four lines read as answered, the one left as printed does not');
   R.ok(s1.returnedBy === '' && s1.general === 'Budget is tight until January.' && !!s1.returnedAt, 'no name is needed to send it back; the general comment is kept');
@@ -401,8 +401,8 @@ const lc = s => String(s || '').toLowerCase();
   // (innerText follows the house style's uppercase labels, so labels are matched in any case)
   R.ok(/Action \d+\s*·\s*Fit edge protection to the loading bay roof/i.test(t.text) && /Action \d+\s*·\s*Write a rescue plan for harness work/i.test(t.text)
     && lc(t.text).indexOf(lc(ANSWERS.as_2_r1_cmt)) >= 0 && lc(t.text).indexOf(lc(ANSWERS.as_2_r3_cmt)) >= 0, 'then each row: Action k · the action, and what they wrote against it');
-  R.ok(/Who:\s*Dave\s*→\s*Dave Morley/i.test(t.text) && new RegExp('By when:\\s*' + rx(t.d30) + '\\s*→\\s*' + rx(t.d9), 'i').test(t.text),
-    'a change shows what was printed and what came back - Who: Dave → Dave Morley, By when: ' + t.d30 + ' → ' + t.d9);
+  R.ok(/Who:\s*Dave\s*→\s*Dave Marlow/i.test(t.text) && new RegExp('By when:\\s*' + rx(t.d30) + '\\s*→\\s*' + rx(t.d9), 'i').test(t.text),
+    'a change shows what was printed and what came back - Who: Dave → Dave Marlow, By when: ' + t.d30 + ' → ' + t.d9);
   R.ok(/New action under Control 2\s*·\s*Roof access permit/i.test(t.text) && /date as written: end of Nov/i.test(t.text), 'a gap row reads New action under Control 2 · Roof access permit; a date that could not be read says so, as written');
   R.ok(t.apply === 1 && t.hist === 1 && t.adds === 1, 'a change to an action offers Apply to the plan, a comment alone Add to the action’s history, a gap row ＋ Add to the plan under this control');
   R.ok(!t.approve && /Agreed/.test(t.agreed) && t.others, 'the decisions: Agreed, a compromise, the client accepts the risk, or carry - there is no Approve on a sheet like this');
@@ -417,7 +417,7 @@ const lc = s => String(s || '').toLowerCase();
     return { owner: a1.owner, due: a1.due, status: a1.status, log: (a1.log || []).slice(n0).map(l => l.type + ': ' + l.text), applied: (((it.resp || {}).rows || [])[0] || {}).applied,
       text: __line(sid, 1).innerText, left: __rowBtns(sid, 1, /^Apply to the plan$/).length };
   }, s1.id);
-  R.ok(t.owner === 'Dave Morley' && t.due === '2030-10-09' && t.status === before.a1, 'Apply to the plan sets the action’s owner and target date to what came back - its status untouched');
+  R.ok(t.owner === 'Dave Marlow' && t.due === '2030-10-09' && t.status === before.a1, 'Apply to the plan sets the action’s owner and target date to what came back - its status untouched');
   R.ok(t.log.some(l => /^comment: From .*\b1, returned .+: The landlord will not allow fixings into the roof\.( \(.*\))?$/.test(l)), 'and writes the comment on its history - which sheet, when it came back, what was said (' + (t.log.slice(-1)[0] || 'nothing') + ')');
   R.ok(!!t.applied && /✓\s*Done/i.test(t.text) && t.left === 0, 'the row now reads ✓ Done, and cannot be applied twice');
 }
@@ -502,7 +502,7 @@ const lc = s => String(s || '').toLowerCase();
     const a2 = S.riskProfile.find(r => r.id === 'r1').actions.find(a => a.id === 'a2');
     return { owner: a2.owner, due: a2.due, applied: (((_asSheet(sid).items[3].resp || {}).rows || [])[0] || {}).applied };
   }, s1.id);
-  R.ok(t.owner === 'Dave Morley' && t.due === '2030-10-31' && !!t.applied, 'a row with only who and by when written over applies them to the rescue plan');
+  R.ok(t.owner === 'Dave Marlow' && t.due === '2030-10-31' && !!t.applied, 'a row with only who and by when written over applies them to the rescue plan');
 }
 {
   // the same copy (the corrected one, the last sent back) imported again once its rows are on the plan: they stay done - nothing goes on twice
@@ -579,25 +579,25 @@ R.ok((await sheet(1)).items[2].decision === 'carry' && (await act('a5')).status 
   const t = await page.evaluate(sid => {
     const f = k => __rowIn(sid, 4).rows[k] || {};
     const put = (k, n, v) => { const el = f(k)[n]; if (!el) return false; __put(el, n === 'due' && el.type !== 'date' ? v.slice(8, 10) + '/' + v.slice(5, 7) + '/' + v.slice(0, 4) : v); return true; };
-    const done = [put(1, 'cmt', 'Reversing is under ten movements a week.'), put(1, 'who', 'Dave Morley'), put(1, 'due', '2030-10-20')];
+    const done = [put(1, 'cmt', 'Reversing is under ten movements a week.'), put(1, 'who', 'Dave Marlow'), put(1, 'due', '2030-10-20')];
     const w = __whatIn(sid, 4); if (w) __put(w, 'We accept this one.');
     const it = _asSheet(sid).items[4];
     return { done, resp: JSON.parse(JSON.stringify(it.resp || {})), back: _asHasResp(it) };
   }, s1.id);
   const r = (t.resp.rows || []).find(x => x.a === 'a6') || {};
-  R.ok(t.done.every(Boolean) && (t.resp.rows || []).length === 1 && r.k === 1 && r.cmt === 'Reversing is under ten movements a week.' && r.who === 'Dave Morley' && r.due === '2030-10-20' && t.resp.what === 'We accept this one.' && t.back && !(t.resp.ctls || []).length,
+  R.ok(t.done.every(Boolean) && (t.resp.rows || []).length === 1 && r.k === 1 && r.cmt === 'Reversing is under ten movements a week.' && r.who === 'Dave Marlow' && r.due === '2030-10-20' && t.resp.what === 'We accept this one.' && t.back && !(t.resp.ctls || []).length,
     'what is keyed in is kept against its action’s row, as an import would keep it (' + JSON.stringify(r).slice(0, 120) + ')');
   await page.evaluate(() => _asRender());       // the screen as it is drawn when it is opened again
   await page.evaluate(sid => { document.getElementById('asA-' + sid + '-4').value = ''; [...__line(sid, 4).querySelectorAll('.as-btns button')].find(x => /Client accepts the risk/.test(x.textContent)).click(); }, s1.id);
   await wait(page, 200);
   R.ok(/who at the client accepts the risk/.test(await toast()) && !(await sheet(1)).items[4].decision, 'an accepted risk needs the name of the person accepting it');
-  await page.type('#asA-' + s1.id + '-4', 'Dave Morley, Operations Director');
+  await page.type('#asA-' + s1.id + '-4', 'Dave Marlow, Operations Director');
   await page.type('#asN-' + s1.id + '-4', 'Reversing is under ten movements a week; a banksman is disproportionate. Reviewed at the next visit.');
   await page.evaluate(sid => { [...__line(sid, 4).querySelectorAll('.as-btns button')].find(x => /Client accepts the risk/.test(x.textContent)).click(); }, s1.id);
   await wait(page, 300);
   const a = await act('a6');
   const reg = await page.evaluate(() => _acceptedActions().map(x => x.id));
-  R.ok(a.status === 'Accepted' && a.acceptedBy === 'Dave Morley, Operations Director' && /disproportionate/.test(a.acceptReason) && !!a.acceptDate, 'the action closes as an accepted risk, with who and why');
+  R.ok(a.status === 'Accepted' && a.acceptedBy === 'Dave Marlow, Operations Director' && /disproportionate/.test(a.acceptReason) && !!a.acceptDate, 'the action closes as an accepted risk, with who and why');
   R.ok(reg.includes('a6'), 'and it is on the Risk Acceptance Register by itself');
   R.ok(/Reviewed/.test(await page.evaluate(() => _asSheetStatus(S.actionSheets.list[0]).label)), 'with every line decided the sheet reads Reviewed');
 }
@@ -639,9 +639,9 @@ let s2;
     const tf = (n, v) => { const f = form.createTextField(n), p = at(); f.addToPage(pg, { x: p.x, y: p.y, width: 120, height: 20 }); if (v) f.setText(v); return f; };
     const cb = (n, on) => { const f = form.createCheckBox(n), p = at(); f.addToPage(pg, { x: p.x, y: p.y, width: 12, height: 12 }); if (on) f.check(); return f; };
     tf('as__meta', JSON.stringify({ v: 1, kind: 'top5', client: _sltClient(), sheet: s.id, no: s.no, made: _asToday(), keys: s.items.map(x => x.key) })).enableReadOnly();
-    tf('as__name', 'Dave Morley'); tf('as__role', 'Operations Director');
+    tf('as__name', 'Dave Marlow'); tf('as__role', 'Operations Director');
     const ANS = { 1: { o: ['done'], what: 'Done - the counterweighted rail is up.', date: '14/10/2026', by: 'Sam' },
-      2: { o: ['diff'], what: 'Done another way - barriers hired for the yard.', date: '', by: 'Dave Morley' },
+      2: { o: ['diff'], what: 'Done another way - barriers hired for the yard.', date: '', by: 'Dave Marlow' },
       3: { o: ['done', 'cannot'], what: 'Not sure - see me.' } };
     for (let n = 1; n <= s.items.length; n++) {
       const a = ANS[n] || { o: [] };
@@ -659,7 +659,7 @@ let s2;
   R.ok(/Sheet 2: 3 answers in/.test(t.toast) && /1 with more than one box ticked/.test(t.toast), 'an old sheet imports as it always did, and says one line needs a choice (' + t.toast.slice(0, 90) + ')');
   R.ok(r(0).outcome === 'done' && r(0).date === '2026-10-14' && r(0).by === 'Sam' && /counterweighted rail is up/.test(r(0).what) && !(r(0).ctls || []).length && !(r(0).rows || []).length, 'tick, date and name are read off it - no control or action rows');
   R.ok(r(1).outcome === 'diff' && r(2).outcome === '' && /More than one box was ticked: Done as recommended, Cannot be done/.test(r(2).what), 'two ticks are not guessed at: the line says so and waits for a choice');
-  R.ok(t.returnedBy === 'Dave Morley (Operations Director)' && t.general === 'Sent back on the old form.', 'who returned it and their general comment are kept');
+  R.ok(t.returnedBy === 'Dave Marlow (Operations Director)' && t.general === 'Sent back on the old form.', 'who returned it and their general comment are kept');
   R.ok(!!t.approve[0] && t.approve[0].t === 'Approve' && !t.approve[0].dis && !!t.approve[1] && t.approve[1].t === 'Approve what was done instead' && !!t.approve[2] && t.approve[2].dis,
     'its lines still offer Approve - and Approve what was done instead - but not on a line with no outcome chosen');
   R.ok(t.select && !t.agreed && t.adds === 0, 'the old screen as it was: the what-happened choice, no Agreed, no Add to the plan under a control');

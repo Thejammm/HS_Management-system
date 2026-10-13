@@ -71,7 +71,7 @@ router.get('/tenants', async (req, res) => {
   }
 });
 
-// POST /api/admin/tenants  body: { id?: 'easy-travel', name: 'Easy Travel Leeds' }
+// POST /api/admin/tenants  body: { id?: 'example-garage', name: 'Example Garage Leeds' }
 router.post('/tenants', async (req, res) => {
   const name = String(req.body?.name||'').trim();
   if(!name){ return res.status(400).json({ error: 'name_required' }); }

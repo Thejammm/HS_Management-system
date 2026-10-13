@@ -134,7 +134,7 @@ never uses the engine has nothing added.
 **How to test**
 
 - `npm test` runs `test/constructionline.test.mjs`: every REF accounted for once;
-  every REF in the RSSC and MVL trackers lands in the same column (H&S or SSIP);
+  every REF in the EDL and ECL trackers lands in the same column (H&S or SSIP);
   the trackers' valid until dates give the same colours; BSA last; CHAS untouched.
   The tracker REFs and dates are in `test/fixtures/cl-trackers.json`, extracted
   from the October 2026 trackers.
@@ -157,16 +157,16 @@ never uses the engine has nothing added.
   management, products, information to other duty holders and reporting breaches
   (9964 to 9995) are not among the 77, so they are extras with `bsa: true`.
 - Where the designer SSIP set and the Health and Safety section ask the same CAS
-  questions they share a line, the SSIP REF in its own column (as the RSSC
-  tracker does). The contractor SSIP set stands alone (as the MVL tracker does).
+  questions they share a line, the SSIP REF in its own column (as the EDL
+  tracker does). The contractor SSIP set stands alone (as the ECL tracker does).
   A section whose REFs all sit in another section joins it (contractor Health and
-  Safety inside the Third Party section, as the MVL tracker shows).
+  Safety inside the Third Party section, as the ECL tracker shows).
 - The tracker's question wording was a short paraphrase. Compass shows the
   portal's own words, as the instructions require; the CAS id and the SSIP
   question number sit under each question.
 - The trackers group several declarations on one line in places. Compass keeps one
   line per portal question, so a few tracker lines are two or three lines here.
-- The client's short name (for "RSSC to do") comes from `S.company.shortName`,
+- The client's short name (for "EDL to do") comes from `S.company.shortName`,
   added to the fact sheet in step 2; until then it falls back to the client name.
 
 **Left open**
@@ -181,7 +181,7 @@ never uses the engine has nothing added.
 **What was built**
 
 - Company setup gains an "Accreditation fact sheet" card (no new tab): short name
-  (used in trackers, e.g. "RSSC to do"), registered office, head office (or "same
+  (used in trackers, e.g. "EDL to do"), registered office, head office (or "same
   as the registered office"), directors, the person responsible for health and
   safety and their position, headcount band (1 to 4, or 5 or more), number on
   PAYE, uses subcontractors, works on higher-risk buildings, duty holder roles,
@@ -197,7 +197,7 @@ never uses the engine has nothing added.
 - `accred-core.js` holds the fact registry (`FACTS`), what each fact feeds
   (`factImpact`) and the conflict rules (`factConflicts`). The section view reads
   its answers from the fact sheet: "From the client fact sheet: …", and for a
-  client fact "RSSC to confirm. Suggested answer: …".
+  client fact "EDL to confirm. Suggested answer: …".
 - Warning panel (on the fact sheet and above the Constructionline sections): a
   fact that disagrees with an answer or a date:
   - headcount band against employees, PAYE and the HS-16 answer;
@@ -344,7 +344,7 @@ never uses the engine has nothing added.
 **Assumptions**
 
 - "The user" is the signed-in person; the log stores their name and id. The card
-  names the company ("Approved and signed by Robert Smith for RSSC"), so
+  names the company ("Approved and signed by Robert Smith for EDL"), so
   client-facing wording leads with the company.
 - The document version is the version field, else the document date. A document
   with neither is "unversioned".
@@ -422,7 +422,7 @@ never uses the engine has nothing added.
 
 - Accreditation tab, Constructionline sections: **Download the submission
   pack**. It builds one ZIP, `<short> CL Submission <year>.zip`, laid out like
-  the RSSC and MVL submissions:
+  the EDL and ECL submissions:
   - `00 <short> CL Submission Tracker.xlsx`, the AHS tracker;
   - `00 <short> CL Submission Tracker - Client Copy.xlsx`, with "AHS Ltd
     will…" wording and the price list;
@@ -433,7 +433,7 @@ never uses the engine has nothing added.
   - `00 Pack contents.txt`, with the reference and any record not filed because
     it is not tagged.
 - The trackers (`public/reports/cl-pack.js`, built with ExcelJS) follow the
-  RSSC and MVL layout:
+  EDL and ECL layout:
   - Arial throughout;
   - the title, and the four counts as live COUNTIFS formulas;
   - the ten columns at the same widths, with cyan H&S and purple SSIP headers;
@@ -467,7 +467,7 @@ never uses the engine has nothing added.
     with AI tools without written permission. Ref: <ref>".
 
   The PDF opens without a password and allows printing only: no copying,
-  changing or annotating. Its text layer matches the October 2026 RSSC client
+  changing or annotating. Its text layer matches the October 2026 EDL client
   issue PDF word for word.
 - Reference: `AHS-<SHORT>-<YYMM>-<4 hex>`. It is made the first time a pack is
   built for a client and then kept (`S.accred.issueRef`). Each download is
@@ -485,11 +485,11 @@ never uses the engine has nothing added.
 
 - `npm test` runs `test/submission-pack.test.mjs`. It covers the folders
   against both examples, the filing rules, the "will" wording, the reference
-  and the shortcuts. It also checks the tracker layout against the RSSC layout,
+  and the shortcuts. It also checks the tracker layout against the EDL layout,
   and the Price List.
 - `node test/ui/submission-pack.test.mjs` builds a designer pack and a
   contractor pack in the app and opens them. It checks:
-  - the folders match the RSSC and MVL submissions;
+  - the folders match the EDL and ECL submissions;
   - both workbooks open in ExcelJS;
   - the PDF is encrypted and print only, with an image on every page;
   - the reference is kept between packs;

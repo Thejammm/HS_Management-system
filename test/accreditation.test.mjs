@@ -54,7 +54,7 @@ test('freshness and expiry are worked out from the dates, never typed', () => {
     { id: 'near', name: 'Near policy', dated: A.addMonths(ahead(30), -12) },
     { id: 'fresh', name: 'Fresh policy', dated: ago(2) },
     { id: 'undated', name: 'Undated policy' },
-    { id: 'signed', name: 'Signed policy', dated: ago(2), signedBy: 'J Morley', signedDirector: true },
+    { id: 'signed', name: 'Signed policy', dated: ago(2), signedBy: 'J Marlow', signedDirector: true },
     { id: 'unsigned', name: 'Unsigned policy', dated: ago(2), signedBy: 'Office manager', signedDirector: false },
   ];
   const mems = [{ id: 'm-past', name: 'SSIP', expiry: ahead(-3) }, { id: 'm-soon', name: 'SSIP', expiry: ahead(20) }, { id: 'm-long', name: 'SSIP', expiry: ahead(300) }, { id: 'm-none', name: 'SSIP' }];
@@ -84,7 +84,7 @@ test('the awkward states: not applicable and answered elsewhere carry their reas
   assert.deepEqual(['na', 'No higher-risk buildings'], (x => [x.k, x.why])(st(base({ 'BS-08': { na: 'No higher-risk buildings' } }), 'BS-08')));
   assert.equal(st(base({ 'SS-01': { elsewhere: 'SSIP held through CHAS' } }), 'SS-01').k, 'elsewhere');
   assert.equal(st(base({ 'BS-08': { na: '   ' } }), 'BS-08').k, 'gap', 'a blank reason is no reason');
-  assert.equal(st(base({ 'HS-01': { text: 'J Morley' } }), 'HS-01').k, 'evidenced');
+  assert.equal(st(base({ 'HS-01': { text: 'J Marlow' } }), 'HS-01').k, 'evidenced');
   assert.equal(st(base({ 'HS-05': { decl: 'no' } }), 'HS-05').why, 'Declared No');
 });
 
@@ -100,13 +100,13 @@ test('a rejection keeps its history, and resubmitting clears the rejected state'
 });
 
 test('answer once: one answer covers every scheme question that shares the id', () => {
-  const s = base({ 'HS-01': { text: 'J Morley, Managing Director' } });
+  const s = base({ 'HS-01': { text: 'J Marlow, Managing Director' } });
   const used = J(A.usedIn(A.byId('HS-01'), s).map(u => u.set));
   assert.deepEqual(used, ['cl_ssip_contractor', 'cl_hs_thirdparty'], 'HS-01 is asked in the SSIP contractor set and the third-party set');
   const groups = J(A.packRows(s, 'cl', TODAY));
   const hits = groups.flatMap(g => g.rows.filter(r => r.id === 'HS-01').map(r => ({ set: g.set, answer: r.answer, refs: r.refs })));
   assert.deepEqual(hits.map(h => h.set), ['cl_ssip_contractor', 'cl_hs_thirdparty']);
-  assert.ok(hits.every(h => h.answer === 'J Morley, Managing Director'), 'every set carries the one answer');
+  assert.ok(hits.every(h => h.answer === 'J Marlow, Managing Director'), 'every set carries the one answer');
   assert.deepEqual(hits[0].refs, [2827]);
   // the pack keeps the scheme's own order: sets as listed, REF ascending within each
   const crg = groups.find(g => g.set === 'cl_crg');

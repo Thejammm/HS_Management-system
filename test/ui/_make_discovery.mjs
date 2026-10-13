@@ -13,7 +13,7 @@ if (!OUT_DIR) { console.error('Give me an output folder.'); process.exit(2); }
 const OUT = path.join(OUT_DIR, 'Testing_Client_discovery_questionnaire_COMPLETED.pdf');
 
 // A small mixed operation: a garage that also runs passenger transport, with
-// an office. The same shape as Easy Travel, so the test rehearses tomorrow.
+// an office. The same shape as Example Garage, so the test rehearses tomorrow.
 const SECTORS = ['motor', 'transportsvc', 'office'];
 const ANSWERS = {
   // business profile - who they are and who they affect

@@ -116,7 +116,7 @@ for (const [ref, x] of [...seen.entries()].sort((a, b) => a[1].order - b[1].orde
 MASTER.extras = extras;
 MASTER.constructionline = {
   captured: '2026-10-13',
-  source: 'Constructionline question banks read from RSSC (Designer, 418 questions) and MVL (Contractor, 377 questions) on 13 October 2026. Follow-up questions shown only after a particular answer, and buyer Upgrade modules, are not included.',
+  source: 'Constructionline question banks read from a designer client account (418 questions) and a contractor client account (377 questions) on 13 October 2026. Follow-up questions shown only after a particular answer, and buyer Upgrade modules, are not included.',
   rule: 'Every REF either maps to a CAS master question (refs.constructionline) or is a Constructionline extra (MASTER.extras, scheme constructionline).'
 };
 

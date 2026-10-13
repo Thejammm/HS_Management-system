@@ -12,7 +12,7 @@ const { browser, page, errors } = await openApp();
 
 const r = (id, activity, l, s, extra) => Object.assign({ id, activity, likelihood: String(l), severity: String(s), actions: [] }, extra || {});
 // register order deliberately NOT the risk order: fire is added last
-await seed(page, { company: { legalName: 'Fineline Group Ltd' }, riskProfile: [
+await seed(page, { company: { legalName: 'Example Architects Group Ltd' }, riskProfile: [
   r('m1', 'Display screen equipment', 3, 2),           // 6, severity 2
   r('m2', 'Manual handling of survey kit', 2, 3),      // 6, severity 3
   r('m3', 'Contractor management', 2, 4),              // 8

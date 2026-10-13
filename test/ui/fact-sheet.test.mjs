@@ -8,7 +8,7 @@ import { openApp, seed, wait, reporter } from './harness.mjs';
 
 const R = reporter('Accreditation fact sheet - facts held once');
 const { browser, page, errors } = await openApp();
-await seed(page, { company: { tradingName: 'Test Designer Ltd', shortName: 'TDL', address: '12A Walsh Lane, Leeds, LS12 5EJ', employees: '3', headBand: '1-4', paye: '3' },
+await seed(page, { company: { tradingName: 'Test Designer Ltd', shortName: 'TDL', address: '1 Example Street, Leeds, LS1 1AA', employees: '3', headBand: '1-4', paye: '3' },
   documents: [{ id: 'd1', name: '01 Health and Safety Policy', dated: '2026-10-01' }, { id: 'd2', name: '29 Organisation and Scope Statement' }, { id: 'd3', name: 'Training Matrix' }, { id: 'd4', name: 'Van checklist' }],
   accred: { roles: ['designer'], schemes: { cl: { on: true } }, answers: { 'HS-20': { decl: 'yes' } } } }, 'company');
 {
@@ -43,7 +43,7 @@ await seed(page, { company: { tradingName: 'Test Designer Ltd', shortName: 'TDL'
     return { same: document.activeElement === ta, text: document.getElementById('coFactPanels').innerText, addr: S.company.address };
   });
   R.ok(t.same && t.addr === '1 New Street, Leeds, LS1 1AA', 'typing the address keeps the cursor in the box');
-  R.ok(/Registered office changed from "12A Walsh Lane, Leeds, LS12 5EJ" to "1 New Street, Leeds, LS1 1AA"/.test(t.text), 'the address change is listed');
+  R.ok(/Registered office changed from "1 Example Street, Leeds, LS1 1AA" to "1 New Street, Leeds, LS1 1AA"/.test(t.text), 'the address change is listed');
   R.ok(/Registered Office/.test(t.text) && /301/.test(t.text) && /387/.test(t.text), 'with the Registered Office section and the address held in the H&S sections');
 }
 {

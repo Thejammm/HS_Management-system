@@ -459,14 +459,14 @@ const fireCtls = [], fireActs = [];
   for (let j = 1; j <= 9; j++) fireCtls.push(ctl('Fk' + j, ['Fire door to the paint store kept shut and self-closing', 'Flammables kept in a fire-rated cabinet, no more than a day\'s use out', 'Hot work permit for any work within ten metres of the store',
     'Extraction serviced every six months and the ducts cleaned', 'No smoking or vaping signs at both entrances', 'Fire alarm call point by the store door, tested weekly',
     'Spill kit at the store and staff shown how to use it', 'Waste rags in a lidded metal bin, emptied daily', 'Fire risk assessment reviewed after any change to the store'][j - 1],
-    j % 3 === 0 ? { status: 'Complete', completedDate: day(-30 - j) } : { owner: j % 2 ? 'Dave Morley' : 'Sam Line', due: day(20 + j) }));
+    j % 3 === 0 ? { status: 'Complete', completedDate: day(-30 - j) } : { owner: j % 2 ? 'Dave Marlow' : 'Sam Line', due: day(20 + j) }));
   for (let i = 1; i <= 12; i++) {
     const cj = Object.keys(link).find(j => link[j].includes(i));
     fireActs.push(act('Fa' + i, 'Paint store action ' + i + ': ' + ['check the self-closer and the intumescent strips on the store door and record it', 'move the thinners into the fire-rated cabinet and label the shelves',
       'brief the maintenance team on the hot work permit and keep the pad in the office', 'book the extraction service and keep the certificate', 'fit the signs at both entrances',
       'test the call point weekly and log it', 'buy a second spill kit for the mixing bench', 'swap the open rag bin for a lidded metal one', 'add the store to the weekly walk round',
       'review the fire risk assessment for the new mixing bench', 'train two fire marshals for the paint shop', 'write a one-page emergency plan for the store'][i - 1],
-      Object.assign({ owner: ['Dave Morley', 'Sam Line', 'Jo Fine', 'Dave, Sam'][i % 4], due: day(4 + i * 3), priority: ['High', 'Medium', 'Low'][i % 3] }, cj ? { forCtl: 'Fk' + cj } : {})));
+      Object.assign({ owner: ['Dave Marlow', 'Sam Line', 'Jo Fine', 'Dave, Sam'][i % 4], due: day(4 + i * 3), priority: ['High', 'Medium', 'Low'][i % 3] }, cj ? { forCtl: 'Fk' + cj } : {})));
   }
 }
 const A_RISKS = () => ([
@@ -475,7 +475,7 @@ const A_RISKS = () => ([
     personsAtRisk: ['Maintenance staff', 'Contractors'], businessImpact: 'Prosecution and the loss of the site lease.',
     actions: [
       ctl('A1k1', 'Guard rail on the roof edge', { status: 'Complete', completedDate: day(-20), owner: 'Dave' }),
-      ctl('A1k2', 'Roof access permit signed by a director', { owner: 'Dave Morley', due: day(30) }),
+      ctl('A1k2', 'Roof access permit signed by a director', { owner: 'Dave Marlow', due: day(30) }),
       ctl('A1kb', '   '),
       ctl('A1kx', 'Ladder tied at the top', { deleted: true }),
       ctl('A1k3', 'Harness training for roof work', { status: 'In progress' }),
@@ -507,8 +507,8 @@ const A_RISKS = () => ([
     hazard: 'Asbestos gaskets on the boiler flanges', assocRisk: 'Fibres released when the flanges are broken for maintenance, spreading across the plant room floor',
     harm: 'Mesothelioma decades later', personsAtRisk: ['Maintenance staff', 'Boiler engineers', 'Cleaners'], businessImpact: 'HSE enforcement and a long-tail civil claim.',
     actions: [
-      ctl('A5k1', LONG_CTL, { owner: 'Dave Morley', due: day(15) }),
-      act('A5z2', LONG_DESC, { forCtl: 'A5k1', owner: 'Dave Morley', due: day(2), priority: 'Critical' }),
+      ctl('A5k1', LONG_CTL, { owner: 'Dave Marlow', due: day(15) }),
+      act('A5z2', LONG_DESC, { forCtl: 'A5k1', owner: 'Dave Marlow', due: day(2), priority: 'Critical' }),
       act('A5z3', 'Label the plant room door as an asbestos area', { owner: 'Sam', due: day(50), priority: 'Medium' })] },
 ]);
 {
@@ -563,26 +563,26 @@ const A_RISKS = () => ([
 // ══ D. Risk sheet: six risks - a gap under a control, nothing open at all, a 12-row table, three meetings ══
 {
   const D6 = Array.from({ length: 12 }, (_, i) => act('D6a' + (i + 1), ['Measure the vibration on grinder ' + (i + 1) + ' and record the exposure points',
-    'Swap grinder ' + (i + 1) + ' for a low-vibration model and keep the data sheet'][i % 2], { owner: ['Sam Line', 'Dave Morley', 'Jo Fine'][i % 3], due: day(6 + i * 4), priority: ['High', 'Medium'][i % 2] }));
+    'Swap grinder ' + (i + 1) + ' for a low-vibration model and keep the data sheet'][i % 2], { owner: ['Sam Line', 'Dave Marlow', 'Jo Fine'][i % 3], due: day(6 + i * 4), priority: ['High', 'Medium'][i % 2] }));
   const D_RISKS = [
     { id: 'D1', activity: 'Work at height on the mezzanine', category: 'Physical', area: 'Warehouse', likelihood: '4', severity: '5', targetL: '1', targetS: '5',
       hazard: 'Open edge on the mezzanine', assocRisk: 'Falling while loading the mezzanine', personsAtRisk: ['Warehouse staff'],
       actions: [ctl('D1k1', 'Gate at the mezzanine loading point', { status: 'Complete', completedDate: day(-40) }),
-        ctl('D1k2', 'Loading only by forklift with a cage', { owner: 'Dave Morley', due: day(30) }),
+        ctl('D1k2', 'Loading only by forklift with a cage', { owner: 'Dave Marlow', due: day(30) }),
         ctl('D1k3', 'Mezzanine load notices', { owner: 'Sam Line' }),
         act('D1a1', 'Check the gate closes on its own', { forCtl: 'D1k1', owner: 'Sam Line', due: day(9) }),
         act('D1a2', 'Add the gate to the weekly checks', { forCtl: 'D1k1', owner: 'Sam Line', due: day(16) }),
         act('D1a3', 'Print and fit the load notices', { forCtl: 'D1k3', owner: 'Jo Fine', due: day(12) }),
-        act('D1a4', 'Fit a second handrail on the stairs', { owner: 'Dave Morley', due: day(2), priority: 'Critical' })] },
+        act('D1a4', 'Fit a second handrail on the stairs', { owner: 'Dave Marlow', due: day(2), priority: 'Critical' })] },
     { id: 'D2', activity: 'Dust from the cutting saws', category: 'Health', area: 'Workshop', likelihood: '3', severity: '4', targetL: '2', targetS: '3',
       hazard: 'Fine wood dust', assocRisk: 'Breathing in dust while cutting', personsAtRisk: ['Saw operators'],
-      actions: [act('D2a1', 'Get the extraction tested (LEV) and keep the report', { owner: 'Dave Morley', due: day(21) })] },
+      actions: [act('D2a1', 'Get the extraction tested (LEV) and keep the report', { owner: 'Dave Marlow', due: day(21) })] },
     { id: 'D3', activity: 'Legionella in the hot water system', category: 'Health', area: 'Premises', likelihood: '3', severity: '4', targetL: '1', targetS: '4',
       hazard: 'Little-used outlets', assocRisk: 'Water standing in dead legs', personsAtRisk: ['Staff', 'Visitors'],
       actions: [act('D3a1', 'Flush the little-used outlets weekly', { owner: 'Sam Line', due: day(5) })] },
     { id: 'D4', activity: 'Electrical installation out of test', category: 'Physical', area: 'Premises', likelihood: '3', severity: '4', targetL: '2', targetS: '4',
       hazard: 'The EICR is two years overdue', assocRisk: 'A fault going unnoticed', personsAtRisk: ['Everyone on site'],
-      actions: [ctl('D4k1', 'Fixed wiring tested every five years'), ctl('D4k2', 'Portable appliances tested yearly', { owner: 'Dave Morley' }),
+      actions: [ctl('D4k1', 'Fixed wiring tested every five years'), ctl('D4k2', 'Portable appliances tested yearly', { owner: 'Dave Marlow' }),
         act('D4a1', 'Book the electrician for the EICR', { owner: 'Jo Fine', due: day(8) })] },
     { id: 'D5', activity: 'Contractors on site without an induction', category: 'Management', area: 'Site', likelihood: '2', severity: '4', targetL: '1', targetS: '4',
       hazard: 'Contractors arriving unannounced', assocRisk: 'Working without knowing the site rules', personsAtRisk: ['Contractors', 'Staff'],
@@ -625,8 +625,8 @@ const DEC30 = MEET30.flatMap((m, k) => Array.from({ length: 1 + (k % 3) }, (_, j
   decision: 'Action ' + (j + 1) + ' from visit ' + (k + 1) + ': ' + ['fix the yard gate', 'book the forklift refresher', 'clear the fire exit by the stores', 'order new racking labels'][(k + j) % 4], owner: ['Sam Line', 'Jo Fine', ''][(k + j) % 3], due: j === 2 ? '' : day(10 + k), status: 'Agreed', raised: k % 2 })));
 {
   const RS = Array.from({ length: 14 }, (_, i) => {
-    const n = i + 1, nc = n % 4, na = 1 + (n % 3), cs = Array.from({ length: nc }, (_, j) => ctl('E' + n + 'k' + (j + 1), 'Control ' + (j + 1) + ' for hazard ' + n + ': kept in place and checked at the monthly walk round', j === 0 ? { status: 'Complete', completedDate: day(-10 - n) } : { owner: 'Dave Morley', due: day(10 + n + j) }));
-    const as = Array.from({ length: na }, (_, j) => act('E' + n + 'a' + (j + 1), 'Action ' + (j + 1) + ' on hazard ' + n + ': get it done and keep the record', Object.assign({ owner: ['Jo Fine', 'Sam Line', 'Dave Morley'][(n + j) % 3], due: day(3 + n + j * 5), priority: ['High', 'Medium', 'Low'][(n + j) % 3] }, (nc && j < nc && (n + j) % 2) ? { forCtl: 'E' + n + 'k' + (j + 1) } : {})));
+    const n = i + 1, nc = n % 4, na = 1 + (n % 3), cs = Array.from({ length: nc }, (_, j) => ctl('E' + n + 'k' + (j + 1), 'Control ' + (j + 1) + ' for hazard ' + n + ': kept in place and checked at the monthly walk round', j === 0 ? { status: 'Complete', completedDate: day(-10 - n) } : { owner: 'Dave Marlow', due: day(10 + n + j) }));
+    const as = Array.from({ length: na }, (_, j) => act('E' + n + 'a' + (j + 1), 'Action ' + (j + 1) + ' on hazard ' + n + ': get it done and keep the record', Object.assign({ owner: ['Jo Fine', 'Sam Line', 'Dave Marlow'][(n + j) % 3], due: day(3 + n + j * 5), priority: ['High', 'Medium', 'Low'][(n + j) % 3] }, (nc && j < nc && (n + j) % 2) ? { forCtl: 'E' + n + 'k' + (j + 1) } : {})));
     return { id: 'E' + n, activity: 'Hazard ' + n + ' in the works: ' + ['dust', 'noise', 'falls', 'fire', 'vehicles', 'chemicals', 'electrics'][n % 7], category: 'Physical', area: 'Works',
       likelihood: String(1 + (n % 5)), severity: String(2 + (n % 4)), targetL: '1', targetS: String(2 + (n % 4)), hazard: 'What is wrong with hazard ' + n, assocRisk: 'How hazard ' + n + ' hurts someone', personsAtRisk: ['Staff'], actions: cs.concat(as) };
   });

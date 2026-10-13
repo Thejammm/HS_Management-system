@@ -20,7 +20,7 @@ const RISK = {
     { id: 'p3', desc: 'Ask the landlord for the R&D survey', owner: 'Sam Line', due: '2026-11-10', status: 'Complete', forCtl: 'c1' },
   ],
 };
-await seed(page, { riskProfile: [RISK], company: { legalName: 'Fineline Architects Ltd', slt: [{ name: 'Jo Fine', role: 'Managing Director' }] } }, 'risk');
+await seed(page, { riskProfile: [RISK], company: { legalName: 'Example Architects Ltd', slt: [{ name: 'Jo Fine', role: 'Managing Director' }] } }, 'risk');
 await page.evaluate(() => { _riskOpenModal('k1'); _riskDetailTab('actions'); });
 await wait(page, 450);
 

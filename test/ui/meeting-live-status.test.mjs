@@ -12,7 +12,7 @@ const { browser, page, errors } = await openApp();
 const month = new Date().toISOString().slice(0, 7);
 const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 await seed(page, {
-  company: { legalName: 'Fineline Group', slt: [{ name: 'Jo Fine', role: 'Managing Director' }] },
+  company: { legalName: 'Example Architects Group', slt: [{ name: 'Jo Fine', role: 'Managing Director' }] },
   riskProfile: [{ id: 'r1', activity: 'Surveys on or in pre-2000 buildings, sites or premises', hazard: 'Asbestos', likelihood: '4', severity: '5', targetL: '2', targetS: '3',
     actions: [
       { id: 'c1', desc: 'Pre construction information procedure', owner: 'James Boyes', due: day(30), status: 'Not started', hideFromPlan: true },

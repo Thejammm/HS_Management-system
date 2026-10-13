@@ -14916,7 +14916,7 @@ function _factSheetCard(c, dis){
       <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;line-height:1.5;">The facts behind most accreditation rejections, held once. Trackers, documents and portal answers read from here, and the Accreditation tab checks them against the answers and the section dates.</div>
       <div id="coFactPanels">${_factPanelsHTML()}</div>
       <div class="co-grid">
-        ${f('shortName', 'Short name (used in trackers)', 'e.g. RSSC')}
+        ${f('shortName', 'Short name (used in trackers)', 'e.g. EDL')}
         ${ta('address', 'Registered office', 'As filed at Companies House: street, town, postcode')}
         <div class="co-field"><label>Head office</label>
           <label class="fs-check"><input type="checkbox"${c.headIsReg ? ' checked' : ''}${dis} onchange="setFactHeadIsReg(this.checked)"> Same as the registered office</label>
@@ -38383,8 +38383,8 @@ function _cpdRowHTML(i, ro, dis, inp){
 // ══════════════════════════════════════════════════════════════
 //  CPD TOPICS BY KIND OF WORK (Simon, 2026-09-30): "make the tab smart and
 //  list potential CPD topics ... controlled by the type of client I'm
-//  working on - Fineline are architects so they need design-based things,
-//  Easy Travel are vehicle repair engineers so they need theirs".
+//  working on - Example Architects are architects so they need design-based things,
+//  Example Garage are vehicle repair engineers so they need theirs".
 //  Keyed to the discovery sectors (SECTOR_DEFS); 'all' is every business.
 //  The basis names the Act, Regulations or HSE guidance - by title only,
 //  never a regulation or paragraph number that has not been checked.

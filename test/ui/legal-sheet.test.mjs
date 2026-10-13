@@ -12,7 +12,7 @@ const { browser, page, errors } = await openApp();
 
 const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 const D = (id, activity, extra) => Object.assign({ id, activity, hazard: activity, macroKey: 'legal', likelihood: '', severity: '', actions: [] }, extra || {});
-await seed(page, { company: { legalName: 'Fineline Group Ltd' }, riskProfile: [
+await seed(page, { company: { legalName: 'Example Architects Group Ltd' }, riskProfile: [
   D('m31', 'Health & Safety Policy', { likelihood: '3', severity: '3', actions: [{ id: 'm31a', desc: 'Review and re-sign the policy statement', owner: 'James Boyes', due: day(30), status: 'Not started' }] }),
   D('m33', 'Competent person(s)'),
   D('m37', 'First-aid provision'),

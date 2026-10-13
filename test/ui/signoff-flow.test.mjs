@@ -13,9 +13,9 @@ import { openApp, seed, wait, reporter } from './harness.mjs';
 const R = reporter('Sign-off flow - list, employees, tracker, Issue');
 const { browser, page, errors } = await openApp();
 
-await seed(page, { company: { legalName: 'Easy Travel Service' },
-  documents: [{ id: 'd1', name: 'Health and Safety Policy v4.pdf', link: 'https://easytravel.sharepoint.com/hs-policy-v4.pdf' },
-              { id: 'd2', name: 'Driving for Work Policy', link: 'https://easytravel.sharepoint.com/driving.pdf' }],
+await seed(page, { company: { legalName: 'Example Garage Service' },
+  documents: [{ id: 'd1', name: 'Health and Safety Policy v4.pdf', link: 'https://examplegarage.sharepoint.com/hs-policy-v4.pdf' },
+              { id: 'd2', name: 'Driving for Work Policy', link: 'https://examplegarage.sharepoint.com/driving.pdf' }],
   policySignoff: { policies: [
       { id: 'p1', title: 'Health and Safety Policy', type: 'Policy', version: '4', delivered: '2026-09-01', riskIds: [] },
       { id: 'p2', title: 'Slips, trips and falls on the level', type: 'Toolbox talk', delivered: '2026-09-20', riskIds: [], content: '1. Spot it, stop it, clean it.', source: { kind: 'talk', id: 'tbt-slips' } } ],
@@ -44,7 +44,7 @@ await wait(page, 300);
   R.ok(!/acknowledgement sheets/.test(t.hero) && /press Issue/i.test(t.hero), 'the heading no longer mentions the sheets that went');
   const p1 = t.rows[0] || {}, p2 = t.rows[1] || {};
   R.ok(p1.title === 'Health and Safety Policy' && /Policy · v4 · issued 1 Sept 2026/.test(p1.meta), 'each line says what it is: ' + p1.title + ' - ' + p1.meta);
-  R.ok(p1.where === 'https://easytravel.sharepoint.com/hs-policy-v4.pdf', 'and where it lives, found on the Documents register without typing it');
+  R.ok(p1.where === 'https://examplegarage.sharepoint.com/hs-policy-v4.pdf', 'and where it lives, found on the Documents register without typing it');
   R.ok(/Talk points attached/.test(p2.covers), 'a toolbox talk says its points go with the link');
   R.ok(p1.signed === '1 of 3' && p2.signed === '0 of 3', 'who has signed, on the line (' + p1.signed + ', ' + p2.signed + ')');
   R.ok(p1.issue && p2.issue, 'and one clear Issue button on every line');
@@ -111,7 +111,7 @@ await wait(page, 300);
   R.ok(t.bar && t.focus === 'psoAddTitle', 'Add opens one line at the foot of the list, ready to type');
   R.ok(t.talkOptions > 10, 'choosing Toolbox talk offers the talk library (' + t.talkOptions + ' talks)');
   R.ok(t.talk.type === 'Toolbox talk' && t.talk.hasContent && t.talk.src === 'talk' && t.talk.delivered && t.talkRow, 'a talk picked from it arrives with its points, ready to issue');
-  R.ok(t.prefilled === 'https://easytravel.sharepoint.com/driving.pdf' && t.polLink === t.prefilled, 'a policy picked from the Documents register brings where it lives with it');
+  R.ok(t.prefilled === 'https://examplegarage.sharepoint.com/driving.pdf' && t.polLink === t.prefilled, 'a policy picked from the Documents register brings where it lives with it');
   R.ok(t.blank && t.closed, 'no title, nothing added; Cancel closes it');
 }
 

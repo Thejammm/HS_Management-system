@@ -1,12 +1,12 @@
 {
- "RSSC": {
+ "EDL": {
   "set": "designer",
   "rows": [
    {
     "no": 1,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Number of employees",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "3374"
     ],
@@ -34,7 +34,7 @@
     "no": 3,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Signed H&S Policy with statement of intent",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "3456"
     ],
@@ -64,7 +64,7 @@
     "no": 5,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Member of a fleet operations or management scheme?",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "3459"
     ],
@@ -78,7 +78,7 @@
     "no": 6,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Drug and alcohol policy",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "3461",
      "3462"
@@ -93,7 +93,7 @@
     "no": 7,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Occupational health, mental health and fatigue arrangements",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "3463",
      "3464"
@@ -141,7 +141,7 @@
     "no": 10,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Example of the adviser's advice and how it was implemented",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "3469"
     ],
@@ -155,7 +155,7 @@
     "no": 11,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Training matrix with expiry dates, CPD or training records",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "3470"
     ],
@@ -169,7 +169,7 @@
     "no": 12,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Designers' qualifications, experience, CVs and professional memberships",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "3471"
     ],
@@ -197,7 +197,7 @@
     "no": 14,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "How you consult employees on health and safety",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "3473",
      "3475"
@@ -213,7 +213,7 @@
     "no": 15,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Accident, incident and near miss statistics; HSE enforcement",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "3477",
      "3478",
@@ -245,7 +245,7 @@
     "no": 17,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Evidence the client is aware of their CDM duties",
-    "status": "AHS Ltd, then RSSC signs",
+    "status": "AHS Ltd, then EDL signs",
     "hsRefs": [
      "3485"
     ],
@@ -259,7 +259,7 @@
     "no": 18,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Project design risk assessment and how residual risks reach the Principal Designer",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "3486",
      "3487"
@@ -290,7 +290,7 @@
     "no": 20,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Cooperation with other designers, the Principal Designer and contractors",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "3490"
     ],
@@ -304,7 +304,7 @@
     "no": 21,
     "section": "Health and Safety and Once For All Health & Safety (SSIP) (expired)",
     "question": "Risk assessments supporting the H&S Policy",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [],
     "hsValid": "2026-08-05",
     "ssipRefs": [],
@@ -326,7 +326,7 @@
     "no": 23,
     "section": "Mental Health and Wellbeing (expired)",
     "question": "Part of a mental health at work initiative? Thriving at Work enhanced standards?",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "2685",
      "2687"
@@ -339,7 +339,7 @@
     "no": 24,
     "section": "Mental Health and Wellbeing (expired)",
     "question": "Employee assistance programme?",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "2688"
     ],
@@ -351,7 +351,7 @@
     "no": 25,
     "section": "Business Ownership (expired)",
     "question": "Ownership declarations (ex-forces, women, ethnic minority, LGBT, disability)",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "2668",
      "2669",
@@ -367,7 +367,7 @@
     "no": 26,
     "section": "Environment & Sustainability (expired)",
     "question": "Net zero policy, carbon monitoring and Carbon Reduction Plan",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "2703",
      "2706",
@@ -396,7 +396,7 @@
     "no": 28,
     "section": "Environment & Sustainability (expired)",
     "question": "Biodiversity, sustainability standards, science-based target, community, fleet, UN goals",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "2699",
      "2701",
@@ -413,7 +413,7 @@
     "no": 29,
     "section": "Social Value (expired)",
     "question": "EDI policy and its impact on the company, recruitment and workforce",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "2649",
      "2650",
@@ -429,7 +429,7 @@
     "no": 30,
     "section": "Social Value (expired)",
     "question": "Social value reporting, recruitment groups, work experience, company types, apprenticeships",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "2647",
      "2648",
@@ -459,7 +459,7 @@
     "no": 32,
     "section": "Social Value (expired)",
     "question": "Start-up, mutual, voluntary, community or charity? 5% Club member?",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "2646",
      "2667"
@@ -472,7 +472,7 @@
     "no": 33,
     "section": "Working Conditions (expired)",
     "question": "National Living Wage, Working Time Regulations, CIJC, gender pay gap",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "2644",
      "2675",
@@ -489,7 +489,7 @@
     "no": 34,
     "section": "Working Conditions (expired)",
     "question": "Local living wage, zero hours contracts, good work principles, employees on PAYE",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "2673",
      "2676",
@@ -504,7 +504,7 @@
     "no": 35,
     "section": "Memberships & Accreditations (expired)",
     "question": "Cyber Essentials, NCSC 10 Steps, Supply Chain Sustainability School",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "2138",
      "2718",
@@ -518,7 +518,7 @@
     "no": 36,
     "section": "Memberships & Accreditations (expired)",
     "question": "TrustMark registered? Considerate Constructors Scheme member?",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "2719",
      "2720"
@@ -541,7 +541,7 @@
     "no": 38,
     "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
     "question": "Quality",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [],
     "hsValid": "2027-07-17",
     "ssipRefs": [],
@@ -551,7 +551,7 @@
     "no": 39,
     "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
     "question": "Corporate Responsibility and Governance",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [],
     "hsValid": "2027-09-02",
     "ssipRefs": [],
@@ -561,7 +561,7 @@
     "no": 40,
     "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
     "question": "Information Security",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [],
     "hsValid": "2027-07-20",
     "ssipRefs": [],
@@ -571,7 +571,7 @@
     "no": 41,
     "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
     "question": "Environmental Management",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [],
     "hsValid": "2027-05-11",
     "ssipRefs": [],
@@ -581,7 +581,7 @@
     "no": 42,
     "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
     "question": "Fairness, Inclusion and Respect",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [],
     "hsValid": "2027-08-12",
     "ssipRefs": [],
@@ -591,7 +591,7 @@
     "no": 43,
     "section": "Already verified in Constructionline (no action now; refreshed documents ready for renewal)",
     "question": "Information Management",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [],
     "hsValid": "2027-03-18",
     "ssipRefs": [],
@@ -621,7 +621,7 @@
     "no": 46,
     "section": "Building Safety Act - High Risk Building Infractions",
     "question": "Compliance notices, stop notices, convictions or inquiry findings in the last 5 years",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "7387",
      "7389",
@@ -672,7 +672,7 @@
     "no": 50,
     "section": "Building Safety Act - Fire Precautions",
     "question": "Examples of preventative fire safety training received",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "7369"
     ],
@@ -684,7 +684,7 @@
     "no": 51,
     "section": "Building Safety Act - Fire Precautions",
     "question": "Does your work affect primary or secondary structure or fixings?",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "7372"
     ],
@@ -708,7 +708,7 @@
     "no": 53,
     "section": "Building Safety Act - Fire Precautions",
     "question": "Does your work involve fire strategies, practices or systems?",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "10441"
     ],
@@ -720,7 +720,7 @@
     "no": 54,
     "section": "Building Safety Act - Fire Precautions",
     "question": "Does your work involve altering or converting existing buildings?",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "10444"
     ],
@@ -732,7 +732,7 @@
     "no": 55,
     "section": "Building Safety Act - Higher Risk Building Declaration",
     "question": "Do you work on, or intend to work on, higher-risk buildings?",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "10452"
     ],
@@ -756,7 +756,7 @@
     "no": 57,
     "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
     "question": "Do you hold BS 99001?",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "13091"
     ],
@@ -768,7 +768,7 @@
     "no": 58,
     "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
     "question": "Arrangements so the client is aware of their Building Safety Act duties",
-    "status": "AHS Ltd, then RSSC signs",
+    "status": "AHS Ltd, then EDL signs",
     "hsRefs": [
      "9952",
      "9960"
@@ -806,7 +806,7 @@
     "no": 61,
     "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
     "question": "Arrangements to notify stakeholders, manufacturers and accountable persons of defects",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "13092"
     ],
@@ -818,7 +818,7 @@
     "no": 62,
     "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
     "question": "Do you work on, or intend to work on, higher-risk buildings?",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "9955"
     ],
@@ -830,7 +830,7 @@
     "no": 63,
     "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
     "question": "Golden thread and change control log for higher-risk buildings",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "9964",
      "9969",
@@ -857,7 +857,7 @@
     "no": 65,
     "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
     "question": "Arrangements to plan, manage and monitor design work so it complies",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "9985",
      "9989",
@@ -884,7 +884,7 @@
     "no": 67,
     "section": "Building Safety Act - Building Safety (rejected Dec 2025; must pass before the other three BSA sections can be submitted)",
     "question": "Information for other duty holders about design, construction and maintenance",
-    "status": "RSSC",
+    "status": "EDL",
     "hsRefs": [
      "9993",
      "9994"
@@ -907,14 +907,14 @@
    }
   ]
  },
- "MVL": {
+ "ECL": {
   "set": "contractor",
   "rows": [
    {
     "no": 1,
     "section": "Insurances (expires in 9 days)",
     "question": "Details of the insurances the company holds",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [
      "25"
     ],
@@ -926,7 +926,7 @@
     "no": 2,
     "section": "Health and Safety and Health and Safety Third Party / Exemption certificates (expire in 15 days)",
     "question": "Do you hold a valid SSIP certificate or ISO 45001?",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [
      "13131",
      "13127"
@@ -972,7 +972,7 @@
     "no": 5,
     "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
     "question": "Question set and size of company",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [],
     "hsValid": "",
     "ssipRefs": [
@@ -1022,7 +1022,7 @@
     "no": 9,
     "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
     "question": "Member of a fleet operations or management scheme?",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [],
     "hsValid": "",
     "ssipRefs": [
@@ -1097,7 +1097,7 @@
     "no": 15,
     "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
     "question": "Training matrix with expiry dates",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [],
     "hsValid": "",
     "ssipRefs": [
@@ -1109,7 +1109,7 @@
     "no": 16,
     "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
     "question": "Employees' and site managers' qualifications, training certificates and skills cards",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [],
     "hsValid": "",
     "ssipRefs": [
@@ -1121,7 +1121,7 @@
     "no": 17,
     "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
     "question": "Number or percentage of people holding a CSCS card",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [],
     "hsValid": "",
     "ssipRefs": [
@@ -1145,7 +1145,7 @@
     "no": 19,
     "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
     "question": "Number of employees and practical evidence of two-way consultation",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [],
     "hsValid": "",
     "ssipRefs": [
@@ -1158,7 +1158,7 @@
     "no": 20,
     "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
     "question": "Accident statistics for 3 years; HSE enforcement in 5 years",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [],
     "hsValid": "",
     "ssipRefs": [
@@ -1184,7 +1184,7 @@
     "no": 22,
     "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
     "question": "Two site-specific risk assessments and method statements from two projects",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [],
     "hsValid": "",
     "ssipRefs": [
@@ -1232,7 +1232,7 @@
     "no": 26,
     "section": "Once For All Health & Safety (SSIP), Contractor question set (expired 26/09/2026)",
     "question": "Evidence that welfare is provided by another party",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [],
     "hsValid": "",
     "ssipRefs": [
@@ -1257,7 +1257,7 @@
     "no": 28,
     "section": "BAM - Code of Conduct (new)",
     "question": "Do you confirm that you will comply with the BAM Vendor Code of Conduct?",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [
      "14563"
     ],
@@ -1423,7 +1423,7 @@
     "no": 43,
     "section": "Building Safety Act - Higher Risk Building Declaration (new)",
     "question": "Do you work on, or intend to work on, higher-risk buildings?",
-    "status": "MVL",
+    "status": "ECL",
     "hsRefs": [
      "10452"
     ],

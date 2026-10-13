@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="reports/cl-bank.js"></script>
 <script src="reports/accred-core.js"></script>
 <script>/* pdf-lib v1.17.1 (MIT) - inlined so the fillable Discovery Questionnaire builds and imports offline */
 !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t=t||self).PDFLib={})}(this,(function(t){"use strict";
@@ -2951,6 +2952,52 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   main{padding:0;max-width:100%;}
   .tab-panel{display:block!important;}
 }
+</style>
+<style id="aclCss">
+/* ── Accreditation engine: AHS charcoal #3A3A3A, cyan #38A8C2, grey #787878.
+      Pastel red, amber and green are used for expiry status only. ── */
+.acl{--acl-ink:#3A3A3A;--acl-cyan:#38A8C2;--acl-grey:#787878;--acl-red:#F6D6D6;--acl-amber:#FBE8C4;--acl-green:#D8EEDA}
+.acl .acj-num{color:var(--acl-cyan);font-size:18px}
+.acl-top{display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;justify-content:space-between}
+.acl-counts{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));border:1px solid var(--border);flex:1 1 520px}
+.acl-counts div{padding:8px 12px;border-right:1px solid var(--border)}
+.acl-counts div:last-child{border-right:0}
+.acl-counts b{display:block;font-size:22px;font-weight:800;line-height:1.1}
+.acl-counts span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);font-weight:700;margin-top:2px}
+.acl-tools{font-size:12px;color:var(--text-muted);margin:12px 0 8px}
+.acl-block{border:1px solid var(--border);margin-bottom:8px}
+.acl-bhead{display:flex;align-items:center;gap:10px;width:100%;background:var(--acl-cyan);color:#fff;border:0;padding:8px 12px;text-align:left;cursor:pointer;font:inherit}
+.acl-bhead:hover{filter:brightness(.96)}
+.acl-chev{font-size:11px;width:12px}
+.acl-bname{font-weight:800;font-size:13px;flex:1}
+.acl-bname i{font-style:normal;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;border:1px solid #fff;padding:0 4px;margin-left:6px;vertical-align:1px}
+.acl-bmeta{font-size:11.5px;opacity:.95}
+.acl-pill{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;color:var(--acl-ink)}
+.acl-red{background:var(--acl-red)!important;color:var(--acl-ink)!important}
+.acl-amber{background:var(--acl-amber)!important;color:var(--acl-ink)!important}
+.acl-green{background:var(--acl-green)!important;color:var(--acl-ink)!important}
+.acl-dates{display:flex;flex-wrap:wrap;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border)}
+.acl-valid{display:flex;align-items:center;gap:8px;padding:4px 8px;font-size:12px}
+.acl-valid span{font-weight:700}
+.acl-valid b{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em}
+.acl-scroll{overflow-x:auto}
+.acl-t{width:100%;min-width:1150px;border-collapse:collapse;table-layout:fixed;font-size:12.5px}
+.acl-t th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);text-align:left;padding:6px 6px;border-bottom:2px solid var(--border);background:var(--surface);font-weight:800}
+.acl-t th:nth-child(1){width:38px} .acl-t th:nth-child(2){width:26%} .acl-t th:nth-child(3),.acl-t th:nth-child(4){width:19%}
+.acl-t th:nth-child(5){width:132px} .acl-t th:nth-child(6),.acl-t th:nth-child(8){width:70px} .acl-t th:nth-child(7),.acl-t th:nth-child(9){width:88px} .acl-t th:nth-child(10){width:118px}
+.acl-t td{padding:5px 6px;border-bottom:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere}
+.acl-t tr.acl-done td{opacity:.6}
+.acl-no{font-weight:800;color:var(--text-muted)}
+.acl-q{line-height:1.4}
+.acl-q small{display:block;font-size:10.5px;color:var(--text-muted);margin-top:3px;font-weight:700;letter-spacing:.03em}
+.acl-ref{font-size:12px;color:var(--acl-grey)}
+.acl-exp{font-size:12px;white-space:nowrap}
+.acl .acl-ed{width:100%;box-sizing:border-box;border:1px solid transparent;background:transparent;color:var(--text);font:inherit;font-size:12.5px;line-height:1.4;padding:2px 4px;resize:vertical;border-radius:0}
+.acl .acl-ed:hover:not(:disabled){border-color:var(--border)}
+.acl .acl-ed:focus{border-color:var(--acl-cyan);outline:0;background:var(--input-bg)}
+.acl .acl-ed.is-def{color:var(--text-muted)}
+.acl select.acl-st{font-size:12px;padding:4px 5px}
+.acl input.acl-donein{width:100%;box-sizing:border-box;font-size:12px}
 </style>
 <style id="acjCss">
 /* ── Accreditation journey: square, flat, ruled (AHS app design standard) ── */
@@ -35109,9 +35156,10 @@ function renderAccred(){
   el.innerHTML = `<div class="acj">
     <header class="acj-hero" id="acjHero">${_acjHeroInner(A, sum)}</header>
     ${ready ? `<nav class="acj-strip" id="acjStrip" aria-label="Steps">${_acjStripInner(A, qs)}</nav>` : ''}
-    ${_acjStage1(A, ro)}
+    ${_acjStage1(A, ro)}${A.clOn && A.clOn(S) ? '\n    ' + _aclSectionView(A, ro) : ''}
     ${body}
   </div>`;
+  if(A.clOn && A.clOn(S)) requestAnimationFrame(_aclFitAll);
 }
 
 // ── writes (each one saves loudly through saveData) ──
@@ -35291,6 +35339,121 @@ function downloadAccredPack(schemeId){
     showToast('✓ ' + p.name + ' downloaded', 'success');
   }catch(e){ console.error('accreditation pack', e); showToast('Could not build the pack - ' + e.message, 'error'); }
 }
+
+// ══════════════════════════════════════════════════════════════
+//  Constructionline sections - the portal mirror (accreditation engine)
+//  One line per portal question, in portal order, Building Safety Act
+//  sections last; the same columns as the AHS submission tracker. Built by
+//  AccredCore.clView from the question banks (reports/cl-bank.js). Shown only
+//  when the client holds Constructionline, so CHAS and SMAS work is unchanged.
+//  What AHS records lives in S.accred.cl, created on the first entry.
+// ══════════════════════════════════════════════════════════════
+var _aclOpen = {};      // which blocks are open - view state, never saved
+var _aclLast = {};      // the last view's lines by key, so typing compares against the default
+function _aclState(){ const a = _accredState(); if(!a.cl || typeof a.cl !== 'object') a.cl = {}; const c = a.cl; if(!c.valid || typeof c.valid !== 'object') c.valid = {}; if(!c.rows || typeof c.rows !== 'object') c.rows = {}; return c; }
+function _aclShort(){ const c = S.company || {}; return (c.shortName || '').trim() || _acjClient(); }
+function _aclExpCell(date, col){
+  if(!col) return '<td class="acl-exp"></td>';
+  return `<td class="acl-exp acl-${col.k}" title="${esc(col.label)}">${date ? esc(fmtDate(date)) : 'Not yet valid'}</td>`;
+}
+function _aclValidInput(sec, date, col, ro){
+  const id = 'aclV-' + String(sec).replace(/[^A-Za-z0-9]/g, '');
+  return `<label class="acl-valid acl-${col.k}" for="${id}"><span>${esc(sec)}</span>
+    <input type="date" id="${id}" value="${esc(date || '')}"${ro ? ' disabled' : ''} onchange="setAclValid(${esc(JSON.stringify(sec))},this.value)">
+    <b>${esc(col.label)}</b></label>`;
+}
+function _aclSectionView(A, ro){
+  const today = _acjToday(), short = _aclShort();
+  const v = A.clView(S, today, short);
+  const c = A.clCfg(S);
+  _aclLast = {};
+  const dis = ro ? ' disabled' : '';
+  const setBtns = ['designer', 'contractor'].map(k => `<button type="button" class="acj-btn" aria-pressed="${v.set === k}"${dis} onclick="setAclSet('${k}')">${k === 'designer' ? 'Designer' : 'Contractor'}</button>`).join('');
+  const stOpts = (cur) => A.CL_STATUS.map(s => `<option value="${s.k}"${s.k === cur ? ' selected' : ''}>${esc(A.clStatusLabel(s.k, short))}</option>`).join('');
+  const k = v.counts;
+  const blocks = v.blocks.map(b => {
+    const open = (b.id in _aclOpen) ? _aclOpen[b.id] : !(b.colour && b.colour.k === 'green');
+    const dates = b.hsSections.map(s => _aclValidInput(s, c.valid[s] || '', A.clExpiry(c.valid[s] || '', today), ro)).join('')
+      + (b.ssipSection ? _aclValidInput(b.ssipSection, c.valid[b.ssipSection] || '', A.clExpiry(c.valid[b.ssipSection] || '', today), ro) : '');
+    const todo = b.lines.filter(l => !l.done && l.st !== 'covered' && l.st !== 'already').length;
+    const rows = !open ? '' : b.lines.map(l => {
+      _aclLast[l.key] = l;
+      const tag = l.cas ? `${esc(l.cas)}${l.qno ? ' · SSIP Q' + esc(l.qno) : ''}` : 'Constructionline only';
+      const kk = esc(JSON.stringify(l.key));
+      return `<tr class="${l.done ? 'acl-done' : ''}">
+        <td class="acl-no">${l.no}</td>
+        <td class="acl-q">${esc(l.text)}<small>${tag}</small></td>
+        <td><textarea class="acl-ed${l.evSet ? '' : ' is-def'}" rows="2"${dis} oninput="setAclText(${kk},'ev',this)">${esc(l.evidence)}</textarea></td>
+        <td><textarea class="acl-ed${l.actSet ? '' : ' is-def'}" rows="2"${dis} oninput="setAclText(${kk},'act',this)">${esc(l.action)}</textarea></td>
+        <td><select class="acl-st st-${l.st}"${dis} onchange="setAclStatus(${kk},this.value)">${stOpts(l.st)}</select></td>
+        <td class="acl-ref">${esc(l.hsRefs.join(', '))}</td>
+        ${_aclExpCell(l.hsValid, l.hsColour)}
+        <td class="acl-ref">${esc(l.ssipRefs.join(', '))}</td>
+        ${_aclExpCell(l.ssipValid, l.ssipColour)}
+        <td><input type="date" class="acl-donein" value="${esc(l.done)}"${dis} onchange="setAclDone(${kk},this.value)"></td>
+      </tr>`;
+    }).join('');
+    return `<div class="acl-block${open ? ' open' : ''}" id="aclB-${esc(b.id.replace(/[^A-Za-z0-9]/g, ''))}">
+      <button type="button" class="acl-bhead" aria-expanded="${open}" onclick="toggleAclBlock(${esc(JSON.stringify(b.id))})">
+        <span class="acl-chev">${open ? '&#9662;' : '&#9656;'}</span>
+        <span class="acl-bname">${esc(b.name)}${b.bsa ? ' <i>Building Safety Act</i>' : ''}</span>
+        <span class="acl-bmeta">${b.lines.length} question${b.lines.length === 1 ? '' : 's'}${todo ? ' · ' + todo + ' to do' : ''}</span>
+        <span class="acl-pill acl-${b.colour ? b.colour.k : 'red'}">${esc(b.colour ? b.colour.label : 'Not yet valid')}</span>
+      </button>
+      ${open ? `<div class="acl-dates">${dates}</div>
+      <div class="acl-scroll"><table class="acl-t">
+        <thead><tr><th>No</th><th>Constructionline question</th><th>Expected evidence</th><th>Action</th><th>Status</th><th>H&amp;S ref</th><th>Valid until</th><th>SSIP ref</th><th>SSIP valid until</th><th>Done</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>` : ''}
+    </div>`;
+  }).join('');
+  return `<section class="acj-stage acl" id="aclSections">
+    <div class="acj-head"><div class="acj-num">CL</div><div><h3>Constructionline sections</h3>
+      <p>The portal, section by section: every question as Constructionline writes it, in portal order, with the Building Safety Act sections last. Enter each section's valid until date from the portal. Red is expired or not yet valid, amber is within ${A.CL_AMBER_DAYS} days, green is in date.</p></div></div>
+    <div class="acj-body">
+      <div class="acl-top">
+        <div><div class="acj-lbl">Question set</div><div class="acj-seg">${setBtns}</div>
+          <div class="acj-muted">${c.set ? 'Chosen by AHS Ltd.' : 'Worked out from the role at step 01.'}</div></div>
+        <div class="acl-counts">
+          <div><b>${k.client}</b><span>${esc(short)} to do</span></div>
+          <div><b>${k.ahs}</b><span>AHS Ltd to do</span></div>
+          <div><b>${k.covered}</b><span>Covered or already in Constructionline</span></div>
+          <div><b>${k.done}</b><span>Ticked done</span></div>
+        </div>
+      </div>
+      <div class="acl-tools"><button type="button" class="acj-link" onclick="setAclAllOpen(true)">Open every section</button> · <button type="button" class="acj-link" onclick="setAclAllOpen(false)">Close every section</button></div>
+      ${blocks}
+    </div>
+  </section>`;
+}
+function _aclSave(){ saveData(); _keepScroll(renderAccred); }
+function setAclSet(k){ if(_blockIfReadOnly()) return; const c = _aclState(); c.set = (c.set === k) ? '' : k; _aclSave(); }
+function setAclValid(sec, date){ if(_blockIfReadOnly()) return; const c = _aclState(); if(date) c.valid[sec] = date; else delete c.valid[sec]; _aclSave(); }
+function _aclRow(key){ const c = _aclState(); return c.rows[key] = c.rows[key] || {}; }
+function _aclTidy(key){ const c = _aclState(); const r = c.rows[key]; if(r && !Object.keys(r).some(x => r[x] !== '' && r[x] != null)) delete c.rows[key]; }
+function setAclStatus(key, st){ if(_blockIfReadOnly()) return; const r = _aclRow(key); r.st = st; _aclSave(); }
+function setAclDone(key, d){ if(_blockIfReadOnly()) return; const r = _aclRow(key); if(d) r.done = d; else delete r.done; _aclTidy(key); _aclSave(); }
+// Typing keeps the line on screen: save quietly, no rebuild under the cursor.
+// Text left the same as the default is not stored, so the default can follow the status.
+function setAclText(key, field, el){
+  if(_roLocked()) return;
+  const l = _aclLast[key]; const r = _aclRow(key);
+  const def = l ? (field === 'ev' ? (l.evSet ? null : l.evidence) : (l.actSet ? null : l.action)) : null;
+  const v = el.value;
+  if(!v.trim() || (def != null && v === def)) delete r[field]; else r[field] = v;
+  el.classList.toggle('is-def', !(field in r));
+  _aclFit(el);
+  _aclTidy(key); scheduleAutoSave();
+}
+// A text box is as tall as what it holds, so nothing is cut off.
+function _aclFit(el){ el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; }
+function _aclFitAll(){ document.querySelectorAll('#aclSections .acl-ed').forEach(_aclFit); }
+function toggleAclBlock(id){
+  const A = _acjCore(); if(!A) return;
+  const b = A.clView(S, _acjToday(), _aclShort()).blocks.find(x => x.id === id);
+  const cur = (id in _aclOpen) ? _aclOpen[id] : !(b && b.colour && b.colour.k === 'green');
+  _aclOpen[id] = !cur; _keepScroll(renderAccred);
+}
+function setAclAllOpen(on){ const A = _acjCore(); if(!A) return; A.clView(S, _acjToday(), _aclShort()).blocks.forEach(b => { _aclOpen[b.id] = !!on; }); _keepScroll(renderAccred); }
 
 function renderCAS(){
   try{ renderAccred(); }catch(e){ console.error('accreditation journey', e); }

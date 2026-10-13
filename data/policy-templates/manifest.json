@@ -1,0 +1,1011 @@
+{
+ "built": "2026-10-13",
+ "note": "Anonymised AHS Ltd policy templates. Tokens are filled from the client fact sheet by lib/policy-drafts.js.",
+ "templates": [
+  {
+   "id": "d-organisation-and-scope-statement",
+   "number": "29",
+   "title": "Organisation and Scope Statement",
+   "folder": "01 Company Information",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "HS-04"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "d-health-and-safety-policy",
+   "number": "01",
+   "title": "Health and Safety Policy",
+   "folder": "03 Health and Safety and SSIP",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "HS-02",
+    "HS-03",
+    "HS-04",
+    "HS-08"
+   ],
+   "review": 19,
+   "comments": 17
+  },
+  {
+   "id": "d-health-and-safety-statement-of-intent",
+   "number": "01a",
+   "title": "Health and Safety Statement of Intent",
+   "folder": "03 Health and Safety and SSIP",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "HS-02"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "d-home-working-and-dse-risk-assessment",
+   "number": "30",
+   "title": "Home Working and DSE Risk Assessment",
+   "folder": "03 Health and Safety and SSIP",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "HS-04"
+   ],
+   "review": 0,
+   "comments": 0
+  },
+  {
+   "id": "d-site-survey-risk-assessment",
+   "number": "31",
+   "title": "Site Survey Risk Assessment",
+   "folder": "03 Health and Safety and SSIP",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "HS-04"
+   ],
+   "review": 4,
+   "comments": 3
+  },
+  {
+   "id": "d-accident-and-incident-statement",
+   "number": "32",
+   "title": "Accident and Incident Statement",
+   "folder": "03 Health and Safety and SSIP",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "HS-18",
+    "HS-19"
+   ],
+   "review": 1,
+   "comments": 1
+  },
+  {
+   "id": "d-workforce-competency-policy",
+   "number": "10",
+   "title": "Workforce Competency Policy",
+   "folder": "04 Training and Competence",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "QA-06",
+    "HS-12"
+   ],
+   "review": 5,
+   "comments": 5
+  },
+  {
+   "id": "d-information-management-policy",
+   "number": "17",
+   "title": "Information Management Policy",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "BS-02"
+   ],
+   "review": 5,
+   "comments": 5
+  },
+  {
+   "id": "d-building-regulations-compliance-policy",
+   "number": "18",
+   "title": "Building Regulations Compliance Policy",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "BS-01"
+   ],
+   "review": 5,
+   "comments": 5
+  },
+  {
+   "id": "d-building-safety-policy",
+   "number": "19",
+   "title": "Building Safety Policy",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "BS-02",
+    "BS-03"
+   ],
+   "review": 3,
+   "comments": 3
+  },
+  {
+   "id": "d-building-safety-defect-and-occurrence-reporting-policy",
+   "number": "33",
+   "title": "Building Safety Defect and Occurrence Reporting Policy",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "BS-04"
+   ],
+   "review": 6,
+   "comments": 6
+  },
+  {
+   "id": "d-building-safety-communication-policy",
+   "number": "34",
+   "title": "Building Safety Communication Policy",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "BS-10",
+    "BS-03"
+   ],
+   "review": 1,
+   "comments": 1
+  },
+  {
+   "id": "d-design-for-places-of-work-checklist",
+   "number": "",
+   "title": "Design for Places of Work Checklist",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "DS-04"
+   ],
+   "review": 4,
+   "comments": 4
+  },
+  {
+   "id": "d-design-for-places-of-work-procedure",
+   "number": "",
+   "title": "Design for Places of Work Procedure",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "DS-04"
+   ],
+   "review": 6,
+   "comments": 6
+  },
+  {
+   "id": "d-quality-assurance-policy",
+   "number": "02",
+   "title": "Quality Assurance Policy",
+   "folder": "06 Quality and Environment",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "QA-01",
+    "QA-02"
+   ],
+   "review": 13,
+   "comments": 7
+  },
+  {
+   "id": "d-environmental-and-sustainability-policy",
+   "number": "16",
+   "title": "Environmental & Sustainability Policy",
+   "folder": "06 Quality and Environment",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "EN-01",
+    "EN-02"
+   ],
+   "review": 3,
+   "comments": 3
+  },
+  {
+   "id": "d-design-competence-and-compliance-procedure",
+   "number": "39",
+   "title": "Design Competence and Compliance Procedure",
+   "folder": "06 Quality and Environment",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "QA-03",
+    "QA-06",
+    "BS-06"
+   ],
+   "review": 15,
+   "comments": 14
+  },
+  {
+   "id": "d-equal-opportunities-and-diversity-policy",
+   "number": "04",
+   "title": "Equal Opportunities & Diversity Policy",
+   "folder": "07 Equality and Harassment",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "FR-01"
+   ],
+   "review": 4,
+   "comments": 4
+  },
+  {
+   "id": "d-harassment-and-bullying-policy",
+   "number": "07",
+   "title": "Harassment & Bullying Policy",
+   "folder": "07 Equality and Harassment",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "GV-09"
+   ],
+   "review": 7,
+   "comments": 7
+  },
+  {
+   "id": "d-fairness-and-inclusion-policy",
+   "number": "15",
+   "title": "Fairness & Inclusion Policy",
+   "folder": "07 Equality and Harassment",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "FR-01"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "d-sexual-harassment-prevention-policy",
+   "number": "23",
+   "title": "Sexual Harassment Prevention Policy",
+   "folder": "07 Equality and Harassment",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "GV-10"
+   ],
+   "review": 4,
+   "comments": 4
+  },
+  {
+   "id": "d-sexual-harassment-risk-assessment",
+   "number": "24",
+   "title": "Sexual Harassment Risk Assessment",
+   "folder": "07 Equality and Harassment",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "GV-10"
+   ],
+   "review": 12,
+   "comments": 12
+  },
+  {
+   "id": "d-anti-bribery-and-corruption-policy",
+   "number": "12",
+   "title": "Anti-Bribery & Corruption Policy",
+   "folder": "08 Anti-Bribery Fraud and Tax Evasion",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "GV-01"
+   ],
+   "review": 3,
+   "comments": 3
+  },
+  {
+   "id": "d-fraud-prevention-policy",
+   "number": "14",
+   "title": "Fraud Prevention Policy",
+   "folder": "08 Anti-Bribery Fraud and Tax Evasion",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "GV-03"
+   ],
+   "review": 6,
+   "comments": 6
+  },
+  {
+   "id": "d-prevention-of-facilitation-of-tax-evasion-policy",
+   "number": "21",
+   "title": "Prevention of Facilitation of Tax Evasion Policy",
+   "folder": "08 Anti-Bribery Fraud and Tax Evasion",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "GV-04"
+   ],
+   "review": 3,
+   "comments": 3
+  },
+  {
+   "id": "d-gifts-hospitality-and-interests-register",
+   "number": "28",
+   "title": "Gifts Hospitality and Interests Register",
+   "folder": "08 Anti-Bribery Fraud and Tax Evasion",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "GV-01"
+   ],
+   "review": 0,
+   "comments": 0
+  },
+  {
+   "id": "d-modern-slavery-policy",
+   "number": "08",
+   "title": "Modern Slavery Policy",
+   "folder": "09 Modern Slavery and Right to Work",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "GV-07"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "d-right-to-work-in-the-uk-policy",
+   "number": "22",
+   "title": "Right to Work in the UK Policy",
+   "folder": "09 Modern Slavery and Right to Work",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "GV-05"
+   ],
+   "review": 1,
+   "comments": 1
+  },
+  {
+   "id": "d-whistleblowing-policy",
+   "number": "13",
+   "title": "Whistleblowing Policy",
+   "folder": "10 Whistleblowing and Communication Evidence",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "GV-02"
+   ],
+   "review": 5,
+   "comments": 5
+  },
+  {
+   "id": "d-policy-acknowledgement-form",
+   "number": "25",
+   "title": "Policy Acknowledgement Form",
+   "folder": "10 Whistleblowing and Communication Evidence",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "HS-17"
+   ],
+   "review": 0,
+   "comments": 0
+  },
+  {
+   "id": "d-new-starter-checklist",
+   "number": "26",
+   "title": "New Starter Checklist",
+   "folder": "10 Whistleblowing and Communication Evidence",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "HS-12"
+   ],
+   "review": 0,
+   "comments": 0
+  },
+  {
+   "id": "d-annual-team-briefing-and-training-record",
+   "number": "27",
+   "title": "Annual Team Briefing and Training Record",
+   "folder": "10 Whistleblowing and Communication Evidence",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "HS-17"
+   ],
+   "review": 0,
+   "comments": 0
+  },
+  {
+   "id": "d-reporting-routes-card",
+   "number": "38",
+   "title": "Reporting Routes Card",
+   "folder": "10 Whistleblowing and Communication Evidence",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "GV-02",
+    "GV-10"
+   ],
+   "review": 1,
+   "comments": 1
+  },
+  {
+   "id": "d-gdpr-policy",
+   "number": "05",
+   "title": "GDPR Policy",
+   "folder": "11 Data Protection",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "IS-02"
+   ],
+   "review": 5,
+   "comments": 5
+  },
+  {
+   "id": "d-privacy-notice",
+   "number": "20",
+   "title": "Privacy Notice",
+   "folder": "11 Data Protection",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "IS-02"
+   ],
+   "review": 1,
+   "comments": 1
+  },
+  {
+   "id": "d-cyber-security-policy",
+   "number": "35",
+   "title": "Cyber Security Policy",
+   "folder": "11 Data Protection",
+   "roles": [
+    "designer",
+    "contractor"
+   ],
+   "qids": [
+    "IS-01"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "d-corporate-responsibility-policy",
+   "number": "03",
+   "title": "Corporate Responsibility Policy",
+   "folder": "12 Social Value and Wellbeing",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "GV-06"
+   ],
+   "review": 3,
+   "comments": 3
+  },
+  {
+   "id": "d-mental-health-and-wellbeing-policy",
+   "number": "06",
+   "title": "Mental Health & Wellbeing Policy",
+   "folder": "12 Social Value and Wellbeing",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "HS-07"
+   ],
+   "review": 3,
+   "comments": 3
+  },
+  {
+   "id": "d-social-value-policy",
+   "number": "09",
+   "title": "Social Value Policy",
+   "folder": "12 Social Value and Wellbeing",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "GV-06"
+   ],
+   "review": 4,
+   "comments": 4
+  },
+  {
+   "id": "d-drug-and-alcohol-policy",
+   "number": "11",
+   "title": "Drug & Alcohol Policy",
+   "folder": "12 Social Value and Wellbeing",
+   "roles": [
+    "designer"
+   ],
+   "qids": [
+    "HS-06"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "c-health-and-safety-policy",
+   "number": "01",
+   "title": "Health and Safety Policy",
+   "folder": "03 Health and Safety and SSIP",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "HS-02",
+    "HS-03",
+    "HS-04",
+    "HS-08"
+   ],
+   "review": 16,
+   "comments": 14
+  },
+  {
+   "id": "c-welfare-facilities-statement",
+   "number": "",
+   "title": "Welfare Facilities Statement",
+   "folder": "03 Health and Safety and SSIP",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "CN-05"
+   ],
+   "review": 1,
+   "comments": 1
+  },
+  {
+   "id": "c-workforce-competency-policy",
+   "number": "10",
+   "title": "Workforce Competency Policy",
+   "folder": "04 Training and Competence",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "QA-06",
+    "HS-12"
+   ],
+   "review": 15,
+   "comments": 12
+  },
+  {
+   "id": "c-hot-works-permit",
+   "number": "",
+   "title": "Hot Works Permit",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "BS-11"
+   ],
+   "review": 2,
+   "comments": 1
+  },
+  {
+   "id": "c-information-management-policy",
+   "number": "17",
+   "title": "Information Management Policy",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "BS-02"
+   ],
+   "review": 4,
+   "comments": 3
+  },
+  {
+   "id": "c-building-safety-policy",
+   "number": "19",
+   "title": "Building Safety Policy",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "BS-02",
+    "BS-03",
+    "BS-06"
+   ],
+   "review": 5,
+   "comments": 5
+  },
+  {
+   "id": "c-toolbox-talk-fire-integrity",
+   "number": "",
+   "title": "Toolbox Talk Fire Integrity",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "BS-11",
+    "HS-17"
+   ],
+   "review": 5,
+   "comments": 5
+  },
+  {
+   "id": "c-toolbox-talk-golden-thread",
+   "number": "",
+   "title": "Toolbox Talk Golden Thread",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "BS-03",
+    "HS-17"
+   ],
+   "review": 2,
+   "comments": 1
+  },
+  {
+   "id": "c-toolbox-talk-quality",
+   "number": "",
+   "title": "Toolbox Talk Quality",
+   "folder": "05 CDM and Building Safety",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "QA-07",
+    "HS-17"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "c-quality-assurance-policy",
+   "number": "02",
+   "title": "Quality Assurance Policy",
+   "folder": "06 Quality and Environment",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "QA-01",
+    "QA-02"
+   ],
+   "review": 16,
+   "comments": 14
+  },
+  {
+   "id": "c-environmental-and-sustainability-policy",
+   "number": "16",
+   "title": "Environmental & Sustainability Policy",
+   "folder": "06 Quality and Environment",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "EN-01",
+    "EN-02"
+   ],
+   "review": 7,
+   "comments": 7
+  },
+  {
+   "id": "c-environmental-training-matrix",
+   "number": "",
+   "title": "Environmental Training Matrix",
+   "folder": "06 Quality and Environment",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "EN-02"
+   ],
+   "review": 9,
+   "comments": 8
+  },
+  {
+   "id": "c-environmental-training-arrangements",
+   "number": "",
+   "title": "Environmental Training Arrangements",
+   "folder": "06 Quality and Environment",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "EN-02"
+   ],
+   "review": 5,
+   "comments": 4
+  },
+  {
+   "id": "c-environmental-refresher-training-programme",
+   "number": "",
+   "title": "Environmental Refresher Training Programme",
+   "folder": "06 Quality and Environment",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "EN-02"
+   ],
+   "review": 17,
+   "comments": 16
+  },
+  {
+   "id": "c-toolbox-talk-waste",
+   "number": "",
+   "title": "Toolbox Talk Waste",
+   "folder": "06 Quality and Environment",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "EN-02",
+    "HS-17"
+   ],
+   "review": 3,
+   "comments": 3
+  },
+  {
+   "id": "c-toolbox-talk-spills",
+   "number": "",
+   "title": "Toolbox Talk Spills",
+   "folder": "06 Quality and Environment",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "EN-02",
+    "HS-17"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "c-toolbox-talk-energy-and-driving",
+   "number": "",
+   "title": "Toolbox Talk Energy and Driving",
+   "folder": "06 Quality and Environment",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "EN-05",
+    "HS-17"
+   ],
+   "review": 0,
+   "comments": 0
+  },
+  {
+   "id": "c-equal-opportunities-and-diversity-policy",
+   "number": "04",
+   "title": "Equal Opportunities & Diversity Policy",
+   "folder": "07 Equality and Harassment",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "FR-01"
+   ],
+   "review": 1,
+   "comments": 1
+  },
+  {
+   "id": "c-harassment-and-bullying-policy",
+   "number": "07",
+   "title": "Harassment & Bullying Policy",
+   "folder": "07 Equality and Harassment",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "GV-09"
+   ],
+   "review": 3,
+   "comments": 3
+  },
+  {
+   "id": "c-fairness-and-inclusion-policy",
+   "number": "15",
+   "title": "Fairness & Inclusion Policy",
+   "folder": "07 Equality and Harassment",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "FR-01"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "c-anti-bribery-and-corruption-policy",
+   "number": "12",
+   "title": "Anti-Bribery & Corruption Policy",
+   "folder": "08 Anti-Bribery Fraud and Tax Evasion",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "GV-01"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "c-fraud-prevention-policy",
+   "number": "14",
+   "title": "Fraud Prevention Policy",
+   "folder": "08 Anti-Bribery Fraud and Tax Evasion",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "GV-03"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "c-modern-slavery-policy",
+   "number": "08",
+   "title": "Modern Slavery Policy",
+   "folder": "09 Modern Slavery and Right to Work",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "GV-07"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "c-whistleblowing-policy",
+   "number": "13",
+   "title": "Whistleblowing Policy",
+   "folder": "10 Whistleblowing and Communication Evidence",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "GV-02"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "c-gdpr-policy",
+   "number": "05",
+   "title": "GDPR Policy",
+   "folder": "11 Data Protection",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "IS-02"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "c-corporate-responsibility-policy",
+   "number": "03",
+   "title": "Corporate Responsibility Policy",
+   "folder": "12 Social Value and Wellbeing",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "GV-06"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "c-mental-health-and-wellbeing-policy",
+   "number": "06",
+   "title": "Mental Health & Wellbeing Policy",
+   "folder": "12 Social Value and Wellbeing",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "HS-07"
+   ],
+   "review": 4,
+   "comments": 4
+  },
+  {
+   "id": "c-social-value-policy",
+   "number": "09",
+   "title": "Social Value Policy",
+   "folder": "12 Social Value and Wellbeing",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "GV-06"
+   ],
+   "review": 2,
+   "comments": 2
+  },
+  {
+   "id": "c-drug-and-alcohol-policy",
+   "number": "11",
+   "title": "Drug & Alcohol Policy",
+   "folder": "12 Social Value and Wellbeing",
+   "roles": [
+    "contractor"
+   ],
+   "qids": [
+    "HS-06"
+   ],
+   "review": 2,
+   "comments": 2
+  }
+ ]
+}

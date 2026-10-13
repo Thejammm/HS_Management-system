@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --env-file=.env server.js",
-    "test": "node --test test/reports.test.mjs test/accreditation.test.mjs test/cas-export.test.mjs test/management-plan.test.mjs test/signoff-link.test.mjs test/onejourney-reports.test.mjs test/training-tabs.test.mjs test/constructionline.test.mjs test/fact-sheet.test.mjs test/evidence-register.test.mjs test/client-approval.test.mjs test/service-calendar.test.mjs test/submission-pack.test.mjs && npm run check",
+    "test": "node --test test/reports.test.mjs test/accreditation.test.mjs test/cas-export.test.mjs test/management-plan.test.mjs test/signoff-link.test.mjs test/onejourney-reports.test.mjs test/training-tabs.test.mjs test/constructionline.test.mjs test/fact-sheet.test.mjs test/evidence-register.test.mjs test/client-approval.test.mjs test/service-calendar.test.mjs test/submission-pack.test.mjs test/policy-drafts.test.mjs test/policy-route.test.mjs && npm run check",
     "check:consistency": "node scripts/check-app-report-consistency.mjs",
     "check:masthead": "node scripts/check-report-masthead-fit.mjs",
     "check": "npm run check:consistency && npm run check:masthead && npm run check:overflow",
@@ -23,6 +23,7 @@
     "exceljs": "^4.4.0",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.3",
+    "jszip": "^3.10.1",
     "pg": "^8.21.0",
     "puppeteer-core": "^25.8.0"
   },

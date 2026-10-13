@@ -53,6 +53,7 @@ app.use('/api/statutory', require('./routes/statutory'));
 app.use('/api/linked', require('./routes/linked'));   // server-to-server pull from linked apps
 app.use('/api/reports', require('./routes/reports'));  // server-side PDF for the shared report layer
 app.use('/api/cas', require('./routes/cas'));          // CAS question-set Excel export
+app.use('/api/policy', require('./routes/policy'));    // policy drafts from the anonymised templates (consultant only)
 app.use('/api/offline', require('./routes/offline'));
 app.use('/api/signoff', require('./routes/signoff'));  // acknowledgement by link - /s/:token is public
 // The short public link an employee actually opens. No session, no cookie.

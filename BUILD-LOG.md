@@ -523,3 +523,66 @@ never uses the engine has nothing added.
   communication to the Principal Designer (Q10.3) as its own dated record. It
   would need: project, revision, issue date, lead designer, the count of
   residual risks, and the date they were sent to the Principal Designer.
+
+---
+
+## Follow-on: draft policies in the submission pack (October 2026)
+
+**What was built**
+
+- `data/policy-templates/`: 69 anonymised Word templates (one manifest), made
+  from AHS Ltd's October 2026 designer and contractor document sets.
+  - The designer set has 40 documents and the contractor set 42. General
+    policies the contractor set lacked (tax evasion, right to work, sexual
+    harassment, privacy notice, cyber, acknowledgement and starter forms) come
+    from the designer set.
+  - Documents that are records of the client's own data are not drafted: the
+    Carbon Reduction Plan, the H&S Advice Record and the CDM Designer GPP
+    Audit.
+- `scripts/build-policy-templates.mjs` makes the templates. The repo is public,
+  so everything that identifies the source clients (names, addresses, numbers,
+  trade words, where the source files are) lives in a private settings file
+  outside the repo: `C:\Users\arche\dev\compass-private\policy-sources.json`
+  (or `POLICY_SOURCES`). The script:
+  - turns every identifier into a token, filled later from the fact sheet;
+  - turns the issue and review dates and the version into tokens;
+  - highlights in yellow any paragraph written for the source trade, carrying
+    other dates, or using he/she about a named person, and adds a Word comment
+    saying what to review;
+  - removes old comments, pictures and logos, SharePoint data, sensitivity
+    labels and document properties;
+  - scans every finished template for anything identifying a source client. A
+    single hit holds that template back.
+- `lib/policy-drafts.js` fills a template from the client's fact sheet. A
+  missing fact is left as a yellow "[Enter ...]", and the review comments name
+  the client's own work (its "Nature of business").
+- `POST /api/policy/drafts` (consultant login only, because the templates are
+  AHS Ltd's) returns the drafts for a question set.
+- The submission pack, built signed in as AHS Ltd, puts each draft in its
+  folder, named as the submissions name them
+  (`01_Health and Safety Policy_<SHORT>_<MM>_<YY>.docx`). It adds
+  `00 Review list.txt`, giving for each draft the number of parts to review,
+  the facts to enter and the questions it answers. Signed out, the pack says
+  the drafts need AHS Ltd signed in.
+- The fact sheet gains the H&S lead's phone and email and the data protection
+  lead's name, email and phone, which the documents ask for.
+
+**How to test**
+
+- `npm test` runs:
+  - `test/policy-drafts.test.mjs`: every draft opens as well-formed Word XML,
+    with no token left; facts are filled; missing facts are yellow; review
+    comments name the client's work; the templates hold no personal emails,
+    mobiles or pictures;
+  - `test/policy-route.test.mjs`: starts the server in local mode. A consultant
+    gets the drafts; a client login gets 403 and an anonymous request 401.
+- `node test/ui/submission-pack.test.mjs`: a pack built signed in has the
+  drafts in their folders and the review list.
+- By hand, once released: set the client's fact sheet (including "Nature of
+  business" on Company identity), then download the submission pack. Open the
+  drafts in Word: the yellow parts and the comments are what to review.
+
+**Rebuilding the templates** (when the source document sets are updated):
+`node scripts/build-policy-templates.mjs`, then commit `data/policy-templates/`.
+Add any new name or trade word to the private settings file first. The build
+refuses to write a template that still identifies a source client.

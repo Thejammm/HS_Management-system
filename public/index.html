@@ -6013,7 +6013,7 @@ const FORMS = {
         id: 'site',
         name: 'Site Information',
         fields: [
-          { id:'site_address', type:'instruction', content:'Easy Garage Services · Whitehall Road Industrial Estate · Ashfield Close · LS12 5JB' },
+          { id:'site_address', type:'instruction', content:'Garage name · Site address · Postcode' },
           { id:'conducted_on', type:'datetime', label:'Conducted on', required:true, halfWidth:true },
           { id:'operative',    type:'text',     label:'Easy Garage Services Operative', required:true, halfWidth:true }
         ]
@@ -14924,6 +14924,11 @@ function _factSheetCard(c, dis){
         ${ta('directors', 'Directors', 'One per line')}
         ${f('hsLead', 'Person responsible for health and safety', 'Name')}
         ${f('hsLeadRole', 'Their position', 'e.g. Managing Director')}
+        ${f('hsLeadPhone', 'Their phone', '', 'tel')}
+        ${f('hsLeadEmail', 'Their email', '', 'email')}
+        ${f('dpLead', 'Person responsible for data protection', 'Name')}
+        ${f('dpEmail', 'Data protection email', '', 'email')}
+        ${f('dpPhone', 'Data protection phone', '', 'tel')}
         ${seg('headBand', 'Headcount band', [['1-4', '1 to 4'], ['5+', '5 or more']])}
         ${f('paye', 'Number on PAYE', 'e.g. 6', 'number')}
         ${seg('subcontractors', 'Uses subcontractors', [['yes', 'Yes'], ['no', 'No']])}
@@ -36047,7 +36052,7 @@ function _aclSectionView(A, ro){
         </div>
       </div>
       ${(() => { const cf = A.factConflicts(S, today); return cf.length ? `<div class="fs-warn acl-warn"><div class="fs-h">Facts that disagree with an answer or a date</div><ul>${cf.map(x => `<li><b>${esc(x.label)}.</b> ${esc(x.text)}</li>`).join('')}</ul><button type="button" class="acj-link" onclick="switchTab('company')">Open the fact sheet in Company setup</button></div>` : ''; })()}
-      ${ro ? '' : `<div class="acl-pack"><button type="button" class="acj-btn pri" onclick="downloadSubmissionPack()">Download the submission pack</button><span class="acj-muted">A ZIP with the AHS tracker, the client copy with its price list, the folders 01 to ${v.set === 'contractor' ? '13' : '12'} and 99 with every tagged record filed, and the client issue PDF (print only).${(S.accred && S.accred.issueRef) ? ' Reference ' + esc(S.accred.issueRef) + '.' : ''}</span></div>`}
+      ${ro ? '' : `<div class="acl-pack"><button type="button" class="acj-btn pri" onclick="downloadSubmissionPack()">Download the submission pack</button><span class="acj-muted">A ZIP with the AHS tracker, the client copy with its price list, the folders 01 to ${v.set === 'contractor' ? '13' : '12'} and 99 with every tagged record filed, draft policies for this client's role with highlights for your review, and the client issue PDF (print only).${(S.accred && S.accred.issueRef) ? ' Reference ' + esc(S.accred.issueRef) + '.' : ''}</span></div>`}
       <div class="acl-tools"><button type="button" class="acj-link" onclick="setAclAllOpen(true)">Open every section</button> · <button type="button" class="acj-link" onclick="setAclAllOpen(false)">Close every section</button></div>
       ${blocks}
     </div>
@@ -36214,6 +36219,24 @@ function _clIssuePdf(data){
   });
   return new Uint8Array(doc.output('arraybuffer'));
 }
+// The draft policies for the pack, filled on the server from AHS Ltd's
+// anonymised templates with this client's fact sheet. Only for AHS Ltd signed
+// in; anywhere else the pack is built without them and says why.
+async function _fetchPolicyDrafts(set){
+  const signedIn = typeof Auth !== 'undefined' && Auth.isSignedIn && Auth.isSignedIn();
+  if(!signedIn || _apRole() !== 'consultant') return { drafts:[], why:'Draft policies are added when AHS Ltd builds the pack signed in to Compass.' };
+  const c = S.company || {};
+  const facts = {}; ['legalName', 'tradingName', 'shortName', 'address', 'regNo', 'hsLead', 'hsLeadRole', 'hsLeadPhone', 'hsLeadEmail', 'dpLead', 'dpEmail', 'dpPhone', 'description', 'sector'].forEach(k => { if(c[k]) facts[k] = c[k]; });
+  if(!facts.legalName && facts.tradingName) facts.legalName = facts.tradingName;
+  if(!facts.shortName) facts.shortName = _aclShort();
+  try{
+    const r = await fetch('/api/policy/drafts', { method:'POST', credentials:'include', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ set, facts, today:_acjToday() }) });
+    if(!r.ok) return { drafts:[], why:'The draft policies could not be made (' + r.status + ').' };
+    const j = await r.json();
+    return { drafts:j.drafts || [], left:j.left || [] };
+  }catch(e){ return { drafts:[], why:'The draft policies could not be made: ' + e.message }; }
+}
+function _b64Bytes(b64){ const s = atob(b64), u = new Uint8Array(s.length); for(let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
 async function buildSubmissionPack(){
   const A = _acjCore(); if(!A || typeof CLPack === 'undefined') throw new Error('the accreditation files did not load');
   if(!A.clOn(S)) throw new Error('tick Constructionline and a role at step 01 first');
@@ -36241,6 +36264,18 @@ async function buildSubmissionPack(){
     });
     files.push({ n:root + f + '/00 In this folder.txt', d:lines.filter(l => l !== null).join('\r\n') });
   });
+  // the draft policies, each in its folder, with the list of what to review
+  const pol = await _fetchPolicyDrafts(data.set);
+  const review = [];
+  pol.drafts.forEach(d => {
+    if(data.folders.indexOf(d.folder) < 0) return;
+    let name = d.file; if(used[d.folder + '/' + name]) name = name.replace(/\.docx$/i, ' (draft).docx'); used[d.folder + '/' + name] = 1;
+    files.push({ n:root + d.folder + '/' + name, d:_b64Bytes(d.b64) });
+    review.push(d.folder + '/' + name + '\r\n  Parts to review: ' + (d.reviewBlocks || 0) + (d.missing && d.missing.length ? '\r\n  Facts to enter: ' + d.missing.join('; ') : '') + '\r\n  Answers: ' + (d.qids || []).map(id => _evQidLabel(A, id)).join(', '));
+  });
+  if(pol.drafts.length) files.push({ n:root + '00 Review list.txt', d:[short + ': draft policies to review', 'Made by AHS Compass on ' + fmtDate(today) + ' from the AHS Ltd templates, filled from the client fact sheet.',
+    'Yellow highlights are facts to enter or wording to check. Each Word comment says what to check against this client\'s work. Remove the highlights and comments once reviewed.', '',
+    review.join('\r\n\r\n'), '', 'Not drafted, because they come from the client\'s own records: ' + (pol.left || []).join(', ') + '.'].join('\r\n') });
   files.push({ n:root + 'Client Issue/' });
   files.push({ n:root + 'Client Issue/00 ' + short + ' CL Submission Tracker - Client Issue.pdf', d:pdf });
   files.push({ n:root + 'Client Issue/00 ' + short + ' CL Submission Tracker - Client Issue.xlsx', d:bufC });
@@ -36248,7 +36283,8 @@ async function buildSubmissionPack(){
   files.push({ n:root + '00 Pack contents.txt', d:[short + ' Constructionline submission pack', 'Prepared by AHS Ltd for ' + data.legal + ' on ' + fmtDate(today) + '.', 'Reference: ' + ref, 'Question set: ' + (data.set === 'designer' ? 'Designer' : 'Contractor'), '',
     'Trackers: the AHS tracker and the client copy (with the price list). Client Issue: the client copy as a protected PDF (print only) and as Excel.',
     'Folders: each holds a shortcut to every tagged record filed there, and "00 In this folder.txt" listing them.', '',
-    unfiled.length ? 'Not filed, because they are not tagged to a question (tag them on the Documents tab):\r\n' + unfiled.map(x => '  ' + x.item.title).join('\r\n') : 'Every record in the evidence register is filed.'].join('\r\n') });
+    unfiled.length ? 'Not filed, because they are not tagged to a question (tag them on the Documents tab):\r\n' + unfiled.map(x => '  ' + x.item.title).join('\r\n') : 'Every record in the evidence register is filed.', '',
+    pol.drafts.length ? 'Draft policies: ' + pol.drafts.length + ' drafts from the AHS Ltd templates are in their folders. See "00 Review list.txt" for what to check in each.' : (pol.why || '')].join('\r\n') });
   return { blob:_packZip(files), name:short + ' CL Submission ' + data.year + '.zip', data, files, ref };
 }
 async function downloadSubmissionPack(){

@@ -91,4 +91,29 @@ await seed(page, { company: { legalName: 'Example Contracting Ltd', shortName: '
   R.ok(t.D.length === 1 && t.D[0].name === 'Design risk assessment, B853 Leeds' && t.D[0].version === 'Rev 02' && t.D[0].dated === '2026-09-30' && t.D[0].qids.join() === 'DS-02,DS-03', 'a DRM assessment imports against Q10.2 and Q10.3, once');
   R.ok(/DS-01 \(SSIP Q10\.1\)/.test(t.reg) && /DS-02 \(SSIP Q10\.2\)/.test(t.reg), 'both show in the evidence register');
 }
+// signed in as AHS Ltd: the draft policies go into their folders, with a review list
+{
+  const need = (await import('node:module')).createRequire(import.meta.url);
+  const drafts = await need('../../lib/policy-drafts.js').draftsFor('designer', { legalName: 'Example Design Ltd', shortName: 'EDL' }, '2026-10-13');
+  const before = await (async () => { const p = await pack(); return (await p.zip.file('ECL CL Submission 2026/00 Pack contents.txt').async('string')); })();
+  R.ok(/Draft policies are added when AHS Ltd builds the pack signed in/.test(before), 'signed out, the pack says the drafts need AHS Ltd signed in');
+  await seed(page, { company: { legalName: 'Example Design Ltd', shortName: 'EDL' }, accred: { roles: ['designer'], schemes: { cl: { on: true } }, answers: {}, cl: { valid } } }, 'cas');
+  await page.evaluate(d => {
+    window.__auth = [Auth.isSignedIn, Auth.user, window.fetch];
+    Auth.isSignedIn = () => true; Auth.user = () => ({ id: 'c1', name: 'AHS consultant', role: 'consultant' });
+    window.__asked = null;
+    window.fetch = async (u, o) => { if (String(u).includes('/api/policy/drafts')) { window.__asked = JSON.parse(o.body); return new Response(JSON.stringify({ drafts: d, left: ['Carbon Reduction Plan'] }), { status: 200 }); } return window.__auth[2](u, o); };
+  }, drafts);
+  const p = await pack();
+  const asked = await page.evaluate(() => { const a = window.__asked; Auth.isSignedIn = window.__auth[0]; Auth.user = window.__auth[1]; window.fetch = window.__auth[2]; return a; });
+  const rootName = 'EDL CL Submission 2026/';
+  R.ok(asked && asked.set === 'designer' && asked.facts.legalName === 'Example Design Ltd', 'the pack asks for the designer drafts with the fact sheet');
+  const hs = p.zip.file(rootName + '03 Health and Safety and SSIP/01_Health and Safety Policy_EDL_10_26.docx');
+  R.ok(!!hs, 'the H&S policy draft is in 03 Health and Safety and SSIP');
+  R.ok(!!p.zip.file(rootName + '11 Data Protection/05_GDPR Policy_EDL_10_26.docx') && !!p.zip.file(rootName + '12 Social Value and Wellbeing/11_Drug & Alcohol Policy_EDL_10_26.docx'), 'and the others in theirs');
+  const list = await p.zip.file(rootName + '00 Review list.txt').async('string');
+  R.ok(/Yellow highlights are facts to enter or wording to check/.test(list) && /Facts to enter: .*data protection/.test(list) && /Not drafted.*Carbon Reduction Plan/.test(list), 'the review list says what to check and fill in each draft');
+  const docx = await JSZip.loadAsync(await hs.async('nodebuffer'));
+  R.ok(/Example Design Ltd/.test(await docx.file('word/document.xml').async('string')), 'the draft opens and names the client');
+}
 await R.done(browser, errors);

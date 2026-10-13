@@ -149,3 +149,69 @@ prove CHAS and SMAS clients see exactly what they saw before.
   to 393) is treated as the registered and head office address.
 - Pastel red and amber are kept for expiry status only, so the warning panels are
   neutral grey with a charcoal or cyan edge.
+
+---
+
+## Step 3: Evidence register with REF tagging
+
+**What was built**
+
+- Documents tab: an "Evidence register" card under the document register. Every
+  record shows:
+  - its date and source;
+  - the CAS questions it answers, with the SSIP question number;
+  - the Constructionline REFs, which follow through the mapping;
+  - a flag: older than 11 months (replace it), no date, or not tagged.
+- Filters for each flag.
+- Lists of:
+  - questions with no evidence;
+  - questions whose newest evidence is older than 11 months;
+  - for Constructionline clients, evidence out of step with the section expiry
+    (it will be over 12 months old when its section renews).
+- The document form gains "Source" (which app or which person) and "Answers these
+  questions" (the 77 CAS questions by area), saved on the document as
+  `documents[].source` and `documents[].qids`. The document already had its date
+  (`dated`).
+- Records the other tabs make are tagged by what they are, from the moment they
+  exist (`AccredCore.EV_KINDS`):
+  - Site Inspection app records carry the questions the inspector tagged;
+  - process assurance visits count as HS-15 (SSIP Q6 monitoring) and HS-11
+    (Q3.3 adviser advice), and design reviews as DS-02;
+  - Compass workplace inspections count as HS-15;
+  - toolbox talks count as HS-17 (SSIP Q7.4 consultation);
+  - CPD counts as HS-12 and QA-05;
+  - saved monthly figures count as HS-15 and HS-18.
+- AHS Ltd can change any record's questions ("Tag"). Those changes are kept in
+  `S.evidenceTags` (added to the client export and import keys), so a record that
+  is re-synced from another app keeps them.
+- The Accreditation journey uses the register. With nothing picked for a
+  question, the newest record tagged to it stands in, as a site inspection already
+  did ("From the evidence register"). A pick always wins.
+
+**How to test**
+
+- `npm test` runs `test/evidence-register.test.mjs`, which covers:
+  - a site inspection dated October 2025 needs replacing against SSIP Q6;
+  - the 11-month boundary;
+  - the automatic tags;
+  - overrides;
+  - out of step with the section expiry;
+  - the journey fallback.
+- `node test/ui/evidence-register.test.mjs`: the card, tagging a document,
+  tagging a toolbox talk, and the filters.
+- By hand: Documents tab, Evidence register. Add a process assurance visit dated
+  more than 11 months ago: it shows "Older than 11 months: replace it" against
+  HS-15 (SSIP Q6).
+
+**Assumptions**
+
+- "Tagged automatically when they are created" is done by tagging every record by
+  what it is (a toolbox talk is consultation evidence), rather than writing tags
+  into each record at creation. Records made before this branch are tagged the
+  same way, and synced records cannot lose their tags.
+- "Site inspections" covers the Site Inspection app records, the process
+  assurance visits and the Compass workplace inspections. "Monthly" is a month
+  whose assurance figures have been saved.
+- Quick minutes in Triage are kept off the register, because they are held off
+  the client's record until reviewed.
+- 11 months gives a month's warning before Constructionline's 12-month limit.

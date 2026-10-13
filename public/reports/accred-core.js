@@ -177,11 +177,20 @@
   // nothing picked, the newest site inspection record that evidences the
   // question stands in: the check was tagged to the question on purpose, and
   // it never overwrites a choice.
+  // With nothing picked, a record in the evidence register tagged to the
+  // question stands in the same way, whichever of the two is newer.
   function evidenceOf(state, q, ans) {
     if (ans && ans.ev && ans.ev.src) return { ref: ans.ev, facts: facts(state, ans.ev), picked: true };
     var s = siteFor(state, q.id);
-    if (s.length) return { ref: { src: 'site', id: s[0].key }, facts: siteFacts(s[0]), picked: false };
-    return null;
+    var site = s.length ? { ref: { src: 'site', id: s[0].key }, facts: siteFacts(s[0]), picked: false } : null;
+    var reg = evidenceItems(state).filter(function (it) { return it.kind !== 'site' && it.dated && it.qids.indexOf(q.id) >= 0; })
+      .sort(function (a, b) { return String(b.dated).localeCompare(String(a.dated)); })[0];
+    if (reg && (!site || reg.dated > String(site.facts.dated || ''))) {
+      if (reg.kind === 'doc') return { ref: { src: 'doc', id: reg.id }, facts: facts(state, { src: 'doc', id: reg.id }), picked: false, register: true };
+      return { ref: { src: 'reg', id: reg.key }, picked: false, register: true,
+        facts: { src: 'reg', id: reg.key, name: reg.title, dated: reg.dated, signedBy: '', by: reg.source, director: false, expires: '', file: reg.file } };
+    }
+    return site;
   }
 
   // ── the status of one question, from the facts ──
@@ -212,7 +221,7 @@
     var days = expires ? daysFrom(today, expires) : null;
     if (days != null && days < 0) return out('gap', rule.dated && expires !== f.expires ? 'Older than 12 months' : 'Expired', { ev: e, expires: expires, days: days });
     if (days != null && days <= DUE_DAYS) return out('due', 'Due to expire in ' + days + ' day' + (days === 1 ? '' : 's'), { ev: e, expires: expires, days: days });
-    return out('evidenced', e.picked ? 'Evidence in date' : 'From a site inspection', { ev: e, expires: expires, days: days });
+    return out('evidenced', e.picked ? 'Evidence in date' : e.register ? 'From the evidence register' : 'From a site inspection', { ev: e, expires: expires, days: days });
   }
 
   // ── where things stand ──
@@ -614,7 +623,126 @@
     return out;
   }
 
+  // ══════════════════════════════════════════════════════════════
+  //  The evidence register (Documents tab). Every record is held with its
+  //  date, the CAS questions it answers and its source; the Constructionline
+  //  REFs follow through the mapping. Records the other tabs make (site
+  //  inspections, process assurance visits, toolbox talks, CPD, the monthly
+  //  figures) carry their questions from the moment they exist, by what they
+  //  are; AHS can change any record's questions (state.evidenceTags[key]).
+  //  A document carries its own (documents[].qids, .source).
+  // ══════════════════════════════════════════════════════════════
+  var EV_STALE_MONTHS = 11;
+  var EV_KINDS = {
+    doc:        { label: 'Document', qids: [], source: '' },
+    site:       { label: 'Site inspection', qids: ['HS-15', 'HS-11'], source: 'Site Inspection app' },
+    visit:      { label: 'Process assurance', qids: ['HS-15', 'HS-11'], source: 'Process assurance' },
+    inspection: { label: 'Workplace inspection', qids: ['HS-15'], source: 'Compass inspection' },
+    toolbox:    { label: 'Toolbox talk', qids: ['HS-17'], source: 'Toolbox talks' },
+    cpd:        { label: 'CPD', qids: ['HS-12', 'QA-05'], source: 'CPD library' },
+    monthly:    { label: 'Monthly figures', qids: ['HS-15', 'HS-18'], source: 'Monthly assurance figures' }
+  };
+  function evTagsOf(state, key) { var t = state && state.evidenceTags && state.evidenceTags[key]; return (t && typeof t === 'object') ? t : null; }
+  function validQids(list) { return (Array.isArray(list) ? list : []).map(String).filter(function (id) { return !!itemById(id); }); }
+  function evidenceItems(state) {
+    state = state || {};
+    var out = [];
+    function push(kind, key, o) {
+      var t = evTagsOf(state, key), def = EV_KINDS[kind];
+      var qids = t && Array.isArray(t.qids) ? validQids(t.qids) : validQids(o.qids || def.qids);
+      var item = { key: key, kind: kind, kindLabel: def.label, id: o.id || '', title: o.title || def.label, dated: parse(o.dated) ? String(o.dated).slice(0, 10) : '',
+        qids: qids, tagged: !!(t && Array.isArray(t.qids)) || kind === 'doc', source: (t && t.source) || o.source || def.source, file: o.file || '' };
+      item.refs = []; item.ssip = [];
+      qids.forEach(function (id) {
+        clRefsOf(id).forEach(function (r) { if (item.refs.indexOf(r) < 0) item.refs.push(r); });
+        var q = byId(id); if (q) { var n = ssipQOf(id); if (n && item.ssip.indexOf(n) < 0) item.ssip.push(n); }
+      });
+      out.push(item);
+    }
+    (state.documents || []).forEach(function (d) {
+      if (!d || !d.id) return;
+      push('doc', 'doc:' + d.id, { id: d.id, title: (d.name || 'Untitled document') + (d.version ? ' ' + d.version : ''), dated: d.dated || '', qids: d.qids || [], source: d.source || '', file: d.link || '' });
+    });
+    var ev = state.siteEvidence;
+    if (ev && typeof ev === 'object') Object.keys(ev).forEach(function (linkId) {
+      ((ev[linkId] && ev[linkId].records) || []).forEach(function (r) {
+        var q = []; (r.items || []).forEach(function (it) { (it.qids || []).forEach(function (x) { if (q.indexOf(x) < 0) q.push(x); }); });
+        push('site', 'site:' + linkId + '|' + r.inspectionId, { id: r.inspectionId, title: 'Site inspection, ' + (r.project || 'project') + (r.visit ? ', visit ' + r.visit : ''),
+          dated: r.date || String(r.sentAt || '').slice(0, 10), qids: q.length ? q : EV_KINDS.site.qids, source: 'Site Inspection app' + (r.inspector ? ', ' + r.inspector : ''), file: r.reportName || '' });
+      });
+    });
+    (state.siteInspections || []).forEach(function (v) {
+      if (!v || !v.actual || v.outcome === 'Not done') return;
+      push('visit', 'visit:' + v.id, { id: v.id, title: (v.kind || 'Site inspection') + (v.site ? ', ' + v.site : ''), dated: v.actual,
+        qids: /design|architectural/i.test(v.kind || '') ? ['DS-02'] : null, source: 'Process assurance' + (v.by ? ', ' + v.by : ''), file: v.ref || '' });
+    });
+    (state.inspections || []).forEach(function (i) {
+      if (!i || !i.id) return;
+      push('inspection', 'inspection:' + i.id, { id: i.id, title: i.title || i.typeName || 'Workplace inspection', dated: i.periodTo || String(i.submittedAt || '').slice(0, 10),
+        source: 'Compass inspection' + (i.submittedBy ? ', ' + i.submittedBy : '') });
+    });
+    var ps = state.policySignoff && state.policySignoff.policies;
+    (Array.isArray(ps) ? ps : []).forEach(function (p) {
+      if (!p || !p.id) return;
+      var kind = p.type === 'Toolbox talk' ? 'toolbox' : p.type === 'Training / CPD' ? 'cpd' : null; if (!kind) return;
+      push(kind, kind + ':' + p.id, { id: p.id, title: p.title || EV_KINDS[kind].label, dated: p.delivered || '', source: EV_KINDS[kind].source + (p.presenter ? ', ' + p.presenter : ''), file: p.link || '' });
+    });
+    var months = state.monitoring && state.monitoring.months;
+    if (months && typeof months === 'object') Object.keys(months).sort().forEach(function (m) {
+      var md = months[m]; if (!md || !md.enteredAt) return;
+      push('monthly', 'monthly:' + m, { id: m, title: 'Monthly assurance figures, ' + m, dated: md.enteredAt });
+    });
+    return out;
+  }
+  // The SSIP question number a CAS question carries on the portal ("6" for HS-15).
+  var _ssipQ = null;
+  function ssipQOf(id) {
+    if (!_ssipQ) {
+      _ssipQ = {};
+      var bank = clBank();
+      if (bank) ['contractor', 'designer'].forEach(function (set) {
+        bank.sets[set].sections.forEach(function (s) { if (!CL_SSIP.test(s.name)) return; s.qs.forEach(function (x) {
+          var m = /^\s*Question\s+(\d+(?:\.\d+)?)\)/i.exec(x[2]); var q = clQidOfRef(x[0]); if (m && q && !_ssipQ[q]) _ssipQ[q] = m[1];
+        }); });
+      });
+    }
+    return _ssipQ[id] || '';
+  }
+  function evStale(dated, today) { return !!parse(dated) && dated < addMonths(today, -EV_STALE_MONTHS); }
+  function evFlag(item, today) {
+    if (!item.dated) return { k: 'undated', label: 'Date not recorded' };
+    if (evStale(item.dated, today)) return { k: 'stale', label: 'Older than ' + EV_STALE_MONTHS + ' months: replace it' };
+    if (!item.qids.length) return { k: 'untagged', label: 'Not tagged to a question' };
+    return { k: 'ok', label: 'In date' };
+  }
+  // The questions a client needs evidence for, and what stands behind each.
+  function evidenceByQuestion(state, today) {
+    today = today || todayIso();
+    var items = evidenceItems(state);
+    var qs = questions(state).filter(function (q) { return q.kind === 'policy' || q.kind === 'record' || q.kind === 'certificate'; });
+    var view = clOn(state) ? clView(state, today) : null;
+    return qs.map(function (q) {
+      var mine = items.filter(function (it) { return it.qids.indexOf(q.id) >= 0; })
+        .sort(function (a, b) { return String(b.dated).localeCompare(String(a.dated)); });
+      var newest = mine.find(function (it) { return !!it.dated; }) || null;
+      var flag = !mine.length ? { k: 'none', label: 'No evidence' }
+        : !newest ? { k: 'undated', label: 'Evidence has no date' }
+        : evStale(newest.dated, today) ? { k: 'stale', label: 'Newest evidence older than ' + EV_STALE_MONTHS + ' months' }
+        : { k: 'ok', label: 'In date' };
+      // out of step: the evidence will be over 12 months old when its section renews
+      var step = [];
+      if (view && newest) view.blocks.forEach(function (b) {
+        if (!b.lines.some(function (l) { return l.cas === q.id; })) return;
+        [b.hsValid, b.ssipValid].forEach(function (v) {
+          if (parse(v) && addMonths(newest.dated, 12) < v && step.indexOf(b.name) < 0) step.push(b.name);
+        });
+      });
+      return { id: q.id, text: q.text, area: q.area, cas: !!q.cas, ssip: ssipQOf(q.id), refs: clRefsOf(q.id), items: mine, newest: newest, flag: flag, outOfStep: step };
+    });
+  }
+
   var api = { MASTER: MASTER, AREAS: AREAS, ROLES: ROLES, SCHEMES: SCHEMES, STATUS: STATUS, STATUS_ORDER: STATUS_ORDER, DUE_DAYS: DUE_DAYS,
+    EV_KINDS: EV_KINDS, EV_STALE_MONTHS: EV_STALE_MONTHS, evidenceItems: evidenceItems, evidenceByQuestion: evidenceByQuestion, evFlag: evFlag, evStale: evStale, ssipQOf: ssipQOf,
     FACTS: FACTS, factOfField: factOfField, factDef: factDef, factImpact: factImpact, factConflicts: factConflicts,
     addMonths: addMonths, daysFrom: daysFrom, todayIso: todayIso, freshRule: freshRule, cfgOf: cfgOf, setsOn: setsOn, setsFor: setsFor, setRole: setRole, schemeOf: schemeOf,
     refsOf: refsOf, inScope: inScope, questions: questions, byId: byId, usedIn: usedIn, facts: facts, siteItems: siteItems, siteFor: siteFor,

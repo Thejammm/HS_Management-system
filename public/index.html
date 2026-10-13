@@ -2966,6 +2966,27 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .acl-counts span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);font-weight:700;margin-top:2px}
 .acl-tools{font-size:12px;color:var(--text-muted);margin:12px 0 8px}
 .acl-warn{margin:12px 0 0}
+/* evidence register (Documents tab) */
+.ev-card .ev-chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.ev-chip{border:1px solid var(--border);background:transparent;color:var(--text);padding:5px 10px;font:inherit;font-size:12px;cursor:pointer;border-radius:0}
+.ev-chip b{font-weight:800}
+.ev-chip.on{border-color:#38A8C2;box-shadow:inset 0 -3px 0 #38A8C2}
+.ev-t{width:100%;min-width:900px;border-collapse:collapse;font-size:12.5px}
+.ev-t th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);padding:6px 8px;border-bottom:2px solid var(--border);font-weight:800}
+.ev-t td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.ev-t td small{display:block;font-size:11px;color:var(--text-muted);margin-top:2px}
+.ev-tag{display:inline-block;border:1px solid var(--border);padding:0 5px;font-size:11px;font-weight:700;margin:0 2px 2px 0;white-space:nowrap}
+.ev-flag{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;color:#3A3A3A;white-space:nowrap}
+.ev-f-stale{background:#F6D6D6} .ev-f-ok{background:#D8EEDA} .ev-f-undated,.ev-f-untagged{background:var(--muted-bg);color:var(--text)}
+.ev-qgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-top:14px;border-top:1px solid var(--border);padding-top:6px}
+.ev-ql{margin:0;padding-left:18px;font-size:12.5px;line-height:1.5}
+.ev-more summary{cursor:pointer;font-size:12.5px;font-weight:700;color:#38A8C2;margin-bottom:4px}
+.ev-pick{max-height:260px;overflow-y:auto;border:1px solid var(--border);padding:6px 8px;font-size:12px}
+.ev-qa{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:8px 0 3px}
+.ev-qa:first-child{margin-top:0}
+.ev-q{display:flex;gap:6px;align-items:flex-start;padding:2px 0;cursor:pointer;line-height:1.35}
+.ev-q input{width:auto!important;margin:2px 0 0}
+.ev-q i{font-style:normal;font-size:10px;font-weight:800;border:1px solid #38A8C2;color:#38A8C2;padding:0 3px;white-space:nowrap}
 .acl-block{border:1px solid var(--border);margin-bottom:8px}
 .acl-bhead{display:flex;align-items:center;gap:10px;width:100%;background:var(--acl-cyan);color:#fff;border:0;padding:8px 12px;text-align:left;cursor:pointer;font:inherit}
 .acl-bhead:hover{filter:brightness(.96)}
@@ -4024,6 +4045,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
       </div>
     </div>
     <div id="documentsContainer"></div>
+    <div id="evidenceRegister"></div>
 
     <!-- Risk assessment register (moved here from Assurance records so staff
          logins can read it - the Documents tab is in the employee view) -->
@@ -33140,8 +33162,98 @@ function suggestDocumentsFromApp(){
   saveData(); renderDocuments();
   showToast(added?('✓ '+added+' document'+(added!==1?'s':'')+' added from the app - fill in where each one lives and its review date'):'Nothing new to add - everything the app knows about is already listed','success');
 }
+// ══════════════════════════════════════════════════════════════
+//  EVIDENCE REGISTER - accreditation engine step 3. Every record with its
+//  date, the CAS questions it answers (the Constructionline REFs follow) and
+//  its source. Built by AccredCore.evidenceItems from the documents and from
+//  what the other tabs make: site inspections, process assurance visits,
+//  workplace inspections, toolbox talks, CPD and the monthly figures, each
+//  tagged by what it is. AHS can change a record's questions; those changes
+//  live in S.evidenceTags, so a record that is re-synced keeps them.
+// ══════════════════════════════════════════════════════════════
+var _evFilter = 'all';    // view state, never saved
+function _evSourceDatalist(){
+  const c = (S.company && (S.company.shortName || S.company.tradingName || S.company.legalName)) || 'Client';
+  const opts = ['AHS Ltd', c, 'Site Inspection app', 'DRM app', 'PDBR AllProject Flow', 'CPD app', 'Toolbox talks', 'Process assurance', 'Monthly assurance figures'];
+  return `<datalist id="evSourceList">${opts.map(o => `<option value="${esc(o)}">`).join('')}</datalist>`;
+}
+function _evQidPicker(prefix, sel){
+  const A = _acjCore(); if(!A) return '';
+  const set = new Set(sel || []);
+  const areas = A.AREAS.map(a => {
+    const qs = A.MASTER.questions.filter(q => q.area === a); if(!qs.length) return '';
+    return `<div class="ev-qa">${esc(a)}</div>` + qs.map(q => { const n = A.ssipQOf(q.id);
+      return `<label class="ev-q"><input type="checkbox" data-ev="${prefix}" value="${esc(q.id)}"${set.has(q.id) ? ' checked' : ''}> <b>${esc(q.id)}</b>${n ? ' <i>SSIP Q' + esc(n) + '</i>' : ''} ${esc(q.text)}</label>`; }).join('');
+  }).join('');
+  return `<div class="ev-pick">${areas}</div>`;
+}
+function _evQidPicked(prefix){ return [...document.querySelectorAll('input[data-ev="' + prefix + '"]:checked')].map(i => i.value); }
+function _evQidLabel(A, id){ const n = A.ssipQOf(id); return id + (n ? ' (SSIP Q' + n + ')' : ''); }
+function renderEvidenceRegister(){
+  const el = document.getElementById('evidenceRegister'); if(!el) return;
+  const A = _acjCore(); if(!A){ el.innerHTML = ''; return; }
+  const today = _acjToday(), ro = _roLocked();
+  const items = A.evidenceItems(S).map(it => Object.assign(it, { flag: A.evFlag(it, today) }));
+  const byQ = A.evidenceByQuestion(S, today);
+  const stale = items.filter(i => i.flag.k === 'stale').length, untagged = items.filter(i => !i.qids.length).length, undated = items.filter(i => i.flag.k === 'undated').length;
+  const none = byQ.filter(q => q.flag.k === 'none'), qStale = byQ.filter(q => q.flag.k === 'stale'), step = byQ.filter(q => q.outOfStep.length);
+  const shown = items.filter(i => _evFilter === 'all' || (_evFilter === 'stale' && i.flag.k === 'stale') || (_evFilter === 'untagged' && !i.qids.length) || (_evFilter === 'undated' && i.flag.k === 'undated'))
+    .sort((a, b) => (a.flag.k === 'stale' ? 0 : 1) - (b.flag.k === 'stale' ? 0 : 1) || String(b.dated).localeCompare(String(a.dated)));
+  const chip = (k, n, label) => `<button type="button" class="ev-chip${_evFilter === k ? ' on' : ''}" onclick="setEvFilter('${k}')"><b>${n}</b> ${label}</button>`;
+  const rows = shown.map(it => `<tr class="ev-${it.flag.k}">
+      <td><b>${esc(it.title)}</b><small>${esc(it.kindLabel)}${it.file ? ' · ' + esc(it.file) : ''}</small></td>
+      <td>${it.dated ? esc(fmtDate(it.dated)) : '-'}</td>
+      <td>${esc(it.source || '-')}</td>
+      <td>${it.qids.length ? it.qids.map(id => `<span class="ev-tag">${esc(_evQidLabel(A, id))}</span>`).join(' ') : '<span class="acj-muted">None</span>'}${it.refs.length ? `<small>Constructionline REF ${esc(it.refs.join(', '))}</small>` : ''}</td>
+      <td><span class="ev-flag ev-f-${it.flag.k}">${esc(it.flag.label)}</span></td>
+      <td style="text-align:right;">${ro ? '' : it.kind === 'doc' ? `<button class="btn btn-outline btn-xs" onclick="openDocModal('${esc(it.id)}')">Tag</button>` : `<button class="btn btn-outline btn-xs" onclick="openEvTags(${esc(JSON.stringify(it.key))})">Tag</button>`}</td>
+    </tr>`).join('');
+  const qList = (list, why) => list.map(q => `<li><b>${esc(_evQidLabel(A, q.id))}</b> ${esc(q.text)}${why ? ' <span class="acj-muted">' + esc(why(q)) + '</span>' : ''}</li>`).join('');
+  const started = A.questions(S).length > 0;
+  el.innerHTML = `<div class="card ev-card" style="margin-top:18px;"><div class="card-band"><h3><span class="dot">●</span> Evidence register</h3><span class="badge badge-muted">${items.length} record${items.length === 1 ? '' : 's'}</span></div>
+    <div class="card-body">
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.5;">Every record with its date, the accreditation questions it answers and where it came from. Site inspections, process assurance visits, toolbox talks, CPD and the monthly figures are tagged by what they are; documents are tagged when they are added or edited. Anything older than ${A.EV_STALE_MONTHS} months is flagged, a month before the 12-month limit.</div>
+      <div class="ev-chips">${chip('all', items.length, 'records')}${chip('stale', stale, 'older than ' + A.EV_STALE_MONTHS + ' months')}${chip('undated', undated, 'without a date')}${chip('untagged', untagged, 'not tagged')}</div>
+      ${shown.length ? `<div style="overflow-x:auto;"><table class="ev-t"><thead><tr><th>Record</th><th>Dated</th><th>Source</th><th>Answers</th><th>Flag</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="acj-muted" style="margin:10px 0;">Nothing to show.</div>'}
+      ${started ? `<div class="ev-qgrid">
+        <div><div class="acj-lbl">Questions with no evidence (${none.length})</div>${none.length ? (none.length > 12 ? `<details class="ev-more"><summary>Show all ${none.length}</summary><ul class="ev-ql">${qList(none)}</ul></details>` : `<ul class="ev-ql">${qList(none)}</ul>`) : '<div class="acj-muted">Every question that needs evidence has a record behind it.</div>'}</div>
+        <div><div class="acj-lbl">Questions whose newest evidence is older than ${A.EV_STALE_MONTHS} months (${qStale.length})</div>${qStale.length ? `<ul class="ev-ql">${qList(qStale, q => 'newest ' + fmtDate(q.newest.dated) + ': ' + q.newest.title)}</ul>` : '<div class="acj-muted">None.</div>'}</div>
+        ${step.length ? `<div><div class="acj-lbl">Out of step with the section expiry (${step.length})</div><ul class="ev-ql">${qList(step, q => 'the evidence will be over 12 months old when ' + q.outOfStep.join(' and ') + ' renews')}</ul></div>` : ''}
+      </div>` : '<div class="acj-muted" style="margin-top:10px;">Pick the scheme and role on the Accreditation tab to list the questions that have no evidence.</div>'}
+    </div></div>`;
+}
+function setEvFilter(k){ _evFilter = (_evFilter === k) ? 'all' : k; renderEvidenceRegister(); }
+function openEvTags(key){
+  if(_blockIfReadOnly()) return;
+  const A = _acjCore(); if(!A) return;
+  const it = A.evidenceItems(S).find(x => x.key === key); if(!it) return;
+  openModal('Tag ' + it.kindLabel.toLowerCase(),
+    `<div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="font-size:13px;"><b>${esc(it.title)}</b>${it.dated ? ' · ' + esc(fmtDate(it.dated)) : ''}</div>
+      <div class="field-group"><label class="field-label">Source</label><input type="text" id="evTagSource" list="evSourceList" value="${esc(it.source)}">${_evSourceDatalist()}</div>
+      <div class="field-group"><label class="field-label">Answers these questions</label>${_evQidPicker('evT', it.qids)}
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${it.tagged ? 'Tagged by hand.' : 'Tagged by what it is: ' + esc(it.kindLabel.toLowerCase()) + '.'} Untick everything to take it off every question.</div></div>
+    </div>`,
+    `${it.tagged ? `<button class="btn btn-ghost" onclick="resetEvTags(${esc(JSON.stringify(key))})">Back to the default</button>` : ''}<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="saveEvTags(${esc(JSON.stringify(key))})">Save</button>`);
+}
+function saveEvTags(key){
+  if(_blockIfReadOnly()) return;
+  if(!S.evidenceTags || typeof S.evidenceTags !== 'object') S.evidenceTags = {};
+  const src = ((document.getElementById('evTagSource') || {}).value || '').trim();
+  const t = { qids: _evQidPicked('evT') }; if(src) t.source = src;
+  S.evidenceTags[key] = t; saveData(); closeModal(); renderDocuments();
+  showToast('✓ Tags saved', 'success');
+}
+function resetEvTags(key){
+  if(_blockIfReadOnly()) return;
+  if(S.evidenceTags){ delete S.evidenceTags[key]; if(!Object.keys(S.evidenceTags).length) delete S.evidenceTags; }
+  saveData(); closeModal(); renderDocuments();
+}
+
 function renderDocuments(){
   const cont = document.getElementById('documentsContainer'); if(!cont) return;
+  try{ renderEvidenceRegister(); }catch(e){ console.error('evidence register', e); }
   const docs = Array.isArray(S.documents) ? S.documents : [];
   renderDocSummary(docs);
   if(!docs.length){
@@ -33213,6 +33325,8 @@ function openDocModal(id){
          <div class="field-group"><label class="field-label">Signed by</label><input type="text" id="docSignedBy" placeholder="Name and role" value="${esc(v('signedBy'))}"></div>
          <div class="field-group"><label class="field-label">Signatory</label><label style="display:flex;align-items:center;gap:8px;font-size:13px;padding-top:8px;cursor:pointer;"><input type="checkbox" id="docSignedDirector" style="width:auto;margin:0;" ${doc&&doc.signedDirector?'checked':''}> Signed by a director</label></div>
        </div>
+       <div class="field-group"><label class="field-label">Source</label><input type="text" id="docSource" list="evSourceList" placeholder="Which app or which person produced it" value="${esc(v('source'))}">${_evSourceDatalist()}</div>
+       <div class="field-group"><label class="field-label">Answers these questions</label>${_evQidPicker('docQ', doc && Array.isArray(doc.qids) ? doc.qids : [])}<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">The CAS questions this document is evidence for. The Constructionline REFs follow from the mapping.</div></div>
        <div class="field-group"><label class="field-label">Link or file location</label><input type="text" id="docLink" placeholder="https://…   or   C:\\Folder\\file.pdf" value="${esc(v('link'))}"><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">A web link (OneDrive / SharePoint) opens in the browser; a local or network path (C:\\… or \\\\server\\…) gets a Copy button to paste into File Explorer. The file itself is not stored here.</div></div>
      </div>`,
     `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -33229,7 +33343,8 @@ function saveDocument(id){
   if(link && /^\s*(javascript|data|vbscript):/i.test(link)){ showToast('That link type is not allowed','error'); return; }
   if(!Array.isArray(S.documents)) S.documents = [];
   const fields = { name, category:g('docCategory'), version:g('docVersion'), owner:g('docOwner'), reviewDate:g('docReview'), link,
-    dated:g('docDated'), expires:g('docExpires'), signedBy:g('docSignedBy'), signedDirector:!!(document.getElementById('docSignedDirector')||{}).checked };
+    dated:g('docDated'), expires:g('docExpires'), signedBy:g('docSignedBy'), signedDirector:!!(document.getElementById('docSignedDirector')||{}).checked,
+    source:g('docSource'), qids:_evQidPicked('docQ') };
   let doc = id ? S.documents.find(d=>d.id===id) : null;
   if(doc){ Object.assign(doc, fields); _stamp(doc,'updated'); }
   else { doc = Object.assign({ id:'doc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6) }, fields); _stamp(doc,'created'); S.documents.push(doc); }
@@ -38574,7 +38689,8 @@ var _IMPORT_KEYS=['accred','actionSheets','company','riskDoc','riskConfig','requ
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
   'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance','buildingSafety','memberships',
-  'recycleBin'];   // the consultant's deleted-record trail is part of the client's record
+  'recycleBin',   // the consultant's deleted-record trail is part of the client's record
+  'evidenceTags'];   // accreditation engine: the questions AHS set by hand on a record
 /* ── Export THIS client as an import-compatible baseline snapshot ──
    The exact inverse of the per-client branch of _applyImport: writes the
    recognised client-data sections plus the company name at top level, with an

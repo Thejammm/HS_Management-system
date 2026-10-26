@@ -9615,6 +9615,8 @@ function getInitials(name){
 
 let _autoTimer=null, _quotaWarn=false;
 function scheduleAutoSave(){clearTimeout(_autoTimer);_autoTimer=setTimeout(saveData,3000);}
+// The record as last sent to, or taken from, the server. Nothing is sent
+// while the record still matches it.
 var _lastSavedSig=null;
 function _stateSig(){
   var str=JSON.stringify(S), h=5381;
@@ -9762,6 +9764,7 @@ function saveData(){
   // during dial-in we skip the local write and sync to the server only.
   const inClient = !!_consultantView;
   flushDraft();
+  let _sentSig = null; try{ _sentSig = _stateSig(); }catch(e){}
   if(!inClient){
     const payload={meta:{version:3,savedAt:new Date().toISOString(),appKey:'ahs:workplace-inspection:v3',tenantId:(function(){ try{ return Auth.activeTenantId()||''; }catch(e){ return ''; } })()},S};
     // Own workspace: write to localStorage as a cache / offline fallback
@@ -9774,7 +9777,12 @@ function saveData(){
   // If signed in, ALSO sync to server (best-effort, async). A failed server
   // save used to be silent - which made changes appear to "come back" after a
   // refresh (the server still held the old data). Surface it now.
+  if(!(Auth.isSignedIn() && Auth.activeTenantId())) _lastSavedSig = _sentSig;
   if(Auth.isSignedIn() && Auth.activeTenantId()){
+    // A redraw re-fills forms and saves; with nothing changed there is nothing
+    // to send, and sending it made every other open copy refresh or refuse.
+    if(_sentSig !== null && _sentSig === _lastSavedSig) return;
+    _lastSavedSig = _sentSig;
     _ownSaveInFlight = true;   // pause the freshness poll from reloading our own change
     return Auth.saveToServer(S).then(res => {
       if(res && res.conflict){
@@ -9785,6 +9793,7 @@ function saveData(){
         try{ window._lostDraft={ at:new Date().toISOString(), tenantId:Auth.activeTenantId(), state:JSON.parse(JSON.stringify(S)) }; }catch(e){ window._lostDraft=null; }
         if(res.state && typeof res.state === 'object' && Object.keys(res.state).length){
           S = res.state; migrateLoadedState(); _rerenderEverything();
+          _lastSavedSig = _stateSig();   // what is on screen now is what the server holds
         }
         _ownLastUpd = res.updatedAt || _ownLastUpd;
         if(inClient){ _consultantLastUpd = res.updatedAt || _consultantLastUpd; }
@@ -9809,6 +9818,7 @@ function saveData(){
         if(el){ el.textContent=where+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); el.style.color=''; el.title='Saved to '+(_consultantView?.name||'your workspace'); }
         _serverSaveWarned = false;
       } else {
+        _lastSavedSig = null;   // send it again next time
         if(el){ el.textContent='⚠ Not saved to server'; el.style.color='var(--danger)'; el.title='Your changes are on this device only and may revert on refresh.'; }
         if(!_serverSaveWarned){
           _serverSaveWarned = true;
@@ -9840,6 +9850,7 @@ async function loadFromServerAndRender(){
     // Cache locally too
     try{ localStorage.setItem('ahs:workplace-inspection:v3', JSON.stringify({meta:{version:3,savedAt:new Date().toISOString()},S})); }catch(e){}
     _rerenderEverything();
+    _lastSavedSig = _stateSig();   // what is on screen now is what the server holds
     showToast('✓ Loaded from server','info');
     if(['client_user','employee'].includes(Auth.user()?.role)) _startOwnPoll();   // keep this device fresh
     return true;
@@ -14683,6 +14694,7 @@ async function enterConsultantView(tenantId, name, config){
         ? payload.state : _emptyConsultantState();
   migrateLoadedState();
   _rerenderEverything();
+  _lastSavedSig = _stateSig();   // what is on screen now is what the server holds
   _applyConsultantChrome();
   _stopOwnPoll();            // dial-in uses its own read-only poll
   _startConsultantPoll();
@@ -14735,6 +14747,7 @@ async function refreshConsultantView(auto){
       S = (payload && payload.state && Object.keys(payload.state).length) ? payload.state : _emptyConsultantState();
       migrateLoadedState();
       _rerenderEverything();
+      _lastSavedSig = _stateSig();   // what is on screen now is what the server holds
       if(auto) _notePeerActivity();   // an unprompted newer copy = someone else is in here
       showToast('↻ Updated','info');
     }
@@ -14785,6 +14798,7 @@ async function _pollOwnState(){
       Auth.setLastServerUpd(upd);   // keep the save base in step with what we just pulled
       if(r.state && typeof r.state === 'object' && Object.keys(r.state).length){
         S = r.state; migrateLoadedState(); _rerenderEverything();
+        _lastSavedSig = _stateSig();   // what is on screen now is what the server holds
         _notePeerActivity();
         showToast('↻ Updated with the latest from the server','info');
       }

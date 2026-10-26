@@ -14439,6 +14439,10 @@ const Auth = (() => {
     return run;
   }
 
+  // The save rules this copy follows. The server refuses saves from copies
+  // older than it expects (MIN_SAVE_VERSION in routes/state.js).
+  const SAVE_VERSION = 2;
+
   async function _saveNow(tenantId, state){
     // Optimistic concurrency: tell the server which version we last synced to.
     // If someone else (the consultant, or the client) saved this same company
@@ -14447,7 +14451,7 @@ const Auth = (() => {
     const baseUpdatedAt = _lastServerUpd;
     _syncInFlight = _api('/api/state', {
       method: 'POST',
-      body: JSON.stringify({ tenantId, state, baseUpdatedAt })
+      body: JSON.stringify({ tenantId, state, baseUpdatedAt, saveVersion: SAVE_VERSION })
     });
     try {
       const res = await _syncInFlight;   // { ok, tenantId, updatedAt }
@@ -14460,6 +14464,9 @@ const Auth = (() => {
         if(e.body && e.body.updatedAt) _lastServerUpd = e.body.updatedAt;
         return { conflict:true, updatedAt: e.body && e.body.updatedAt, state: e.body && e.body.state };
       }
+      // This copy is older than the server accepts: put up the Update button
+      // and report the save as not made.
+      if(e && e.status === 426 && typeof _showUpdateChip === 'function') _showUpdateChip();
       console.warn('Failed to save state to server:', e);
       return false;
     } finally {

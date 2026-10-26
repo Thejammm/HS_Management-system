@@ -15,6 +15,15 @@ const router = express.Router();
 // offline push needs exactly the same rules - see lib/state-history.js.
 const { keepPrevious: _keepPrevious } = require('../lib/state-history');
 
+// Copies of the app opened before 26 October 2026 send the whole record every
+// 30 seconds whether or not anything has changed. Each of those moves the
+// version on, so the next real save from any other open copy is refused as if
+// someone else had saved first. Copies since then say which save rules they
+// follow (SAVE_VERSION in the app); a save from anything older is turned away
+// until that copy is reloaded. Raise this with SAVE_VERSION if old copies ever
+// need stopping again.
+const MIN_SAVE_VERSION = 2;
+
 
 // Resolve which tenant the request is acting on.
 // - client_user / employee: always their own tenant_id, ignores query.
@@ -71,6 +80,9 @@ router.post('/', requireAuth, express.json({ limit: '50mb' }), async (req, res) 
     return res.status(400).json({ error: 'state_object_required' });
   }
   const baseUpdatedAt = req.body?.baseUpdatedAt || null;
+  if((Number(req.body?.saveVersion) || 0) < MIN_SAVE_VERSION){
+    return res.status(426).json({ error: 'reload_required' });
+  }
 
   // Cheap pre-checks on the pool (no transaction needed yet).
   try {

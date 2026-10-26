@@ -27582,18 +27582,25 @@ function buildProfileFromDiscovery(){
   const _dgOpen=_dgOpenCount();
   if(_dgOpen){ showToast('Check the client\'s answers first - '+_dgOpen+' to confirm, then build the profile','info',6000); _dgReveal(); return; }
   const sug=_discSuggestedKeys();
-  if(!sug.size){ showToast('Nothing to add - the profile already covers every theme the discovery answers point at.','info'); return; }
+  const _dutyDue=_workDutiesSync(false);
+  if(!sug.size && !_dutyDue.lines && !_dutyDue.checks){ showToast('Nothing to add - the profile and the legal duties already cover every answer.','info'); return; }
+  if(!sug.size){
+    const d=_workDutiesSync(true); saveData(); renderRiskReview();
+    showToast('✓ Legal duties brought up to date: '+d.lines+' new dut'+(d.lines!==1?'ies':'y')+(d.checks?(' and '+d.checks+' new check'+(d.checks!==1?'s':'')):'')+' on the Legal duties tab','success',7000);
+    return;
+  }
   const names=[...sug.keys()].map(k=>{ const t=HAZARD_LIBRARY.find(x=>x.key===k); return t?t.activity:k; });
   if(!confirm('Build the risk profile from discovery?\n\nThis adds '+sug.size+' suggested theme'+(sug.size!==1?'s':'')+' from the library, pre-scored with suggested ratings and marked for your review:\n\n• '+names.slice(0,14).join('\n• ')+(names.length>14?('\n… and '+(names.length-14)+' more'):'')+'\n\nNothing existing is changed - you review and agree each rating with the client.')) return;
   let n=0;
   sug.forEach((firedBy,k)=>{ const e=insertLibraryRisk(k, true); if(e){ e.suggestedBy='discovery'; e.suggestedFrom=firedBy; if(!e.assocRisk) e.assocRisk=_discAssocText(firedBy); n++; } });
+  const _duty=_workDutiesSync(true);   // and the legal duties the same answers bring
   _riskRefsEnsure();
   saveData();
   // Reviewing what was just added is the next thing the consultant does, so
   // the register and every category open rather than sitting shut.
   const _reg=document.getElementById('wfRegister'); if(_reg) _reg.open=true;
   _macroExpandAll(true); renderRiskReview();
-  showToast('✓ Added '+n+' suggested theme'+(n!==1?'s':'')+' - shown below, review and agree each rating','success');
+  showToast('✓ Added '+n+' suggested theme'+(n!==1?'s':'')+' - shown below, review and agree each rating'+(_duty.lines?(' - and '+_duty.lines+' legal dut'+(_duty.lines!==1?'ies':'y')+' on the Legal duties tab'):''),'success');
 }
 // ── Reverse sync: things change. A discovery-suggested theme whose supporting
 //    answers have all been withdrawn (flipped to no, or unset) is "orphaned".
@@ -27780,6 +27787,8 @@ function renderDiscoveryPanel(){
   const started=st.answered>0;
   const sugN=(function(){ try{ return _discSuggestedKeys().size; }catch(e){ return 0; } })();
   const dgN=_dgOpenCount();   // the client's answers still waiting for the consultant
+  const dutyP=(function(){ try{ return _workDutiesSync(false); }catch(e){ return { lines:0, checks:0 }; } })();
+  const bN=sugN+dutyP.lines+((!dutyP.lines&&dutyP.checks)?1:0);   // themes and duties still to add
   const orphN=(function(){ try{ return _discOrphanedThemes().length; }catch(e){ return 0; } })();
   const _keepDisc=_detailsSnapshot(el);
   el.innerHTML=`<details class="coll" data-keep="rpDiscovery" style="margin-bottom:16px;">
@@ -27791,7 +27800,7 @@ function renderDiscoveryPanel(){
       <button class="btn btn-outline no-print" onclick="downloadDiscoveryQuestionnaire()" title="A fillable PDF for the client: what is already established, and the questions only they can answer - they tick and type straight into the PDF, save it and send it back">⤓ Client questionnaire</button>
       ${ro?'':`<button class="btn btn-outline no-print" onclick="importDiscoveryQuestionnaire()" title="Load the questionnaire the client sent back - their ticks and notes go straight into the wizard. Nothing you have already answered is overwritten.">⇪ Import returned answers</button><input type="file" id="discImportFile" accept="application/pdf" style="display:none;" onchange="_discImportFile(this.files[0])">`}
       ${(!ro && started)?(dgN?`<button class="btn btn-outline no-print" disabled title="Check the client's answers below first">⚙ Build profile from discovery - check ${dgN} answer${dgN!==1?'s':''} first</button>`
-        :`<button class="btn btn-outline no-print" onclick="buildProfileFromDiscovery()"${sugN?'':' disabled title="Profile already covers the current answers"'}>⚙ Build profile from discovery${sugN?(' ('+sugN+')'):''}</button>`):''}
+        :`<button class="btn btn-outline no-print" onclick="buildProfileFromDiscovery()"${bN?'':' disabled title="The profile and legal duties already cover the current answers"'}>⚙ Build profile from discovery${bN?(' ('+bN+')'):''}</button>`):''}
       ${(!ro && orphN)?`<button class="btn btn-outline no-print" style="border-color:#D97706;color:#B45309;" onclick="reviewDiscoveryOrphans()" title="Themes whose supporting discovery answers have been withdrawn">⚠ Answers changed (${orphN})</button>`:''}
       </div>
     </div></details>${_dgHTML()}${_discRequirementsHTML()}`;
@@ -27802,23 +27811,28 @@ function renderDiscoveryPanel(){
 // the library's legal anchor. Read-only reference: these same lines seed the
 // Monitoring & assurance suggestions as "Check:" activities.
 function _discRequirementsHTML(){
-  let gen; try{ gen=_profGenerate(); }catch(e){ return ''; }
-  if(!gen || !gen.reqs.length) return '';
-  const qText={}; try{ _discDomains().forEach(d=>d.items.forEach(it=>{ qText[it.id]=it.q; })); }catch(e){}
-  const groups=gen.firedRules.map(rule=>{
-    const reqs=gen.reqs.filter(q=>q.rule===rule.id);
-    if(!reqs.length) return '';
-    return `<div style="margin-bottom:12px;">
-      <div style="font-size:12.5px;font-weight:700;">${esc(qText[rule.when]||rule.id)}</div>
-      ${rule.legal?`<div style="font-size:11px;color:var(--text-muted);margin:1px 0 3px;">${esc(rule.legal)}</div>`:''}
-      <ul style="margin:2px 0 0 18px;padding:0;">${reqs.map(q=>`<li style="font-size:12.5px;line-height:1.55;">${esc(q.text)}</li>`).join('')}</ul>
-    </div>`;
+  let plan; try{ plan=_workDutiesPlan(); }catch(e){ return ''; }
+  if(!plan.lines.length && !plan.folds.length) return '';
+  const sec=_workSec(false); const onTab=new Set(((sec&&sec.items)||[]).map(i=>i.workKey));
+  const dism=(sec&&sec.dismissed)||{};
+  const lines=plan.lines.slice().sort((a,b)=>(a.tier-b.tier)||(a.idx-b.idx));
+  let lastTier=0;
+  const rows=lines.map(l=>{
+    const head=(l.tier!==lastTier)?('<div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:10px 0 4px;">Tier '+l.tier+' · '+esc(WORK_TIERS[l.tier])+'</div>'):''; lastTier=l.tier;
+    const state=dism['work:'+l.key]?'marked as not applying':(onTab.has(l.key)?'on the Legal duties tab':'added at the next Build');
+    return head+'<div style="display:flex;gap:10px;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--border);">'
+      +'<span><b>'+esc(l.title)+'</b> <span style="color:var(--text-muted);">· '+esc(l.law)+' · '+l.checks.length+' check'+(l.checks.length!==1?'s':'')+'</span></span>'
+      +'<span style="color:var(--text-muted);white-space:nowrap;">'+state+'</span></div>';
   }).join('');
+  const foldName={ fire:'Fire risk assessment and fire safety', riskassessments:'Risk assessments', welfare:'Welfare and workplace conditions' };
+  const folds=plan.folds.length?('<div style="font-size:12px;color:var(--text-muted);margin-top:10px;line-height:1.5;">Extra checks under the standard duties: '
+    +plan.folds.map(f=>esc(foldName[f.legalKey]||f.legalKey)+' +'+f.checks.length).join(' · ')+'</div>'):'';
   return `<details class="coll" data-keep="rpDiscReqs" style="margin-bottom:16px;">
-    <summary><h3>What the answers require</h3><span class="badge badge-muted">${gen.reqs.length} arrangement${gen.reqs.length!==1?'s':''}</span></summary>
+    <summary><h3>What the answers require</h3><span class="badge badge-muted">${lines.length} dut${lines.length!==1?'ies':'y'} from their work</span></summary>
     <div class="coll-body">
-      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">The arrangements this business must run, from its own discovery answers - each group under the answer that triggered it, with the legal anchor. Use it in the client conversation, and note the same lines feed the Monitoring &amp; assurance suggestions as "Check:" activities.</div>
-      ${groups}
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:6px;">One line for each regulation their work brings, biggest first. Each one, with its checks, goes on the Legal duties tab when you build the profile.</div>
+      ${rows}${folds}
+      <div style="margin-top:10px;"><button class="btn btn-outline btn-xs no-print" onclick="switchTab('requirements')">Open the Legal duties tab</button></div>
     </div></details>`;
 }
 let _discIdx=0;
@@ -28106,6 +28120,213 @@ function _seedRequirements(){
 }
 // ── Legal essentials catalogue - what a business must have in place to trade.
 // Verified citations. threshold: 'all' | 'written5' | 'record5' (the 5-employee test).
+// ══════════════════════════════════════════════════════════════
+//  DUTIES FROM THE WORK (Simon, 2026-10-26: "standard things every UK company
+//  should be doing and then some specifics that need to be built in based on
+//  work"). Every discovery rule lands in ONE place: a line per regulation
+//  below, extra checks under a standard duty (fire, risk assessments,
+//  welfare), or the risk profile only (business change is not law). The
+//  tiers are the bigger-fish order Simon set: what could kill and is enforced
+//  hard first, CDM paperwork and other law last. A line he marks occasional
+//  for a client drops one tier.
+// ══════════════════════════════════════════════════════════════
+const WORK_TIERS = { 1:'Could kill, enforced hard', 2:'Serious harm to health', 3:'Day-to-day arrangements', 4:'Later lessons' };
+const WORK_DUTIES = [
+  { key:'asbestos',  tier:1, title:'Asbestos', law:'Control of Asbestos Regulations 2012', rules:['asbestos','dutytomanage'] },
+  { key:'puwer',     tier:1, title:'Work equipment and mobile plant', law:'PUWER 1998', rules:['workequip','atv','plant','forklift','vehicles','manufacture','newequipment'] },
+  { key:'transport', tier:1, title:'Workplace transport', law:'Workplace (Health, Safety and Welfare) Regulations 1992', rules:['transport','warehouse','loading'] },
+  { key:'height',    tier:1, title:'Work at height', law:'Work at Height Regulations 2005', rules:['height','ladders','scaffold','scafferect','water'] },
+  { key:'lifting',   tier:1, title:'Lifting equipment', law:'LOLER 1998', rules:['lifting'] },
+  { key:'electric',  tier:1, title:'Electricity', law:'Electricity at Work Regulations 1989', rules:['electrical','elecwork'] },
+  { key:'dsear',     tier:1, title:'Flammable substances and fuel', law:'DSEAR 2002', rules:['flammables'] },
+  { key:'pressure',  tier:1, title:'Pressure systems', law:'Pressure Systems Safety Regulations 2000', rules:['pressure','pressure_prem'] },
+  { key:'confined',  tier:1, title:'Confined spaces', law:'Confined Spaces Regulations 1997', rules:['confined','grain'] },
+  { key:'gas',       tier:1, title:'Gas safety', law:'Gas Safety (Installation and Use) Regulations 1998', rules:['gas_prem','landlordgas'] },
+  { key:'site',      tier:1, title:'Construction site safety (excavation, demolition, live sites)', law:'CDM 2015', rules:['excavation','demolition','livesites'] },
+  { key:'coshh',     tier:2, title:'Hazardous substances and pesticides', law:'COSHH 2002', rules:['chemicals','dust','derelict','lev','infection','legionella','pool','livestock','medicines','agrichem'] },
+  { key:'noise',     tier:2, title:'Noise', law:'Control of Noise at Work Regulations 2005', rules:['noise'] },
+  { key:'vibration', tier:2, title:'Vibration', law:'Control of Vibration at Work Regulations 2005', rules:['vibration'] },
+  { key:'manual',    tier:2, title:'Manual handling', law:'Manual Handling Operations Regulations 1992', rules:['manual','movepeople'] },
+  { key:'driving',   tier:2, title:'Driving for work', law:'HSWA 1974; MHSWR 1999', rules:['driving','hgv'] },
+  { key:'radiation', tier:2, title:'Ionising radiation', law:'Ionising Radiations Regulations 2017', rules:['medrad'] },
+  { key:'dse',       tier:3, title:'Display screen equipment', law:'Health and Safety (Display Screen Equipment) Regulations 1992', rules:['display','home'] },
+  { key:'public',    tier:3, title:'Members of the public and visitors', law:'HSWA 1974 s.3', rules:['public','retail','events','publicaccess','volunteers','roadside'] },
+  { key:'waste',     tier:3, title:'Waste and environment', law:'Environmental Permitting (England and Wales) Regulations 2016', rules:['waste'] },
+  { key:'cdmroles',  tier:4, title:'CDM dutyholder roles', law:'CDM 2015', rules:['design','pc','cdm_pd','client','dutyholder','firstdutyholder'] },
+  { key:'bsa',       tier:4, title:'Building Safety Act dutyholder roles', law:'Building Safety Act 2022', rules:['bsa_pd'] },
+  { key:'otherlaw',  tier:4, title:'Other law (data, food, care, working time)', law:'UK GDPR; Food Safety Act 1990; Working Time Regulations 1998', rules:['data','food','foodbusiness','care','nightshift'] }
+];
+// A business that occupies a workplace gets an asbestos line even when the
+// owner holds the duty to manage (Simon, 2026-10-26: tenant line, yes).
+const WORK_ASBESTOS_TENANT = [
+  'Owner\'s asbestos survey and register obtained for the premises they occupy, or confirmation the building was put up after 2000',
+  'Staff and contractors told where any asbestos is before work on the building',
+  'Asbestos materials never disturbed, and any damage reported to the owner straight away',
+  'Flammable materials kept away from asbestos materials'
+];
+// Work that adds to a standard duty: one extra check under that duty, not a second line.
+const WORK_FOLD = {
+  fire:['multi','responsible','office','newpremises','hotwork','landlord'],
+  riskassessments:['lone','outdoor','domestic','clientsites','deliveries','violence','cash','young','newexpectant','agency','vulnerable','migrant','apprentices','selfemployed','seasonal','safetycrit'],
+  welfare:['coldstore']
+};
+const WORK_FOLD_CHECK = {
+  multi:'Shared fire and escape arrangements coordinated with the other occupiers, with a joint evacuation plan',
+  responsible:'Fire risk assessment kept current, with a maintenance and testing regime',
+  office:'Fire risk assessment covers the workplace they occupy, with fire wardens and drills',
+  newpremises:'Fire risk assessment done for the new premises',
+  hotwork:'Hot work under a permit, with a fire watch and combustibles removed or protected',
+  landlord:'Landlord fire duties met for premises let to others, with tenant information kept',
+  lone:'Lone working: assessed, with arrangements in place',
+  outdoor:'Outdoor work and the weather: assessed, with arrangements in place',
+  domestic:'Work in occupied homes: assessed, with arrangements in place',
+  clientsites:'Work at client and third-party premises: assessed, with arrangements in place',
+  deliveries:'Deliveries: assessed, with arrangements in place',
+  violence:'Aggression and violence from the public: assessed, with arrangements in place',
+  cash:'Cash handling: assessed, with arrangements in place',
+  young:'Young persons (under 18): assessed, with arrangements in place',
+  newexpectant:'New and expectant mothers: assessed, with arrangements in place',
+  agency:'Agency workers and subcontract labour: assessed, with arrangements in place',
+  vulnerable:'Staff with health conditions relevant to their work: assessed, with arrangements in place',
+  migrant:'Workers whose first language is not English: assessed, with arrangements in place',
+  apprentices:'Apprentices and trainees: assessed, with arrangements in place',
+  selfemployed:'Self-employed workers: assessed, with arrangements in place',
+  seasonal:'Seasonal surges in work and staff: assessed, with arrangements in place',
+  safetycrit:'Safety-critical roles: competence confirmed and recorded',
+  coldstore:'Cold and thermal conditions: assessed, with breaks and suitable clothing'
+};
+function _workMeta(key){
+  if(String(key||'').indexOf('work:')!==0) return null;
+  const w=WORK_DUTIES.find(x=>'work:'+x.key===key);
+  return w?{ key, title:w.title, citation:w.law, why:'', threshold:'all', criteria:[] }:null;
+}
+// What the current discovery answers call for: the lines (each with its checks
+// and the questions that switched it on) and the extra checks for standard duties.
+function _workDutiesPlan(){
+  const ex=_profState().exposure||{};
+  const qt={}; _discDomains().forEach(d=>d.items.forEach(it=>{ qt[it.id]=it.q; }));
+  const fired={}; PROF_RULES.forEach(r=>{ if(ex[r.when]===true) fired[r.id]=r; });
+  const lines=[];
+  WORK_DUTIES.forEach((w,idx)=>{
+    let checks=[]; const why=[];
+    w.rules.forEach(id=>{ const r=fired[id]; if(!r) return; (r.requires||[]).forEach(t=>checks.push(t)); if(qt[r.when]) why.push(qt[r.when]); });
+    if(w.key==='asbestos' && ex.p_office===true && ex.d_dutytomanage!==true){ checks=checks.concat(WORK_ASBESTOS_TENANT); why.push(qt.p_office||'They occupy a workplace'); }
+    if(!checks.length) return;
+    const seen=new Set(); checks=checks.filter(t=>{ const k=String(t).trim().toLowerCase(); if(!k||seen.has(k)) return false; seen.add(k); return true; });
+    lines.push({ key:w.key, tier:w.tier, title:w.title, law:w.law, checks, why:why.filter((x,i,a)=>a.indexOf(x)===i), idx });
+  });
+  const folds=[];
+  Object.keys(WORK_FOLD).forEach(legalKey=>{
+    const checks=WORK_FOLD[legalKey].filter(id=>fired[id] && WORK_FOLD_CHECK[id]).map(id=>WORK_FOLD_CHECK[id]);
+    if(checks.length) folds.push({ legalKey, checks });
+  });
+  return { lines, folds };
+}
+function _workSec(create){
+  if(!Array.isArray(S.requirements)){ if(!create) return null; S.requirements=[]; }
+  let sec=S.requirements.find(x=>x && x.work);
+  if(sec || !create) return sec||null;
+  sec={ id:_reqUid('reqsec'), heading:'Because of the work they do', work:true, stage:'', items:[], dismissed:{} };
+  const at=S.requirements.findIndex(x=>x && x.legal);
+  S.requirements.splice(at>=0?at+1:0, 0, sec);
+  return sec;
+}
+function _workAddChecks(it, checks){
+  if(!Array.isArray(it.workExtra)) it.workExtra=[];
+  const have=new Set(it.workExtra.map(t=>String(t).toLowerCase()));
+  let n=0;
+  checks.forEach(t=>{ const k=String(t).toLowerCase(); if(have.has(k)) return; have.add(k); n++;
+    it.workExtra.push(t); if(Array.isArray(it.critCustom) && it.critCustom.indexOf(t)<0) it.critCustom.push(t); });
+  return n;
+}
+// Add the lines and checks the answers call for. Additive only: nothing is
+// ever removed, a line marked Does not apply is never added again. apply=false
+// counts what would be added without touching anything.
+function _workDutiesSync(apply){
+  const plan=_workDutiesPlan(); let lines=0, checks=0;
+  const sec=_workSec(!!apply && plan.lines.length>0);
+  const dism=(sec&&sec.dismissed)||{};
+  plan.lines.forEach(l=>{
+    const key='work:'+l.key; if(dism[key]) return;
+    let it=sec?(sec.items||[]).find(i=>i.legalKey===key):null;
+    if(!it){
+      lines++; if(!apply) return;
+      it={ id:_reqUid('reqitem'), legalKey:key, workKey:l.key, requirement:l.title, citation:l.law, present:'', adequate:'', action:'', crit:{}, actions:[], workExtra:[] };
+      _stamp(it,'created'); sec.items.push(it);
+      _workAddChecks(it, l.checks); return;
+    }
+    if(apply) checks+=_workAddChecks(it, l.checks);
+    else { const have=new Set((it.workExtra||[]).map(t=>String(t).toLowerCase())); checks+=l.checks.filter(t=>!have.has(String(t).toLowerCase())).length; }
+  });
+  let legalSec=(S.requirements||[]).find(x=>x && x.legal);
+  if(!legalSec && apply && plan.folds.length){ legalSec=_seedLegalEssentials(); S.requirements.unshift(legalSec); }
+  plan.folds.forEach(f=>{
+    const it=legalSec?(legalSec.items||[]).find(i=>i.legalKey===f.legalKey):null;
+    if(!it){ if(!apply) checks+=f.checks.length; return; }
+    if(apply) checks+=_workAddChecks(it, f.checks);
+    else { const have=new Set((it.workExtra||[]).map(t=>String(t).toLowerCase())); checks+=f.checks.filter(t=>!have.has(String(t).toLowerCase())).length; }
+  });
+  if(apply && sec) _stamp(sec,'updated');
+  return { lines, checks };
+}
+function _workTierOf(it){ const w=WORK_DUTIES.find(x=>x.key===it.workKey); return Math.min(4, (w?w.tier:4)+(it.occasional?1:0)); }
+function _workOrder(a, b){ const ia=WORK_DUTIES.findIndex(x=>x.key===a.workKey), ib=WORK_DUTIES.findIndex(x=>x.key===b.workKey); return (_workTierOf(a)-_workTierOf(b)) || (ia-ib); }
+function toggleWorkOccasional(sid, iid){
+  if(_blockIfReadOnly()) return;
+  const sec=(S.requirements||[]).find(x=>x.id===sid); const it=sec&&(sec.items||[]).find(i=>i.id===iid); if(!it) return;
+  it.occasional=!it.occasional; _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
+}
+function dismissWorkDuty(sid, iid){
+  if(_blockIfReadOnly()) return;
+  const sec=(S.requirements||[]).find(x=>x.id===sid); const it=sec&&(sec.items||[]).find(i=>i.id===iid); if(!it) return;
+  if(!sec.dismissed||typeof sec.dismissed!=='object') sec.dismissed={};
+  sec.dismissed[it.legalKey]={ item:it, by:_actor().name||'', at:new Date().toISOString() };
+  sec.items=(sec.items||[]).filter(i=>i!==it);
+  _stamp(sec,'updated'); saveData(); _keepScroll(renderRequirements);
+  showToast((it.requirement||'Duty')+' marked as not applying - it will not be added again','info');
+}
+function restoreWorkDuty(sid, key){
+  if(_blockIfReadOnly()) return;
+  const sec=(S.requirements||[]).find(x=>x.id===sid); const d=sec&&sec.dismissed&&sec.dismissed[key]; if(!d) return;
+  sec.items.push(d.item); delete sec.dismissed[key];
+  _stamp(sec,'updated'); saveData(); _keepScroll(renderRequirements);
+}
+let _workPlanNow=null;   // the plan for the render in progress, read by each card
+function _workDutyWhyHTML(it){
+  const plan=_workPlanNow||_workDutiesPlan(); const l=plan.lines.find(x=>x.key===it.workKey);
+  const base=(WORK_DUTIES.find(x=>x.key===it.workKey)||{}).tier;
+  // the tier heading above the card says the tier; the card only says when it was moved
+  return '<div style="font-size:12px;color:var(--text-muted);margin:8px 0;line-height:1.5;">'
+    +(it.occasional?('<div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">Occasional for this client · normally tier '+base+'</div>'):'')
+    +(l?('<div>They answered yes to: '+esc(l.why.join('; '))+'</div>')
+       :'<div>The discovery answers no longer point to this duty. Keep it, or mark it Does not apply.</div>')
+    +'</div>';
+}
+function _workDutyTools(sec, it, ro){
+  if(ro) return '';
+  return '<div class="no-print" style="flex:0 0 auto;display:flex;gap:8px;align-items:center;">'
+    +'<label style="font-size:11.5px;color:var(--text-muted);display:flex;gap:4px;align-items:center;cursor:pointer;" title="A small part of their work - drops it one tier"><input type="checkbox"'+(it.occasional?' checked':'')+' onchange="toggleWorkOccasional(\''+sec.id+'\',\''+it.id+'\')"> Occasional</label>'
+    +'<button class="btn btn-ghost btn-xs" title="This duty does not apply to this client. It will not be added again; restore it at the foot of this section." onclick="dismissWorkDuty(\''+sec.id+'\',\''+it.id+'\')">Does not apply</button>'
+    +'</div>';
+}
+function _workDutiesHTML(ro){
+  const sec=_workSec(false); if(!sec) return '';
+  const emp=_empCount();
+  _workPlanNow=_workDutiesPlan();
+  const items=(sec.items||[]).slice().sort(_workOrder);
+  const inPlace=items.filter(_reqItemMet).length;
+  let lastTier=0;
+  const cards=items.map(it=>{ const t=_workTierOf(it); const head=(t!==lastTier)?('<div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);">Tier '+t+' · '+esc(WORK_TIERS[t])+'</div>'):''; lastTier=t; return head+_legalCardHTML(sec,it,emp,ro); }).join('');
+  const dism=Object.keys(sec.dismissed||{});
+  const dismHtml=dism.length?('<div style="font-size:12px;color:var(--text-muted);margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);">Marked as not applying: '
+    +dism.map(k=>{ const d=sec.dismissed[k]; return esc((d.item&&d.item.requirement)||k)+(ro?'':' <button class="btn btn-ghost btn-xs no-print" onclick="restoreWorkDuty(\''+sec.id+'\',\''+k+'\')">Restore</button>'); }).join(' · ')+'</div>'):'';
+  _workPlanNow=null;
+  return '<div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Because of the work they do</h3><span class="badge badge-muted">'+inPlace+'/'+items.length+' in place</span></div>'
+    +'<div class="card-body">'
+    +'<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:6px;line-height:1.5;">The duties their work brings, from the discovery answers, biggest first: what could kill and is enforced hard, then serious harm to health, then day-to-day arrangements, then later lessons. Mark a line occasional if it is a small part of their work, or Does not apply if it is not theirs.</div>'
+    +(cards||'<div class="ck-pending" style="padding:6px 0;">Every duty from the answers has been marked as not applying.</div>')+dismHtml
+    +'</div></div>';
+}
 const LEGAL_ESSENTIALS = [
   { key:'policy', title:'Health & Safety Policy', citation:'HSWA 1974 s.2(3)', threshold:'written5',
     why:'A written statement of how the business manages health and safety - the intent, who is responsible, and the arrangements for the main risks.',
@@ -28144,7 +28365,7 @@ const LEGAL_ESSENTIALS = [
     why:'Where risks cannot be controlled another way, provide suitable PPE free of charge (including to workers, from 2022).',
     criteria:['PPE used only where the risk can\'t be adequately controlled by other means (last resort)','Suitable PPE assessed and provided free - to employees and, since April 2022, to \'limb (b)\' workers','PPE compatible where several items are worn together','Maintained, cleaned, stored properly and replaced when needed','Staff trained in correct use, and use is monitored'] }
 ];
-function _legalMeta(key){ return LEGAL_ESSENTIALS.find(x=>x.key===key)||null; }
+function _legalMeta(key){ return LEGAL_ESSENTIALS.find(x=>x.key===key)||_workMeta(key)||null; }
 function _empCount(){ const n=parseInt((S.company&&S.company.employees)||'',10); return isNaN(n)?null:n; }
 function _legalThreshold(threshold, emp){
   if(threshold==='all'||!threshold) return {required:true, label:'Legal requirement', note:''};
@@ -28176,7 +28397,9 @@ function restoreLegalEssentials(){
 // ══════════════════════════════════════════════════════════════
 function _critList(it){
   if(Array.isArray(it.critCustom)) return it.critCustom;
-  const meta=_legalMeta(it.legalKey); return (meta&&meta.criteria)||[];
+  const meta=_legalMeta(it.legalKey); const base=(meta&&meta.criteria)||[];
+  // checks the client's work adds (a work line's whole list, or extra checks under a standard duty)
+  return (Array.isArray(it.workExtra) && it.workExtra.length) ? base.concat(it.workExtra) : base;
 }
 function _critState(it, idx){
   if(it.crit&&it.crit[idx]) return 'met';
@@ -28224,7 +28447,7 @@ function recallReqCriteria(sid, iid){
   if(_blockIfReadOnly()) return;
   const s=(S.requirements||[]).find(x=>x.id===sid); const it=s&&(s.items||[]).find(i=>i.id===iid); if(!it) return;
   const meta=_legalMeta(it.legalKey);
-  if(!(meta&&meta.criteria&&meta.criteria.length)){ showToast('This item has no library original to recall','info'); return; }
+  if(!((meta&&meta.criteria&&meta.criteria.length) || (Array.isArray(it.workExtra)&&it.workExtra.length))){ showToast('This item has no library original to recall','info'); return; }
   if(!confirm('Recall the original library criteria?\n\nYour bespoke lines are replaced and the met / accepted marks reset. Undo (this session) can bring them back.')) return;
   _critSnapshot(it); delete it.critCustom; it.crit={}; it.critAccepted={};
   _stamp(it,'updated'); saveData(); _keepScroll(renderRequirements);
@@ -28354,9 +28577,10 @@ function _legalCardHTML(sec, it, emp, ro){
           ${it.riskDerived?`<span class="badge badge-muted" style="font-size:10.5px;">from risk profile</span>`:''}
         </div>
       </div>
-      ${(ro||(meta&&!it.riskDerived))?(meta&&!it.riskDerived?`<span title="Legal requirement - cannot be removed" style="flex:0 0 auto;color:var(--text-muted);font-size:11px;">🔒</span>`:''):`<button class="btn btn-ghost btn-xs no-print" title="Remove this item" onclick="deleteReqLine('${sec.id}','${it.id}')">${_ic('trash',13)}</button>`}
+      ${it.workKey?_workDutyTools(sec,it,ro):(ro||(meta&&!it.riskDerived))?(meta&&!it.riskDerived?`<span title="Legal requirement - cannot be removed" style="flex:0 0 auto;color:var(--text-muted);font-size:11px;">🔒</span>`:''):`<button class="btn btn-ghost btn-xs no-print" title="Remove this item" onclick="deleteReqLine('${sec.id}','${it.id}')">${_ic('trash',13)}</button>`}
     </div>
     ${why?`<div style="font-size:12.5px;color:var(--text-muted);margin:8px 0;line-height:1.5;">${esc(why)}${th.note?` <em style="color:#92400E;">${esc(th.note)}</em>`:''}</div>`:(th.note?`<div style="font-size:12px;margin:6px 0;"><em style="color:#92400E;">${esc(th.note)}</em></div>`:'')}
+    ${it.workKey?_workDutyWhyHTML(it):''}
     ${(crit.length||!ro)?`<details open data-keep style="margin:8px 0;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--muted-bg);"><summary style="cursor:pointer;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);">Assessment criteria${cit?` &middot; ${esc(cit)}`:''} <span style="color:${cc.open===0?'var(--success)':'var(--accent)'};">(${cc.met} met${cc.acc?` · ${cc.acc} accepted`:''}${cc.open?` · ${cc.open} open`:''})</span></summary><div style="margin-top:8px;">${critHtml||'<div style="font-size:12px;color:var(--text-muted);">No criteria - add your own lines below.</div>'}${critTools}</div></details>`:''}
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;">
       <label style="font-size:11.5px;color:var(--text-muted);">Located / in place? <select${dis} onchange="updateReqField('${sec.id}','${it.id}','present',this.value)" style="${ss}">${['','Yes','No'].map(o=>`<option${o===(it.present||'')?' selected':''}>${o||'-'}</option>`).join('')}</select></label>
@@ -28989,10 +29213,10 @@ function renderRequirements(){
   };
 
   // Own (non-legal) sections keep the existing detailed editor.
-  const ownSecs = secs.filter(s => !s.legal);
+  const ownSecs = secs.filter(s => !s.legal && !s.work);
   const ownHtml = ownSecs.map(sectionCard).join('');
   const ownWrap = ownHtml ? `<div class="ms-stage-head"><span class="ms-stage-badge" style="background:#6B7280;">Your own added items</span><span class="ms-stage-desc">Anything beyond the legal essentials that you have added.</span></div>${ownHtml}` : '';
-  cont.innerHTML = _legalRegisterHTML(ro) + _riskDerivedHTML(ro) + ownWrap
+  cont.innerHTML = _legalRegisterHTML(ro) + _workDutiesHTML(ro) + _riskDerivedHTML(ro) + ownWrap
     + (ro?'':`<div style="margin-top:10px;"><button class="btn btn-outline btn-sm no-print" onclick="addReqSection()">＋ Add your own duty heading</button></div>`);
 }
 

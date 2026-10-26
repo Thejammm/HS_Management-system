@@ -27243,6 +27243,7 @@ async function _discImportFile(file){
       if(ans===null){ blank++; return; }   // asked, left blank - not the same as never asked
       if(p.exposure[id]===true||p.exposure[id]===false){ skipped++; return; }
       p.exposure[id]=ans; if(ans) yes++; else no++;
+      _dgState(true).src[id]='client';   // the client's answer: the consultant checks it
     });
     if(!(yes+no+notes)){
       showToast(conflicts?('Nothing imported - '+conflicts+' question'+(conflicts!==1?'s have':' has')+' both Yes and No ticked, so they are left to ask on the visit')
@@ -27265,7 +27266,8 @@ async function _discImportFile(file){
       +(notAsked?(' - '+notAsked+' not asked of this business'):'')
       +(sectorsBack?(' - '+sectorsBack+' business type'+(sectorsBack!==1?'s':'')+' set from the questionnaire'):'')
       +(conflicts?(' - '+conflicts+' had both boxes ticked and '+(conflicts!==1?'were':'was')+' left to ask on the visit'):'')
-      +(skipped?(' - '+skipped+' already answered in the app and kept as they were'):''),'success',9000);
+      +(skipped?(' - '+skipped+' already answered in the app and kept as they were'):'')
+      +(function(){ const n=_dgOpenCount(); return n?(' - '+n+' to check before the profile is built'):''; })(),'success',9000);
   }catch(e){ console.error('Questionnaire import failed:',e); showToast('Could not read that PDF - see console','error'); }
 }
 // ── Risk profile review: overall score + risks by hazard type + PDCA + maturity ──
@@ -27577,6 +27579,8 @@ function _discSuggestedKeys(){
 // re-running discovery just tops up anything new.
 function buildProfileFromDiscovery(){
   if(_roLocked()){ showToast('Read only - switch to edit mode to build the profile.','info'); return; }
+  const _dgOpen=_dgOpenCount();
+  if(_dgOpen){ showToast('Check the client\'s answers first - '+_dgOpen+' to confirm, then build the profile','info',6000); _dgReveal(); return; }
   const sug=_discSuggestedKeys();
   if(!sug.size){ showToast('Nothing to add - the profile already covers every theme the discovery answers point at.','info'); return; }
   const names=[...sug.keys()].map(k=>{ const t=HAZARD_LIBRARY.find(x=>x.key===k); return t?t.activity:k; });
@@ -27620,11 +27624,162 @@ function reviewDiscoveryOrphans(){
   saveData(); renderRiskProfile(); renderRiskReview();
   showToast(removable.length?('✓ Removed '+removable.length+' theme'+(removable.length!==1?'s':'')+(kept.length?(' - '+kept.length+' kept, badged'):'')):'Nothing removed - every affected theme has recorded work','success');
 }
+// ══════════════════════════════════════════════════════════════
+//  ANSWER CHECK (Simon, 2026-10-26: "an internal check by me when I get it
+//  back"). The client's questionnaire is untouched. When their answers come
+//  back, only the ones that need the consultant are listed: answers the
+//  client's own documents contradict, answers that disagree with each other,
+//  and yes answers that switch on a dutyholder duty. Answers the consultant
+//  gives in the wizard are already his and are never listed. Build profile
+//  waits until the list is clear. Only the consultant sees it.
+// ══════════════════════════════════════════════════════════════
+// The client's own documents name the work, but the answer is not yes. Work
+// and premises only - never facts about their people, which only they know.
+const DG_DOC_RULES = [
+  { q:'w_safetycrit', rx:/chainsaw|excavator|mewp|elevated work platform|pesticide|telehandler|forklift|chipper/i },
+  { q:'a_pressure',   rx:/compressor|air tools|pressure (system|vessel)|boiler/i },
+  { q:'p_plant',      rx:/compressor|boiler|plant room/i },
+  { q:'p_office',     rx:/workshop|\byard\b|roller shutter|\boffice\b/i },
+  { q:'a_lifting',    rx:/mewp|elevated work platform|lifting|hoist/i },
+  { q:'a_plant',      rx:/excavator|dumper|digger|compactor|ride[- ]on|roller(?! shutter)/i },
+  { q:'a_forklift',   rx:/forklift|telehandler/i },
+  { q:'o_agrichem',   rx:/pesticide|herbicide/i },
+  { q:'o_chemicals',  rx:/coshh|chemical|hazardous substance|pesticide/i },
+  { q:'o_excavation', rx:/excavat|buried services|underground services|groundwork/i },
+  { q:'o_height',     rx:/ladder|mewp|elevated work platform|work at height/i },
+  { q:'a_ladders',    rx:/ladder/i },
+  { q:'o_noise',      rx:/noise/i },
+  { q:'o_vibration',  rx:/vibration|havs/i },
+  { q:'o_manual',     rx:/manual handling/i },
+  { q:'o_lone',       rx:/lone work/i },
+  { q:'o_driving',    rx:/driving|company vehicle/i },
+  { q:'o_water',      rx:/(near|around|over|on) water/i },
+  { q:'o_hotwork',    rx:/welder|welding|hot work/i },
+  { q:'o_dust',       rx:/abrasive|circular saw|disc cutter|silica|\bdust\b/i },
+  { q:'o_flammables', rx:/petrol|fuel|flammable|lpg|gas cylinder/i },
+  { q:'o_atv',        rx:/tractor|\batv\b|quad bike/i },
+  { q:'o_loading',    rx:/trailer|skip load|loading/i },
+  { q:'o_outdoor',    rx:/weather|ultraviolet|\bsun/i },
+  { q:'a_workequip',  rx:/work equipment|power ?tool|mower|strimmer|hedge trimmer|chainsaw/i },
+  { q:'a_electrical', rx:/electric|power ?tool/i },
+  { q:'o_confined',   rx:/confined space/i },
+  { q:'a_scaffold',   rx:/scaffold/i }
+];
+// Answers that cannot both be right. y(q) = answered yes.
+const DG_PAIR_RULES = [
+  { q:'w_keyperson', when:(y,n)=>(y('w_keyperson')&&n('c_keyperson'))||(n('w_keyperson')&&y('c_keyperson')),
+    why:(y,qt)=>'Answered the other way to "'+(qt.c_keyperson||'the key-person question')+'" - the same question asked twice' },
+  { q:'p_plant', when:y=>y('a_pressure')&&!y('p_plant'),
+    why:()=>'They operate pressure systems - is any of it kept at their own premises?' },
+  { q:'p_office', when:y=>y('d_responsible')&&!y('p_office'),
+    why:()=>'They are the Responsible Person for fire at premises, so they occupy a workplace' },
+  { q:'w_safetycrit', when:y=>!y('w_safetycrit')&&['a_plant','a_forklift','a_lifting','o_agrichem'].some(y),
+    why:y=>'They operate '+[['a_plant','mobile plant'],['a_forklift','forklifts or telehandlers'],['a_lifting','lifting equipment or MEWPs'],['o_agrichem','pesticides']].filter(x=>y(x[0])).map(x=>x[1]).join(', ') },
+  { q:'b_dutyholder', when:y=>y('b_dutyholder')&&!['d_pc','d_cdm_pd','d_bsa_pd'].some(y),
+    why:()=>'They take a dutyholder role, but no role is ticked' },
+  { q:'d_dutytomanage', when:y=>y('p_office')&&!y('d_dutytomanage'),
+    why:()=>'They occupy a workplace. The asbestos duty to manage sits with whoever is responsible for maintaining non-domestic premises - confirm whether that is them (it matters most in buildings put up before 2000)' }
+];
+// Yes answers that switch on a dutyholder duty: always confirmed.
+const DG_CONFIRM = ['b_survey_pre2000','b_design','b_dutyholder','d_pc','d_cdm_pd','d_bsa_pd','d_client','o_demolition','d_dutytomanage'];
+const DG_KIND = { documents:{ rank:0, label:'Their documents say otherwise' }, conflict:{ rank:1, label:'Answers disagree' }, confirm:{ rank:2, label:'Confirm the duty' } };
+// Read without writing: the check is only saved once something is answered.
+function _dgState(create){
+  const p=(S.profiler&&typeof S.profiler==='object')?S.profiler:null;
+  if(p && p.gate && typeof p.gate==='object'){
+    if(!p.gate.src||typeof p.gate.src!=='object') p.gate.src={};
+    if(!p.gate.confirmed||typeof p.gate.confirmed!=='object') p.gate.confirmed={};
+    return p.gate;
+  }
+  if(!create) return { src:{}, confirmed:{} };
+  const pp=_profState(); pp.gate={ src:{}, confirmed:{} }; return pp.gate;
+}
+function _dgDocTitles(){
+  const t=[];
+  (Array.isArray(S.raRegister)?S.raRegister:[]).forEach(r=>{ const x=String((r&&(r.title||r.location))||'').trim(); if(x) t.push(x); });
+  (Array.isArray(S.documents)?S.documents:[]).forEach(d=>{ const x=String((d&&(d.title||d.name))||'').trim(); if(x) t.push(x); });
+  return t;
+}
+// Rows stay where they first appeared this session, so answering one never moves the rest.
+let _dgSeen={}, _dgSeenN=0;
+function _dgRows(){
+  const ex=_profState().exposure||{}, g=_dgState();
+  const y=q=>ex[q]===true, n=q=>ex[q]===false;
+  const qt={}, bank={}; let i=0; _discDomains().forEach(d=>d.items.forEach(it=>{ qt[it.id]=it.q; bank[it.id]=i++; }));
+  const flags=new Map();
+  const add=(q,kind,why)=>{ if(!(q in qt)) return; const f=flags.get(q)||{ q, kinds:[], why:[] }; if(f.kinds.indexOf(kind)<0) f.kinds.push(kind); if(f.why.indexOf(why)<0) f.why.push(why); flags.set(q,f); };
+  const titles=_dgDocTitles();
+  DG_DOC_RULES.forEach(r=>{ if(y(r.q)) return; const hit=titles.filter(t=>r.rx.test(t));
+    if(hit.length) add(r.q,'documents','Their own documents: '+hit.slice(0,3).join('; ')+(hit.length>3?(' and '+(hit.length-3)+' more'):'')); });
+  DG_PAIR_RULES.forEach(r=>{ try{ if(r.when(y,n)) add(r.q,'conflict',r.why(y,qt)); }catch(e){} });
+  DG_CONFIRM.forEach(q=>{ if(y(q)) add(q,'confirm','Switches on a dutyholder duty - confirm it applies'); });
+  const rows=[];
+  const keys=new Set([...flags.keys(), ...Object.keys(g.confirmed)]);
+  keys.forEach(q=>{
+    if(!(q in qt)) return;
+    const f=flags.get(q), c=g.confirmed[q], mine=g.src[q]==='consultant';
+    if(!c && (!f || mine)) return;   // the consultant's own wizard answer is already checked
+    const open=!!f && !mine && !(c && c.v===ex[q]);
+    rows.push({ q, text:qt[q], open, c:c||null, kinds:f?f.kinds:[(c&&c.kind)||'confirm'], why:f?f.why:[(c&&c.why)||''],
+      was:c?c.was:(ex[q]===true||ex[q]===false?ex[q]:null), fromClient:g.src[q]==='client',
+      rank:Math.min.apply(null,(f?f.kinds:[(c&&c.kind)||'confirm']).map(k=>(DG_KIND[k]||DG_KIND.confirm).rank)), bank:bank[q] });
+  });
+  rows.sort((a,b)=>(a.rank-b.rank)||(a.bank-b.bank));
+  rows.forEach(r=>{ if(!(r.q in _dgSeen)) _dgSeen[r.q]=_dgSeenN++; });
+  return rows.sort((a,b)=>_dgSeen[a.q]-_dgSeen[b.q]);
+}
+// What still needs the consultant. Only the consultant is ever held up by it.
+function _dgOpenCount(){
+  try{ if(typeof _isConsultantish==='function' && !_isConsultantish()) return 0; return _dgRows().filter(r=>r.open).length; }catch(e){ return 0; }
+}
+function _dgSet(q, v){
+  if(_roLocked()) return;
+  const ex=_profState().exposure, g=_dgState(true), prev=g.confirmed[q];
+  const r=_dgRows().find(x=>x.q===q);
+  const was=prev?prev.was:(ex[q]===true||ex[q]===false?ex[q]:null);
+  ex[q]=v;
+  g.confirmed[q]={ v, was, at:new Date().toISOString(), by:_actor().name||'', kind:(r&&r.kinds[0])||'confirm', why:r?r.why.join(' · '):'' };
+  if(!_dgOpenCount()){ g.checkedAt=new Date().toISOString(); g.checkedBy=_actor().name||''; } else { delete g.checkedAt; delete g.checkedBy; }
+  _stamp(S.profiler,'updated'); saveData();
+  _keepScroll(renderDiscoveryPanel);
+}
+function _dgReveal(){
+  const d=document.getElementById('dgPanel'); if(!d) return;
+  d.open=true; try{ d.scrollIntoView({ block:'start', behavior:'smooth' }); }catch(e){}
+}
+function _dgDate(iso){ try{ return new Date(iso).toLocaleDateString('en-GB',{ day:'numeric', month:'short', year:'numeric' }); }catch(e){ return ''; } }
+function _dgHTML(){
+  if(typeof _isConsultantish==='function' && !_isConsultantish()) return '';
+  let rows; try{ rows=_dgRows(); }catch(e){ return ''; }
+  if(!rows.length) return '';
+  const open=rows.filter(r=>r.open).length, g=_dgState(), ro=_roLocked();
+  const ans=x=>x===true?'Yes':x===false?'No':'Blank';
+  const btn=(r,label,val,col)=>{ const on=!r.open && r.c && r.c.v===val;
+    return ro?'':'<button type="button" onclick="_dgSet(\''+r.q+'\','+val+')" style="padding:5px 14px;border-radius:2px;border:1px solid '+(on?col:'var(--border)')+';background:'+(on?col:'transparent')+';color:'+(on?'#fff':'var(--text-muted)')+';font-weight:700;font-size:12px;cursor:pointer;">'+label+'</button>'; };
+  const row=r=>'<div id="dgrow_'+r.q+'" style="display:flex;gap:14px;align-items:flex-start;justify-content:space-between;padding:10px 2px;border-bottom:1px solid var(--border);'+(r.open?'':'opacity:.55;')+'">'
+    +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);">'+r.kinds.map(k=>esc((DG_KIND[k]||DG_KIND.confirm).label)).join(' · ')+'</div>'
+      +'<div style="font-size:13px;font-weight:600;margin:2px 0;">'+esc(r.text)+'</div>'
+      +r.why.filter(Boolean).map(w=>'<div style="font-size:12px;color:var(--text-muted);line-height:1.5;">'+esc(w)+'</div>').join('')
+      +'<div style="font-size:12px;margin-top:3px;">'+(r.fromClient?'Client answered':'Answer on record')+': <b>'+ans(r.was)+'</b>'
+        +(!r.open && r.c?(' · confirmed '+ans(r.c.v).toLowerCase()+(r.c.by?(' by '+esc(r.c.by)):'')+(r.c.at?(', '+_dgDate(r.c.at)):'')):'')+'</div>'
+    +'</div>'
+    +'<div style="flex:0 0 auto;display:flex;gap:6px;">'+btn(r,'Yes',true,'var(--success)')+btn(r,'No',false,'#64748B')+'</div>'
+  +'</div>';
+  const badge=open?(open+' to check'):('Checked'+(g.checkedBy?(' by '+esc(g.checkedBy)):'')+(g.checkedAt?(' · '+_dgDate(g.checkedAt)):''));
+  return '<details class="coll" data-keep="rpDiscGate" id="dgPanel" style="margin-bottom:16px;"'+(open?' open':'')+'>'
+    +'<summary><h3>Check the client\'s answers</h3><span class="badge '+(open?'badge-warning':'badge-muted')+'">'+badge+'</span></summary>'
+    +'<div class="coll-body">'
+      +'<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:6px;">Only you see this. These answers need your word before the profile is built: the client\'s own documents say otherwise, two answers disagree, or the answer switches on a dutyholder duty. Answer each one and the profile is built from what you confirm. Everything else goes in as the client answered.</div>'
+      +rows.map(row).join('')
+    +'</div></details>';
+}
 function renderDiscoveryPanel(){
   const el=document.getElementById('discoveryPanel'); if(!el) return;
   const st=_discStats(); const ro=_roLocked();
   const started=st.answered>0;
   const sugN=(function(){ try{ return _discSuggestedKeys().size; }catch(e){ return 0; } })();
+  const dgN=_dgOpenCount();   // the client's answers still waiting for the consultant
   const orphN=(function(){ try{ return _discOrphanedThemes().length; }catch(e){ return 0; } })();
   const _keepDisc=_detailsSnapshot(el);
   el.innerHTML=`<details class="coll" data-keep="rpDiscovery" style="margin-bottom:16px;">
@@ -27635,10 +27790,11 @@ function renderDiscoveryPanel(){
       ${ro?'':`<button class="btn btn-primary no-print" onclick="openDiscoveryWizard()">${started?'✎ Review / update answers':'▶ Run discovery'}</button>`}
       <button class="btn btn-outline no-print" onclick="downloadDiscoveryQuestionnaire()" title="A fillable PDF for the client: what is already established, and the questions only they can answer - they tick and type straight into the PDF, save it and send it back">⤓ Client questionnaire</button>
       ${ro?'':`<button class="btn btn-outline no-print" onclick="importDiscoveryQuestionnaire()" title="Load the questionnaire the client sent back - their ticks and notes go straight into the wizard. Nothing you have already answered is overwritten.">⇪ Import returned answers</button><input type="file" id="discImportFile" accept="application/pdf" style="display:none;" onchange="_discImportFile(this.files[0])">`}
-      ${(!ro && started)?`<button class="btn btn-outline no-print" onclick="buildProfileFromDiscovery()"${sugN?'':' disabled title="Profile already covers the current answers"'}>⚙ Build profile from discovery${sugN?(' ('+sugN+')'):''}</button>`:''}
+      ${(!ro && started)?(dgN?`<button class="btn btn-outline no-print" disabled title="Check the client's answers below first">⚙ Build profile from discovery - check ${dgN} answer${dgN!==1?'s':''} first</button>`
+        :`<button class="btn btn-outline no-print" onclick="buildProfileFromDiscovery()"${sugN?'':' disabled title="Profile already covers the current answers"'}>⚙ Build profile from discovery${sugN?(' ('+sugN+')'):''}</button>`):''}
       ${(!ro && orphN)?`<button class="btn btn-outline no-print" style="border-color:#D97706;color:#B45309;" onclick="reviewDiscoveryOrphans()" title="Themes whose supporting discovery answers have been withdrawn">⚠ Answers changed (${orphN})</button>`:''}
       </div>
-    </div></details>${_discRequirementsHTML()}`;
+    </div></details>${_dgHTML()}${_discRequirementsHTML()}`;
   _detailsApply(el,_keepDisc);
 }
 // The arrangements the discovery answers say this business must run - the
@@ -27695,6 +27851,7 @@ function _discBtns(it, v){
 function _discSet(id, val){
   const ex=_profState().exposure;
   if(ex[id]===val){ delete ex[id]; } else { ex[id]=val; }   // click again to unset
+  _dgState(true).src[id]='consultant';   // answered by the consultant: already checked
   _stamp(S.profiler,'updated'); saveData();
   // Targeted update only - never rebuild the overlay on an answer click, so the
   // question list keeps its scroll position (the "jumpy modal" fix).

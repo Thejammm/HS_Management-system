@@ -14346,6 +14346,7 @@ const Auth = (() => {
   let _currentUser = null;          // {id, email, role, tenantId, tenantName, name} or null
   let _activeTenantId = null;       // for consultants: which tenant they're viewing
   let _syncInFlight = null;         // promise of in-flight save, for debounce
+  let _saveQueue = Promise.resolve(); // every save waits for the ones before it
 
   async function _api(path, opts={}){
     const res = await fetch(path, {
@@ -14417,8 +14418,17 @@ const Auth = (() => {
     if(!_currentUser) return false;
     const tenantId = _activeTenantId;
     if(!tenantId) return false;
-    // Debounce concurrent saves
-    if(_syncInFlight) await _syncInFlight.catch(()=>{});
+    // One save at a time, in the order asked, each going with the version the
+    // save before it got back. Waiting only for the save already uploading let
+    // two that queued behind it set off together on the same version, and the
+    // server refused the second as if someone else had saved - the screen then
+    // swapped back to the server copy in the middle of an edit.
+    const run = _saveQueue.then(() => _saveNow(tenantId, state));
+    _saveQueue = run.catch(() => {});
+    return run;
+  }
+
+  async function _saveNow(tenantId, state){
     // Optimistic concurrency: tell the server which version we last synced to.
     // If someone else (the consultant, or the client) saved this same company
     // since then, the server replies 409 rather than letting us silently

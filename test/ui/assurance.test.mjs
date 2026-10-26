@@ -11,7 +11,10 @@ import { openApp, seed, wait, reporter } from './harness.mjs';
 const R = reporter('Assurance registers - one risk, one signal');
 const { browser, page, errors } = await openApp();
 
-const past = '2026-01-15', soon = '2026-10-20', far = '2028-06-30';
+// soon and far count from today, so the fixture does not age out of the
+// 60-day window: soon is always amber, far always green.
+const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const past = '2026-01-15', soon = day(20), far = day(600);
 
 // A small matrix and register, the shape the importers write.
 const MATRIX = (dates) => ({ filename: 'matrix.xlsx', sheets: [{ name: 'Staff' }], people: [
@@ -99,19 +102,19 @@ await wait(page, 250);
 
 // ── an individually raised renewal closes itself when that date goes green ──
 {
-  const t = await page.evaluate(() => {
+  const t = await page.evaluate((far) => {
     raiseTrainingRenewals();                                   // the consultant chooses the detailed route
     const raised = (S.actionPlan || []).filter(a => a.trainingKey).length;
     const summary = _execActions().find(a => /training matrix back into date/.test(a.desc));
     const summaryOpen = !!(summary && summary.status !== 'Complete' && summary.status !== 'Accepted');
     // now the client renews it in the spreadsheet and re-uploads
     const p = (S.trainingData.people || []).find(x => x.badge === 'FF001');
-    p.cells['First Aid at Work'].v = '2028-06-30';
+    p.cells['First Aid at Work'].v = far;
     _assuranceSync();
     const still = (S.actionPlan || []).filter(a => a.trainingKey && a.status !== 'Complete' && a.status !== 'Accepted').length;
     const done = (S.actionPlan || []).find(a => a.trainingKey && a.status === 'Complete');
     return { raised, summaryOpen, still, why: done ? ((done.log || []).slice(-1)[0] || {}).text || '' : '' };
-  });
+  }, far);
   R.ok(t.raised >= 1, 'the consultant can still raise individual renewals (' + t.raised + ')');
   R.ok(!t.summaryOpen, 'and while those are open the summary stands down rather than saying it twice');
   R.ok(t.still === 0, 'a renewal done in the spreadsheet closes its own action on the next upload');

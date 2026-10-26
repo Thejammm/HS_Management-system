@@ -9,10 +9,12 @@ import { openApp, seed, wait, reporter } from './harness.mjs';
 
 const R = reporter('Constructionline sections - the portal mirror');
 const { browser, page, errors } = await openApp({ width: 1500 });
+// valid until dates that must stay green or amber count from today, so they do not age past the 90-day line
+const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
 // a designer test client, as EDL in October 2026
 await seed(page, { company: { tradingName: 'Test Designer Ltd', shortName: 'TDL' }, accred: { roles: ['designer'], schemes: { cl: { on: true } }, answers: {},
-  cl: { valid: { 'Health and Safety': '2026-08-05', 'Once For All Health & Safety - (SSIP)': '2026-09-26', 'Insurances': '2027-03-24' } } } }, 'cas');
+  cl: { valid: { 'Health and Safety': '2026-08-05', 'Once For All Health & Safety - (SSIP)': '2026-09-26', 'Insurances': day(150) } } } }, 'cas');
 {
   const t = await page.evaluate(() => {
     const sec = document.getElementById('aclSections');
@@ -37,25 +39,25 @@ await seed(page, { company: { tradingName: 'Test Designer Ltd', shortName: 'TDL'
 }
 {
   // record a status, an action, a done date and a valid until date: they stay put
-  const t = await page.evaluate(() => {
+  const t = await page.evaluate((bsaValid) => {
     const sec = document.getElementById('aclSections');
     const row = [...sec.querySelector('.acl-block').querySelectorAll('tbody tr')].find(tr => /Question 1\.2\)/.test(tr.textContent));
     const sel = row.querySelector('select.acl-st'); sel.value = 'covered'; sel.dispatchEvent(new Event('change'));
     const row2 = [...document.getElementById('aclSections').querySelector('.acl-block').querySelectorAll('tbody tr')].find(tr => /Question 1\.2\)/.test(tr.textContent));
     const ta = row2.querySelectorAll('textarea')[1]; ta.value = 'Covered in item 1.'; ta.dispatchEvent(new Event('input'));
     const d = row2.querySelector('input.acl-donein'); d.value = '2026-10-12'; d.dispatchEvent(new Event('change'));
-    setAclValid('Building Safety Act - Building Safety', '2026-12-01');
+    setAclValid('Building Safety Act - Building Safety', bsaValid);
     const key = Object.keys(S.accred.cl.rows)[0];
     const bsa = [...document.querySelectorAll('#aclSections .acl-block')].find(b => b.querySelector('.acl-bname').textContent.startsWith('Building Safety Act - Building Safety'));
     return { key, row: S.accred.cl.rows[key], valid: S.accred.cl.valid['Building Safety Act - Building Safety'], bsaPill: bsa.querySelector('.acl-pill').className,
       done: document.querySelectorAll('#aclSections .acl-counts b')[3].textContent };
-  });
+  }, day(45));
   R.ok(t.row.st === 'covered' && t.row.act === 'Covered in item 1.' && t.row.done === '2026-10-12', 'status, action and done are recorded against the line: ' + JSON.stringify(t.row));
-  R.ok(t.valid === '2026-12-01' && /acl-amber/.test(t.bsaPill), 'a valid until date within 90 days turns the section amber');
+  R.ok(t.valid === day(45) && /acl-amber/.test(t.bsaPill), 'a valid until date within 90 days turns the section amber');
   R.ok(t.done === '1', 'the done line is counted as ticked done');
 }
 // a contractor test client, as ECL
-await seed(page, { company: { tradingName: 'Test Contractor Ltd', shortName: 'TCL' }, accred: { roles: ['contractor'], schemes: { cl: { on: true } }, answers: {}, cl: { valid: { Insurances: '2026-10-22' } } } }, 'cas');
+await seed(page, { company: { tradingName: 'Test Contractor Ltd', shortName: 'TCL' }, accred: { roles: ['contractor'], schemes: { cl: { on: true } }, answers: {}, cl: { valid: { Insurances: day(7) } } } }, 'cas');
 {
   const t = await page.evaluate(() => {
     const heads = [...document.querySelectorAll('#aclSections .acl-bname')].map(x => x.textContent.trim());
@@ -67,7 +69,7 @@ await seed(page, { company: { tradingName: 'Test Contractor Ltd', shortName: 'TC
   });
   R.ok(t.set === 'Designer:false Contractor:true', 'the contractor question set follows from the role');
   R.ok(t.heads.includes('Health and Safety and Health and Safety Third Party / Exemption certificates'), 'the contractor Health and Safety section sits inside the Third Party section, as in the ECL tracker');
-  R.ok(/acl-amber/.test(t.ins), 'insurances valid until 22 October is amber');
+  R.ok(/acl-amber/.test(t.ins), 'insurances valid for another week are amber');
   R.ok(t.q6.includes('2845') && /HS-15 · SSIP Q6/.test(t.q6[1]), 'SSIP Q6 is the CAS question HS-15, REF 2845 in the SSIP column');
 }
 // a CHAS client: no Constructionline, so nothing new appears

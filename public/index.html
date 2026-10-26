@@ -3703,6 +3703,9 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .dg-acts.dg-ctl{border-color:#2563EB66;}
     .dg-acts.dg-ctl .dg-ah{background:#2563EB12;color:#1D4ED8;}
     .dg-acts.dg-ctl .dg-act{border-top-color:#2563EB33;}
+    .dg-acts.dg-ctl .dg-act.dg-ctlrow{background:#2563EB0a;cursor:pointer;}
+    .dg-acts.dg-ctl .dg-act.dg-sub{padding-left:30px;border-top-color:var(--border);cursor:pointer;}
+    .dg-acts.dg-ctl .dg-act.dg-loose{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);background:var(--muted-bg);}
     .dg-cell{border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:0;}
     .dg-cell h5{margin:0 0 7px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);}
     .dg-cell p{margin:0;font-size:12.5px;line-height:1.5;}
@@ -20535,6 +20538,162 @@ function updateRiskAction(rid, aid, field, value){
   // Closing an action → offer to link the evidence that shows it was dealt with.
   if(field==='status' && (value==='Complete'||value==='Accepted')) _promptActionEvidence(a, r);
 }
+// ── EVERY ACTION UNDER ITS CONTROL (Simon, 2026-10-26: "I don't see the
+//    actions under the high level risks when I dig into the risk"). Each
+//    library action knows the control it puts in place: a number is the
+//    theme's control (1-based, its order in measures), 'arr' is the risk's own
+//    "Procedure, roles and records in place" control, which holds the actions
+//    that serve every control - procedure written, roles delegated, a named
+//    owner (Simon chose a control of their own, as he wrote Fineline). Build
+//    creates the actions already linked; for a client built before this,
+//    "Link the ones that are clear" links what is certain and lists only the
+//    doubtful ones, best guess selected, for the consultant to confirm. ──
+const LIB_DELIV_CTL = {
+  competence:["arr",1,1,1],
+  ohwellbeing:[1,2,2,"arr"],
+  vulnerable:["arr",1,3,"arr"],
+  violence:[3,1,1,2],
+  publicsafety:["arr",1,1,"arr"],
+  safeguarding:["arr",3,1,1],
+  keypeople:[1,1,1,"arr"],
+  dseoffice:[1,1,2,"arr"],
+  workatheight:["arr",2,3,3],
+  ohexposure:[1,1,2,"arr"],
+  asbestos:["arr",1,3,"arr"],
+  manualhandling:["arr",1,2,"arr"],
+  confined:[2,1,2,3],
+  roadrisk:["arr",1,1,2],
+  contractor:["arr",1,2,"arr"],
+  loneworking:[2,"arr",1,2],
+  outdoor:["arr",1,2,"arr"],
+  environment:["arr",1,2,"arr"],
+  workequip:[1,1,2,3],
+  lifting:[1,1,1,1],
+  transport:[1,2,1,"arr"],
+  electrical:["arr",3,"arr",3],
+  premises:["arr","arr",3,"arr"],
+  fire:["arr","arr",1,"arr"],
+  legionella:[1,1,"arr",1],
+  weather:[1,1,1,"arr"],
+  dutyholder:[1,"arr",1,2],
+  designrisk:["arr","arr",2,1],
+  licence:[1,1,1,1],
+  statutory:[1,1,1,2],
+  compliance:[2,1,"arr",1],
+  information:["arr","arr",2,1],
+  contractloss:[1,1,1],
+  financial:[1,1,2,"arr"],
+  peoplecare:[1,1,1,2],
+  biological:[1,1,1,2],
+  hrconstruction:["arr",1,2,2],
+  continuity:[1,2,1,1]
+};
+const CTL_ARR_TEXT = 'Procedure, roles and records in place';
+function _ctlArrRow(r, create){
+  let c=(r.actions||[]).find(a=>a&&!a.deleted&&a.hideFromPlan&&(a.ctlArr||String(a.desc||'').trim()===CTL_ARR_TEXT));
+  if(c || !create) return c||null;
+  if(!Array.isArray(r.actions)) r.actions=[];
+  c={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), desc:CTL_ARR_TEXT, owner:'', due:'', status:'Not started', priority:'', hideFromPlan:true, ctlArr:true };
+  _stamp(c,'created'); r.actions.push(c); return c;
+}
+// Word matching for actions written in the client's own words.
+const _CTL_STOP=new Set('a an and or the of to for in on at by with from as is are be been being their its it this that these those any all each every per into onto over under before after when where which who whom what than then so such not no nor only own same very can will shall must should may might do does done have has had including include includes eg ie etc'.split(' '));
+function _ctlToks(x){ return new Set(String(x||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(w=>w.length>2&&!_CTL_STOP.has(w)).map(w=>w.replace(/(ings|ing|ed|es|s)$/,'').replace(/(ation|ment)$/,''))); }
+function _ctlScore(a, b){ const A=_ctlToks(a), B=_ctlToks(b); if(!A.size||!B.size) return 0; let n=0; A.forEach(w=>{ if(B.has(w)) n++; }); return n/Math.min(A.size,B.size); }
+function _ctlBest(desc, ctls){
+  const sc=ctls.map((c,i)=>({ i, s:_ctlScore(desc, c.desc) })).sort((x,y)=>y.s-x.s);
+  const top=sc[0]||{ i:-1, s:0 }, second=sc[1]||{ s:0 };
+  return { i:top.i, sure: ctls.length===1 || (top.s>=0.25 && top.s-second.s>=0.15) };
+}
+let _ctlDelivIdx=null;
+function _ctlDelivIndex(){
+  if(_ctlDelivIdx) return _ctlDelivIdx;
+  _ctlDelivIdx=new Map();
+  HAZARD_LIBRARY.forEach(t=>(t.deliverables||[]).forEach((d,j)=>{ const m=LIB_DELIV_CTL[t.key]; if(!m||m[j]===undefined) return;
+    const k=String(d).trim().toLowerCase(); (_ctlDelivIdx.get(k)||_ctlDelivIdx.set(k,[]).get(k)).push({ key:t.key, v:m[j] }); }));
+  return _ctlDelivIdx;
+}
+// What can be linked for certain, what needs the consultant, and which risks
+// have actions but no controls to put them under. apply=true links the certain ones.
+function _ctlLinkPlan(apply){
+  const out={ sure:0, arrRisks:new Set(), doubt:[], noCtl:[] };
+  const live=a=>a&&!a.deleted&&String(a.desc||'').trim();
+  (S.riskProfile||[]).forEach(r=>{
+    const acts=(r.actions||[]).filter(a=>live(a)&&!a.hideFromPlan&&!_ctlOfAction(r,a)&&!a.ctlNone);
+    if(!acts.length) return;
+    const ctls=_riskCtlRows(r).filter(live);
+    let noCtl=false;
+    acts.forEach(a=>{
+      const cands=_ctlDelivIndex().get(String(a.desc).trim().toLowerCase())||[];
+      const hit=cands.find(c=>c.key===r.libKey)||cands[0]||null;
+      if(hit && hit.v==='arr'){ out.sure++; out.arrRisks.add(r.id); if(apply){ a.forCtl=_ctlArrRow(r,true).id; _stamp(a,'updated'); } return; }
+      if(hit){
+        const lt=HAZARD_LIBRARY.find(x=>x.key===hit.key), mt=String((lt&&lt.measures&&lt.measures[hit.v-1])||'').trim().toLowerCase();
+        let c=ctls.find(x=>String(x.desc).trim().toLowerCase()===mt);
+        if(!c && mt && ctls.length){ const b=_ctlBest(mt, ctls); if(b.sure) c=ctls[b.i]; }
+        if(c){ out.sure++; if(apply){ a.forCtl=c.id; _stamp(a,'updated'); } return; }
+      }
+      if(!ctls.length){ noCtl=true; return; }
+      const b=_ctlBest(a.desc, ctls);
+      if(b.sure){ out.sure++; if(apply){ a.forCtl=ctls[b.i].id; _stamp(a,'updated'); } return; }
+      out.doubt.push({ r, a, guess:ctls[b.i]||null });
+    });
+    if(noCtl) out.noCtl.push(r);
+    if(apply) _stamp(r,'updated');
+  });
+  return out;
+}
+function ctlLinkClear(){
+  if(_blockIfReadOnly()) return;
+  const p=_ctlLinkPlan(true); saveData();
+  _keepScroll(()=>{ renderRiskReview(); renderRiskProfile(); });
+  showToast('✓ '+p.sure+' action'+(p.sure!==1?'s':'')+' linked to their controls'+(p.arrRisks.size?(' - "'+CTL_ARR_TEXT+'" added to '+p.arrRisks.size+' risk'+(p.arrRisks.size!==1?'s':'')):'')
+    +(p.doubt.length?(' - '+p.doubt.length+' left for you to confirm'):''),'success',8000);
+}
+let _clDone={};   // this session's answers, so a confirmed row stays where it was
+function ctlLinkConfirm(rid, aid){
+  if(_blockIfReadOnly()) return;
+  const f=_riskActFind(rid,aid); if(!f) return;
+  const sel=document.getElementById('clsel_'+aid); const cid=sel?sel.value:'';
+  const c=_riskCtlRows(f.r).find(x=>x.id===cid);
+  if(c){ f.a.forCtl=c.id; delete f.a.ctlNone; } else { delete f.a.forCtl; f.a.ctlNone=true; }
+  _clDone[aid]={ r:f.r, a:f.a, label:c?('under: '+String(c.desc||'').trim()):'left not linked to a control' };
+  _stamp(f.a,'updated'); _stamp(f.r,'updated'); saveData(); _keepScroll(renderRiskReview);
+}
+function _ctlLinkHTML(){
+  if(typeof _isConsultantish==='function' && !_isConsultantish()) return '';
+  let p; try{ p=_ctlLinkPlan(false); }catch(e){ return ''; }
+  const done=Object.keys(_clDone).map(k=>_clDone[k]).filter(d=>!p.doubt.some(x=>x.a===d.a));
+  if(!p.sure && !p.doubt.length && !p.noCtl.length && !done.length) return '';
+  const ro=_roLocked(), ref=r=>{ try{ return _riskRefOf(r)||''; }catch(e){ return ''; } };
+  const open=p.doubt.length;
+  const rowOf=(r, a, guess, doneLabel)=>{
+    const ctls=_riskCtlRows(r).filter(c=>c&&!c.deleted&&String(c.desc||'').trim());
+    return '<div id="clrow_'+a.id+'" style="display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:9px 2px;border-bottom:1px solid var(--border);'+(doneLabel?'opacity:.55;':'')+'">'
+      +'<div style="flex:1;min-width:0;"><div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);">'+esc((ref(r)?ref(r)+' ':'')+(r.activity||r.hazard||'Risk'))+'</div>'
+        +'<div style="font-size:13px;margin-top:2px;">'+esc(a.desc)+'</div>'
+        +(doneLabel?('<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">'+esc(doneLabel)+'</div>'):'')+'</div>'
+      +((doneLabel||ro)?'':('<div class="no-print" style="flex:0 0 auto;display:flex;gap:6px;align-items:center;">'
+        +'<select id="clsel_'+a.id+'" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:2px;max-width:280px;background:transparent;color:inherit;">'
+        +ctls.map((c,i)=>'<option value="'+esc(c.id)+'"'+(guess&&guess.id===c.id?' selected':'')+'>Control '+(i+1)+': '+esc(String(c.desc).trim().slice(0,70))+'</option>').join('')
+        +'<option value="">Leave it not linked to a control</option></select>'
+        +'<button type="button" class="btn btn-outline btn-xs" onclick="ctlLinkConfirm(\''+r.id+'\',\''+a.id+'\')">Confirm</button></div>'))
+    +'</div>';
+  };
+  const rows=p.doubt.map(d=>rowOf(d.r,d.a,d.guess,'')).concat(done.map(d=>rowOf(d.r,d.a,null,d.label))).join('');
+  const noCtl=p.noCtl.length?('<div style="font-size:12px;color:var(--text-muted);margin-top:10px;line-height:1.6;">These risks have actions but no high level controls written yet, so there is nothing to put the actions under: '
+    +p.noCtl.map(r=>'<button class="ck-link" style="display:inline;padding:0;" onclick="_riskOpenModal(\''+r.id+'\');_riskDetailTab(\'rating\')">'+esc((ref(r)?ref(r)+' ':'')+(r.activity||'Risk'))+'</button>').join(' · ')+'</div>'):'';
+  const badge=p.sure?(p.sure+' to link'):(open?(open+' to confirm'):(p.noCtl.length?(p.noCtl.length+' need controls'):'Done'));
+  return '<details class="coll" data-keep="rpCtlLinks" id="clPanel" style="margin-bottom:16px;"'+((p.sure||open)?' open':'')+'>'
+    +'<summary><h3>Actions under their controls</h3><span class="badge '+((p.sure||open)?'badge-warning':'badge-muted')+'">'+badge+'</span></summary>'
+    +'<div class="coll-body">'
+      +'<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:6px;">Only you see this. Each action should sit under the high level control it puts in place, so the risk, the plan and the Top 5 sheet read control by control.</div>'
+      +((p.sure&&!ro)?('<div style="margin:8px 0;"><button class="btn btn-outline btn-sm no-print" onclick="ctlLinkClear()">Link the '+p.sure+' that '+(p.sure!==1?'are':'is')+' clear</button>'
+        +(p.arrRisks.size?(' <span style="font-size:12px;color:var(--text-muted);">and add "'+esc(CTL_ARR_TEXT)+'" to '+p.arrRisks.size+' risk'+(p.arrRisks.size!==1?'s':'')+' for the procedure, roles and record-keeping actions</span>'):'')+'</div>'):'')
+      +(rows?('<div style="font-size:12px;font-weight:700;margin-top:8px;">'+(open?('Confirm these '+open+': my best guess is selected'):'Confirmed this session')+'</div>'+rows):'')
+      +noCtl
+    +'</div></details>';
+}
 // ── CONTROLS TO ACTIONS, AND MORE THAN ONE OWNER (Simon, 2026-10-07) ──
 // "I have to copy or remember what I wrote in the previous tab." A plan
 // action now says which high level control - a row of the control table on
@@ -21308,8 +21467,12 @@ function insertLibraryRisk(key, quiet){
     // themes. Owners and dates are the consultant's to set with the client;
     // every row is an ordinary row - rewrite or bin what does not fit.
     actions: (function(){ const rows=[];
-      (t.measures||[]).forEach(d=>rows.push({ id:'act_'+Math.random().toString(36).slice(2,9), desc:d, owner:'', due:'', status:'Not started', priority:'', hideFromPlan:true }));
-      (t.deliverables||[]).forEach(d=>rows.push({ id:'act_'+Math.random().toString(36).slice(2,9), desc:d, owner:'', due:'', status:'Not started', priority:(parseInt(t.s,10)>=4?'High':'') }));
+      const ctlIds=(t.measures||[]).map(d=>{ const c={ id:'act_'+Math.random().toString(36).slice(2,9), desc:d, owner:'', due:'', status:'Not started', priority:'', hideFromPlan:true }; rows.push(c); return c.id; });
+      // each action under the control it puts in place (LIB_DELIV_CTL)
+      const m=LIB_DELIV_CTL[t.key]||[]; let arrId='';
+      if(m.indexOf('arr')>=0 && (t.deliverables||[]).length){ const c={ id:'act_'+Math.random().toString(36).slice(2,9), desc:CTL_ARR_TEXT, owner:'', due:'', status:'Not started', priority:'', hideFromPlan:true, ctlArr:true }; rows.push(c); arrId=c.id; }
+      (t.deliverables||[]).forEach((d,j)=>{ const v=m[j]; const forCtl=v==='arr'?arrId:(ctlIds[(v||0)-1]||'');
+        const a={ id:'act_'+Math.random().toString(36).slice(2,9), desc:d, owner:'', due:'', status:'Not started', priority:(parseInt(t.s,10)>=4?'High':'') }; if(forCtl) a.forCtl=forCtl; rows.push(a); });
       if(!rows.length && t.action) rows.push({ id:'act_'+Math.random().toString(36).slice(2,9), desc:t.action, owner:'', due:'', status:'Not started', priority:'', hideFromPlan:true });
       return rows; })(),
     linked: t.duty?[{ id:'lnk_'+Math.random().toString(36).slice(2,9), ref:'Key duty: '+t.duty, url:'' }]:[],
@@ -26015,6 +26178,26 @@ function _rpProvenanceBadge(r){
   return '';
 }
 // The Summary tab: presentation only - every fact on it is edited on the other tabs.
+// The Summary's controls and actions: each high level control (tab 3, the
+// Plan) with the actions that put it in place (tab 4, the Do) under it, then
+// any action not yet linked to a control. Simon, 2026-10-26.
+function _rpCtlActsHTML(r, ctls, acts, openActs){
+  const ctlRow=a=>{ const st=_actionStatus(a); const c=st==='Complete'?'#16A34A':st==='Accepted'?'#6B7280':st==='Overdue'?'#DC2626':'#2563EB';
+    return '<div class="dg-act dg-ctlrow" onclick="_riskDetailTab(\'rating\')" title="Edit this control on 3 · Controls &amp; rating"><span class="dot" style="background:'+c+';" title="'+st+'"></span><span style="min-width:0;font-weight:600;">'+esc(a.desc||'(no description yet)')+'</span><span class="who">'+esc(a.owner||'')+'</span><span class="dg-due">'+(st==='Complete'?('in place since '+(a.completedDate?fmtDate(a.completedDate):'?')):(a.due?fmtDate(a.due):(st==='Not started'?'':st)))+'</span></div>'; };
+  const actRow=a=>{ const st=_actionStatus(a); const done=(st==='Complete'||st==='Accepted'); const c=st==='Complete'?'#16A34A':st==='Accepted'?'#6B7280':st==='Overdue'?'#DC2626':'#F59E0B';
+    return '<div class="dg-act dg-sub" onclick="_riskDetailTab(\'actions\')" title="Work this action on 4 · Action delegation &amp; timescale"><span class="dot" style="background:'+c+';" title="'+st+'"></span><span style="min-width:0;'+(done?'color:var(--text-muted);':'')+'">'+esc(a.desc||'(no description yet)')+'</span><span class="who">'+esc(a.owner||'')+'</span><span class="dg-due">'+(done?st:(a.due?fmtDate(a.due):'no date'))+'</span></div>'; };
+  const ofCtl=a=>{ const c=_ctlOfAction(r,a); return c?c.id:''; };
+  let body='';
+  ctls.forEach(c=>{ body+=ctlRow(c); body+=acts.filter(a=>ofCtl(a)===c.id).map(actRow).join(''); });
+  const loose=acts.filter(a=>!ofCtl(a)||!ctls.some(c=>c.id===ofCtl(a)));
+  if(loose.length) body+=(ctls.length?'<div class="dg-act dg-loose">Not linked to a control</div>':'')+loose.map(actRow).join('');
+  if(!ctls.length) body='<div class="dg-act" style="color:var(--text-muted);">No high level controls yet - add them on 3 · Controls &amp; rating.</div>'+body;
+  if(!acts.length) body+='<div class="dg-act dg-sub" style="color:var(--text-muted);">Nothing raised yet - raise actions on 4 · Action delegation &amp; timescale.</div>';
+  const counts=[ctls.length?(ctls.length+' control'+(ctls.length!==1?'s':'')):'', acts.length?(openActs.length?(openActs.length+' of '+acts.length+' actions open'):('all '+acts.length+' actions closed')):''].filter(Boolean).join(' · ');
+  return '<div class="dg-acts dg-ctl">'
+    +'<div class="dg-ah"><span>High level controls <span class="rp-pd">Plan</span> and their '+esc(String(_rt(r,'plan')).toLowerCase())+' <span class="rp-pd">Do</span></span><span>'+counts+'</span></div>'
+    +body+'</div>';
+}
 function _rpDigestHTML(r){
   const filled = !!((r.activity||r.hazard||(r.assocRisk&&String(r.assocRisk).trim())) || (r.harm&&String(r.harm).trim()) || (r.controls&&String(r.controls).trim()) || _riskScore(r).rating);
   if(!filled) return `<div class="empty" style="padding:26px 10px;"><h4>Nothing recorded on this risk yet</h4><p>Work through the Identify, People &amp; impact, Controls &amp; rating and Action delegation &amp; timescale tabs - this page then reads the risk back as a one-screen summary.</p></div>`;
@@ -26054,14 +26237,7 @@ function _rpDigestHTML(r){
       <div class="dg-cell" onclick="_riskDetailTab('people')" style="cursor:pointer;" title="Click to edit on 2 · People & impact"><h5>${esc(_rt(r,'personsDigest'))}</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${personsTxt}</div></div>
       <div class="dg-cell dg-haz" onclick="_riskDetailTab('identify')" style="cursor:pointer;" title="Click to edit on 1 · Identify"><h5>${esc(_rt(r,'assoc'))}</h5>${hazChips?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">${hazChips}</div>`:''}<p>${assocTxt?esc(assocTxt):'<span style="color:var(--text-muted);">Not recorded yet - tick the hazard and describe the risk on 1 · Identify</span>'}</p></div>
     </div>
-    <div class="dg-acts dg-ctl" onclick="_riskDetailTab('rating')" style="cursor:pointer;" title="Click to edit the high level controls on 3 · Controls & rating (Plan)">
-      <div class="dg-ah"><span>High level controls <span class="rp-pd">Plan</span></span><span>${ctls.length?(ctls.length+' in the control table'):''}</span></div>
-      ${ctlRows || `<div class="dg-act" style="color:var(--text-muted);">No high level controls yet - add them on 3 · Controls &amp; rating.</div>`}
-    </div>
-    <div class="dg-acts" onclick="_riskDetailTab('actions')" style="cursor:pointer;" title="Click to work the plan on 4 · Action delegation & timescale">
-      <div class="dg-ah"><span>${esc(_rt(r,'plan'))} <span class="rp-pd">Do</span></span><span>${acts.length?(openActs.length? openActs.length+' open · '+acts.length+' total' : 'all closed · '+acts.length+' total'):''}</span></div>
-      ${actRows || `<div class="dg-act" style="color:var(--text-muted);">Nothing raised yet - raise actions on 4 · Action delegation &amp; timescale.</div>`}
-    </div>
+    ${_rpCtlActsHTML(r, ctls, acts, openActs)}
     <div class="dg-cell" style="margin-bottom:13px;cursor:pointer;" onclick="_riskDetailTab('actions')" title="Click to link evidence on 4 · Action delegation & timescale"><h5>Evidence behind this</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${links.length?links.map(l=>`<span class="dg-chip" title="${esc(l.url||'')}">📄 ${esc(l.ref||l.url)}</span>`).join(''):'<span style="color:var(--text-muted);font-size:12px;">No linked assessments recorded.</span>'}</div></div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);">
       ${r.reviewed?'<span style="color:#16A34A;font-weight:700;">✓ Reviewed and complete</span>':'<span>Not yet marked reviewed - the tick is on the Action delegation &amp; timescale tab</span>'}
@@ -27803,7 +27979,7 @@ function renderDiscoveryPanel(){
         :`<button class="btn btn-outline no-print" onclick="buildProfileFromDiscovery()"${bN?'':' disabled title="The profile and legal duties already cover the current answers"'}>⚙ Build profile from discovery${bN?(' ('+bN+')'):''}</button>`):''}
       ${(!ro && orphN)?`<button class="btn btn-outline no-print" style="border-color:#D97706;color:#B45309;" onclick="reviewDiscoveryOrphans()" title="Themes whose supporting discovery answers have been withdrawn">⚠ Answers changed (${orphN})</button>`:''}
       </div>
-    </div></details>${_dgHTML()}${_discRequirementsHTML()}`;
+    </div></details>${_dgHTML()}${_ctlLinkHTML()}${_discRequirementsHTML()}`;
   _detailsApply(el,_keepDisc);
 }
 // The arrangements the discovery answers say this business must run - the

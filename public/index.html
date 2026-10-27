@@ -26238,6 +26238,7 @@ function _rpDigestHTML(r){
       <div class="dg-cell dg-haz" onclick="_riskDetailTab('identify')" style="cursor:pointer;" title="Click to edit on 1 · Identify"><h5>${esc(_rt(r,'assoc'))}</h5>${hazChips?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">${hazChips}</div>`:''}<p>${assocTxt?esc(assocTxt):'<span style="color:var(--text-muted);">Not recorded yet - tick the hazard and describe the risk on 1 · Identify</span>'}</p></div>
     </div>
     ${_rpCtlActsHTML(r, ctls, acts, openActs)}
+    ${_rpDutiesHTML(r)}
     <div class="dg-cell" style="margin-bottom:13px;cursor:pointer;" onclick="_riskDetailTab('actions')" title="Click to link evidence on 4 · Action delegation & timescale"><h5>Evidence behind this</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${links.length?links.map(l=>`<span class="dg-chip" title="${esc(l.url||'')}">📄 ${esc(l.ref||l.url)}</span>`).join(''):'<span style="color:var(--text-muted);font-size:12px;">No linked assessments recorded.</span>'}</div></div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);">
       ${r.reviewed?'<span style="color:#16A34A;font-weight:700;">✓ Reviewed and complete</span>':'<span>Not yet marked reviewed - the tick is on the Action delegation &amp; timescale tab</span>'}
@@ -28478,6 +28479,82 @@ function _workDutyWhyHTML(it){
        :'<div>The discovery answers no longer point to this duty. Keep it, or mark it Does not apply.</div>')
     +'</div>';
 }
+// ── DUTIES AGAINST THE COMPANY'S OWN RISKS (Simon, 2026-10-27: "how do I
+//    see the legal duties against the company specific risks"). Every
+//    client risk is a library theme, so each duty names the themes it
+//    concerns: a duty line lists the client's risks under it, and a risk
+//    lists its duties with their tier. Fire and risk assessments count as
+//    tier 1; the other standard duties apply to every employer. ──
+const DUTY_RISK_WORK = {
+  asbestos:['asbestos'], puwer:['workequip','transport'], transport:['transport'], height:['workatheight'],
+  lifting:['lifting','statutory'], electric:['electrical','statutory'], dsear:['fire'], pressure:['statutory','workequip'],
+  confined:['confined'], gas:['premises','fire'], site:['hrconstruction'],
+  coshh:['ohexposure','biological'], noise:['ohexposure'], vibration:['ohexposure'], manual:['manualhandling','peoplecare'],
+  driving:['roadrisk'], radiation:['ohexposure'], dse:['dseoffice'], public:['publicsafety','safeguarding'], waste:['environment'],
+  cdmroles:['dutyholder','designrisk','contractor'], bsa:['dutyholder','designrisk'], otherlaw:['information','licence']
+};
+const DUTY_RISK_STD = {
+  fire:['fire'], riskassessments:['loneworking','outdoor','violence','vulnerable','ohwellbeing','weather','continuity'], welfare:['premises'],
+  elci:['financial'], training:['competence'], competent:['competence','compliance'], ppe:['ohexposure'],
+  policy:['compliance'], consultation:['compliance'], riddor:['compliance'], firstaid:['compliance'], lawposter:['compliance']
+};
+const DUTY_STD_TIER = { fire:1, riskassessments:1 };
+function _dutyThemes(it){
+  if(!it) return [];
+  if(it.workKey) return DUTY_RISK_WORK[it.workKey]||[];
+  return DUTY_RISK_STD[it.legalKey]||[];
+}
+function _dutyRisks(it){ const th=_dutyThemes(it); return th.length?(S.riskProfile||[]).filter(r=>r && th.indexOf(r.libKey)>=0):[]; }
+function _dutyTierOf(it){ return it.workKey ? _workTierOf(it) : (DUTY_STD_TIER[it.legalKey]||null); }
+// Every duty on the Legal duties tab that concerns this risk, tier first.
+function _riskDuties(r){
+  if(!r || !r.libKey) return [];
+  const out=[];
+  (S.requirements||[]).forEach(sec=>{ if(!sec || !(sec.legal||sec.work)) return;
+    (sec.items||[]).forEach(it=>{ if(_dutyThemes(it).indexOf(r.libKey)<0) return;
+      const meta=_legalMeta(it.legalKey)||{}; const st=_reqItemStatus(it);
+      out.push({ sec, it, tier:_dutyTierOf(it), title:meta.title||it.requirement||'Duty', law:meta.citation||it.citation||'',
+        status: it.reviewed||_reqItemMet(it) ? { t:'In place', c:'badge-success' } : st ? { t:st.label, c:st.cls } : { t:'Not assessed', c:'badge-muted' } }); }); });
+  // tier, then the same order as the Legal duties tab: the standard duty first, then the work duties biggest fish first
+  const ord=d=>d.it.workKey ? 100+WORK_DUTIES.findIndex(w=>w.key===d.it.workKey) : LEGAL_ESSENTIALS.findIndex(e=>e.key===d.it.legalKey);
+  return out.sort((a,b)=>((a.tier||9)-(b.tier||9)) || (ord(a)-ord(b)));
+}
+function _dutyRiskLabel(r){ let ref=''; try{ ref=_riskRefOf(r)||''; }catch(e){} return (ref?ref+' ':'')+(r.activity||r.hazard||'Risk'); }
+// On a duty card: the client's risks it concerns, or the offer to add one.
+function _dutyRisksHTML(sec, it, ro){
+  const th=_dutyThemes(it); if(!th.length) return '';
+  const rs=_dutyRisks(it);
+  if(rs.length) return '<div style="font-size:12px;color:var(--text-muted);margin:4px 0 8px;line-height:1.6;">Their risks: '
+    +rs.map(r=>'<button class="ck-link" style="display:inline;padding:0;" title="Open this risk" onclick="switchTab(\'risk\');_riskOpenModal(\''+r.id+'\')">'+esc(_dutyRiskLabel(r))+'</button>').join(' · ')+'</div>';
+  const t=HAZARD_LIBRARY.find(x=>x.key===th[0]);
+  return '<div style="font-size:12px;color:var(--text-muted);margin:4px 0 8px;">No risk on their profile covers this yet.'
+    +((ro||!t)?'':' <button class="btn btn-ghost btn-xs no-print" onclick="_dutyAddRisk(\''+t.key+'\')">Add "'+esc(t.activity)+'" to the risk profile</button>')+'</div>';
+}
+function _dutyAddRisk(key){
+  if(_blockIfReadOnly()) return;
+  const e=insertLibraryRisk(key, true); if(!e) return;
+  _riskRefsEnsure(); saveData(); _keepScroll(renderRequirements);
+  showToast('✓ Added "'+e.activity+'" to the risk profile - agree its rating there','success');
+}
+// From a risk to its duty card on the Legal duties tab.
+function _goDuty(itemId){
+  if(typeof _riskModalOpen!=='undefined') _riskModalOpen=false;
+  switchTab('requirements');
+  setTimeout(()=>{ const el=document.getElementById('legalcard-'+itemId); if(!el) return;
+    try{ el.scrollIntoView({ block:'center' }); }catch(e){}
+    el.style.outline='2px solid var(--accent,#4bbfd6)'; setTimeout(()=>{ el.style.outline=''; }, 1600); }, 250);
+}
+// On a risk's Summary: its legal duties, tier first.
+function _rpDutiesHTML(r){
+  const ds=_riskDuties(r); if(!ds.length) return '';
+  const tierTxt=d=>d.tier?('Tier '+d.tier):'Every employer';
+  return '<div class="dg-acts"><div class="dg-ah"><span>Legal duties</span><span>'+ds.length+' on the Legal duties tab</span></div>'
+    +ds.map(d=>'<div class="dg-act" style="cursor:pointer;" onclick="_goDuty(\''+d.it.id+'\')" title="Open this duty on the Legal duties tab">'
+      +'<span style="flex:0 0 98px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);">'+tierTxt(d)+'</span>'
+      +'<span style="min-width:0;flex:1;">'+esc(d.title)+(d.law?(' <span style="color:var(--text-muted);">· '+esc(d.law)+'</span>'):'')+'</span>'
+      +'<span class="badge '+d.status.c+'" style="font-size:10.5px;">'+esc(d.status.t)+'</span></div>').join('')
+    +'</div>';
+}
 function _workDutyTools(sec, it, ro){
   if(ro) return '';
   return '<div class="no-print" style="flex:0 0 auto;display:flex;gap:8px;align-items:center;">'
@@ -28743,7 +28820,7 @@ function _legalCardHTML(sec, it, emp, ro){
       ${!approved?`<button class="btn btn-outline btn-xs${it.raised?' btn-raised':''}" style="margin-left:auto;${it.raised?'':'color:var(--warning);border-color:var(--warning);'}" title="The item name becomes the action${cc.open?(' and the '+cc.open+' open criteria its detail'):''} - lands on the execution plan" onclick="raiseReqGapAction('${sec.id}','${it.id}')">${it.raised?'✓ Raised - raise again ↗':'Raise the gap as an action ↗'}</button>`:''}
     </div>`;
   const ss='font-size:12px;padding:4px 7px;border:1px solid var(--border);border-radius:5px;background:transparent;color:inherit;';
-  return `<div style="border:1px solid var(--border);border-left:4px solid ${border};border-radius:9px;padding:14px 16px;margin-bottom:10px;">
+  return `<div id="legalcard-${it.id}" style="border:1px solid var(--border);border-left:4px solid ${border};border-radius:9px;padding:14px 16px;margin-bottom:10px;">
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
       <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:14.5px;">${esc(title)}</div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;">
@@ -28757,6 +28834,7 @@ function _legalCardHTML(sec, it, emp, ro){
     </div>
     ${why?`<div style="font-size:12.5px;color:var(--text-muted);margin:8px 0;line-height:1.5;">${esc(why)}${th.note?` <em style="color:#92400E;">${esc(th.note)}</em>`:''}</div>`:(th.note?`<div style="font-size:12px;margin:6px 0;"><em style="color:#92400E;">${esc(th.note)}</em></div>`:'')}
     ${it.workKey?_workDutyWhyHTML(it):''}
+    ${_dutyRisksHTML(sec,it,ro)}
     ${(crit.length||!ro)?`<details open data-keep style="margin:8px 0;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--muted-bg);"><summary style="cursor:pointer;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);">Assessment criteria${cit?` &middot; ${esc(cit)}`:''} <span style="color:${cc.open===0?'var(--success)':'var(--accent)'};">(${cc.met} met${cc.acc?` · ${cc.acc} accepted`:''}${cc.open?` · ${cc.open} open`:''})</span></summary><div style="margin-top:8px;">${critHtml||'<div style="font-size:12px;color:var(--text-muted);">No criteria - add your own lines below.</div>'}${critTools}</div></details>`:''}
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;">
       <label style="font-size:11.5px;color:var(--text-muted);">Located / in place? <select${dis} onchange="updateReqField('${sec.id}','${it.id}','present',this.value)" style="${ss}">${['','Yes','No'].map(o=>`<option${o===(it.present||'')?' selected':''}>${o||'-'}</option>`).join('')}</select></label>

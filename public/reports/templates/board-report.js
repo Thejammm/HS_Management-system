@@ -28,7 +28,7 @@ export const BOARD_SECTIONS = [
   { id: 'inspections',    label: 'Inspection performance', hsg: 'Active monitoring · inspection reports' },
   { id: 'audits',         label: 'Audit performance', hsg: 'Active monitoring · audit of the system' },
   { id: 'outstanding',    label: 'Outstanding actions', hsg: 'What is owed and by when' },
-  { id: 'highrisk',       label: 'High-risk actions', hsg: 'Actions on the biggest risks + the fatal & major-harm register' },
+  { id: 'highrisk',       label: 'High-risk actions', hsg: 'Actions on the biggest risks + the could-kill register' },
   { id: 'training',       label: 'Training', hsg: 'The matrix - what is held and in date' },
   { id: 'competence',     label: 'Competence', hsg: 'Where each person stands against the matrix' },
   { id: 'legal',          label: 'Legal compliance', hsg: 'Duties assessed, met and not in place + checks required by law' },
@@ -816,7 +816,7 @@ export function buildBoardReport(state, opts = {}) {
       mast,
       { type: 'titleBlock', kicker: 'Highest-rated risks',
         headline: 'The actions sitting on the Critical and High risks.',
-        standfirst: 'These carry the most risk of anything on the plan - they are the ones to ask about first. The fatal and major-harm register follows.' },
+        standfirst: 'These carry the most risk of anything on the plan - they are the ones to ask about first. The could-kill register follows.' },
       ...hiBlocks,
     ],
   } : null;
@@ -913,10 +913,10 @@ export function buildBoardReport(state, opts = {}) {
     label: 'Register' + (slices.length > 1 ? ' ' + (i + 1) : ''),
     blocks: [
       mast,
-      { type: 'titleBlock', kicker: 'Fatal and major-harm register' + (slices.length > 1 ? (' · part ' + (i + 1) + ' of ' + slices.length) : ''), headline: i === 0 ? (D.registerRows.length ? countPhrase(D.registerRows.length, 'activity that can cause', 'activities that can cause') + ' serious harm' : 'No fatal or major-harm activities recorded') : 'Register, continued' },
+      { type: 'titleBlock', kicker: 'Could-kill register' + (slices.length > 1 ? (' · part ' + (i + 1) + ' of ' + slices.length) : ''), headline: i === 0 ? (D.registerRows.length ? countPhrase(D.registerRows.length, 'activity that could kill', 'activities that could kill') + ' someone with today\'s controls' : 'Nothing recorded that could kill with today\'s controls') : 'Register, continued' },
       D.registerRows.length
-        ? { type: 'dataTable', cols: regCols, rows: slice.map(rowFor), footnote: i === slices.length - 1 ? '"Plan" is the score the open actions are working towards (target likelihood × severity); the done-count shows how far the plan has been delivered. Controls reduce likelihood, not severity - a fatal-potential risk stays fatal-potential however well controlled. ⚑ fatal potential.' : undefined }
-        : { type: 'textBlock', body: 'Nothing in the profile currently carries a worst-case severity of major injury or above. Confirm this reflects the work actually done, not gaps in the profile.' },
+        ? { type: 'dataTable', cols: regCols, rows: slice.map(rowFor), footnote: i === slices.length - 1 ? '"Plan" is the score the open actions are working towards (target likelihood × severity); the done-count shows how far the plan has been delivered. ⚑ could kill with today\'s controls (current severity 5).' : undefined }
+        : { type: 'textBlock', body: 'Nothing in the profile currently carries a severity of 5 (fatal) with today\'s controls. Confirm this reflects the work actually done, not gaps in the profile.' },
     ],
   }));
 

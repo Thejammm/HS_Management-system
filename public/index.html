@@ -23567,9 +23567,9 @@ function buildBoardReport(){
   // 1. Verdict - lead with the honest residual position, not the raw worst case.
   const sifResHigh = data.sif.filter(r=>{ const p=_riskScore(r).priority; return p==='Critical'||p==='High'; }).length;
   let verdict;
-  if(nFatal===0) verdict='No activities with the inherent potential to kill or seriously injure are currently recorded. Confirm the profile is complete before relying on this.';
+  if(nFatal===0) verdict='No activities that could kill with today\'s controls are currently recorded. Confirm the profile is complete before relying on this.';
   else {
-    verdict=nFatal+' activit'+(nFatal===1?'y has':'ies have')+' the inherent potential to cause fatal or major harm. ';
+    verdict=nFatal+' activit'+(nFatal===1?'y':'ies')+' could kill someone with today\'s controls. ';
     if(nUnc>0) verdict+=nUnc+' of '+(nUnc===1?'them has':'them have')+' no control recorded yet and '+(nUnc===1?'is':'are')+' the priority. ';
     else verdict+='Controls are recorded against all of them. ';
     verdict+=(sifResHigh?(sifResHigh+' of them '+(sifResHigh===1?'is':'are')+' rated High or above on the inherent score, so the projected ratings on the plan are what the board is being asked to buy.'):'None of them is rated above Medium on the inherent score.');
@@ -23605,7 +23605,7 @@ function buildBoardReport(){
 
   // Page 2 - what can kill someone here
   doc.addPage(); st.y=K.TOP;
-  K.section('Activities that could kill or cause major harm, and how they are rated', [71,85,105]);
+  K.section('Activities that could kill with today\'s controls, and how they are rated', [71,85,105]);
   if(data.sif.length){
     const stRank={None:0,Partial:1,'In place':2};
     const list=data.sif.slice().sort((a,b)=>stRank[_riskControlStatus(a)]-stRank[_riskControlStatus(b)]);

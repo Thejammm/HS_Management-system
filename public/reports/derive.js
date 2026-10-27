@@ -390,7 +390,7 @@ export function deriveBoard(state, opts = {}) {
   const protectDown = hierarchy.filter(h => h.key !== 'remove' && h.key !== 'prevent')
     .reduce((a, h) => a + h.n, 0);
 
-  // Register rows: the fatal/major-harm activities - the SAME test the app
+  // Register rows: the activities that could kill - the SAME test the app
   // and the fatal count use, not a second severity rule alongside it.
   const registerRows = scored
     .filter(x => sifOf(x.r))

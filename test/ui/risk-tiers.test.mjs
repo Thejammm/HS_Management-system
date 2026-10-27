@@ -62,8 +62,14 @@ const reg = await page.evaluate(() => { const th = [...document.querySelectorAll
 R.ok(reg.th[2] === 'Tier' && reg.cells.every(c => /^TIER [1-4]$/.test(c)), 'the register has a Tier column on every row (' + reg.cells.join(', ') + ')');
 const box = await page.evaluate(async () => { const r = S.riskProfile.find(x => x.libKey === 'workequip'); _riskOpenModal(r.id); await new Promise(z => setTimeout(z, 400));
   const b = [...document.querySelectorAll('.dg-acts')].find(x => /^Priority/.test((x.querySelector('.dg-ah') || {}).textContent || ''));
-  return { chip: [...document.querySelectorAll('.rc-chip')].some(c => c.textContent === 'TIER 1'), txt: b ? b.textContent.replace(/\s+/g, ' ') : '', sel: !!(b && b.querySelector('select')), inp: !!(b && b.querySelector('input[type=text]')) }; });
+  return { chip: (x => !!x && x.options[x.selectedIndex].text === 'TIER 1 · auto')(document.querySelector('select.rc-chip')), txt: b ? b.textContent.replace(/\s+/g, ' ') : '', sel: !!(b && b.querySelector('select')), inp: !!(b && b.querySelector('input[type=text]')) }; });
 R.ok(box.chip && /Tier 1s*Could kill, enforced hard · from Work equipment/.test(box.txt) && box.sel && box.inp, 'an open risk shows its tier in the header and a Priority box with the reason, the override and the seen-on-site line');
+const hdr = await page.evaluate(async () => { const r = S.riskProfile.find(x => x.libKey === 'financial'); _riskOpenModal(r.id); await new Promise(z => setTimeout(z, 400));
+  const sel = document.querySelector('select.rc-chip'); if (!sel) return null; const before = sel.options[sel.selectedIndex].text;
+  sel.value = '1'; sel.dispatchEvent(new Event('change')); await new Promise(z => setTimeout(z, 400));
+  const t = _riskTier(r), now = document.querySelector('select.rc-chip'); const shown = now ? now.options[now.selectedIndex].text : '';
+  setRiskTier(r.id, ''); return { before, tier: t.tier + ' ' + t.why, shown }; });
+R.ok(hdr && hdr.before === 'TIER 3 · auto' && hdr.tier === '1 set by you' && hdr.shown === 'TIER 1', 'the TIER chip in the risk header is a picker too, the same setting as the Priority box (' + JSON.stringify(hdr) + ')');
 await page.evaluate(() => { _riskModalOpen = false; switchTab('cockpit'); }); await wait(page, 900);
 const ck = await page.evaluate(() => { const p = document.querySelector('.ckx-panel.ckl'); if (!p) return null;
   const sug = [...p.querySelectorAll('div')].find(d => /^Suggested five/i.test((d.firstElementChild || {}).textContent || '') && d.querySelector('input[type=checkbox]'));

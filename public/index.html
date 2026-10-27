@@ -28593,8 +28593,17 @@ function _riskPrioCmp(a, b){
 function _riskTierTip(t){ return 'Tier '+t.tier+' · '+WORK_TIERS[t.tier]+' - '+t.why; }
 // On the risk list and the ladder: the tier at the start of the line.
 function _riskTierTag(r){ const t=_riskTier(r); return '<span style="font-weight:700;letter-spacing:.05em;color:var(--text);" title="'+esc(_riskTierTip(t))+'">TIER '+t.tier+'</span>'; }
-// In the risk's header, beside its other chips.
-function _riskTierChip(r){ const t=_riskTier(r); return '<span class="rc-chip" style="background:var(--muted-bg);color:var(--text);font-weight:700;letter-spacing:.04em;" title="'+esc(_riskTierTip(t))+'">TIER '+t.tier+'</span>'; }
+// In the risk's header, beside its other chips - for the consultant, the
+// same tier picker as the Priority box (Simon, 2026-10-27: "so I can change
+// the tiers of the risk if I need to").
+function _riskTierChip(r){
+  const t=_riskTier(r), st='background:var(--muted-bg);color:var(--text);font-weight:700;letter-spacing:.04em;';
+  if(_roLocked() || !_isConsultantish()) return '<span class="rc-chip" style="'+st+'" title="'+esc(_riskTierTip(t))+'">TIER '+t.tier+'</span>';
+  const auto=_riskTierAuto(r);
+  return '<select class="rc-chip" onchange="setRiskTier(\''+r.id+'\',this.value)" aria-label="Tier for this risk" title="'+esc(_riskTierTip(t))+' - change it here" style="'+st+'width:auto;border:1px solid var(--border);padding:2px 22px 2px 8px;font-size:11px;cursor:pointer;">'
+    +'<option value=""'+(t.set?'':' selected')+'>TIER '+auto.tier+' · auto</option>'
+    +[1,2,3,4].map(n=>'<option value="'+n+'"'+(t.set&&t.tier===n?' selected':'')+'>TIER '+n+'</option>').join('')+'</select>';
+}
 // On the cockpit ladder: the first five in the Top 5 order, for the consultant to tick or swap.
 function _cklSuggestHTML(m5){
   const rs=(S.riskProfile||[]).filter(r=>r && !r.deleted).slice().sort(_riskPrioCmp).slice(0,5);

@@ -91,7 +91,7 @@ test('typical profile paginates, and the last footer agrees with the total', () 
   const r = buildReport(fixture('typical'), 'board-report', OPTS);
   assert.equal(r.pages.length, 17);   // tripwire - see the note above
   const html = reportHTML(r);
-  assert.match(html, /can still kill or maim/i);
+  assert.match(html, /can still kill someone/i);
   // The invariant that actually matters, derived so it cannot go stale: the
   // final footer must name the true page count.
   const n = r.pages.length;

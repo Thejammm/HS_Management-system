@@ -18,7 +18,7 @@ const after = await page.evaluate(() => {
   const r = S.riskProfile.find(x => x.id === 'v4');
   r.likelihood = '5'; r.severity = '5';
   _macroExpandAll(true);
-  return { onScreen: [...document.querySelectorAll('#rpTbody tr.rpt-row')].map(tr => tr.cells[1].textContent.trim() + '  ' + tr.cells[2].textContent.trim().slice(0, 30)),
+  return { onScreen: [...document.querySelectorAll('#rpTbody tr.rpt-row')].map(tr => tr.cells[1].textContent.trim() + '  ' + tr.cells[3].textContent.trim().slice(0, 30)),
     stillR004: (S.riskProfile.find(x => x.id === 'v4') || {}).ref };
 });
 await wait(page, 400);

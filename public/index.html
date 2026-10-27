@@ -11469,16 +11469,10 @@ function migrateLoadedState(){
     // every pre-units risk correctly becomes.
     if(!Array.isArray(r.units)) r.units = [];
     if(r.targetS   === undefined) r.targetS   = '';
-    // The retired "inherent" severity used to count towards fatal potential.
-    // Where it was the ONLY reason a risk counted as able to kill or maim,
-    // keep that flag as an explicit override rather than letting a safety
-    // signal vanish with the field. It shows on the card and can be unticked.
-    // The old values are left in place, unread, in case they are ever wanted.
-    if(r.sif !== true && r.sif !== false){
-      const _inhS = parseInt(r.inherentS,10)||0;
-      const _live = Math.max(parseInt(r.severity,10)||0, parseInt(r.targetS,10)||0);
-      if(_inhS >= 4 && _live < 4) r.sif = true;
-    }
+    // The retired "inherent" severity no longer sets the could-kill flag:
+    // since 2026-10-27 the flag is current severity 5 only (Simon's rule).
+    // Flags it set before then stay as ticks on the card. The old values are
+    // left in place, unread, in case they are ever wanted.
     if(!r.impacts || typeof r.impacts !== 'object') r.impacts = {};
     if(!r.impactNotes || typeof r.impactNotes !== 'object') r.impactNotes = {};
     if(!Array.isArray(r.actions)){
@@ -15484,12 +15478,12 @@ function _riskChosenToggle(id){
 }
 // The registry. group = which zone/container the widget belongs in.
 const COCKPIT_WIDGETS = {
-  kpiFatal:       { id:'kpiFatal', label:'Could kill or seriously injure', group:'KPI', render:x=>{
+  kpiFatal:       { id:'kpiFatal', label:'Could kill', group:'KPI', render:x=>{
       const nSif=x.RD.sif.length, nUnc=x.RD.sifUncontrolled.length;
       const resHigh=x.RD.sif.filter(r=>{const p=_riskScore(r).priority;return p==='Critical'||p==='High';}).length;
       const col=nUnc?'var(--danger)':(resHigh?'var(--warning)':(nSif?'var(--success)':''));
       const sub=nSif===0?'none recorded':(nUnc?(nUnc+' uncontrolled - priority'):(resHigh?(resHigh+' still high after controls'):'all controlled to lower residual'));
-      return _ckKpi('Could kill or seriously injure', nSif, sub, col, 'risk', nSif?'gotoSifRisks()':'');
+      return _ckKpi('Could kill', nSif, sub, col, 'risk', nSif?'gotoSifRisks()':'');
     } },
   kpiCritical:    { id:'kpiCritical', label:'Business-critical (operational)', group:'KPI', render:x=>{
       const n=(x.RD.bizCrit||[]).length, nUnc=(x.RD.bizCritUncontrolled||[]).length, nOps=x.RD.opsCount||0;
@@ -15586,7 +15580,7 @@ const COCKPIT_WIDGETS = {
       const listSrc=(nSif?x.RD.sif:x.highRisk).slice(0,3);
       return _ckMod('Risk priorities', x.risks.length ? `
         <div class="ck-row"><span>Critical and high</span><span style="color:${x.highRisk.length?'var(--danger)':'inherit'};font-weight:600;">${x.highRisk.length}</span></div>
-        <div class="ck-row"><span>Could kill or seriously injure</span><span style="color:${sifCol};font-weight:600;">${nSif}${sifNote}</span></div>
+        <div class="ck-row"><span>Could kill</span><span style="color:${sifCol};font-weight:600;">${nSif}${sifNote}</span></div>
         ${(x.RD.opsCount||0)?`<div class="ck-row"><span>Business-critical (operational)</span><span style="color:${(x.RD.bizCritUncontrolled||[]).length?'var(--danger)':((x.RD.bizCrit||[]).length?'var(--warning)':'var(--text-muted)')};font-weight:600;">${(x.RD.bizCrit||[]).length}${(x.RD.bizCritUncontrolled||[]).length?(' · '+(x.RD.bizCritUncontrolled||[]).length+' with no response'):''}</span></div>`:''}
         <div class="ck-row"><span>Medium</span><span style="font-weight:600;">${x.modRisk.length}</span></div>
         ${listSrc.map(r=>{ const res=_riskScore(r); return `<div onclick="_gotoRisk('${r.id}')" title="Open this risk" style="cursor:pointer;font-size:13px;color:var(--text-muted);display:flex;justify-content:space-between;gap:8px;padding:2px 0;"><span>${esc(r.activity||r.hazard||'Unnamed risk')} ↗</span><span style="opacity:.75;white-space:nowrap;">${res.priority?('residual '+res.priority):_riskControlStatus(r)}</span></div>`; }).join('')}
@@ -15748,7 +15742,7 @@ const COCKPIT_WIDGETS = {
       const row=(z,band)=>{
         const pick=_riskTop5Picked(z.r, m5), onSh=shIds.has(z.id), ops=_riskMode(z.r)==='ops', c=ctlOf(z), col=_RISK_PRIO_COLOR[band];
         const mk=_riskMacroOf(z.r), cat=mk?('<span class="ckl-cat"><i style="background:'+_macroColour(mk)+';"></i>'+esc(_macroName(mk))+'</span>'):'';
-        const meta=(ops?'<span class="ckl-opstag" title="An operational (business) risk - not a health and safety risk">Operational</span>':'')+cat;
+        const meta=(ops?'<span class="ckl-opstag" title="An operational (business) risk - not a health and safety risk">Operational</span>':'')+_riskTierTag(z.r)+cat;
         return '<div class="ckl-line'+(ops?' ckl-ops':'')+(pick?' ckl-on5':'')+'">'
           +'<span class="ckl-ref">'+_riskRefChip(z.r)+'</span>'
           +'<div class="ckl-main">'
@@ -15784,6 +15778,7 @@ const COCKPIT_WIDGETS = {
           +'<button class="btn btn-outline btn-xs" onclick="openActionSheets(\'legal\')" title="Every legal duty on the risk profile to the leadership team, a page each with the actions we recommend; their comments, owner and target date come back against each">Legal duties sheet</button>'
           +'<button class="btn btn-outline btn-xs" onclick="openActionSheets(\'risk\')" title="The risks ticked in the Sheet column, one action each with the control you recommend, and what came up at the client meeting">Risk action sheet</button>'
           +'<button class="btn btn-outline btn-xs" onclick="openQuickMinutes()" title="Quick minutes for the client meeting - who is there, notes and actions; Done puts the actions on the plan">✎ Minutes</button></div>'):'')
+        +(tools?_cklSuggestHTML(m5):'')
         +'<div class="ckl-wrap"><div class="ckl-cols" aria-hidden="true"><span class="ckl-c-ref">Ref</span><span class="ckl-c-risk">Risk</span><span class="ckl-c-sc">Score</span>'
         +'<span class="ckl-c-t5" title="This month’s five priorities">Top 5</span><span class="ckl-c-sh" title="The Risk Action Sheet">Sheet</span></div>'
         +['Critical','High','Medium','Low'].map(band).join('')+'</div>'
@@ -15801,7 +15796,7 @@ const COCKPIT_WIDGETS = {
       // plan. The chosen risks are the risks behind this month's ticked five.
       const _m5=_top5Month();
       const _chosenIds=new Set(); (S.riskProfile||[]).forEach(rr=>{ if((rr.actions||[]).some(a=>!a.deleted&&a.top5===_m5)) _chosenIds.add(rr.id); });
-      const chosen=H.rows.filter(z=>_chosenIds.has(z.id)).sort(_holdWorstFirst).slice(0,5);
+      const chosen=H.rows.filter(z=>_chosenIds.has(z.id)).sort((a,b)=>_riskPrioCmp(a.r,b.r)).slice(0,5);
       const topIds=top.map(z=>z.id), choIds=chosen.map(z=>z.id);
       const word=z=>{ const bz=B.rows.find(b=>b.id===z.id); return (bz&&bz.atTarget)?(bz.reviewDue?'controlled - review due':'controlled as reasonably practicable'):(z.breach?'needs attention':z.hold.label.toLowerCase()); };
       const atT=z=>{ const bz=B.rows.find(b=>b.id===z.id); return !!(bz&&bz.atTarget); };
@@ -16486,7 +16481,7 @@ function _riskSif(r){
   // fatal-potential counts or the directors' duty wording.
   if(typeof _riskMode==='function' && _riskMode(r)==='ops') return false;
   if(r && (r.sif===true || r.sif===false)) return r.sif;   // explicit override
-  return _worstSeverity(r)>=4;   // worst credible severity 4-5 = could kill or seriously injure
+  return (parseInt(r&&r.severity,10)||0)>=5;   // fatal with today's controls (Simon, 2026-10-26): current severity 5 only
 }
 // The business-critical flag is the operational twin of SIF: same idea (judge
 // the worst case, not the probability), counted separately and never mixed in.
@@ -16534,9 +16529,9 @@ const RISK_TERMS={
     rating:'Risk rating - Likelihood (L) × Severity (S), each 1-5',
     L:'L', S:'S', likeWord:'Likelihood', sevWord:'Severity',
     projected:'Projected (after controls are actioned)',
-    flag:'⚠ Serious injury or fatality (SIF) potential',
-    flagHelp:'Could this credibly kill or seriously injure someone? Judge on worst-case severity, not likelihood.',
-    flagChip:'⚠ SIF', flagChipTitle:'Serious injury or fatality potential',
+    flag:'⚠ Could be fatal with today\'s controls (SIF)',
+    flagHelp:'Could this kill someone with the controls in place today? Flagged by itself when the current severity is 5 - tick or untick to overrule.',
+    flagChip:'⚠ SIF', flagChipTitle:'Could be fatal with today\'s controls',
     linked:'Linked assessments / evidence',
     reviewed:'✓ I have reviewed and completed this risk',
     plan:'Actions for client execution',
@@ -19672,7 +19667,7 @@ function _pathwayOf(r){
       L.push(_pwLine('Likelihood '+sc.l+' × Severity '+sc.s+' = '+sc.rating+' · '+sc.priority, 'current score', 'done', '', 'Risk profile · Controls & rating'));
       if(tgt.rating) L.push(_pwLine('Residual target '+tgt.rating+' · '+tgt.priority, 'the score the controls are written to reach', 'done', '', 'Risk profile · Controls & rating'));
       else L.push(_pwLine('No residual target set', 'set the line on the risk card, so "controlled" has a meaning', 'part', '', 'Risk profile · Controls & rating'));
-      if(_riskFlagOn(r)) L.push(_pwLine(_riskMode(r)==='ops'?'Business-critical':'Could kill or seriously injure', 'worst credible outcome', 'done', '', 'Risk profile'));
+      if(_riskFlagOn(r)) L.push(_pwLine(_riskMode(r)==='ops'?'Business-critical':'Could kill', 'worst credible outcome', 'done', '', 'Risk profile'));
       if(r.controlLevel) L.push(_pwLine(_controlLevelLabelFor(r,r.controlLevel), 'best achievable control level', 'done', '', 'Risk profile · Controls & rating'));
       if(String(r.businessImpact||'').trim()) L.push(_pwLine(String(r.businessImpact).trim(), 'business impact', 'done', '', 'Risk profile · People & impact'));
       (Array.isArray(r.scoreHistory)?r.scoreHistory:[]).forEach((h,i,arr)=>{ const nx=arr[i+1]; const to=nx?(nx.l*nx.s):sc.rating;
@@ -19806,7 +19801,7 @@ function _pathwayStationsHTML(P, since){
 function _pathwayCardHTML(P, since, grouped){
   const r=P.r, ov=P.overall, ops=_riskMode(r)==='ops', band=P.sc.priority||'';
   const why=(ov.state==='late'&&ov.reason&&!P.stations.some(s=>s.state==='late'))?'<span class="pw-why">'+esc(ov.reason)+'</span>':'';
-  const flag=_riskFlagOn(r)?('<span class="pw-flag">'+(ops?'Business-critical':'Could kill or seriously injure')+'</span>'):'';
+  const flag=_riskFlagOn(r)?('<span class="pw-flag">'+(ops?'Business-critical':'Could kill')+'</span>'):'';
   const theme=(P.theme&&!grouped)?('<span class="ckl-cat"><i style="background:'+_macroColour(P.theme)+';"></i>'+esc(P.themeName)+'</span>'):'';
   const meta=(ops?'<span class="ckl-opstag" title="An operational (business) risk - not a health and safety risk">Operational</span>':'')+theme+flag+why;
   const score=band
@@ -20194,7 +20189,7 @@ function _renderRiskDashboard(){
   el.innerHTML = `
     <div class="rp-stats">
       ${card(rated.length,'Total significant risks','','all')}
-      ${card(sifCount,'Could kill or seriously injure', sifCount?'#DC2626':'','sif')}
+      ${card(sifCount,'Could kill', sifCount?'#DC2626':'','sif')}
       ${_bizCritCount()?card(_bizCritCount(),'Business-critical (operational)', '#7C3AED','bizcrit'):''}
       ${card(crit,'Critical risks', crit?_RISK_PRIO_COLOR.Critical:'','critical')}
       ${card(high,'High risks', high?_RISK_PRIO_COLOR.High:'','high')}
@@ -20230,7 +20225,7 @@ function _renderRiskFilters(show){
       <select onchange="setRiskFilter('priority',this.value)">${opt(_riskFilter.priority,['Critical','High','Medium','Low'])}</select>
       <select onchange="setRiskFilter('trend',this.value)">${opt(_riskFilter.trend,RISK_TREND)}</select>
       ${_units().length?`<select onchange="setRiskFilter('unit',this.value)" title="Show the risk picture for one business unit. Organisation-wide risks always show."><option value="">All units</option>${_units().map(u=>`<option value="${esc(u.id)}"${_riskFilter.unit===u.id?' selected':''}>${esc(u.name)}</option>`).join('')}</select>`:''}
-      <button class="btn btn-xs ${_riskFilter.sif?'btn-primary':'btn-ghost'}" onclick="setRiskFilter('sif', ${_riskFilter.sif?'false':'true'})" title="Show only the health and safety risks that could kill or seriously injure">Could kill or injure</button>
+      <button class="btn btn-xs ${_riskFilter.sif?'btn-primary':'btn-ghost'}" onclick="setRiskFilter('sif', ${_riskFilter.sif?'false':'true'})" title="Show only the health and safety risks that could kill with today's controls">Could kill</button>
       ${(S.riskProfile||[]).some(r=>(typeof _riskCritical==='function')&&_riskCritical(r))?`<button class="btn btn-xs ${_riskFilter.bizcrit?'btn-primary':'btn-ghost'}" onclick="setRiskFilter('bizcrit', ${_riskFilter.bizcrit?'false':'true'})" title="Show only the operational risks flagged business-critical">Business-critical only</button>`:''}
       <button class="btn btn-xs ${_riskFilter.highcrit?'btn-primary':'btn-ghost'}" onclick="setRiskFilter('highcrit', ${_riskFilter.highcrit?'false':'true'})" title="Show only High and Critical residual risks">High + critical only</button>
       ${(_riskFilter.category||_riskFilter.priority||_riskFilter.trend||_riskFilter.sif||_riskFilter.bizcrit||_riskFilter.highcrit||_riskFilter.unit)?`<button class="btn btn-ghost btn-xs" onclick="clearRiskFilters()">Clear filters</button>`:''}
@@ -23788,8 +23783,8 @@ function setBoardSection(id, hide){
 function _top5Five(){
   const H=_holdSummary(), month=_top5Month();
   const chosenIds=new Set(); (S.riskProfile||[]).forEach(r=>{ if(r&&(r.actions||[]).some(a=>a&&!a.deleted&&a.top5===month)) chosenIds.add(r.id); });
-  // in the risk ladder's own order (_riskRankCmp), so the sheet and the ladder can never show a different five
-  const byLadder=(a,b)=>_riskRankCmp(a.r,b.r);
+  // in the Top 5 order (_riskPrioCmp), the same as the ladder's suggested five, so the two can never disagree
+  const byLadder=(a,b)=>_riskPrioCmp(a.r,b.r);
   const chosen=H.rows.filter(z=>chosenIds.has(z.id)).sort(byLadder).slice(0,5);
   const ranked=H.rows.filter(z=>!chosenIds.has(z.id) && z.r && _riskScore(z.r).rating).sort(byLadder);
   return chosen.map(z=>({ z, chosen:true })).concat(ranked.slice(0,5-chosen.length).map(z=>({ z, chosen:false })));
@@ -24587,7 +24582,7 @@ function _asItemHTML(s, it, i, locked, ro, dis){
       +'</div>';
   }
   return '<div class="as-item'+(done?' as-done':'')+'" id="asI-'+esc(s.id)+'-'+i+'">'
-    +'<div class="as-ih"><span class="as-no">'+(i+1)+'</span><div class="as-desc">'+esc(it.desc||'(no description)')+(it.carriedFrom?(' <span class="as-tag as-out">carried from '+esc(_asName({ kind:s.kind, no:it.carriedFrom }).toLowerCase())+'</span>'):'')+({ tick:' <span class="as-tag as-why as-why-tick" title="Ticked in the Top 5 column on the cockpit risk ladder">Ticked Top 5</span>', ladder:' <span class="as-tag as-why" title="Fewer than five are ticked, so the sheet is topped up with the next highest current rating on the risk ladder">Next highest on the ladder</span>', added:' <span class="as-tag as-why">Added from the plan</span>' }[it.why]||'')+'</div>'
+    +'<div class="as-ih"><span class="as-no">'+(i+1)+'</span><div class="as-desc">'+esc(it.desc||'(no description)')+(it.carriedFrom?(' <span class="as-tag as-out">carried from '+esc(_asName({ kind:s.kind, no:it.carriedFrom }).toLowerCase())+'</span>'):'')+({ tick:' <span class="as-tag as-why as-why-tick" title="Ticked in the Top 5 column on the cockpit risk ladder">Ticked Top 5</span>', ladder:' <span class="as-tag as-why" title="Fewer than five are ticked, so the sheet is topped up in the Top 5 order: seen on site, legal must-haves, then tier 1 to 4 - could kill first, then the score">Next in the Top 5 order</span>', added:' <span class="as-tag as-why">Added from the plan</span>' }[it.why]||'')+'</div>'
     +((locked||ro)?'':'<button class="trn-x" onclick="asRemoveItem('+sid+','+key+')" title="Take this action off the sheet - it stays on the plan">×</button>')+'</div>'
     +'<div class="slt-muted as-meta">'+meta+'</div>'+gone+thinMsg+((!ro && _asSameRiskBefore(s,it)>=0)?('<div class="as-warn">Same risk as line '+(_asSameRiskBefore(s,it)+1)+': its actions table prints once, on that line\u2019s page. This page lists this action only.</div>'):'')
     +'<div class="slt-lab">Note on this action (optional - printed under it in the recommended actions table)</div>'+recBox+resp+decide+'</div>';
@@ -24770,7 +24765,7 @@ function asRebuild(sid){
   s.issuedAt='';
   saveData(); _asRender();
   const t=s.items.filter(i=>i.why==='tick').length;
-  showToast('✓ '+_asName(s)+' rebuilt - '+t+' ticked Top 5'+(s.items.length>t?(', '+(s.items.length-t)+' next highest on the ladder'):'')+'. Download it again to send.','success',7000);
+  showToast('✓ '+_asName(s)+' rebuilt - '+t+' ticked Top 5'+(s.items.length>t?(', '+(s.items.length-t)+' next in the Top 5 order'):'')+'. Download it again to send.','success',7000);
 }
 function asDeleteSheet(sid){
   if(_blockIfReadOnly()) return;
@@ -26238,6 +26233,7 @@ function _rpDigestHTML(r){
       <div class="dg-cell dg-haz" onclick="_riskDetailTab('identify')" style="cursor:pointer;" title="Click to edit on 1 · Identify"><h5>${esc(_rt(r,'assoc'))}</h5>${hazChips?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">${hazChips}</div>`:''}<p>${assocTxt?esc(assocTxt):'<span style="color:var(--text-muted);">Not recorded yet - tick the hazard and describe the risk on 1 · Identify</span>'}</p></div>
     </div>
     ${_rpCtlActsHTML(r, ctls, acts, openActs)}
+    ${_rpTierHTML(r)}
     ${_rpDutiesHTML(r)}
     <div class="dg-cell" style="margin-bottom:13px;cursor:pointer;" onclick="_riskDetailTab('actions')" title="Click to link evidence on 4 · Action delegation & timescale"><h5>Evidence behind this</h5><div style="display:flex;flex-wrap:wrap;gap:5px;">${links.length?links.map(l=>`<span class="dg-chip" title="${esc(l.url||'')}">📄 ${esc(l.ref||l.url)}</span>`).join(''):'<span style="color:var(--text-muted);font-size:12px;">No linked assessments recorded.</span>'}</div></div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);">
@@ -26453,7 +26449,7 @@ function _macroKeys(){ const seen=[]; HAZARD_LIBRARY.forEach(t=>{ if(t.macroKey&
   return seen; }
 function _riskTableRowsHTML(){
   const rows=_riskVisibleRows();
-  if(!rows.length) return '<tr><td colspan="9" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
+  if(!rows.length) return '<tr><td colspan="10" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
   if(_riskGroupMode==='macro'){
     // The macro layer: ONE grouping derivation (_riskMacroGroups) presented as
     // header rows here, headings on the pathway, subheads in the PDF.
@@ -26461,7 +26457,7 @@ function _riskTableRowsHTML(){
     const groupHTML=(g)=>{
       const open=_macroIsOpen(g.k) || g.list.some(rr=>rr.id===_riskMacroLast);
       const head='<tr class="rpt-macro'+(g.allAt?' rpt-mac-at':'')+(open?' rpt-mac-open':' rpt-mac-closed')+'" onclick="_macroToggle(\''+g.k+'\')" title="Click to expand or collapse this category">'
-        +'<td colspan="8" style="font-weight:700;"><span class="rpt-mac-chev" style="display:inline-block;width:14px;color:var(--text-muted);">'+(open?'\u25be':'\u25b8')+'</span><span class="rpt-mac-name">'+esc(g.name)+'</span>'+(g.allRev?' <span class="rpt-mac-rev" style="color:#16A34A;font-weight:700;font-size:11px;" title="All '+g.list.length+' risk'+(g.list.length!==1?'s':'')+' under this category reviewed and completed">\u2713</span>':'')+((g.k&&!_roLocked())?' <button type="button" class="btn btn-ghost btn-xs no-print" style="padding:1px 6px;font-size:11px;" onclick="_macroRenameStart(event,\''+g.k+'\')" title="Rename this macro category - the high level label, the detail stays on each risk">\u270e</button>':'')+'</td>'
+        +'<td colspan="9" style="font-weight:700;"><span class="rpt-mac-chev" style="display:inline-block;width:14px;color:var(--text-muted);">'+(open?'\u25be':'\u25b8')+'</span><span class="rpt-mac-name">'+esc(g.name)+'</span>'+(g.allRev?' <span class="rpt-mac-rev" style="color:#16A34A;font-weight:700;font-size:11px;" title="All '+g.list.length+' risk'+(g.list.length!==1?'s':'')+' under this category reviewed and completed">\u2713</span>':'')+((g.k&&!_roLocked())?' <button type="button" class="btn btn-ghost btn-xs no-print" style="padding:1px 6px;font-size:11px;" onclick="_macroRenameStart(event,\''+g.k+'\')" title="Rename this macro category - the high level label, the detail stays on each risk">\u270e</button>':'')+'</td>'
         +'<td style="text-align:left;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(g.atT?'#15803d':'var(--text-muted)')+';">'
         +((g.k&&g.worst)?_riskPrioBadge(g.worst,null)+' ':'')+esc(g.roll)+'</td></tr>';
       return head+(open?_riskRowHTML(g.list):'');
@@ -26471,9 +26467,9 @@ function _riskTableRowsHTML(){
       const gs=groups.filter(g=>g.origin===o);
       const cnt=gs.reduce((s,g)=>s+g.list.length,0);
       const anyOpen=gs.some(g=>_macroIsOpen(g.k)||g.list.some(rr=>rr.id===_riskMacroLast));
-      const band='<tr class="rpt-band" onclick="_bandToggle(\''+o+'\')" title="Click to '+(anyOpen?'collapse':'expand')+' every category in this section"><td colspan="9">'+esc(_ORIGIN_LABEL[o])+(cnt?'<span class="rpt-band-n">'+cnt+' risk'+(cnt!==1?'s':'')+'</span>':'')+'</td></tr>';
+      const band='<tr class="rpt-band" onclick="_bandToggle(\''+o+'\')" title="Click to '+(anyOpen?'collapse':'expand')+' every category in this section"><td colspan="10">'+esc(_ORIGIN_LABEL[o])+(cnt?'<span class="rpt-band-n">'+cnt+' risk'+(cnt!==1?'s':'')+'</span>':'')+'</td></tr>';
       const filtered=!!_riskSearch||(_riskModeFilter&&_riskModeFilter!=='all')||Object.keys(_riskFilter||{}).some(k=>!!_riskFilter[k]);
-      return band+(gs.length?gs.map(groupHTML).join(''):(filtered?'<tr class="rpt-band-empty"><td colspan="9">Nothing in this section matches the current view.</td></tr>':'<tr class="rpt-band-empty"><td colspan="9">'+esc(_ORIGIN_EMPTY[o])+'</td></tr>'));
+      return band+(gs.length?gs.map(groupHTML).join(''):(filtered?'<tr class="rpt-band-empty"><td colspan="10">Nothing in this section matches the current view.</td></tr>':'<tr class="rpt-band-empty"><td colspan="10">'+esc(_ORIGIN_EMPTY[o])+'</td></tr>'));
     }).join('');
   }
   return _riskRowHTML(rows);
@@ -26486,6 +26482,7 @@ function _riskRowHTML(rows){
     return '<tr class="rpt-row'+(ctl==='In place'?' rpt-atline':'')+'" onclick="_riskOpenModal(\''+r.id+'\')" title="'+(ctl==='In place'?'Controlled as reasonably practicable - open this risk. Esc brings you straight back':'Open this risk - Esc brings you straight back')+'">'
       +'<td onclick="event.stopPropagation()" style="white-space:nowrap;">'+RISK_MODES.map(m=>'<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:'+(_riskMode(r)===m.k?'700':'400')+';color:'+(_riskMode(r)===m.k?m.colour:'var(--text-muted)')+';cursor:pointer;line-height:1.5;"><input type="radio" name="kind_'+r.id+'" '+(_riskMode(r)===m.k?'checked':'')+' onchange="setRiskMode(\''+r.id+'\',\''+m.k+'\')" style="accent-color:'+m.colour+';width:12px;height:12px;cursor:pointer;">'+(m.k==='hs'?'H&S':'Ops')+'</label>').join('')+'</td>'
       +'<td>'+_riskRefChip(r)+'</td>'
+      +'<td style="font-size:11px;white-space:nowrap;">'+_riskTierTag(r)+'</td>'
       +'<td style="font-weight:700;">'+esc(r.activity||r.hazard||'New risk')+(r.reviewed?' <span style="color:#16A34A;font-weight:700;font-size:11px;" title="Reviewed and completed">\u2713</span>':'')+'</td>'
       +'<td><span class="rc-chip" style="background:'+cc+'1a;color:'+cc+';">'+esc(mk?_macroName(mk):'-')+'</span>'+(ops?' <span class="rc-chip" style="background:#7C3AED1a;color:#7C3AED;">Operational</span>':'')+'</td>'
       +'<td style="font-size:12px;color:var(--text-muted);">'+esc(r.area||'-')+'</td>'
@@ -26722,12 +26719,13 @@ function renderRiskProfile(){
     ? { cat:'Macro', flag:'Critical' }
     : _riskModeFilter==='hs' ? { cat:'Macro', flag:'SIF' }
     : { cat:'Macro', flag:'SIF' };
-  const table=`<div style="overflow-x:auto;"><table class="rpt"><colgroup><col style="width:64px"><col style="width:52px"><col><col style="width:16%"><col style="width:12%"><col style="width:44px"><col style="width:84px"><col style="width:56px"><col style="width:15%"></colgroup><thead><tr>
+  const table=`<div style="overflow-x:auto;"><table class="rpt"><colgroup><col style="width:64px"><col style="width:52px"><col style="width:58px"><col><col style="width:16%"><col style="width:12%"><col style="width:44px"><col style="width:84px"><col style="width:56px"><col style="width:15%"></colgroup><thead><tr>
       <th title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
       <th title="The letter is the risk theme, the number is the risk. A number is given once and never reused, so a reference always resolves to the same risk.">Ref</th>
+      <th title="The risk's tier: 1 could kill, enforced hard · 2 serious harm to health · 3 day-to-day arrangements · 4 later lessons">Tier</th>
       <th>Risk title</th>
       <th>${_hh.cat}</th><th>Business area</th>
-      <th style="text-align:center;" title="Worst case: could kill or seriously injure (H&amp;S) / business-critical (operational)">${_hh.flag}</th>
+      <th style="text-align:center;" title="Could kill with today's controls (H&amp;S) / business-critical (operational)">${_hh.flag}</th>
       <th>Band</th><th style="text-align:center;">Level</th><th>Controlled?</th>
     </tr></thead><tbody id="rpTbody">${_riskTableRowsHTML()}</tbody></table></div>`;
   let modal='';
@@ -26755,6 +26753,7 @@ function renderRiskProfile(){
           ${selR.category?`<span class="rc-chip" style="background:${selHtC}1a;color:${selHtC};">${esc(selR.category)}</span>`:''}
           ${selR.area?`<span class="rc-chip" style="background:var(--muted-bg);color:var(--text-muted);">${esc(selR.area)}</span>`:''}
           ${_riskMacroOf(selR)?`<span class="rc-chip" style="background:${_macroColour(_riskMacroOf(selR))}1a;color:${_macroColour(_riskMacroOf(selR))};" title="Macro category">${esc(_macroName(_riskMacroOf(selR)))}</span>`:''}
+          ${_riskTierChip(selR)}
           ${_riskFlagOn(selR)?`<span class="rc-chip" style="background:#DC26261a;color:#DC2626;" title="${esc(_rt(selR,'flagChipTitle'))}">${esc(_rt(selR,'flagChip'))}</span>`:''}
           ${selR.reviewed?`<span class="rc-chip" style="background:#16A34A1a;color:#16A34A;" title="You have marked this risk complete">✓ reviewed</span>`:''}
         </div>
@@ -28554,6 +28553,93 @@ function _rpDutiesHTML(r){
       +'<span style="min-width:0;flex:1;">'+esc(d.title)+(d.law?(' <span style="color:var(--text-muted);">· '+esc(d.law)+'</span>'):'')+'</span>'
       +'<span class="badge '+d.status.c+'" style="font-size:10.5px;">'+esc(d.status.t)+'</span></div>').join('')
     +'</div>';
+}
+// ── A RISK'S TIER AND THE TOP 5 ORDER (Simon, 2026-10-27, step 4: "I can
+//    talk in tiered risks so that companies get what's going on"). A risk
+//    takes the tier of its biggest work duty (fire counts as tier 1), so
+//    marking a duty occasional moves the risk too; a risk with no work duty
+//    takes it from how bad it could be today. The consultant can overrule it
+//    on the risk. The Top 5 order: danger seen on site, then a legal
+//    must-have missing, then one not adequate, then tier 1 to 4 - inside
+//    each, could kill first, then the score. ──
+function _riskTierAuto(r){
+  const ds=_riskDuties(r).filter(d=>d.it.workKey || d.it.legalKey==='fire');
+  if(ds.length){ const d=ds.reduce((a,b)=>((b.tier||9)<(a.tier||9)?b:a)); return { tier:d.tier||3, why:'from '+d.title }; }
+  if(_riskMode(r)==='ops') return { tier:3, why:'an operational risk' };
+  const sv=parseInt(r&&r.severity,10)||0;
+  if(!sv) return { tier:3, why:'not rated yet' };
+  return { tier:sv>=5?1:(sv===4?2:3), why:'from how bad it could be today (severity '+sv+')' };
+}
+function _riskTier(r){
+  const n=parseInt(r&&r.tierSet,10);
+  if(n>=1 && n<=4) return { tier:n, why:'set by you', set:true };
+  return _riskTierAuto(r);
+}
+// Missing duties that jump the queue: every standard duty, and the work duties on tiers 1 and 2.
+function _riskPrio(r){
+  const t=_riskTier(r), sif=_riskSif(r), seen=String((r&&r.siteSeen)||'').trim();
+  if(seen) return { grp:1, tier:t.tier, sif, reason:'Seen on site: '+seen };
+  const must=_riskDuties(r).filter(d=>!d.it.workKey || (d.tier||9)<=2);
+  const miss=must.find(d=>d.status.t==='Not in place');
+  if(miss) return { grp:2, tier:t.tier, sif, reason:miss.title+' not in place' };
+  const gap=must.find(d=>d.status.t==='Gap');
+  if(gap) return { grp:3, tier:t.tier, sif, reason:gap.title+' not adequate' };
+  return { grp:4, tier:t.tier, sif, reason:'Tier '+t.tier+' · '+WORK_TIERS[t.tier] };
+}
+function _riskPrioCmp(a, b){
+  const pa=_riskPrio(a), pb=_riskPrio(b);
+  return (pa.grp-pb.grp) || (pa.grp===4 ? pa.tier-pb.tier : 0) || ((pb.sif?1:0)-(pa.sif?1:0)) || _riskRankCmp(a, b);
+}
+function _riskTierTip(t){ return 'Tier '+t.tier+' · '+WORK_TIERS[t.tier]+' - '+t.why; }
+// On the risk list and the ladder: the tier at the start of the line.
+function _riskTierTag(r){ const t=_riskTier(r); return '<span style="font-weight:700;letter-spacing:.05em;color:var(--text);" title="'+esc(_riskTierTip(t))+'">TIER '+t.tier+'</span>'; }
+// In the risk's header, beside its other chips.
+function _riskTierChip(r){ const t=_riskTier(r); return '<span class="rc-chip" style="background:var(--muted-bg);color:var(--text);font-weight:700;letter-spacing:.04em;" title="'+esc(_riskTierTip(t))+'">TIER '+t.tier+'</span>'; }
+// On the cockpit ladder: the first five in the Top 5 order, for the consultant to tick or swap.
+function _cklSuggestHTML(m5){
+  const rs=(S.riskProfile||[]).filter(r=>r && !r.deleted).slice().sort(_riskPrioCmp).slice(0,5);
+  if(!rs.length) return '';
+  return '<div class="no-print" style="border:1px solid var(--border);margin:0 0 12px;">'
+    +'<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:7px 12px;background:var(--muted-bg);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);">'
+    +'<span>Suggested five</span><span style="font-weight:600;letter-spacing:0;text-transform:none;">Seen on site, then legal must-haves missing, then not adequate, then tier 1 to 4 - could kill first, then the score</span></div>'
+    +rs.map((r,i)=>{ const p=_riskPrio(r), pick=_riskTop5Picked(r, m5), sc=_riskScore(r);
+      return '<div style="display:flex;align-items:center;gap:9px;padding:6px 12px;border-top:1px solid var(--border);font-size:12.5px;">'
+        +'<span style="flex:0 0 14px;font-weight:700;color:var(--text-muted);">'+(i+1)+'</span>'
+        +'<span style="flex:0 0 auto;">'+_riskRefChip(r)+'</span>'
+        +'<button type="button" onclick="_gotoRisk(\''+r.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;" title="Open this risk"><b>'+esc(r.activity||r.hazard||'Risk')+'</b>'
+        +'<span style="display:block;font-size:11.5px;color:var(--text-muted);">'+esc(p.reason)+(p.sif?' · could kill':'')+(sc.rating?(' · score '+sc.rating):'')+'</span></button>'
+        +'<input type="checkbox" '+(pick?'checked ':'')+'onchange="toggleRiskTop5(\''+r.id+'\')" aria-label="Top 5 for '+esc(_top5MonthLabel(m5))+': '+esc(r.activity||r.hazard||'')+'" title="'+(pick?'One of the five - untick to take it off':'Make this one of the five priorities for '+esc(_top5MonthLabel(m5)))+'">'
+        +'</div>'; }).join('')
+    +'</div>';
+}
+// On a risk's Summary: its tier with the reason and the override, and the
+// danger seen on site - both the consultant's to set.
+function _rpTierHTML(r){
+  const t=_riskTier(r), p=_riskPrio(r), auto=_riskTierAuto(r);
+  const cons=!_roLocked() && _isConsultantish();
+  const seen=String(r.siteSeen||'').trim();
+  const lab='flex:0 0 98px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);';
+  const sel=cons?('<select onchange="setRiskTier(\''+r.id+'\',this.value)" title="Overrule the tier for this risk" style="flex:0 0 auto;width:auto;font-size:12px;padding:3px 26px 3px 8px;">'
+    +'<option value="">Auto (tier '+auto.tier+')</option>'+[1,2,3,4].map(n=>'<option value="'+n+'"'+(t.set&&t.tier===n?' selected':'')+'>Tier '+n+'</option>').join('')+'</select>'):'';
+  const seenRow=cons
+    ?('<input type="text" value="'+esc(seen)+'" maxlength="240" placeholder="Only a danger you have seen on site - one line, e.g. damaged asbestos roof sheets in the yard" onchange="setRiskSiteSeen(\''+r.id+'\',this.value)" style="flex:1;min-width:0;width:auto;font-size:12.5px;padding:4px 7px;">')
+    :('<span style="flex:1;min-width:0;">'+esc(seen)+'</span>');
+  return '<div class="dg-acts"><div class="dg-ah"><span>Priority</span><span>'+esc(p.reason)+'</span></div>'
+    +'<div class="dg-act"><span style="'+lab+'">Tier '+t.tier+'</span><span style="min-width:0;flex:1;">'+esc(WORK_TIERS[t.tier])+' <span style="color:var(--text-muted);">· '+esc(t.why)+'</span></span>'+sel+'</div>'
+    +((cons||seen)?('<div class="dg-act"><span style="'+lab+'">Seen on site</span>'+seenRow+'</div>'):'')
+    +'</div>';
+}
+function setRiskTier(id, v){
+  if(_blockIfReadOnly() || !_isConsultantish()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
+  const n=parseInt(v,10); r.tierSet=(n>=1 && n<=4)?n:'';
+  _stamp(r,'updated'); saveData(); _refreshActionViews();
+}
+function setRiskSiteSeen(id, v){
+  if(_blockIfReadOnly() || !_isConsultantish()) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r) return;
+  r.siteSeen=String(v||'').trim().slice(0,240); r.siteSeenAt=r.siteSeen?new Date().toISOString().slice(0,10):'';
+  _stamp(r,'updated'); saveData(); _refreshActionViews();
 }
 function _workDutyTools(sec, it, ro){
   if(ro) return '';

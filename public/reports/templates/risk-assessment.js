@@ -62,7 +62,7 @@ export function buildRiskAssessment(state, opts = {}) {
           { value: String(D.rated), label: 'Risks rated' },
           { value: String(D.byTier.Critical), label: 'Critical', tone: D.byTier.Critical ? 'bad' : 'ok' },
           { value: String(D.byTier.High), label: 'High', tone: D.byTier.High ? 'warn' : 'ok' },
-          { value: String(D.fatal), label: 'Could kill or seriously injure', tone: D.fatal ? 'bad' : 'ok' },
+          { value: String(D.fatal), label: 'Could kill', tone: D.fatal ? 'bad' : 'ok' },
           { value: D.complete.clear + ' / ' + D.complete.total, label: 'Assessment checks clear' },
         ] },
         { type: 'matrix5x5', counts: D.matrix, bands: D.bands, caption: 'Where each risk sits now, with controls in place (likelihood × severity). Each square is coloured by its risk band: red Critical, orange High, amber Medium, green Low.' },

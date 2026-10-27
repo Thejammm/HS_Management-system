@@ -338,9 +338,9 @@ export function deriveBoard(state, opts = {}) {
   rated.forEach(x => { const t = tierFor(x.res.score, bands); if (t) byTier[t]++; });
 
   // Fatal potential: the app's _riskSif via the contract - explicit boolean
-  // override wins, else credible worst case (the risk's own OR its projected
-  // severity) of 4-5. The old "severity 5 only" version disagreed with the
-  // cockpit by exactly the class of risk Simon caught (a severity-4 SIF).
+  // override wins, else the current severity is 5 (fatal with today's
+  // controls, Simon 2026-10-26). Read through the contract so the report and
+  // the cockpit can never count it differently.
   const isFatal = x => sifOf(x.r);
   const fatal = scored.filter(isFatal);
   const fatalUncontrolled = fatal.filter(x => controlStatusOf(x.r) === 'None');
@@ -425,7 +425,7 @@ export function deriveBoard(state, opts = {}) {
       ' recorded but ' + (rated.length ? countPhrase(unrated, 'is', 'are') : 'none are') +
       ' fully rated. Complete likelihood and severity scoring before this report is relied on.';
   } else if (fatal.length) {
-    headline = countPhrase(fatal.length, 'risk', 'risks') + ' can still kill or maim someone with our controls in place.';
+    headline = countPhrase(fatal.length, 'risk', 'risks') + ' can still kill someone with our controls in place.';
     standfirst = 'Of ' + countPhrase(rated.length, 'rated risk', 'rated risks') + ', ' +
       noneOrCount(highPlus, 'still sits', 'still sit', 'none') + ' High or Critical with controls in place, and ' +
       noneOrCount(fatalUncontrolled.length, 'fatal-potential risk has', 'fatal-potential risks have', 'no') +

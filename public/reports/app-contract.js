@@ -141,9 +141,10 @@ export const MATURITY_DOMAINS = [
 ];
 
 // ── Fatal potential (SIF) - verbatim port of the app's _riskSif ──
-// Explicit boolean override wins; otherwise the worst credible severity:
-// 4-5 = could kill or seriously injure. NOT "severity 5 only".
-// Verbatim port of the app's _worstSeverity: the risk's own severity, its
+// Explicit boolean override wins; otherwise the CURRENT severity is 5 -
+// fatal with today's controls (Simon, 2026-10-26; until then it was the
+// worst credible severity of 4-5, which he kept having to untick).
+// Verbatim port of the app's _worstSeverity (still used for the worst case): the risk's own severity, its
 // projection, and - for records created before the "inherent" box was retired
 // - the severity stored then. New risks never write that field.
 export function worstSeverityOf(r) {
@@ -151,7 +152,8 @@ export function worstSeverityOf(r) {
 }
 export function sifOf(r) {
   if (r && (r.sif === true || r.sif === false)) return r.sif;
-  return worstSeverityOf(r) >= 4;
+  if (modeOf(r) === 'ops') return worstSeverityOf(r) >= 4;   // business-critical: the app's _riskCritical, unchanged
+  return (parseInt(r && r.severity, 10) || 0) >= 5;
 }
 
 // ── Control status - verbatim port of the app's _riskControlStatus ──
@@ -435,7 +437,7 @@ const embedDate = (s) => {
 export function riskRefOf(r) { return (r && r.ref) ? String(r.ref) : ''; }
 
 export function modeOf(r) { return (r && r.mode === 'ops') ? 'ops' : 'hs'; }
-export function sifWordOf(r) { return modeOf(r) === 'ops' ? 'business-critical' : 'could kill or seriously injure'; }
+export function sifWordOf(r) { return modeOf(r) === 'ops' ? 'business-critical' : 'could kill'; }
 
 export function embedOf(o) { return (o && o.embed && typeof o.embed === 'object') ? o.embed : null; }
 export function embedIsSet(o) { const e = embedOf(o); return !!(e && (e.none || e.doc || e.routine || e.brief || e.owner)); }

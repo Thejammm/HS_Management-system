@@ -64,7 +64,7 @@ export function buildManagementPlan(state, opts = {}) {
         { value: String(P.rows.length), label: 'Risks on the profile' },
         { value: String(P.themes.length), label: 'Risk themes carried' },
         { value: String(D.rated), label: 'Rated' },
-        { value: String(D.fatal), label: 'Could kill or seriously injure', tone: D.fatal ? 'bad' : 'ok' },
+        { value: String(D.fatal), label: 'Could kill', tone: D.fatal ? 'bad' : 'ok' },
         { value: P.controlled + ' of ' + P.rows.length, label: 'Controlled as far as reasonably practicable', tone: (P.rows.length && P.controlled === P.rows.length) ? 'ok' : '' },
       ] },
       themeRows.length
@@ -76,7 +76,7 @@ export function buildManagementPlan(state, opts = {}) {
         : none('No risks recorded yet. The risk profile is built first; this plan then reports it.'),
       { type: 'soWhat', text: P.rows.length
         ? (countPhrase(P.themes.length, 'risk theme is', 'risk themes are') + ' carried by this business, and '
-           + noneOrCount(D.fatal, 'risk', 'risks', 'no') + ' can still kill or seriously injure someone with the controls that are in place.')
+           + noneOrCount(D.fatal, 'risk', 'risks', 'no') + ' can still kill someone with the controls that are in place.')
         : 'The risk profile is not yet built, so this plan reports a position that does not exist yet.' },
     ],
   };

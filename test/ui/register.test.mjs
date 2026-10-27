@@ -16,7 +16,7 @@ await openRegister(page);
     return { bands: [...body.querySelectorAll('tr.rpt-band')].map(x => x.textContent.replace(/\s+/g, ' ').trim()),
       groups: [...body.querySelectorAll('tr.rpt-macro .rpt-mac-name')].map(x => x.textContent.trim()),
       rows: [...body.querySelectorAll('tr.rpt-row')].length,
-      titles: [...body.querySelectorAll('tr.rpt-row')].map(x => x.cells[2].textContent.trim()),   // cells[1] is the Ref column
+      titles: [...body.querySelectorAll('tr.rpt-row')].map(x => x.cells[3].textContent.trim()),   // cells[1] is the Ref column, cells[2] the Tier
       refs: [...body.querySelectorAll('tr.rpt-row')].map(x => x.cells[1].textContent.trim()),
       headers: [...document.querySelectorAll('#rpTbody')].length ? [...document.querySelectorAll('table thead th')].map(x => x.textContent.trim()).filter(Boolean) : [] };
   });
@@ -179,7 +179,7 @@ await wait(page, 300);
       setTimeout(G(() => {
         const rows = [...document.querySelectorAll('#rpTbody tr.rpt-row')];
         const open = [...document.querySelectorAll('#rpTbody tr.rpt-macro.rpt-mac-open')].length;
-        res({ shutBefore, onScreen: rows.length, isNew: rows.some(r => /New risk/.test(r.cells[2].textContent)),
+        res({ shutBefore, onScreen: rows.length, isNew: rows.some(r => /New risk/.test(r.cells[3].textContent)),
           onlyItsOwn: open === 1, registerOpen: !!(document.getElementById('wfRegister') || {}).open });
       }), 500);
     }), 600);

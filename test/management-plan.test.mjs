@@ -118,7 +118,7 @@ test('a business risk is never described as able to kill someone', () => {
   const ops = P.rows.find(r => r.id === 'r3');
   const hs = P.rows.find(r => r.id === 'r2');
   assert.equal(ops.sifWord, 'business-critical');
-  assert.equal(hs.sifWord, 'could kill or seriously injure');
+  assert.equal(hs.sifWord, 'could kill');
   assert.equal(sifWordOf({ mode: 'ops' }), 'business-critical');
   const html = reportHTML(buildReport(s, 'management-plan', OPTS));
   assert.match(html, /business-critical/);
@@ -280,7 +280,7 @@ test('the flag is the worst case, not a contradiction of the band', () => {
   const s = STATE();
   s.riskProfile[1].likelihood = '1'; s.riskProfile[1].severity = '5';   // Low band, still fatal
   const html = reportHTML(buildReport(s, 'management-plan', OPTS));
-  assert.match(html, /worst case could kill or seriously injure/);
+  assert.match(html, /worst case could kill/);
   assert.doesNotMatch(html, /r-mp-sif">could kill/, 'never printed bare beside a Low band');
 });
 

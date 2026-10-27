@@ -193,7 +193,7 @@ eq('kept in place: sentences', app.keptLines,
   ].map(o => contract.embedLinesOf(o).map(l => l.label + '|' + l.text)));
 // A business risk is never described as one that can kill someone.
 eq('flag wording follows the kind of risk',
-  app.sifWords.map(t => /business/i.test(t) ? 'business-critical' : 'could kill or seriously injure'),
+  app.sifWords.map(t => /business/i.test(t) ? 'business-critical' : 'could kill'),
   [contract.sifWordOf({}), contract.sifWordOf({ mode: 'ops' })]);
 // The management plan counts the same plan the execution plan does.
 eq('plan actions (all sources)', app.execCount, planDerive.planActionsOf(STATE).length);

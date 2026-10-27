@@ -129,7 +129,7 @@ export function buildBoardReport(state, opts = {}) {
   // High then just say it").
   const kpis = [
     { value: D.maxSev ? String(D.maxSev) + '/5' : '-', label: 'Worst possible harm', note: D.highestHarm, tone: D.maxSev >= 5 ? 'bad' : D.maxSev >= 4 ? 'warn' : undefined },
-    { value: String(D.fatal), label: 'Could kill or seriously injure', tone: D.fatal ? 'bad' : 'ok' },
+    { value: String(D.fatal), label: 'Could kill', tone: D.fatal ? 'bad' : 'ok' },
     { value: String(D.fatalUncontrolled), label: 'Of those, uncontrolled', tone: D.fatalUncontrolled ? 'bad' : 'ok' },
     // The positive half: work CLOSED OUT. A risk counts when every planned
     // action on it is complete; formal acceptances are stated as a caveat,
@@ -150,7 +150,7 @@ export function buildBoardReport(state, opts = {}) {
   ];
 
   const decisions = [];
-  if (D.fatalUncontrolled) decisions.push({ text: 'Direct that the ' + countPhrase(D.fatalUncontrolled, 'uncontrolled risk that could kill or seriously injure is', 'uncontrolled risks that could kill or seriously injure are') + ' brought to their residual targets this quarter.', rationale: 'A could-kill risk still above its residual target is the first thing an inspector or prosecutor will ask about.' });
+  if (D.fatalUncontrolled) decisions.push({ text: 'Direct that the ' + countPhrase(D.fatalUncontrolled, 'uncontrolled risk that could kill is', 'uncontrolled risks that could kill are') + ' brought to their residual targets this quarter.', rationale: 'A could-kill risk still above its residual target is the first thing an inspector or prosecutor will ask about.' });
   if (D.overdue) decisions.push({ text: 'Reset owners and dates on the ' + countPhrase(D.overdue, 'overdue action', 'overdue actions') + '.', rationale: 'Overdue actions with no intervention become evidence of a plan the organisation does not follow.' });
   // Numbers only on the front page - the named list gets its own page so ten
   // of them can never crowd the position (Simon).

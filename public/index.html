@@ -3287,6 +3287,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
       </div>
     </div>
     <div class="header-right">
+      <button class="btn btn-primary btn-sm no-print" id="t5Btn" onclick="openLiveTop5()" title="The five risks in front of the leadership team, edited live in the meeting">This month's Top 5</button>
       <span class="save-indicator" id="saveIndicator"></span>
       <button class="btn btn-ghost btn-sm no-print" id="themeToggle" onclick="toggleTheme()" title="Toggle light / dark mode" aria-label="Toggle light or dark mode" style="color:var(--text-muted);border-color:var(--border);padding:6px 9px;line-height:0;"><span id="themeToggleIcon"></span></button>
       <button class="btn btn-ghost btn-sm no-print" id="backupBtn" onclick="exportEverything()" title="Download a full JSON backup of your local data" style="color:var(--text-muted);border-color:var(--border);">⭳<span class="hdr-lab">&nbsp;Backup</span></button>
@@ -4431,6 +4432,68 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .slt-chip span{color:var(--text-muted);font-size:11.5px;}
     .slt-add{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.4fr) auto auto;gap:6px;align-items:center;}
     .slt-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 0;}
+    /* The live Top 5 (front door). Square, flat and ruled. The rating tiles go darker as the risk gets worse: no red. */
+    .t5-bar .slt-t{min-width:180px;}
+    .t5-nav{flex-basis:100%;display:flex;gap:4px;flex-wrap:wrap;}
+    .t5-nb{padding:5px 11px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;}
+    .t5-nb-on{background:var(--accent);border-color:var(--accent);color:#1D1F20;}
+    #t5Btn,#t5SendBtn,.t5-stick-f .btn-primary{color:#1D1F20;}
+    .t5-body{max-width:1280px;margin:0 auto;padding:10px 20px 36px;}
+    .t5-strip{border:1px solid var(--border);border-left:4px solid var(--text-muted);background:var(--surface);padding:6px 12px;margin-bottom:8px;font-size:12.5px;line-height:1.5;}
+    .t5-strip-stick,.t5-strip-add{border-left-color:var(--accent);}
+    .t5-offer{display:inline-flex;align-items:center;gap:6px;margin-left:10px;}
+    .t5-page{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);padding:12px 16px 14px;}
+    .t5-kicks{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+    .t5-kick{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-dark,var(--accent));}
+    .t5-h{font-size:21px;font-weight:800;line-height:1.25;margin:2px 0 8px;}
+    .t5-top{display:grid;grid-template-columns:150px 20px 150px minmax(0,1fr);gap:10px;align-items:stretch;margin-bottom:10px;}
+    .t5-tile{padding:7px 10px;display:flex;flex-direction:column;color:#fff;}
+    .t5-tile span{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+    .t5-tile b{font-size:27px;line-height:1.1;}
+    .t5-tile i{font-style:normal;font-size:11.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;}
+    .t5-tile small{font-size:10px;margin-top:1px;}
+    .t5-b-Critical{background:#1D1F20;}
+    .t5-b-High{background:#4A4F55;}
+    .t5-b-Medium{background:#757575;}
+    .t5-b-Low{background:#C4C7CA;color:#1D1F20;}
+    .t5-b-none{background:var(--muted-bg);color:var(--text-muted);}
+    .t5-arrow{align-self:center;text-align:center;font-size:17px;color:var(--text-muted);}
+    .t5-haz{border-left:1px solid var(--border);padding:1px 0 1px 12px;font-size:13px;line-height:1.4;min-width:0;}
+    .t5-lab{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-dark,var(--accent));margin-bottom:2px;}
+    .t5-haz ul{margin:0;padding-left:16px;}
+    .t5-table{width:100%;border-collapse:collapse;table-layout:fixed;border:1px solid var(--border);}
+    .t5-table th{background:var(--accent-light);border-bottom:2px solid var(--accent);padding:6px 8px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;text-align:left;color:var(--accent-dark,var(--accent));}
+    .t5-table td{border-top:1px solid var(--border);padding:5px 8px;vertical-align:top;font-size:13px;}
+    .t5-table th.t5-c,.t5-table td.t5-c{text-align:center;padding-left:2px;padding-right:2px;}
+    .t5-head td{background:var(--muted-bg);font-weight:700;font-size:12.5px;padding:4px 8px;}
+    .t5-line{float:right;margin-left:14px;font-weight:400;font-size:11.5px;color:var(--text-muted);}
+    .t5-act{display:flex;gap:6px;}
+    .t5-no{flex:0 0 16px;font-weight:800;color:var(--accent-dark,var(--accent));}
+    .t5-pri{display:inline-block;padding:0 5px;background:var(--accent);color:#1D1F20;font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;vertical-align:1px;}
+    .t5-st{font-size:11px;color:var(--text-muted);margin-top:2px;}
+    .t5-table textarea,.t5-table input[type=date],.t5-table td>input[type=text]{width:100%;box-sizing:border-box;font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid var(--border);border-radius:0;background:var(--input-bg);color:inherit;}
+    .t5-table textarea{display:block;resize:vertical;min-height:32px;}
+    .t5-table .own-cell input{flex:1 1 70px;width:auto;min-width:60px;border:0;border-radius:0;background:transparent;padding:3px 4px;outline:none;box-shadow:none;font-size:12.5px;color:inherit;}
+    .t5-table .own-chip button:hover{color:var(--text);}
+    .t5-done input{width:20px;height:20px;margin:5px 0 0;accent-color:var(--accent);cursor:pointer;}
+    .t5-closed .t5-desc{color:var(--text-muted);}
+    .t5-newr td{background:var(--bg);}
+    .t5-link{border:0;background:none;padding:0;color:var(--accent-dark,var(--accent));font:inherit;font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;text-align:left;}
+    .t5-off{font-weight:400;font-size:11.5px;color:var(--text-muted);}
+    .t5-pager{display:flex;justify-content:space-between;margin-top:10px;}
+    .t5-trail{margin-top:10px;font-size:12px;color:var(--text-muted);}
+    .t5-sent ol{margin:6px 0 12px;padding-left:20px;font-size:14px;line-height:1.7;}
+    .t5-stick-ov{position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.45);}
+    .t5-stick-p{width:100%;max-width:500px;max-height:90vh;overflow:auto;padding:14px 18px;background:var(--surface,#fff);color:var(--text,#111);border:1px solid var(--border);border-top:4px solid var(--accent);box-shadow:0 18px 60px rgba(0,0,0,.3);}
+    .t5-stick-h{font-size:17px;font-weight:800;}
+    .t5-stick-a{margin:2px 0 10px;font-size:12.5px;color:var(--text-muted);}
+    .t5-stick-c{display:flex;flex-direction:column;gap:5px;margin:10px 0;font-size:13.5px;}
+    .t5-sc{display:flex;align-items:center;gap:7px;cursor:pointer;}
+    .t5-sf{display:block;margin-top:7px;}
+    .t5-sf span{display:block;margin-bottom:2px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);}
+    .t5-sf input,.t5-sf select{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--input-bg);color:inherit;font:inherit;font-size:13px;}
+    .t5-s2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .t5-stick-f{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border);}
     .slt-done{max-width:720px;margin:40px auto;background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--success);padding:24px;}
     .slt-done h2{margin:4px 0 8px;font-size:22px;}
     .slt-done-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
@@ -14514,6 +14577,8 @@ function applyViewMode(){
   const mode = _viewMode;
   const insp = mode === 'employee';
   const isConsultant = (Auth.user()?.role) === 'consultant';
+  // the live Top 5 is the consultant's, in the meeting; the signed-out offline copy is the consultant's own
+  const _t5b=document.getElementById('t5Btn'); if(_t5b) _t5b.style.display=(mode==='consultant' && (Auth.user()?.role||'consultant')==='consultant')?'':'none';
   document.querySelectorAll('.tab-btn').forEach(b=>{
     const t=b.getAttribute('data-tab');
     // Base visibility by tier.
@@ -20379,6 +20444,7 @@ function _saveRescore(rid){
   if(_wasFatal && r.sif!==false && !_riskSif(r)) r.sif=true;
   _stamp(r,'updated'); if(ov) ov.remove();
   saveData(); _keepScroll(renderRiskProfile);
+  if(document.getElementById('t5Ov')) _t5Render();
   showToast(old.rating===(L*Sv)?'Score confirmed at '+(L*Sv):'✓ Re-scored - was '+old.rating+', now '+(L*Sv)+'. The journey shows the improvement.','success');
 }
 function updateRiskRating(id, field, value, el){
@@ -20987,6 +21053,7 @@ function _embedRead(){
   if(on('_embNoneOn')) return { none:true };
   const em={};
   if(on('_embDocOn')     && v('_embDocName'))  em.doc={ name:v('_embDocName'), path:v('_embDocPath') };
+  if(em.doc && v('_embDocSection')) em.doc.section=v('_embDocSection');      // the live Top 5: a named section of a policy already on the register
   if(on('_embRoutineOn') && v('_embRtItem'))   em.routine={ item:v('_embRtItem'), frequency:v('_embRtFreq'), owner:v('_embRtOwner'), due:v('_embRtDue') };
   if(on('_embBriefOn')   && v('_embBrTitle'))  em.brief={ title:v('_embBrTitle'), type:v('_embBrType'), date:v('_embBrDate') };
   if(on('_embOwnerOn')   && v('_embOwName'))   em.owner={ name:v('_embOwName'), role:v('_embOwRole') };
@@ -21031,7 +21098,7 @@ function _embedApply(o, r, em){
   if(em.none){ o.embed={ none:true, at:at, by:who }; return 1; }
   const rec={ at:at, by:who }; let k=0;
   if(em.doc){ let d=null; try{ d=_docUpsertFromApp(em.doc.name, em.doc.path, 'action close-out'); }catch(e){}
-    rec.doc=Object.assign({}, em.doc, d?{docId:d.id}:{}); k++; }
+    rec.doc=Object.assign({}, em.doc, d?{docId:d.id}:{}); if(rec.doc.section) rec.doc.name=rec.doc.name+', '+rec.doc.section; k++; }
   if(em.routine){ rec.routine=Object.assign({}, em.routine, _embedFileRoutine(em.routine)); k++; }
   if(em.brief){ rec.brief=Object.assign({}, em.brief, _embedFileBrief(em.brief, r)); k++; }
   if(em.owner){ rec.owner=Object.assign({}, em.owner, _embedFileOwner(em.owner)); k++; }
@@ -21140,7 +21207,7 @@ function _closeOutCancel(){
   if(r) _maybeRescore(r.id);
 }
 function _promptActionEvidence(a, r){
-  if(!a || _roLocked()) return;
+  if(!a || _roLocked() || _t5Quiet) return;      // the live Top 5 asks its own one question
   if(document.getElementById('evidOverlay')) return;
   const ov=document.createElement('div'); ov.id='evidOverlay';
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
@@ -24273,8 +24340,68 @@ function _asRowChanges(row, html){
   const e=html ? esc : (t=>String(t)), out=[], dt=String(row.dueText||'').trim();
   const now=row.due ? fmtDate(row.due) : dt ? (html ? ('<span class="as-amber">date as written: '+esc(dt)+'</span>') : ('date as written: '+dt)) : 'left blank';
   if(row.whoChanged){ const w=String(row.who||'').trim(); out.push('Who: '+(row.gap ? e(w||'left blank') : (e(String(row.pWho||'').trim()||'no one named')+' → '+e(w||'left blank')))); }
-  if(row.dueChanged) out.push('By when: '+(row.gap ? now : (e(row.pDue ? fmtDate(row.pDue) : 'no date')+' → '+now)));
+  if(_asRowDoneWord(row)) out.push('Marked complete on the sheet');
+  else if(row.dueChanged) out.push('By when: '+(row.gap ? now : (e(row.pDue ? fmtDate(row.pDue) : 'no date')+' → '+now)));
   return out;
+}
+// "Complete" or "done" written in the date box (found 5 November 2026: it was
+// kept as a note and the action stayed open). The sheet's word for the action
+// being finished, not a date that could not be read.
+function _asRowDoneWord(row){ return /^(complete|completed|done)\.?$/i.test(String((row&&row.dueText)||'').trim()); }
+// A write on an action through the plan's own paths: a risk's action, or one on
+// the plan directly. The history is the caller's to write.
+function _asPutAction(it, f, field, v){
+  if(f.r) updateRiskAction(f.r.id, f.a.id, field, v);
+  else updateExecAction(encodeURIComponent(JSON.stringify(it.ref)), field, v);
+  if(typeof _stamp==='function') _stamp(f.a,'updated');
+}
+// A sheet saying the action is finished: complete today, flagged for "Where does
+// this live now?" at the next meeting. False if it was closed already.
+function _asCloseFromSheet(it, f, tag){
+  if(_actClosed(f.a)) return false;
+  _t5Quiet=true;
+  _asPutAction(it, f, 'status', 'Complete');
+  if(!_embedIsSet(f.a)) f.a.stickDue=_asToday();
+  _logAdd(f.a,'completed',tag+'marked complete on the sheet');
+  if(f.r) _t5CtlFlip(f.r, f.a, true, tag);
+  setTimeout(()=>{ _t5Quiet=false; },400);
+  return true;
+}
+// Agreed writes what came back on to the plan (found 5 November 2026: it only
+// logged the comments, so reprints showed the old dates). Each row's new owner and
+// target date go on its action through the plan's own paths, its comment becomes
+// the action's latest comment and "complete" in the date box closes it. A row already
+// applied by its own button is left alone. What each action held is kept on the
+// row, so Undo can put it back; a row for a gap keeps its own button.
+function _asAgreeApply(s, it, own){
+  const tag=_asLogTag(s)+': agreed - ';
+  ((it.resp && Array.isArray(it.resp.rows)) ? it.resp.rows : []).forEach(row=>{
+    if(!row || row.applied || !row.a) return;
+    const f=_asRowFind(it, row.a); if(!f) return;
+    const set=_asRowSets(row), cmt=String(row.cmt||'').trim(), word=_asRowDoneWord(row);
+    if(!set.who && !set.due && !cmt && !word) return;
+    row.agreedWas={ owner:String(f.a.owner||''), due:String(f.a.due||''), status:f.a.status||'Not started', cmt:String(f.a.meetingComment||''), on:String(f.a.meetingCommentOn||'') };
+    if(set.who) _asPutAction(it, f, 'owner', set.who);
+    if(set.due) _asPutAction(it, f, 'due', set.due);
+    if(cmt){ f.a.meetingComment=cmt; f.a.meetingCommentOn=s.returnedAt||_asToday(); }
+    if(word) _asCloseFromSheet(it, f, tag);
+    if(f.a!==own){ const ch=_asRowChanges(row, false).join('; '); if(cmt||ch) _logAdd(f.a,'comment',tag+(cmt?(cmt+(ch?(' ('+ch+')'):'')):ch)); }
+    row.applied=_asToday();
+  });
+}
+// Undo on an agreed line puts back what Agreed wrote.
+function _asAgreeUndo(it){
+  ((it.resp && Array.isArray(it.resp.rows)) ? it.resp.rows : []).forEach(row=>{
+    const was=row && row.agreedWas; if(!was) return;
+    const f=row.a ? _asRowFind(it, row.a) : null;
+    if(f){
+      if(String(f.a.owner||'')!==was.owner) _asPutAction(it, f, 'owner', was.owner);
+      if(String(f.a.due||'')!==was.due) _asPutAction(it, f, 'due', was.due);
+      if((f.a.status||'Not started')!==was.status){ _t5Quiet=true; if(f.r) _t5CtlFlip(f.r, f.a, false, 'Agreed taken back: '); _asPutAction(it, f, 'status', was.status); delete f.a.stickDue; setTimeout(()=>{ _t5Quiet=false; },400); }
+      f.a.meetingComment=was.cmt; f.a.meetingCommentOn=was.on;
+    }
+    delete row.agreedWas; row.applied='';
+  });
 }
 // What a row sets on its action: a new owner (several written "A, B") and a
 // new target date - only what was written and could be read.
@@ -24497,7 +24624,7 @@ function _asRender(){
 }
 function _asSheetHTML(s, latest, ro, dis){
   const st=_asSheetStatus(s), items=s.items||[], K=_asKindOf(s), nm=_asName(s);
-  const locked=items.some(_asHasResp) || items.some(i=>i.decision);     // once something has come back, what was sent stays as sent
+  const locked=items.some(_asHasResp) || items.some(i=>i.decision) || !!s.meetingDate;     // once something has come back, what was sent stays as sent; a sheet sent from the live Top 5 is the record of its meeting
   const sid=_asQ(s.id);
   const head='<div class="slt-ih"><span class="slt-n">'+s.no+'</span><h3>'+esc(nm)+' <span class="as-tag as-'+st.k+'">'+esc(st.label)+'</span></h3></div>'
     +'<div class="slt-muted" style="margin:2px 0 8px 36px;">Started '+esc(fmtDate(String(s.createdAt||'').slice(0,10)))+(s.issuedAt?(' · sent '+esc(fmtDate(s.issuedAt))):'')+(s.returnedAt?(' · back '+esc(fmtDate(s.returnedAt))+(s.returnedBy?(' from '+esc(s.returnedBy)):'')):'')+'</div>'
@@ -24544,7 +24671,7 @@ function _asSheetHTML(s, latest, ro, dis){
 function _asItemHTML(s, it, i, locked, ro, dis){
   const sid=_asQ(s.id), key=_asQ(it.key), r=it.resp||{}, back=_asHasResp(it), done=!!it.decision, fm=_asForm(s, it), v2=fm>=2;      // v2: answered on a table (the second form or the third) - Agreed, never approved
   const o=_execOrigin(it.ref);
-  const gone=!o ? '<div class="as-warn">This action is no longer on the plan.</div>' : '';
+  const gone=(!o && !(it.ref && it.ref.t==='risk' && !it.ref.b)) ? '<div class="as-warn">This action is no longer on the plan.</div>' : '';      // a line with no action behind it yet was never on the plan
   const thin=(!locked && !ro && o) ? _asThin(it) : [];
   const thinMsg=thin.length ? '<div class="as-warn">Its page will be thin: the risk has no '+esc(thin.length>1?(thin.slice(0,-1).join(', ')+' or '+thin[thin.length-1]):thin[0])+' recorded. Add it on the risk before you send the sheet.</div>' : '';
   const meta=[it.riskRef, it.risk, it.band?(it.band+' risk'):'', it.owner?('Owner: '+it.owner):'No owner', it.due?('Target: '+fmtDate(it.due)):'No target date'].filter(Boolean).map(esc).join(' · ');
@@ -24899,6 +25026,7 @@ function asRowToPlan(sid, key, k){
       if(set.due) put('due', set.due);
     }
     _logAdd(f.a,'comment','From '+_asTitle(s)+', returned '+fmtDate(s.returnedAt||_asToday())+': '+(cmt ? (cmt+(ch?(' ('+ch+')'):'')) : ch));
+    if(cmt){ f.a.meetingComment=cmt; f.a.meetingCommentOn=s.returnedAt||_asToday(); }
     _stamp(f.a,'updated');
     msg=(set.who || set.due) ? ('✓ Applied to the plan - '+[set.who?('owner '+set.who):'', set.due?('target '+fmtDate(set.due)):''].filter(Boolean).join(', ')+(cmt?' - and the comment is on its history':'')) : '✓ On the action’s history';
   } else {
@@ -24938,6 +25066,7 @@ function asDecide(sid, key, decision, i){
     // the action stays open as it is; what the client wrote goes on its history
     if(!v2) return;
     _logAdd(o,'comment', (tag+'agreed - '+_asCtlSaid(it)+(note?('. '+note):'')).replace(/[.\s]+$/,'')+'.');
+    _asAgreeApply(s, it, o);
   } else if(decision==='compromise'){
     if(!note){ showToast('Write the compromise first - it goes to the client on the next sheet','info'); return; }
     if(o.status==='Not started' || !o.status) o.status='In progress';
@@ -24957,7 +25086,7 @@ function asDecide(sid, key, decision, i){
   if(typeof _stamp==='function') _stamp(o,'updated');
   saveData(); try{ _refreshActionViews(); }catch(e){}
   _asRender();
-  showToast('✓ '+AS_DECISIONS[decision]+(decision==='accepted'?' - on the Risk Acceptance Register':decision==='approved'?' - the action is complete on the plan':' - the action stays open'),'success',5000);
+  showToast('✓ '+AS_DECISIONS[decision]+(decision==='accepted'?' - on the Risk Acceptance Register':(decision==='approved' || _actClosed(o))?' - the action is complete on the plan':' - the action stays open'),'success',5000);
 }
 function asUndo(sid, key){
   if(_blockIfReadOnly()) return;
@@ -24966,6 +25095,7 @@ function asUndo(sid, key){
   // a later sheet already carries this action: taking the decision back here would put it on two
   // (only a sheet started after this one counts - an earlier sheet that carried the action here is history)
   if((was==='compromise'||was==='carry'||was==='agreed') && _asList().some(x=>x.id!==sid && String(x.createdAt||'')>String(s.createdAt||'') && (x.items||[]).some(j=>j.key===key))){ showToast('This action is already on a later sheet - change it there','info'); return; }
+  if(was==='agreed') _asAgreeUndo(it);
   if(o && (was==='approved'||was==='accepted')){
     o.status='In progress'; _stampActionCompletion(o,'In progress');
     if(was==='accepted'){ o.acceptReason=''; }
@@ -25025,11 +25155,29 @@ function _asSameRiskBefore(s, it){
   for(let i=0;i<me;i++){ const rx=_execRiskOf({ ref:items[i]&&items[i].ref }); if(rx && rx.id===r.id) return i; }
   return -1;
 }
-function _asSheetActRows(it){
+// A control is delivered once it is in place, or every action under it is closed:
+// it asks for no further action, and its heading says In place.
+function _ctlDelivered(r, c){ if(_ctlInPlace(c)) return true; const acts=r?_ctlActions(r,c).filter(a=>String(a.desc||'').trim()):[]; return !!acts.length && acts.every(_actClosed); }
+// What a control's heading says about where it stands (found 5 November 2026: it
+// printed the control row's own owner and date, which contradicted the dates agreed
+// against the actions). In place since the day it was done; otherwise the owners of
+// the open actions under it and the latest date agreed for them.
+function _asCtlLine(r, c){
+  if(_ctlInPlace(c)) return 'In place'+(c.completedDate?(' since '+fmtDate(c.completedDate)):'');
+  const acts=r?_ctlActions(r,c).filter(a=>String(a.desc||'').trim()):[], open=acts.filter(a=>!_actClosed(a));
+  if(acts.length && !open.length){ const d=acts.map(a=>String(a.completedDate||a.acceptDate||'')).filter(Boolean).sort().pop(); return 'In place'+(d?(' since '+fmtDate(d)):''); }
+  const who=[]; open.forEach(a=>_ownersOf(a).forEach(n=>{ if(!who.some(x=>x.toLowerCase()===n.toLowerCase())) who.push(n); }));
+  const due=open.map(a=>String(a.due||'')).filter(Boolean).sort().pop();
+  return ['Planned', who.join(', '), due?('by '+fmtDate(due)):''].filter(Boolean).join(' · ');
+}
+// keep: the live Top 5 keeps a row in place once its action is done. Without it, a
+// sheet sent from the live Top 5 reads the rows it was sent with.
+function _asSheetActRows(it, keep){
+  if(!keep && it && Array.isArray(it.sentRows)) return it.sentRows;
   const ref=it&&it.ref, r=_execRiskOf({ ref }), own=_execOrigin(ref)||null;
   const live=a=>!!(a && !a.deleted);
   // open: on the plan, worded, not Complete or Accepted - the sheet line too, once it is closed it is off the table
-  const open=a=>live(a) && !a.hideFromPlan && !!String(a.desc||'').trim() && !_actClosed(a);
+  const open=a=>live(a) && !a.hideFromPlan && !!String(a.desc||'').trim() && (!_actClosed(a) || !!(keep && keep(a)));
   const out=[]; let k=0;
   const row=(a,c,j)=>{ k++; out.push({ head:false, k, a:a||null, c:c||null, aid:a?a.id:null, cid:c?c.id:null, j:j||0,
     text:a?String(a.desc||'').trim():_asGapText(c), who:a?_ownersOf(a).join(', '):'', due:a?String(a.due||''):'', gap:!a, own:!!(a && a===own) }); };
@@ -25052,8 +25200,8 @@ function _asSheetActRows(it){
   if(!ctls.length){ acts.forEach(a=>row(a,null,0)); if(!acts.length) row(null,null,0); return out; }
   ctls.forEach(x=>{
     const mine=acts.filter(a=>grp(a)===x.c);
-    out.push({ head:true, c:x.c, j:x.j, text:String(x.c.desc||'').trim() });
-    if(mine.length) mine.forEach(a=>row(a,x.c,x.j)); else if(!_ctlInPlace(x.c)) row(null,x.c,x.j);
+    out.push({ head:true, c:x.c, j:x.j, text:String(x.c.desc||'').trim(), line:_asCtlLine(r,x.c) });
+    if(mine.length) mine.forEach(a=>row(a,x.c,x.j)); else if(!_ctlDelivered(r,x.c)) row(null,x.c,x.j);
   });
   const loose=acts.filter(a=>!grp(a));
   if(loose.length){ out.push({ head:true, c:null, j:0, text:'Not linked to a control' }); loose.forEach(a=>row(a,null,0)); }
@@ -25097,6 +25245,22 @@ function _asDMY(iso){ const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||'')); 
 // page); a row never splits and moves over only when it truly does not fit;
 // the comments box sits under its table, squeezed rather than left alone on a
 // page; the closing parts follow straight on when they fit whole.
+// The hazard and risk as the sheet sets them out. The PDF and the live Top 5 read it.
+function _asRiskWrong(r){
+  const wrong=[], hz=String(r.hazard||'').trim(), as2=String(r.assocRisk||'').trim(), hm=String(r.harm||'').trim();
+  if(hz && hz.toLowerCase()!==String(r.activity||'').trim().toLowerCase()) wrong.push(hz);
+  if(as2) wrong.push(as2);
+  if(hm) wrong.push('Potential consequence: '+hm);
+  if(!wrong.length) wrong.push('Further detail is recorded on the risk profile.');
+  return wrong;
+}
+// Where a finished action now lives, in the close-out's own words.
+function _asStickWords(a){
+  if(!a || _actionStatus(a)!=='Complete') return '';
+  if(!_embedIsSet(a)) return 'Where this lives now: to be confirmed';
+  if(_embedOf(a).none) return 'One-off, nothing ongoing';
+  return 'Lives in: '+_embedLines(a).map(l=>l.label+' - '+l.text).join('; ');
+}
 async function buildActionSheetPDF(sid){
   const L=window.PDFLib; if(!L) throw new Error('pdf-lib is not loaded');
   const s=_asSheet(sid); if(!s) throw new Error('sheet not found');
@@ -25125,7 +25289,8 @@ async function buildActionSheetPDF(sid){
     o[max-1]=l+' ...'; return o; };
   // one line, cut to a width with ' ...'
   const fitW=(t,f,size,w)=>{ if(f.widthOfTextAtSize(t,size)<=w) return t; let x=t; while(x.length>1 && f.widthOfTextAtSize(x+' ...',size)>w) x=x.slice(0,-1); return x.replace(/[\s.,;:·]+$/,'')+' ...'; };
-  const issued=_asToday();
+  // a sheet sent after a meeting carries the meeting's date, however late it is downloaded
+  const issued=s.meetingDate||_asToday();
   const producer=String((S.branding&&S.branding.producer)||'AHS Compliance Consulting');
   const T=(t,x,yy,size,o)=>{ o=o||{}; page.drawText(A(t),{x,y:yy,size,font:o.bold?bold:font,color:o.color||INK}); };
   const caps=(t,x,yy,o)=>{ o=o||{}; page.drawText(A(t).toUpperCase(),{x,y:yy,size:o.size||6.8,font:bold,color:o.color||GREY}); };
@@ -25198,7 +25363,8 @@ async function buildActionSheetPDF(sid){
   { const t=take(52), tt=legal?'LEGAL DUTIES':(risk?'RISK ACTION SHEET':'TOP 5 PRIORITY RISKS'), ts=Math.min(40, 40*CW/bold.widthOfTextAtSize(tt,40)); page.drawText(tt,{x:ML,y:t-38,size:ts,font:bold,color:INK}); }
   const nRisk=new Set(groups.map(g=>g.r?g.r.id:g.id)).size;
   { const t=take(24); T(legal ? 'Legal duties and recommended actions for senior leadership review' : risk ? 'Selected risks and recommended actions for senior leadership review' : 'Priority risks and recommended actions for senior leadership review', ML, t-11, 11.5); }
-  { const t=take(18); T('Issue '+s.no+'      Issued '+fmtDate(issued)+'      Prepared by '+producer, ML, t-8, 8.5, { color:GREY }); }
+  { const t=take(18), when=s.meetingDate ? (((s.firstIssue && s.firstIssue!==s.meetingDate)?('Issued '+fmtDate(s.firstIssue)+' · '):'')+'Reviewed at SLT meeting '+fmtDate(s.meetingDate)) : ('Issued '+fmtDate(issued));
+    page.drawText(K('Issue '+s.no+'      '+when+'      Prepared by '+producer),{x:ML,y:t-8,size:8.5,font,color:GREY}); }
   { const t=take(20); rule(t, INK, 0.8); }
   const head=tt=>{ const t=take(17); caps(tt, ML, t-7, { size:7.6, color:ACC }); };
 
@@ -25283,9 +25449,6 @@ async function buildActionSheetPDF(sid){
   meta.addToPage(cover,{x:ML,y:BOT,width:1,height:1,borderWidth:0}); meta.enableReadOnly();
 
   // ══ a page a risk ══
-  const ctlSt=c=>_ctlInPlace(c)
-    ? ('In place'+(c.completedDate?(' since '+fmtDate(c.completedDate)):''))
-    : ['Planned', _ownersOf(c).join(', '), c.due?('by '+fmtDate(c.due)):''].filter(Boolean).join(' · ');
   const CWS=[CW*0.40, CW*0.30, CW*0.15, CW*0.15], CX=[ML, ML+CWS[0], ML+CWS[0]+CWS[1], ML+CWS[0]+CWS[1]+CWS[2]];
   // HDR the table's header row; CSZ/CLH an action's words, AW their width; SSZ/SLH the grey line under them; HR a
   // heading row of one line; MINR a row's least height (room to write); CP the comments box (12pt under the table),
@@ -25299,7 +25462,7 @@ async function buildActionSheetPDF(sid){
   const headOf=(e,cont)=>{
     const label=A((e.note?e.note:(e.c?('Control '+e.j):'Other actions'))+(cont?' (continued)':'')).toUpperCase(), tx=ML+10+bold.widthOfTextAtSize(label,6.8)+8, full=MR-10-tx;
     if(!e.c || cont) return { e, label, tx, words:e.c?clip(wrap(e.text,bold,CSZ,full),1,bold,CSZ,full):[], st:'', same:true, h:HR };
-    const st0=K(ctlSt(e.c)), stW=font.widthOfTextAtSize(st0,SSZ), sw=full-stW-14;
+    const st0=K(e.line||''), stW=font.widthOfTextAtSize(st0,SSZ), sw=full-stW-14;
     const sA=(stW<=full*0.6) ? wrap(e.text,bold,CSZ,sw) : null, uA=wrap(e.text,bold,CSZ,full);
     if(sA && (sA.length<=3 || uA.length>3) && Math.min(sA.length,3)*CLH<=Math.min(uA.length,3)*CLH+SLH+1)
       return { e, label, tx, words:clip(sA,3,bold,CSZ,sw), st:st0, same:true, h:HR+(Math.min(sA.length,3)-1)*CLH };
@@ -25316,8 +25479,11 @@ async function buildActionSheetPDF(sid){
     // who: the names at full size as the box will wrap them, and the row tall enough to show them all
     const ws=8.6, wW=CWS[2]-10, wn=e.who?wrap(e.who,font,ws,wW).length:0;
     const wh=wn ? (8+wn*ws*1.22+4) : 0;
-    const note=(e.own && String(curRec||'').trim()) ? clip(wrap('Note: '+String(curRec).trim(),font,SSZ,AW),6,font,SSZ,AW) : [];
-    return { e, lines, st, hasSt, ws, note, h:Math.max(MINR, (hasSt?31:19)+(lines.length-1)*CLH+(note.length?(2+note.length*SLH):0), wh) };
+    const nt=[(e.own && String(curRec||'').trim()) ? ('Note: '+String(curRec).trim()) : '', String(e.stick||'').trim()].filter(Boolean);
+    const note=nt.length ? clip(nt.flatMap(t=>wrap(t,font,SSZ,AW)),6,font,SSZ,AW) : [];
+    // a comment made in the meeting prints whole, the row tall enough to show it
+    const cW=CWS[1]-10, cn=e.cmt ? Math.min(40, wrap(e.cmt,font,8.6,cW).length) : 0, ch=cn ? (8+cn*8.6*1.22+4) : 0;
+    return { e, lines, st, hasSt, ws, note, h:Math.max(MINR, (hasSt?31:19)+(lines.length-1)*CLH+(note.length?(2+note.length*SLH):0), wh, ch) };
   });
   // the most a unit of rows may be: what a fresh page holds under its kicker, the table's header, a
   // repeated heading and the squeezed comments box
@@ -25331,7 +25497,9 @@ async function buildActionSheetPDF(sid){
   //    squeezed when that is what lets the first of them follow on. ══
   const JOIN=20;
   const SAVE='Please save the completed document and return it by email. Printing to PDF or editing in some mobile applications can remove the form fields; if this occurs, please return the saved file or a scanned copy of the completed printed document.';
-  const anyH=12+50+paraH(SAVE,7.8,{ gap:2 });
+  const stickOpen=(Array.isArray(s.stickOpen)?s.stickOpen:[]).filter(t=>String(t||'').trim());
+  const stickH=stickOpen.length ? (16+stickOpen.reduce((a,t)=>a+paraH(t,8.8,{ x:ML+8, lh:1.35, gap:2 }),0)+8) : 0;
+  const anyH=stickH+12+50+paraH(SAVE,7.8,{ gap:2 });
   // the month's quick minutes, then four rows to write in anything else agreed -
   // read back into the quick minutes when the sheet is imported
   const mtgs=risk ? _asQuickMeetings(_asMonthOf(s)) : [];      // the sheet's own month, so it prints the same every time it is downloaded
@@ -25390,12 +25558,7 @@ async function buildActionSheetPDF(sid){
 
       // ── what is wrong | who it affects ──
       const lw=CW*0.6-14, rx=ML+CW*0.6+6, rw=MR-rx, top2=y;
-      const wrong=[];
-      const hz=String(r.hazard||'').trim(), as2=String(r.assocRisk||'').trim(), hm=String(r.harm||'').trim();
-      if(hz && hz.toLowerCase()!==String(r.activity||'').trim().toLowerCase()) wrong.push(hz);
-      if(as2) wrong.push(as2);
-      if(hm) wrong.push('Potential consequence: '+hm);
-      if(!wrong.length) wrong.push('Further detail is recorded on the risk profile.');
+      const wrong=_asRiskWrong(r);
       { const t=take(14); caps('Hazard and risk', ML, t-7, { size:7.2, color:ACC }); }
       wrong.forEach(t=>para(t,9.4,{ x:ML+10, w:lw-10, lh:1.38, gap:3, max:6, dot:ML }));
       const leftEnd=y; at(top2);
@@ -25472,7 +25635,7 @@ async function buildActionSheetPDF(sid){
           if(m.st) page.drawText(m.st,{x:sx,y:sb,size:SSZ,font,color:GREY}); }
         if(m.note && m.note.length){ const nb=b0-(m.lines.length-1)*CLH-(m.hasSt?11:0)-SLH-2; m.note.forEach((ln,q)=>page.drawText(ln,{x:ML+24,y:nb-q*SLH,size:SSZ,font,color:GREY})); }
         [1,2,3].forEach(i=>page.drawLine({start:{x:CX[i],y:top},end:{x:CX[i],y:top-h},thickness:0.5,color:HAIR}));
-        field(f+'cmt',CX[1]+2,top-2,CWS[1]-4,h-4,{ multi:true, size:8.6, bare:true });
+        field(f+'cmt',CX[1]+2,top-2,CWS[1]-4,h-4,{ multi:true, size:8.6, bare:true, text:e.cmt });
         field(f+'who',CX[2]+2,top-2,CWS[2]-4,h-4,{ multi:true, size:(m.ws||8.6), bare:true, text:e.who });
         field(f+'due',CX[3]+2,top-2,CWS[3]-4,h-4,{ multi:true, size:8.6, bare:true, text:_asDMY(e.due) });
         cuts.push(y); };
@@ -25533,6 +25696,7 @@ async function buildActionSheetPDF(sid){
   }
   // ══ anything else ══
   opener(anyH);
+  if(stickOpen.length){ { const t=take(16); caps('Done, where it lives now still to be confirmed', ML, t-7, { size:7.2, color:ACC }); } stickOpen.forEach(t=>para(t,8.8,{ x:ML+8, lh:1.35, gap:2 })); skip(8); }
   { const t=take(12); caps('General comments', ML, t-7, { size:7.2, color:ACC }); }
   { const t=take(50); field('as__general',ML,t,CW,44,{ multi:true, size:9 }); }
   para(SAVE,7.8,{ color:GREY, gap:2 });
@@ -25545,8 +25709,9 @@ async function downloadActionSheet(sid){
   try{
     const bytes=await buildActionSheetPDF(sid);
     const safe=_sltClient().replace(/[^a-z0-9]+/gi,'-').toLowerCase();
-    _sltSaveBlob(new Blob([bytes],{type:'application/pdf'}), _asTitle(s).toLowerCase().replace(/\s+/g,'-')+'-'+safe+'-'+_asToday()+'.pdf');
-    s.issuedAt=_asToday(); s.formV=3;
+    _sltSaveBlob(new Blob([bytes],{type:'application/pdf'}), _asTitle(s).toLowerCase().replace(/\s+/g,'-')+'-'+safe+'-'+(s.meetingDate||_asToday())+'.pdf');
+    if(!s.meetingDate) s.issuedAt=_asToday();
+    s.formV=3;
     _asStampPrinted(s);      // the actions table's rows as printed, so a paper copy typed in lines up
     (s.items||[]).forEach(it=>{
       const rows=_asSheetCtlRows(it), named=rows.filter(x=>x.id);
@@ -25570,16 +25735,17 @@ function importActionSheet(){
 async function _asImportFiles(files){
   if(!files||!files.length) return; if(_blockIfReadOnly()) return;
   if(!window.PDFLib){ showToast('The PDF reader is not loaded - refresh and try again','error'); return; }
-  const ok=[], refused=[], kinds=new Set();
+  const ok=[], refused=[], kinds=new Set(); let closedN=0;
   for(const f of files){
-    try{ const r=await _asReadForm(new Uint8Array(await f.arrayBuffer()), f.name||'sheet.pdf'); if(r.error) refused.push((f.name||'a file')+': '+r.error); else { ok.push(r.msg); kinds.add(r.kind); } }
+    try{ const r=await _asReadForm(new Uint8Array(await f.arrayBuffer()), f.name||'sheet.pdf'); if(r.error) refused.push((f.name||'a file')+': '+r.error); else { ok.push(r.msg); kinds.add(r.kind); closedN+=(r.closed||0); } }
     catch(e){ console.error('Action sheet import',e); refused.push((f.name||'a file')+': could not be read as a PDF'); }
   }
   if(ok.length) saveData();
+  if(closedN) try{ _refreshActionViews(); }catch(e){}
   if(kinds.size===1) _asKind=[...kinds][0];      // show the kind of sheet that came back
   if(document.getElementById('asOv')) _asRender();
   if(refused.length) showToast((ok.length?(ok.join(', ')+'. '):'')+'Not imported - '+refused.join(' | '),'error',9000);
-  else showToast('✓ '+ok.join(', ')+' - nothing changes on the plan until you decide each line','success',6000);
+  else showToast('✓ '+ok.join(', ')+(closedN?(' - '+closedN+' marked complete on the sheet, so closed on the plan and flagged for the next meeting; nothing else changes until you decide each line'):' - nothing changes on the plan until you decide each line'),'success',closedN?9000:6000);
 }
 async function _asReadForm(bytes, fname){
   const L=window.PDFLib;
@@ -25598,7 +25764,7 @@ async function _asReadForm(bytes, fname){
   const v1=!(+meta.v>=2) || fields.some(f=>/^as_\d+_o_/.test(f.getName()));
   // the third: the risk's open actions under their controls - a comment, who and by when against each
   const v3=!v1 && +meta.v>=3;
-  let filled=0, clash=0, lines=0, settled=0;
+  let filled=0, clash=0, lines=0, settled=0, closedN=0;
   (meta.keys||[]).forEach((key,idx)=>{
     const it=(s.items||[]).find(i=>i.key===key); if(!it) return;
     const n=idx+1;
@@ -25622,10 +25788,12 @@ async function _asReadForm(bytes, fname){
         const a=_asIdOf(p.a), was=a ? prev.find(x=>x && x.a===a) : null;
         return { a, c:_asIdOf(p.c), who:String(p.who||'').trim(), due:_top5ParseDate(p.due)||'', t:String(p.t||(was&&was.t)||'').trim() }; });
       const old=(it.resp && Array.isArray(it.resp.rows)) ? it.resp.rows : [];
-      const rows=[];
+      const rows=[], sent=Array.isArray(it.sentRows) ? it.sentRows.filter(x=>x && !x.head) : [];
       pr.forEach((p,j)=>{
         const k=j+1, g=x=>String(val('as_'+n+'_r'+k+'_'+x)||'').trim();
-        const row=_asRowMake(it, k, p, g('cmt'), g('who'), g('due'));
+        // a comment the sheet went out with is what we printed, not what they wrote back
+        const cIn=g('cmt'), sc=sent[j]&&sent[j].cmt ? _pdfAscii(String(sent[j].cmt)).trim() : '';
+        const row=_asRowMake(it, k, p, (sc && cIn===sc) ? '' : cIn, g('who'), g('due'));
         if(!_asRowWritten(row)) return;
         // a line already done keeps its mark, so a sheet imported twice never does it twice - but only while it
         // says what was done: a corrected copy (another comment, who or when) comes back with its button
@@ -25643,6 +25811,8 @@ async function _asReadForm(bytes, fname){
       rows.sort((x,y)=>x.k-y.k);
       it.actRows=pr;
       it.resp={ outcome:'', what, date:'', by:'', rows, src:'form' };
+      // "complete" or "done" in a date box closes the action now, and asks where it lives at the next meeting
+      rows.forEach(row=>{ if(!_asRowDoneWord(row) || !row.a) return; const f=_asRowFind(it, row.a); if(f && _asCloseFromSheet(it, f, _asLogTag(s)+', returned '+fmtDate(_asToday())+': ')) closedN++; });
       return;
     }
     const what=String(val('as_'+n+'_what')||'').trim();
@@ -25700,8 +25870,543 @@ async function _asReadForm(bytes, fname){
   // the second form asks for no name: a blank one leaves what is recorded
   const from=name+(role?(' ('+role+')'):'');
   s.returnedAt=_asToday(); s.returnedBy=from||s.returnedBy||''; s.file=fname; if(general) s.general=general;
-  return { kind:_asKindOf(s), msg:_asName(s)+': '+filled+' answer'+(filled!==1?'s':'')+' in'+(lines?(' ('+lines+' line'+(lines!==1?'s':'')+' against the '+(v3?'actions':'controls')+')'):'')+(clash?(' ('+clash+' with more than one box ticked - choose the outcome yourself)'):'')+(settled?(' ('+settled+' already decided - left as decided)'):'')
+  return { kind:_asKindOf(s), closed:closedN, msg:_asName(s)+': '+filled+' answer'+(filled!==1?'s':'')+' in'+(lines?(' ('+lines+' line'+(lines!==1?'s':'')+' against the '+(v3?'actions':'controls')+')'):'')+(clash?(' ('+clash+' with more than one box ticked - choose the outcome yourself)'):'')+(settled?(' ('+settled+' already decided - left as decided)'):'')
     +(mIn?(' + '+mIn+' meeting action'+(mIn!==1?'s':'')+' into the quick minutes (Done there puts '+(mIn!==1?'them':'it')+' on the plan)'):'')+(mHad?(' ('+mHad+' already in the minutes)'):'') };
+}
+
+// ══════════════════════════════════════════════════════════════
+//  THE LIVE TOP 5: the front door, Build 1 (Simon, 5 November 2026).
+//  "In the 5 November meeting Simon skipped the cockpit and the execution
+//  plan, worked only from the Top 5 sheet, and it worked well. The Top 5 is
+//  the front door."
+//
+//  A screen on top of the same actions, never a copy of them. Every box writes
+//  straight to the real action through the plan's own paths (_asPutAction), so
+//  tab 4, the execution plan and the Actions tab read it at once, and every
+//  write leaves a line on the action's history tagged with the sheet and the
+//  meeting date. The word for what sits above an action on the sheet is left
+//  off this screen on purpose: the leadership team see the risk, what is being
+//  done about it and where it lives now.
+//
+//  Store: S.actionSheets.working = { id, baseId (the last sheet sent), draftId
+//  (an unsent sheet it stands in for), meetingDate, createdAt, items:[ as a
+//  sheet's items ], closed:{ action id: its status before Done was ticked } }.
+//  It is not a sheet: it has no number and nothing that reads S.actionSheets.list
+//  ever sees it. Send freezes it as the next sheet in the list, with s.meetingDate,
+//  s.firstIssue (when the sheet it came from was issued), s.stickOpen (done on
+//  other risks, where it lives still to be confirmed) and, on each item, sentRows
+//  (the rows exactly as sent, which _asSheetActRows hands back from then on). The
+//  next meeting opens from that sheet.
+//
+//  On an action, all optional: meetingComment + meetingCommentOn (the latest
+//  comment, kept visible on the row) and stickDue (done, where it lives still to
+//  be confirmed - it stops counting as soon as the action has a close-out). On a
+//  control row: t5Flip (its status before the last action under it put it in place).
+// ══════════════════════════════════════════════════════════════
+var _t5At=0, _t5RO=null, _t5Sent=null, _t5Ch='', _t5Typed={}, _t5Quiet=false;      // _t5Quiet: this screen asks its own question, so the back office's close-out stays out of the way
+// A line's risk (or, with no risk behind it, the line itself) - one screen a risk.
+function _t5RiskKey(it){ const r=_execRiskOf({ ref:it&&it.ref }); return r ? r.id : _asKey(it&&it.ref); }
+// Is there anything left to do on this line? An action open, a gap nothing has
+// been put against yet, or - on a risk with nothing planned at all - the plan itself.
+function _t5StillOpen(it){
+  const r=_execRiskOf({ ref:it&&it.ref });
+  if(!r){ const o=_execOrigin(it&&it.ref); return !!(o && !o.deleted && !_actClosed(o)); }
+  const acts=(r.actions||[]).filter(a=>a && !a.deleted && !a.hideFromPlan && String(a.desc||'').trim());
+  if(acts.some(a=>!_actClosed(a))) return true;
+  const ctls=_riskCtlRows(r).filter(c=>String(c.desc||'').trim());
+  if(ctls.length) return ctls.some(c=>!_ctlDelivered(r,c));
+  return !acts.length;
+}
+// A line carried forward: it points at an open action on its risk, so the
+// sheet's priority mark has somewhere to sit, and it reads as the plan does now.
+function _t5LinePoint(it){
+  const r=_execRiskOf({ ref:it.ref });
+  let ref=it.ref, o=_execOrigin(ref);
+  if(r && (!o || o.deleted || o.hideFromPlan || _actClosed(o))){ const a=_riskTop5Action(r); if(a){ ref={ t:'risk', a:r.id, b:a.id }; o=a; } }
+  return { ref, o:o||null, r, same:ref===it.ref };
+}
+function _t5ItemCopy(it, fromNo){
+  const p=_t5LinePoint(it);
+  return { key:_asKey(p.ref), ref:p.ref, desc:(p.o&&p.o.desc)||it.desc||'', risk:p.r?(p.r.activity||p.r.hazard||''):(it.risk||''), riskRef:p.r?_riskRefOf(p.r):(it.riskRef||''), band:_epBandOf({ ref:p.ref }),
+    owner:(p.o&&p.o.owner)||'', due:(p.o&&p.o.due)||'', rec:p.same?(it.rec||''):'', carriedFrom:fromNo||0, why:'',
+    resp:{ outcome:'', what:'', date:'', by:'' }, decision:'', decidedAt:'', dnote:'', acceptedBy:'' };
+}
+// A working copy: from the last sheet sent, everything still open; from an
+// unsent sheet, that sheet; with no sheet yet, the Top 5 as the ladder has it.
+function _t5Build(){
+  const w={ id:'aw_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), baseId:'', draftId:'', meetingDate:_asToday(), createdAt:new Date().toISOString(), items:[], closed:{} };
+  const sheets=_asList('top5').slice().sort((a,b)=>(b.no||0)-(a.no||0)), last=sheets[0]||null, seen=new Set();
+  if(!last){
+    _asCandidates(null,'top5').forEach(c=>{ const id=c.riskId||c.key; if(seen.has(id) || w.items.length>=AS_MAX) return; seen.add(id); w.items.push(_asItemFrom(c)); });
+    return w;
+  }
+  if(last.issuedAt) w.baseId=last.id;
+  else { w.draftId=last.id; const sent=sheets.find(s=>s.issuedAt); if(sent) w.baseId=sent.id; }
+  (last.items||[]).forEach(it=>{ const id=_t5RiskKey(it); if(seen.has(id)) return; seen.add(id); if(_t5StillOpen(it)) w.items.push(_t5ItemCopy(it, last.issuedAt?last.no:0)); });
+  return w;
+}
+// Read only: looked at, never saved.
+function _t5W(){
+  if(_roLocked()){ if(!_t5RO) _t5RO=_t5Build(); return _t5RO; }
+  const st=_asState();
+  if(!st.working || !Array.isArray(st.working.items)){ st.working=_t5Build(); scheduleAutoSave(); }
+  if(!st.working.closed || typeof st.working.closed!=='object') st.working.closed={};
+  return st.working;
+}
+// The number Send will give it. Nothing is numbered until then.
+function _t5No(w){ const d=(w&&w.draftId)?_asSheet(w.draftId):null; return d ? d.no : (_asList('top5').reduce((m,s)=>Math.max(m,s.no||0),0)+1); }
+function _t5Tag(w){ return _asLogTag({ kind:'top5', no:_t5No(w) })+', SLT meeting '+fmtDate(w.meetingDate||_asToday())+': '; }
+// A row stays where it is once its action is done: ticked in this meeting, or
+// closed since the sheet it started from went out. Nothing disappears mid-meeting.
+function _t5Keep(w, a){
+  if(!a) return false;
+  if(w.closed && w.closed[a.id]!==undefined) return true;
+  const base=w.baseId ? _asSheet(w.baseId) : null; if(!base) return false;
+  const since=base.meetingDate ? String(base.createdAt||'').slice(0,10) : String(base.issuedAt||'');
+  return !!since && String(a.completedDate||a.acceptDate||'')>since;
+}
+function _t5Rows(w, it){ return _asSheetActRows(it, a=>_t5Keep(w,a)); }
+// Done, and where it lives still to be confirmed: asked again at the next meeting.
+function _t5StickList(){ return _execActions().filter(a=>a.status==='Complete').map(a=>({ x:a, o:_execOrigin(a.ref), r:_execRiskOf(a) })).filter(z=>z.o && z.o.stickDue && !_embedIsSet(z.o)); }
+// The next risks in the Top 5's own order, for the room left on the sheet. The
+// ladder's ticks come first in that order. Offered, never added for you.
+function _t5Offer(w){
+  const room=AS_MAX-w.items.length; if(room<=0) return [];
+  const on=new Set(w.items.map(_t5RiskKey)), out=[];
+  _asRiskOrder().forEach(id=>{ if(out.length>=room || on.has(id)) return;
+    const r=(S.riskProfile||[]).find(x=>x.id===id); if(!r || !_riskScore(r).rating) return;
+    if(_t5StillOpen({ ref:{ t:'risk', a:r.id, b:'' } })) out.push(r); });
+  return out;
+}
+// A tick on the ladder for this month that is not on this copy: Send clears it, so say so now.
+function _t5TicksOff(w){
+  const on=new Set(w.items.map(_t5RiskKey)), month=String(w.meetingDate||_asToday()).slice(0,7), out=[];
+  _top5List(month).forEach(a=>{ const r=_execRiskOf(a), id=r?r.id:_asKey(a.ref); if(on.has(id)) return; const n=(r?_riskRefOf(r):'')+' '+(r?(r.activity||r.hazard||''):(a.desc||'')); if(out.indexOf(n.trim())<0) out.push(n.trim()); });
+  return out;
+}
+
+// ── the screen ──
+function openLiveTop5(){
+  _t5Sent=null; _t5RO=null; _t5At=0; _t5Typed={};
+  let ov=document.getElementById('t5Ov');
+  if(!ov){ ov=document.createElement('div'); ov.id='t5Ov'; ov.className='slt-ov'; document.body.appendChild(ov); }
+  document.body.classList.add('slt-open');
+  _t5Render(); ov.scrollTop=0;
+}
+function closeLiveTop5(){
+  try{ const el=document.activeElement; if(el && el.blur) el.blur(); }catch(e){}
+  const ov=document.getElementById('t5Ov'); if(ov) ov.remove();
+  document.body.classList.remove('slt-open');
+  _t5Sent=null; _t5RO=null;
+  if(!_roLocked()) saveData();
+  try{ _refreshActionViews(); }catch(e){}
+  try{ if(document.getElementById('tab-cockpit').classList.contains('active')) _keepScroll(renderCockpit); }catch(e){}
+}
+function t5Go(i){ try{ const el=document.activeElement; if(el && el.blur) el.blur(); }catch(e){} _t5At=i; _t5Render(); const ov=document.getElementById('t5Ov'); if(ov) ov.scrollTop=0; }
+function _t5Render(){
+  const ov=document.getElementById('t5Ov'); if(!ov) return;
+  if(_t5Sent){ ov.innerHTML=_t5SentHTML(); return; }
+  const top=ov.scrollTop, w=_t5W(), ro=_roLocked(), dis=ro?' disabled':'';
+  ov.querySelectorAll('.t5-newr textarea,.t5-newr input').forEach(e=>{ if(e.value) _t5Typed[e.id]=e.value; else delete _t5Typed[e.id]; });
+  if(_t5At>=w.items.length) _t5At=Math.max(0,w.items.length-1);
+  const base=w.baseId ? _asSheet(w.baseId) : null;
+  const from=base ? ('From sheet '+base.no+', '+(base.meetingDate?'reviewed ':'sent ')+fmtDate(base.meetingDate||base.issuedAt)) : 'First sheet';
+  const nav=w.items.map((it,i)=>{ const r=_execRiskOf({ ref:it.ref }), ref=r?_riskRefOf(r):'';
+    return '<button type="button" class="t5-nb'+(i===_t5At?' t5-nb-on':'')+'" onclick="t5Go('+i+')" title="'+esc(r?(r.activity||r.hazard||''):(it.risk||''))+'">'+(i+1)+(ref?(' · '+esc(ref)):'')+'</button>'; }).join('');
+  const bar='<div class="slt-bar t5-bar"><div class="slt-t"><div class="slt-k">This month\'s Top 5 · '+esc(from)+'</div><div class="slt-h">'+esc(_sltClient())+'</div></div>'
+    +'<label>Meeting date<input type="date" id="t5Meet" value="'+esc(w.meetingDate||'')+'"'+dis+' onchange="t5MeetDate(this.value)"></label>'
+    +(ro?'<span class="slt-muted">Read only</span>':'<button type="button" class="btn btn-primary btn-sm" id="t5SendBtn" onclick="t5Send()" title="Saves this version as the record of the meeting, downloads the PDF and opens the email to the leadership team">Send</button>')
+    +'<button type="button" class="btn btn-ghost btn-sm" onclick="closeLiveTop5()">Close</button>'
+    +'<div class="t5-nav">'+nav+'</div></div>';
+  const it=w.items[_t5At];
+  const body=_t5StripsHTML(w, ro)+(it ? _t5PageHTML(w, it, _t5At, ro, dis) : '<div class="t5-strip">Nothing on this sheet yet.'+(ro?'':' Add a risk above.')+'</div>')+_t5FootHTML(w, ro);
+  ov.innerHTML=bar+'<div class="t5-body">'+body+'</div>';
+  Object.keys(_t5Typed).forEach(id=>{ const e=document.getElementById(id); if(e) e.value=_t5Typed[id]; });
+  ov.scrollTop=top;
+  if(!ro) _ownerListEnsure();
+}
+// What wants attention, above the page: done with where it lives still to
+// confirm, room on the sheet, and ladder ticks this sheet does not carry.
+function _t5StripsHTML(w, ro){
+  let out='';
+  const stick=_t5StickList();
+  if(stick.length) out+='<div class="t5-strip t5-strip-stick"><b>Done, where it lives now still to be confirmed ('+stick.length+'):</b> '
+    +stick.map((z,n)=>{ const ref=z.r?_riskRefOf(z.r):'', dz=String(z.o.desc||''), t=(ref?(ref+' '):'')+(dz.length>70?(dz.slice(0,70).replace(/\s+\S*$/,'')+'…'):dz); return ro?esc(t):('<button type="button" class="t5-link" onclick="t5StickAt('+n+')">'+esc(t)+'</button>'); }).join(' · ')+'</div>';
+  const offer=_t5Offer(w);
+  if(offer.length && !ro) out+='<div class="t5-strip t5-strip-add"><b>Room for '+(AS_MAX-w.items.length)+' more.</b> Next in the Top 5 order:'
+    +offer.map(r=>'<span class="t5-offer">'+esc((_riskRefOf(r)?(_riskRefOf(r)+' '):'')+(r.activity||r.hazard||''))+' <button type="button" class="btn btn-outline btn-xs" onclick="t5AddRisk('+_asQ(r.id)+')">＋ Add</button></span>').join('')+'</div>';
+  const off=_t5TicksOff(w);
+  if(off.length && !ro) out+='<div class="t5-strip">Ticked on the risk ladder for this month but not on this sheet: '+off.map(esc).join('; ')+'. Send takes that tick off, so the ladder and the sheet show the same five.</div>';
+  return out;
+}
+function _t5TileHTML(label, sc, none){
+  if(!sc || !sc.rating) return '<div class="t5-tile t5-b-none"><span>'+label+'</span><b>-</b><i>'+esc(none)+'</i></div>';
+  return '<div class="t5-tile t5-b-'+esc(sc.priority||'none')+'"><span>'+label+'</span><b>'+sc.rating+'</b><i>'+esc(sc.priority||'')+'</i><small>Likelihood '+sc.l+' x Severity '+sc.s+'</small></div>';
+}
+// A page as the client knows it: the heading, the current and target rating, the
+// hazard, then the table of actions.
+function _t5PageHTML(w, it, i, ro, dis){
+  const r=_execRiskOf({ ref:it.ref });
+  const name=r?(r.activity||r.hazard||'Risk'):(it.risk||'Action'), ref=r?_riskRefOf(r):'';
+  const kick='Priority '+(i+1)+' of '+w.items.length+(ref?(' · '+ref):'');
+  const off=ro?'':'<button type="button" class="t5-link t5-off" onclick="t5RemoveRisk('+i+')" title="Takes this risk off the sheet. Its actions stay on the plan.">Take this risk off the sheet</button>';
+  const wrong=r?_asRiskWrong(r):[];
+  const top=r ? ('<div class="t5-top" id="t5Top">'+_t5TileHTML('Current risk rating', _riskScore(r), 'Not yet rated')+'<div class="t5-arrow">→</div>'+_t5TileHTML('Target risk rating', _riskTarget(r), 'Target not yet set')
+      +'<div class="t5-haz"><div class="t5-lab">Hazard and risk</div><ul>'+wrong.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul></div></div>')
+    : '<div class="slt-muted" style="margin-bottom:10px;">This action is not linked to a rated risk.</div>';
+  const rows=_t5Rows(w, it);
+  let n=0;
+  const html=rows.map(x=>{
+    if(x.head){ if(x.note) return ''; const h=x.c?String(x.text||''):'Other actions', ln=x.c?_asCtlLine(r,x.c):'';
+      return '<tr class="t5-head"><td colspan="5"><span class="t5-line"'+(x.c?(' id="t5h-'+esc(x.c.id)+'"'):'')+'>'+esc(ln)+'</span>'+esc(h)+'</td></tr>'; }
+    if(x.gap) return ro ? '<tr class="t5-gapr"><td colspan="5" class="slt-muted">No action yet</td></tr>' : _t5NewRowHTML(i, x.cid||'', x.cid?('c'+x.cid):'g', 'No action yet, add one');
+    n++; return _t5RowHTML(i, x, n, ro, dis);
+  }).join('');
+  const more=(r && !ro) ? _t5NewRowHTML(i, '', 'm', 'Add another action') : '';
+  return '<section class="t5-page"><div class="t5-kicks"><div class="t5-kick">'+esc(kick)+'</div>'+off+'</div><h2 class="t5-h">'+esc(name)+'</h2>'+top
+    +'<table class="t5-table"><colgroup><col style="width:36%"><col style="width:27%"><col style="width:18%"><col style="width:13%"><col style="width:6%"></colgroup>'
+    +'<thead><tr><th>Recommended action</th><th>Comments</th><th>Owner</th><th>Target date</th><th class="t5-c">Done</th></tr></thead><tbody>'+html+more+'</tbody></table>'
+    +'<div class="t5-pager">'+(i>0?'<button type="button" class="btn btn-ghost btn-sm" onclick="t5Go('+(i-1)+')">Previous risk</button>':'<span></span>')
+    +(i<w.items.length-1?'<button type="button" class="btn btn-outline btn-sm" onclick="t5Go('+(i+1)+')">Next risk</button>':'<span></span>')+'</div></section>';
+}
+function _t5StatusWords(a){ return [_actionStatus(a), String(a.priority||'').trim()].filter(Boolean).join(' · '); }
+// A comment shows whole on a shared screen: the box is as tall as its words.
+function _t5CmtRows(t){ return Math.min(10, Math.max(2, Math.ceil(String(t||'').length/36))); }
+function _t5RowHTML(i, x, n, ro, dis){
+  const a=x.a, aid=_asQ(x.aid), st=_actionStatus(a), closed=_actClosed(a), done=(st==='Complete');
+  const lives=closed ? _asStickWords(a) : '';
+  const ask=(done && !ro && !_embedIsSet(a)) ? ('<button type="button" class="t5-link" onclick="t5StickAsk('+i+','+aid+')">Where does this live now?</button>') : (lives?('<div class="t5-st">'+esc(lives)+'</div>'):'');
+  return '<tr class="t5-row'+(closed?' t5-closed':'')+'" id="t5r-'+esc(x.aid)+'">'
+    +'<td><div class="t5-act"><span class="t5-no">'+n+'</span><div><div class="t5-desc">'+esc(x.text||'')+(x.own?' <span class="t5-pri">Priority</span>':'')+'</div><div class="t5-st" id="t5s-'+esc(x.aid)+'">'+esc(_t5StatusWords(a))+'</div>'+ask+'</div></div></td>'
+    +'<td><textarea rows="'+_t5CmtRows(a.meetingComment)+'" id="t5c-'+esc(x.aid)+'"'+dis+' placeholder="Comments" oninput="this.rows=_t5CmtRows(this.value)" onchange="t5Comment('+i+','+aid+',this.value)">'+esc(a.meetingComment||'')+'</textarea></td>'
+    +'<td>'+_t5OwnerHTML(i, x.aid, a.owner, ro)+'</td>'
+    +'<td><input type="date" id="t5d-'+esc(x.aid)+'"'+dis+' value="'+esc(String(a.due||''))+'" onchange="t5Due('+i+','+aid+',this.value)"></td>'
+    +'<td class="t5-c t5-done"><input type="checkbox" id="t5t-'+esc(x.aid)+'" aria-label="Done"'+(closed?' checked':'')+((ro||st==='Accepted')?' disabled':'')+(st==='Accepted'?' title="The risk is accepted on the plan"':'')+' onchange="t5Done('+i+','+aid+',this.checked)"></td></tr>';
+}
+// A row to say what is being done, who and by when - three boxes, then Add.
+function _t5NewRowHTML(i, cid, k, ph){
+  const f='t5n-'+i+'-'+k;
+  return '<tr class="t5-newr"><td colspan="2"><textarea rows="1" id="'+f+'-d" placeholder="'+esc(ph)+'"></textarea></td>'
+    +'<td><input type="text" id="'+f+'-o" list="ownPeople" placeholder="Owner"></td><td><input type="date" id="'+f+'-t"></td>'
+    +'<td class="t5-c"><button type="button" class="btn btn-outline btn-xs" onclick="t5Add('+i+','+_asQ(cid)+','+_asQ(k)+')">Add</button></td></tr>';
+}
+function _t5OwnerHTML(i, aid, owner, ro){
+  const names=_ownersOf(owner);
+  if(ro) return '<div class="own-cell own-ro">'+(names.length?names.map(n=>'<span class="own-chip">'+esc(n)+'</span>').join(''):'<span class="own-none">No owner</span>')+'</div>';
+  const q=i+','+_asQ(aid);
+  return '<div class="own-cell" id="t5o-'+esc(aid)+'">'
+    +names.map((n,k)=>'<span class="own-chip">'+esc(n)+'<button type="button" title="Take '+esc(n)+' off this action" onclick="t5OwnDel('+q+','+k+')">×</button></span>').join('')
+    +'<input type="text" list="ownPeople" placeholder="'+(names.length?'＋ add':'Owner')+'" title="Pick a name, or type one and press Enter"'
+    +' onkeydown="if(event.key===\'Enter\'||event.key===\',\'||event.key===\';\'){event.preventDefault();t5OwnAdd('+q+',this);}"'
+    +' oninput="if(!event.inputType||event.inputType===\'insertReplacementText\')t5OwnAdd('+q+',this);"'
+    +' onchange="t5OwnAdd('+q+',this)"></div>';
+}
+function _t5FootHTML(w, ro){
+  const sent=_asList('top5').filter(s=>s.issuedAt).sort((a,b)=>(a.no||0)-(b.no||0));
+  if(!sent.length) return '';
+  return '<div class="t5-trail"><b>Sheets sent:</b> '+sent.map(s=>{ const t='Sheet '+s.no+', '+fmtDate(s.meetingDate||s.issuedAt);
+    return (s.meetingDate && !ro) ? ('<button type="button" class="t5-link" onclick="t5TrailPdf('+_asQ(s.id)+')" title="Download this sheet as it was sent">'+esc(t)+'</button>') : esc(t); }).join(' · ')+'</div>';
+}
+
+// ── every box writes straight to the real action ──
+function _t5Find(i, aid){ const w=_t5W(), it=w.items[i]; if(!it) return null; const f=_asRowFind(it, aid); return f ? { w, it, a:f.a, r:f.r } : null; }
+function t5MeetDate(v){ if(_blockIfReadOnly()) return; const w=_t5W(); w.meetingDate=v||_asToday(); scheduleAutoSave(); const el=document.getElementById('t5Meet'); if(el && el.value!==w.meetingDate) el.value=w.meetingDate; }
+function t5Comment(i, aid, v){
+  if(_roLocked()) return;
+  const f=_t5Find(i, aid); if(!f) return;
+  const t=String(v||'').trim(); if(t===String(f.a.meetingComment||'')) return;
+  _asPutAction(f.it, f, 'meetingComment', t);
+  f.a.meetingCommentOn=f.w.meetingDate;
+  _logAdd(f.a,'comment',_t5Tag(f.w)+(t||'Comment cleared'));
+  scheduleAutoSave();
+}
+// The status under the action and the line over its group change with its date and owner.
+function _t5AfterEdit(f){
+  const s=document.getElementById('t5s-'+f.a.id); if(s) s.textContent=_t5StatusWords(f.a);
+  if(f.r) _riskCtlRows(f.r).forEach(c=>{ const h=document.getElementById('t5h-'+c.id); if(h) h.textContent=_asCtlLine(f.r,c); });
+}
+function t5Due(i, aid, v){
+  if(_roLocked()) return;
+  const f=_t5Find(i, aid); if(!f) return;
+  const was=String(f.a.due||''), now=String(v||''); if(was===now) return;
+  _asPutAction(f.it, f, 'due', now);
+  _logAdd(f.a,'comment',_t5Tag(f.w)+(now?('Target date set to '+fmtDate(now)):'Target date cleared')+(was?(' (was '+fmtDate(was)+')'):''));
+  scheduleAutoSave(); _t5AfterEdit(f);
+}
+function _t5OwnSet(f, names, refocus){
+  const now=names.join(', ');
+  _asPutAction(f.it, f, 'owner', now);
+  _logAdd(f.a,'delegated',_t5Tag(f.w)+(now?('Owner: '+now):'Owner cleared'));
+  scheduleAutoSave();
+  const cell=document.getElementById('t5o-'+f.a.id), i=f.w.items.indexOf(f.it);
+  if(cell){ cell.outerHTML=_t5OwnerHTML(i, f.a.id, f.a.owner, false); if(refocus){ const inp=document.querySelector('[id="t5o-'+f.a.id+'"] input'); if(inp) inp.focus(); } }
+  _ownerListEnsure(); _t5AfterEdit(f);
+}
+function t5OwnAdd(i, aid, inp){
+  if(_roLocked() || !inp) return;
+  const f=_t5Find(i, aid); if(!f) return;
+  const add=_ownersOf(inp.value); inp.value=''; if(!add.length) return;
+  const names=_ownersOf(f.a.owner), seen=new Set(names.map(n=>n.toLowerCase()));
+  let any=false; add.forEach(n=>{ if(!seen.has(n.toLowerCase())){ seen.add(n.toLowerCase()); names.push(n); any=true; } });
+  if(any) _t5OwnSet(f, names, true);
+}
+function t5OwnDel(i, aid, k){
+  if(_roLocked()) return;
+  const f=_t5Find(i, aid); if(!f) return;
+  const names=_ownersOf(f.a.owner); names.splice(k,1);
+  _t5OwnSet(f, names, false);
+}
+// The last action under a control done: the control is in place (Simon, 5 November
+// 2026). Taking Done back puts it back. Reached from the live Top 5 and from a
+// returned sheet, never by a screen in the back office.
+function _t5CtlFlip(r, a, on, tag){
+  const c=r ? _ctlOfAction(r, a) : null; if(!c) return;
+  if(on){
+    if(_ctlInPlace(c)) return;
+    const acts=_ctlActions(r,c).filter(x=>String(x.desc||'').trim());
+    if(!acts.length || !acts.every(_actClosed)) return;
+    c.t5Flip=c.status||'Not started';
+    updateRiskAction(r.id, c.id, 'status', 'Complete');
+    _logAdd(c,'completed',tag+'In place - every action under it is done');
+  } else if(c.t5Flip){
+    const was=c.t5Flip; delete c.t5Flip;
+    updateRiskAction(r.id, c.id, 'status', was==='Complete'?'In progress':was);
+    _logAdd(c,'reopened',tag+'No longer in place - an action under it was reopened');
+  }
+}
+function t5Done(i, aid, on){
+  if(_blockIfReadOnly()){ _t5Render(); return; }
+  const f=_t5Find(i, aid); if(!f) return;
+  const tag=_t5Tag(f.w);
+  _t5Quiet=true;
+  if(on){
+    if(f.w.closed[f.a.id]===undefined) f.w.closed[f.a.id]=f.a.status||'Not started';
+    _asPutAction(f.it, f, 'status', 'Complete');
+    if(!_embedIsSet(f.a)) f.a.stickDue=f.w.meetingDate||_asToday();
+    if(f.r) _logAdd(f.a,'completed',tag+'Marked done');
+    _t5CtlFlip(f.r, f.a, true, tag);
+  } else {
+    const was=f.w.closed[f.a.id]; delete f.w.closed[f.a.id];
+    _asPutAction(f.it, f, 'status', (!was||was==='Complete')?'In progress':was);
+    delete f.a.stickDue;
+    _logAdd(f.a,'reopened',tag+'Done taken back');
+    _t5CtlFlip(f.r, f.a, false, tag);
+  }
+  setTimeout(()=>{ _t5Quiet=false; },400);
+  saveData();
+  _t5Render();
+  if(on){ if(!_embedIsSet(f.a)) _t5StickOpen(f.a, f.r); else if(f.r) _maybeRescore(f.r.id); }
+}
+// What is being done, who, by when: a real action on the risk, in the shape a new
+// action on the risk takes, under its group when it answers a gap.
+function t5Add(i, cid, k){
+  if(_blockIfReadOnly()) return;
+  const w=_t5W(), it=w.items[i], r=it?_execRiskOf({ ref:it.ref }):null; if(!r) return;
+  const f='t5n-'+i+'-'+k, box=document.getElementById(f+'-d'), desc=String((box&&box.value)||'').trim();
+  if(!desc){ showToast('Say what is being done first','info'); if(box) box.focus(); return; }
+  if(!Array.isArray(r.actions)) r.actions=[];
+  const c=cid ? _riskCtlRows(r).find(x=>x.id===cid) : null;
+  const a={ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:desc.slice(0,240), owner:_ownersOf(((document.getElementById(f+'-o')||{}).value)||'').join(', '), due:String(((document.getElementById(f+'-t')||{}).value)||''), status:'Not started', priority:_suggestPriority(r) };
+  if(c) a.forCtl=c.id;
+  _stamp(a,'created'); r.actions.push(a); r.raised=(r.raised||0)+1; _stamp(r,'updated');
+  _logAdd(a,'raised',_t5Tag(w)+'Raised at the meeting');
+  ['-d','-o','-t'].forEach(x=>{ const e=document.getElementById(f+x); if(e) e.value=''; delete _t5Typed[f+x]; });
+  if(!_execOrigin(it.ref)){ it.ref={ t:'risk', a:r.id, b:a.id }; it.key=_asKey(it.ref); it.desc=a.desc; it.owner=a.owner; it.due=a.due; }
+  saveData(); try{ _refreshActionViews(); }catch(e){}
+  _t5Render();
+}
+function t5AddRisk(rid){
+  if(_blockIfReadOnly()) return;
+  const w=_t5W(); if(w.items.length>=AS_MAX) return;
+  const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r || w.items.some(it=>_t5RiskKey(it)===r.id)) return;
+  const a=_riskTop5Action(r), ref={ t:'risk', a:r.id, b:a?a.id:'' };
+  w.items.push(_t5ItemCopy({ ref, desc:a?a.desc:'', risk:r.activity||r.hazard||'', rec:'' }, 0));
+  _t5At=w.items.length-1; _t5Typed={};
+  scheduleAutoSave(); _t5Render();
+}
+function t5RemoveRisk(i){
+  if(_blockIfReadOnly()) return;
+  const w=_t5W(); w.items.splice(i,1); _t5Typed={};
+  scheduleAutoSave(); _t5Render();
+}
+
+// ── make it stick: one question, the close-out's own filing behind it ──
+// The plain face of "What keeps this in place". The boxes carry the ids the
+// close-out reads (_embedRead), so Save goes through _saveCloseOut and files
+// exactly where it files today: Documents, Assurance records, the Sign-off
+// register, Company personnel.
+const T5_STICK=[
+  { k:'policy', label:'The H&S policy' },
+  { k:'proc',   label:'A procedure or safe system of work (RA, RAMS)' },
+  { k:'train',  label:'Training or a toolbox talk' },
+  { k:'check',  label:'A regular check' },
+  { k:'person', label:'A named person who owns it' },
+  { k:'none',   label:'Nothing ongoing, one-off' }
+];
+function _t5PolicyDocName(){ const d=(S.documents||[]).find(x=>/(health\s*(&|and)\s*safety|h\s*&\s*s).*policy/i.test(String(x.name||''))); return d ? String(d.name) : 'H&S policy'; }
+function _t5StickBodyHTML(k){
+  const a=_coA||{}, desc=String(a.desc||'').trim(), ppl='list="ownPeople"', date=(()=>{ try{ return _t5W().meetingDate||_asToday(); }catch(e){ return _asToday(); } })();
+  const lab=(t,inner)=>'<label class="t5-sf"><span>'+t+'</span>'+inner+'</label>';
+  if(k==='policy') return '<input type="checkbox" id="_embDocOn" checked hidden>'+lab('Policy','<input id="_embDocName" value="'+esc(_t5PolicyDocName())+'" list="t5Docs">')+lab('Which section?','<input id="_embDocSection" placeholder="For example: Section 7, Work at height">');
+  if(k==='proc') return '<input type="checkbox" id="_embDocOn" checked hidden>'+lab('Which one?','<input id="_embDocName" list="t5Docs" placeholder="For example: Ladder safe system of work">')+lab('File path or link (optional)','<input id="_embDocPath">');
+  if(k==='train') return '<input type="checkbox" id="_embBriefOn" checked hidden>'+lab('What is covered?','<input id="_embBrTitle" value="'+esc(desc)+'">')
+    +'<div class="t5-s2">'+lab('Type','<select id="_embBrType">'+['Toolbox talk','Training / CPD','Briefing'].map(t=>'<option>'+t+'</option>').join('')+'</select>')+lab('Date','<input type="date" id="_embBrDate" value="'+esc(date)+'">')+'</div>';
+  if(k==='check') return '<input type="checkbox" id="_embRoutineOn" checked hidden>'+lab('What gets checked?','<input id="_embRtItem" value="'+esc(desc)+'">')
+    +'<div class="t5-s2">'+lab('How often?','<select id="_embRtFreq">'+REG_FREQ.map(f=>'<option value="'+f+'">'+(f||'Choose')+'</option>').join('')+'</select>')+lab('Who?','<input id="_embRtOwner" '+ppl+' value="'+esc(a.owner||'')+'">')+'</div>';
+  if(k==='person') return '<input type="checkbox" id="_embOwnerOn" checked hidden><div class="t5-s2">'+lab('Who?','<input id="_embOwName" '+ppl+' value="'+esc(_ownersOf(a.owner)[0]||'')+'">')+lab('Role (optional)','<input id="_embOwRole">')+'</div>';
+  if(k==='none') return '<input type="checkbox" id="_embNoneOn" checked hidden>';
+  return '';
+}
+function _t5StickOpen(a, r){
+  if(!a || _roLocked() || document.getElementById('evidOverlay')) return;
+  _coA=a; _coR=r||null; _t5Ch='';
+  const ov=document.createElement('div'); ov.id='evidOverlay'; ov.className='t5-stick-ov';
+  const docs=(S.documents||[]).map(d=>'<option value="'+esc(d.name||'')+'"></option>').join('');
+  ov.innerHTML='<div class="t5-stick-p" role="dialog" aria-label="Where does this live now?"><div class="t5-stick-h">Where does this live now?</div>'
+    +'<div class="t5-stick-a">'+esc(String(a.desc||'').slice(0,160))+'</div>'
+    +'<label class="t5-sf"><span>How was it done? (one line)</span><input id="t5StickHow"></label>'
+    +'<div class="t5-stick-c" role="radiogroup">'+T5_STICK.map(c=>'<label class="t5-sc"><input type="radio" name="t5Stick" value="'+c.k+'" onchange="t5StickPick(\''+c.k+'\')"> '+esc(c.label)+'</label>').join('')+'</div>'
+    +'<div id="t5StickBody"></div><datalist id="t5Docs">'+docs+'</datalist>'
+    +'<div class="t5-stick-f"><button type="button" class="btn btn-ghost btn-sm" onclick="t5StickLater()" title="Done stands. This comes back at the next meeting.">Later</button><button type="button" class="btn btn-primary btn-sm" onclick="t5StickSave()">Save</button></div></div>';
+  document.body.appendChild(ov);
+  _ownerListEnsure();
+}
+function t5StickPick(k){ _t5Ch=k; const b=document.getElementById('t5StickBody'); if(b) b.innerHTML=_t5StickBodyHTML(k); }
+function t5StickAsk(i, aid){ if(_blockIfReadOnly()) return; const f=_t5Find(i, aid); if(f) _t5StickOpen(f.a, f.r); }
+function t5StickAt(n){ if(_blockIfReadOnly()) return; const z=_t5StickList()[n]; if(z) _t5StickOpen(z.o, z.r); }
+function _t5StickHowLog(a){
+  const how=String(((document.getElementById('t5StickHow')||{}).value)||'').trim();
+  if(how && a) _logAdd(a,'completed',_t5Tag(_t5W())+'How it was done: '+how);
+}
+function t5StickSave(){
+  const a=_coA; if(!a || !document.getElementById('evidOverlay')) return;
+  if(!_t5Ch){ showToast('Choose where this lives now, or press Later','info'); return; }
+  const need={ policy:['_embDocSection','Say which section of the policy'], proc:['_embDocName','Say which procedure or safe system of work'], train:['_embBrTitle','Say what is covered'], check:['_embRtFreq','Say how often it is checked'], person:['_embOwName','Name the person'] }[_t5Ch];
+  if(need){ const el=document.getElementById(need[0]); if(el && !String(el.value||'').trim()){ showToast(need[1],'info'); el.focus(); return; } }
+  if(_t5Ch==='check'){ const el=document.getElementById('_embRtItem'); if(el && !String(el.value||'').trim()){ showToast('Say what gets checked','info'); el.focus(); return; } }
+  _t5StickHowLog(a);
+  _saveCloseOut();
+  if(_embedIsSet(a)) delete a.stickDue;
+  saveData();
+  _t5Render();
+}
+function t5StickLater(){
+  const a=_coA;
+  _t5StickHowLog(a);
+  if(a && _actionStatus(a)==='Complete' && !_embedIsSet(a) && !a.stickDue) a.stickDue=_asToday();
+  _closeOutCancel();
+  saveData();
+  showToast('Done stands. It comes back at the next meeting.','info');
+  _t5Render();
+}
+
+// ── send: freeze it, make the PDF, open the email ──
+// One row as it goes on the sheet, plain data: the action's status as it stands
+// at the meeting, its latest comment, and where it now lives.
+function _t5Snap(x){
+  if(x.head) return { head:true, c:x.c?{ id:x.c.id }:null, cid:x.c?x.c.id:null, j:x.j||0, text:String(x.text||''), note:x.note||'', line:x.line||'' };
+  const a=x.a;
+  if(a && _actionStatus(a)==='Complete' && !_embedIsSet(a) && !a.stickDue) a.stickDue=_asToday();
+  return { head:false, k:x.k, a:a?{ id:a.id, status:_actionStatus(a), priority:a.priority||'' }:null, c:x.c?{ id:x.c.id }:null, aid:x.aid||null, cid:x.cid||null, j:x.j||0, text:String(x.text||''), who:String(x.who||''), due:String(x.due||''), gap:!!x.gap, own:!!x.own,
+    cmt:a?String(a.meetingComment||''):'', stick:_asStickWords(a) };
+}
+function _t5Freeze(w, it){
+  const p=_t5LinePoint(it), c=Object.assign({}, it, { ref:p.ref, key:_asKey(p.ref) });
+  c.sentRows=_t5Rows(w, c).map(_t5Snap);
+  c.actRows=_asPrintedRows(c, c.sentRows);
+  if(p.o){ c.desc=p.o.desc||c.desc; c.owner=p.o.owner||''; c.due=p.o.due||''; }
+  if(p.r){ c.risk=p.r.activity||p.r.hazard||c.risk; c.riskRef=_riskRefOf(p.r); c.band=_riskScore(p.r).priority||''; }
+  const ctl=_asSheetCtlRows(c), named=ctl.filter(x=>x.id);
+  if(named.length){ c.ctlPrinted={}; named.forEach(x=>{ c.ctlPrinted[x.id]=x.text; }); }
+  c.ctlIds=ctl.map(x=>x.id);
+  return c;
+}
+// The sheets before this one are finished with: a line still undecided on them
+// reads as what the meeting did with it, so an action is on one live sheet.
+function _t5SettleEarlier(s, base, md){
+  const keys=new Set(s.items.map(i=>i.key)), risks=new Set(s.items.map(_t5RiskKey)), upTo=base?(base.no||0):0;
+  const how='Reviewed at the SLT meeting on '+fmtDate(md);
+  _asList('top5').forEach(x=>{ if(x===s) return;
+    (x.items||[]).forEach(it=>{
+      if(it.decision) return;
+      const here=keys.has(it.key) || risks.has(_t5RiskKey(it));
+      if(!here && (x.no||0)>upTo) return;
+      const o=_execOrigin(it.ref), st=o?_actionStatus(o):'';
+      it.decidedAt=md;
+      if(st==='Complete'){ it.decision='approved'; it.dnote=how+'.'; }
+      else if(st==='Accepted'){ it.decision='accepted'; it.acceptedBy=o.acceptedBy||''; it.dnote=how+'.'; }
+      else { it.decision='carry'; it.dnote=how+(here?('; carried to '+_asName(s).toLowerCase()+'.'):'; taken off the Top 5.'); }
+    });
+  });
+}
+// The ladder and the sheet show the same five (Simon, 5 November 2026).
+function _t5SetTicks(s, md){
+  const month=String(md).slice(0,7), mine=new Set();
+  (s.items||[]).forEach(it=>{ const o=_execOrigin(it.ref); if(o && !_actClosed(o)) mine.add(o); });
+  _execActions().filter(a=>a.top5===month).forEach(a=>{ const o=_execOrigin(a.ref); if(o && !mine.has(o)){ o.top5=''; _stamp(o,'updated'); } });
+  mine.forEach(o=>{ if(o.top5!==month){ o.top5=month; _stamp(o,'updated'); } });
+}
+// The email: to the leadership team on Company setup, pre-written. A mailto cannot
+// carry the PDF, so it is downloaded first and attached in Outlook.
+function _t5Mail(s){
+  const team=_sltTeam(), to=team.map(p=>String(p.email||'').trim()).filter(e=>/@/.test(e)), missing=team.filter(p=>!/@/.test(String(p.email||''))).map(p=>String(p.name||'').trim());
+  const when=fmtDate(s.meetingDate), who=(typeof _actor==='function'&&_actor().name)?_actor().name:'';
+  const subject=_asTitle(s)+' - '+_sltClient()+' - SLT meeting '+when;
+  const list=(s.items||[]).map((it,i)=>(i+1)+'. '+(it.riskRef?(it.riskRef+' '):'')+String(it.risk||it.desc||'')).join('\n');
+  const body='Dear all,\n\nPlease find attached '+_asTitle(s)+', the record of the senior leadership team meeting held on '+when+'.\n\n'
+    +'It sets out the priority risks reviewed, the agreed actions, the accountable owners and the target dates:\n'+list+'\n\n'
+    +'Please advise me of any corrections.\n\nKind regards\n\n'+who;
+  return { to, missing, names:team.filter(p=>/@/.test(String(p.email||''))).map(p=>String(p.name||'').trim()), subject, body,
+    href:'mailto:'+to.map(encodeURIComponent).join(',')+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body) };
+}
+function _t5FileName(s){ return _asTitle(s).toLowerCase().replace(/\s+/g,'-')+'-'+_sltClient().replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+(s.meetingDate||_asToday())+'.pdf'; }
+async function t5Send(){
+  if(_blockIfReadOnly()) return;
+  try{ const el=document.activeElement; if(el && el.blur) el.blur(); }catch(e){}
+  const w=_t5W(), st=_asState();
+  if(!w.items.length){ showToast('Nothing on this sheet to send','info'); return; }
+  const btn=document.getElementById('t5SendBtn'); if(btn) btn.disabled=true;
+  const md=w.meetingDate||_asToday(), draft=w.draftId?_asSheet(w.draftId):null, base=w.baseId?_asSheet(w.baseId):null, no=_t5No(w);
+  const items=w.items.map(it=>_t5Freeze(w,it));
+  // done on a risk no longer on the sheet still has to be asked about: it goes at the end of the sheet
+  const printed=new Set(); items.forEach(it=>it.sentRows.forEach(x=>{ if(x.aid) printed.add(x.aid); }));
+  const stickOpen=_t5StickList().filter(z=>!printed.has(z.o.id)).map(z=>{ const ref=z.r?_riskRefOf(z.r):''; return (ref?(ref+' '):'')+(z.r?(String(z.r.activity||z.r.hazard||'')+': '):'')+String(z.o.desc||'')+(z.o.completedDate?(' (done '+fmtDate(z.o.completedDate)+')'):''); });
+  const s={ id:'as_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), kind:'top5', no, formV:3, createdAt:new Date().toISOString(), issuedAt:md, meetingDate:md, firstIssue:base?String(base.issuedAt||''):'', returnedAt:'', returnedBy:'', file:'', items, stickOpen };
+  st.list.push(s);
+  let bytes;
+  try{ bytes=await buildActionSheetPDF(s.id); }
+  catch(e){ st.list=st.list.filter(x=>x!==s); console.error('Live Top 5 send failed',e); showToast('Could not build the sheet - nothing has been sent or changed. See console.','error'); if(btn) btn.disabled=false; return; }
+  // the PDF is made: only now does anything else change
+  if(draft) st.list=st.list.filter(x=>x!==draft);
+  _t5SettleEarlier(s, base, md);
+  _t5SetTicks(s, md);
+  delete st.working;
+  saveData();
+  const fname=_t5FileName(s), mail=_t5Mail(s);
+  _sltSaveBlob(new Blob([bytes],{ type:'application/pdf' }), fname);
+  _sltOpenLink(mail.href);
+  _t5Sent={ sid:s.id, fname };
+  _t5At=0;
+  _t5Render();
+  try{ _refreshActionViews(); }catch(e){}
+  showToast('✓ '+_asName(s)+' saved as the record of the meeting - attach the PDF to the email','success',7000);
+}
+function _t5SentHTML(){
+  const s=_asSheet(_t5Sent.sid); if(!s) return '';
+  const mail=_t5Mail(s);
+  return '<div class="slt-bar t5-bar"><div class="slt-t"><div class="slt-k">This month\'s Top 5</div><div class="slt-h">'+esc(_sltClient())+'</div></div><button type="button" class="btn btn-ghost btn-sm" onclick="closeLiveTop5()">Close</button></div>'
+    +'<div class="t5-body"><section class="t5-page t5-sent"><h2 class="t5-h">'+esc(_asTitle(s))+' is the record of the meeting on '+esc(fmtDate(s.meetingDate))+'</h2>'
+    +'<ol><li><b>The PDF has downloaded:</b> '+esc(_t5Sent.fname)+' <button type="button" class="t5-link" onclick="t5TrailPdf('+_asQ(s.id)+')">Download it again</button></li>'
+    +'<li><b>The email has opened'+(mail.names.length?(' to '+esc(mail.names.join(', '))):'')+'.</b> Attach the PDF in Outlook and send. <button type="button" class="t5-link" onclick="t5SentMail()">Open the email again</button></li></ol>'
+    +(mail.missing.length?('<div class="t5-strip t5-strip-stick"><b>No email address for:</b> '+esc(mail.missing.join(', '))+'. Add it under Company setup, Senior leadership team.</div>'):'')
+    +(!mail.to.length && !mail.missing.length?'<div class="t5-strip t5-strip-stick"><b>No leadership team recorded yet.</b> Add them under Company setup, Senior leadership team.</div>':'')
+    +'<div class="slt-muted">The next meeting opens from this sheet.</div></section></div>';
+}
+function t5SentMail(){ const s=_t5Sent?_asSheet(_t5Sent.sid):null; if(s) _sltOpenLink(_t5Mail(s).href); }
+async function t5TrailPdf(sid){
+  const s=_asSheet(sid); if(!s) return;
+  try{ const bytes=await buildActionSheetPDF(sid); _sltSaveBlob(new Blob([bytes],{ type:'application/pdf' }), _t5FileName(s)); }
+  catch(e){ console.error('Live Top 5 sheet failed',e); showToast('Could not build the sheet - see console','error'); }
 }
 
 async function openBoardReportPrint(){
@@ -29216,7 +29921,7 @@ function _ctlOnActionClosed(r, act){
   if(!c || c.status==='inplace') return;
   c.status='inplace';
   _ctlAppendToControls(r, c.text);
-  if(typeof showToast==='function') showToast('\u2713 Control in place - added to this risk\u2019s controls','success');
+  if(typeof showToast==='function' && !_t5Quiet) showToast('\u2713 Control in place - added to this risk\u2019s controls','success');
 }
 function addRiskControl(id){
   if(_blockIfReadOnly()) return;

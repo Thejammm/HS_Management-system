@@ -284,7 +284,7 @@ const BAND = { Critical: 'DC2626', High: 'EA580C', Medium: 'F59E0B', Low: '16A34
   R.ok(CTLS.filter(c => !c.deleted && c.desc.trim()).every(c => onPage(2).indexOf(c.desc) >= 0 && onPage(4).indexOf(c.desc) < 0) && !S_.some(x => x.indexOf('Ladder tied at the top') >= 0)
     && t.said.filter(x => x.p === 2 && /^CONTROL \d+\b/.test(x.s.trim())).length === 3 && [1, 3, 4, 5].every(p => !t.said.some(x => x.p === p && /^CONTROL \d+\b/.test(x.s.trim()))),
     'on r1’s first page each control heads the actions that put it in place - CONTROL k and its words, the deleted one not printed; r2 and r3 have no headings, and r1’s later page no controls at all');
-  R.ok(S_.some(x => /^In place since /.test(x) && x.indexOf(t.since) >= 0) && S_.some(x => /^Planned\b/.test(x) && /Dave/.test(x) && x.indexOf('by ' + t.permitBy) >= 0), 'under each control, whether it is in place (since when) or planned (who, by when) - as tab 4 heads it');
+  R.ok(S_.some(x => /^In place since /.test(x) && x.indexOf(t.since) >= 0) && S_.some(x => /^Planned\b/.test(x)) && !S_.some(x => /^Planned\b/.test(x) && x.indexOf('by ' + t.permitBy) >= 0), 'under each control, whether it is in place (since when) or planned - never the control row\'s own owner and date, which contradicted what was agreed on the actions (found 5 November 2026) - as tab 4 heads it');
   R.ok(onPage(2).indexOf(GAP) >= 0 && [1, 3, 4, 5].every(p => onPage(p).indexOf('No action yet') < 0), 'the permit, with nothing to put it in place, gets a gap row - once, on r1’s first page: ' + GAP);
   {
     // the line's own action is tagged in its row

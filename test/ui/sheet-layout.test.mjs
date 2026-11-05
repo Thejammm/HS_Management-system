@@ -152,8 +152,10 @@ await page.evaluate(() => {
         else {
           ctls.forEach((c, j) => {
             // tab 4 numbers a control by its row on the control table; a blank row there may or may not be counted
+            // planned: who and by when as agreed on the actions under it, never the control row's own (found 5 November 2026)
+            const under = open.filter(a => a.forCtl === c.id), lastDue = under.map(a => String(a.due || '')).filter(Boolean).sort().pop() || '';
             const grp = { kind: 'ctl', id: c.id, nums: [j + 1, all.indexOf(c) + 1], words: A(String(c.desc).trim()),
-              st: c.status === 'Complete' ? { done: true, since: F(c.completedDate) } : { done: false, owner: A(whoOf(c)), by: F(c.due) } };
+              st: c.status === 'Complete' ? { done: true, since: F(c.completedDate) } : { done: false, owner: A([...new Set(under.flatMap(a => _ownersOf(a)))].join(', ')), by: lastDue ? F(lastDue) : '' } };
             const mine = open.filter(a => a.forCtl === c.id);
             if (!mine.length && c.status === 'Complete') { bare.push(grp); return; }      // in place, nothing open: its heading alone
             const rs = mine.length ? mine.map(a => row(a, c)) : [row(null, c, GAP_CTL)];

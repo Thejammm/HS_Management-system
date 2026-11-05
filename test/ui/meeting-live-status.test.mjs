@@ -36,8 +36,8 @@ await wait(page, 400);
     ap.status = 'Not started'; ap.due = '2020-01-01'; out.w2 = _qmActWord(d); out.late = _qmActLate(d);
     ap.status = 'Complete'; out.w3 = _qmActWord(d); out.late3 = _qmActLate(d);
     // an older decision, raised before the link was kept: found by its words and owner
-    const old = { id: 'dec_old', decision: 'Book the van in for its service', owner: 'Sam Line', due: '2026-11-01', status: 'Agreed', raised: 1 };
-    _decisions().push(old); _apList().push({ id: 'ap_old', desc: 'Book the van in for its service', owner: 'Sam Line', due: '2026-11-01', status: 'In progress' });
+    const old = { id: 'dec_old', decision: 'Book the van in for its service', owner: 'Sam Line', due: '2099-11-01', status: 'Agreed', raised: 1 };
+    _decisions().push(old); _apList().push({ id: 'ap_old', desc: 'Book the van in for its service', owner: 'Sam Line', due: '2099-11-01', status: 'In progress' });
     out.old = _qmActWord(old);
     // one not on the plan reads as before
     out.agreed = _qmActWord({ decision: 'x', status: 'Agreed', raised: 0 });

@@ -26574,8 +26574,8 @@ function _rsLoopHTML(r, ro){
     const a=x.a, aid=String(a.id).replace(/[^a-z0-9_]/gi,''), st=_actionStatus(a), closed=_actClosed(a), ctl=(x.kind==='ctl');
     const ask=(st==='Complete' && !ro && !_embedIsSet(a)) ? '<button type="button" class="t5-link" onclick="rsStickAsk('+q+',\''+aid+'\')">Where does this live now?</button>' : '';
     const what=ctl
-      ? '<div class="t5-desc">'+esc(a.desc||'(not written yet)')+'</div><div class="t5-st" id="rss-'+aid+'">Standing arrangement'+(st!=='Not started'?(' · '+esc(st)):'')+'</div>'
-      : '<textarea class="rs-what" rows="'+_t5CmtRows(a.desc)+'" id="rsd-'+aid+'"'+dis+' placeholder="What we\'re doing" oninput="this.rows=_t5CmtRows(this.value);updateRiskAction('+q+',\''+aid+'\',\'desc\',this.value)">'+esc(a.desc||'')+'</textarea><div class="t5-st" id="rss-'+aid+'">'+esc(_t5StatusWords(a))+'</div>';
+      ? '<div class="t5-desc">'+esc(a.desc||'(not written yet)')+'</div><div class="t5-st" id="rss-'+aid+'">Standing arrangement'+(st!=='Not started'?(' · '+esc(st)):'')+(_rsRaWords(a)?(' · '+esc(_rsRaWords(a))):'')+'</div>'
+      : '<textarea class="rs-what" rows="'+_t5CmtRows(a.desc)+'" id="rsd-'+aid+'"'+dis+' placeholder="What we\'re doing" oninput="this.rows=_t5CmtRows(this.value);updateRiskAction('+q+',\''+aid+'\',\'desc\',this.value)">'+esc(a.desc||'')+'</textarea><div class="t5-st" id="rss-'+aid+'">'+esc(_t5StatusWords(a))+(_rsRaWords(a)?(' · '+esc(_rsRaWords(a))):'')+'</div>';
     return '<tr class="t5-row'+(closed?' t5-closed':'')+'" id="rsr-'+aid+'"><td><div class="t5-act"><span class="t5-no">'+n+'</span><div style="min-width:0;flex:1;">'+what+ask+'</div></div></td>'
       +'<td>'+_ownerCellHTML(r.id, a.id, a.owner, dis)+'</td>'
       +'<td><input type="date"'+dis+' value="'+esc(String(a.due||''))+'" onchange="updateRiskAction('+q+',\''+aid+'\',\'due\',this.value);rsAfter('+q+',\''+aid+'\')"></td>'
@@ -26584,8 +26584,8 @@ function _rsLoopHTML(r, ro){
   const rows=L.doing.map((x,i)=>rowOf(x,i+1)).join('');
   const table='<div class="rs-h">What we\'re doing about it</div><table class="t5-table"><colgroup><col style="width:48%"><col style="width:24%"><col style="width:20%"><col style="width:8%"></colgroup>'
     +'<thead><tr><th>What</th><th>Owner</th><th>Target date</th><th class="t5-c">Done</th></tr></thead><tbody>'+(rows||'<tr><td colspan="4" class="slt-muted">Nothing still to do.</td></tr>')+'</tbody></table>'
-    +(ro?'':'<div class="rs-add"><button type="button" class="btn btn-outline btn-sm" onclick="rsAdd('+q+')">＋ Add what we\'re doing</button></div>');
-  const placed=L.placed.length ? ('<div class="rs-h">Already in place</div><ul class="rs-placed">'+L.placed.map(x=>'<li><b>'+esc(x.a.desc||'(no words)')+'</b><span>'+esc(x.line||'')+'</span></li>').join('')+'</ul>') : '';
+    +(ro?'':'<div class="rs-add"><button type="button" class="btn btn-outline btn-sm" onclick="rsAdd('+q+')">＋ Add what we\'re doing</button> <button type="button" class="btn btn-ghost btn-sm" onclick="rsImportRA('+q+')" title="The file OpRAMS writes with Send to Compass: its notes become rows here, still to do or already in place">⬑ From a risk assessment</button></div>');
+  const placed=L.placed.length ? ('<div class="rs-h">Already in place</div><ul class="rs-placed">'+L.placed.map(x=>'<li><b>'+esc(x.a.desc||'(no words)')+'</b><span>'+esc(x.line||'')+(_rsRaWords(x.a)?(' · '+esc(_rsRaWords(x.a))):'')+'</span></li>').join('')+'</ul>') : '';
   const log=Array.isArray(r.log) ? r.log.slice(-4).reverse() : [];
   const hist=log.length ? ('<div class="rs-log">'+log.map(l=>'<div>'+esc(l.text||'')+(l.by?(' · '+esc(l.by)):'')+' · '+esc(_fmtLogWhen(l.at))+'</div>').join('')+'</div>') : '';
   return '<div class="rs-loop">'+top+table+placed+hist+'</div>';
@@ -26658,6 +26658,119 @@ function rsAnswerNow(rid){
   const ov=document.getElementById('rescoreOverlay'); if(ov) ov.remove();
   if(a) _rsStickOpen(a, r);
 }
+
+// ── From a risk assessment (Simon, 6 November 2026) ──
+// OpRAMS pins notes on each hazard of an assessment: a kind (Training, Equipment,
+// Information, Supervision, Monitoring) and whether it is still to arrange
+// (todo) or already in place (have). Its "Send to Compass" writes them to a small
+// file under the assessment's reference. Imported here against the risk the
+// assessment belongs to: a todo note becomes a row in "What we're doing about
+// it" (a plan action, no owner or date yet); a have note a standing arrangement
+// already in place (In place since the assessment date). Each row remembers
+// where it came from (a.ra = { ref, no, hazard, kind, key }), so sending the
+// file again updates rather than doubles, and a note that has since gone in
+// place on the assessment closes its row here, filed against the assessment.
+// The assessment is also put on the RA register, linked to the risk. Nothing
+// is deleted, ever.
+const RS_RA_KIND='ra-for-compass';
+function _rsRaKey(t){ return String(t||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function _rsRaRefKey(t){ return String(t||'').toLowerCase().replace(/\s+/g,'').trim(); }
+// The file as OpRAMS writes it, checked, or the words for what is wrong with it.
+function _rsRaParse(text){
+  let j=null; try{ j=JSON.parse(String(text||'')); }catch(e){ return { error:'That file is not one OpRAMS wrote' }; }
+  if(!j || j.kind!==RS_RA_KIND || !Array.isArray(j.hazards)) return { error:'That file is not a risk assessment sent from OpRAMS (press Send to Compass on its Actions arising tab)' };
+  if(!String(j.ref||'').trim()) return { error:'The assessment has no reference - give it one in OpRAMS and send it again' };
+  const hazards=j.hazards.map(h=>({ no:parseInt(h&&h.no,10)||0, hazard:String((h&&h.hazard)||'').trim(),
+    notes:(Array.isArray(h&&h.notes)?h.notes:[]).map(n=>({ kind:String((n&&n.kind)||'').trim(), text:String((n&&n.text)||'').trim(), status:(n&&n.status==='todo')?'todo':'have' })).filter(n=>n.text) })).filter(h=>h.notes.length);
+  return { ref:String(j.ref).trim(), task:String(j.task||'').trim(), location:String(j.location||'').trim(), project:String(j.project||'').trim(), assessor:String(j.assessor||'').trim(),
+    date:(typeof _top5ParseDate==='function' ? _top5ParseDate(j.date) : '')||'', made:String(j.made||'').slice(0,10), hazards };
+}
+// The register entry for this assessment: by reference, else the one this risk started; made if there is none.
+function _rsRaRegister(r, f){
+  const list=_raRegState(), rk=_rsRaRefKey(f.ref);
+  let e=list.find(x=>x && _rsRaRefKey(x.ref)===rk) || list.find(x=>x && x.riskId===r.id && !String(x.ref||'').trim());
+  if(!e){ e={ id:'rar_'+Math.random().toString(36).slice(2,9), title:'', ref:'', area:r.area||'', date:'', reviewDate:'', location:'', notes:'', riskId:r.id }; list.push(e); }
+  if(!String(e.ref||'').trim()) e.ref=f.ref;
+  if(!String(e.title||'').trim()) e.title=f.task ? ('Risk assessment - '+f.task) : ('Risk assessment '+f.ref);
+  if(!String(e.location||'').trim() && f.location) e.location=f.location;
+  if(!e.date && f.date) e.date=f.date;
+  e.riskId=r.id; e.source='oprams';
+  return e;
+}
+// Every row of r.actions that came from this assessment, by the note's words.
+function _rsRaRows(r, ref){ const rk=_rsRaRefKey(ref); return ((r&&r.actions)||[]).filter(a=>a && !a.deleted && a.ra && _rsRaRefKey(a.ra.ref)===rk); }
+function _rsApplyRA(r, f){
+  if(!r || !f || f.error) return null;
+  if(!Array.isArray(r.actions)) r.actions=[];
+  const today=_asToday(), since=f.date||today, who=f.assessor||'', out={ todo:0, placed:0, closed:0, same:0 };
+  const from='From risk assessment '+f.ref;
+  const mk=(desc, extra)=>{ const a=Object.assign({ id:'act_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desc:desc.slice(0,240), owner:'', due:'', status:'Not started', priority:_suggestPriority(r) }, extra); _stamp(a,'created'); r.actions.push(a); return a; };
+  f.hazards.forEach(h=>h.notes.forEach(n=>{
+    const key=_rsRaKey(n.text), prov={ ref:f.ref, no:h.no, hazard:h.hazard, kind:n.kind, key };
+    const words=(n.kind?(n.kind+': '):'')+n.text, where='hazard '+h.no+(h.hazard?(' ('+h.hazard+')'):'');
+    const have=_rsRaRows(r, f.ref).find(a=>a.ra.key===key && (!n.kind || !a.ra.kind || a.ra.kind===n.kind));
+    if(have){
+      have.ra=Object.assign({}, have.ra, prov);
+      if(n.status==='have' && !have.hideFromPlan && !_actClosed(have)){
+        // still to arrange last time, in place on the assessment now: closed here, filed against the assessment
+        _t5Quiet=true;
+        have.completedDate=since; if(who && !have.completedBy) have.completedBy=who;      // the assessment's date, not today's
+        updateRiskAction(r.id, have.id, 'status', 'Complete');
+        if(!_embedIsSet(have)){ let d=null; try{ d=_docUpsertFromApp('Risk assessment '+f.ref, '', 'risk assessment import'); }catch(e){} have.embed=Object.assign({ at:today, by:(typeof _actor==='function'?(_actor().name||''):''), doc:{ name:'Risk assessment '+f.ref } }, d?{ doc:{ name:'Risk assessment '+f.ref, docId:d.id } }:{}); delete have.stickDue; }
+        _logAdd(have,'completed',from+', '+where+': in place on the assessment, dated '+fmtDate(since));
+        setTimeout(()=>{ _t5Quiet=false; },400);
+        out.closed++;
+      } else out.same++;
+      return;
+    }
+    if(n.status==='todo'){
+      const a=mk(words, { ra:prov });
+      _logAdd(a,'raised',from+', '+where+': still to arrange');
+      out.todo++;
+    } else {
+      const a=mk(words, { status:'Complete', completedDate:since, completedBy:who, hideFromPlan:true, ra:prov });
+      _logAdd(a,'completed',from+', '+where+': already in place, dated '+fmtDate(since));
+      out.placed++;
+    }
+  }));
+  if(out.todo) r.raised=(r.raised||0)+out.todo;
+  const e=_rsRaRegister(r, f);
+  _stamp(r,'updated');
+  if(!Array.isArray(r.log)) r.log=[];
+  _logAdd(r,'comment',from+(f.made?(' (sent '+fmtDate(f.made)+')'):'')+': '+out.todo+' to do, '+out.placed+' already in place'+(out.closed?(', '+out.closed+' now in place'):'')+(out.same?(', '+out.same+' unchanged'):''));
+  saveData();
+  try{ _refreshActionViews(); }catch(e){}
+  if(document.getElementById('riskModalOverlay')) _keepScroll(renderRiskProfile);
+  return Object.assign(out, { entry:e });
+}
+// The words of the result, as the toast says them.
+function _rsRaSaid(ref, o){
+  const bits=[]; if(o.todo) bits.push(o.todo+' to do'); if(o.placed) bits.push(o.placed+' already in place'); if(o.closed) bits.push(o.closed+' now in place'); if(o.same) bits.push(o.same+' unchanged');
+  return '✓ From risk assessment '+ref+': '+(bits.length?bits.join(', '):'nothing new')+'. On the RA register, linked to this risk.';
+}
+// A file picked for this risk. An assessment the register already holds against another risk is asked about first.
+function _rsReadRA(rid, file){
+  const r=(S.riskProfile||[]).find(x=>x && x.id===rid); if(!r || !file) return Promise.resolve(null);
+  return file.text().then(text=>{
+    const f=_rsRaParse(text);
+    if(f.error){ showToast(f.error,'error',8000); return null; }
+    const rk=_rsRaRefKey(f.ref), other=_raRegState().find(x=>x && _rsRaRefKey(x.ref)===rk && x.riskId && x.riskId!==r.id);
+    if(other){ const o=(S.riskProfile||[]).find(x=>x && x.id===other.riskId); const nm=o?((_riskRefOf(o)?(_riskRefOf(o)+' '):'')+(o.activity||o.hazard||'another risk')):'another risk';
+      if(!confirm('Risk assessment '+f.ref+' is on the register against '+nm+'. Import it against this risk instead?')) return null; }
+    const o=_rsApplyRA(r, f); if(!o) return null;
+    showToast(_rsRaSaid(f.ref, o),'success',8000);
+    return o;
+  }).catch(e=>{ console.error('RA import', e); showToast('That file could not be read','error'); return null; });
+}
+function rsImportRA(rid){
+  if(_blockIfReadOnly()) return;
+  let inp=document.getElementById('rsRaFile');
+  if(!inp){ inp=document.createElement('input'); inp.type='file'; inp.id='rsRaFile'; inp.accept='application/json,.json'; inp.style.display='none'; document.body.appendChild(inp); }
+  inp.onchange=()=>{ const f=(inp.files||[])[0]; inp.value=''; if(f) _rsReadRA(rid, f); };
+  inp.click();
+}
+// Where a row came from, on the overview: the assessment and the hazard.
+function _rsRaWords(a){ return (a && a.ra && a.ra.ref) ? ('From RA '+a.ra.ref+(a.ra.no?(', hazard '+a.ra.no):'')) : ''; }
 
 async function openBoardReportPrint(){
   try{ if(new URLSearchParams(location.search).get('report')==='legacy'){ downloadBoardReport(); return; } }catch(e){}

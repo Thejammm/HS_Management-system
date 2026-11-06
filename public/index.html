@@ -17782,7 +17782,8 @@ function renderExecPlan(){
     +gbChip('theme','Risk theme','Read the plan by the high level risk category each action belongs to - what each part of the business is moving')
     +gbChip('month','Target date','Read the plan as a delivery timeline, month by month')
     +gbChip('level','Risk level','Read the plan by how serious the risk behind each action is - one block a band, in the order you sort by')
-    +(_epCanDetail()?('<button type="button" class="no-print ep-gb'+(_epDetail?' on':'')+'" id="epDetailBtn" style="margin-left:8px;" onclick="toggleEpDetail()" title="Show or hide Status, Priority, Source and the Top 5 tick">Detail</button>'):'')+'</span>';
+    +(_epCanDetail()?('<button type="button" class="no-print ep-gb'+(_epDetail?' on':'')+'" id="epDetailBtn" style="margin-left:8px;" onclick="toggleEpDetail()" title="Show or hide Status, Priority, Source and the Top 5 tick">Detail</button>'):'')
+    +'<button type="button" class="btn btn-primary btn-sm no-print" id="epPdfBtn" style="margin-left:10px;" onclick="downloadActionPlan()" title="The plan as shown under each risk, as an A4 PDF">Print / PDF</button></span>';
   const fDelivered=delivered.filter(_epXFPass);
   const byMonth={};
   open.filter(_epXFPass).forEach(a=>{ const k=_actionMonthKey(a.due); (byMonth[k]=byMonth[k]||[]).push(a); });
@@ -27618,14 +27619,18 @@ function _epShowPass(a, thisKey){
 const _EP_SHOW_WORD={ open:'open actions', overdue:'overdue actions', month:'actions due this month', done:'delivered actions' };
 // Is it enough, on the plan. Open: the risk against its target, and a way to mark it done.
 // Done: says so, and where it now lives, from the make-it-stick answer.
-function _epEnoughCell(a, rk, r, dis){
+// The words, for the screen and the paper alike.
+function _epEnoughWords(a, r){
   const o=_execOrigin(a.ref);
+  if(a.status==='Accepted') return { k:'yes', t:'Accepted', sub:'' };
+  if(a.status==='Complete'){ const set=!!(o && _embedIsSet(o)); return { k:'yes', t:'Done', sub:set?_asStickWords(o):'Where this lives now: to be confirmed', set }; }
+  const e=_riskEnough(r); return { k:e.k, t:e.t, sub:e.sub, tip:e.tip };
+}
+function _epEnoughCell(a, rk, r, dis){
+  const w=_epEnoughWords(a,r);
   if(a.status==='Accepted') return '<span class="ck-en ck-en-yes">Accepted</span>';
-  if(a.status==='Complete'){
-    const set=!!(o && _embedIsSet(o)), word=(set && o)?_asStickWords(o):'';
-    return '<span class="ck-en ck-en-yes">Done'+(word?('<small>'+esc(word)+'</small>'):'')+'</span>'
-      +((!set && !dis)?('<button type="button" class="t5-link ep-ask" onclick="worksAnswer(\''+rk+'\')">Where does this live now?</button>'):(!set?'<div class="ck-en"><small>Where this lives now: to be confirmed</small></div>':''));
-  }
+  if(a.status==='Complete') return '<span class="ck-en ck-en-yes">Done'+((w.set || dis)?('<small>'+esc(w.sub)+'</small>'):'')+'</span>'
+    +((!w.set && !dis)?('<button type="button" class="t5-link ep-ask" onclick="worksAnswer(\''+rk+'\')">Where does this live now?</button>'):'');
   return _riskEnoughHTML(r)+(dis?'':('<button type="button" class="t5-link ep-done" onclick="updateExecAction(\''+rk+'\',\'status\',\'Complete\')" title="Marks this action done, then asks where it now lives">Mark done</button>'));
 }
 function _epRiskWrongLine(r){ const w=_asRiskWrong(r); return String((w&&w[0])||'').replace(/\s+/g,' ').trim(); }
@@ -27652,16 +27657,116 @@ function _epPlanCols(){
     ? '<colgroup><col style="width:34px"><col><col style="width:13%"><col style="width:11%"><col style="width:17%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:42px"></colgroup>'
     : '<colgroup><col style="width:34px"><col><col style="width:17%"><col style="width:13%"><col style="width:22%"></colgroup>';
 }
-function _epRiskBodyHTML(acts, trow, thisKey){
+// The blocks: one a risk in the ladder's order, its actions numbered in the risk's own order, then anything with no risk. The screen and the PDF both read this.
+function _epPlanGroups(acts, thisKey){
   const by={}, free=[];
   acts.forEach(a=>{ const r=_execRiskOf(a); if(r){ (by[r.id]=by[r.id]||[]).push(a); } else free.push(a); });
   const rowsOf=list=>list.map((a,i)=>({ a, n:i+1 })).filter(x=>_epXFPass(x.a) && _epShowPass(x.a,thisKey));
-  const table=rows=>'<table class="ep-at">'+_epPlanCols()+_epPlanHead()+'<tbody>'+rows.map(x=>trow(x.a,false,x.n)).join('')+'</tbody></table>';
   const out=[];
-  _riskDisplayOrder().forEach(r=>{ if(!r || !by[r.id]) return; const rows=rowsOf(by[r.id]); if(rows.length) out.push('<section class="ep-rb" id="eprb-'+esc(String(r.id))+'">'+_epRiskHeadHTML(r)+table(rows)+'</section>'); });
-  const fr=rowsOf(free);
-  if(fr.length) out.push('<section class="ep-rb ep-rb-free"><div class="ep-rb-h"><h4 class="ep-rb-t">Not tied to a risk</h4></div><div class="ep-rb-w"><b>What’s wrong</b> Actions raised outside the risk profile, such as assurance and accreditation</div>'+table(fr)+'</section>');
-  return out.join('');
+  _riskDisplayOrder().forEach(r=>{ if(!r || !by[r.id]) return; const rows=rowsOf(by[r.id]); if(rows.length) out.push({ r, rows }); });
+  const fr=rowsOf(free); if(fr.length) out.push({ r:null, rows:fr });
+  return out;
+}
+function _epRiskBodyHTML(acts, trow, thisKey){
+  const table=rows=>'<table class="ep-at">'+_epPlanCols()+_epPlanHead()+'<tbody>'+rows.map(x=>trow(x.a,false,x.n)).join('')+'</tbody></table>';
+  return _epPlanGroups(acts,thisKey).map(g=>g.r
+    ? '<section class="ep-rb" id="eprb-'+esc(String(g.r.id))+'">'+_epRiskHeadHTML(g.r)+table(g.rows)+'</section>'
+    : '<section class="ep-rb ep-rb-free"><div class="ep-rb-h"><h4 class="ep-rb-t">Not tied to a risk</h4></div><div class="ep-rb-w"><b>What’s wrong</b> Actions raised outside the risk profile, such as assurance and accreditation</div>'+table(g.rows)+'</section>').join('');
+}
+
+// ── The plan on paper (Simon, 6 November 2026): "exactly the on-screen layout: A4, AHS
+// style, client name and date on every page, page numbers, risks never split awkwardly".
+// Reads the same blocks as the screen. A risk that fits on a page stays whole; only one
+// too long for any page runs on, and its head comes with it, marked continued.
+async function buildActionPlanPDF(){
+  const L=window.PDFLib; if(!L) throw new Error('pdf-lib is not loaded');
+  const client=_sltClient(), issued=_asToday(), acts=_execActions(), thisKey=new Date().toISOString().slice(0,7);
+  const groups=_epPlanGroups(acts,thisKey);
+  const pdf=await L.PDFDocument.create();
+  const font=await pdf.embedFont(L.StandardFonts.Helvetica), bold=await pdf.embedFont(L.StandardFonts.HelveticaBold);
+  const W=595.28, H=841.89, ML=40, MR=W-40, CW=MR-ML, BOT=60, TOP=H-56;
+  const hex=h=>{ h=String(h).replace('#',''); return L.rgb(parseInt(h.slice(0,2),16)/255, parseInt(h.slice(2,4),16)/255, parseInt(h.slice(4,6),16)/255); };
+  // the screen's accent when it is a plain light theme, the AHS teal otherwise
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  const cssHex=(n,fb)=>{ if(dark) return fb; try{ const v=getComputedStyle(document.documentElement).getPropertyValue(n).trim(); return /^#[0-9a-f]{6}$/i.test(v)?v:fb; }catch(e){ return fb; } };
+  const ACC=hex(cssHex('--accent','#4BBFD6')), ACD=hex(cssHex('--accent-dark','#2B8FA6')), LIGHT=hex(cssHex('--accent-light','#E6F6FA')), INK=hex('1F2937'), GREY=hex('757575'), HAIR=hex('D4D4D7');
+  const A=t=>_pdfAscii(String(t==null?'':t));
+  const wrap=(t,f,size,w)=>{ const out=[]; String(A(t)).split('\n').forEach(seg=>{ const words=seg.split(/\s+/).filter(Boolean); let cur='';
+    words.forEach(wd=>{ const trial=cur?cur+' '+wd:wd; if(f.widthOfTextAtSize(trial,size)<=w) cur=trial; else { if(cur) out.push(cur); cur=wd;
+      while(cur.length>1 && f.widthOfTextAtSize(cur,size)>w){ let i=cur.length-1; while(i>1 && f.widthOfTextAtSize(cur.slice(0,i),size)>w) i--; out.push(cur.slice(0,i)); cur=cur.slice(i); } } }); out.push(cur); }); return out.length?out:['']; };
+  const fit=(t,f,size,w)=>{ let s=A(t); if(f.widthOfTextAtSize(s,size)<=w) return s; while(s.length>1 && f.widthOfTextAtSize(s+'...',size)>w) s=s.slice(0,-1); return s.replace(/\s+$/,'')+'...'; };
+  const CWS=[24, CW-24-88-66-112, 88, 66, 112], CX=[]; { let x=ML; CWS.forEach(w=>{ CX.push(x); x+=w; }); }
+  const HEADS=['No.','How we fix it','Who','By when','Is it enough'];
+  const SZ=8.6, LH=10.8, SUB=7.2, SLH=8.8, HEADH=30, THEAD=17;
+  let page, y;
+  const mast=()=>{ page.drawText(A(client.toUpperCase()),{x:ML,y:H-34,size:8.5,font:bold,color:INK});
+    const m=A('CLIENT EXECUTION PLAN    '+fmtDate(issued).toUpperCase()); page.drawText(m,{x:MR-font.widthOfTextAtSize(m,6.6),y:H-33,size:6.6,font,color:GREY});
+    page.drawLine({start:{x:ML,y:H-41},end:{x:MR,y:H-41},thickness:0.8,color:INK}); };
+  const addPage=()=>{ page=pdf.addPage([W,H]); y=TOP; mast(); };
+  const words=(a,r)=>_epEnoughWords(a,r);
+  // a row, measured before anything is drawn
+  const measure=x=>{ const a=x.a, r=x.r, how=wrap(a.desc||'(no description yet)',bold,SZ,CWS[1]-12), who=wrap(a.owner||'-',font,SZ,CWS[2]-10), e=words(a,r), sub=e.sub?wrap(e.sub,font,SUB,CWS[4]-12):[], late=a.rag==='red';
+    const lines=Math.max(how.length,who.length)*LH, dueH=LH+(late||!a.due?SLH:0), enH=LH+sub.length*SLH;
+    return { x, how, who, e, sub, late, h:Math.max(lines,dueH,enH)+9 }; };
+  // the block's head: reference, title, current to target, one line of what is wrong
+  const drawHead=(g,cont)=>{ const top=y, r=g.r; let tx=ML+10;
+    if(r){ const ref=A(_riskRefOf(r)); page.drawText(ref,{x:tx,y:top-13,size:8,font:bold,color:ACD}); tx+=bold.widthOfTextAtSize(ref,8)+8; }
+    const now=r?_riskScore(r):{}, tgt=r?_riskTarget(r):{};
+    let right=''; if(r) right=now.rating?(String(now.rating)):'Not yet rated';
+    const tgtWord=(r && now.rating)?(tgt.rating?String(tgt.rating):'no target'):'';
+    const rw=(right?bold.widthOfTextAtSize(A(right),10):0)+(tgtWord?(16+bold.widthOfTextAtSize(A(tgtWord),10)):0);
+    const name=(r?_riskShort(r):'Not tied to a risk')+(cont?' (continued)':'');
+    page.drawText(fit(name,bold,10.5,MR-10-rw-14-tx),{x:tx,y:top-13.5,size:10.5,font:bold,color:INK});
+    if(right){ let rx=MR-10-rw; page.drawText(A(right),{x:rx,y:top-13.5,size:10,font:bold,color:INK}); rx+=bold.widthOfTextAtSize(A(right),10);
+      if(tgtWord){ const ay=top-10; page.drawLine({start:{x:rx+4,y:ay},end:{x:rx+11,y:ay},thickness:1,color:INK}); page.drawSvgPath('M 0 0 L -3.6 -2.2 L -3.6 2.2 Z',{x:rx+13,y:ay,color:INK}); page.drawText(A(tgtWord),{x:rx+16,y:top-13.5,size:10,font:bold,color:INK}); } }
+    const wr=r?_epRiskWrongLine(r):'Actions raised outside the risk profile, such as assurance and accreditation';
+    const lab='WHAT\'S WRONG'; page.drawText(lab,{x:ML+10,y:top-25,size:6.2,font:bold,color:ACD});
+    const lx=ML+10+bold.widthOfTextAtSize(lab,6.2)+5; page.drawText(fit(wr||'Not yet written on the risk',font,7.8,MR-8-lx),{x:lx,y:top-25,size:7.8,font,color:GREY});
+    y=top-HEADH; };
+  const tHead=()=>{ const t=y; page.drawRectangle({x:ML,y:t-THEAD,width:CW,height:THEAD,color:LIGHT});
+    HEADS.forEach((h,i)=>page.drawText(A(h).toUpperCase(),{x:CX[i]+(i?6:5),y:t-11.5,size:6.6,font:bold,color:ACD}));
+    page.drawLine({start:{x:ML,y:t-THEAD},end:{x:MR,y:t-THEAD},thickness:1.1,color:ACC}); y=t-THEAD; };
+  const drawRow=(m,first)=>{ const top=y, a=m.x.a;
+    if(!first) page.drawLine({start:{x:ML,y:top},end:{x:MR,y:top},thickness:0.5,color:HAIR});
+    const base=top-11;
+    const no=String(m.x.n); page.drawText(no,{x:CX[0]+CWS[0]/2-bold.widthOfTextAtSize(no,SZ)/2+1,y:base,size:SZ,font:bold,color:ACD});
+    m.how.forEach((ln,k)=>page.drawText(ln,{x:CX[1]+6,y:base-k*LH,size:SZ,font:bold,color:INK}));
+    m.who.forEach((ln,k)=>page.drawText(ln,{x:CX[2]+6,y:base-k*LH,size:SZ,font,color:INK}));
+    page.drawText(a.due?A(fmtDate(a.due)):'No date',{x:CX[3]+6,y:base,size:SZ,font,color:a.due?INK:GREY});
+    if(m.late) page.drawText('Overdue',{x:CX[3]+6,y:base-SLH-1,size:SUB,font:bold,color:INK});
+    page.drawText(A(m.e.t),{x:CX[4]+6,y:base,size:SZ,font:bold,color:m.e.k==='yes'?ACD:INK});
+    m.sub.forEach((ln,k)=>page.drawText(ln,{x:CX[4]+6,y:base-LH-k*SLH,size:SUB,font,color:GREY}));
+    y=top-m.h; };
+  // close a block's run on this page: its border, and the accent down its left
+  const shut=top=>{ page.drawRectangle({x:ML,y,width:CW,height:top-y,borderColor:HAIR,borderWidth:0.6}); page.drawRectangle({x:ML,y,width:3,height:top-y,color:ACC}); };
+  addPage();
+  { const open=acts.filter(a=>a.status!=='Complete'&&a.status!=='Accepted').length, late=acts.filter(a=>a.rag==='red').length, done=acts.length-open;
+    page.drawText('Client execution plan',{x:ML,y:y-20,size:20,font:bold,color:INK}); y-=30;
+    page.drawText(A('Every action, under the risk it belongs to, highest current risk first.'),{x:ML,y:y-9,size:9.6,font,color:INK}); y-=16;
+    const f=[open+' open',late+' overdue',done+' delivered'].concat(_epShow?['Showing '+_EP_SHOW_WORD[_epShow]+' only']:[]).concat(_epXFActive()?['Filtered']:[]).join('      ');
+    page.drawText(A(f),{x:ML,y:y-9,size:8.6,font:bold,color:GREY}); y-=20; }
+  if(!groups.length) page.drawText('No actions on the plan.',{x:ML,y:y-12,size:9,font,color:GREY});
+  groups.forEach(g=>{
+    const ms=g.rows.map(x=>measure(Object.assign({},x,{ r:g.r })));
+    const whole=HEADH+THEAD+ms.reduce((n,m)=>n+m.h,0);
+    if(y-whole<BOT){ if(whole<=TOP-BOT) addPage(); else if(y-(HEADH+THEAD+ms[0].h)<BOT) addPage(); }
+    let segTop=y, first=true;
+    drawHead(g,false); tHead();
+    ms.forEach(m=>{
+      if(y-m.h<BOT){ shut(segTop); addPage(); segTop=y; drawHead(g,true); tHead(); first=true; }
+      drawRow(m,first); first=false; });
+    shut(segTop);
+    y-=11;
+  });
+  _pdfFormFooter(pdf,{ font, W, ML, MR, mid:'Client execution plan' });
+  return await pdf.save();
+}
+async function downloadActionPlan(){
+  try{ const bytes=await buildActionPlanPDF();
+    const safe=_sltClient().replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+    _sltSaveBlob(new Blob([bytes],{ type:'application/pdf' }), 'client-execution-plan-'+safe+'-'+_asToday()+'.pdf');
+    showToast('✓ Client execution plan downloaded','success');
+  }catch(e){ console.error('Action plan PDF failed',e); showToast('Could not build the PDF - see console','error'); }
 }
 
 const HOWTO_STEPS=[
@@ -27674,7 +27779,7 @@ const HOWTO_STEPS=[
   { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'The chart of every rated risk not yet under control, numbered from the highest current risk. This is the one order: the live Top 5, the Client execution plan and the risk profile all follow it, the suggested five are simply its top five, each risk showing its reference then the same short title. Risks with no score are flagged Not yet rated in their own section, off the chart. Risks with no target are listed under No target yet: they can never drop out until they have one.', how:'Read it like a music chart. Now is this month’s position, Last is last month’s, Mths is the months on the ladder, and Move is the symbol: ▲ climber, ▼ faller, = non-mover, NEW new entry, RE re-entry (was under control, came back), ★ biggest faller of the month. Falling is good news. Hover over any symbol for what it means on that risk. In the Not yet rated and No target yet sections, choose on the line and press Save: an unrated risk joins the chart. The boxes start empty and Compass suggests no score. A risk at or below its target drops out to the list at the foot, with the month it dropped out. Compass keeps a position snapshot each month by itself, so the moves show from the second month. The first Top 5 sheet takes the Top 5 ticks; after that the meeting opens from the last sheet and the five change there. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The first Top 5 sheet, the Risk Action Sheet, the Top 5 banner on the Client execution plan, and the order of every other list.' },
   { n:8, title:'This month’s Top 5 (the meeting)', opens:[{fn:function(){ openLiveTop5(); }}], what:'The front door. One risk a screen, laid out like the sheet the leadership team know, edited live in the meeting.', how:'Open it on the laptop. Its risks run in the ladder’s order. The first time, it holds the ladder’s ticks topped up in ranking order; after that it opens from the last sheet with everything still open. When the sheet has room, Compass offers the next risks with a reason each; when it is full, a strip names the ladder’s top five not on it, and Swap takes the lowest risk off and puts that one on. Its actions stay on the plan. What’s wrong is above the table; against each action: How we fix it, Who, By when, Is it enough, Comments, Done. Done asks Where does this live now? Send saves the sheet as the record of the meeting, downloads the PDF in the same columns and opens the email; attach the PDF in Outlook.', feeds:'The actions themselves (tab 4, the Client execution plan), the sheets as sent, How the client works now.' },
   { n:9, title:'Action sheets (back office)', opens:[{fn:function(){ openActionSheets('top5'); }}], what:'The Top 5, Legal duties and Risk action sheets as PDFs for the client to fill in, and what comes back.', how:'Use it for a Legal duties or Risk action sheet, or when a sheet comes back by email. Import a returned sheet, then decide each line: agree it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Agreed writes the owner, date and comment to the action.', feeds:'The actions, the next sheet.' },
-  { n:10, title:'Client execution plan', opens:[{label:'Client execution plan',tab:'execplan'},{label:'Actions',tab:'actions'}], what:'Every action across the business, under the risk it belongs to, highest current risk first. Each risk is a block: its reference, title, current and target score and one line of What’s wrong, then its numbered actions. Actions holds what the Inspection app raises, and shows only when that app is linked.', how:'The client’s own to-do list. Its columns are the order every list of actions uses: What’s wrong, How we fix it, Who, By when, Is it enough. Is it enough reads the risk: Yes when its current rating is at or below its target, Not yet when it is above, No target when none is set. When an action is done it says Done and where it now lives. Mark done closes one and asks where it lives. Click a figure at the top to narrow the list to it. Detail, for the consultant, shows Status, Priority, Source and the Top 5 tick. Change a date here and it changes on the risk. When the last action on a risk closes, Compass asks Is this issue now under control?', feeds:'The risk’s score and sign-off, How the client works now.' },
+  { n:10, title:'Client execution plan', opens:[{label:'Client execution plan',tab:'execplan'},{label:'Actions',tab:'actions'}], what:'Every action across the business, under the risk it belongs to, highest current risk first. Each risk is a block: its reference, title, current and target score and one line of What’s wrong, then its numbered actions. Actions holds what the Inspection app raises, and shows only when that app is linked.', how:'The client’s own to-do list. Its columns are the order every list of actions uses: What’s wrong, How we fix it, Who, By when, Is it enough. Is it enough reads the risk: Yes when its current rating is at or below its target, Not yet when it is above, No target when none is set. When an action is done it says Done and where it now lives. Mark done closes one and asks where it lives. Print / PDF gives the same blocks as an A4 PDF, with the client name, date and page numbers. Click a figure at the top to narrow the list to it. Detail, for the consultant, shows Status, Priority, Source and the Top 5 tick. Change a date here and it changes on the risk. When the last action on a risk closes, Compass asks Is this issue now under control?', feeds:'The risk’s score and sign-off, How the client works now.' },
   { n:11, title:'Records: where the answers are filed', opens:[{label:'Documents',tab:'documents'},{label:'Sign-off register',tab:'signoff'},{label:'Toolbox talks',tab:'toolbox'},{label:'CPD library',tab:'cpd'}], what:'Where the answers to Where does this live now? are filed: a document on Documents, a briefing or talk on the Sign-off register, a regular check on Assurance records, a named person on Company setup.', how:'Documents holds links to the client’s own files with their review dates; nothing is uploaded. The Sign-off register issues anything people must sign for: each person gets a link and confirms on their phone. Toolbox talks and CPD library suggest topics for this kind of work; Issue puts one on the Sign-off register.', feeds:'How the client works now, the Evidence register, the Risk pathway.' },
   { n:12, title:'How the client works now', opens:[{tab:'works'}], what:'The one record of what is now in place: where it lives, who owns it, which issue it came from, when it is next checked.', how:'Read it with the client; download the PDF for the board or an accreditation. Answer now clears anything done that has not said where it lives. Notes typed on the risks wait in a list only the consultant sees: In place puts one on this record, Not in place clears it. Nothing typed reaches the record until then.', feeds:'The cockpit’s story and accreditation evidence.' },
   { n:13, title:'Risk assessments (OpRAMS)', opens:[{label:'Quick links',tab:'links'}], what:'The task risk assessments and method statements live in the RAMS app. Each hazard carries notes: what is already in place and what is still to arrange.', how:'In OpRAMS, press Send to Compass on the Actions arising tab. In Compass, open the risk and press From a risk assessment: still-to-arrange notes become rows to do, in-place notes go to Already in place, and the assessment goes on the RA register against the risk. OpRAMS shows on Quick links once it is ticked in Admin, in the client’s Config.', feeds:'The risk’s overview, the RA register, How the client works now.' },

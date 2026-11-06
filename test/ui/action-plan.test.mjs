@@ -97,6 +97,38 @@ const scores = await snap();
   R.ok(t.fits && t.shown, 'the plan\'s count sits inside the Front door group');
   R.ok(/1 of 1 delivered say where they live now/.test(t.held), 'and the view says how many delivered actions say where they live: ' + t.held);
 }
+// ── the plan on paper: same blocks, A4, name, date and page numbers, risks kept whole ──
+{
+  const long = 'Establish the presence of the hazard before any visit, and record what was found against the job so that everyone on the team can read it first. ';
+  const many = [];
+  for (let i = 1; i <= 16; i++) many.push({ id: 'p' + i, activity: 'Printed risk number ' + i, hazard: 'What is wrong with printed risk ' + i, likelihood: String(1 + (i % 5)), severity: '5', targetL: '1', targetS: '2', actions: [1, 2, 3, 4].map(n => act('p' + i + 'a' + n, 'Risk ' + i + ' action ' + n + '. ' + long, 'Ann Reed, Ben Cole, Cara Hill', 20)) });
+  many.push({ id: 'big', activity: 'A risk too long for any page', hazard: 'Very many actions', likelihood: '5', severity: '5', targetL: '1', targetS: '1', actions: Array.from({ length: 34 }, (_, n) => act('bg' + n, 'Long risk action ' + (n + 1) + '. ' + long, 'Ann Reed', 10)) });
+  await seed(page, { riskProfile: many, actionPlan: FREE(), company: { tradingName: 'Testing Client Ltd', slt: [], personnel: [] } }, 'execplan');
+  await wait(page, 300);
+  const t = await page.evaluate(async () => {
+    window.__blob = null; const keepSave = _sltSaveBlob; window._sltSaveBlob = (b, n) => { window.__blob = { b, n }; };
+    const seen = [], text = []; const d = PDFLib.PDFPage.prototype.drawText; PDFLib.PDFPage.prototype.drawText = function (x, o) { let i = seen.indexOf(this); if (i < 0) { seen.push(this); i = seen.length - 1; text[i] = []; } text[i].push({ s: String(x), y: o.y, x: o.x, size: o.size }); return d.call(this, x, o); };
+    document.getElementById('epPdfBtn').click();
+    for (let n = 0; n < 60 && !window.__blob; n++) await new Promise(r => setTimeout(r, 100));
+    PDFLib.PDFPage.prototype.drawText = d;
+    const buf = await window.__blob.b.arrayBuffer(), doc = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true }), sz = doc.getPage(0).getSize();
+    const date = fmtDate(_asToday()).toUpperCase(), N = doc.getPageCount();
+    const whereIs = s => text.map((p, i) => p.some(e => e.s.includes(s)) ? i : -1).filter(i => i >= 0);
+    return { name: window.__blob.n, N, w: Math.round(sz.width), h: Math.round(sz.height), named: text.every(p => p.some(e => e.s === 'TESTING CLIENT LTD') && p.some(e => e.s.includes(date))), numbered: text.every((p, i) => p.some(e => new RegExp('Page ' + (i + 1) + ' of ' + N).test(e.s))),
+      heads: text.every(p => ['HOW WE FIX IT', 'WHO', 'BY WHEN', 'IS IT ENOUGH'].every(h => p.some(e => e.s === h))),
+      split: many_check(text), bigPages: whereIs('A risk too long for any page').length, cont: whereIs('(continued)').length, overrun: text.flatMap(p => p.filter(e => !/^Page \d+ of \d+$|^Client execution plan$|Compliance Consulting|Archer/.test(e.s) && e.s !== 'Client execution plan' && (e.y < 56 || e.x < 30 || e.x > 560))).map(e => e.s.slice(0, 40) + ' @' + Math.round(e.x) + ',' + Math.round(e.y)),
+      lone: text.filter(p => { const ys = p.filter(e => /^(Printed risk number \d+|A risk too long)/.test(e.s)).map(e => e.y); const lowest = Math.min(...ys); return ys.length && !p.some(e => /(Risk \d+ action \d+|Long risk action \d+)/.test(e.s) && e.y < lowest); }).length, free: whereIs('Not tied to a risk').length };
+    function many_check(text) { const bad = []; for (let i = 1; i <= 16; i++) { const pages = new Set(); text.forEach((p, n) => { if (p.some(e => new RegExp('^(Printed risk number ' + i + '$|Risk ' + i + ' action \\d)').test(e.s))) pages.add(n); }); if (pages.size !== 1) bad.push(i + ':' + [...pages].join('/')); } return bad; }
+  });
+  R.ok(t.w === 595 && t.h === 842 && t.N > 2 && /^client-execution-plan-testing-client-ltd-\d{4}-\d{2}-\d{2}\.pdf$/.test(t.name), 'Print / PDF gives an A4 PDF: ' + t.N + ' pages, ' + t.name);
+  R.ok(t.named && t.numbered, 'the client name, the date and "Page x of y" are on every page');
+  R.ok(t.heads, 'and the same columns as the screen: How we fix it, Who, By when, Is it enough');
+  R.ok(!t.split.length, 'a risk that fits on a page is never split across two' + (t.split.length ? ': ' + t.split.join(' ') : ''));
+  R.ok(t.bigPages >= 2 && t.cont === t.bigPages - 1, 'one too long for any page runs on, its head repeated and marked continued (' + t.bigPages + ' pages)');
+  R.ok(t.lone === 0, 'a risk\'s head is never left at the foot of a page without its actions');
+  R.ok(!t.overrun.length, 'nothing runs into the margins or the footer' + (t.overrun.length ? ': ' + t.overrun.slice(0, 6).join(' | ') : ''));
+  R.ok(t.free === 1, 'actions with no risk are on it too');
+}
 // ── first use ──
 {
   await seed(page, { riskProfile: [], actionPlan: [], company: { tradingName: 'Testing Client Ltd', slt: [], personnel: [] } }, 'execplan');

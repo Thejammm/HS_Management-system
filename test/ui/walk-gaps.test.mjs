@@ -147,7 +147,7 @@ await go();
   // no target is fine; reload keeps it all
   await set('u3', 'l', '2'); await set('u3', 's', '3');
   await page.evaluate(() => document.getElementById('ckr-save-u3').click());
-  const e = await page.evaluate(() => ({ sec: !!document.getElementById('ckrSec'), top: !!document.querySelector('.ckl-head-nr'), en: _riskEnough(S.riskProfile.find(r => r.id === 'u3')).t }));
+  const e = await page.evaluate(() => ({ sec: !!document.getElementById('ckrSec'), top: !!document.querySelector('.ckl-head-nr:not(.ckl-head-nt)'), en: _riskEnough(S.riskProfile.find(r => r.id === 'u3')).t }));
   R.ok(!e.sec && !e.top && e.en === 'No target', 'with none left the section and the flag go; a risk saved with no target reads No target');
   await page.reload({ waitUntil: 'networkidle0' }); await page.waitForFunction('typeof S === "object" && typeof switchTab === "function"'); await wait(page, 300);
   const f = await page.evaluate(() => { const r = S.riskProfile.find(x => x.id === 'u1'); return [r.likelihood, r.severity, r.targetL, r.targetS].join(); });
@@ -159,6 +159,48 @@ await go();
   R.ok(!col.length, 'no red in the section');
   const g = await page.evaluate(() => { switchTab('howto'); const t = document.getElementById('howtoContainer').innerText; switchTab('cockpit'); return t; });
   R.ok(/flagged Not yet rated/.test(g) && /Compass suggests no score/.test(g), 'the guide covers it');
+}
+// ── the rest of the list: no target, the plan's total, Legal duties, Maturity, Settings, the sidebar ──
+{
+  await go({ riskProfile: [
+    { id: 'n1', activity: 'Rated with no target', hazard: 'x', likelihood: '4', severity: '3', actions: [act('n1a', 20)] },
+    { id: 'n2', activity: 'Second with no target', hazard: 'x', likelihood: '2', severity: '3', actions: [Object.assign(act('n2c', 20), { hideFromPlan: true })] },
+    { id: 'n3', activity: 'Rated with a target', hazard: 'x', likelihood: '5', severity: '5', targetL: '2', targetS: '2', actions: [act('n3a', 20), act('n3b', 21)] },
+  ] });
+  const t = await page.evaluate(() => { switchTab('ladder'); const sec = document.getElementById('cktSec'), rows = sec ? [...sec.querySelectorAll('.ckr')] : []; return { head: sec ? sec.querySelector('.ckl-band-h').innerText.replace(/\s+/g, ' ') : '', chip: (document.querySelector('.ckl-head-nt') || {}).innerText || '', n: rows.length, boxes: rows.map(r => r.querySelectorAll('select').length).join(), empty: rows.every(r => [...r.querySelectorAll('select')].every(x => x.value === '')), off: rows.every(r => r.querySelector('button.btn').disabled), flags: rows.map(r => r.querySelector('.ckr-flag').innerText).join(), chart: document.querySelectorAll('#tab-ladder .ckl-band .ckl-line').length, none: S.riskProfile.filter(r => r.targetL).length }; });
+  R.ok(/NO TARGET YET 2 risks/.test(t.head) && /No target · 2/i.test(t.chip) && t.n === 2, 'the risks with no target have their own list, flagged at the head: ' + t.head.slice(0, 60));
+  R.ok(t.boxes === '2,2' && t.empty && t.off && t.none === 1 && t.chart === 3, 'two empty boxes on each line and nothing saved; they stay on the chart');
+  const set = (id, k, v) => page.evaluate((id, k, v) => { const e = document.getElementById('ckr-' + k + '-' + id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); }, id, k, v);
+  await set('n1', 'tl', '2'); const half = await page.evaluate(() => ({ off: document.getElementById('ckr-save-n1').disabled, say: document.getElementById('ckr-say-n1').textContent }));
+  await set('n1', 'ts', '2'); const full = await page.evaluate(() => ({ off: document.getElementById('ckr-save-n1').disabled, say: document.getElementById('ckr-say-n1').textContent }));
+  R.ok(half.off && /both target boxes/.test(half.say) && !full.off && /Target 4/.test(full.say), 'half a target stops Save; both show the target: ' + full.say);
+  const s1 = await page.evaluate(() => { const r = S.riskProfile.find(x => x.id === 'n1'); document.getElementById('ckr-save-n1').click(); return { saved: [r.likelihood, r.severity, r.targetL, r.targetS].join(), left: document.querySelectorAll('#cktSec .ckr').length, log: (r.log || []).map(l => l.text).join(), status: _riskControlStatus(r), enough: _riskEnough(r).t, onChart: [...document.querySelectorAll('#tab-ladder .ckl-band .ckl-title')].some(x => /Rated with no target/.test(x.textContent)) }; });
+  R.ok(s1.saved === '4,3,2,2' && s1.left === 1 && /Target set on the risk ladder: 4/.test(s1.log) && s1.onChart && s1.enough === 'Not yet', 'Save writes the target only, leaves the score alone, and the risk reads Not yet: ' + s1.saved);
+  await set('n2', 'tl', '2'); await set('n2', 'ts', '3');
+  const w1 = await page.evaluate(() => document.getElementById('ckr-say-n2').textContent);
+  R.ok(/straight to Dropped out/.test(w1), 'a target at or above the score warns first: ' + w1);
+  const s2 = await page.evaluate(() => { document.getElementById('ckr-save-n2').click(); return { sec: !!document.getElementById('cktSec'), chip: !!document.querySelector('.ckl-head-nt'), out: [...document.querySelectorAll('#tab-ladder .ckc-outs .ckl-title')].some(x => /Second with no target/.test(x.textContent)) }; });
+  R.ok(!s2.sec && !s2.chip && s2.out, 'and it goes there; with none left the list and the flag go');
+  const ro = await page.evaluate(() => { const r = S.riskProfile.find(x => x.id === 'n1'); delete r.targetL; delete r.targetS; const keep = window._roLocked; window._roLocked = () => true; renderLadder(); const sec = document.getElementById('cktSec'), o = { flag: !!sec, boxes: sec ? sec.querySelectorAll('select').length : -1 }; window._roLocked = keep; r.targetL = '2'; r.targetS = '2'; renderLadder(); return o; });
+  R.ok(ro.flag && ro.boxes === 0, 'a read-only login sees the list with no boxes');
+  // gap 8
+  const d = await page.evaluate(() => { switchTab('cockpit'); const B = _boardModel(), el = document.querySelector('#tab-cockpit .ck-dep-parts'), sum = (el ? el.innerText : '').match(/\d+/g) || []; return { said: el ? el.innerText : '', sum: sum.reduce((n, x) => n + +x, 0), total: B.dep.total, shown: new RegExp(B.dep.done + ' of ' + B.dep.total + ' planned').test(document.getElementById('tab-cockpit').innerText) }; });
+  R.ok(d.shown && d.sum === d.total && /actions on the plan/.test(d.said) && /standing arrangement/.test(d.said) && /reaching their target/.test(d.said), 'the plan delivered total says what it is made of, and the parts add up to ' + d.total + ': ' + d.said);
+  // gap 9
+  const L = await page.evaluate(() => { S.requirements = [{ id: 'sec1', heading: 'Legal essentials - what you must have in place', legal: true, stage: '', items: [{ id: 'i1', legalKey: 'policy', requirement: 'Health & Safety Policy', citation: '', present: 'No', adequate: '', action: '', crit: {} }, { id: 'i2', legalKey: 'insurance', requirement: 'Insurance', citation: '', present: '', adequate: '', action: '', crit: {} }] }]; _policyState().signedDate = '2026-01-05'; switchTab('requirements'); const tab = document.getElementById('tab-requirements'); const note = tab.querySelector('.req-pol-note'); const txt = tab.innerText.replace(/\s+/g, ' '); const st = _reqStats(), g = _reqGaps(), sec = S.requirements.find(x => x.legal), items = sec.items, inP = items.filter(_reqItemMet).length, un = items.filter(it => !_reqItemAssessed(it)).length; return { note: note ? note.innerText : '', head: txt.includes(g.assessed + ' of ' + st.total + ' lines assessed · ' + g.gaps + ' with gaps'), ess: un > 0 && txt.includes(inP + '/' + items.length + ' in place · ' + un + ' not assessed'), old: /\d+ gaps? \/ \d+ assessed/.test(txt), says: g.assessed + ' of ' + st.total + ' / ' + inP + '/' + items.length + ' un ' + un }; });
+  R.ok(L.head && !L.old, 'the Legal duties headline says what it counts: lines assessed, then how many have gaps (' + L.says + ')');
+  R.ok(L.ess, 'the essentials headline says how many are not assessed yet');
+  R.ok(/statement of intent was signed/.test(L.note) && /whole policy/.test(L.note), 'a signed statement above "Not in place" is explained: ' + L.note);
+  // gap 10
+  const M = await page.evaluate(() => { switchTab('maturity'); const t = document.getElementById('tab-maturity').innerText; switchTab('cockpit'); return { old: /lives above/.test(t), now: /measured position is on the cockpit/.test(t), there: /H&S (control )?maturity/i.test(document.getElementById('tab-cockpit').innerText) }; });
+  R.ok(!M.old && M.now && M.there, 'Maturity level points to where the measured position really is, and it is there');
+  // gap 11
+  const G = await page.evaluate(() => { const pane = () => (document.querySelector('.setup-nav-btn.active') || {}).getAttribute('data-spane'); window._setupPicked = false; try { _setupPicked = false; } catch (e) {} S.linkedApps = []; S.inspections = []; S.actions = []; switchTab('setup'); const a = pane(); switchSetupPane('my-checklist'); switchTab('cockpit'); switchTab('setup'); const b = pane(); _setupPicked = false; S.inspections = [{ id: 'x' }]; switchTab('setup'); const c = pane(); S.inspections = []; _setupPicked = false; switchTab('cockpit'); return { a, b, c }; });
+  R.ok(G.a === 'branding' && G.b === 'my-checklist' && G.c === 'my-checklist', 'Settings opens on report branding for a client not on the Inspection app, on the checklist for one who is, and stays where you chose');
+  // gap 12
+  const N = await page.evaluate(() => { const front = [...document.querySelectorAll('.nav-grp-front .tab-btn')].map(b => b.getAttribute('data-tab')).join(); const label = () => document.querySelector('.nav-grp[data-grp="tools"] .nav-grp-btn').textContent.trim(); const was = _viewMode, cons = label(); _viewMode = 'management'; applyViewMode(); const client = label(), shows = document.querySelector('.tab-btn[data-tab="execplan"]').style.display !== 'none'; _viewMode = was; applyViewMode(); return { front, cons, client, back: label(), shows }; });
+  R.ok(N.front === 'cockpit,risk,ladder,execplan,works' && N.shows, 'the Client execution plan sits in the Front door group, after the Risk ladder');
+  R.ok(N.cons === 'Consultant tools' && N.client === 'Tools' && N.back === 'Consultant tools', 'the group reads Tools to a client, Consultant tools to you');
 }
 // ── first use: nothing to list, nothing breaks ──
 {

@@ -4597,6 +4597,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .ckr-f span{min-height:22px;display:flex;align-items:flex-end;}
     .ckr-f select{width:100%;font-size:12.5px;padding:3px 4px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:var(--text);}
     .ckr-gap{width:6px;}
+    .ckl-head-nt{margin-left:12px;}
     .ckr-boxes .btn[disabled]{opacity:.4;cursor:not-allowed;}
     .ckr-say{grid-column:1 / -1;text-align:right;font-size:11.5px;font-weight:600;color:var(--text);min-height:0;}
     .ckr-say:empty{display:none;}
@@ -5746,6 +5747,7 @@ function showSetupTab() {
   if (content)  content.style.display  = 'block';
   _updateActiveClientBar();
   renderMyChecklist(); renderTemplates();
+  if(!_setupPicked) switchSetupPane(_inspInUse()?'my-checklist':'branding', true);      // no inspection checklist in the way for a client not on the Inspection app
 }
 
 function _updateActiveClientBar() {
@@ -6611,7 +6613,9 @@ function switchTab(id) {
   try{ window._sectionRail && window._sectionRail.build(); }catch(e){}
 }
 
-function switchSetupPane(id) {
+var _setupPicked=false;
+function switchSetupPane(id, auto) {
+  if(!auto) _setupPicked=true;
   document.querySelectorAll('.setup-pane').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.setup-nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('spane-'+id).classList.add('active');
@@ -14727,9 +14731,8 @@ function applyViewMode(){
   // data (plus any legacy in-app records). A client with neither a configured
   // link nor any records doesn't see them - their Compass is shaped by the
   // apps they actually have.
-  const _hasLink = Array.isArray(S.linkedApps) && S.linkedApps.some(l=>l && l.kind==='inspections' && l.remoteTenantId);
-  const _hasInspData = (Array.isArray(S.inspections) && S.inspections.length>0) || (Array.isArray(S.actions) && S.actions.length>0);
-  const _linkedShow = _hasLink || _hasInspData;
+  const _linkedShow = _inspInUse();
+  try{ _navToolsLabel(); }catch(e){}
   // A client on an AHS service package has its service calendar on the Monthly tab.
   const _hasPkg = !!(S.accred && S.accred.package && S.accred.package.id);
   if(!_linkedShow){
@@ -15899,6 +15902,7 @@ const COCKPIT_WIDGETS = {
             +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+B.depPct+'%;'+(B.dep.done?'min-width:10px;':'')+'background:'+(B.depPct>=100?'#16A34A':'#0E8F7E')+';border-radius:'+(B.depPct>=98?'6px':'6px 0 0 6px')+';"></div></div>'
           +'<div style="display:flex;gap:22px;flex-wrap:wrap;font-size:12.5px;color:var(--text-muted);">'
           +'<span><b style="font-size:16px;color:'+(B.depPct>=100?'#16A34A':'var(--text)')+';">'+B.dep.done+' of '+B.dep.total+'</b> planned controls and actions in place</span>'
+          +(()=>{ const acts=B.rows.reduce((n,z)=>n+z.dep.acts.filter(a=>!a.hideFromPlan).length,0), rows=B.rows.reduce((n,z)=>n+z.dep.acts.filter(a=>a.hideFromPlan).length,0), risks=B.rows.reduce((n,z)=>n+(z.dep.total-z.dep.acts.length),0); return B.dep.total?('<span style="flex-basis:100%;order:3;" class="ck-dep-parts">Made up of '+acts+' action'+(acts!==1?'s':'')+' on the plan, '+rows+' standing arrangement'+(rows!==1?'s':'')+' and '+risks+' risk'+(risks!==1?'s':'')+' reaching their target.</span>'):''; })()
           +(B.overdue?('<span><b style="font-size:16px;color:#DC2626;">'+B.overdue+'</b> action'+(B.overdue!==1?'s':'')+' overdue</span>'):'<span style="align-self:center;">nothing overdue</span>')
           +'</div></div>'):'')
         +(B.tgtPct===null?'<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">No projected scores set yet - add them on the risk cards and the blue target line appears.</div>':'')
@@ -15972,7 +15976,8 @@ const COCKPIT_WIDGETS = {
       return '<div class="ckx-panel ckl"><h4>Risk ladder</h4><div class="ckl-headrow"><span class="ckl-sub">Ranked by current risk rating, highest first. Falling is good news.</span>'
         +'<span class="ckl-head" title="This month’s five priorities - the same five as the Top 5 on the execution plan">Top 5 · '+n5+' of '+TOP5_MAX+' for '+esc(_top5MonthLabel(m5))+'</span>'
         +'<span class="ckl-head ckl-head-sh" title="The risks on the Risk Action Sheet for '+esc(_top5MonthLabel(m5))+' - tick as many as you like">Sheet · '+sh.length+'</span>'
-        +(unrated.length?('<button type="button" class="ckl-head-nr no-print" onclick="_ckrJump()" title="These risks have no score yet, so they are not on the chart. Go to the list">Not yet rated · '+unrated.length+'</button>'):'')+'</div>'
+        +(unrated.length?('<button type="button" class="ckl-head-nr no-print" onclick="_ckrJump()" title="These risks have no score yet, so they are not on the chart. Go to the list">Not yet rated · '+unrated.length+'</button>'):'')
+        +(()=>{ const n=_ladderNoTarget().length; return n?('<button type="button" class="ckl-head-nr ckl-head-nt no-print" onclick="_cktJump()" title="These risks have no target, so they can never read as under control. Go to the list">No target · '+n+'</button>'):''; })()+'</div>'
         // One row of tools, so the cockpit is the only screen open in the meeting.
         +(tools?('<div class="ckl-tools no-print">'
           +'<button class="btn btn-outline btn-xs" onclick="openActionSheets(\'top5\')" title="Five actions out to the leadership team with the controls we recommend; their comments, who and by when come back against each control, a decision each">Top 5 action sheet</button>'
@@ -15984,7 +15989,7 @@ const COCKPIT_WIDGETS = {
         +'<div class="ckl-wrap"><div class="ckl-cols" aria-hidden="true"><span class="ckl-c-pos" title="This month’s position">Now</span><span class="ckl-c-last" title="Last month’s position">Last</span><span class="ckl-c-mths" title="How many months it has been on the ladder">Mths</span><span class="ckl-c-move" title="The move since last month. Falling is good news">Move</span><span class="ckl-c-ref">Ref</span><span class="ckl-c-risk">Risk</span><span class="ckl-c-sc">Score</span>'
         +'<span class="ckl-c-t5" title="This month’s five priorities">Top 5</span><span class="ckl-c-sh" title="The Risk Action Sheet">Sheet</span></div>'
         +['Critical','High','Medium','Low'].map(band).join('')
-        +_ckrSectionHTML()
+        +_ckrSectionHTML()+_cktSectionHTML()
         +(()=>{ const gone=B.rows.filter(z=>z.sc.priority && z.dep.ctl==='In place').map(z=>({ z, m:(CH.out[z.id]||{}).month||'' })).sort((a,b)=>String(b.m).localeCompare(String(a.m))||_ladderCmp(a.z.r,b.z.r));
           return '<section class="ckc-outs"><div class="ckl-band-h"><span class="ckl-band-n">DROPPED OUT</span><span class="ckl-band-c">'+gone.length+' risk'+(gone.length!==1?'s':'')+'</span><span class="ckl-band-m">Now under control: at or below their target, and off the ladder. Good news.</span></div>'
             +(gone.length?gone.map(x=>row(x.z,x.z.sc.priority,true)).join(''):'<div class="ckl-none">Nothing has dropped out yet.</div>')+'</section>'; })()
@@ -23181,7 +23186,7 @@ function setJudgementNote(domId, note){
 function _renderMaturityAssessment(dis){
   _judgeMigrateLoose();
   const doms=_maturityDomains(); const j=_judgeState();
-  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Your professional judgement of the six HSG65 areas - <b>words, not scores</b>. Mark each Weak, Developing, Adequate or Strong with a one-line reason; the app spells out what that word means in this area. <b>Adequate has a bar</b>: it is in place, written down, and you have seen the evidence. A business on its way there is <b>Developing</b>, not Adequate. There is no middle box on purpose, so each area gets a decision: below the line or above it. Weak and Developing both belong on the risk profile - Raise action puts the area there as a risk (once) and raises the action from it onto the execution plan, so it is scored, controlled and reviewed like every other risk. This feeds your audit narrative and review; it is never turned into a number. The measured position lives above: H&S Control Maturity, graded on recorded facts.</div>`;
+  const note=`<div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Your professional judgement of the six HSG65 areas - <b>words, not scores</b>. Mark each Weak, Developing, Adequate or Strong with a one-line reason; the app spells out what that word means in this area. <b>Adequate has a bar</b>: it is in place, written down, and you have seen the evidence. A business on its way there is <b>Developing</b>, not Adequate. There is no middle box on purpose, so each area gets a decision: below the line or above it. Weak and Developing both belong on the risk profile - Raise action puts the area there as a risk (once) and raises the action from it onto the execution plan, so it is scored, controlled and reviewed like every other risk. This feeds your audit narrative and review; it is never turned into a number. The measured position is on the cockpit: H&S control maturity, graded on recorded facts.</div>`;
   return note + doms.map((d,idx)=>{
     const cur=j[d.id]||{};
     const lv=JUDGEMENT_LEVELS.find(x=>x.k===cur.level);
@@ -27126,9 +27131,9 @@ function t5AddAll(){
 
 // ── C2. The sidebar in four plain groups ──
 const NAV_GROUPS=[
-  { k:'front',   label:'Front door',       tabs:['cockpit','risk','ladder','works'], fixed:true },
+  { k:'front',   label:'Front door',       tabs:['cockpit','risk','ladder','execplan','works'], fixed:true },
   { k:'records', label:'Records',          tabs:['documents','signoff','monitoring','toolbox','cpd','monthly','reports'] },
-  { k:'tools',   label:'Consultant tools', tabs:['howto','company','requirements','maturity','execplan','actions','siteinsp','journey','cas','review','audit','triage','links'] },
+  { k:'tools',   label:'Consultant tools', tabs:['howto','company','requirements','maturity','actions','siteinsp','journey','cas','review','audit','triage','links'] },
   { k:'admin',   label:'Admin',            tabs:['setup','admin'] }
 ];
 var _navBuilt=false;
@@ -27458,9 +27463,9 @@ function _ckrRead(d){
   else if(now.rating && tgt.rating && now.rating<=tgt.rating) say+='. At or below its target, so it goes straight to Dropped out';
   return { say, ok:!!now.rating && !half };
 }
-function _ckrSelect(id, k, label, tip, val){
+function _ckrSelect(id, k, label, tip, val, fn){
   const o=['<option value=""></option>'].concat([1,2,3,4,5].map(n=>'<option value="'+n+'"'+(String(val||'')===String(n)?' selected':'')+'>'+n+'</option>')).join('');
-  return '<label class="ckr-f" title="'+esc(tip)+'"><span>'+esc(label)+'</span><select id="ckr-'+k+'-'+id+'" onchange="ladderRateInput(\''+id+'\')">'+o+'</select></label>';
+  return '<label class="ckr-f" title="'+esc(tip)+'"><span>'+esc(label)+'</span><select id="ckr-'+k+'-'+id+'" onchange="'+(fn||'ladderRateInput')+'(\''+id+'\')">'+o+'</select></label>';
 }
 function _ckrRowHTML(r, can){
   const id=String(r.id).replace(/[^a-z0-9_]/gi,''), ops=_riskMode(r)==='ops', act=_ckrAction(r), full=_riskFullTitle(r);
@@ -27510,14 +27515,78 @@ function ladderRateSave(id){
   if(next){ const e=document.getElementById('ckr-l-'+next); if(e) setTimeout(()=>{ try{ e.focus(); }catch(x){} },120); }
 }
 
+// ── No target yet: rated and on the chart, but with no target it can never read as under
+// control. The same way in as Not yet rated: boxes start empty, Compass suggests nothing,
+// nothing is written until Save on the line. Scores are Simon's (6 November 2026).
+function _ladderNoTarget(){ return _ladderRows().filter(r=>_riskControlStatus(r)==='Partial'); }
+function _cktRead(r, d){
+  const tgt=_scorePair(d.tl,d.ts), half=(!!d.tl)!==(!!d.ts), now=_riskScore(r);
+  let say='';
+  if(half) say='Choose both target boxes';
+  else if(tgt.rating){ say='Target '+tgt.rating+' · '+tgt.priority; if(now.rating<=tgt.rating) say+='. At or below its target, so it goes straight to Dropped out'; }
+  return { say, ok:!!tgt.rating && !half };
+}
+function _cktRowHTML(r, can){
+  const id=String(r.id).replace(/[^a-z0-9_]/gi,''), ops=_riskMode(r)==='ops', sc=_riskScore(r), d=_ckrDraft[id]||{}, read=_cktRead(r,d);
+  const L=ops?'probability':'likelihood', S=ops?'impact':'severity';
+  const head='<div class="ckr-t"><div>'+_riskRefChip(r)+'<button type="button" class="ckr-name" onclick="_gotoRisk(\''+id+'\')" title="'+esc(_riskFullTitle(r))+' - open this risk">'+esc(_riskShort(r))+'</button><span class="ckr-flag" title="This risk has a score but no target, so it can never read as under control">No target</span></div>'
+    +'<div class="ckr-sub">Scores '+esc(String(sc.rating))+' · '+esc(sc.priority||'')+'</div></div>';
+  if(!can) return '<div class="ckr ckr-ro" id="ckt-'+id+'">'+head+'</div>';
+  return '<div class="ckr" id="ckt-'+id+'">'+head
+    +'<div class="ckr-boxes no-print">'
+    +_ckrSelect(id,'tl','Target '+L,'The '+L+' you are aiming for, 1 to 5',d.tl,'ladderTargetInput')+_ckrSelect(id,'ts','Target '+S,'The '+S+' you are aiming for, 1 to 5',d.ts,'ladderTargetInput')
+    +'<button type="button" class="btn btn-primary btn-xs" id="ckr-save-'+id+'"'+(read.ok?'':' disabled')+' onclick="ladderTargetSave(\''+id+'\')" title="Saves this target on the risk. Until then nothing has changed">Save</button>'
+    +'</div><div class="ckr-say no-print" id="ckr-say-'+id+'">'+esc(read.say)+'</div></div>';
+}
+function _cktSectionHTML(){
+  const list=_ladderNoTarget(); if(!list.length) return '';
+  const can=_ckrCanRate();
+  return '<section class="ckr-sec" id="cktSec"><div class="ckl-band-h"><span class="ckl-band-n">NO TARGET YET</span><span class="ckl-band-c">'+list.length+' risk'+(list.length!==1?'s':'')+'</span>'
+    +'<span class="ckl-band-m">On the chart, but with no target they can never drop out.'+(can?' Choose the target and press Save on the line. Compass suggests none.':'')+'</span></div>'
+    +list.map(r=>_cktRowHTML(r,can)).join('')+'</section>';
+}
+function _cktJump(){ const el=document.getElementById('cktSec'); if(el) el.scrollIntoView({ behavior:'smooth', block:'start' }); }
+function ladderTargetInput(id){
+  const r=(S.riskProfile||[]).find(x=>x && String(x.id)===id); if(!r) return;
+  const v=k=>{ const e=document.getElementById('ckr-'+k+'-'+id); return e?e.value:''; };
+  const d={ tl:v('tl'), ts:v('ts') }, read=_cktRead(r,d);
+  _ckrDraft[id]=d;
+  const say=document.getElementById('ckr-say-'+id), btn=document.getElementById('ckr-save-'+id);
+  if(say) say.textContent=read.say;
+  if(btn) btn.disabled=!read.ok;
+}
+function ladderTargetSave(id){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x && String(x.id)===id), d=_ckrDraft[id]||{}; if(!r) return;
+  if(!_cktRead(r,d).ok) return;
+  const order=_ladderNoTarget().map(x=>String(x.id)), at=order.indexOf(id), next=order[at+1]||order[at-1]||'';
+  updateRiskField(r.id,'targetL',String(d.tl));
+  updateRiskField(r.id,'targetS',String(d.ts));
+  const tg=_riskTarget(r);
+  _logAdd(r,'comment','Target set on the risk ladder: '+tg.rating+' ('+d.tl+' x '+d.ts+')');
+  delete _ckrDraft[id];
+  saveData();
+  _keepScroll(renderLadder);
+  showToast('✓ '+(_riskRefOf(r)||_riskShort(r))+' target '+tg.rating+(_riskControlStatus(r)==='In place'?', at or below it already, so it is in Dropped out':''),'success');
+  if(next){ const e=document.getElementById('ckr-tl-'+next); if(e) setTimeout(()=>{ try{ e.focus(); }catch(x){} },120); }
+}
+// Gap 11: is this client on the Inspection app? One reading, for the sidebar and for Settings.
+function _inspInUse(){ return (Array.isArray(S.linkedApps) && S.linkedApps.some(l=>l && l.kind==='inspections' && l.remoteTenantId)) || (Array.isArray(S.inspections) && S.inspections.length>0) || (Array.isArray(S.actions) && S.actions.length>0); }
+// Gap 12: a client reading their own sidebar is not looking at "Consultant tools".
+function _navToolsLabel(){
+  const b=document.querySelector('.nav-grp[data-grp="tools"] .nav-grp-btn'); if(!b || !b.lastChild) return;
+  const want=(typeof _viewMode==='undefined' || _viewMode==='consultant') ? 'Consultant tools' : 'Tools';
+  if(b.lastChild.textContent!==want) b.lastChild.textContent=want;
+}
+
 const HOWTO_STEPS=[
   { n:1, title:'Company setup', opens:[{tab:'company'}], what:'Who the client is: the company, the senior leadership team (with emails), key personnel and business units.', how:'Fill in Company identity first. Add key personnel by name: they feed the owner lists. Then press From key personnel on the leadership team card to bring the directors across with their emails: the Top 5 email goes to them, and the leadership meeting starts with them in the room.', feeds:'Owner lists, the Top 5 email, the leadership meeting, every report header.' },
   { n:2, title:'Risk profile (Operation): the discovery questions', opens:[{tab:'risk'}], what:'The questions that tell Compass what the business does. Rules fire from the answers and suggest the risk themes.', how:'Answer them with the client, check the answers Compass flags (where the client’s own documents say otherwise, or two answers disagree), then build the profile. Get these right first: they drive the risks and the legal duties.', feeds:'The risk profile, the legal duties.' },
   { n:3, title:'Risk profile (Operation): the register', opens:[{fn:function(){ _howtoRegister(); }}], what:'Every significant risk the business runs, each with its reference, tier, band and score. Add an issue in the sidebar captures something in one line; it waits at the top as To be assessed.', how:'The register runs in the ladder’s order; the Macro button groups it by theme when you want that. Open a risk. A scored risk opens on its overview: the issue, its rating, What we’re doing about it and Already in place. Full detail gives the numbered tabs: 1 Identify, 2 People & impact, 3 Controls & rating (the standing arrangements), 4 Action delegation & timescale. Every risk needs a score, a target, and an owner and a date on each action.', feeds:'The Risk ladder, the Top 5, the Client execution plan, every report.' },
   { n:4, title:'Legal duties', opens:[{tab:'requirements'}], what:'What the law requires of this business: the policy statement, the legal essentials and the duty headings.', how:'For each duty: is it in place, is it adequate, and what action is needed where it falls short. Tick the assessment criteria under each essential. A gap goes on the risk profile as a risk, so it is managed like any other.', feeds:'Risks on the profile, the Legal duties sheet, the board report.' },
   { n:5, title:'Maturity level', opens:[{tab:'maturity'}], what:'The consultant’s judgement of the six HSG65 areas, in words, not scores.', how:'Mark each area Weak, Developing, Adequate or Strong with a one-line reason. For Weak or Developing, Raise action puts the area on the risk profile and raises the action onto the Client execution plan.', feeds:'Risks on the profile, the Client execution plan, the audit narrative and the review.' },
-  { n:6, title:'Cockpit', opens:[{tab:'cockpit'}], what:'The whole position on one screen: the risk picture, the risk journey, the plan delivered and what is putting the business at risk today. Hover over any block and it says what it shows and why it is there.', how:'Start every visit here. Click a figure to open what is behind it. Customise chooses which blocks this client sees, and their order.', feeds:'Nothing: it only reads the records. A wrong figure here means a record behind it needs correcting.' },
-  { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'The chart of every rated risk not yet under control, numbered from the highest current risk. This is the one order: the live Top 5, the Client execution plan and the risk profile all follow it, the suggested five are simply its top five, each risk showing its reference then the same short title. Risks with no score are flagged Not yet rated in their own section, off the chart.', how:'Read it like a music chart. Now is this month’s position, Last is last month’s, Mths is the months on the ladder, and Move is the symbol: ▲ climber, ▼ faller, = non-mover, NEW new entry, RE re-entry (was under control, came back), ★ biggest faller of the month. Falling is good news. Hover over any symbol for what it means on that risk. In the Not yet rated section, choose the scores on the line and press Save: the risk joins the chart. The boxes start empty and Compass suggests no score. A risk at or below its target drops out to the list at the foot, with the month it dropped out. Compass keeps a position snapshot each month by itself, so the moves show from the second month. The first Top 5 sheet takes the Top 5 ticks; after that the meeting opens from the last sheet and the five change there. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The first Top 5 sheet, the Risk Action Sheet, the Top 5 banner on the Client execution plan, and the order of every other list.' },
+  { n:6, title:'Cockpit', opens:[{tab:'cockpit'}], what:'The whole position on one screen: the risk picture, the risk journey, the plan delivered (it says what its total is made of) and what is putting the business at risk today. Hover over any block and it says what it shows and why it is there.', how:'Start every visit here. Click a figure to open what is behind it. Customise chooses which blocks this client sees, and their order.', feeds:'Nothing: it only reads the records. A wrong figure here means a record behind it needs correcting.' },
+  { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'The chart of every rated risk not yet under control, numbered from the highest current risk. This is the one order: the live Top 5, the Client execution plan and the risk profile all follow it, the suggested five are simply its top five, each risk showing its reference then the same short title. Risks with no score are flagged Not yet rated in their own section, off the chart. Risks with no target are listed under No target yet: they can never drop out until they have one.', how:'Read it like a music chart. Now is this month’s position, Last is last month’s, Mths is the months on the ladder, and Move is the symbol: ▲ climber, ▼ faller, = non-mover, NEW new entry, RE re-entry (was under control, came back), ★ biggest faller of the month. Falling is good news. Hover over any symbol for what it means on that risk. In the Not yet rated and No target yet sections, choose on the line and press Save: an unrated risk joins the chart. The boxes start empty and Compass suggests no score. A risk at or below its target drops out to the list at the foot, with the month it dropped out. Compass keeps a position snapshot each month by itself, so the moves show from the second month. The first Top 5 sheet takes the Top 5 ticks; after that the meeting opens from the last sheet and the five change there. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The first Top 5 sheet, the Risk Action Sheet, the Top 5 banner on the Client execution plan, and the order of every other list.' },
   { n:8, title:'This month’s Top 5 (the meeting)', opens:[{fn:function(){ openLiveTop5(); }}], what:'The front door. One risk a screen, laid out like the sheet the leadership team know, edited live in the meeting.', how:'Open it on the laptop. Its risks run in the ladder’s order. The first time, it holds the ladder’s ticks topped up in ranking order; after that it opens from the last sheet with everything still open. When the sheet has room, Compass offers the next risks with a reason each; when it is full, a strip names the ladder’s top five not on it, and Swap takes the lowest risk off and puts that one on. Its actions stay on the plan. What’s wrong is above the table; against each action: How we fix it, Who, By when, Is it enough, Comments, Done. Done asks Where does this live now? Send saves the sheet as the record of the meeting, downloads the PDF in the same columns and opens the email; attach the PDF in Outlook.', feeds:'The actions themselves (tab 4, the Client execution plan), the sheets as sent, How the client works now.' },
   { n:9, title:'Action sheets (back office)', opens:[{fn:function(){ openActionSheets('top5'); }}], what:'The Top 5, Legal duties and Risk action sheets as PDFs for the client to fill in, and what comes back.', how:'Use it for a Legal duties or Risk action sheet, or when a sheet comes back by email. Import a returned sheet, then decide each line: agree it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Agreed writes the owner, date and comment to the action.', feeds:'The actions, the next sheet.' },
   { n:10, title:'Client execution plan', opens:[{label:'Client execution plan',tab:'execplan'},{label:'Actions',tab:'actions'}], what:'Every action across the business in one list, by month, with its owner, date and status. Actions holds what the Inspection app raises, and shows only when that app is linked.', how:'The client’s own to-do list, in the ladder’s order, one block a band. Its columns are the order every list of actions uses: What’s wrong, How we fix it, Who, By when, Is it enough. Is it enough reads the risk: Yes when its current rating is at or below its target, Not yet when it is above, No target when none is set. Change a date or owner here and it changes on the risk. Complete an action and the close-out asks where it lives now. When the last action on a risk closes, Compass asks Is this issue now under control?', feeds:'The risk’s score and sign-off, How the client works now.' },
@@ -27526,7 +27595,7 @@ const HOWTO_STEPS=[
   { n:13, title:'Risk assessments (OpRAMS)', opens:[{label:'Quick links',tab:'links'}], what:'The task risk assessments and method statements live in the RAMS app. Each hazard carries notes: what is already in place and what is still to arrange.', how:'In OpRAMS, press Send to Compass on the Actions arising tab. In Compass, open the risk and press From a risk assessment: still-to-arrange notes become rows to do, in-place notes go to Already in place, and the assessment goes on the RA register against the risk. OpRAMS shows on Quick links once it is ticked in Admin, in the client’s Config.', feeds:'The risk’s overview, the RA register, How the client works now.' },
   { n:14, title:'Monitoring', opens:[{label:'Assurance records',tab:'monitoring'},{label:'Process assurance',tab:'siteinsp'},{label:'Monthly report',tab:'monthly'}], what:'What the business checks and finds. Assurance records: the month’s figures, incidents, the regulatory tracker of statutory inspections, training and the rest. Process assurance: oversight carried out outside this app, such as site inspections and CDM audits. Monthly report: the inspection figures, shown only when the Inspection app is linked or the client has a service package.', how:'Enter the month’s figures on Assurance records and save them. Keep the regulatory tracker’s dates current: when the Top 5 sheet has room, an overdue or failed check is offered in the meeting. Log each oversight visit on Process assurance.', feeds:'The cockpit’s figures, the suggestions in the meeting, the monthly report.' },
   { n:15, title:'Review and accreditation', opens:[{label:'Risk pathway',tab:'journey'},{label:'Consultant review',tab:'review'},{label:'Consultants audit',tab:'audit'},{label:'Reports',tab:'reports'},{label:'Accreditation',tab:'cas'}], what:'Risk pathway: every risk through six stations, identified to signed off. Consultant review: a quality and progress picture for this client, with your rating over time. Consultants audit: the audit story in numbers, from the baseline snapshot to now. Reports: the board report and every other PDF. Accreditation: the same records against the schemes the client holds or needs.', how:'Use the pathway to show a client how far a risk has come. Record an audit snapshot at each audit visit. Produce the board report and the H&S Management Plan from Reports. On Accreditation, start at step 01: pick the schemes and the role, and only those questions appear.', feeds:'The client, the board, the assessor.' },
-  { n:16, title:'The consultant’s tools', opens:[{label:'Quick links',tab:'links'},{label:'Triage',tab:'triage'},{label:'Settings',tab:'setup'},{label:'Admin',tab:'admin'}], what:'Quick links: the client’s other apps, and the data links to the Inspection app. Triage: client queries, and minutes held off the plan until you act on them. Settings: inspection checklists, the library and report branding. Admin: client tenants, who can sign in, and each client’s subscription.', how:'Triage is where a meeting’s minutes wait: Make this an issue puts one on the register to be assessed. A client who cannot see an app on Quick links needs it ticked in Admin, in the client’s Config.', feeds:'Everything else.' }
+  { n:16, title:'The consultant’s tools', opens:[{label:'Quick links',tab:'links'},{label:'Triage',tab:'triage'},{label:'Settings',tab:'setup'},{label:'Admin',tab:'admin'}], what:'Quick links: the client’s other apps, and the data links to the Inspection app. Triage: client queries, and minutes held off the plan until you act on them. Settings: inspection checklists, the library and report branding; it opens on report branding unless the client is on the Inspection app. Admin: client tenants, who can sign in, and each client’s subscription.', how:'Triage is where a meeting’s minutes wait: Make this an issue puts one on the register to be assessed. A client who cannot see an app on Quick links needs it ticked in Admin, in the client’s Config.', feeds:'Everything else.' }
 ];
 // Step 3: the register sits in a collapsed section below the discovery questions, so open it and go there.
 function _howtoRegister(){
@@ -30787,6 +30856,7 @@ function _legalCardHTML(sec, it, emp, ro){
       </div>
       ${it.workKey?_workDutyTools(sec,it,ro):(ro||(meta&&!it.riskDerived))?(meta&&!it.riskDerived?`<span title="Legal requirement - cannot be removed" style="flex:0 0 auto;color:var(--text-muted);font-size:11px;">🔒</span>`:''):`<button class="btn btn-ghost btn-xs no-print" title="Remove this item" onclick="deleteReqLine('${sec.id}','${it.id}')">${_ic('trash',13)}</button>`}
     </div>
+    ${(it.legalKey==='policy' && stt && stt.label!=='Met' && _policyState().signedDate)?`<div class="req-pol-note" style="font-size:12px;margin:8px 0 0;line-height:1.5;">The statement of intent was signed on ${esc(fmtDate(_policyState().signedDate))}. This line is the assessment of the whole policy, not the statement alone.</div>`:''}
     ${why?`<div style="font-size:12.5px;color:var(--text-muted);margin:8px 0;line-height:1.5;">${esc(why)}${th.note?` <em style="color:#92400E;">${esc(th.note)}</em>`:''}</div>`:(th.note?`<div style="font-size:12px;margin:6px 0;"><em style="color:#92400E;">${esc(th.note)}</em></div>`:'')}
     ${it.workKey?_workDutyWhyHTML(it):''}
     ${_dutyRisksHTML(sec,it,ro)}
@@ -30811,7 +30881,7 @@ function _legalRegisterHTML(ro){
   const pct=items.length?Math.round(inPlace/items.length*100):0;
   const cards=items.length?items.map(it=>_legalCardHTML(sec,it,emp,ro)).join(''):'<div class="ck-pending" style="padding:6px 0;">No legal items - use “Restore legal essentials”.</div>';
   const empNote=emp==null?`<span style="color:#92400E;">Set the employee count in <button class="ck-link" style="display:inline;padding:0;" onclick="switchTab('company')">Company setup</button> to tailor the 5-employee thresholds.</span>`:`Based on ${emp} employee${emp!==1?'s':''}.`;
-  return `<div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Legal essentials - what you must have in place</h3><span class="badge badge-muted">${inPlace}/${items.length} in place</span></div>
+  return `<div class="card" style="margin-bottom:16px;"><div class="card-band"><h3><span class="dot">●</span> Legal essentials - what you must have in place</h3><span class="badge badge-muted">${inPlace}/${items.length} in place${(()=>{ const n=items.filter(it=>!_reqItemAssessed(it)).length; return n?(' · '+n+' not assessed'):''; })()}</span></div>
     <div class="card-body">
       <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:6px;">The things a business must legally have in place to trade. ${empNote}</div>
       <div style="height:8px;background:var(--muted-bg);border-radius:4px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${pct}%;background:var(--success);"></div></div>
@@ -31330,7 +31400,7 @@ function renderRequirements(){
   const g = _reqGaps();
   const gapBadge = document.getElementById('reqGapBadge');
   const rev = _reqReviewedCount();
-  if(gapBadge) gapBadge.textContent = g.assessed ? (g.gaps + ' gap' + (g.gaps!==1?'s':'') + ' / ' + g.assessed + ' assessed' + (rev.reviewed ? (' · ' + rev.reviewed + ' compliant') : '')) : '';
+  if(gapBadge) gapBadge.textContent = g.assessed ? (g.assessed + ' of ' + _reqStats().total + ' lines assessed · ' + g.gaps + ' with gaps' + (rev.reviewed ? (' · ' + rev.reviewed + ' compliant') : '')) : '';
   const addSecBtn = document.getElementById('addReqSectionBtn');
   if(addSecBtn) addSecBtn.style.display = ro ? 'none' : 'inline-flex';
   const repBtn = document.getElementById('reqReportBtn');

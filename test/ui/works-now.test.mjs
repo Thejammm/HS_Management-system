@@ -37,7 +37,7 @@ await seed(page, { riskProfile: [
 {
   const t = await page.evaluate(() => { const b = document.querySelector('.tab-btn[data-tab="works"]'); const nav = [...document.querySelectorAll('.sidebar-nav .tab-btn')].map(x => x.getAttribute('data-tab'));
     applyViewMode(); return { label: b ? b.innerText.replace(/\s+/g, ' ').trim() : '', pos: nav.indexOf('works'), after: nav[nav.indexOf('works') - 1], front: !!b.closest('.nav-grp-front') }; });
-  R.ok(t.label === 'How Testing Client Ltd works now' && t.front && t.after === 'ladder', 'the tab sits in the Front door group after Risk profile and the Risk ladder and carries the client\'s name: "' + t.label + '"');
+  R.ok(t.label === 'How Testing Client Ltd works now' && t.front && t.after === 'execplan', 'the tab sits in the Front door group after the Risk ladder and the Client execution plan and carries the client\'s name: "' + t.label + '"');
   await page.evaluate(() => switchTab('works'));
   await wait(page, 300);
 }

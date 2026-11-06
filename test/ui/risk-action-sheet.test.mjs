@@ -190,13 +190,13 @@ let riskShape = '', riskHeads = '';
     try { btns.forEach(b => b.click()); } finally { window.openActionSheets = keep.s; window.openQuickMinutes = keep.m; }
     const head = L.querySelector('.ckl-headrow');
     return { texts: btns.map(b => b.textContent.trim()), calls, report: /Top 5 (risks )?report|Top 5 Risks/i.test(L.textContent + ' ' + btns.map(b => b.title).join(' ')), fn: __fn('openTopFivePrint'),
-      under: !!tools && !!head && head.nextElementSibling === tools, headBtns: head ? head.querySelectorAll('button').length : -1,
+      under: !!tools && !!head && head.nextElementSibling === tools, headBtns: head ? head.querySelectorAll('button:not(.ckl-head-nr)').length : -1,      // the Not yet rated and No target flags are links to their lists, not tools
       responses: /Responses/.test(L.outerHTML), key: /Tick the Sheet column for the Risk Action Sheet - as many as you like\./.test(L.textContent) };
   });
   R.ok(JSON.stringify(t.texts) === JSON.stringify(['Top 5 action sheet', 'Legal duties sheet', 'Risk action sheet', '✎ Minutes']), 'under the head, one row of tools in order - the Top 5 report button gone: ' + t.texts.join(' | '));
   R.ok(t.calls.join(',') === 'sheets:top5,sheets:legal,sheets:risk,minutes', 'each opens its own thing - the Top 5 sheets, the legal duties sheets, the risk sheets, the minutes (' + t.calls.join(',') + ')');
   R.ok(!t.report && !t.fn, 'nothing on the ladder points at a Top 5 report, and the report is gone from the app');
-  R.ok(t.under && t.headBtns === 0, 'the row sits directly under the head row, and the head row has no buttons left in it');
+  R.ok(t.under && t.headBtns === 0, 'the row of tools sits directly under the head row, and none of the tools are left in it');
   R.ok(!t.responses, 'the word Responses is nowhere on the ladder');
   R.ok(t.key, 'the key says the Sheet column takes as many as you like');
 }

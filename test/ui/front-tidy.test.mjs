@@ -21,7 +21,7 @@ await wait(page, 500);
   const t = await page.evaluate(() => { const b = document.querySelector('.tab-btn[data-tab="ladder"]'); const front = [...document.querySelectorAll('.nav-grp-front .tab-btn')].map(x => x.getAttribute('data-tab'));
     switchTab('ladder'); const p = document.querySelector('#tab-ladder .ckx-panel.ckl');
     return { label: b ? b.innerText.trim() : '', front: front.join(), panel: !!p, lines: p ? p.querySelectorAll('.ckl-line').length : 0, head: p ? (p.querySelector('.ckl-head') || {}).textContent : '', sub: (document.querySelector('#ladderContainer .ck-sub') || {}).innerText || '', onCockpit: !!document.querySelector('#tab-cockpit .ckl') }; });
-  R.ok(t.label === 'Risk ladder' && t.front === 'cockpit,risk,ladder,works', 'Risk ladder sits in the Front door group, right under Risk profile');
+  R.ok(t.label === 'Risk ladder' && t.front === 'cockpit,risk,ladder,execplan,works', 'Risk ladder sits in the Front door group, right under Risk profile');
   R.ok(t.panel && t.lines >= 5 && /Top 5 · 0 of 5/.test(t.head) && t.sub === 'Risk ladder', 'the tab draws the same ladder: every rated risk, the Top 5 and Sheet columns');
   R.ok(!t.onCockpit, 'and the cockpit no longer draws it');
   const k = await page.evaluate(() => { const line = [...document.querySelectorAll('#tab-ladder .ckl-line')].find(l => /fall from height/.test(l.textContent)); const box = line.querySelector('.ckl-t5 input'); box.checked = true; box.dispatchEvent(new Event('change'));

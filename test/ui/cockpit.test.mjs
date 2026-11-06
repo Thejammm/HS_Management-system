@@ -30,7 +30,7 @@ await wait(page, 700);
       counted: want.every(w => new RegExp(w.b.toUpperCase() + '\\s*' + w.n + ' risks?\\b').test(txt)) && /score \d+-\d+/.test(txt),
       demands: /first priority for resource/.test(txt) && /must never sit at 1 · Uncontrolled/.test(txt),
       named: /Fire breaking out at the premises/.test(txt) && /A fall from height during survey work/.test(txt),
-      unrated: /1 risk not yet rated/.test(txt),
+      unrated: /NOT YET RATED\s*1 risk/.test(txt),      // its own section since 6 November 2026
       key: /uncontrolled/.test(txt) && /controlled as reasonably practicable/.test(txt) };
   });
   R.ok(!t.missing, 'the risk ladder is on its own tab, and no longer on the cockpit');

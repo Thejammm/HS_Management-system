@@ -99,6 +99,67 @@ await go();
   const g = await page.evaluate(() => { switchTab('howto'); const t = document.getElementById('howtoContainer').innerText; switchTab('cockpit'); return t; });
   R.ok(/From key personnel/.test(g) && /Swap takes the lowest risk off/.test(g) && /Nothing typed reaches the record/.test(g), 'the guide covers all three');
 }
+// ── gap 4: not yet rated, flagged on the ladder with the boxes inline. Simon: "do not set any likelihood, severity or target scores yourself" ──
+{
+  const UN = () => [
+    { id: 'u1', activity: 'Occupational Health judged Weak', judgeKey: 'oh', hazard: '', actions: [act('u1a', 20)] },
+    { id: 'u2', activity: 'Employers Liability Insurance', reqKey: 'x', hazard: '', actions: [Object.assign(act('u2a', 20), { desc: 'Employers Liability Insurance' })] },
+    { id: 'u3', activity: 'Late invoices upsetting suppliers', mode: 'ops', hazard: '', actions: [] },
+  ];
+  await go({ riskProfile: RISKS().slice(0, 3).concat(UN()) });
+  const blank = () => page.evaluate(() => S.riskProfile.filter(r => /^u/.test(r.id)).map(r => [r.likelihood || '', r.severity || '', r.targetL || '', r.targetS || ''].join('')).join(''));
+  const t = await page.evaluate(() => { switchTab('ladder'); const sec = document.getElementById('ckrSec'), rows = sec ? [...sec.querySelectorAll('.ckr')] : [];
+    return { head: sec ? sec.querySelector('.ckl-band-h').innerText.replace(/\s+/g, ' ') : '', top: (document.querySelector('.ckl-head-nr') || {}).innerText || '', n: rows.length, flags: rows.filter(r => /Not yet rated/i.test(r.querySelector('.ckr-flag').innerText)).length, ref: rows.every(r => !!r.querySelector('.risk-ref')), subs: rows.map(r => r.querySelector('.ckr-sub').innerText), boxes: rows.map(r => r.querySelectorAll('select').length).join(), empty: [...sec.querySelectorAll('select')].every(x => x.value === ''), save: [...sec.querySelectorAll('.ckr button.btn')].every(b => b.disabled), labels: rows.map(r => [...r.querySelectorAll('.ckr-f span')].map(x => x.innerText).join('/')), onChart: [...document.querySelectorAll('#tab-ladder .ckl-band .ckl-title')].some(x => /judged Weak/.test(x.textContent)), chartNo: document.querySelectorAll('#tab-ladder .ckl-band .ckl-line').length }; });
+  R.ok(/NOT YET RATED 3 risks/.test(t.head) && /Compass suggests none/.test(t.head) && /Not yet rated · 3/i.test(t.top), 'the ladder flags them twice: at its head and in their own section: ' + t.head.slice(0, 70));
+  R.ok(t.n === 3 && t.flags === 3 && t.ref, 'each unrated risk has a line with its reference and a Not yet rated flag');
+  R.ok(t.boxes === '4,4,4' && t.empty && t.save, 'four boxes on each line, every one empty, Save not available yet');
+  R.ok(!t.onChart && t.chartNo === 3, 'they are off the chart, and the chart still holds the three rated risks');
+  R.ok(/Raised from Maturity level/.test(t.subs.join()) && /Raised from Legal duties/.test(t.subs.join()) && /Action u1a/.test(t.subs.join()), 'each line says where it came from and shows its action');
+  R.ok(t.subs.some(x => x === 'Raised from Legal duties'), 'an action that only repeats the title is left out');
+  R.ok(t.labels.some(l => /Probability\/Impact/.test(l)) && t.labels.some(l => /Likelihood\/Severity/.test(l)), 'an operational risk reads Probability and Impact, like the register');
+  R.ok(await blank() === '', 'Compass has set no score on any of them: drawing the list wrote nothing');
+  const set = (id, k, v) => page.evaluate((id, k, v) => { const e = document.getElementById('ckr-' + k + '-' + id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); }, id, k, v);
+  const q = id => page.evaluate(id => ({ say: (document.getElementById('ckr-say-' + id) || {}).textContent || '', off: (document.getElementById('ckr-save-' + id) || {}).disabled }), id);
+  await set('u1', 'l', '3'); const a1 = await q('u1'); R.ok(a1.off && a1.say === '', 'one box chosen: Save still off');
+  const dim = await page.evaluate(() => { const off = parseFloat(getComputedStyle(document.getElementById('ckr-save-u1')).opacity); return off; });
+  R.ok(dim < 0.6, 'and it looks off');
+  R.ok(await blank() === '', 'and nothing is written to the risk until Save');
+  await set('u1', 's', '4'); const a2 = await q('u1'); R.ok(!a2.off && /Score 12/.test(a2.say), 'both chosen: it shows the score and Save comes on: ' + a2.say);
+  await set('u1', 'tl', '2'); const a3 = await q('u1'); R.ok(a3.off && /both target boxes, or neither/.test(a3.say), 'half a target stops Save and says why');
+  await set('u1', 'ts', '2');
+  // a part-filled line elsewhere survives another line being saved
+  await set('u2', 'l', '5');
+  const s1 = await page.evaluate(() => { const others = JSON.stringify(S.riskProfile.filter(r => r.id !== 'u1').map(r => [r.id, r.likelihood, r.severity, r.targetL, r.targetS])); document.getElementById('ckr-save-u1').click(); const r = S.riskProfile.find(x => x.id === 'u1'), sec = document.getElementById('ckrSec'); return { saved: [r.likelihood, r.severity, r.targetL, r.targetS].join(), others: others === JSON.stringify(S.riskProfile.filter(x => x.id !== 'u1').map(x => [x.id, x.likelihood, x.severity, x.targetL, x.targetS])), rows: sec.querySelectorAll('.ckr').length, kept: document.getElementById('ckr-l-u2').value, chart: [...document.querySelectorAll('#tab-ladder .ckl-band .ckl-title')].map(x => x.textContent), log: (r.log || []).map(l => l.text).join(), toast: document.getElementById('toast').textContent, top: (document.querySelector('.ckl-head-nr') || {}).innerText || '' }; });
+  R.ok(s1.saved === '3,4,2,2' && s1.others, 'Save writes those four scores on that risk only: ' + s1.saved);
+  R.ok(s1.rows === 2 && s1.chart.some(x => /judged Weak/.test(x)) && /Not yet rated · 2/i.test(s1.top), 'it leaves the list and joins the chart, and the count falls');
+  R.ok(s1.kept === '5', 'what you had chosen on the next line is still there');
+  R.ok(/Rated 12 on the risk ladder/.test(s1.log) && /now number \d+ on the ladder/.test(s1.toast), 'the log records it, and it says where it landed: ' + s1.toast);
+  const foc = await page.evaluate(() => new Promise(res => setTimeout(() => res((document.activeElement || {}).id || ''), 200)));
+  R.ok(foc === 'ckr-l-u3', 'saving the last line, the cursor moves to the line still waiting above it: ' + foc);
+  // a score at or below its target goes straight to Dropped out, and it says so first
+  await set('u2', 's', '1'); await set('u2', 'tl', '5'); await set('u2', 'ts', '1');
+  const a4 = await q('u2'); R.ok(/straight to Dropped out/.test(a4.say), 'a score at its target warns before Save: ' + a4.say);
+  await page.evaluate(() => document.getElementById('ckr-save-u2').click());
+  const foc2 = await page.evaluate(() => new Promise(res => setTimeout(() => res((document.activeElement || {}).id || ''), 200)));
+  R.ok(foc2 === 'ckr-l-u3', 'and saving a line with one under it, the cursor moves down to it, ready for the next score: ' + foc2);
+  const d = await page.evaluate(() => [...document.querySelectorAll('#tab-ladder .ckc-outs .ckl-title')].map(x => x.textContent).join());
+  R.ok(/Employers Liability/.test(d), 'and it does: ' + d);
+  // no target is fine; reload keeps it all
+  await set('u3', 'l', '2'); await set('u3', 's', '3');
+  await page.evaluate(() => document.getElementById('ckr-save-u3').click());
+  const e = await page.evaluate(() => ({ sec: !!document.getElementById('ckrSec'), top: !!document.querySelector('.ckl-head-nr'), en: _riskEnough(S.riskProfile.find(r => r.id === 'u3')).t }));
+  R.ok(!e.sec && !e.top && e.en === 'No target', 'with none left the section and the flag go; a risk saved with no target reads No target');
+  await page.reload({ waitUntil: 'networkidle0' }); await page.waitForFunction('typeof S === "object" && typeof switchTab === "function"'); await wait(page, 300);
+  const f = await page.evaluate(() => { const r = S.riskProfile.find(x => x.id === 'u1'); return [r.likelihood, r.severity, r.targetL, r.targetS].join(); });
+  R.ok(f === '3,4,2,2', 'after a reload the scores are still there');
+  // read only and the client's view see the flag, not the boxes
+  const v = await page.evaluate(() => { S.riskProfile.push({ id: 'u9', activity: 'Another unrated risk', hazard: '', actions: [] }); const keep = window._roLocked; window._roLocked = () => true; switchTab('ladder'); const sec = document.getElementById('ckrSec'); const ro = { flag: !!sec && /Not yet rated/i.test(sec.innerText), boxes: sec ? sec.querySelectorAll('select').length : -1, says: sec ? /Compass suggests/.test(sec.innerText) : true }; window._roLocked = keep; const was = _viewMode; _viewMode = 'management'; renderLadder(); const s2 = document.getElementById('ckrSec'); const cl = { flag: !!s2, boxes: s2 ? s2.querySelectorAll('select').length : -1 }; _viewMode = was; renderLadder(); return { ro, cl }; });
+  R.ok(v.ro.flag && v.ro.boxes === 0 && !v.ro.says && v.cl.flag && v.cl.boxes === 0, 'a read-only login and the client\'s view see the flag, with no boxes');
+  const col = await page.evaluate(() => { const bad = []; const hot = c => { const m = /rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)/.exec(c); if (!m) return false; const r = +m[1], g = +m[2], b = +m[3], a = m[4] === undefined ? 1 : +m[4]; return a > 0.05 && r > 150 && r - b > 90 && g < r - 50; }; document.querySelectorAll('#ckrSec, #ckrSec *').forEach(el => { const st = getComputedStyle(el); for (const k of ['color', 'backgroundColor']) if (hot(st[k])) bad.push(el.className); }); return bad; });
+  R.ok(!col.length, 'no red in the section');
+  const g = await page.evaluate(() => { switchTab('howto'); const t = document.getElementById('howtoContainer').innerText; switchTab('cockpit'); return t; });
+  R.ok(/flagged Not yet rated/.test(g) && /Compass suggests no score/.test(g), 'the guide covers it');
+}
 // ── first use: nothing to list, nothing breaks ──
 {
   await seed(page, { riskProfile: [], actionPlan: [], company: { tradingName: 'Testing Client Ltd', slt: [], personnel: [] } }, 'works');

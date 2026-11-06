@@ -4583,6 +4583,25 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .wk-note-t{flex:1;min-width:0;}
     .wk-note-t b{margin-left:5px;}
     .wk-note-t div{color:var(--text-muted);margin-top:2px;}
+    /* Not yet rated, on the ladder */
+    .ckr-sec{border-left:4px solid #757575;border-top:1px solid var(--border);}
+    .ckr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:14px;align-items:center;padding:8px 10px 8px 12px;border-top:1px solid var(--border);}
+    .ckr-t{min-width:0;}
+    .ckr-name{all:unset;cursor:pointer;font-size:13.5px;font-weight:600;line-height:1.35;color:var(--text);margin:0 8px 0 6px;overflow-wrap:anywhere;}
+    .ckr-name:hover{text-decoration:underline;text-underline-offset:2px;}
+    .ckr-name:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+    .ckr-flag{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text);border:1px solid #757575;padding:0 5px;line-height:15px;white-space:nowrap;display:inline-block;}
+    .ckr-sub{font-size:11.5px;color:var(--text-muted);margin-top:3px;overflow-wrap:anywhere;}
+    .ckr-boxes{display:flex;align-items:flex-end;gap:6px;}
+    .ckr-f{display:flex;flex-direction:column;gap:2px;font-size:9.5px;font-weight:700;letter-spacing:.02em;color:var(--text-muted);width:62px;line-height:1.15;}
+    .ckr-f span{min-height:22px;display:flex;align-items:flex-end;}
+    .ckr-f select{width:100%;font-size:12.5px;padding:3px 4px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:var(--text);}
+    .ckr-gap{width:6px;}
+    .ckr-boxes .btn[disabled]{opacity:.4;cursor:not-allowed;}
+    .ckr-say{grid-column:1 / -1;text-align:right;font-size:11.5px;font-weight:600;color:var(--text);min-height:0;}
+    .ckr-say:empty{display:none;}
+    .ckl-head-nr{all:unset;cursor:pointer;margin-left:14px;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text);text-decoration:underline;text-underline-offset:2px;}
+    @container (max-width:760px){ .ckr{grid-template-columns:minmax(0,1fr);row-gap:6px;} .ckr-say{text-align:left;} }
     .wk-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px;}
     .wk-title{font-size:21px;font-weight:800;line-height:1.25;margin:2px 0 4px;}
     .wk-chips{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 8px;}
@@ -4749,8 +4768,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .ckl-t5,.ckl-sh{align-self:start;min-height:22px;}
     .ckl-t5{grid-area:t5;}
     .ckl-sh{grid-area:sh;}
-    .ckl-unrated{font-size:11.5px;color:var(--text-muted);padding:8px 0 0;}
-    .ckl-key{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11.5px;color:var(--text-muted);margin-top:10px;}
+        .ckl-key{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11.5px;color:var(--text-muted);margin-top:10px;}
     .ckl-key .ckl-dot{margin-right:5px;}
     .ckl-key-ops{display:inline-block;width:16px;height:10px;border:1px dashed #64748B;margin-right:5px;vertical-align:-1px;}
     .ckl-key-note{flex-basis:100%;}
@@ -15953,7 +15971,8 @@ const COCKPIT_WIDGETS = {
       const unrated=B.rows.filter(z=>!z.sc.priority);
       return '<div class="ckx-panel ckl"><h4>Risk ladder</h4><div class="ckl-headrow"><span class="ckl-sub">Ranked by current risk rating, highest first. Falling is good news.</span>'
         +'<span class="ckl-head" title="This month’s five priorities - the same five as the Top 5 on the execution plan">Top 5 · '+n5+' of '+TOP5_MAX+' for '+esc(_top5MonthLabel(m5))+'</span>'
-        +'<span class="ckl-head ckl-head-sh" title="The risks on the Risk Action Sheet for '+esc(_top5MonthLabel(m5))+' - tick as many as you like">Sheet · '+sh.length+'</span></div>'
+        +'<span class="ckl-head ckl-head-sh" title="The risks on the Risk Action Sheet for '+esc(_top5MonthLabel(m5))+' - tick as many as you like">Sheet · '+sh.length+'</span>'
+        +(unrated.length?('<button type="button" class="ckl-head-nr no-print" onclick="_ckrJump()" title="These risks have no score yet, so they are not on the chart. Go to the list">Not yet rated · '+unrated.length+'</button>'):'')+'</div>'
         // One row of tools, so the cockpit is the only screen open in the meeting.
         +(tools?('<div class="ckl-tools no-print">'
           +'<button class="btn btn-outline btn-xs" onclick="openActionSheets(\'top5\')" title="Five actions out to the leadership team with the controls we recommend; their comments, who and by when come back against each control, a decision each">Top 5 action sheet</button>'
@@ -15965,11 +15984,11 @@ const COCKPIT_WIDGETS = {
         +'<div class="ckl-wrap"><div class="ckl-cols" aria-hidden="true"><span class="ckl-c-pos" title="This month’s position">Now</span><span class="ckl-c-last" title="Last month’s position">Last</span><span class="ckl-c-mths" title="How many months it has been on the ladder">Mths</span><span class="ckl-c-move" title="The move since last month. Falling is good news">Move</span><span class="ckl-c-ref">Ref</span><span class="ckl-c-risk">Risk</span><span class="ckl-c-sc">Score</span>'
         +'<span class="ckl-c-t5" title="This month’s five priorities">Top 5</span><span class="ckl-c-sh" title="The Risk Action Sheet">Sheet</span></div>'
         +['Critical','High','Medium','Low'].map(band).join('')
+        +_ckrSectionHTML()
         +(()=>{ const gone=B.rows.filter(z=>z.sc.priority && z.dep.ctl==='In place').map(z=>({ z, m:(CH.out[z.id]||{}).month||'' })).sort((a,b)=>String(b.m).localeCompare(String(a.m))||_ladderCmp(a.z.r,b.z.r));
           return '<section class="ckc-outs"><div class="ckl-band-h"><span class="ckl-band-n">DROPPED OUT</span><span class="ckl-band-c">'+gone.length+' risk'+(gone.length!==1?'s':'')+'</span><span class="ckl-band-m">Now under control: at or below their target, and off the ladder. Good news.</span></div>'
             +(gone.length?gone.map(x=>row(x.z,x.z.sc.priority,true)).join(''):'<div class="ckl-none">Nothing has dropped out yet.</div>')+'</section>'; })()
         +'</div>'
-        +(unrated.length?('<div class="ckl-unrated">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name)).join(', ')+'</div>'):'')
         +_chartSymbolKeyHTML()
         +'<div class="ckl-key"><span><i class="ckl-dot ckl-dot-unc"></i>uncontrolled</span><span><i class="ckl-dot ckl-dot-part"></i>no residual target set</span>'
         +'<span><i class="ckl-dot ckl-dot-ok"></i>controlled as reasonably practicable</span><span><i class="ckl-dot ckl-dot-rev"></i>controlled - review due</span>'
@@ -27415,6 +27434,82 @@ function _t5TeamStripHTML(ro){
 }
 function t5TeamFromKey(){ addSltFromPersonnel(); _t5Render(); }
 
+// ── Not yet rated (Simon, 6 November 2026): "do not set any likelihood, severity or
+// target scores yourself ... a list of the unrated risks with the scoring boxes inline,
+// and flag them on the ladder as not yet rated. I'll do the scoring." Every box starts
+// empty, Compass suggests nothing, and nothing is saved until Save on the line. What is
+// chosen but not saved is held in memory only, so another line's Save cannot lose it.
+var _ckrDraft={};
+function _ladderUnrated(){ return _riskDisplayOrder().filter(r=>r && !r.deleted && !_riskScore(r).rating); }
+function _ckrCanRate(){ return !_roLocked() && !(typeof _empView==='function' && _empView()) && _isConsultantish() && (typeof _viewMode==='undefined' || _viewMode==='consultant'); }
+function _ckrFrom(r){
+  if(r.judgeKey) return 'Raised from Maturity level';
+  if(r.reqKey) return 'Raised from Legal duties';
+  if(r.quick) return 'Raised as an issue';
+  return 'On the risk profile';
+}
+function _ckrAction(r){ const a=(r.actions||[]).find(x=>x && !x.deleted && !x.hideFromPlan && String(x.desc||'').trim()), t=a?String(a.desc).trim():''; return t.toLowerCase()===_riskFullTitle(r).toLowerCase()?'':t; }      // a legal line's action often just repeats its title
+// What the line says as the boxes are filled in, and whether it can be saved. Reads the boxes, writes nothing.
+function _ckrRead(d){
+  const now=_scorePair(d.l,d.s), tgt=_scorePair(d.tl,d.ts), half=(!!d.tl)!==(!!d.ts);
+  let say='';
+  if(now.rating) say='Score '+now.rating+' · '+now.priority;
+  if(half) say+=(say?'. ':'')+'Choose both target boxes, or neither';
+  else if(now.rating && tgt.rating && now.rating<=tgt.rating) say+='. At or below its target, so it goes straight to Dropped out';
+  return { say, ok:!!now.rating && !half };
+}
+function _ckrSelect(id, k, label, tip, val){
+  const o=['<option value=""></option>'].concat([1,2,3,4,5].map(n=>'<option value="'+n+'"'+(String(val||'')===String(n)?' selected':'')+'>'+n+'</option>')).join('');
+  return '<label class="ckr-f" title="'+esc(tip)+'"><span>'+esc(label)+'</span><select id="ckr-'+k+'-'+id+'" onchange="ladderRateInput(\''+id+'\')">'+o+'</select></label>';
+}
+function _ckrRowHTML(r, can){
+  const id=String(r.id).replace(/[^a-z0-9_]/gi,''), ops=_riskMode(r)==='ops', act=_ckrAction(r), full=_riskFullTitle(r);
+  const L=ops?'Probability':'Likelihood', S=ops?'Impact':'Severity', d=_ckrDraft[id]||{}, read=_ckrRead(d);
+  const head='<div class="ckr-t"><div>'+_riskRefChip(r)+'<button type="button" class="ckr-name" onclick="_gotoRisk(\''+id+'\')" title="'+esc(full)+' - open this risk">'+esc(_riskShort(r))+'</button><span class="ckr-flag" title="This risk has no score yet, so it is not on the chart">Not yet rated</span></div>'
+    +'<div class="ckr-sub">'+esc(_ckrFrom(r))+(act?(' · '+esc(act.length>110?(act.slice(0,110).replace(/\s+\S*$/,'')+'…'):act)):'')+'</div></div>';
+  if(!can) return '<div class="ckr ckr-ro" id="ckr-'+id+'">'+head+'</div>';
+  return '<div class="ckr" id="ckr-'+id+'">'+head
+    +'<div class="ckr-boxes no-print">'
+    +_ckrSelect(id,'l',L,L+' now, 1 to 5',d.l)+_ckrSelect(id,'s',S,S+' now, 1 to 5',d.s)
+    +'<span class="ckr-gap"></span>'
+    +_ckrSelect(id,'tl','Target '+L.toLowerCase(),'The '+L.toLowerCase()+' you are aiming for, 1 to 5. Optional',d.tl)+_ckrSelect(id,'ts','Target '+S.toLowerCase(),'The '+S.toLowerCase()+' you are aiming for, 1 to 5. Optional',d.ts)
+    +'<button type="button" class="btn btn-primary btn-xs" id="ckr-save-'+id+'"'+(read.ok?'':' disabled')+' onclick="ladderRateSave(\''+id+'\')" title="Saves these scores on the risk. Until then nothing has changed">Save</button>'
+    +'</div><div class="ckr-say no-print" id="ckr-say-'+id+'">'+esc(read.say)+'</div></div>';
+}
+function _ckrSectionHTML(){
+  const list=_ladderUnrated(); if(!list.length) return '';
+  const can=_ckrCanRate();
+  return '<section class="ckr-sec" id="ckrSec"><div class="ckl-band-h"><span class="ckl-band-n">NOT YET RATED</span><span class="ckl-band-c">'+list.length+' risk'+(list.length!==1?'s':'')+'</span>'
+    +'<span class="ckl-band-m">No score yet, so not on the chart and not in the ranking.'+(can?' Choose the scores and press Save on the line. Compass suggests none.':'')+'</span></div>'
+    +list.map(r=>_ckrRowHTML(r,can)).join('')+'</section>';
+}
+function _ckrJump(){ const el=document.getElementById('ckrSec'); if(el) el.scrollIntoView({ behavior:'smooth', block:'start' }); }
+function ladderRateInput(id){
+  const v=k=>{ const e=document.getElementById('ckr-'+k+'-'+id); return e?e.value:''; };
+  const d={ l:v('l'), s:v('s'), tl:v('tl'), ts:v('ts') }, read=_ckrRead(d);
+  _ckrDraft[id]=d;
+  const say=document.getElementById('ckr-say-'+id), btn=document.getElementById('ckr-save-'+id);
+  if(say) say.textContent=read.say;
+  if(btn) btn.disabled=!read.ok;
+}
+function ladderRateSave(id){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x && String(x.id)===id), d=_ckrDraft[id]||{}; if(!r) return;
+  if(!_ckrRead(d).ok) return;
+  const order=_ladderUnrated().map(x=>String(x.id)), at=order.indexOf(id), next=order[at+1]||order[at-1]||'';
+  updateRiskField(r.id,'likelihood',String(d.l));
+  updateRiskField(r.id,'severity',String(d.s));
+  if(d.tl && d.ts){ updateRiskField(r.id,'targetL',String(d.tl)); updateRiskField(r.id,'targetS',String(d.ts)); }
+  const sc=_riskScore(r);
+  _logAdd(r,'comment','Rated '+sc.rating+' on the risk ladder ('+d.l+' x '+d.s+')'+((d.tl&&d.ts)?(', target '+_riskTarget(r).rating+' ('+d.tl+' x '+d.ts+')'):''));
+  delete _ckrDraft[id];
+  saveData();
+  _keepScroll(renderLadder);
+  const ch=_chartView(), pos=(ch.rows[r.id]||{}).pos, ref=_riskRefOf(r)||_riskShort(r);
+  showToast('✓ '+ref+' rated '+sc.rating+(pos?(', now number '+pos+' on the ladder'):', at or below its target, so it is in Dropped out'),'success');
+  if(next){ const e=document.getElementById('ckr-l-'+next); if(e) setTimeout(()=>{ try{ e.focus(); }catch(x){} },120); }
+}
+
 const HOWTO_STEPS=[
   { n:1, title:'Company setup', opens:[{tab:'company'}], what:'Who the client is: the company, the senior leadership team (with emails), key personnel and business units.', how:'Fill in Company identity first. Add key personnel by name: they feed the owner lists. Then press From key personnel on the leadership team card to bring the directors across with their emails: the Top 5 email goes to them, and the leadership meeting starts with them in the room.', feeds:'Owner lists, the Top 5 email, the leadership meeting, every report header.' },
   { n:2, title:'Risk profile (Operation): the discovery questions', opens:[{tab:'risk'}], what:'The questions that tell Compass what the business does. Rules fire from the answers and suggest the risk themes.', how:'Answer them with the client, check the answers Compass flags (where the client’s own documents say otherwise, or two answers disagree), then build the profile. Get these right first: they drive the risks and the legal duties.', feeds:'The risk profile, the legal duties.' },
@@ -27422,7 +27517,7 @@ const HOWTO_STEPS=[
   { n:4, title:'Legal duties', opens:[{tab:'requirements'}], what:'What the law requires of this business: the policy statement, the legal essentials and the duty headings.', how:'For each duty: is it in place, is it adequate, and what action is needed where it falls short. Tick the assessment criteria under each essential. A gap goes on the risk profile as a risk, so it is managed like any other.', feeds:'Risks on the profile, the Legal duties sheet, the board report.' },
   { n:5, title:'Maturity level', opens:[{tab:'maturity'}], what:'The consultant’s judgement of the six HSG65 areas, in words, not scores.', how:'Mark each area Weak, Developing, Adequate or Strong with a one-line reason. For Weak or Developing, Raise action puts the area on the risk profile and raises the action onto the Client execution plan.', feeds:'Risks on the profile, the Client execution plan, the audit narrative and the review.' },
   { n:6, title:'Cockpit', opens:[{tab:'cockpit'}], what:'The whole position on one screen: the risk picture, the risk journey, the plan delivered and what is putting the business at risk today. Hover over any block and it says what it shows and why it is there.', how:'Start every visit here. Click a figure to open what is behind it. Customise chooses which blocks this client sees, and their order.', feeds:'Nothing: it only reads the records. A wrong figure here means a record behind it needs correcting.' },
-  { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'The chart of every rated risk not yet under control, numbered from the highest current risk. This is the one order: the live Top 5, the Client execution plan and the risk profile all follow it, the suggested five are simply its top five, each risk showing its reference then the same short title. Risks not yet rated are counted, not ranked.', how:'Read it like a music chart. Now is this month’s position, Last is last month’s, Mths is the months on the ladder, and Move is the symbol: ▲ climber, ▼ faller, = non-mover, NEW new entry, RE re-entry (was under control, came back), ★ biggest faller of the month. Falling is good news. Hover over any symbol for what it means on that risk. A risk at or below its target drops out to the list at the foot, with the month it dropped out. Compass keeps a position snapshot each month by itself, so the moves show from the second month. The first Top 5 sheet takes the Top 5 ticks; after that the meeting opens from the last sheet and the five change there. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The first Top 5 sheet, the Risk Action Sheet, the Top 5 banner on the Client execution plan, and the order of every other list.' },
+  { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'The chart of every rated risk not yet under control, numbered from the highest current risk. This is the one order: the live Top 5, the Client execution plan and the risk profile all follow it, the suggested five are simply its top five, each risk showing its reference then the same short title. Risks with no score are flagged Not yet rated in their own section, off the chart.', how:'Read it like a music chart. Now is this month’s position, Last is last month’s, Mths is the months on the ladder, and Move is the symbol: ▲ climber, ▼ faller, = non-mover, NEW new entry, RE re-entry (was under control, came back), ★ biggest faller of the month. Falling is good news. Hover over any symbol for what it means on that risk. In the Not yet rated section, choose the scores on the line and press Save: the risk joins the chart. The boxes start empty and Compass suggests no score. A risk at or below its target drops out to the list at the foot, with the month it dropped out. Compass keeps a position snapshot each month by itself, so the moves show from the second month. The first Top 5 sheet takes the Top 5 ticks; after that the meeting opens from the last sheet and the five change there. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The first Top 5 sheet, the Risk Action Sheet, the Top 5 banner on the Client execution plan, and the order of every other list.' },
   { n:8, title:'This month’s Top 5 (the meeting)', opens:[{fn:function(){ openLiveTop5(); }}], what:'The front door. One risk a screen, laid out like the sheet the leadership team know, edited live in the meeting.', how:'Open it on the laptop. Its risks run in the ladder’s order. The first time, it holds the ladder’s ticks topped up in ranking order; after that it opens from the last sheet with everything still open. When the sheet has room, Compass offers the next risks with a reason each; when it is full, a strip names the ladder’s top five not on it, and Swap takes the lowest risk off and puts that one on. Its actions stay on the plan. What’s wrong is above the table; against each action: How we fix it, Who, By when, Is it enough, Comments, Done. Done asks Where does this live now? Send saves the sheet as the record of the meeting, downloads the PDF in the same columns and opens the email; attach the PDF in Outlook.', feeds:'The actions themselves (tab 4, the Client execution plan), the sheets as sent, How the client works now.' },
   { n:9, title:'Action sheets (back office)', opens:[{fn:function(){ openActionSheets('top5'); }}], what:'The Top 5, Legal duties and Risk action sheets as PDFs for the client to fill in, and what comes back.', how:'Use it for a Legal duties or Risk action sheet, or when a sheet comes back by email. Import a returned sheet, then decide each line: agree it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Agreed writes the owner, date and comment to the action.', feeds:'The actions, the next sheet.' },
   { n:10, title:'Client execution plan', opens:[{label:'Client execution plan',tab:'execplan'},{label:'Actions',tab:'actions'}], what:'Every action across the business in one list, by month, with its owner, date and status. Actions holds what the Inspection app raises, and shows only when that app is linked.', how:'The client’s own to-do list, in the ladder’s order, one block a band. Its columns are the order every list of actions uses: What’s wrong, How we fix it, Who, By when, Is it enough. Is it enough reads the risk: Yes when its current rating is at or below its target, Not yet when it is above, No target when none is set. Change a date or owner here and it changes on the risk. Complete an action and the close-out asks where it lives now. When the last action on a risk closes, Compass asks Is this issue now under control?', feeds:'The risk’s score and sign-off, How the client works now.' },

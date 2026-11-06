@@ -60,7 +60,7 @@ await page.evaluate(() => switchTab('risk')); await wait(page, 500);
 const reg = await page.evaluate(() => { const th = [...document.querySelectorAll('table.rpt thead th')].map(x => x.textContent.trim());
   const box = document.createElement('tbody'); box.innerHTML = _riskRowHTML(S.riskProfile); return { th, cells: [...box.querySelectorAll('tr')].map(tr => tr.children[2].textContent) }; });
 R.ok(reg.th[2] === 'Tier' && reg.cells.every(c => /^TIER [1-4]$/.test(c)), 'the register has a Tier column on every row (' + reg.cells.join(', ') + ')');
-const box = await page.evaluate(async () => { const r = S.riskProfile.find(x => x.libKey === 'workequip'); _riskOpenModal(r.id); await new Promise(z => setTimeout(z, 400));
+const box = await page.evaluate(async () => { const r = S.riskProfile.find(x => x.libKey === 'workequip'); _riskOpenModal(r.id); _riskDetailTab('summary'); await new Promise(z => setTimeout(z, 400));      // the Summary tab: a scored risk opens on its overview since Stage A
   const b = [...document.querySelectorAll('.dg-acts')].find(x => /^Priority/.test((x.querySelector('.dg-ah') || {}).textContent || ''));
   return { chip: (x => !!x && x.options[x.selectedIndex].text === 'TIER 1 · auto')(document.querySelector('select.rc-chip')), txt: b ? b.textContent.replace(/\s+/g, ' ') : '', sel: !!(b && b.querySelector('select')), inp: !!(b && b.querySelector('input[type=text]')) }; });
 R.ok(box.chip && /Tier 1s*Could kill, enforced hard · from Work equipment/.test(box.txt) && box.sel && box.inp, 'an open risk shows its tier in the header and a Priority box with the reason, the override and the seen-on-site line');

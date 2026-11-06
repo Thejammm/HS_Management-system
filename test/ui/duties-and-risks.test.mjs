@@ -55,7 +55,7 @@ const follow = await page.evaluate(() => { const sec = S.requirements.find(s => 
 R.ok(follow.st === 'Not in place' && follow.tier === 2, 'marking a duty not in place, or occasional, shows on the risk (' + follow.st + ', tier ' + follow.tier + ')');
 
 // ── the Summary box, and the way back to the duty ──
-const box = await page.evaluate(async () => { const r = S.riskProfile.find(x => x.libKey === 'workequip'); switchTab('risk'); _riskOpenModal(r.id); await new Promise(z => setTimeout(z, 400));
+const box = await page.evaluate(async () => { const r = S.riskProfile.find(x => x.libKey === 'workequip'); switchTab('risk'); _riskOpenModal(r.id); _riskDetailTab('summary'); await new Promise(z => setTimeout(z, 400));      // the Summary tab: a scored risk opens on its overview since Stage A
   const b = [...document.querySelectorAll('.dg-acts')].find(x => /^Legal duties/.test((x.querySelector('.dg-ah') || {}).textContent || ''));
   const rows = b ? [...b.querySelectorAll('.dg-act')].map(x => x.textContent.replace(/\s+/g, ' ').trim()) : [];
   if (b) b.querySelector('.dg-act').click(); await new Promise(z => setTimeout(z, 500));

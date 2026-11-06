@@ -243,6 +243,10 @@ const answer = async (k, boxes, how) => {
   await goRisk(3);
   await tick('a8', true);
   await page.evaluate(() => { document.getElementById('t5StickHow').value = 'All licences seen'; t5StickLater(); });
+  // its only action done: "Is this issue now under control?" comes up over the meeting (Stage A); Not yet logs why and goes
+  await wait(page, 450);
+  const nc = await page.evaluate(() => { const o = !!document.getElementById('rescoreOverlay'); if (o) { document.getElementById('rescoreWhy').value = 'Insurance renewal still to check'; rsNotYet('r4'); } return { o, gone: !document.getElementById('rescoreOverlay'), log: (S.riskProfile.find(r => r.id === 'r4').log || []).map(l => l.text).join() }; });
+  R.ok(nc.o && nc.gone && /Not yet under control: Insurance renewal/.test(nc.log), 'the last item on a risk done from the meeting: the under-control question comes up; Not yet logs why and goes');
   const a8 = await act('a8');
   R.ok(a8.status === 'Complete' && !!a8.stickDue && !a8.embed && a8.log.some(l => /How it was done: All licences seen/.test(l.text)), 'Later: done stands, and it is flagged');
   const s = await page.evaluate(() => ({ strip: (document.querySelector('.t5-strip-stick') || {}).innerText || '', ask: /Where does this live now/.test(document.getElementById('t5r-a8').innerText) }));

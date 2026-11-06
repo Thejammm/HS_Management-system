@@ -54,12 +54,16 @@ await wait(page, 500);
 {
   const t = await page.evaluate(() => {
     const ov = document.getElementById('riskModalOverlay');
-    return { open: !!ov, title: (document.getElementById('ract-v1') || {}).value || '',
+    // a scored risk opens on its overview (Stage A, 5 November 2026); the tabs are behind Full detail
+    const overview = _riskSelTab === 'loop' && !ov.querySelector('[role="tab"]') && !!ov.querySelector('.rs-bar .t5-link');
+    _riskDetailTab('summary');
+    return { open: !!ov, overview, title: (document.getElementById('ract-v1') || {}).value || '',
       tabs: [...document.querySelectorAll('#riskModalOverlay [role="tab"]')].map(x => x.textContent.replace(/\s+/g, ' ').trim()) };
   });
   R.ok(t.open && /Fire breaking out at the premises/.test(t.title), 'clicking a risk opens it in the modal');
-  R.ok(t.tabs.length === 5 && /Identify/.test(t.tabs[1]) && /Controls & rating/.test(t.tabs[3]) && /Action delegation/.test(t.tabs[4]),
-    'the modal carries Summary, Identify, People & impact, Controls & rating, Action delegation');
+  R.ok(t.overview, 'a scored risk opens on its overview, the tabs behind Full detail (Stage A, 5 November 2026)');
+  R.ok(t.tabs.length === 6 && /Overview/.test(t.tabs[0]) && /Identify/.test(t.tabs[2]) && /Controls & rating/.test(t.tabs[4]) && /Action delegation/.test(t.tabs[5]),
+    'Full detail carries Overview, Summary, Identify, People & impact, Controls & rating, Action delegation');
 }
 
 // ── tab 3: the control table, the reality box, the score gate ──

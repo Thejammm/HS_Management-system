@@ -3288,6 +3288,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     </div>
     <div class="header-right">
       <button class="btn btn-primary btn-sm no-print" id="t5Btn" onclick="openLiveTop5()" title="The five risks in front of the leadership team, edited live in the meeting">This month's Top 5</button>
+      <button class="btn btn-outline btn-sm no-print" id="qaBtn" onclick="quickAddIssue()" title="Capture an issue in one line - it goes on the register to be assessed">＋ Add an issue</button>
       <span class="save-indicator" id="saveIndicator"></span>
       <button class="btn btn-ghost btn-sm no-print" id="themeToggle" onclick="toggleTheme()" title="Toggle light / dark mode" aria-label="Toggle light or dark mode" style="color:var(--text-muted);border-color:var(--border);padding:6px 9px;line-height:0;"><span id="themeToggleIcon"></span></button>
       <button class="btn btn-ghost btn-sm no-print" id="backupBtn" onclick="exportEverything()" title="Download a full JSON backup of your local data" style="color:var(--text-muted);border-color:var(--border);">⭳<span class="hdr-lab">&nbsp;Backup</span></button>
@@ -3812,6 +3813,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
           <div id="riskScoreKey"></div>
           <div id="riskRegisterTools" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
             <button class="btn btn-primary no-print" id="addRiskBtn" onclick="addRiskEntry()">＋ Add risk</button>
+            <button class="btn btn-outline no-print" id="addIssueBtn" onclick="quickAddIssue()" title="Capture an issue in one line - it goes on the register to be assessed">＋ Add an issue</button>
             <button class="btn btn-outline no-print" id="addLibRiskBtn" onclick="openHazardLibrary()">＋ From hazard library</button>
             <button class="btn btn-ghost no-print" id="riskBackupBtn" onclick="backupRiskData()" title="Download a JSON backup of this client's risk data">Backup data (JSON)</button>
             <button class="btn btn-outline no-print" id="riskAnalysisBtn" onclick="openRiskAnalysis()" title="The deep views: risks by macro category, the SIF register and the consultant judgement">Analysis</button>
@@ -4494,6 +4496,25 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .t5-sf input,.t5-sf select{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--input-bg);color:inherit;font:inherit;font-size:13px;}
     .t5-s2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
     .t5-stick-f{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border);}
+    /* The loop, Stage A: the To be assessed marks, the risk overview and the under-control prompt. Same flat look as the live Top 5. */
+    .rs-strip{border:1px solid var(--border);border-left:4px solid var(--accent);background:var(--surface);padding:6px 12px;margin-bottom:8px;font-size:12.5px;line-height:1.6;}
+    .rs-tba{display:inline-block;margin-left:6px;padding:0 6px;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#1D1F20;background:var(--accent);vertical-align:1px;}
+    .rs-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:9px;padding:7px 0;border-bottom:1px solid var(--border);}
+    .rs-bar-t{font-size:12.8px;font-weight:700;color:var(--accent-dark,var(--accent));}
+    .rs-top{margin:0 0 6px;}
+    .rs-h{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-dark,var(--accent));margin:14px 0 4px;}
+    .rs-placed{list-style:none;margin:0;padding:0;border:1px solid var(--border);}
+    .rs-placed li{display:flex;justify-content:space-between;gap:12px;padding:6px 10px;border-top:1px solid var(--border);font-size:12.5px;line-height:1.4;}
+    .rs-placed li:first-child{border-top:0;}
+    .rs-placed li span{color:var(--text-muted);text-align:right;flex:0 1 55%;}
+    .rs-what{width:100%;box-sizing:border-box;font:inherit;font-size:13px;line-height:1.35;padding:5px 7px;border:1px solid var(--border);border-radius:0;background:var(--input-bg);color:inherit;resize:vertical;display:block;}
+    .rs-add{margin-top:8px;}
+    .rs-log{margin-top:12px;font-size:11.5px;color:var(--text-muted);line-height:1.6;}
+    .rs-ctrl-sc{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin:10px 0;}
+    .rs-ctrl-sc b{font-size:22px;line-height:1.1;color:var(--text);}
+    .rs-ctrl-sc label{font-size:11.5px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;}
+    .rs-ctrl-sc select{padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--input-bg);color:inherit;font:inherit;font-size:14px;}
+    .rs-chip{display:inline-block;margin-left:6px;padding:0 6px;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:var(--accent);color:#1D1F20;vertical-align:1px;}
     .slt-done{max-width:720px;margin:40px auto;background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--success);padding:24px;}
     .slt-done h2{margin:4px 0 8px;font-size:22px;}
     .slt-done-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
@@ -14579,6 +14600,7 @@ function applyViewMode(){
   const isConsultant = (Auth.user()?.role) === 'consultant';
   // the live Top 5 is the consultant's, in the meeting; the signed-out offline copy is the consultant's own
   const _t5b=document.getElementById('t5Btn'); if(_t5b) _t5b.style.display=(mode==='consultant' && (Auth.user()?.role||'consultant')==='consultant')?'':'none';
+  const _qab=document.getElementById('qaBtn'); if(_qab) _qab.style.display=(mode!=='employee')?'':'none';      // an issue can be raised by anyone who can edit the register
   document.querySelectorAll('.tab-btn').forEach(b=>{
     const t=b.getAttribute('data-tab');
     // Base visibility by tier.
@@ -19016,11 +19038,7 @@ const HAZARD_LIBRARY = [
 function addRiskEntry(){
   if(_blockIfReadOnly()) return;
   if(!Array.isArray(S.riskProfile)) S.riskProfile = [];
-  const entry = { id:'risk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
-    mode:(_riskModeFilter==='ops'?'ops':'hs'), category:'', area:'', pdca:'', energy:[], sif:'', controlLevel:'', reviewed:false, activity:'', hazard:'', personsAtRisk:[], harm:'', businessImpact:'',
-    impacts:{}, impactNotes:{}, controls:'',
-    likelihood:'', severity:'', targetL:'', targetS:'',
-    trend:'', actions:[], linked:[], furtherActions:'' };
+  const entry = _riskNewEntry();
   _stamp(entry, 'created');
   S.riskProfile.push(entry);
   _riskSel = entry.id; _riskSelTab = 'identify';   // select the new risk, straight onto the first editing tab
@@ -20400,29 +20418,27 @@ function _maybeRescore(rid){
   if(document.getElementById('rescoreOverlay')) return;
   setTimeout(()=>_promptRescore(r), 300);
 }
+// THE ONE QUESTION (Simon, 5 November 2026): when the last item on a risk closes,
+// "Is this issue now under control?" - the suggested score (the target), what is
+// now in place, and whether anything done has still to say where it lives.
+// Yes saves the score and signs the risk off (rsUnderControl); Not yet logs why.
+// Reached from the overview, the live Top 5 and the back office alike.
 function _promptRescore(r){
   if(!r || _roLocked() || document.getElementById('rescoreOverlay')) return;
   const cur=_riskScore(r), tgt=_riskTarget(r);
   const preL=tgt.l||cur.l||'', preS=tgt.s||cur.s||'';
-  const selHTML=(id,pre,lab)=>`<label style="font-size:11.5px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">${lab}<select id="${id}" style="padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:transparent;color:inherit;font-size:14px;">${[1,2,3,4,5].map(n=>`<option value="${n}"${String(pre)===String(n)?' selected':''}>${n}</option>`).join('')}</select></label>`;
-  const ov=document.createElement('div'); ov.id='rescoreOverlay';
-  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px;';
-  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:520px;width:100%;box-shadow:0 18px 60px rgba(0,0,0,.35);">
-    <div style="padding:16px 20px;border-bottom:1.5px solid var(--border);">
-      <div style="font-weight:800;font-size:15px;">Plan delivered - re-score the risk</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">Every action on “${esc((r.activity||r.hazard||'this risk').slice(0,70))}” is closed. Score it as it stands <b>now</b>, with the delivered controls in place. The old score stays in the history, so the improvement is on the record.</div>
-    </div>
-    <div style="padding:16px 20px;display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">
-      <div style="font-size:12px;color:var(--text-muted);">Was<br><b style="font-size:20px;color:${_RISK_PRIO_COLOR[cur.priority]};">${cur.rating}</b> (${cur.l}×${cur.s})</div>
-      <div style="font-size:18px;color:var(--text-muted);padding-bottom:4px;">→</div>
-      ${selHTML('rescoreL',preL,'Likelihood now')}
-      ${selHTML('rescoreS',preS,'Severity now')}
-    </div>
-    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;">
-      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rescoreOverlay').remove()">Keep the current score</button>
-      <button class="btn btn-primary btn-sm" onclick="_saveRescore('${r.id}')">Save the new score</button>
-    </div>
-  </div>`;
+  const selHTML=(id,pre,lab)=>'<label>'+lab+'<select id="'+id+'">'+[1,2,3,4,5].map(n=>'<option value="'+n+'"'+(String(pre)===String(n)?' selected':'')+'>'+n+'</option>').join('')+'</select></label>';
+  const L=_rsRows(r), q='\''+String(r.id).replace(/[^a-z0-9_]/gi,'')+'\'';
+  const unsaid=(r.actions||[]).filter(a=>a && !a.deleted && !a.hideFromPlan && _actionStatus(a)==='Complete' && !_embedIsSet(a));
+  const ov=document.createElement('div'); ov.id='rescoreOverlay'; ov.className='t5-stick-ov';
+  ov.innerHTML='<div class="t5-stick-p" role="dialog" aria-label="Is this issue now under control?"><div class="t5-stick-h">Is this issue now under control?</div>'
+    +'<div class="t5-stick-a">Everything on “'+esc((r.activity||r.hazard||'this issue').slice(0,90))+'” is done. The old score stays in the history.</div>'
+    +'<div class="rs-ctrl-sc"><div class="slt-muted">Was<br><b>'+(cur.rating||'-')+'</b> ('+cur.l+'×'+cur.s+')</div><div class="t5-arrow">→</div>'
+    +'<div class="slt-muted">Suggested now'+(tgt.rating?' (the target)':'')+'<br><b>'+(tgt.rating||'-')+'</b></div>'+selHTML('rescoreL',preL,'Likelihood now')+selHTML('rescoreS',preS,'Severity now')+'</div>'
+    +(L.placed.length?('<div class="rs-h">Now in place</div><ul class="rs-placed">'+L.placed.map(x=>'<li><b>'+esc(x.a.desc||'')+'</b><span>'+esc(x.line||'')+'</span></li>').join('')+'</ul>'):'')
+    +(unsaid.length?('<div class="t5-strip t5-strip-stick" style="margin-top:10px;"><b>'+unsaid.length+' done item'+(unsaid.length!==1?'s have':' has')+' not said where it lives now.</b> It can still be marked under control; the cockpit will flag it. <button type="button" class="btn btn-outline btn-xs" onclick="rsAnswerNow('+q+')">Answer now</button></div>'):'')
+    +'<label class="t5-sf" style="margin-top:10px;"><span>Not yet, because (one line, optional)</span><input id="rescoreWhy"></label>'
+    +'<div class="t5-stick-f"><button type="button" class="btn btn-ghost btn-sm" onclick="rsNotYet('+q+')">Not yet</button><button type="button" class="btn btn-primary btn-sm" onclick="rsUnderControl('+q+')">Yes, it\'s under control</button></div></div>';
   _backdropClose(ov, ()=>ov.remove());
   document.body.appendChild(ov);
 }
@@ -26245,7 +26261,7 @@ const T5_STICK=[
 ];
 function _t5PolicyDocName(){ const d=(S.documents||[]).find(x=>/(health\s*(&|and)\s*safety|h\s*&\s*s).*policy/i.test(String(x.name||''))); return d ? String(d.name) : 'H&S policy'; }
 function _t5StickBodyHTML(k){
-  const a=_coA||{}, desc=String(a.desc||'').trim(), ppl='list="ownPeople"', date=(()=>{ try{ return _t5W().meetingDate||_asToday(); }catch(e){ return _asToday(); } })();
+  const a=_coA||{}, desc=String(a.desc||'').trim(), ppl='list="ownPeople"', date=_stickCtx().date;
   const lab=(t,inner)=>'<label class="t5-sf"><span>'+t+'</span>'+inner+'</label>';
   if(k==='policy') return '<input type="checkbox" id="_embDocOn" checked hidden>'+lab('Policy','<input id="_embDocName" value="'+esc(_t5PolicyDocName())+'" list="t5Docs">')+lab('Which section?','<input id="_embDocSection" placeholder="For example: Section 7, Work at height">');
   if(k==='proc') return '<input type="checkbox" id="_embDocOn" checked hidden>'+lab('Which one?','<input id="_embDocName" list="t5Docs" placeholder="For example: Ladder safe system of work">')+lab('File path or link (optional)','<input id="_embDocPath">');
@@ -26276,7 +26292,7 @@ function t5StickAsk(i, aid){ if(_blockIfReadOnly()) return; const f=_t5Find(i, a
 function t5StickAt(n){ if(_blockIfReadOnly()) return; const z=_t5StickList()[n]; if(z) _t5StickOpen(z.o, z.r); }
 function _t5StickHowLog(a){
   const how=String(((document.getElementById('t5StickHow')||{}).value)||'').trim();
-  if(how && a) _logAdd(a,'completed',_t5Tag(_t5W())+'How it was done: '+how);
+  if(how && a) _logAdd(a,'completed',_stickCtx().tag+'How it was done: '+how);
 }
 function t5StickSave(){
   const a=_coA; if(!a || !document.getElementById('evidOverlay')) return;
@@ -26289,6 +26305,7 @@ function t5StickSave(){
   if(_embedIsSet(a)) delete a.stickDue;
   saveData();
   _t5Render();
+  if(document.getElementById('riskModalOverlay')) _keepScroll(renderRiskProfile);
 }
 function t5StickLater(){
   const a=_coA;
@@ -26298,6 +26315,7 @@ function t5StickLater(){
   saveData();
   showToast('Done stands. It comes back at the next meeting.','info');
   _t5Render();
+  if(document.getElementById('riskModalOverlay')) _keepScroll(renderRiskProfile);
 }
 
 // ── send: freeze it, make the PDF, open the email ──
@@ -26407,6 +26425,238 @@ async function t5TrailPdf(sid){
   const s=_asSheet(sid); if(!s) return;
   try{ const bytes=await buildActionSheetPDF(sid); _sltSaveBlob(new Blob([bytes],{ type:'application/pdf' }), _t5FileName(s)); }
   catch(e){ console.error('Live Top 5 sheet failed',e); showToast('Could not build the sheet - see console','error'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  THE LOOP, STAGE A (Simon, 5 November 2026): an issue in, managed, controlled.
+//  "I put the company's issues in and manage them until they are controlled
+//  then record that control so we can keep improving."
+//
+//  A1 Quick add: an issue is captured in one line, with who raised it and a
+//     rough level, as a risk of the same shape addRiskEntry makes, marked To be
+//     assessed on the register. Nothing opens. The detail comes later.
+//  A2 One list: the risk opens on an overview - the issue, its rating, and
+//     "What we're doing about it": every row of r.actions that is still to do,
+//     whatever tab it was written on, with owner, date and Done; "Already in
+//     place" under it. Done asks "Where does this live now?" as the live Top 5
+//     does. The existing tabs stay behind Full detail.
+//  A3 Controlled in one step: when the last item on a risk closes, the re-score
+//     prompt asks "Is this issue now under control?" - Yes saves the score and
+//     signs the risk off (r.reviewed, through setReviewed); Not yet logs why.
+//
+//  Nothing here rewrites a row: standing arrangements (hideFromPlan) stay as
+//  they are and are read in place. New, optional: r.quick { raisedBy, roughLevel,
+//  raisedAt, source }, r.log (the risk's own history lines), a.issueId on a
+//  triage action.
+// ══════════════════════════════════════════════════════════════
+// ── A1. Quick add an issue ──
+// The shape a new risk takes - addRiskEntry's, in one place.
+function _riskNewEntry(){
+  return { id:'risk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+    mode:(_riskModeFilter==='ops'?'ops':'hs'), category:'', area:'', pdca:'', energy:[], sif:'', controlLevel:'', reviewed:false, activity:'', hazard:'', personsAtRisk:[], harm:'', businessImpact:'',
+    impacts:{}, impactNotes:{}, controls:'',
+    likelihood:'', severity:'', targetL:'', targetS:'',
+    trend:'', actions:[], linked:[], furtherActions:'' };
+}
+// Captured in a hurry and not yet scored: the register says so.
+function _riskToAssess(r){ return !!(r && r.quick && !_riskScore(r).rating); }
+// The tab a risk opens on: the overview once it has a score; a quick-added issue
+// goes straight to Identify to be assessed; anything else as before.
+function _rsDefaultTab(r){ return (r && _riskScore(r).rating) ? 'loop' : ((r && r.quick) ? 'identify' : 'summary'); }
+function _quickAddCreate(o){
+  if(_blockIfReadOnly()) return null;
+  const what=String((o&&o.what)||'').trim().slice(0,240);
+  if(!what){ showToast('Say what the issue is first','info'); return null; }
+  if(!Array.isArray(S.riskProfile)) S.riskProfile=[];
+  const entry=_riskNewEntry();
+  entry.activity=what;
+  entry.quick={ raisedBy:String((o&&o.who)||'').trim(), roughLevel:(['Low','Medium','High'].indexOf(o&&o.level)>=0)?o.level:'', raisedAt:_asToday() };
+  if(o && o.source) entry.quick.source=String(o.source);
+  _stamp(entry,'created');
+  S.riskProfile.push(entry);
+  _riskRefsEnsure();
+  _macroOpenForRisk(entry);
+  saveData();
+  try{ if(document.getElementById('tab-risk').classList.contains('active')) _keepScroll(renderRiskProfile); }catch(e){}
+  try{ _refreshActionViews(); }catch(e){}
+  const ref=_riskRefOf(entry);
+  showToast('✓ Added to the register: to be assessed'+(ref?(' ('+ref+')'):''),'success',5000);
+  return entry;
+}
+function quickAddIssue(){
+  if(_blockIfReadOnly()) return;
+  if(document.getElementById('qaOv')) return;
+  const ov=document.createElement('div'); ov.id='qaOv'; ov.className='t5-stick-ov';
+  ov.innerHTML='<div class="t5-stick-p" role="dialog" aria-label="Add an issue"><div class="t5-stick-h">Add an issue</div>'
+    +'<div class="t5-stick-a">Enough to capture it now. The detail can wait.</div>'
+    +'<label class="t5-sf"><span>What\'s the issue?</span><input id="qaWhat" maxlength="240" onkeydown="if(event.key===\'Enter\'){event.preventDefault();quickAddSave();}"></label>'
+    +'<div class="t5-s2"><label class="t5-sf"><span>Who raised it? (optional)</span><input id="qaWho" list="ownPeople"></label>'
+    +'<label class="t5-sf"><span>How bad does it look? (optional)</span><select id="qaLevel"><option value="">Not sure yet</option><option>Low</option><option>Medium</option><option>High</option></select></label></div>'
+    +'<div class="t5-stick-f"><button type="button" class="btn btn-ghost btn-sm" onclick="quickAddClose()">Cancel</button><button type="button" class="btn btn-primary btn-sm" onclick="quickAddSave()">Add</button></div></div>';
+  _backdropClose(ov, quickAddClose);
+  document.body.appendChild(ov);
+  _ownerListEnsure();
+  setTimeout(()=>{ const e=document.getElementById('qaWhat'); if(e) e.focus(); },30);
+}
+function quickAddClose(){ const ov=document.getElementById('qaOv'); if(ov) ov.remove(); }
+function quickAddSave(){
+  const v=id=>String(((document.getElementById(id)||{}).value)||'');
+  const what=v('qaWhat').trim();
+  if(!what){ showToast('Say what the issue is first','info'); const e=document.getElementById('qaWhat'); if(e) e.focus(); return; }
+  const entry=_quickAddCreate({ what, who:v('qaWho'), level:v('qaLevel') });
+  if(entry) quickAddClose();
+}
+// A meeting action in Triage becomes an issue with its words and its owner; the
+// row then points at the issue instead.
+function _triageIssueCell(m, a, i, ro){
+  const r=(a && a.issueId) ? (S.riskProfile||[]).find(x=>x && x.id===a.issueId) : null;
+  if(r) return '<button type="button" class="t5-link" onclick="_rsGoto(\''+String(r.id).replace(/[^a-z0-9_]/gi,'')+'\')" title="Open this issue on the register">Issue '+esc(_riskRefOf(r)||'')+'</button>';
+  return ro ? '' : '<button type="button" class="btn btn-outline btn-xs" onclick="triageToIssue(\''+String(m.id).replace(/[^a-z0-9_]/gi,'')+'\','+i+')" title="Adds it to the register as an issue to be assessed, with these words and this owner">Make this an issue</button>';
+}
+function triageToIssue(mid, i){
+  if(_blockIfReadOnly()) return;
+  const m=_meetings().find(x=>x && x.id===mid && x.status==='triage'), a=m ? (m.triageActions||[])[i] : null; if(!a) return;
+  if(a.issueId && (S.riskProfile||[]).some(r=>r && r.id===a.issueId)){ _rsGoto(a.issueId); return; }
+  const entry=_quickAddCreate({ what:a.decision, who:a.owner, source:'Triage, client meeting '+fmtDate(m.date) });
+  if(!entry) return;
+  a.issueId=entry.id; _stamp(m,'updated'); saveData(); renderTriage();
+}
+// Open a risk from anywhere, on the tab it opens on.
+function _rsGoto(id){ const r=(S.riskProfile||[]).find(x=>x && x.id===id); if(!r) return; _gotoRisk(id); _riskSelTab=_rsDefaultTab(r); }
+
+// ── A2. One list: what we're doing about it ──
+// The one derivation of the overview's two lists, from r.actions as it stands:
+// doing = still to do, or done and not yet said where it lives; placed = in
+// place (a standing arrangement marked in place, an action done with its
+// answer, or accepted). Every live row lands in exactly one. The "under
+// control" prompt reads the same lists.
+function _rsRows(r){
+  const live=((r&&r.actions)||[]).filter(a=>a && !a.deleted);
+  const doing=[], placed=[];
+  live.forEach(a=>{
+    const st=_actionStatus(a);
+    if(a.hideFromPlan){
+      if(_ctlInPlace(a)) placed.push({ a, kind:'ctl', line:'In place'+(a.completedDate?(' since '+fmtDate(a.completedDate)):'') });
+      else doing.push({ a, kind:'ctl' });
+      return;
+    }
+    if(st==='Accepted') placed.push({ a, kind:'act', line:'Accepted'+(a.acceptDate?(' '+fmtDate(a.acceptDate)):'')+(a.acceptedBy?(' by '+a.acceptedBy):'') });
+    else if(st==='Complete' && _embedIsSet(a)) placed.push({ a, kind:'act', line:_asStickWords(a) });
+    else doing.push({ a, kind:'act' });
+  });
+  // open actions first, then the done ones waiting to say where they live, then the standing arrangements not yet in place
+  const rank=x=>x.kind==='ctl' ? 2 : (_actClosed(x.a) ? 1 : 0);
+  doing.sort((x,y)=>rank(x)-rank(y));
+  return { doing, placed };
+}
+function _rsTag(r){ const ref=r ? _riskRefOf(r) : ''; return 'Risk'+(ref?(' '+ref):'')+', '+fmtDate(_asToday())+': '; }
+// Where a "Where does this live now?" answer is being given from: the live Top 5
+// (its meeting's date and sheet) or a risk's overview (today, the risk). The
+// working copy is only touched when the live Top 5 is open.
+function _stickCtx(){
+  if(document.getElementById('t5Ov')){ const w=_t5W(); return { date:w.meetingDate||_asToday(), tag:_t5Tag(w) }; }
+  return { date:_asToday(), tag:_rsTag(_coR) };
+}
+function _rsStickOpen(a, r){ _t5StickOpen(a, r); }
+function _rsBarHTML(r){
+  return '<div class="rs-bar no-print"><span class="rs-bar-t">Overview</span>'
+    +'<button type="button" class="t5-link" onclick="_riskDetailTab(\'summary\')" title="The full record, tab by tab">Full detail ›</button></div>';
+}
+function _rsLoopHTML(r, ro){
+  const dis=ro?' disabled':'', q='\''+String(r.id).replace(/[^a-z0-9_]/gi,'')+'\'';
+  const L=_rsRows(r), sc=_riskScore(r), tg=_riskTarget(r);
+  const raised=(r.quick && r.quick.raisedBy) ? ('Raised by '+esc(r.quick.raisedBy)+(r.quick.raisedAt?(' on '+esc(fmtDate(r.quick.raisedAt))):'')) : (_attrLine(r,'created') ? ('Raised '+_attrLine(r,'created')) : '');
+  const top='<div class="t5-top rs-top">'+_t5TileHTML('Current risk rating', sc, 'Not yet rated')+'<div class="t5-arrow">→</div>'+_t5TileHTML('Target risk rating', tg, 'Target not yet set')
+    +'<div class="t5-haz"><div class="t5-lab">The issue'+(r.reviewed?' <span class="rs-chip">Under control</span>':'')+'</div><ul>'+_asRiskWrong(r).map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul>'
+    +(raised?('<div class="slt-muted" style="margin-top:4px;">'+raised+'</div>'):'')+'</div></div>';
+  if(!ro) _ownerListEnsure();
+  const rowOf=(x,n)=>{
+    const a=x.a, aid=String(a.id).replace(/[^a-z0-9_]/gi,''), st=_actionStatus(a), closed=_actClosed(a), ctl=(x.kind==='ctl');
+    const ask=(st==='Complete' && !ro && !_embedIsSet(a)) ? '<button type="button" class="t5-link" onclick="rsStickAsk('+q+',\''+aid+'\')">Where does this live now?</button>' : '';
+    const what=ctl
+      ? '<div class="t5-desc">'+esc(a.desc||'(not written yet)')+'</div><div class="t5-st" id="rss-'+aid+'">Standing arrangement'+(st!=='Not started'?(' · '+esc(st)):'')+'</div>'
+      : '<textarea class="rs-what" rows="'+_t5CmtRows(a.desc)+'" id="rsd-'+aid+'"'+dis+' placeholder="What we\'re doing" oninput="this.rows=_t5CmtRows(this.value);updateRiskAction('+q+',\''+aid+'\',\'desc\',this.value)">'+esc(a.desc||'')+'</textarea><div class="t5-st" id="rss-'+aid+'">'+esc(_t5StatusWords(a))+'</div>';
+    return '<tr class="t5-row'+(closed?' t5-closed':'')+'" id="rsr-'+aid+'"><td><div class="t5-act"><span class="t5-no">'+n+'</span><div style="min-width:0;flex:1;">'+what+ask+'</div></div></td>'
+      +'<td>'+_ownerCellHTML(r.id, a.id, a.owner, dis)+'</td>'
+      +'<td><input type="date"'+dis+' value="'+esc(String(a.due||''))+'" onchange="updateRiskAction('+q+',\''+aid+'\',\'due\',this.value);rsAfter('+q+',\''+aid+'\')"></td>'
+      +'<td class="t5-c t5-done"><input type="checkbox" id="rst-'+aid+'" aria-label="Done"'+(closed?' checked':'')+((ro||st==='Accepted')?' disabled':'')+(st==='Accepted'?' title="Accepted on the plan"':'')+' onchange="rsDone('+q+',\''+aid+'\',this.checked)"></td></tr>';
+  };
+  const rows=L.doing.map((x,i)=>rowOf(x,i+1)).join('');
+  const table='<div class="rs-h">What we\'re doing about it</div><table class="t5-table"><colgroup><col style="width:48%"><col style="width:24%"><col style="width:20%"><col style="width:8%"></colgroup>'
+    +'<thead><tr><th>What</th><th>Owner</th><th>Target date</th><th class="t5-c">Done</th></tr></thead><tbody>'+(rows||'<tr><td colspan="4" class="slt-muted">Nothing still to do.</td></tr>')+'</tbody></table>'
+    +(ro?'':'<div class="rs-add"><button type="button" class="btn btn-outline btn-sm" onclick="rsAdd('+q+')">＋ Add what we\'re doing</button></div>');
+  const placed=L.placed.length ? ('<div class="rs-h">Already in place</div><ul class="rs-placed">'+L.placed.map(x=>'<li><b>'+esc(x.a.desc||'(no words)')+'</b><span>'+esc(x.line||'')+'</span></li>').join('')+'</ul>') : '';
+  const log=Array.isArray(r.log) ? r.log.slice(-4).reverse() : [];
+  const hist=log.length ? ('<div class="rs-log">'+log.map(l=>'<div>'+esc(l.text||'')+(l.by?(' · '+esc(l.by)):'')+' · '+esc(_fmtLogWhen(l.at))+'</div>').join('')+'</div>') : '';
+  return '<div class="rs-loop">'+top+table+placed+hist+'</div>';
+}
+function rsAfter(rid, aid){ const f=_riskActFind(rid, aid); if(!f) return; const s=document.getElementById('rss-'+aid); if(s && !f.a.hideFromPlan) s.textContent=_t5StatusWords(f.a); }
+// Done, from the overview. An action goes through the plan's own path (as tab 4);
+// a standing arrangement through the same path tab 3 uses. Either way the
+// back office's own close-out stays quiet and the one question is asked here.
+function rsDone(rid, aid, on){
+  if(_blockIfReadOnly()){ _keepScroll(renderRiskProfile); return; }
+  const f=_riskActFind(rid, aid); if(!f) return;
+  const r=f.r, a=f.a, tag=_rsTag(r);
+  _t5Quiet=true;
+  if(on){
+    if(_actClosed(a)){ _t5Quiet=false; return; }
+    updateRiskAction(rid, aid, 'status', 'Complete');
+    if(!_embedIsSet(a)) a.stickDue=_asToday();
+    _logAdd(a,'completed',tag+'Marked done'+(a.hideFromPlan?' - in place':''));
+    if(!a.hideFromPlan) _t5CtlFlip(r, a, true, tag);
+  } else {
+    if(!_actClosed(a)){ _t5Quiet=false; return; }
+    if(!a.hideFromPlan) _t5CtlFlip(r, a, false, tag);
+    if(a.hideFromPlan && a.t5Flip) delete a.t5Flip;
+    updateRiskAction(rid, aid, 'status', 'In progress');
+    delete a.stickDue;
+    _logAdd(a,'reopened',tag+'Done taken back');
+  }
+  setTimeout(()=>{ _t5Quiet=false; },400);
+  saveData();
+  _keepScroll(renderRiskProfile);
+  if(on){ if(!_embedIsSet(a)) _rsStickOpen(a, r); else _maybeRescore(r.id); }
+}
+function rsStickAsk(rid, aid){ if(_blockIfReadOnly()) return; const f=_riskActFind(rid, aid); if(f) _rsStickOpen(f.a, f.r); }
+// A new row, through addRiskAction, ready to type in.
+function rsAdd(rid){
+  if(_blockIfReadOnly()) return;
+  const r=(S.riskProfile||[]).find(x=>x && x.id===rid); if(!r) return;
+  const n0=(r.actions||[]).length;
+  addRiskAction(rid);
+  const a=(r.actions||[])[(r.actions||[]).length-1];
+  if(!a || (r.actions||[]).length===n0) return;
+  _logAdd(a,'raised',_rsTag(r)+'Raised on the overview'); scheduleAutoSave();
+  setTimeout(()=>{ const t=document.getElementById('rsd-'+String(a.id).replace(/[^a-z0-9_]/gi,'')); if(t){ try{ t.scrollIntoView({ block:'center' }); }catch(e){} t.focus(); } },60);
+}
+
+// ── A3. Controlled in one step ──
+// Yes: the score is saved as before, then the risk is signed off through
+// setReviewed - the tick on the back-office tab, without having to find it.
+function rsUnderControl(rid){
+  const r=(S.riskProfile||[]).find(x=>x && x.id===rid); if(!r) return;
+  _saveRescore(rid);
+  if(document.getElementById('rescoreOverlay')) return;      // the score was not taken: nothing else changes
+  _logAdd(r,'completed','Marked under control at '+fmtDate(_asToday()));
+  if(!r.reviewed) setReviewed(rid, true); else { _stamp(r,'updated'); saveData(); _keepScroll(renderRiskProfile); }
+  if(document.getElementById('t5Ov')) _t5Render();
+  showToast('✓ Under control - scored '+_riskScore(r).rating+' and signed off','success');
+}
+function rsNotYet(rid){
+  const r=(S.riskProfile||[]).find(x=>x && x.id===rid), ov=document.getElementById('rescoreOverlay');
+  const why=String(((document.getElementById('rescoreWhy')||{}).value)||'').trim();
+  if(r){ _logAdd(r,'comment','Not yet under control'+(why?(': '+why):' - no reason given')); _stamp(r,'updated'); saveData(); }
+  if(ov) ov.remove();
+  if(document.getElementById('riskModalOverlay')) _keepScroll(renderRiskProfile);
+}
+// The first done action with no answer yet: its Save comes back to the prompt
+// through _saveCloseOut -> _maybeRescore.
+function rsAnswerNow(rid){
+  const r=(S.riskProfile||[]).find(x=>x && x.id===rid); if(!r) return;
+  const a=(r.actions||[]).find(x=>x && !x.deleted && !x.hideFromPlan && _actionStatus(x)==='Complete' && !_embedIsSet(x));
+  const ov=document.getElementById('rescoreOverlay'); if(ov) ov.remove();
+  if(a) _rsStickOpen(a, r);
 }
 
 async function openBoardReportPrint(){
@@ -26843,7 +27093,7 @@ function _riskDisplayOrder(){
 // ── Split-view detail tabs. Summary reads the risk back as a one-screen
 //    report; the other four are the same editing fields as before, grouped
 //    so no tab is more than about a screen tall. ──
-const RP_TABS = [['summary','Summary'],['identify','Identify'],['people','People & impact'],['rating','Controls & rating'],['actions','Action delegation & timescale']];
+const RP_TABS = [['loop','Overview'],['summary','Summary'],['identify','Identify'],['people','People & impact'],['rating','Controls & rating'],['actions','Action delegation & timescale']];
 // ── THE RISK JOURNEY TABS (Simon, 2026-09-03): the four working tabs are
 //    numbered steps whose dots read straight off recorded facts - grey not
 //    started, amber started, green done - and a prompt line names the next
@@ -26969,7 +27219,7 @@ function _riskVisibleRows(){
     if(_riskModeFilter!=='all' && _riskMode(r)!==_riskModeFilter) return false;
     if(_riskSearch && !(((r.activity||'')+' '+(r.assocRisk||'')+' '+(_riskMacroOf(r)?_macroName(_riskMacroOf(r)):'')+' '+(r.area||'')).toLowerCase().includes(_riskSearch))) return false;
     return true;
-  });
+  }).sort((a,b)=>(_viewMode==='consultant') ? ((_riskToAssess(b)?1:0)-(_riskToAssess(a)?1:0)) : 0);      // an issue to be assessed goes to the top for the consultant
 }
 // Macro categories that no library theme carries - the legal-duties risks
 // (one per Legal duties section) sit under their own heading (Simon).
@@ -27188,7 +27438,7 @@ function _riskRowHTML(rows){
       +'<td onclick="event.stopPropagation()" style="white-space:nowrap;">'+RISK_MODES.map(m=>'<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:'+(_riskMode(r)===m.k?'700':'400')+';color:'+(_riskMode(r)===m.k?m.colour:'var(--text-muted)')+';cursor:pointer;line-height:1.5;"><input type="radio" name="kind_'+r.id+'" '+(_riskMode(r)===m.k?'checked':'')+' onchange="setRiskMode(\''+r.id+'\',\''+m.k+'\')" style="accent-color:'+m.colour+';width:12px;height:12px;cursor:pointer;">'+(m.k==='hs'?'H&S':'Ops')+'</label>').join('')+'</td>'
       +'<td>'+_riskRefChip(r)+'</td>'
       +'<td style="font-size:11px;white-space:nowrap;">'+_riskTierTag(r)+'</td>'
-      +'<td style="font-weight:700;">'+esc(r.activity||r.hazard||'New risk')+(r.reviewed?' <span style="color:#16A34A;font-weight:700;font-size:11px;" title="Reviewed and completed">\u2713</span>':'')+'</td>'
+      +'<td style="font-weight:700;">'+esc(r.activity||r.hazard||'New risk')+(r.reviewed?' <span style="color:#16A34A;font-weight:700;font-size:11px;" title="Reviewed and completed">\u2713</span>':'')+(_riskToAssess(r)?' <span class="rs-tba" title="Captured as an issue - open it to assess it">To be assessed</span>':'')+'</td>'
       +'<td><span class="rc-chip" style="background:'+cc+'1a;color:'+cc+';">'+esc(mk?_macroName(mk):'-')+'</span>'+(ops?' <span class="rc-chip" style="background:#7C3AED1a;color:#7C3AED;">Operational</span>':'')+'</td>'
       +'<td style="font-size:12px;color:var(--text-muted);">'+esc(r.area||'-')+'</td>'
       +'<td style="text-align:center;">'+(_riskFlagOn(r)?('<span style="color:'+(ops?'#7C3AED':'#DC2626')+';font-weight:800;" title="'+esc(_rt(r,'flagChipTitle'))+'">\u26a0</span>'):'')+'</td>'
@@ -27197,7 +27447,7 @@ function _riskRowHTML(rows){
       +'<td><span style="display:inline-flex;align-items:flex-start;gap:6px;font-size:12px;font-weight:600;"><i style="width:9px;height:9px;border-radius:50%;background:'+cdot+';display:inline-block;flex:0 0 auto;margin-top:4px;"></i><span>'+cword+'</span></span>'+((ctl==='In place'&&r.reviewDue&&!rvd)?'<div style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">review '+esc(fmtDate(r.reviewDue))+'</div>':'')+'</td>'
       +'</tr>'; }).join('');
 }
-function _riskOpenModal(id){ const _r=(S.riskProfile||[]).find(x=>x.id===id); if(_r) _riskModeFilter=_riskMode(_r); _riskSel=id; _riskMacroLast=id; _riskSelTab='summary'; _riskModalOpen=true; const sec=document.getElementById('wfRegister'); if(sec&&!sec.open) sec.open=true; _keepScroll(renderRiskProfile); }
+function _riskOpenModal(id){ const _r=(S.riskProfile||[]).find(x=>x.id===id); if(_r) _riskModeFilter=_riskMode(_r); _riskSel=id; _riskMacroLast=id; _riskSelTab=_rsDefaultTab(_r); _riskModalOpen=true; const sec=document.getElementById('wfRegister'); if(sec&&!sec.open) sec.open=true; _keepScroll(renderRiskProfile); }
 function _riskCloseModal(){ _riskModalOpen=false; _keepScroll(renderRiskProfile); }
 function _riskModalStep(d){
   const rows=_riskVisibleRows(); if(!rows.length) return;
@@ -27228,6 +27478,8 @@ function renderRiskProfile(){
   if(badge) badge.textContent = all.length ? (all.length + ' risk' + (all.length!==1?'s':'')) : '';
   const addBtn = document.getElementById('addRiskBtn');
   if(addBtn) addBtn.style.display = ro ? 'none' : 'inline-flex';
+  const issueBtn = document.getElementById('addIssueBtn');
+  if(issueBtn) issueBtn.style.display = ro ? 'none' : 'inline-flex';
   const libBtn = document.getElementById('addLibRiskBtn');
   if(libBtn) libBtn.style.display = ro ? 'none' : 'inline-flex';
   const repBtn = document.getElementById('riskReportBtn');
@@ -27291,6 +27543,7 @@ function renderRiskProfile(){
     if(_riskMode(r)==='ops') bits.push('<span style="color:#7C3AED;font-weight:700;">Operational</span>');
     if(_riskFlagOn(r)) bits.push('<span style="color:#DC2626;font-weight:700;">'+esc(_rt(r,'flagChip'))+'</span>');
     if(r.reviewed) bits.push('<span style="color:#16A34A;font-weight:700;">✓ reviewed</span>');
+    if(_riskToAssess(r)) bits.unshift('<span class="rs-tba">To be assessed'+(r.quick.roughLevel?(' · looks '+esc(r.quick.roughLevel.toLowerCase())):'')+'</span>');
     return `<button type="button" class="rp-row${r.id===_riskSel?' on':''}" data-rid="${r.id}" role="option" aria-selected="${r.id===_riskSel?'true':'false'}" onclick="_selectRisk('${r.id}')" style="border-left-color:${htC};">
       <span style="min-width:0;flex:1 1 auto;">
         <span class="rp-t" id="rlt-${r.id}">${r.activity ? esc(r.activity) : (r.hazard?esc(r.hazard):'New risk')}</span>
@@ -27312,6 +27565,7 @@ function renderRiskProfile(){
   // The four editing tabs reuse the exact field blocks the old long card had,
   // grouped so no tab is more than about a screen tall.
   const tabBody = (r) => {
+    if(_riskSelTab==='loop') return _rsLoopHTML(r, ro);
     if(_riskSelTab==='summary') return _rpDigestHTML(r) + (dis?'':('<div class="no-print" style="margin-top:12px;">'+_riskRaisePillHTML(r)+'</div>'));
     if(_riskSelTab==='identify') return `
         <div class="field-grid" style="margin-bottom:12px;">
@@ -27462,8 +27716,8 @@ function renderRiskProfile(){
           ${_riskFlagOn(selR)?`<span class="rc-chip" style="background:#DC26261a;color:#DC2626;" title="${esc(_rt(selR,'flagChipTitle'))}">${esc(_rt(selR,'flagChip'))}</span>`:''}
           ${selR.reviewed?`<span class="rc-chip" style="background:#16A34A1a;color:#16A34A;" title="You have marked this risk complete">✓ reviewed</span>`:''}
         </div>
-        <div class="rp-tabs no-print" role="tablist">${tabBtns}</div>
-        ${_riskJourneyLineHTML(selR)}
+        ${_riskSelTab==='loop' ? _rsBarHTML(selR) : `<div class="rp-tabs no-print" role="tablist">${tabBtns}</div>`}
+        ${_riskSelTab==='loop' ? '' : _riskJourneyLineHTML(selR)}
       </div>
       <div class="rp-body" id="rpBody" style="flex:1;min-height:0;overflow:auto;padding:14px 16px;">${tabBody(selR)}</div>
       <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);">
@@ -27473,7 +27727,10 @@ function renderRiskProfile(){
     </div>
   </div>`;
   }
-  cont.innerHTML = filteredNote + toolbar + table + modal;
+  // issues captured and not yet assessed, at the top for the consultant
+  const tba=(_viewMode==='consultant') ? all.filter(_riskToAssess) : [];
+  const tbaStrip=tba.length ? ('<div class="rs-strip no-print"><b>To be assessed ('+tba.length+'):</b> '+tba.map(r=>'<button type="button" class="t5-link" onclick="_riskOpenModal(\''+r.id+'\')">'+esc((_riskRefOf(r)?(_riskRefOf(r)+' '):'')+(r.activity||'New issue'))+'</button>'+((r.quick&&r.quick.raisedBy)?(' <span class="slt-muted">raised by '+esc(r.quick.raisedBy)+'</span>'):'')).join(' · ')+'</div>') : '';
+  cont.innerHTML = tbaStrip + filteredNote + toolbar + table + modal;
 
   const _bp1 = document.getElementById('rpBody'); if(_bp1) _bp1.scrollTop = _bodyTop;
   _riskSelKey = _viewKey;
@@ -33395,9 +33652,10 @@ function renderTriage(){
   const q=s=>'\''+String(s).replace(/[^a-z0-9_]/gi,'')+'\'';
   el.innerHTML=list.map(m=>{
     const acts=m.triageActions||[], note=String(m.note||'').trim();
-    const rows=acts.map(a=>'<tr><td style="padding:6px 8px;border-top:1px solid var(--border);font-weight:600;">'+esc(a.decision)+'</td>'
+    const rows=acts.map((a,i)=>'<tr><td style="padding:6px 8px;border-top:1px solid var(--border);font-weight:600;">'+esc(a.decision)+'</td>'
       +'<td style="padding:6px 8px;border-top:1px solid var(--border);">'+(a.owner?esc(a.owner):'<span class="slt-muted">not named</span>')+'</td>'
-      +'<td style="padding:6px 8px;border-top:1px solid var(--border);white-space:nowrap;">'+(a.due?esc(fmtDate(a.due)):'<span class="slt-muted">no date</span>')+'</td></tr>').join('');
+      +'<td style="padding:6px 8px;border-top:1px solid var(--border);white-space:nowrap;">'+(a.due?esc(fmtDate(a.due)):'<span class="slt-muted">no date</span>')+'</td>'
+      +'<td style="padding:6px 8px;border-top:1px solid var(--border);white-space:nowrap;">'+_triageIssueCell(m,a,i,ro)+'</td></tr>').join('');
     return '<div style="border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin:0 0 12px;background:var(--surface);">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">'
       +'<div><div style="font-weight:700;font-size:15px;">'+esc(fmtDate(m.date))+' - client meeting</div>'
@@ -33406,7 +33664,7 @@ function renderTriage(){
       +'<div class="qm-lab" style="margin-top:12px;">Notes</div>'
       +'<div style="white-space:pre-wrap;font-size:13.5px;line-height:1.5;">'+(note?esc(note):'<span class="slt-muted">No notes.</span>')+'</div>'
       +'<div class="qm-lab" style="margin-top:12px;">Actions'+(acts.length?(' ('+acts.length+')'):'')+'</div>'
-      +(acts.length?('<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr><th style="text-align:left;padding:4px 8px;">What</th><th style="text-align:left;padding:4px 8px;">Who</th><th style="text-align:left;padding:4px 8px;">By when</th></tr></thead><tbody>'+rows+'</tbody></table>'):'<div class="slt-muted">No actions.</div>')
+      +(acts.length?('<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr><th style="text-align:left;padding:4px 8px;">What</th><th style="text-align:left;padding:4px 8px;">Who</th><th style="text-align:left;padding:4px 8px;">By when</th><th style="text-align:left;padding:4px 8px;"></th></tr></thead><tbody>'+rows+'</tbody></table>'):'<div class="slt-muted">No actions.</div>')
       +'</div>';
   }).join('');
 }

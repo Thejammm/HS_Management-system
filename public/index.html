@@ -4551,8 +4551,8 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     /* One label, is it enough, and the ladder as a chart */
     .ck-en{display:inline-block;font-size:12px;font-weight:700;line-height:1.25;white-space:normal;}
     .ck-en small{display:block;font-size:10.5px;font-weight:500;color:var(--text-muted);}
-    .act-table tr:not(.act-grp)>td:nth-child(5),.act-table thead th:nth-child(5){min-width:108px;}
-    .act-table:not(.act-ctl) tr:not(.act-grp)>td:nth-child(6),.act-table:not(.act-ctl) thead th:nth-child(6){min-width:84px;}
+    .act-table tr:not(.act-grp)>td:nth-child(5),.act-table thead th:nth-child(5){min-width:98px;}
+    .act-table:not(.act-ctl) tr:not(.act-grp)>td:nth-child(6),.act-table:not(.act-ctl) thead th:nth-child(6){min-width:70px;}
     .act-table .act-status{word-break:normal;overflow-wrap:normal;}
     .ck-en-yes{color:var(--accent-dark,var(--accent));}.ck-en-no{color:var(--text);}.ck-en-none{color:var(--text-muted);font-weight:600;}
     .ep-wrong{display:flex;flex-direction:column;gap:2px;white-space:normal;}
@@ -23980,10 +23980,10 @@ function setBoardSection(id, hide){
 function _top5Five(){
   const H=_holdSummary(), month=_top5Month();
   const chosenIds=new Set(); (S.riskProfile||[]).forEach(r=>{ if(r&&(r.actions||[]).some(a=>a&&!a.deleted&&a.top5===month)) chosenIds.add(r.id); });
-  // in the Top 5 order (_riskPrioCmp), the same as the ladder's suggested five, so the two can never disagree
-  const byLadder=(a,b)=>_riskPrioCmp(a.r,b.r);
+  // the ladder's order, the same as its suggested five, so the two can never disagree (Simon, 6 November 2026)
+  const byLadder=(a,b)=>_ladderCmp(a.r,b.r);
   const chosen=H.rows.filter(z=>chosenIds.has(z.id)).sort(byLadder).slice(0,5);
-  const ranked=H.rows.filter(z=>!chosenIds.has(z.id) && z.r && _riskScore(z.r).rating).sort(byLadder);
+  const ranked=H.rows.filter(z=>!chosenIds.has(z.id) && z.r && _riskScore(z.r).rating && _riskControlStatus(z.r)!=='In place').sort(byLadder);
   return chosen.map(z=>({ z, chosen:true })).concat(ranked.slice(0,5-chosen.length).map(z=>({ z, chosen:false })));
 }
 function _top5Open(r){
@@ -24839,7 +24839,7 @@ function _asItemHTML(s, it, i, locked, ro, dis){
       +'</div>';
   }
   return '<div class="as-item'+(done?' as-done':'')+'" id="asI-'+esc(s.id)+'-'+i+'">'
-    +'<div class="as-ih"><span class="as-no">'+(i+1)+'</span><div class="as-desc">'+esc(it.desc||'(no description)')+(it.carriedFrom?(' <span class="as-tag as-out">carried from '+esc(_asName({ kind:s.kind, no:it.carriedFrom }).toLowerCase())+'</span>'):'')+({ tick:' <span class="as-tag as-why as-why-tick" title="Ticked in the Top 5 column on the Risk ladder">Ticked Top 5</span>', ladder:' <span class="as-tag as-why" title="Fewer than five are ticked, so the sheet is topped up in the Top 5 order: seen on site, legal must-haves, then tier 1 to 4 - could kill first, then the score">Next in the Top 5 order</span>', added:' <span class="as-tag as-why">Added from the plan</span>' }[it.why]||'')+'</div>'
+    +'<div class="as-ih"><span class="as-no">'+(i+1)+'</span><div class="as-desc">'+esc(it.desc||'(no description)')+(it.carriedFrom?(' <span class="as-tag as-out">carried from '+esc(_asName({ kind:s.kind, no:it.carriedFrom }).toLowerCase())+'</span>'):'')+({ tick:' <span class="as-tag as-why as-why-tick" title="Ticked in the Top 5 column on the Risk ladder">Ticked Top 5</span>', ladder:' <span class="as-tag as-why" title="Fewer than five are ticked, so the sheet is topped up with the next highest risks on the ladder">Next on the ladder</span>', added:' <span class="as-tag as-why">Added from the plan</span>' }[it.why]||'')+'</div>'
     +((locked||ro)?'':'<button class="trn-x" onclick="asRemoveItem('+sid+','+key+')" title="Take this action off the sheet - it stays on the plan">×</button>')+'</div>'
     +'<div class="slt-muted as-meta">'+meta+'</div>'+gone+thinMsg+((!ro && _asSameRiskBefore(s,it)>=0)?('<div class="as-warn">Same risk as line '+(_asSameRiskBefore(s,it)+1)+': its actions table prints once, on that line\u2019s page. This page lists this action only.</div>'):'')
     +'<div class="slt-lab">Note on this action (optional - printed under it in the recommended actions table)</div>'+recBox+resp+decide+'</div>';
@@ -25022,7 +25022,7 @@ function asRebuild(sid){
   s.issuedAt='';
   saveData(); _asRender();
   const t=s.items.filter(i=>i.why==='tick').length;
-  showToast('✓ '+_asName(s)+' rebuilt - '+t+' ticked Top 5'+(s.items.length>t?(', '+(s.items.length-t)+' next in the Top 5 order'):'')+'. Download it again to send.','success',7000);
+  showToast('✓ '+_asName(s)+' rebuilt - '+t+' ticked Top 5'+(s.items.length>t?(', '+(s.items.length-t)+' next on the ladder'):'')+'. Download it again to send.','success',7000);
 }
 function asDeleteSheet(sid){
   if(_blockIfReadOnly()) return;
@@ -25579,7 +25579,11 @@ async function buildActionSheetPDF(sid){
   meta.addToPage(cover,{x:ML,y:BOT,width:1,height:1,borderWidth:0}); meta.enableReadOnly();
 
   // ══ a page a risk ══
-  const CWS=[CW*0.40, CW*0.30, CW*0.15, CW*0.15], CX=[ML, ML+CWS[0], ML+CWS[0]+CWS[1], ML+CWS[0]+CWS[1]+CWS[2]];
+  // The columns (Simon, 6 November 2026): a sheet made from now on runs like the screen; one already sent keeps the columns it was sent with.
+  const NEWCOLS=(+s.colsV||0)>=2 || !s.issuedAt;
+  const CWS=NEWCOLS ? [CW*0.36, CW*0.15, CW*0.12, CW*0.10, CW*0.27] : [CW*0.40, CW*0.30, CW*0.15, CW*0.15];
+  const CX=CWS.reduce((a,w,i)=>{ a.push(i ? a[i-1]+CWS[i-1] : ML); return a; }, []);
+  const COL=NEWCOLS ? { who:1, due:2, en:3, cmt:4 } : { cmt:1, who:2, due:3 };
   // HDR the table's header row; CSZ/CLH an action's words, AW their width; SSZ/SLH the grey line under them; HR a
   // heading row of one line; MINR a row's least height (room to write); CP the comments box (12pt under the table),
   // CPS squeezed (6pt under) and COMMS that with its gap - what the last row must take with it; CONT the room
@@ -25607,12 +25611,12 @@ async function buildActionSheetPDF(sid){
     const st0=e.gap?'':K([_actionStatus(e.a), String(e.a.priority||'').trim()].filter(Boolean).join(' · '));
     const st=st0?fitW(st0,font,SSZ,AW-(e.own?TAGW+5:0)):'', hasSt=!!(st||e.own);
     // who: the names at full size as the box will wrap them, and the row tall enough to show them all
-    const ws=8.6, wW=CWS[2]-10, wn=e.who?wrap(e.who,font,ws,wW).length:0;
+    const ws=8.6, wW=CWS[COL.who]-10, wn=e.who?wrap(e.who,font,ws,wW).length:0;
     const wh=wn ? (8+wn*ws*1.22+4) : 0;
     const nt=[(e.own && String(curRec||'').trim()) ? ('Note: '+String(curRec).trim()) : '', String(e.stick||'').trim()].filter(Boolean);
     const note=nt.length ? clip(nt.flatMap(t=>wrap(t,font,SSZ,AW)),6,font,SSZ,AW) : [];
     // a comment made in the meeting prints whole, the row tall enough to show it
-    const cW=CWS[1]-10, cn=e.cmt ? Math.min(40, wrap(e.cmt,font,8.6,cW).length) : 0, ch=cn ? (8+cn*8.6*1.22+4) : 0;
+    const cW=CWS[COL.cmt]-10, cn=e.cmt ? Math.min(40, wrap(e.cmt,font,8.6,cW).length) : 0, ch=cn ? (8+cn*8.6*1.22+4) : 0;
     return { e, lines, st, hasSt, ws, note, h:Math.max(MINR, (hasSt?31:19)+(lines.length-1)*CLH+(note.length?(2+note.length*SLH):0), wh, ch) };
   });
   // the most a unit of rows may be: what a fresh page holds under its kicker, the table's header, a
@@ -25689,7 +25693,7 @@ async function buildActionSheetPDF(sid){
       // ── what is wrong | who it affects ──
       const lw=CW*0.6-14, rx=ML+CW*0.6+6, rw=MR-rx, top2=y;
       const wrong=_asRiskWrong(r);
-      { const t=take(14); caps('Hazard and risk', ML, t-7, { size:7.2, color:ACC }); }
+      { const t=take(14); caps(NEWCOLS?'What\'s wrong':'Hazard and risk', ML, t-7, { size:7.2, color:ACC }); }
       wrong.forEach(t=>para(t,9.4,{ x:ML+10, w:lw-10, lh:1.38, gap:3, max:6, dot:ML }));
       const leftEnd=y; at(top2);
       { const t=take(14); caps('Persons at risk', rx, t-7, { size:7.2, color:ACC }); }
@@ -25738,8 +25742,9 @@ async function buildActionSheetPDF(sid){
       // the header row, shaded, with an accent rule under it (repeated on a new page)
       const tHead=()=>{ const t=take(HDR); segTop=t; cuts=[];
         page.drawRectangle({x:ML,y:t-HDR,width:CW,height:HDR,color:PANEL});
-        ['Recommended action','Comments','Owner','Target date'].forEach((c,i)=>caps(c, CX[i]+(i?7:10), t-(i===3?8.5:12.5), { size:6.8, color:ACC }));
-        page.drawText('dd/mm/yyyy',{x:CX[3]+7,y:t-16.5,size:6,font,color:GREY}); };
+        (NEWCOLS ? ['How we fix it','Who','By when','','Comments'] : ['Recommended action','Comments','Owner','Target date']).forEach((c,i)=>{ if(c) caps(c, CX[i]+(i?7:10), t-(i===COL.due?8.5:12.5), { size:6.8, color:ACC }); });
+        if(NEWCOLS){ caps('Is it', CX[COL.en]+7, t-8.5, { size:6.8, color:ACC }); caps('enough', CX[COL.en]+7, t-16.5, { size:6.8, color:ACC }); }
+        page.drawText('dd/mm/yyyy',{x:CX[COL.due]+7,y:t-16.5,size:6,font,color:GREY}); };
       // close the table on this page: hairline rows, the accent rule under
       // the header, the outer border, the band's rule down the left
       const tShut=()=>{ const top=segTop, bot=y;
@@ -25764,10 +25769,14 @@ async function buildActionSheetPDF(sid){
           if(e.own){ page.drawRectangle({x:sx,y:sb-2,width:TAGW,height:8.4,color:ACC}); page.drawText(TAG,{x:sx+4,y:sb,size:5.6,font:bold,color:WHITE}); sx+=TAGW+5; }
           if(m.st) page.drawText(m.st,{x:sx,y:sb,size:SSZ,font,color:GREY}); }
         if(m.note && m.note.length){ const nb=b0-(m.lines.length-1)*CLH-(m.hasSt?11:0)-SLH-2; m.note.forEach((ln,q)=>page.drawText(ln,{x:ML+24,y:nb-q*SLH,size:SSZ,font,color:GREY})); }
-        [1,2,3].forEach(i=>page.drawLine({start:{x:CX[i],y:top},end:{x:CX[i],y:top-h},thickness:0.5,color:HAIR}));
-        field(f+'cmt',CX[1]+2,top-2,CWS[1]-4,h-4,{ multi:true, size:8.6, bare:true, text:e.cmt });
-        field(f+'who',CX[2]+2,top-2,CWS[2]-4,h-4,{ multi:true, size:(m.ws||8.6), bare:true, text:e.who });
-        field(f+'due',CX[3]+2,top-2,CWS[3]-4,h-4,{ multi:true, size:8.6, bare:true, text:_asDMY(e.due) });
+        if(NEWCOLS){ page.drawRectangle({x:CX[COL.en],y:top-h,width:CWS[COL.en],height:h,color:GROUND});
+          if(!e.gap){ const en=it.enough||_riskEnough(r||null), ex=CX[COL.en]+7; page.drawText(A(en.t),{x:ex,y:b0,size:CSZ-0.6,font:bold,color:INK});
+            if(en.sub) wrap(A(en.sub),font,SSZ,CWS[COL.en]-12).slice(0,2).forEach((ln,q)=>page.drawText(ln,{x:ex,y:b0-10-q*SLH,size:SSZ,font,color:GREY})); } }
+        CX.forEach((cx,i)=>{ if(i) page.drawLine({start:{x:cx,y:top},end:{x:cx,y:top-h},thickness:0.5,color:HAIR}); });
+        const put={ cmt:()=>field(f+'cmt',CX[COL.cmt]+2,top-2,CWS[COL.cmt]-4,h-4,{ multi:true, size:8.6, bare:true, text:e.cmt }),
+          who:()=>field(f+'who',CX[COL.who]+2,top-2,CWS[COL.who]-4,h-4,{ multi:true, size:(m.ws||8.6), bare:true, text:e.who }),
+          due:()=>field(f+'due',CX[COL.due]+2,top-2,CWS[COL.due]-4,h-4,{ multi:true, size:8.6, bare:true, text:_asDMY(e.due) }) };
+        (NEWCOLS ? ['who','due','cmt'] : ['cmt','who','due']).forEach(k=>put[k]());      // tabbing runs across the columns as they read
         cuts.push(y); };
       keep(firstNeed);                 // the table never starts without its first row
       { const t=take(14); caps('Recommended actions', ML, t-7, { size:7.2, color:ACC });
@@ -25837,11 +25846,13 @@ async function downloadActionSheet(sid){
   if(_blockIfReadOnly()) return;
   const s=_asSheet(sid); if(!s) return;
   try{
+    const fresh=(+s.colsV||0)>=2 || !s.issuedAt;      // made now, or already in the new columns: a sheet sent before them keeps its own
     const bytes=await buildActionSheetPDF(sid);
     const safe=_sltClient().replace(/[^a-z0-9]+/gi,'-').toLowerCase();
     _sltSaveBlob(new Blob([bytes],{type:'application/pdf'}), _asTitle(s).toLowerCase().replace(/\s+/g,'-')+'-'+safe+'-'+(s.meetingDate||_asToday())+'.pdf');
     if(!s.meetingDate) s.issuedAt=_asToday();
     s.formV=3;
+    if(fresh){ s.colsV=2; (s.items||[]).forEach(it=>{ if(!it.enough){ const en=_riskEnough(_execRiskOf({ ref:it.ref })); it.enough={ t:en.t, sub:en.sub }; } }); }
     _asStampPrinted(s);      // the actions table's rows as printed, so a paper copy typed in lines up
     (s.items||[]).forEach(it=>{
       const rows=_asSheetCtlRows(it), named=rows.filter(x=>x.id);
@@ -26455,6 +26466,7 @@ function _t5Freeze(w, it){
   c.actRows=_asPrintedRows(c, c.sentRows);
   if(p.o){ c.desc=p.o.desc||c.desc; c.owner=p.o.owner||''; c.due=p.o.due||''; }
   if(p.r){ c.risk=p.r.activity||p.r.hazard||c.risk; c.riskRef=_riskRefOf(p.r); c.band=_riskScore(p.r).priority||''; }
+  { const en=_riskEnough(p.r||null); c.enough={ t:en.t, sub:en.sub }; }
   const ctl=_asSheetCtlRows(c), named=ctl.filter(x=>x.id);
   if(named.length){ c.ctlPrinted={}; named.forEach(x=>{ c.ctlPrinted[x.id]=x.text; }); }
   c.ctlIds=ctl.map(x=>x.id);
@@ -26510,7 +26522,7 @@ async function t5Send(){
   // done on a risk no longer on the sheet still has to be asked about: it goes at the end of the sheet
   const printed=new Set(); items.forEach(it=>it.sentRows.forEach(x=>{ if(x.aid) printed.add(x.aid); }));
   const stickOpen=_t5StickList().filter(z=>!printed.has(z.o.id)).map(z=>{ const ref=z.r?_riskRefOf(z.r):''; return (ref?(ref+' '):'')+(z.r?(String(z.r.activity||z.r.hazard||'')+': '):'')+String(z.o.desc||'')+(z.o.completedDate?(' (done '+fmtDate(z.o.completedDate)+')'):''); });
-  const s={ id:'as_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), kind:'top5', no, formV:3, createdAt:new Date().toISOString(), issuedAt:md, meetingDate:md, firstIssue:base?String(base.issuedAt||''):'', returnedAt:'', returnedBy:'', file:'', items, stickOpen };
+  const s={ id:'as_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), kind:'top5', no, formV:3, colsV:2, createdAt:new Date().toISOString(), issuedAt:md, meetingDate:md, firstIssue:base?String(base.issuedAt||''):'', returnedAt:'', returnedBy:'', file:'', items, stickOpen };
   st.list.push(s);
   let bytes;
   try{ bytes=await buildActionSheetPDF(s.id); }
@@ -27165,7 +27177,7 @@ const COCKPIT_TIPS={
   boardLadder:'Risk ladder: every rated risk not yet under control, numbered from the highest current risk, like a music chart: this month’s position, last month’s, the months on the ladder and the move. Risks now under control drop out to the list at the foot. Here because it is the one order every other list follows, and falling is good news.',
   boardPicture:'Risk picture: every significant risk on the profile, counted by whether it is controlled (at or below its residual target), has no target set yet, or is still uncontrolled. Here so the leadership team see the whole picture before any detail.',
   boardJourney:'Risk journey: how far the rated risks have moved from where they were found towards their planned targets, and how much of the plan is now in place. Here to show progress month on month.',
-  boardFive:'Putting us at risk today: the risks that need attention first, by the rule the board report uses (seen on site, then legal must-haves, then tier and score). Here so a meeting starts with the right five.',
+  boardFive:'Putting us at risk today: the risks that need attention first and this month’s five priorities, each listed in the ladder’s order. Here so a meeting starts with the right five.',
   kpiFatal:'Could kill: risks that could kill someone with today’s controls. Here because they come first whatever else is going on. Click to open them.',
   kpiCritical:'Business-critical: operational risks that threaten the business itself. Here so they sit beside the safety ones. Click to open them.',
   kpiHighCrit:'High and critical risks: how many sit above the comfortable line. Here as the headline the board asks for first. Click to open them.',
@@ -27332,19 +27344,19 @@ function _chartSymbolKeyHTML(){
 
 const HOWTO_STEPS=[
   { n:1, title:'Company setup', opens:[{tab:'company'}], what:'Who the client is: the company, the senior leadership team (with emails), key personnel and business units.', how:'Fill in Company identity first. Add the leadership team with their emails: the Top 5 email goes to them, and the leadership meeting starts with them in the room. Add key personnel by name: they feed the owner lists.', feeds:'Owner lists, the Top 5 email, the leadership meeting, every report header.' },
-  { n:2, title:'Risk profile (Operation): the discovery questions', opens:[{tab:'risk'}], what:'The questions that tell Compass what the business does. Rules fire from the answers and suggest the risk themes.', how:'Answer them with the client, check the answers Compass flags (where the client’s own documents say otherwise, or two answers disagree), then build the profile. Get these right first: they drive the risks, the legal duties and the Top 5.', feeds:'The risk profile, the legal duties, the Top 5 order.' },
+  { n:2, title:'Risk profile (Operation): the discovery questions', opens:[{tab:'risk'}], what:'The questions that tell Compass what the business does. Rules fire from the answers and suggest the risk themes.', how:'Answer them with the client, check the answers Compass flags (where the client’s own documents say otherwise, or two answers disagree), then build the profile. Get these right first: they drive the risks and the legal duties.', feeds:'The risk profile, the legal duties.' },
   { n:3, title:'Risk profile (Operation): the register', opens:[{fn:function(){ _howtoRegister(); }}], what:'Every significant risk the business runs, each with its reference, tier, band and score. Add an issue in the sidebar captures something in one line; it waits at the top as To be assessed.', how:'The register runs in the ladder’s order; the Macro button groups it by theme when you want that. Open a risk. A scored risk opens on its overview: the issue, its rating, What we’re doing about it and Already in place. Full detail gives the numbered tabs: 1 Identify, 2 People & impact, 3 Controls & rating (the standing arrangements), 4 Action delegation & timescale. Every risk needs a score, a target, and an owner and a date on each action.', feeds:'The Risk ladder, the Top 5, the Client execution plan, every report.' },
-  { n:4, title:'Legal duties', opens:[{tab:'requirements'}], what:'What the law requires of this business: the policy statement, the legal essentials and the duty headings.', how:'For each duty: is it in place, is it adequate, and what action is needed where it falls short. Tick the assessment criteria under each essential. A gap goes on the risk profile as a risk, so it is managed like any other.', feeds:'Risks on the profile, the Legal duties sheet, the suggested Top 5, the board report.' },
+  { n:4, title:'Legal duties', opens:[{tab:'requirements'}], what:'What the law requires of this business: the policy statement, the legal essentials and the duty headings.', how:'For each duty: is it in place, is it adequate, and what action is needed where it falls short. Tick the assessment criteria under each essential. A gap goes on the risk profile as a risk, so it is managed like any other.', feeds:'Risks on the profile, the Legal duties sheet, the board report.' },
   { n:5, title:'Maturity level', opens:[{tab:'maturity'}], what:'The consultant’s judgement of the six HSG65 areas, in words, not scores.', how:'Mark each area Weak, Developing, Adequate or Strong with a one-line reason. For Weak or Developing, Raise action puts the area on the risk profile and raises the action onto the Client execution plan.', feeds:'Risks on the profile, the Client execution plan, the audit narrative and the review.' },
   { n:6, title:'Cockpit', opens:[{tab:'cockpit'}], what:'The whole position on one screen: the risk picture, the risk journey, the plan delivered and what is putting the business at risk today. Hover over any block and it says what it shows and why it is there.', how:'Start every visit here. Click a figure to open what is behind it. Customise chooses which blocks this client sees, and their order.', feeds:'Nothing: it only reads the records. A wrong figure here means a record behind it needs correcting.' },
-  { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'The chart of every rated risk not yet under control, numbered from the highest current risk. This is the one order: the live Top 5, the suggested five, the Client execution plan and the risk profile all follow it, each risk showing its reference then the same short title. Risks not yet rated are counted, not ranked.', how:'Read it like a music chart. Now is this month’s position, Last is last month’s, Mths is the months on the ladder, and Move is the symbol: ▲ climber, ▼ faller, = non-mover, NEW new entry, RE re-entry (was under control, came back), ★ biggest faller of the month. Falling is good news. Hover over any symbol for what it means on that risk. A risk at or below its target drops out to the list at the foot, with the month it dropped out. Compass keeps a position snapshot each month by itself, so the moves show from the second month. The first Top 5 sheet takes the Top 5 ticks; after that the meeting opens from the last sheet and the five change there. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The first Top 5 sheet, the Risk Action Sheet, the Top 5 banner on the Client execution plan, and the order of every other list.' },
-  { n:8, title:'This month’s Top 5 (the meeting)', opens:[{fn:function(){ openLiveTop5(); }}], what:'The front door. One risk a screen, laid out like the sheet the leadership team know, edited live in the meeting.', how:'Open it on the laptop. Its risks run in the ladder’s order. The first time, it holds the ladder’s ticks topped up in ranking order; after that it opens from the last sheet with everything still open. When the sheet has room, Compass offers the next risks with a reason each; Take this risk off the sheet makes room. What’s wrong is above the table; against each action: How we fix it, Who, By when, Is it enough, Comments, Done. Done asks Where does this live now? Send saves the sheet as the record of the meeting, downloads the PDF and opens the email; attach the PDF in Outlook.', feeds:'The actions themselves (tab 4, the Client execution plan), the sheets as sent, How the client works now.' },
+  { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'The chart of every rated risk not yet under control, numbered from the highest current risk. This is the one order: the live Top 5, the Client execution plan and the risk profile all follow it, the suggested five are simply its top five, each risk showing its reference then the same short title. Risks not yet rated are counted, not ranked.', how:'Read it like a music chart. Now is this month’s position, Last is last month’s, Mths is the months on the ladder, and Move is the symbol: ▲ climber, ▼ faller, = non-mover, NEW new entry, RE re-entry (was under control, came back), ★ biggest faller of the month. Falling is good news. Hover over any symbol for what it means on that risk. A risk at or below its target drops out to the list at the foot, with the month it dropped out. Compass keeps a position snapshot each month by itself, so the moves show from the second month. The first Top 5 sheet takes the Top 5 ticks; after that the meeting opens from the last sheet and the five change there. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The first Top 5 sheet, the Risk Action Sheet, the Top 5 banner on the Client execution plan, and the order of every other list.' },
+  { n:8, title:'This month’s Top 5 (the meeting)', opens:[{fn:function(){ openLiveTop5(); }}], what:'The front door. One risk a screen, laid out like the sheet the leadership team know, edited live in the meeting.', how:'Open it on the laptop. Its risks run in the ladder’s order. The first time, it holds the ladder’s ticks topped up in ranking order; after that it opens from the last sheet with everything still open. When the sheet has room, Compass offers the next risks with a reason each; Take this risk off the sheet makes room. What’s wrong is above the table; against each action: How we fix it, Who, By when, Is it enough, Comments, Done. Done asks Where does this live now? Send saves the sheet as the record of the meeting, downloads the PDF in the same columns and opens the email; attach the PDF in Outlook.', feeds:'The actions themselves (tab 4, the Client execution plan), the sheets as sent, How the client works now.' },
   { n:9, title:'Action sheets (back office)', opens:[{fn:function(){ openActionSheets('top5'); }}], what:'The Top 5, Legal duties and Risk action sheets as PDFs for the client to fill in, and what comes back.', how:'Use it for a Legal duties or Risk action sheet, or when a sheet comes back by email. Import a returned sheet, then decide each line: agree it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Agreed writes the owner, date and comment to the action.', feeds:'The actions, the next sheet.' },
   { n:10, title:'Client execution plan', opens:[{label:'Client execution plan',tab:'execplan'},{label:'Actions',tab:'actions'}], what:'Every action across the business in one list, by month, with its owner, date and status. Actions holds what the Inspection app raises, and shows only when that app is linked.', how:'The client’s own to-do list, in the ladder’s order, one block a band. Its columns are the order every list of actions uses: What’s wrong, How we fix it, Who, By when, Is it enough. Is it enough reads the risk: Yes when its current rating is at or below its target, Not yet when it is above, No target when none is set. Change a date or owner here and it changes on the risk. Complete an action and the close-out asks where it lives now. When the last action on a risk closes, Compass asks Is this issue now under control?', feeds:'The risk’s score and sign-off, How the client works now.' },
   { n:11, title:'Records: where the answers are filed', opens:[{label:'Documents',tab:'documents'},{label:'Sign-off register',tab:'signoff'},{label:'Toolbox talks',tab:'toolbox'},{label:'CPD library',tab:'cpd'}], what:'Where the answers to Where does this live now? are filed: a document on Documents, a briefing or talk on the Sign-off register, a regular check on Assurance records, a named person on Company setup.', how:'Documents holds links to the client’s own files with their review dates; nothing is uploaded. The Sign-off register issues anything people must sign for: each person gets a link and confirms on their phone. Toolbox talks and CPD library suggest topics for this kind of work; Issue puts one on the Sign-off register.', feeds:'How the client works now, the Evidence register, the Risk pathway.' },
   { n:12, title:'How the client works now', opens:[{tab:'works'}], what:'The one record of what is now in place: where it lives, who owns it, which issue it came from, when it is next checked.', how:'Read it with the client; download the PDF for the board or an accreditation. Answer now clears anything done that has not said where it lives.', feeds:'The cockpit’s story and accreditation evidence.' },
   { n:13, title:'Risk assessments (OpRAMS)', opens:[{label:'Quick links',tab:'links'}], what:'The task risk assessments and method statements live in the RAMS app. Each hazard carries notes: what is already in place and what is still to arrange.', how:'In OpRAMS, press Send to Compass on the Actions arising tab. In Compass, open the risk and press From a risk assessment: still-to-arrange notes become rows to do, in-place notes go to Already in place, and the assessment goes on the RA register against the risk. OpRAMS shows on Quick links once it is ticked in Admin, in the client’s Config.', feeds:'The risk’s overview, the RA register, How the client works now.' },
-  { n:14, title:'Monitoring', opens:[{label:'Assurance records',tab:'monitoring'},{label:'Process assurance',tab:'siteinsp'},{label:'Monthly report',tab:'monthly'}], what:'What the business checks and finds. Assurance records: the month’s figures, incidents, the regulatory tracker of statutory inspections, training and the rest. Process assurance: oversight carried out outside this app, such as site inspections and CDM audits. Monthly report: the inspection figures, shown only when the Inspection app is linked or the client has a service package.', how:'Enter the month’s figures on Assurance records and save them. Keep the regulatory tracker’s dates current: an overdue or failed check moves its risk up the suggested Top 5. Log each oversight visit on Process assurance.', feeds:'The cockpit’s figures, the suggested Top 5, the monthly report.' },
+  { n:14, title:'Monitoring', opens:[{label:'Assurance records',tab:'monitoring'},{label:'Process assurance',tab:'siteinsp'},{label:'Monthly report',tab:'monthly'}], what:'What the business checks and finds. Assurance records: the month’s figures, incidents, the regulatory tracker of statutory inspections, training and the rest. Process assurance: oversight carried out outside this app, such as site inspections and CDM audits. Monthly report: the inspection figures, shown only when the Inspection app is linked or the client has a service package.', how:'Enter the month’s figures on Assurance records and save them. Keep the regulatory tracker’s dates current: when the Top 5 sheet has room, an overdue or failed check is offered in the meeting. Log each oversight visit on Process assurance.', feeds:'The cockpit’s figures, the suggestions in the meeting, the monthly report.' },
   { n:15, title:'Review and accreditation', opens:[{label:'Risk pathway',tab:'journey'},{label:'Consultant review',tab:'review'},{label:'Consultants audit',tab:'audit'},{label:'Reports',tab:'reports'},{label:'Accreditation',tab:'cas'}], what:'Risk pathway: every risk through six stations, identified to signed off. Consultant review: a quality and progress picture for this client, with your rating over time. Consultants audit: the audit story in numbers, from the baseline snapshot to now. Reports: the board report and every other PDF. Accreditation: the same records against the schemes the client holds or needs.', how:'Use the pathway to show a client how far a risk has come. Record an audit snapshot at each audit visit. Produce the board report and the H&S Management Plan from Reports. On Accreditation, start at step 01: pick the schemes and the role, and only those questions appear.', feeds:'The client, the board, the assessor.' },
   { n:16, title:'The consultant’s tools', opens:[{label:'Quick links',tab:'links'},{label:'Triage',tab:'triage'},{label:'Settings',tab:'setup'},{label:'Admin',tab:'admin'}], what:'Quick links: the client’s other apps, and the data links to the Inspection app. Triage: client queries, and minutes held off the plan until you act on them. Settings: inspection checklists, the library and report branding. Admin: client tenants, who can sign in, and each client’s subscription.', how:'Triage is where a meeting’s minutes wait: Make this an issue puts one on the register to be assessed. A client who cannot see an app on Quick links needs it ticked in Admin, in the client’s Config.', feeds:'Everything else.' }
 ];
@@ -30285,13 +30297,13 @@ function _riskTierChip(r){
     +'<option value=""'+(t.set?'':' selected')+'>TIER '+auto.tier+' · auto</option>'
     +[1,2,3,4].map(n=>'<option value="'+n+'"'+(t.set&&t.tier===n?' selected':'')+'>TIER '+n+'</option>').join('')+'</select>';
 }
-// On the cockpit ladder: the first five in the Top 5 order, for the consultant to tick or swap.
+// On the ladder: its top five, for the consultant to tick or swap (Simon, 6 November 2026).
 function _cklSuggestHTML(m5){
-  const rs=(S.riskProfile||[]).filter(r=>r && !r.deleted).slice().sort(_riskPrioCmp).slice(0,5).sort(_ladderCmp);      // the rule below picks the five; they are listed in the ladder's order
+  const rs=_ladderRows().slice(0,5);      // the ladder's top five (Simon, 6 November 2026)
   if(!rs.length) return '';
   return '<div class="no-print" style="border:1px solid var(--border);margin:0 0 12px;">'
     +'<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:7px 12px;background:var(--muted-bg);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);">'
-    +'<span>Suggested five</span><span style="font-weight:600;letter-spacing:0;text-transform:none;">Picked by: seen on site, then legal must-haves missing, then not adequate, then tier 1 to 4 - could kill first, then the score. Listed in ladder order</span></div>'
+    +'<span>Suggested five</span><span style="font-weight:600;letter-spacing:0;text-transform:none;">The five highest current risks on the ladder</span></div>'
     +rs.map((r,i)=>{ const p=_riskPrio(r), pick=_riskTop5Picked(r, m5), sc=_riskScore(r);
       return '<div style="display:flex;align-items:center;gap:9px;padding:6px 12px;border-top:1px solid var(--border);font-size:12.5px;">'
         +'<span style="flex:0 0 14px;font-weight:700;color:var(--text-muted);">'+(i+1)+'</span>'

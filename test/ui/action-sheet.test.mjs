@@ -256,8 +256,8 @@ const BAND = { Critical: 'DC2626', High: 'EA580C', Medium: 'F59E0B', Low: '16A34
   {
     const CW = 595.28 - 80, ML = 40, MR = 595.28 - 40, c = t.boxes.as_2_r1_cmt, w = t.boxes.as_2_r1_who, d = t.boxes.as_2_r1_due, k = t.boxes.as_2_what;
     const near = (v, lo, hi) => v >= lo && v <= hi;
-    R.ok(!!c && !!w && !!d && near(c.x, ML + 0.35 * CW, ML + 0.45 * CW) && c.x < w.x && w.x < d.x && d.x + d.w <= MR + 1.5 && near(c.w, 0.25 * CW, 0.35 * CW) && near(w.w, 0.10 * CW, 0.20 * CW) && near(d.w, 0.10 * CW, 0.20 * CW) && c.multi === true,
-      'the columns: the action (printed, about 40%) on the left, then comments (about 30%, several lines), who and by when (about 15% each)');
+    R.ok(!!c && !!w && !!d && near(w.x, ML + 0.31 * CW, ML + 0.41 * CW) && near(c.x, ML + 0.68 * CW, ML + 0.78 * CW) && w.x < d.x && d.x < c.x && c.x + c.w <= MR + 1.5 && near(c.w, 0.22 * CW, 0.32 * CW) && near(w.w, 0.10 * CW, 0.20 * CW) && near(d.w, 0.08 * CW, 0.16 * CW) && c.multi === true,
+      'the columns, as on the screen since 6 November 2026: how we fix it (printed, about 36%), who, by when, is it enough, then comments (about 27%, several lines)');
     R.ok(!!k && k.w >= 0.9 * CW && near(k.h, 38, 80) && k.multi === true, 'the comments box runs the full width, several lines');
   }
   // what is printed
@@ -270,9 +270,9 @@ const BAND = { Critical: 'DC2626', High: 'EA580C', Medium: 'F59E0B', Low: '16A34
     'how to read the scores: the four bands with their ranges, in the risk ladder’s own words');
   R.ok(!S_.some(x => /in place today/i.test(x)) && !S_.some(x => /what happened/i.test(x)), '"In place today" and "What happened" are gone from the sheet');
   R.ok(S_.filter(x => U(x) === 'RECOMMENDED ACTIONS').length >= 5 && S_.filter(x => U(x) === 'FURTHER COMMENTS').length >= 5
-    && ['RECOMMENDED ACTION', 'COMMENTS', 'OWNER'].every(h => S_.some(x => U(x) === h)) && S_.some(x => /^TARGET DATE/.test(U(x))) && S_.some(x => /dd\/mm\/yyyy/i.test(x))
+    && ['HOW WE FIX IT', 'WHO', 'IS IT', 'ENOUGH', 'COMMENTS'].every(h => S_.some(x => U(x) === h)) && S_.some(x => /^BY WHEN/.test(U(x))) && S_.some(x => /dd\/mm\/yyyy/i.test(x))
     && S_.filter(x => x.trim() === 'Proposed owner and target date shown - amend where required').length >= 5,
-    'every page has Recommended actions (Action, Comments, Who, By when), with who and when from the plan, and Further comments');
+    'every page has Recommended actions (How we fix it, Who, By when, Is it enough, Comments), with who and when from the plan, and Further comments');
   R.ok(!S_.some(x => U(x) === 'YOUR CONTROLS - TELL US WHAT YOU THINK') && !S_.some(x => /The controls are printed - write against each one/.test(x)), 'the controls table is gone');
   const onPage = p => t.said.filter(x => x.p === p).map(x => x.s).join(' ').replace(/\s+/g, ' ');
   R.ok(['Fit edge protection to the loading bay roof', 'Write a rescue plan for harness work'].every(d => onPage(2).indexOf(d) >= 0)

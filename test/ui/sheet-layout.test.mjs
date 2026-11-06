@@ -282,15 +282,15 @@ function checkSheet(tag, b, x, opt = {}) {
     const it = items.find(z => z.rows.some(r => r.a)), k = it ? it.rows.findIndex(r => r.a) + 1 : 1, n = it ? it.n : 1;
     const c = fld('as_' + n + '_r' + k + '_cmt'), w = fld('as_' + n + '_r' + k + '_who'), d = fld('as_' + n + '_r' + k + '_due');
     const inR = (v, lo, hi) => v >= lo && v <= hi;
-    R.ok(!!c && !!w && !!d && inR(c.x, ML + 0.35 * CW, ML + 0.45 * CW) && inR(c.w, 0.25 * CW, 0.35 * CW) && inR(w.w, 0.10 * CW, 0.20 * CW) && inR(d.w, 0.10 * CW, 0.20 * CW) && c.x < w.x && w.x < d.x && d.x + d.w <= MR + 1.5 && c.multi === true,
-      T('the columns: ACTION printed on the left (about 40%), COMMENTS (about 30%, several lines), WHO and BY WHEN (about 15% each)' + (c ? ' (' + [c.x - ML, c.w, w && w.w, d && d.w].map(v => Math.round(v || 0)).join('/') + ')' : '')));
+    R.ok(!!c && !!w && !!d && inR(w.x, ML + 0.31 * CW, ML + 0.41 * CW) && inR(d.x, ML + 0.46 * CW, ML + 0.56 * CW) && inR(c.x, ML + 0.68 * CW, ML + 0.78 * CW) && inR(c.w, 0.22 * CW, 0.32 * CW) && inR(w.w, 0.10 * CW, 0.20 * CW) && inR(d.w, 0.08 * CW, 0.16 * CW) && w.x < d.x && d.x < c.x && c.x + c.w <= MR + 1.5 && c.multi === true,
+      T('the columns, as on the screen since 6 November 2026: HOW WE FIX IT printed on the left (about 36%), WHO, BY WHEN, IS IT ENOUGH, then COMMENTS (about 27%, several lines)' + (c ? ' (' + [c.x - ML, c.w, w && w.w, d && d.w].map(v => Math.round(v || 0)).join('/') + ')' : '')));
     const bad = [];
     items.forEach(it2 => {
       const rs = geo[it2.n] || []; if (!rs.length) return;
       const p0 = rs[0].p, onP = texts.filter(e => e.p === p0).map(e => norm(e.s));
       if (!onP.includes('RECOMMENDED ACTIONS')) bad.push(it2.n + ' title');
       if (!onP.includes('Proposed owner and target date shown - amend where required')) bad.push(it2.n + ' hint');
-      if (!['RECOMMENDED ACTION', 'COMMENTS', 'OWNER'].every(h => onP.includes(h)) || !onP.some(s => /^TARGET DATE/.test(s)) || !onP.some(s => /dd\/mm\/yyyy/.test(s))) bad.push(it2.n + ' header');
+      if (!['HOW WE FIX IT', 'WHO', 'IS IT', 'ENOUGH', 'COMMENTS'].every(h => onP.includes(h)) || !onP.some(s => /^BY WHEN/.test(s)) || !onP.some(s => /dd\/mm\/yyyy/.test(s))) bad.push(it2.n + ' header');
       [...new Set(rs.map(g => g.p))].forEach(p => {
         const mine = rs.filter(g => g.p === p), top = Math.max(...mine.map(g => g.top)), bot = Math.min(...mine.map(g => g.bot));
         if (!E.some(e => e.p === p && e.k === 'l' && e.c === ACC && e.t >= 1 && e.x1 - e.x0 >= 0.9 * CW && e.y >= top - 1)) bad.push(it2.n + ' p' + (p + 1) + ' no accent rule under the header');
@@ -300,7 +300,7 @@ function checkSheet(tag, b, x, opt = {}) {
         mine.forEach(g => { const mid = (g.top + g.bot) / 2; if (!E.some(e => e.p === p && e.k === 'r' && e.c === GROUND && e.x0 <= ML + 4 && e.x1 >= ML + 0.3 * CW && e.y0 <= mid && e.y1 >= mid)) bad.push(it2.n + '.' + g.k + ' action cell not shaded'); });
       });
     });
-    R.ok(!bad.length, T('the table: RECOMMENDED ACTIONS with its hint, ACTION / COMMENTS / WHO / BY WHEN (dd/mm/yyyy), the accent rule under the header, the accent border, the band rule down the left, the printed cells shaded'
+    R.ok(!bad.length, T('the table: RECOMMENDED ACTIONS with its hint, HOW WE FIX IT / WHO / BY WHEN (dd/mm/yyyy) / IS IT ENOUGH / COMMENTS, the accent rule under the header, the accent border, the band rule down the left, the printed cells shaded'
       + (bad.length ? ' - ' + bad.slice(0, 4).join(' | ') : '')));
   }
   // ── the content box: nothing above the masthead rule but the masthead, nothing below BOT but the footer ──

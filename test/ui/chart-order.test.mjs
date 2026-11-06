@@ -46,9 +46,7 @@ const WANT = ORDER.map(x => refs[x]).join();
   R.ok(t.mode === 'flat' && t.reg.filter(x => WANT.includes(x)).join() === WANT, 'the risk profile opens in the same order: ' + t.reg.join());
   R.ok([...new Set(t.plan)].join() === WANT, 'the Client execution plan runs in the same order: ' + [...new Set(t.plan)].join());
   R.ok(t.t5.filter(x => WANT.includes(x)).join() === WANT.split(',').filter(x => t.t5.includes(x)).join(), 'the live Top 5 runs in the same order: ' + t.t5.join());
-  const sugOn = t.sug.slice(0, 5);
-  const inOrder = sugOn.map(x => [refs.hi, refs.nt, refs.md, refs.at, refs.lo, refs.un].indexOf(x));
-  R.ok(inOrder.every((v, i) => !i || inOrder[i - 1] <= v), 'the suggested five are listed in the ladder\'s order: ' + sugOn.join());
+  R.ok(t.sug.join() === WANT, 'the suggested five are simply the ladder\'s top five (only four are on it here): ' + t.sug.join());
 }
 // ── one label ──
 {
@@ -82,9 +80,9 @@ const WANT = ORDER.map(x => refs[x]).join();
     const pr = [...document.querySelectorAll('#epYearCard tbody tr')].find(x => /Fit edge protection/.test(x.textContent));
     const planCells = [...pr.cells].slice(0, 5).map(c => c.textContent.trim().replace(/\s+/g, ' '));
     openLiveTop5(); const t5 = heads(document.querySelector('.t5-table')); const lab = document.querySelector('.t5-lab').textContent; const row = document.querySelector('.t5-row'); const t5Cells = [...row.cells].map(c => c.textContent.trim().replace(/\s+/g, ' ')); closeLiveTop5();
-    _riskOpenModal('hi'); _riskDetailTab('loop'); const over = heads(document.querySelector('#rpBody .t5-table')); _riskDetailTab('actions'); const tab4 = heads(document.querySelector('#rpBody .act-table:not(.act-ctl)') || document.querySelector('#rpBody .act-table')); _riskCloseModal();
+    _riskOpenModal('hi'); _riskDetailTab('loop'); const over = heads(document.querySelector('#rpBody .t5-table')); _riskDetailTab('actions'); const at4 = document.querySelector('#rpBody .act-table:not(.act-ctl)') || document.querySelector('#rpBody .act-table'); const tab4 = heads(at4), fits4 = at4.getBoundingClientRect().right <= document.getElementById('rpBody').getBoundingClientRect().right + 1; _riskCloseModal();
     switchTab('ladder');
-    return { plan, planCells, t5, lab, t5Cells, over, tab4 };
+    return { plan, planCells, t5, lab, t5Cells, over, tab4, fits4 };
   });
   const FIVE = "What’s wrong|How we fix it|Who|By when|Is it enough";
   R.ok(t.plan.slice(0, 5).join('|') === FIVE, 'the Client execution plan: ' + t.plan.join(' | '));
@@ -93,6 +91,7 @@ const WANT = ORDER.map(x => refs[x]).join();
   R.ok(/Ben Cole/.test(t.t5Cells[1]) && /Not yet/.test(t.t5Cells[3]), 'and its cells follow');
   R.ok(t.over.slice(0, 4).join('|') === FIVE.split('|').slice(1).join('|'), 'a risk\'s overview: ' + t.over.join(' | '));
   R.ok(t.tab4.slice(0, 4).join('|') === FIVE.split('|').slice(1).join('|'), 'a risk\'s tab 4: ' + t.tab4.join(' | '));
+  R.ok(t.fits4, 'and its table stays inside the panel at laptop size');
   const e = await page.evaluate(() => ['hi', 'nt', 'at', 'un'].map(id => { const x = _riskEnough(S.riskProfile.find(r => r.id === id)); return x.k + ':' + x.t + ':' + x.sub; }).concat(_riskEnough(null).t));
   R.ok(e.join('|') === 'no:Not yet:25 to 6|none:No target:now 16|yes:Yes:6 at target 6|none:Not rated:|-', 'is it enough reads the risk, nothing is typed: ' + e.join(' | '));
 }
@@ -161,6 +160,32 @@ const WANT = ORDER.map(x => refs[x]).join();
   R.ok(['▲ climber', '▼ faller', '= non-mover', 'NEW new entry', 'RE re-entry', '★ biggest faller'].every(x => t.g.includes(x)) && /Falling is good news/.test(t.g) && /moves show from the second month/.test(t.g), 'the guide explains the chart and every symbol');
   R.ok(/What’s wrong, How we fix it, Who, By when, Is it enough/.test(t.g) && /the one order/i.test(t.g) && /ladder’s order/.test(t.g), 'and the one order and the column order');
   R.ok(/music chart/.test(t.tip) && /falling is good news/i.test(t.tip), 'the ladder\'s own tooltip says it too');
+}
+// ── the printed sheet: a new one runs like the screen, one already sent keeps the columns it was sent with ──
+{
+  const t = await page.evaluate(async () => {
+    if (!window.__hook) { window.__hook = true; const d = PDFLib.PDFPage.prototype.drawText; PDFLib.PDFPage.prototype.drawText = function (x, o) { (window.__said = window.__said || []).push(String(x)); return d.call(this, x, o); }; }
+    window._sltSaveBlob = () => {};
+    const said = async id => { window.__said = []; const bytes = await buildActionSheetPDF(id); const doc = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true }); const f = doc.getForm(); return { said: window.__said.map(x => x.toUpperCase()), names: f.getFields().map(x => x.getName()) }; };
+    const heads = x => ['HOW WE FIX IT', 'WHO', 'IS IT', 'ENOUGH', 'COMMENTS', 'RECOMMENDED ACTION', 'OWNER', "WHAT'S WRONG", 'HAZARD AND RISK'].filter(h => x.said.includes(h)).join();
+    delete S.actionSheets; openActionSheets('top5'); asNewSheet(); closeActionSheets();
+    const s = _asList('top5').slice(-1)[0], draft = await said(s.id);
+    await downloadActionSheet(s.id);
+    const after = { colsV: s.colsV, frozen: s.items.every(i => !!i.enough), first: s.items[0].enough.t };
+    const r0 = _execRiskOf({ ref: s.items[0].ref }), keepL = r0.likelihood, keepS = r0.severity, keepTL = r0.targetL, keepTS = r0.targetS;
+    r0.targetL = r0.likelihood; r0.targetS = r0.severity; const liveNow = _riskEnough(r0).t, again = await said(s.id), kept = again.said.includes(after.first.toUpperCase());
+    r0.targetL = keepTL; r0.targetS = keepTS; r0.likelihood = keepL; r0.severity = keepS;
+    const old = JSON.parse(JSON.stringify(s)); old.id = 'as_old'; old.no = 99; old.issuedAt = '2026-10-07'; old.formV = 3; delete old.colsV; S.actionSheets.list.push(old);
+    const was = await said('as_old'); await downloadActionSheet('as_old'); const oldStill = !('colsV' in old);
+    const fields = n => n.filter(x => /^as_1_r1_(cmt|who|due)$/.test(x)).sort().join();
+    S.actionSheets.list = S.actionSheets.list.filter(x => x.id !== 'as_old');
+    return { draft: heads(draft), was: heads(was), after, liveNow, kept, oldStill, f1: fields(draft.names), f2: fields(was.names) };
+  });
+  R.ok(t.draft === "HOW WE FIX IT,WHO,IS IT,ENOUGH,COMMENTS,WHAT'S WRONG", 'a new sheet prints the screen\'s columns: ' + t.draft);
+  R.ok(t.was === 'COMMENTS,RECOMMENDED ACTION,OWNER,HAZARD AND RISK' && t.oldStill, 'a sheet already sent reprints with the columns it was sent with: ' + t.was);
+  R.ok(t.after.colsV === 2 && t.after.frozen, 'sending a new sheet marks it, and keeps what Is it enough said that day');
+  R.ok(t.liveNow === 'Yes' && t.after.first !== 'Yes' && t.kept, 'a later re-score does not change a sheet already sent: it still prints ' + t.after.first);
+  R.ok(t.f1 === 'as_1_r1_cmt,as_1_r1_due,as_1_r1_who' && t.f1 === t.f2, 'the form boxes keep their names either way, so a returned sheet still imports');
 }
 // ── the saved records are not touched: only the new section is added ──
 {

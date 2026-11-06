@@ -37,10 +37,10 @@ await wait(page, 400);
     switchTab('triage');
     const panel = document.getElementById('tab-triage');
     const btn = document.querySelector('.tab-btn[data-tab="triage"]');
-    const inTools = !!btn && !!btn.closest('.nav-phase-tools');
+    const inTools = !!btn && !!btn.closest('.nav-grp[data-grp="tools"]');      // Consultant tools, since Stage C grouped the sidebar
     return { active: panel.classList.contains('active'), inTools, consultantOnly: btn.hasAttribute('data-consultant'), text: panel.innerText };
   });
-  R.ok(t.active && t.inTools && t.consultantOnly, 'Triage sits in Tools and is consultant only');
+  R.ok(t.active && t.inTools && t.consultantOnly, 'Triage sits in Consultant tools and is consultant only');
   R.ok(/Racking inspection/.test(t.text) && /Off the record: the yard lease/.test(t.text) && /Jo Fine/.test(t.text) && /not named/.test(t.text), 'the Triage tab shows the meeting: who was there, the notes and the actions');
 }
 {

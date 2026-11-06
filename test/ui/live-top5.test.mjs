@@ -84,7 +84,7 @@ R.ok(before.length === 1 && before[0].no === 1 && before[0].issuedAt === day(-29
 // ── opening: a clear top-level button, a working copy, no new number ──
 {
   const t = await page.evaluate(() => {
-    const b = document.getElementById('t5Btn'), shown = !!b && getComputedStyle(b).display !== 'none' && b.closest('.app-header') !== null, label = b ? b.innerText : '';
+    const b = document.getElementById('t5Btn'), shown = !!b && getComputedStyle(b).display !== 'none' && b.closest('.nav-grp-front') !== null, label = b ? b.innerText : '';
     b.click();
     const ov = document.getElementById('t5Ov');
     return { shown, label, open: !!ov, nav: ov ? ov.querySelectorAll('.t5-nb').length : 0, list: S.actionSheets.list.length,
@@ -92,7 +92,7 @@ R.ok(before.length === 1 && before[0].no === 1 && before[0].issuedAt === day(-29
       heads: [...ov.querySelectorAll('.t5-table th')].map(x => x.innerText.trim().toLowerCase()).join('|'),
       tiles: [...ov.querySelectorAll('.t5-tile')].map(x => x.innerText.replace(/\s+/g, ' ')).join(' / '), haz: (ov.querySelector('.t5-haz') || {}).innerText || '', kick: (ov.querySelector('.t5-kick') || {}).innerText || '' };
   });
-  R.ok(t.shown && /Top 5/.test(t.label), 'a clear button in the header: "' + t.label + '"');
+  R.ok(t.shown && /Top 5/.test(t.label), 'a clear button at the top of the Front door group (Stage C moved it from the header): "' + t.label + '"');
   R.ok(t.open && t.nav === 5 && t.carried === 'r1,r2,r3,r4,r5', 'it opens on the five from the last sheet, a risk a screen');
   R.ok(t.list === 1 && t.working && t.base, 'a working copy that starts from sheet 1: no new sheet number until Send');
   R.ok(t.heads === 'recommended action|comments|owner|target date|done', 'the table: recommended action, then Comments, Owner, Target date, Done (' + t.heads + ')');
@@ -322,7 +322,7 @@ const answer = async (k, boxes, how) => {
   R.ok(!t.risks.includes('r2') && !t.risks.includes('r3') && !t.risks.includes('r4'), 'a risk with everything done is not carried: ' + t.risks);
   R.ok(t.risks.includes('r1') && t.risks.includes('r5'), 'everything still open is');
   R.ok(/still to be confirmed \(1\)/.test(t.strip) && t.strip.includes(REF.r4), 'done on a risk that has left the sheet: still asked about');
-  R.ok(/Room for 3 more/.test(t.add) && /Next in the Top 5 order/.test(t.add) && t.add.includes('Add') && t.risks.split(',').length === 2, 'the next risk is offered, not added: ' + t.add.replace(/\s+/g, ' ').slice(0, 80));
+  R.ok(/Suggested for this month \(\d\)/.test(t.add) && /Highest open risk/.test(t.add) && t.add.includes('Add') && t.risks.split(',').length === 2, 'the next risk is suggested with its reason, not added: ' + t.add.replace(/\s+/g, ' ').slice(0, 90));
   R.ok(t.meet === day(0), 'the new meeting is dated today until you say otherwise');
   R.ok(/Sheet 1, /.test(t.trail) && /Sheet 2, /.test(t.trail), 'the sheets as sent are a trail: ' + t.trail);
   await page.evaluate(() => { const b = document.querySelector('.t5-strip-add .btn'); b.click(); });

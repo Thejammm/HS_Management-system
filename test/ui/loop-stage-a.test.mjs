@@ -62,8 +62,8 @@ const before = await page.evaluate(() => ({ actions: JSON.stringify(S.riskProfil
 
 // ── A1: quick add from the front door, the first line only ──
 {
-  const t = await page.evaluate(() => { const b = document.getElementById('qaBtn'); const shown = !!b && getComputedStyle(b).display !== 'none' && !!b.closest('.app-header'); b.click(); return { shown, label: b.innerText, panel: !!document.getElementById('qaOv'), fields: ['qaWhat', 'qaWho', 'qaLevel'].map(id => !!document.getElementById(id)) }; });
-  R.ok(t.shown && /Add an issue/.test(t.label), 'a button in the header, next to the live Top 5: "' + t.label + '"');
+  const t = await page.evaluate(() => { const b = document.getElementById('qaBtn'); const shown = !!b && getComputedStyle(b).display !== 'none' && !!b.closest('.nav-grp-front'); b.click(); return { shown, label: b.innerText, panel: !!document.getElementById('qaOv'), fields: ['qaWhat', 'qaWho', 'qaLevel'].map(id => !!document.getElementById(id)) }; });
+  R.ok(t.shown && /Add an issue/.test(t.label), 'a button in the Front door group, under the live Top 5 (Stage C moved both there): "' + t.label + '"');
   R.ok(t.panel && t.fields.every(Boolean), 'it opens a small panel with the three fields');
   await page.evaluate(() => quickAddSave());
   R.ok(/Say what the issue is/.test(await toast()) && await page.evaluate(() => !!document.getElementById('qaOv')), 'the one line is required');

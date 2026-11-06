@@ -4519,6 +4519,19 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .rs-chip{display:inline-block;margin-left:6px;padding:0 6px;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:var(--accent);color:#1D1F20;vertical-align:1px;}
     /* How [client] works now (Stage B): the register of what is now in place. Flat and ruled, like the live Top 5. */
     .tab-btn[data-tab="works"]{white-space:normal;line-height:1.25;text-align:left;}      /* the client's name can be long: the label wraps rather than clips */
+    /* Stage C: the suggested Top 5's reasons, and the sidebar in four plain groups */
+    .t5-why{font-style:normal;font-size:11px;color:var(--text-muted);margin-left:4px;}
+    .t5-why-p{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);margin-left:12px;}
+    .t5-offer{display:inline-flex;align-items:center;gap:6px;margin:2px 10px 2px 0;}
+    .nav-grp{border-radius:0;border-left-color:var(--border);margin:8px 0;}
+    .nav-grp-front{border-left-color:var(--accent);}
+    .nav-grp-h{padding:0;}
+    .nav-grp-h:not(:has(button)){padding:4px 8px 5px;}
+    .nav-grp-btn{display:flex;align-items:center;gap:6px;width:100%;border:0;background:none;padding:5px 8px 6px;font:inherit;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--text-muted);cursor:pointer;text-align:left;}
+    .nav-chev{display:inline-block;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--text-muted);transition:transform .12s;}
+    .nav-closed .nav-chev{transform:rotate(-90deg);}
+    .nav-closed .nav-grp-b{display:none;}
+    .sidebar-nav .nav-act{display:flex;width:calc(100% - 16px);margin:4px 8px;justify-content:flex-start;text-align:left;}
     .wk-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px;}
     .wk-title{font-size:21px;font-weight:800;line-height:1.25;margin:2px 0 4px;}
     .wk-chips{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 8px;}
@@ -14616,6 +14629,7 @@ function setViewMode(mode){
   _viewMode = VIEW_MODES.includes(mode) ? mode : 'management'; applyViewMode();
 }
 function applyViewMode(){
+  try{ _navBuild(); }catch(e){ console.error('nav groups', e); }
   const mode = _viewMode;
   const insp = mode === 'employee';
   const isConsultant = (Auth.user()?.role) === 'consultant';
@@ -26071,9 +26085,10 @@ function _t5StripsHTML(w, ro){
   const stick=_t5StickList();
   if(stick.length) out+='<div class="t5-strip t5-strip-stick"><b>Done, where it lives now still to be confirmed ('+stick.length+'):</b> '
     +stick.map((z,n)=>{ const ref=z.r?_riskRefOf(z.r):'', dz=String(z.o.desc||''), t=(ref?(ref+' '):'')+(dz.length>70?(dz.slice(0,70).replace(/\s+\S*$/,'')+'…'):dz); return ro?esc(t):('<button type="button" class="t5-link" onclick="t5StickAt('+n+')">'+esc(t)+'</button>'); }).join(' · ')+'</div>';
-  const offer=_t5Offer(w);
-  if(offer.length && !ro) out+='<div class="t5-strip t5-strip-add"><b>Room for '+(AS_MAX-w.items.length)+' more.</b> Next in the Top 5 order:'
-    +offer.map(r=>'<span class="t5-offer">'+esc((_riskRefOf(r)?(_riskRefOf(r)+' '):'')+(r.activity||r.hazard||''))+' <button type="button" class="btn btn-outline btn-xs" onclick="t5AddRisk('+_asQ(r.id)+')">＋ Add</button></span>').join('')+'</div>';
+  const sug=(w.items.length<AS_MAX) ? _t5Suggest(w).filter(s=>!s.on) : [];
+  if(sug.length && !ro) out+='<div class="t5-strip t5-strip-add"><b>Suggested for this month ('+sug.length+'):</b> '
+    +sug.map(s=>'<span class="t5-offer"><span>'+esc((_riskRefOf(s.r)?(_riskRefOf(s.r)+' '):'')+(s.r.activity||s.r.hazard||''))+' <i class="t5-why">'+esc(s.reason)+'</i></span><button type="button" class="btn btn-outline btn-xs" onclick="t5AddRisk('+_asQ(s.r.id)+')">＋ Add</button></span>').join('')
+    +(sug.length>1?'<button type="button" class="btn btn-primary btn-xs" onclick="t5AddAll()" title="Puts every suggested risk on the sheet">Add all</button>':'')+'</div>';
   const off=_t5TicksOff(w);
   if(off.length && !ro) out+='<div class="t5-strip">Ticked on the risk ladder for this month but not on this sheet: '+off.map(esc).join('; ')+'. Send takes that tick off, so the ladder and the sheet show the same five.</div>';
   return out;
@@ -26089,6 +26104,7 @@ function _t5PageHTML(w, it, i, ro, dis){
   const name=r?(r.activity||r.hazard||'Risk'):(it.risk||'Action'), ref=r?_riskRefOf(r):'';
   const kick='Priority '+(i+1)+' of '+w.items.length+(ref?(' · '+ref):'');
   const off=ro?'':'<button type="button" class="t5-link t5-off" onclick="t5RemoveRisk('+i+')" title="Takes this risk off the sheet. Its actions stay on the plan.">Take this risk off the sheet</button>';
+  const why=_t5WhyOf(it);
   const wrong=r?_asRiskWrong(r):[];
   const top=r ? ('<div class="t5-top" id="t5Top">'+_t5TileHTML('Current risk rating', _riskScore(r), 'Not yet rated')+'<div class="t5-arrow">→</div>'+_t5TileHTML('Target risk rating', _riskTarget(r), 'Target not yet set')
       +'<div class="t5-haz"><div class="t5-lab">Hazard and risk</div><ul>'+wrong.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul></div></div>')
@@ -26102,7 +26118,7 @@ function _t5PageHTML(w, it, i, ro, dis){
     n++; return _t5RowHTML(i, x, n, ro, dis);
   }).join('');
   const more=(r && !ro) ? _t5NewRowHTML(i, '', 'm', 'Add another action') : '';
-  return '<section class="t5-page"><div class="t5-kicks"><div class="t5-kick">'+esc(kick)+'</div>'+off+'</div><h2 class="t5-h">'+esc(name)+'</h2>'+top
+  return '<section class="t5-page"><div class="t5-kicks"><div class="t5-kick">'+esc(kick)+(why?('<span class="t5-why-p">'+esc(why)+'</span>'):'')+'</div>'+off+'</div><h2 class="t5-h">'+esc(name)+'</h2>'+top
     +'<table class="t5-table"><colgroup><col style="width:36%"><col style="width:27%"><col style="width:18%"><col style="width:13%"><col style="width:6%"></colgroup>'
     +'<thead><tr><th>Recommended action</th><th>Comments</th><th>Owner</th><th>Target date</th><th class="t5-c">Done</th></tr></thead><tbody>'+html+more+'</tbody></table>'
     +'<div class="t5-pager">'+(i>0?'<button type="button" class="btn btn-ghost btn-sm" onclick="t5Go('+(i-1)+')">Previous risk</button>':'<span></span>')
@@ -26259,7 +26275,9 @@ function t5AddRisk(rid){
   const w=_t5W(); if(w.items.length>=AS_MAX) return;
   const r=(S.riskProfile||[]).find(x=>x.id===rid); if(!r || w.items.some(it=>_t5RiskKey(it)===r.id)) return;
   const a=_riskTop5Action(r), ref={ t:'risk', a:r.id, b:a?a.id:'' };
-  w.items.push(_t5ItemCopy({ ref, desc:a?a.desc:'', risk:r.activity||r.hazard||'', rec:'' }, 0));
+  const sug=_t5Suggest(w).find(s=>s.r.id===r.id);
+  const it=_t5ItemCopy({ ref, desc:a?a.desc:'', risk:r.activity||r.hazard||'', rec:'' }, 0); it.whyText=sug?sug.reason:'Added by hand';
+  w.items.push(it);
   _t5At=w.items.length-1; _t5Typed={};
   scheduleAutoSave(); _t5Render();
 }
@@ -26942,6 +26960,102 @@ async function downloadWorksNow(){
     _sltSaveBlob(new Blob([bytes],{ type:'application/pdf' }), 'how-'+safe+'-works-now-'+_asToday()+'.pdf');
     showToast('✓ '+_wkTitle()+' downloaded','success');
   }catch(e){ console.error('Works now PDF failed',e); showToast('Could not build the PDF - see console','error'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  STAGE C (Simon, 5 November 2026): keep improving, and tidy the front.
+//  C1 The suggested Top 5: when the live Top 5 opens with room on it, Compass
+//     names the risks to put on, each with its one-line reason - carried from
+//     the last meeting, a new issue not yet assessed, a regular check overdue
+//     or failed on Assurance records, then the highest open risks in the
+//     ladder's own order (its ticks first). Offered, never added for you; Add
+//     all takes the rest in one press; any risk can still be taken off.
+//  C2 The sidebar in four plain groups: Front door, Records, Consultant tools,
+//     Admin. Buttons are moved, never changed, so switchTab and applyViewMode
+//     carry on as they are; the view still decides what shows inside a group.
+// ══════════════════════════════════════════════════════════════
+// Regular checks that need the meeting: a routine on Assurance records that is
+// overdue, or failed its last check - each with the risk it keeps in place.
+function _t5Checks(){
+  const out=[];
+  (S.riskProfile||[]).forEach(r=>(r.actions||[]).forEach(a=>{
+    const e=(a && !a.deleted) ? _embedOf(a) : null, rt=e && e.routine; if(!rt || !rt.regId) return;
+    const it=_regFindItem(rt.regId); if(!it || _regIsNA(it)) return;
+    const nm=String(it.item||rt.item||'');
+    if(String(it.result||'')==='Fail') out.push({ r, reason:'Failed check'+(it.resultDate?(' '+fmtDate(it.resultDate)):'')+': '+nm });
+    else if(_regRag(it.dueDate)==='red') out.push({ r, reason:'Check overdue: '+nm+(it.dueDate?(' (was due '+fmtDate(it.dueDate)+')'):'') });
+  }));
+  return out;
+}
+// Why a line is on the sheet, in words.
+function _t5WhyOf(it){
+  if(!it) return '';
+  if(it.carriedFrom) return 'Carried from last meeting';
+  if(it.whyText) return String(it.whyText);
+  return { tick:'Ticked on the risk ladder', ladder:'Highest open risk', added:'Added by hand' }[it.why]||'';
+}
+// The five for this month, in order, each with its reason; those already on the
+// copy first, then the suggestions for the room left.
+function _t5Suggest(w){
+  const out=[], seen=new Set(), on=new Set(w.items.map(_t5RiskKey));
+  const add=(r, reason, kind)=>{ if(!r || seen.has(r.id) || out.length>=AS_MAX) return; seen.add(r.id); out.push({ r, reason, kind, on:on.has(r.id) }); };
+  w.items.forEach(it=>{ const r=_execRiskOf({ ref:it.ref }); if(r) add(r, _t5WhyOf(it)||'On this sheet', it.carriedFrom?'carry':'on'); });
+  (S.riskProfile||[]).filter(_riskToAssess).sort((a,b)=>String((b.quick||{}).raisedAt||'').localeCompare(String((a.quick||{}).raisedAt||'')))
+    .forEach(r=>add(r, 'New: raised '+fmtDate(String((r.quick||{}).raisedAt||r.createdAt||'').slice(0,10)), 'new'));
+  _t5Checks().forEach(c=>add(c.r, c.reason, 'check'));
+  _asRiskOrder().forEach(id=>{ const r=(S.riskProfile||[]).find(x=>x && x.id===id); if(r && _riskScore(r).rating && _t5StillOpen({ ref:{ t:'risk', a:r.id, b:'' } })) add(r, 'Highest open risk', 'top'); });
+  return out;
+}
+function t5AddAll(){
+  if(_blockIfReadOnly()) return;
+  const w=_t5W();
+  _t5Suggest(w).filter(s=>!s.on).forEach(s=>{ if(w.items.length<AS_MAX) t5AddRisk(s.r.id); });
+}
+
+// ── C2. The sidebar in four plain groups ──
+const NAV_GROUPS=[
+  { k:'front',   label:'Front door',       tabs:['cockpit','risk','works'], fixed:true },
+  { k:'records', label:'Records',          tabs:['documents','signoff','monitoring','toolbox','cpd','monthly','reports'] },
+  { k:'tools',   label:'Consultant tools', tabs:['company','requirements','maturity','execplan','actions','siteinsp','journey','cas','review','audit','triage','links'] },
+  { k:'admin',   label:'Admin',            tabs:['setup','admin'] }
+];
+var _navBuilt=false;
+function _navOpen(k){ try{ return localStorage.getItem('compass.nav.'+k)!=='closed'; }catch(e){ return true; } }
+function navToggle(k){
+  const open=_navOpen(k);
+  try{ localStorage.setItem('compass.nav.'+k, open?'closed':'open'); }catch(e){}
+  const g=document.querySelector('.nav-grp[data-grp="'+k+'"]'); if(!g) return;
+  g.classList.toggle('nav-closed', open);
+  const b=g.querySelector('.nav-grp-btn'); if(b) b.setAttribute('aria-expanded', open?'false':'true');
+}
+// Done once, before the first applyViewMode: every button keeps its class, id and
+// onclick and only moves; the live Top 5 and Add an issue sit under Cockpit; the
+// old phase boxes, empty once their buttons have moved, go.
+function _navBuild(){
+  if(_navBuilt) return;
+  const nav=document.querySelector('.sidebar-nav'); if(!nav) return;
+  _navBuilt=true;
+  const btn=t=>nav.querySelector('.tab-btn[data-tab="'+t+'"]');
+  const note=document.getElementById('navLinkedNote');
+  const groups=[];
+  NAV_GROUPS.forEach(g=>{
+    const open=g.fixed || _navOpen(g.k);
+    const div=document.createElement('div'); div.className='nav-phase nav-grp'+(g.fixed?' nav-grp-front':'')+(open?'':' nav-closed'); div.setAttribute('data-grp', g.k);
+    const h=document.createElement('div'); h.className='nav-phase-label nav-grp-h';
+    if(g.fixed) h.textContent=g.label;
+    else h.innerHTML='<button type="button" class="nav-grp-btn" onclick="navToggle(\''+g.k+'\')" aria-expanded="'+(open?'true':'false')+'" title="Open or close this group"><span class="nav-chev"></span>'+esc(g.label)+'</button>';
+    div.appendChild(h);
+    const body=document.createElement('div'); body.className='nav-grp-b';
+    g.tabs.forEach(t=>{ const b=btn(t); if(b) body.appendChild(b);
+      if(g.k==='front' && t==='cockpit') ['t5Btn','qaBtn'].forEach(id=>{ const x=document.getElementById(id); if(x){ x.classList.add('nav-act'); body.appendChild(x); } });
+      if(t==='siteinsp' && note) body.appendChild(note); });
+    div.appendChild(body); groups.push(div);
+  });
+  // a button this list does not name keeps a place, at the end of Consultant tools
+  const tools=groups.find(d=>d.getAttribute('data-grp')==='tools').querySelector('.nav-grp-b');
+  [...nav.querySelectorAll('.tab-btn[data-tab]')].forEach(b=>tools.appendChild(b));
+  [...nav.querySelectorAll('.nav-phase')].forEach(p=>{ if(!p.classList.contains('nav-grp')) p.remove(); });
+  groups.forEach(d=>nav.appendChild(d));
 }
 
 async function openBoardReportPrint(){

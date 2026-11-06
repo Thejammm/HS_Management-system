@@ -19278,7 +19278,7 @@ function _gotoRisk(id){
   _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };
   const _jr=(S.riskProfile||[]).find(x=>x.id===id);
   _riskModeFilter=_jr?_riskMode(_jr):'hs'; _riskSearch='';
-  _riskSel = id; _riskMacroLast = id; _riskSelTab = 'summary'; _riskModalOpen = true;
+  _riskSel = id; _riskMacroLast = id; _riskSelTab = _rsDefaultTab(_jr); _riskModalOpen = true;      // the same tab as the register opens it on (Stage A)
   switchTab('risk');
   setTimeout(()=>{
     const sec=document.getElementById('wfRegister'); if(sec && !sec.open) sec.open=true;
@@ -20436,7 +20436,7 @@ function _promptRescore(r){
     +'<div class="rs-ctrl-sc"><div class="slt-muted">Was<br><b>'+(cur.rating||'-')+'</b> ('+cur.l+'×'+cur.s+')</div><div class="t5-arrow">→</div>'
     +'<div class="slt-muted">Suggested now'+(tgt.rating?' (the target)':'')+'<br><b>'+(tgt.rating||'-')+'</b></div>'+selHTML('rescoreL',preL,'Likelihood now')+selHTML('rescoreS',preS,'Severity now')+'</div>'
     +(L.placed.length?('<div class="rs-h">Now in place</div><ul class="rs-placed">'+L.placed.map(x=>'<li><b>'+esc(x.a.desc||'')+'</b><span>'+esc(x.line||'')+'</span></li>').join('')+'</ul>'):'')
-    +(unsaid.length?('<div class="t5-strip t5-strip-stick" style="margin-top:10px;"><b>'+unsaid.length+' done item'+(unsaid.length!==1?'s have':' has')+' not said where it lives now.</b> It can still be marked under control; the cockpit will flag it. <button type="button" class="btn btn-outline btn-xs" onclick="rsAnswerNow('+q+')">Answer now</button></div>'):'')
+    +(unsaid.length?('<div class="t5-strip t5-strip-stick" style="margin-top:10px;"><b>'+unsaid.length+' done item'+(unsaid.length!==1?'s have':' has')+' not said where it lives now.</b> It can still be marked under control; the question stays on the overview and the live Top 5 until it is answered. <button type="button" class="btn btn-outline btn-xs" onclick="rsAnswerNow('+q+')">Answer now</button></div>'):'')
     +'<label class="t5-sf" style="margin-top:10px;"><span>Not yet, because (one line, optional)</span><input id="rescoreWhy"></label>'
     +'<div class="t5-stick-f"><button type="button" class="btn btn-ghost btn-sm" onclick="rsNotYet('+q+')">Not yet</button><button type="button" class="btn btn-primary btn-sm" onclick="rsUnderControl('+q+')">Yes, it\'s under control</button></div></div>';
   _backdropClose(ov, ()=>ov.remove());

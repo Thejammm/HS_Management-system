@@ -70,11 +70,11 @@ const hdr = await page.evaluate(async () => { const r = S.riskProfile.find(x => 
   const t = _riskTier(r), now = document.querySelector('select.rc-chip'); const shown = now ? now.options[now.selectedIndex].text : '';
   setRiskTier(r.id, ''); return { before, tier: t.tier + ' ' + t.why, shown }; });
 R.ok(hdr && hdr.before === 'TIER 3 · auto' && hdr.tier === '1 set by you' && hdr.shown === 'TIER 1', 'the TIER chip in the risk header is a picker too, the same setting as the Priority box (' + JSON.stringify(hdr) + ')');
-await page.evaluate(() => { _riskModalOpen = false; switchTab('cockpit'); }); await wait(page, 900);
+await page.evaluate(() => { _riskModalOpen = false; switchTab('ladder'); }); await wait(page, 900);      // the ladder has its own tab (6 November 2026)
 const ck = await page.evaluate(() => { const p = document.querySelector('.ckx-panel.ckl'); if (!p) return null;
   const sug = [...p.querySelectorAll('div')].find(d => /^Suggested five/i.test((d.firstElementChild || {}).textContent || '') && d.querySelector('input[type=checkbox]'));
   return { sug: sug ? sug.querySelectorAll('input[type=checkbox]').length : 0, first: sug ? sug.children[1].textContent : '', lines: p.querySelectorAll('.ckl-line').length, tiers: [...p.querySelectorAll('.ckl-meta')].filter(m => /TIER [1-4]/.test(m.textContent)).length }; });
-R.ok(ck && ck.sug === 5 && /Uninsured loss/.test(ck.first), 'the cockpit ladder shows the suggested five, first the missing legal duty (' + (ck && ck.first.slice(0, 60)) + ')');
+R.ok(ck && ck.sug === 5 && /Uninsured loss/.test(ck.first), 'the ladder shows the suggested five, first the missing legal duty (' + (ck && ck.first.slice(0, 60)) + ')');
 R.ok(ck && ck.lines > 0 && ck.tiers === ck.lines, 'every ladder line shows its tier');
 
 await R.done(browser, errors);

@@ -50,8 +50,8 @@ const RISKS = () => ([
 const COMPANY = { tradingName: 'Fairbank Fabrications Ltd', slt: [
   { name: 'Jo Fine', role: 'Managing Director', email: 'jo@fairbank.example' },
   { name: 'Sam Line', role: 'Operations Director', email: 'sam@fairbank.example' } ] };
-await seed(page, { riskProfile: RISKS(), company: COMPANY, meetings: [], decisions: [], actionPlan: [], top5Resp: { list: [], own: {}, notes: {} } }, 'cockpit');
-await page.evaluate(() => { delete S.actionSheets; renderCockpit(); });
+await seed(page, { riskProfile: RISKS(), company: COMPANY, meetings: [], decisions: [], actionPlan: [], top5Resp: { list: [], own: {}, notes: {} } }, 'ladder');      // the ladder has its own tab (6 November 2026)
+await page.evaluate(() => { delete S.actionSheets; renderLadder(); });
 await wait(page, 300);
 const { month, label } = await page.evaluate(() => ({ month: _top5Month(), label: _top5MonthLabel(_top5Month()) }));
 
@@ -205,13 +205,13 @@ let riskShape = '', riskHeads = '';
 {
   const t = await page.evaluate(month => {
     const a7 = __risk('r7').actions[0]; a7.top5 = month;
-    const keep = window._roLocked; window._roLocked = () => true; renderCockpit();
+    const keep = window._roLocked; window._roLocked = () => true; renderLadder();
     const L = __ladder();
     const out = { boxes: L.querySelectorAll('.ckl-sh input, .ckl-t5 input').length, tools: !!L.querySelector('.ckl-tools button'),
       shStar: __text(__line('Work at height on the loading bay roof').querySelector('.ckl-sh')),
       shNone: __text(__line('Fire in the paint store').querySelector('.ckl-sh')),
       t5Star: __text(__line('Fire in the paint store').querySelector('.ckl-t5')) };
-    window._roLocked = keep; a7.top5 = ''; renderCockpit();
+    window._roLocked = keep; a7.top5 = ''; renderLadder();
     out.back = __ladder().querySelectorAll('.ckl-sh input').length;
     return out;
   }, month);
@@ -256,7 +256,7 @@ let riskShape = '', riskHeads = '';
     closeActionSheets();
     return out;
   });
-  R.ok(/Tick risks for the sheet on the cockpit.s risk ladder first/.test(t.toast) && t.risk === 0 && t.all === 0, 'with nothing ticked and nothing carried, no sheet - it asks for ticks first: ' + t.toast);
+  R.ok(/Tick risks for the sheet on the Risk ladder first/.test(t.toast) && t.risk === 0 && t.all === 0, 'with nothing ticked and nothing carried, no sheet - it asks for ticks first: ' + t.toast);
 }
 {
   const t = await page.evaluate(() => {
@@ -276,8 +276,8 @@ let riskShape = '', riskHeads = '';
   R.ok(t.sw.has && t.sw.risk.indexOf(t.accent) >= 0, 'the tab showing is in the accent (' + t.sw.risk + ' / accent ' + t.accent + ')');
   R.ok(!!(nb && im && cl) && at(nb) < at(im) && at(im) < at(cl), 'the bar: New risk action sheet, Import a returned sheet, Close - in that order');
   R.ok(!pr && !/Proposals from the leadership team/.test(t.text), 'no Proposals from the leadership team button - the sheet itself carries the two-way table');
-  R.ok(!!nb && !nb.dis && /^The risks ticked on the cockpit.s risk ladder, one action each, plus anything carried back$/.test(nb.title), 'New risk action sheet is live and says what goes on it: ' + (nb && nb.title));
-  R.ok(/As many risks as you tick on the cockpit.s risk ladder, one action each with the control you recommend/.test(t.text) && /quick minute taker/.test(t.text), 'the intro says how the sheet is made, and that it ends with the meeting');
+  R.ok(!!nb && !nb.dis && /^The risks ticked on the Risk ladder, one action each, plus anything carried back$/.test(nb.title), 'New risk action sheet is live and says what goes on it: ' + (nb && nb.title));
+  R.ok(/As many risks as you tick on the Risk ladder, one action each with the control you recommend/.test(t.text) && /quick minute taker/.test(t.text), 'the intro says how the sheet is made, and that it ends with the meeting');
   R.ok(!/Top 5 report/i.test(t.text), 'and nothing on the screen points at a Top 5 report');
 }
 let sid;
@@ -624,7 +624,7 @@ const MACT = { what: 'Get the yard gate fixed', who: 'Dave Marlow', due: '15/11/
   });
   R.ok(t.k === 'Risk action sheet · proposals from the leadership team · ' + label, 'the proposals screen is still in the code, as part of the risk action sheet: ' + t.k);
   R.ok(!t.btn, 'but the risk sheets screen no longer opens it - the sheet is the one report the leadership team gets');
-  R.ok(/Tick risks for the sheet on the cockpit.s risk ladder first/.test(t.toast) && t.savedNone === 0, 'with nothing ticked there is no form to send, and it says why');
+  R.ok(/Tick risks for the sheet on the Risk ladder first/.test(t.toast) && t.savedNone === 0, 'with nothing ticked there is no form to send, and it says why');
   R.ok(t.fname === 'risk-action-sheet-proposals-fairbank-fabrications-ltd-' + month + '.pdf', 'the form downloads as ' + t.fname);
   R.ok(t.ids.join(',') === t.sheet.join(',') && t.sheet.join(',') === 'r1,r2,r3', 'the form carries exactly the risks ticked for the sheet, in the sheet\'s order (' + t.ids.join(',') + ')');
 }

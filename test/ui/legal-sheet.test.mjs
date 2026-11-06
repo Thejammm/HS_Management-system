@@ -17,7 +17,7 @@ await seed(page, { company: { legalName: 'Example Architects Group Ltd' }, riskP
   D('m33', 'Competent person(s)'),
   D('m37', 'First-aid provision'),
   { id: 'p1', activity: 'Fire breaking out at the studio', likelihood: '4', severity: '4', actions: [{ id: 'p1a', desc: 'Fire risk assessment', owner: 'Jo', due: day(10), status: 'Not started' }] },   // not a legal duty
-] }, 'cockpit');
+] }, 'ladder');      // the ladder has its own tab (6 November 2026)
 await wait(page, 500);
 
 // ── beside the Top 5, on the ladder and on the Reports tab ──

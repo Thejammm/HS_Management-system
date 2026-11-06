@@ -172,8 +172,8 @@ const fill = (who, role, answers) => page.evaluate(async (who, role, answers) =>
 // ── no way in from the screens any more; the code and what came back stay ──
 {
   const t = await page.evaluate(() => {
-    renderCockpit();
-    const ladder = [...document.querySelectorAll('.ckx-panel')].find(p => /Risk ladder/.test((p.querySelector('h4') || {}).textContent || ''));
+    renderLadder();      // the ladder has its own tab (6 November 2026)
+    const ladder = [...document.querySelectorAll('#tab-ladder .ckx-panel')].find(p => /Risk ladder/.test((p.querySelector('h4') || {}).textContent || ''));
     const old = [...ladder.querySelectorAll('button')].filter(b => /^(Responses|Forms)/.test(b.textContent.trim())).map(b => b.textContent.trim());
     openActionSheets('risk');
     const prop = [...document.querySelectorAll('#asOv button')].some(b => b.textContent.trim() === 'Proposals from the leadership team' || /openTop5Review\(/.test(b.getAttribute('onclick') || ''));

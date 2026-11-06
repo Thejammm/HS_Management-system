@@ -3383,6 +3383,8 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
          applyViewMode are untouched. -->
     <button class="tab-btn active" data-tab="cockpit" onclick="switchTab('cockpit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg> Cockpit</button>
     <button class="tab-btn" data-tab="works" id="navWorks" onclick="switchTab('works')" title="The record of what is now in place: where it lives, who owns it, when it is next checked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> <span class="wk-nav-t">How we work now</span></button>
+    <button class="tab-btn" data-tab="ladder" id="navLadder" onclick="switchTab('ladder')" title="Every risk ranked by its current rating, with this month's Top 5 and Sheet ticks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M6 12h12"/><path d="M8 18h8"/></svg> Risk ladder</button>
+    <button class="tab-btn" data-tab="howto" id="navHowTo" onclick="switchTab('howto')" title="The journey through Compass, start to finish, screen by screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> How to use Compass</button>
     <div class="nav-phase" style="--ph:#2563EB"><div class="nav-phase-label"><b>1</b> Set up</div><button class="tab-btn" data-tab="company" onclick="switchTab('company')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg> Company setup</button></div>
     <div class="nav-phase" style="--ph:#7C3AED"><div class="nav-phase-label"><b>2</b> Assess</div><button class="tab-btn" data-tab="risk" onclick="switchTab('risk')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.4-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.4 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg> Risk profile (Operation)</button><button class="tab-btn" data-tab="requirements" onclick="switchTab('requirements')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg> Legal duties</button><button class="tab-btn" data-tab="maturity" onclick="switchTab('maturity')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg> Maturity level</button></div>
     <div class="nav-phase" style="--ph:#D97706"><div class="nav-phase-label"><b>3</b> Deliver</div><button class="tab-btn" data-tab="execplan" onclick="switchTab('execplan')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Client execution plan <span class="tb-badge" id="badgeExecPlan"></span></button><button class="tab-btn" data-tab="signoff" onclick="switchTab('signoff')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg> Sign-off register</button><button class="tab-btn" data-tab="documents" onclick="switchTab('documents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Documents</button><button class="tab-btn" data-tab="cpd" onclick="switchTab('cpd')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg> CPD library</button><button class="tab-btn" data-tab="toolbox" onclick="switchTab('toolbox')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M2 13h20"/><path d="M10 13v2h4v-2"/></svg> Toolbox talks</button></div>
@@ -3433,6 +3435,8 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
   </div>
 
   <div id="tab-works" class="tab-panel"><div id="worksContainer"></div></div>
+  <div id="tab-ladder" class="tab-panel"><div id="ladderContainer"></div></div>
+  <div id="tab-howto" class="tab-panel"><div id="howtoContainer"></div></div>
   <div id="tab-reports" class="tab-panel">
     <div id="reportsContainer"></div>
   </div>
@@ -4532,6 +4536,18 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .nav-closed .nav-chev{transform:rotate(-90deg);}
     .nav-closed .nav-grp-b{display:none;}
     .sidebar-nav .nav-act{display:flex;width:calc(100% - 16px);margin:4px 8px;justify-content:flex-start;text-align:left;}
+    /* The ladder's own tab and How to use Compass */
+    .ht-step{display:flex;gap:14px;max-width:860px;margin:0 0 10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);}
+    .ht-n{flex:0 0 34px;font-size:22px;font-weight:800;color:var(--accent-dark,var(--accent));line-height:1;}
+    .ht-b{min-width:0;flex:1;}
+    .ht-h{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+    .ht-h h3{margin:0 0 4px;font-size:15px;flex:1;min-width:0;}
+    .ht-opens{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;max-width:66%;}
+    .ht-opens .btn[disabled]{opacity:.4;cursor:not-allowed;}
+    details.wf-sec>summary{scroll-margin-top:72px;}
+    .ht-row{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px;margin-top:5px;font-size:12.8px;line-height:1.5;}
+    .ht-row span{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);padding-top:3px;}
+    .ht-row p{margin:0;}
     .wk-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px;}
     .wk-title{font-size:21px;font-weight:800;line-height:1.25;margin:2px 0 4px;}
     .wk-chips{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 8px;}
@@ -4847,7 +4863,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     <div class="card">
       <div class="card-band"><h3><span class="dot">●</span> Triage</h3></div>
       <div class="card-body">
-        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Minutes filed from the cockpit's ✎ Minutes. They stay here, off the plan and off the client's reports, until you delete them. Consultant only.</div>
+        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Minutes filed from ✎ Minutes on the Risk ladder. They stay here, off the plan and off the client's reports, until you delete them. Consultant only.</div>
         <div id="triageList"></div>
       </div>
     </div>
@@ -6513,6 +6529,8 @@ function switchTab(id) {
   if(window.matchMedia('(max-width:900px)').matches) toggleSidebar(false);
   if(id==='cockpit')  { renderCockpit(); }
   if(id==='works')    { renderWorksNow(); }
+  if(id==='ladder')   { renderLadder(); }
+  if(id==='howto')    { renderHowTo(); }
   if(id==='company')  { renderCompany(); _renderUnits(); }
   if(id==='reports')  { renderReports(); }
   if(id==='risk')     { renderRiskProfile(); renderRiskReview(); }
@@ -15975,7 +15993,7 @@ function _cockpitLayout(){
   const { order, hidden } = _cockpitNorm();
   return _CK_ZONE_ORDER.map(g => ({
     wrap: _CK_ZONE[g],
-    ids: order.filter(id => { const w = COCKPIT_WIDGETS[id]; return w && w.group===g && !hidden[id]; })
+    ids: order.filter(id => { const w = COCKPIT_WIDGETS[id]; return w && w.group===g && !hidden[id] && _CK_MOVED.indexOf(id)<0; })
   })).filter(z => z.ids.length);
 }
 
@@ -16117,7 +16135,7 @@ function _cockpitEditorHTML(){
       <label class="ckb-tog"><input type="checkbox" ${on?'checked':''} onchange="setCockpitWidget('${id}',this.checked)"><span>${esc(w.label)}</span></label>
       <span class="ckb-move"><button class="btn btn-ghost btn-xs" title="Move up" onclick="moveCockpitWidget('${id}',-1)">↑</button><button class="btn btn-ghost btn-xs" title="Move down" onclick="moveCockpitWidget('${id}',1)">↓</button></span>
     </div>`; };
-  const groups=_CK_ZONE_ORDER.map(g=>{ const ids=order.filter(id=>COCKPIT_WIDGETS[id] && COCKPIT_WIDGETS[id].group===g);
+  const groups=_CK_ZONE_ORDER.map(g=>{ const ids=order.filter(id=>COCKPIT_WIDGETS[id] && COCKPIT_WIDGETS[id].group===g && _CK_MOVED.indexOf(id)<0);
     return ids.length ? `<div class="ckb-group"><div class="ckb-gh">${esc(_CK_GROUP_LABEL[g])}</div>${ids.map(row).join('')}</div>` : ''; }).join('');
   return `<div class="ckb-panel no-print">
       <div class="ckb-head"><h3>Customise cockpit</h3><button class="btn btn-ghost btn-sm" onclick="toggleCockpitEditor()">Done</button></div>
@@ -16132,16 +16150,17 @@ function _cockpitEditorHTML(){
 function renderCockpit(){
   const cont = document.getElementById('cockpitContainer');
   if(!cont) return;
+  try{ _riskRefsEnsure(); }catch(e){}      // refs current before the front door reads them (the ladder did this here until it moved to its own tab)
   const x = _cockpitContext();
   const custom = _canCustomiseCockpit()
-    ? `<button class="btn btn-ghost btn-sm no-print" style="margin-left:auto;" onclick="toggleCockpitEditor()">${_cockpitEditorOpen?'Close customiser':'⚙ Customise'}</button>` : '';
+    ? `<button class="btn btn-ghost btn-sm no-print" style="margin-left:auto;" onclick="toggleCockpitEditor()" title="Choose which blocks this cockpit shows and their order. Saved per client.">${_cockpitEditorOpen?'Close customiser':'⚙ Customise'}</button>` : '';
   const head = `<div class="ck-head"><h2>${esc(_cockpitClientName())}</h2><span class="ck-sub">${_consultantView ? 'Consultant · working on this client' : 'Client cockpit'}</span>${custom}</div>`;
   const editor = (_cockpitEditorOpen && _canCustomiseCockpit()) ? _cockpitEditorHTML() : '';
   const zones = _cockpitLayout().map(z => {
     // One widget failing must never blank the whole cockpit (and with it the
     // customiser button) - render an inline note instead and keep going.
     const inner = z.ids.map(id => { const w = COCKPIT_WIDGETS[id]; if(!(w && w.render)) return '';
-      try{ return w.render(x); }
+      try{ return _ckTip(id, w.render(x)); }
       catch(e){ return `<div class="ckx-panel"><div class="ck-pending">${esc(w.label)} could not render - ${esc(String(e && e.message || e))}</div></div>`; }
     }).join('');
     if(!inner.replace(/\s/g,'')) return '';           // skip an empty zone (e.g. all its widgets disabled)
@@ -16224,14 +16243,14 @@ function renderReports(){
       desc:'Built like the Top 5 sheet for every legal duty on the risk profile: a cover with the duties at a glance, then a page a duty with its rating, the actions we recommend and, against each, the leadership team\'s comments, owner and target date. Fillable on screen, or print and write on it; imported back under each action.',
       tags:['Client','Fillable','Legal duties'] },
     { title:'Risk Action Sheet', accent:'#B45309', tint:'#FBF0E6', fn:"openActionSheets('risk')",
-      meta:(function(){ try{ const m=_top5Month(), n=_sheetRisks(m).length, k=_asList('risk').length; return n?(n+' risk'+(n!==1?'s':'')+' ticked for '+_top5MonthLabel(m)+(k?(' · '+k+' sheet'+(k!==1?'s':'')):'')):'Nothing ticked yet - tick the Sheet column on the cockpit ladder'; }catch(e){ return 'Any number of risks, for the client meeting'; } })(),
+      meta:(function(){ try{ const m=_top5Month(), n=_sheetRisks(m).length, k=_asList('risk').length; return n?(n+' risk'+(n!==1?'s':'')+' ticked for '+_top5MonthLabel(m)+(k?(' · '+k+' sheet'+(k!==1?'s':'')):'')):'Nothing ticked yet - tick the Sheet column on the Risk ladder'; }catch(e){ return 'Any number of risks, for the client meeting'; } })(),
       icon:svg('<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>'),
-      desc:"As many risks as you tick on the cockpit's risk ladder, laid out like the Top 5 action sheet: a page a risk with the controls we recommend and, against each control, the leadership team's comments, who will do it and by when - then what came up at the client meeting, from the quick minute taker. Import the returned file and each comment lands back under its own control, ready to go on the plan.",
+      desc:"As many risks as you tick on the Risk ladder, laid out like the Top 5 action sheet: a page a risk with the controls we recommend and, against each control, the leadership team's comments, who will do it and by when - then what came up at the client meeting, from the quick minute taker. Import the returned file and each comment lands back under its own control, ready to go on the plan.",
       tags:['Client meeting','Any number of risks','From the meeting'] },
     { title:'Client Meeting Notes', accent:'#475569', tint:'#EDF1F5', fn:'downloadClientNotes()',
-      meta:(function(){ try{ const n=_clientNoteMeetings().length; return n?(n+' meeting'+(n!==1?'s':'')+' minuted'):'Nothing minuted yet - ✎ Minutes on the cockpit ladder'; }catch(e){ return 'Your own notes from client meetings'; } })(),
+      meta:(function(){ try{ const n=_clientNoteMeetings().length; return n?(n+' meeting'+(n!==1?'s':'')+' minuted'):'Nothing minuted yet - ✎ Minutes on the Risk ladder'; }catch(e){ return 'Your own notes from client meetings'; } })(),
       icon:svg('<path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.38 5.63a1 1 0 1 0-3-3l-5.01 5.01a2 2 0 0 0-.51.86l-.84 2.87a.5.5 0 0 0 .62.62l2.87-.84a2 2 0 0 0 .86-.51z"/>'),
-      desc:'Your own notes from client meetings, taken with the quick minute taker on the cockpit: who was there, what was said and the actions agreed, newest first.',
+      desc:'Your own notes from client meetings, taken with the quick minute taker on the Risk ladder: who was there, what was said and the actions agreed, newest first.',
       tags:['Personal notes','Client meetings'] },
     { title:'Leadership Briefing', accent:'#DC2626', tint:'#FCE9E9', fn:'openBoardBriefingPrint()', meta:'Ten agenda items, one page each',
       icon:svg('<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m2 9 10-6 10 6"/>'),
@@ -16950,7 +16969,7 @@ function _riskTop5Action(r){
   const open=((r&&r.actions)||[]).filter(a=>a&&!a.deleted&&!a.hideFromPlan&&String(a.desc||'').trim()&&_actionStatus(a)!=='Complete'&&_actionStatus(a)!=='Accepted');
   return open.slice().sort((a,b)=>{ const ao=_actionStatus(a)==='Overdue'?0:1, bo=_actionStatus(b)==='Overdue'?0:1; if(ao!==bo) return ao-bo; return String(a.due||'9999').localeCompare(String(b.due||'9999')); })[0]||null;
 }
-function _top5Repaint(){ saveData(); _refreshActionViews(); try{ if(document.getElementById('tab-cockpit').classList.contains('active')) _keepScroll(renderCockpit); }catch(e){} }
+function _top5Repaint(){ saveData(); _refreshActionViews(); try{ if(document.getElementById('tab-cockpit').classList.contains('active')) _keepScroll(renderCockpit); }catch(e){} _ladderRepaint(); }
 function toggleRiskTop5(riskId){
   if(_blockIfReadOnly()) return;
   const r=(S.riskProfile||[]).find(x=>x.id===riskId); if(!r) return;
@@ -16987,6 +17006,7 @@ function toggleRiskSheet(riskId){
   if(typeof _stamp==='function') _stamp(r,'updated');
   saveData();
   try{ if(document.getElementById('tab-cockpit').classList.contains('active')) _keepScroll(renderCockpit); }catch(e){}
+  _ladderRepaint();
   showToast(on?('✓ '+name+' is on the Risk Action Sheet for '+_top5MonthLabel(month)):(name+' taken off the Risk Action Sheet for '+_top5MonthLabel(month)), on?'success':'info');
 }
 // The month's five, shown on the plan itself: what is marked, and how last
@@ -17421,6 +17441,7 @@ function _refreshActionViews(){
   try{ if(active('tab-requirements') && typeof renderRequirements==='function') _keepScroll(renderRequirements); }catch(e){}
   try{ if(active('tab-review') && typeof _revActBodyHTML==='function'){ const t=document.getElementById('revActBody'); if(t) t.innerHTML=_revActBodyHTML(); } }catch(e){}
   try{ if(active('tab-works') && typeof renderWorksNow==='function') _keepScroll(renderWorksNow); }catch(e){}
+  try{ if(active('tab-ladder') && typeof renderLadder==='function') _keepScroll(renderLadder); }catch(e){}
   updateActionBadges();
 }
 // The Client execution plan tab - RAG-coded, this-month focus + full year.
@@ -24025,7 +24046,7 @@ async function buildTop5FormPDF(){
 }
 async function downloadTop5Form(){
   // the form carries the risks ticked for the Risk Action Sheet: none ticked, nothing to send
-  if(!_sheetRisks().length){ showToast('Tick risks for the sheet on the cockpit\'s risk ladder first','info'); return; }
+  if(!_sheetRisks().length){ showToast('Tick risks for the sheet on the Risk ladder first','info'); return; }
   try{
     const bytes=await buildTop5FormPDF();
     const safe=_sltClient().replace(/[^a-z0-9]+/gi,'-').toLowerCase();
@@ -24154,7 +24175,7 @@ function _top5ReviewRender(){
       +'<div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="t5Apply('+q(rid)+')"'+(picked?'':' disabled')+'>Add '+(picked?(picked+' '):'')+'to the plan</button></div></section>';
   }).join('');
   ov.innerHTML=bar+'<div class="slt-body"><section class="slt-sec slt-who"><div class="slt-ih"><span class="slt-n">·</span><h3>Forms back</h3></div>'+who+'</section>'
-    +(ids.length?secs:'<div class="slt-muted">No risks are ticked for the sheet yet - tick the Sheet column on the cockpit\'s risk ladder.</div>')
+    +(ids.length?secs:'<div class="slt-muted">No risks are ticked for the sheet yet - tick the Sheet column on the Risk ladder.</div>')
     +'<datalist id="t5People">'+people.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.role||'')+'</option>').join('')+'</datalist></div>';
   ov.scrollTop=top;
 }
@@ -24642,7 +24663,7 @@ function _asRender(){
   const kinds='<div class="as-kinds" role="tablist">'+tab('top5','Top 5 action sheets')+tab('legal','Legal duties sheets')+tab('risk','Risk action sheets')+'</div>';
   const bar=risk
     ? '<div class="slt-bar">'+kinds+'<div class="slt-t"><div class="slt-k">'+(legal?'Legal duties sheet':'Risk action sheet')+'</div><div class="slt-h">'+esc(_sltClient())+'</div></div>'
-      +(ro?'':'<button class="btn btn-primary btn-sm" onclick="asNewSheet(\''+_asKind+'\')"'+(draftOpen?' disabled title="Finish the draft sheet first"':(legal?' title="Every legal duty on the risk profile, one action each, plus anything carried back"':' title="The risks ticked on the cockpit\'s risk ladder, one action each, plus anything carried back"'))+'>＋ New '+(legal?'legal duties sheet':'risk action sheet')+'</button>'
+      +(ro?'':'<button class="btn btn-primary btn-sm" onclick="asNewSheet(\''+_asKind+'\')"'+(draftOpen?' disabled title="Finish the draft sheet first"':(legal?' title="Every legal duty on the risk profile, one action each, plus anything carried back"':' title="The risks ticked on the Risk ladder, one action each, plus anything carried back"'))+'>＋ New '+(legal?'legal duties sheet':'risk action sheet')+'</button>'
         +'<button class="btn btn-outline btn-sm" onclick="importActionSheet()" title="A sheet the client filled in on screen and sent back">⭱ Import a returned sheet</button>')
       +'<button class="btn btn-ghost btn-sm" onclick="closeActionSheets()">Close</button></div>'
     : '<div class="slt-bar">'+kinds+'<div class="slt-t"><div class="slt-k">Top 5 action sheet</div><div class="slt-h">'+esc(_sltClient())+'</div></div>'
@@ -24659,17 +24680,17 @@ function _asRender(){
       +'</div>';
   } else if(risk){
     const month=_top5Month(), mLabel=_top5MonthLabel(month), ticked=_sheetRisks(month);
-    intro='<div class="slt-muted" style="margin:0 0 6px;line-height:1.55;">As many risks as you tick on the cockpit\'s risk ladder, one action each with the control you recommend - add more from the plan if you want them. Each risk gets a page with its open actions, set out under the controls they put in place as on the risk\'s 4 · Action delegation &amp; timescale: against each action the leadership team write their comments and put right who and by when (printed from the plan), a control nothing puts in place yet gets a line to say what will be done, and anything else goes in the comments box under the table. The sheet ends with what came up at the client meeting, from the quick minute taker. Import the returned file and each answer lands against its own action - a new who or by when to apply to the plan, a comment for its history, or a new action under its control; you decide each line as on the Top 5 sheet.</div>'
+    intro='<div class="slt-muted" style="margin:0 0 6px;line-height:1.55;">As many risks as you tick on the Risk ladder, one action each with the control you recommend - add more from the plan if you want them. Each risk gets a page with its open actions, set out under the controls they put in place as on the risk\'s 4 · Action delegation &amp; timescale: against each action the leadership team write their comments and put right who and by when (printed from the plan), a control nothing puts in place yet gets a line to say what will be done, and anything else goes in the comments box under the table. The sheet ends with what came up at the client meeting, from the quick minute taker. Import the returned file and each answer lands against its own action - a new who or by when to apply to the plan, a comment for its history, or a new action under its control; you decide each line as on the Top 5 sheet.</div>'
       +'<div class="slt-muted" style="margin:0 0 12px;line-height:1.55;">'
       +(ticked.length
         ? ('<b>Ticked for '+esc(mLabel)+' ('+ticked.length+'):</b> '+ticked.map(z=>{ const ref=_riskRefOf(z.r); return esc((ref?(ref+' '):'')+z.name); }).join('; '))
-        : ('<b>Nothing ticked for '+esc(mLabel)+' yet.</b> Tick the Sheet column on the cockpit\'s risk ladder.'))
+        : ('<b>Nothing ticked for '+esc(mLabel)+' yet.</b> Tick the Sheet column on the Risk ladder.'))
       +'</div>';
   } else intro='<div class="slt-muted" style="margin:0 0 12px;line-height:1.55;">Five actions at a time, each with the control you recommend. The first sheet is the Top 5 - the risks ticked on the risk ladder, topped up from the system\'s own ranking (needs attention first, then the next worst) - and each next sheet carries on down the same list. Each action gets a page, with its risk and the risk\'s open actions set out under the controls they put in place, as on the risk\'s 4 · Action delegation &amp; timescale: against each action the leadership team write their comments and put right who and by when (printed from the plan), and send the sheet back. Import it and each answer lands against its own action, ready to apply to the plan. You then decide each line: agree it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Every decision is written on the action in the execution plan.</div>';
   const people=_sltPeople(null);
   const body=sheets.length ? sheets.map((s,idx)=>_asSheetHTML(s, idx===0, ro, dis)).join('')
     : '<section class="slt-sec"><div class="slt-muted">'+(legal ? ('No legal duties sheet yet. '+(ro?'':'Press New legal duties sheet - every legal duty on the risk profile goes on it.')) : risk
-        ? ('No risk action sheet yet. '+(ro?'':'Tick the risks in the Sheet column on the cockpit\'s risk ladder, then press New risk action sheet.'))
+        ? ('No risk action sheet yet. '+(ro?'':'Tick the risks in the Sheet column on the Risk ladder, then press New risk action sheet.'))
         : ('No sheet yet. '+(ro?'':'Press First five to start: the Top 5 from the risk ladder goes on it for you to check.')))+'</div></section>';
   ov.innerHTML=bar+'<div class="slt-body">'+intro+body
     +'<datalist id="asPeople">'+people.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.role||'')+'</option>').join('')+'</datalist></div>';
@@ -24762,7 +24783,7 @@ function _asItemHTML(s, it, i, locked, ro, dis){
       +'</div>';
   }
   return '<div class="as-item'+(done?' as-done':'')+'" id="asI-'+esc(s.id)+'-'+i+'">'
-    +'<div class="as-ih"><span class="as-no">'+(i+1)+'</span><div class="as-desc">'+esc(it.desc||'(no description)')+(it.carriedFrom?(' <span class="as-tag as-out">carried from '+esc(_asName({ kind:s.kind, no:it.carriedFrom }).toLowerCase())+'</span>'):'')+({ tick:' <span class="as-tag as-why as-why-tick" title="Ticked in the Top 5 column on the cockpit risk ladder">Ticked Top 5</span>', ladder:' <span class="as-tag as-why" title="Fewer than five are ticked, so the sheet is topped up in the Top 5 order: seen on site, legal must-haves, then tier 1 to 4 - could kill first, then the score">Next in the Top 5 order</span>', added:' <span class="as-tag as-why">Added from the plan</span>' }[it.why]||'')+'</div>'
+    +'<div class="as-ih"><span class="as-no">'+(i+1)+'</span><div class="as-desc">'+esc(it.desc||'(no description)')+(it.carriedFrom?(' <span class="as-tag as-out">carried from '+esc(_asName({ kind:s.kind, no:it.carriedFrom }).toLowerCase())+'</span>'):'')+({ tick:' <span class="as-tag as-why as-why-tick" title="Ticked in the Top 5 column on the Risk ladder">Ticked Top 5</span>', ladder:' <span class="as-tag as-why" title="Fewer than five are ticked, so the sheet is topped up in the Top 5 order: seen on site, legal must-haves, then tier 1 to 4 - could kill first, then the score">Next in the Top 5 order</span>', added:' <span class="as-tag as-why">Added from the plan</span>' }[it.why]||'')+'</div>'
     +((locked||ro)?'':'<button class="trn-x" onclick="asRemoveItem('+sid+','+key+')" title="Take this action off the sheet - it stays on the plan">×</button>')+'</div>'
     +'<div class="slt-muted as-meta">'+meta+'</div>'+gone+thinMsg+((!ro && _asSameRiskBefore(s,it)>=0)?('<div class="as-warn">Same risk as line '+(_asSameRiskBefore(s,it)+1)+': its actions table prints once, on that line\u2019s page. This page lists this action only.</div>'):'')
     +'<div class="slt-lab">Note on this action (optional - printed under it in the recommended actions table)</div>'+recBox+resp+decide+'</div>';
@@ -24881,7 +24902,7 @@ function asNewSheet(kind){
     // anything carried back, then the first (most pressing) action on each ticked risk - no cap
     const cands=_asCandidates(null,K), seen=new Set();
     picks=cands.filter(c=>{ if(!c.carry && (!c.riskId || seen.has(c.riskId))) return false; if(c.riskId) seen.add(c.riskId); return true; });
-    if(!_asSheetRisksFor(K).length && !picks.length){ showToast(K==='legal'?'No legal duties on the risk profile yet - assess a line as a gap on the Legal duties tab':'Tick risks for the sheet on the cockpit\'s risk ladder first','info'); return; }
+    if(!_asSheetRisksFor(K).length && !picks.length){ showToast(K==='legal'?'No legal duties on the risk profile yet - assess a line as a gap on the Legal duties tab':'Tick risks for the sheet on the Risk ladder first','info'); return; }
     gaps=_asRiskGaps({ items:[], kind:K }, cands).gaps.length;
     if(!picks.length && !gaps){ showToast('Every open action on the ticked risks is already on another sheet, or carried for the next Top 5 sheet','info'); return; }
   } else {
@@ -27014,9 +27035,9 @@ function t5AddAll(){
 
 // ── C2. The sidebar in four plain groups ──
 const NAV_GROUPS=[
-  { k:'front',   label:'Front door',       tabs:['cockpit','risk','works'], fixed:true },
+  { k:'front',   label:'Front door',       tabs:['cockpit','risk','ladder','works'], fixed:true },
   { k:'records', label:'Records',          tabs:['documents','signoff','monitoring','toolbox','cpd','monthly','reports'] },
-  { k:'tools',   label:'Consultant tools', tabs:['company','requirements','maturity','execplan','actions','siteinsp','journey','cas','review','audit','triage','links'] },
+  { k:'tools',   label:'Consultant tools', tabs:['howto','company','requirements','maturity','execplan','actions','siteinsp','journey','cas','review','audit','triage','links'] },
   { k:'admin',   label:'Admin',            tabs:['setup','admin'] }
 ];
 var _navBuilt=false;
@@ -27056,6 +27077,129 @@ function _navBuild(){
   [...nav.querySelectorAll('.tab-btn[data-tab]')].forEach(b=>tools.appendChild(b));
   [...nav.querySelectorAll('.nav-phase')].forEach(p=>{ if(!p.classList.contains('nav-grp')) p.remove(); });
   groups.forEach(d=>nav.appendChild(d));
+}
+
+// ══════════════════════════════════════════════════════════════
+//  THE FRONT, TIDIED (Simon, 6 November 2026, after Stage C):
+//  - the risk ladder in a tab of its own, under Risk profile, the same widget
+//    the cockpit drew (one derivation: COCKPIT_WIDGETS.boardLadder);
+//  - a tooltip on every block of the cockpit saying what it shows and why it
+//    is there (COCKPIT_TIPS, put on each block's root as it is drawn);
+//  - How to use Compass, in Consultant tools: the journey start to finish,
+//    screen by screen, each with a button that opens it.
+// ══════════════════════════════════════════════════════════════
+// Blocks that have left the cockpit for a tab of their own.
+const _CK_MOVED=['boardLadder'];
+function renderLadder(){
+  const cont=document.getElementById('ladderContainer'); if(!cont) return;
+  const w=COCKPIT_WIDGETS.boardLadder; let body='';
+  try{ body=w.render(_cockpitContext()); }catch(e){ body='<div class="ckx-panel"><div class="ck-pending">The risk ladder could not render - '+esc(String(e && e.message || e))+'</div></div>'; }
+  cont.innerHTML='<div class="ck-head"><h2>'+esc(_cockpitClientName())+'</h2><span class="ck-sub">Risk ladder</span></div>'
+    +'<div class="slt-muted" style="margin:-6px 0 12px;">Every rated risk, ranked by its current rating within its band, with this month’s Top 5 and Risk Action Sheet ticks. Read it before the meeting. The first Top 5 sheet takes these ticks; after that the meeting opens from the last sheet and the five change there.</div>'
+    +_ckTip('boardLadder', body);
+}
+function _ladderRepaint(){ try{ if(document.getElementById('tab-ladder').classList.contains('active')) _keepScroll(renderLadder); }catch(e){} }
+// What each block of the cockpit shows and why it is there - on the block as a
+// tooltip, so a hover answers the question without leaving the screen.
+const COCKPIT_TIPS={
+  boardPicture:'Risk picture: every significant risk on the profile, counted by whether it is controlled (at or below its residual target), has no target set yet, or is still uncontrolled. Here so the leadership team see the whole picture before any detail.',
+  boardJourney:'Risk journey: how far the rated risks have moved from where they were found towards their planned targets, and how much of the plan is now in place. Here to show progress month on month.',
+  boardFive:'Putting us at risk today: the risks that need attention first, by the rule the board report uses (seen on site, then legal must-haves, then tier and score). Here so a meeting starts with the right five.',
+  kpiFatal:'Could kill: risks that could kill someone with today’s controls. Here because they come first whatever else is going on. Click to open them.',
+  kpiCritical:'Business-critical: operational risks that threaten the business itself. Here so they sit beside the safety ones. Click to open them.',
+  kpiHighCrit:'High and critical risks: how many sit above the comfortable line. Here as the headline the board asks for first. Click to open them.',
+  kpiOpenActions:'Open actions: what is still to do across the whole plan. Here so nothing agreed is forgotten. Click to open the plan.',
+  kpiMgmtGaps:'Legal duty gaps: duties assessed as not met. Here because they are the must-haves. Click to open the Legal duties tab.',
+  kpiCompleteness:'Assessment completeness: how many of the profile’s own checks are clear. Here to show how far the assessment itself has got.',
+  kpiStatutory:'Statutory compliance: the inspections and examinations the law requires, in date or not. Here because an out-of-date test is a breach, not a risk.',
+  kpiInspections:'Inspections: workplace inspections done, signed off and still awaiting sign-off. Here as the monitoring heartbeat. Click for the monthly report.',
+  kpiTraining:'Training compliance: who is in date on the training matrix. Here because competence underpins everything that keeps a risk under control.',
+  chartInspections:'Inspections by month: how often the workplace is being checked. Here to show the routine is happening, not just planned.',
+  chartCompliance:'Compliance: what the inspections found, as a share of items checked. Here to show whether standards are being kept.',
+  chartRiskCats:'Risks by macro category: where the risks sit by theme. Here to show the shape of the business’s risk at a glance.',
+  chartEmerging:'Emerging risks: risks marked as increasing. Here as the early warning.',
+  riskVsMaturity:'Risk profile and H&S control maturity: the 5 x 5 matrix of every risk beside the maturity judgement. Here to put the numbers next to how the system actually runs.',
+  riskMatrixOnly:'Risk matrix: every risk placed by likelihood and severity. Here to show the spread.',
+  riskMaturityOnly:'H&S control maturity: the judgement of how the system runs, area by area. Here beside the numbers.',
+  cardBuildSafety:'Building safety: the Building Safety Act register. Here when the client holds higher-risk buildings.',
+  cardHealthSurv:'Health surveillance: who is under surveillance and when it is next due. Here when health risks need it.',
+  cardSupply:'Supply chain: contractors and suppliers and what has been checked. Here when the client relies on them.',
+  cardDecisions:'Management decisions: what the leadership team decided and when. Here so decisions are a record, not a memory.',
+  cardRiskPriorities:'Risk priorities: the top risks and the next action on each. Here as the short list to talk from.',
+  cardMgmtSystem:'Legal duties: the duties assessed, met and not met. Here as the legal must-haves in one place.',
+  cardMonitoring:'Monitoring: the assurance records due and overdue. Here so a lapsed check shows the same day.',
+  cardAccreditation:'Accreditation readiness: how ready the evidence is for CHAS, Constructionline, SMAS and the rest. Here so a submission is never a surprise.',
+  cardLastReview:'Last review: when the consultant last reviewed the system and what was rated. Here as the date to work from.',
+  cardDocuments:'Documents: the register of policies, procedures and assessments and whether each is in date. Here as the paper trail.',
+  cardReports:'Reports: the PDFs that go to the board and the client. Here as the way out of the app.',
+  gaugeCompleteness:'Completeness gauge: the assessment’s own checks, as a share. Here as a one-glance version of the count.',
+  gaugeCompliance:'Compliance gauge: inspection compliance, as a share. Here as a one-glance version of the chart.',
+  gaugeMaturity:'Risks identified gauge: how many risks are held at their target. Here as a one-glance version of the picture.',
+  tachoRisk:'Risk exposure: the whole profile’s exposure as one needle. Here for a board that wants one number.',
+  gaugeAccreditation:'Accreditation gauge: readiness as a share. Here as a one-glance version of the card.',
+  gaugeMgmtCompliance:'Legal duties compliance gauge: duties met as a share. Here as a one-glance version of the card.',
+  gaugeSifControl:'Fatal-risk control gauge: how many could-kill risks are controlled. Here because those come first.'
+};
+// The tip goes on the block's root element, replacing a bare "Open X" where there was one.
+function _ckTip(id, html){
+  const tip=COCKPIT_TIPS[id]; if(!tip || !html) return html;
+  const m=/^\s*<(div|section)\b([^>]*)>/.exec(html); if(!m) return html;
+  let attrs=m[2];
+  const t=' title="'+esc(tip)+'"';
+  if(/\stitle="[^"]*"/.test(attrs)) attrs=attrs.replace(/\stitle="[^"]*"/, ()=>t); else attrs=attrs+t;
+  return html.slice(0, m.index)+'<'+m[1]+attrs+'>'+html.slice(m.index+m[0].length);
+}
+
+// ── How to use Compass: the journey, start to finish ──
+// Each step names the screen, what it is for, how it is used and what it feeds.
+// The order is the order the work is done. Written from the app as built; the
+// gaps it shows up are the point (Simon, 6 November 2026).
+const HOWTO_STEPS=[
+  { n:1, title:'Company setup', opens:[{tab:'company'}], what:'Who the client is: the company, the senior leadership team (with emails), key personnel and business units.', how:'Fill in Company identity first. Add the leadership team with their emails: the Top 5 email goes to them, and the leadership meeting starts with them in the room. Add key personnel by name: they feed the owner lists.', feeds:'Owner lists, the Top 5 email, the leadership meeting, every report header.' },
+  { n:2, title:'Risk profile (Operation): the discovery questions', opens:[{tab:'risk'}], what:'The questions that tell Compass what the business does. Rules fire from the answers and suggest the risk themes.', how:'Answer them with the client, check the answers Compass flags (where the client’s own documents say otherwise, or two answers disagree), then build the profile. Get these right first: they drive the risks, the legal duties and the Top 5.', feeds:'The risk profile, the legal duties, the Top 5 order.' },
+  { n:3, title:'Risk profile (Operation): the register', opens:[{fn:function(){ _howtoRegister(); }}], what:'Every significant risk the business runs, each with its reference, tier, band and score. Add an issue in the sidebar captures something in one line; it waits at the top as To be assessed.', how:'Open a risk. A scored risk opens on its overview: the issue, its rating, What we’re doing about it and Already in place. Full detail gives the numbered tabs: 1 Identify, 2 People & impact, 3 Controls & rating (the standing arrangements), 4 Action delegation & timescale. Every risk needs a score, a target, and an owner and a date on each action.', feeds:'The Risk ladder, the Top 5, the Client execution plan, every report.' },
+  { n:4, title:'Legal duties', opens:[{tab:'requirements'}], what:'What the law requires of this business: the policy statement, the legal essentials and the duty headings.', how:'For each duty: is it in place, is it adequate, and what action is needed where it falls short. Tick the assessment criteria under each essential. A gap goes on the risk profile as a risk, so it is managed like any other.', feeds:'Risks on the profile, the Legal duties sheet, the suggested Top 5, the board report.' },
+  { n:5, title:'Maturity level', opens:[{tab:'maturity'}], what:'The consultant’s judgement of the six HSG65 areas, in words, not scores.', how:'Mark each area Weak, Developing, Adequate or Strong with a one-line reason. For Weak or Developing, Raise action puts the area on the risk profile and raises the action onto the Client execution plan.', feeds:'Risks on the profile, the Client execution plan, the audit narrative and the review.' },
+  { n:6, title:'Cockpit', opens:[{tab:'cockpit'}], what:'The whole position on one screen: the risk picture, the risk journey, the plan delivered and what is putting the business at risk today. Hover over any block and it says what it shows and why it is there.', how:'Start every visit here. Click a figure to open what is behind it. Customise chooses which blocks this client sees, and their order.', feeds:'Nothing: it only reads the records. A wrong figure here means a record behind it needs correcting.' },
+  { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'Every rated risk, worst first, with the suggested five, this month’s Top 5 ticks and the Sheet ticks for a Risk Action Sheet. Risks not yet rated are counted, not ranked.', how:'Read it before the meeting. The first Top 5 sheet takes these ticks; after that the meeting opens from the last sheet and the five change there. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The first Top 5 sheet, the Risk Action Sheet, the Top 5 banner on the Client execution plan.' },
+  { n:8, title:'This month’s Top 5 (the meeting)', opens:[{fn:function(){ openLiveTop5(); }}], what:'The front door. One risk a screen, laid out like the sheet the leadership team know, edited live in the meeting.', how:'Open it on the laptop. The first time, it holds the ladder’s ticks topped up in ranking order; after that it opens from the last sheet with everything still open. When the sheet has room, Compass offers the next risks with a reason each; Take this risk off the sheet makes room. Against each action: comments, owner, target date, Done. Done asks Where does this live now? Send saves the sheet as the record of the meeting, downloads the PDF and opens the email; attach the PDF in Outlook.', feeds:'The actions themselves (tab 4, the Client execution plan), the sheets as sent, How the client works now.' },
+  { n:9, title:'Action sheets (back office)', opens:[{fn:function(){ openActionSheets('top5'); }}], what:'The Top 5, Legal duties and Risk action sheets as PDFs for the client to fill in, and what comes back.', how:'Use it for a Legal duties or Risk action sheet, or when a sheet comes back by email. Import a returned sheet, then decide each line: agree it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Agreed writes the owner, date and comment to the action.', feeds:'The actions, the next sheet.' },
+  { n:10, title:'Client execution plan', opens:[{label:'Client execution plan',tab:'execplan'},{label:'Actions',tab:'actions'}], what:'Every action across the business in one list, by month, with its owner, date and status. Actions holds what the Inspection app raises, and shows only when that app is linked.', how:'The client’s own to-do list. Change a date or owner here and it changes on the risk. Complete an action and the close-out asks where it lives now. When the last action on a risk closes, Compass asks Is this issue now under control?', feeds:'The risk’s score and sign-off, How the client works now.' },
+  { n:11, title:'Records: where the answers are filed', opens:[{label:'Documents',tab:'documents'},{label:'Sign-off register',tab:'signoff'},{label:'Toolbox talks',tab:'toolbox'},{label:'CPD library',tab:'cpd'}], what:'Where the answers to Where does this live now? are filed: a document on Documents, a briefing or talk on the Sign-off register, a regular check on Assurance records, a named person on Company setup.', how:'Documents holds links to the client’s own files with their review dates; nothing is uploaded. The Sign-off register issues anything people must sign for: each person gets a link and confirms on their phone. Toolbox talks and CPD library suggest topics for this kind of work; Issue puts one on the Sign-off register.', feeds:'How the client works now, the Evidence register, the Risk pathway.' },
+  { n:12, title:'How the client works now', opens:[{tab:'works'}], what:'The one record of what is now in place: where it lives, who owns it, which issue it came from, when it is next checked.', how:'Read it with the client; download the PDF for the board or an accreditation. Answer now clears anything done that has not said where it lives.', feeds:'The cockpit’s story and accreditation evidence.' },
+  { n:13, title:'Risk assessments (OpRAMS)', opens:[{label:'Quick links',tab:'links'}], what:'The task risk assessments and method statements live in the RAMS app. Each hazard carries notes: what is already in place and what is still to arrange.', how:'In OpRAMS, press Send to Compass on the Actions arising tab. In Compass, open the risk and press From a risk assessment: still-to-arrange notes become rows to do, in-place notes go to Already in place, and the assessment goes on the RA register against the risk. OpRAMS shows on Quick links once it is ticked in Admin, in the client’s Config.', feeds:'The risk’s overview, the RA register, How the client works now.' },
+  { n:14, title:'Monitoring', opens:[{label:'Assurance records',tab:'monitoring'},{label:'Process assurance',tab:'siteinsp'},{label:'Monthly report',tab:'monthly'}], what:'What the business checks and finds. Assurance records: the month’s figures, incidents, the regulatory tracker of statutory inspections, training and the rest. Process assurance: oversight carried out outside this app, such as site inspections and CDM audits. Monthly report: the inspection figures, shown only when the Inspection app is linked or the client has a service package.', how:'Enter the month’s figures on Assurance records and save them. Keep the regulatory tracker’s dates current: an overdue or failed check moves its risk up the suggested Top 5. Log each oversight visit on Process assurance.', feeds:'The cockpit’s figures, the suggested Top 5, the monthly report.' },
+  { n:15, title:'Review and accreditation', opens:[{label:'Risk pathway',tab:'journey'},{label:'Consultant review',tab:'review'},{label:'Consultants audit',tab:'audit'},{label:'Reports',tab:'reports'},{label:'Accreditation',tab:'cas'}], what:'Risk pathway: every risk through six stations, identified to signed off. Consultant review: a quality and progress picture for this client, with your rating over time. Consultants audit: the audit story in numbers, from the baseline snapshot to now. Reports: the board report and every other PDF. Accreditation: the same records against the schemes the client holds or needs.', how:'Use the pathway to show a client how far a risk has come. Record an audit snapshot at each audit visit. Produce the board report and the H&S Management Plan from Reports. On Accreditation, start at step 01: pick the schemes and the role, and only those questions appear.', feeds:'The client, the board, the assessor.' },
+  { n:16, title:'The consultant’s tools', opens:[{label:'Quick links',tab:'links'},{label:'Triage',tab:'triage'},{label:'Settings',tab:'setup'},{label:'Admin',tab:'admin'}], what:'Quick links: the client’s other apps, and the data links to the Inspection app. Triage: client queries, and minutes held off the plan until you act on them. Settings: inspection checklists, the library and report branding. Admin: client tenants, who can sign in, and each client’s subscription.', how:'Triage is where a meeting’s minutes wait: Make this an issue puts one on the register to be assessed. A client who cannot see an app on Quick links needs it ticked in Admin, in the client’s Config.', feeds:'Everything else.' }
+];
+// Step 3: the register sits in a collapsed section below the discovery questions, so open it and go there.
+function _howtoRegister(){
+  switchTab('risk');
+  const d=document.getElementById('wfRegister'); if(!d) return;
+  d.open=true;      // the accordion scrolls as a section opens; going again after the tab's first frame covers one already open
+  const h=d.querySelector('summary'); if(h) setTimeout(()=>h.scrollIntoView({behavior:'smooth',block:'start'}),80);
+}
+function howtoOpen(i,k){
+  const s=HOWTO_STEPS[i]; if(!s) return;
+  const o=s.opens[k||0]; if(!o) return;
+  if(o.fn){ o.fn(); return; }
+  const top=()=>window.scrollTo({ top:0, behavior:'instant' });
+  switchTab(o.tab); top(); setTimeout(top,80);      // a screen opens at its top, wherever the guide had got to; again after the tab's first frame, which holds the old position
+}
+// A tab this view or this client does not show: the button says so rather than opening a screen the sidebar hides.
+function _howtoHidden(o){ if(!o.tab) return false; const b=document.querySelector('.tab-btn[data-tab="'+o.tab+'"]'); return !b || getComputedStyle(b).display==='none'; }
+function renderHowTo(){
+  const cont=document.getElementById('howtoContainer'); if(!cont) return;
+  const client=_sltClient(), named=t=>String(t).replace(/How the client works now/g,'How '+client+' works now');
+  const btn=(s,i,o,k)=>{ const off=_howtoHidden(o);
+    return '<button type="button" class="btn btn-outline btn-xs"'+(off?' disabled title="This screen is not showing in this view or for this client"':'')+' onclick="howtoOpen('+i+','+k+')">'+esc(o.label||'Open')+'</button>'; };
+  const card=(s,i)=>'<section class="ht-step"><div class="ht-n">'+s.n+'</div><div class="ht-b"><div class="ht-h"><h3>'+esc(named(s.title))+'</h3><div class="ht-opens">'+s.opens.map((o,k)=>btn(s,i,o,k)).join('')+'</div></div>'
+    +'<div class="ht-row"><span>What it is for</span><p>'+esc(named(s.what))+'</p></div>'
+    +'<div class="ht-row"><span>How to use it</span><p>'+esc(named(s.how))+'</p></div>'
+    +'<div class="ht-row"><span>It feeds</span><p>'+esc(named(s.feeds))+'</p></div></div></section>';
+  cont.innerHTML='<div class="ck-head"><h2>How to use Compass</h2><span class="ck-sub">The journey, start to finish</span></div>'
+    +'<div class="slt-muted" style="margin:-6px 0 14px;max-width:760px;line-height:1.5;">The loop Compass runs: put the company’s issues in, manage them until they are controlled, record what is now in place, and keep improving. The steps below are the order the work is done, and between them they open every screen in the sidebar. Where a step does not read true for '+esc(client)+', that is a gap to raise.</div>'
+    +HOWTO_STEPS.map(card).join('');
 }
 
 async function openBoardReportPrint(){
@@ -34047,7 +34191,7 @@ function renderTriage(){
   try{ _renderTriageQueries(); }catch(e){ console.error('client queries', e); }
   const el=document.getElementById('triageList'); if(!el) return;
   const list=_triageMeetings(), ro=_roLocked();
-  if(!list.length){ el.innerHTML='<div class="slt-muted">Nothing in Triage. Minutes taken with ✎ Minutes on the cockpit land here when you press Triage.</div>'; return; }
+  if(!list.length){ el.innerHTML='<div class="slt-muted">Nothing in Triage. Minutes taken with ✎ Minutes on the Risk ladder land here when you press Triage.</div>'; return; }
   const q=s=>'\''+String(s).replace(/[^a-z0-9_]/gi,'')+'\'';
   el.innerHTML=list.map(m=>{
     const acts=m.triageActions||[], note=String(m.note||'').trim();
@@ -34369,7 +34513,7 @@ function _clientNotesPdf(meetingId){
   const sub=!dates.length ? '' : (dates[0]===dates[dates.length-1] ? fmtDate(dates[0]) : (fmtDate(dates[0])+' to '+fmtDate(dates[dates.length-1])));
   const K=_mkPdf('Client Meeting Notes', client, dc, sub);
   const NAVY=[30,58,95], GREY=[110,116,126], RED=[197,32,32], INK=[45,45,45];
-  if(!list.length) K.text('No client meeting notes yet - take them with the Minutes button on the cockpit risk ladder.', 9.5, {color:GREY});
+  if(!list.length) K.text('No client meeting notes yet - take them with the Minutes button on the Risk ladder.', 9.5, {color:GREY});
   // newest first under a heading a month; one meeting printed on its own has
   // its date in the subtitle already, so it needs no month over it
   let month=null;

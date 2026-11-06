@@ -20,7 +20,7 @@ await seed(page, { company: { legalName: 'Example Architects Group Ltd' }, riskP
   r('h1', 'Driving for work', 3, 4),                   // 12
   r('c1', 'Asbestos on intrusive surveys', 4, 4),      // 16
   r('f1', 'Fire breaking out at the studio', 4, 5),    // 20 - added last
-] }, 'cockpit');
+] }, 'ladder');      // the ladder has its own tab (6 November 2026)
 await wait(page, 600);
 
 const t = await page.evaluate(() => {

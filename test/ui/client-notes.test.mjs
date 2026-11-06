@@ -273,7 +273,7 @@ await page.evaluate(() => {
   R.ok(t.meta === '3 meetings minuted', 'its line counts the meetings that print - the open one too, not the empty one (' + t.meta + ')');
   R.ok(/Your own notes from client meetings/.test(t.text) && /Personal notes/.test(t.text) && /Client meetings/.test(t.text), 'it says what it is: your own notes from client meetings');
   R.ok((t.saved || []).length === 1 && /^client-meeting-notes-/.test(t.saved[0]), 'and its button saves the notes (' + (t.saved || []).join(', ') + ')');
-  R.ok(/^Nothing minuted yet/.test(t.emptyMeta) && /Minutes on the cockpit ladder/.test(t.emptyMeta), 'with nothing minuted, it says where to take them: ' + t.emptyMeta);
+  R.ok(/^Nothing minuted yet/.test(t.emptyMeta) && /Minutes on the Risk ladder/.test(t.emptyMeta), 'with nothing minuted, it says where to take them: ' + t.emptyMeta);
 }
 
 // ── 7. nothing minuted at all ──

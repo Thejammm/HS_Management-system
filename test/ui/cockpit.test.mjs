@@ -16,9 +16,12 @@ await wait(page, 700);
 // ── the ladder: a rung per band, counted, with the tenant's own score ranges ──
 {
   const t = await page.evaluate(() => {
-    const panel = [...document.querySelectorAll('.ckx-panel')].find(p => /Risk ladder/.test(p.textContent));
-    if (!panel) return { missing: true };
-    const txt = panel.innerText.replace(/\s+/g, ' ');
+    // the ladder left the cockpit for its own tab (6 November 2026): read it there, and make sure the cockpit no longer draws it
+    const onCockpit = !![...document.querySelectorAll('#tab-cockpit .ckx-panel')].find(p => /Risk ladder/.test(p.textContent));
+    switchTab('ladder'); const panel = [...document.querySelectorAll('#tab-ladder .ckx-panel')].find(p => /Risk ladder/.test(p.textContent));
+    if (!panel || onCockpit) { switchTab('cockpit'); return { missing: true, onCockpit }; }
+    const txt = panel.innerText.replace(/\s+/g, ' ');      // read while the tab is showing, so the CSS upper-casing of the band labels is in the text
+    switchTab('cockpit');
     // the count on each rung must equal what the board model puts there - so
     // this holds whatever the fixture is, and catches a counter that drifts
     const rows = _boardModel().rows;
@@ -30,7 +33,7 @@ await wait(page, 700);
       unrated: /1 risk not yet rated/.test(txt),
       key: /uncontrolled/.test(txt) && /controlled as reasonably practicable/.test(txt) };
   });
-  R.ok(!t.missing, 'the risk ladder is on the cockpit');
+  R.ok(!t.missing, 'the risk ladder is on its own tab, and no longer on the cockpit');
   R.ok(t.counted, 'each rung counts its risks before the level and shows the score range (' + (t.want || []).map(w => w.n + ' ' + w.b).join(', ') + ')');
   R.ok(t.demands, 'each rung says what that level demands');
   R.ok(t.named && t.unrated, 'every risk is named on its rung, and the unrated one is called out');
@@ -40,7 +43,8 @@ await wait(page, 700);
 // ── clicking a risk on the ladder opens it ──
 {
   const t = await page.evaluate(() => new Promise(res => {
-    const panel = [...document.querySelectorAll('.ckx-panel')].find(p => /Risk ladder/.test(p.textContent));
+    switchTab('ladder');      // the ladder's own tab
+    const panel = [...document.querySelectorAll('#tab-ladder .ckx-panel')].find(p => /Risk ladder/.test(p.textContent));
     const btn = [...panel.querySelectorAll('button')].find(b => /Fire breaking out/.test(b.textContent));
     if (!btn) { res({ noBtn: true }); return; }
     btn.click();
@@ -125,9 +129,10 @@ await seed(page, { company: { legalName: 'Example Architects Group Ltd' }, riskP
 await wait(page, 700);
 {
   const t = await page.evaluate(() => {
-    const panel = [...document.querySelectorAll('.ckx-panel')].find(p => /Risk ladder/.test(p.textContent));
-    return { says: panel ? panel.innerText.replace(/\s+/g, ' ') : '(no panel)',
-      body: document.getElementById('tab-cockpit').innerText.length };
+    const body = document.getElementById('tab-cockpit').innerText.length;
+    switchTab('ladder'); const panel = [...document.querySelectorAll('#tab-ladder .ckx-panel')].find(p => /Risk ladder/.test(p.textContent));      // the ladder's own tab
+    const says = panel ? panel.innerText.replace(/\s+/g, ' ') : '(no panel)'; switchTab('cockpit');
+    return { says, body };
   });
   R.ok(/No risks recorded yet/i.test(t.says), 'an empty profile says so on the ladder');
   R.ok(t.body > 200, 'the rest of the cockpit still renders');

@@ -21,7 +21,7 @@ risks[1].actions = [
   { id: 'v2a2', desc: 'Survey every skylight before work starts', owner: 'Surveyor', due: '2020-01-10', status: 'In progress' },   // overdue - the most pressing
   { id: 'v2a3', desc: 'Already done', owner: 'Site lead', due: '2020-01-01', status: 'Complete' } ];
 // v3, the road collision, has nothing open - it cannot be a priority yet
-await seed(page, { company: { legalName: 'Example Architects Group Ltd' }, riskProfile: risks, actionPlan: [] }, 'cockpit');
+await seed(page, { company: { legalName: 'Example Architects Group Ltd' }, riskProfile: risks, actionPlan: [] }, 'ladder');      // the ladder has its own tab (6 November 2026)
 await wait(page, 700);
 
 const ladder = () => page.evaluate(() => {
@@ -31,7 +31,7 @@ const ladder = () => page.evaluate(() => {
   const lines = [...panel.querySelectorAll('.ckl-line')].map(l => ({ want: want(l.querySelector('.ckl-name').textContent), ref: (l.querySelector('.risk-ref') || {}).textContent || '', name: l.querySelector('.ckl-name').textContent,
     tick: !!l.querySelector('.ckl-t5 input'), on: !!(l.querySelector('.ckl-t5 input') || {}).checked }));
   return { lines, head: (panel.querySelector('.ckl-head') || {}).textContent || '', picks: [...panel.querySelectorAll('.ckl-pick')].map(p => p.textContent),
-    five: ([...document.querySelectorAll('.ckx-panel')].find(p => /Putting us at risk today/.test(p.textContent)) || { innerText: '' }).innerText };
+    five: (() => { renderCockpit(); const p = [...document.querySelectorAll('#tab-cockpit .ckx-panel')].find(p => /Putting us at risk today/.test(p.textContent)); return p ? p.innerText : ''; })() };
 });
 
 // ── each line has its ref and a tick, in a column of their own ──
@@ -75,7 +75,7 @@ const ladder = () => page.evaluate(() => {
 {
   const t = await page.evaluate(() => {
     S.actionPlan = [1, 2, 3, 4].map(i => ({ id: 'f' + i, desc: 'Free action ' + i, owner: 'Office', due: '2099-01-0' + i, status: 'Not started', top5: new Date().toISOString().slice(0, 7) }));
-    renderCockpit();
+    renderLadder();
     const line = [...document.querySelectorAll('.ckl-line')].find(l => /Fire breaking out/.test(l.textContent));
     const box = line.querySelector('.ckl-t5 input'); box.checked = true; box.dispatchEvent(new Event('change'));
     const again = [...document.querySelectorAll('.ckl-line')].find(l => /Fire breaking out/.test(l.textContent)).querySelector('.ckl-t5 input');
@@ -89,7 +89,7 @@ const ladder = () => page.evaluate(() => {
 {
   const t = await page.evaluate(() => {
     S.actionPlan = [];
-    renderCockpit();
+    renderLadder();
     const line = [...document.querySelectorAll('.ckl-line')].find(l => /fall from height/.test(l.textContent));
     const box = line.querySelector('.ckl-t5 input'); box.checked = false; box.dispatchEvent(new Event('change'));
     return { marks: S.riskProfile.find(x => x.id === 'v2').actions.filter(a => a.top5).length, n: _top5List().length,
@@ -102,9 +102,9 @@ const ladder = () => page.evaluate(() => {
 {
   const t = await page.evaluate(() => {
     S.riskProfile.find(x => x.id === 'v2').actions[1].top5 = new Date().toISOString().slice(0, 7);
-    const keep = window._roLocked; window._roLocked = () => true; renderCockpit();
+    const keep = window._roLocked; window._roLocked = () => true; renderLadder();
     const out = { boxes: document.querySelectorAll('.ckl-t5 input').length, star: [...document.querySelectorAll('.ckl-line')].find(l => /fall from height/.test(l.textContent)).querySelector('.ckl-t5').textContent };
-    window._roLocked = keep; renderCockpit();
+    window._roLocked = keep; renderLadder();
     return out;
   });
   R.ok(t.boxes === 0 && t.star === '★', 'read-only, the column shows a star on the five and no boxes');
@@ -116,7 +116,7 @@ const ladder = () => page.evaluate(() => {
 // ticks here still choose them, and still lead the board report.
 {
   const t = await page.evaluate(() => {
-    renderCockpit();
+    renderLadder();
     const panel = [...document.querySelectorAll('.ckx-panel')].find(p => /Risk ladder/.test(p.querySelector('h4') ? p.querySelector('h4').textContent : ''));
     const said = el => el ? (el.textContent + ' ' + [...el.querySelectorAll('[title]')].map(x => x.title).join(' ')) : '';
     const out = { tools: [...panel.querySelectorAll('.ckl-tools button')].map(b => b.textContent.trim()), cockpit: said(document.getElementById('tab-cockpit')) };

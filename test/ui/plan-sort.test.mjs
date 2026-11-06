@@ -69,7 +69,7 @@ const FREE = () => ([{ id: 'f1', desc: 'Mike - renew the insurance certificate',
 
 await seed(page, { riskProfile: RISKS(), actionPlan: FREE() }, 'execplan');
 await wait(page, 400);
-await page.evaluate(() => setEpGroupBy('theme'));      // the plan opens by risk level since 6 November 2026; the theme blocks these checks read are one click away
+await page.evaluate(() => { _epDetail = true; setEpGroupBy('theme'); });      // the plan opens under each risk with Detail off since 6 November 2026; the views these checks read are one click away
 
 // Small readers the steps share.
 await page.evaluate(() => {
@@ -324,7 +324,7 @@ await page.evaluate(() => {
     out.planCodes = __yearCodes().length;
     return out;
   });
-  R.ok(t.chips.length === 3 && /Risk theme/.test(t.chips[0]) && /Target date/.test(t.chips[1]) && /Risk level/.test(t.chips[2]),
+  R.ok(t.chips.length === 5 && /^Risk$/.test(t.chips[0]) && /Risk theme/.test(t.chips[1]) && /Target date/.test(t.chips[2]) && /Risk level/.test(t.chips[3]) && /Detail/.test(t.chips[4]),
     'Group by offers a third reading: ' + t.chips.join(' / '));
   R.ok(t.mode === 'level' && /Risk level/.test(t.on), 'Risk level is on once chosen (' + t.mode + ')');
   const bandsOf = L => L.map(l => l.bands.length === 1 ? l.bands[0] : ('mixed:' + l.bands.join('+')));

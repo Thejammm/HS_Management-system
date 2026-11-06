@@ -10,6 +10,7 @@ import { openApp, seed, wait, reporter, RISKS } from './harness.mjs';
 const R = reporter('Action close-out - what keeps it in place');
 const { browser, page, errors } = await openApp();
 
+await page.evaluate(() => { if (typeof setEpGroupBy === 'function') _epGroupBy = 'theme'; });      // these checks read the Delivered card, which sits on the other views since 6 November 2026
 await seed(page, { company: { legalName: 'Testing Client Ltd', personnel: [] }, riskProfile: RISKS(), actionPlan: [
   { id: 'f1', desc: 'Renew the employers liability certificate', owner: 'Bev', due: '2027-01-31', status: 'Not started', source: 'Assurance' }] }, 'execplan');
 await wait(page, 500);

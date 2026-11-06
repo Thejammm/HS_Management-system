@@ -8,6 +8,8 @@ import { openApp, seed, wait, reporter, RISKS } from './harness.mjs';
 
 const R = reporter('Client execution plan');
 const { browser, page, errors } = await openApp();
+// the plan opens under each risk with Status, Priority, Source and Top 5 behind Detail since 6 November 2026 (action-plan suite);
+// these checks read the other views with Detail on, which are all still a click away
 
 // A plan with work across four themes: two open on fire, one open and one
 // delivered on height, one delivered on transport (that theme finished), one
@@ -47,7 +49,7 @@ await wait(page, 500);
 // ── the plan opens grouped by theme, with honest progress on each ──
 {
   const t = await page.evaluate(() => {
-    const opens = _epGroupBy; setEpGroupBy('theme');      // the plan opens by risk level, the ladder's order (6 November 2026); Risk theme is one click away
+    const opens = _epGroupBy; _epDetail = true; setEpGroupBy('theme');
     const gs = _epThemeGroups();
     const root = document.getElementById('execPlanRoot');
     const heads = [...root.querySelectorAll('#epYearCard .ep-theme .ep-theme-head')].map(x => x.textContent.replace(/\s+/g, ' ').trim());
@@ -64,7 +66,7 @@ await wait(page, 500);
       overdueShown: heads.some(x => /overdue/i.test(x)),
       doneStrip: /Themes fully delivered/.test(root.textContent) };
   });
-  R.ok(t.mode === 'level' && t.blocks >= 3, 'the plan opens by risk level, and Risk theme still gives one block a theme (' + t.blocks + ')');
+  R.ok(t.mode === 'risk' && t.blocks >= 3, 'the plan opens by risk, and Risk theme still gives one block a theme (' + t.blocks + ')');
   R.ok(t.covers, 'every action sits in exactly one theme - the blocks account for the whole plan');
   R.ok(t.heads.some(x => /\d+ of \d+ done/.test(x)), 'each theme says how much of it is done: ' + (t.heads[0] || '').slice(0, 76));
   R.ok(t.barMatches, 'the progress bar is that same fraction, not a separate guess (' + t.partDone + ' = ' + t.partPct + ')');
@@ -108,7 +110,7 @@ await wait(page, 450);
       backToTheme: !!document.querySelectorAll('#epYearCard .ep-theme').length,
       on: (document.querySelector('#epYearCard .ep-gb.on') || {}).textContent };
   });
-  R.ok(t.chips.length === 3 && /Risk theme/.test(t.chips[0]) && /Target date/.test(t.chips[1]) && /Risk level/.test(t.chips[2]), 'the card offers its three readings: ' + t.chips.join(' / '));
+  R.ok(t.chips.length === 5 && /^Risk$/.test(t.chips[0]) && /Risk theme/.test(t.chips[1]) && /Target date/.test(t.chips[2]) && /Risk level/.test(t.chips[3]) && /Detail/.test(t.chips[4]), 'the card offers its four readings and Detail: ' + t.chips.join(' / '));
   R.ok(t.themeTitle && t.monthTitle && t.months && t.themesGone, 'switching to Target date gives the month-by-month plan back');
   R.ok(t.labels.length >= 3, 'and every dated line still names its theme above the action (' + t.labels.length + ' labelled)');
   R.ok(t.backToTheme && /Risk theme/.test(t.on || ''), 'the switch says which reading is on, and goes back');

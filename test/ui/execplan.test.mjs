@@ -47,13 +47,14 @@ await wait(page, 500);
 // ── the plan opens grouped by theme, with honest progress on each ──
 {
   const t = await page.evaluate(() => {
+    const opens = _epGroupBy; setEpGroupBy('theme');      // the plan opens by risk level, the ladder's order (6 November 2026); Risk theme is one click away
     const gs = _epThemeGroups();
     const root = document.getElementById('execPlanRoot');
     const heads = [...root.querySelectorAll('#epYearCard .ep-theme .ep-theme-head')].map(x => x.textContent.replace(/\s+/g, ' ').trim());
     const bars = [...root.querySelectorAll('#epYearCard .ep-theme-bar > i')].map(x => x.style.width);
     const g = (nameRx) => gs.find(z => nameRx.test(z.name));
     const h = gs.find(z => z.done && z.list.length);        // a theme part-done
-    return { mode: _epGroupBy, blocks: root.querySelectorAll('#epYearCard .ep-theme').length,
+    return { mode: opens, blocks: root.querySelectorAll('#epYearCard .ep-theme').length,
       heads, bars, groups: gs.length,
       // the sum of every theme is every action, none lost and none counted twice
       covers: gs.reduce((s, z) => s + z.total, 0) === _execActions().length,
@@ -63,7 +64,7 @@ await wait(page, 500);
       overdueShown: heads.some(x => /overdue/i.test(x)),
       doneStrip: /Themes fully delivered/.test(root.textContent) };
   });
-  R.ok(t.mode === 'theme' && t.blocks >= 3, 'the plan opens grouped by risk theme, one block each (' + t.blocks + ')');
+  R.ok(t.mode === 'level' && t.blocks >= 3, 'the plan opens by risk level, and Risk theme still gives one block a theme (' + t.blocks + ')');
   R.ok(t.covers, 'every action sits in exactly one theme - the blocks account for the whole plan');
   R.ok(t.heads.some(x => /\d+ of \d+ done/.test(x)), 'each theme says how much of it is done: ' + (t.heads[0] || '').slice(0, 76));
   R.ok(t.barMatches, 'the progress bar is that same fraction, not a separate guess (' + t.partDone + ' = ' + t.partPct + ')');
@@ -118,8 +119,8 @@ await wait(page, 450);
   const t = await page.evaluate(() => {
     const cell = (d) => {
       const rows = [...document.querySelectorAll('#epYearCard tr')];
-      const tr = rows.find(r => r.cells && r.cells[2] && r.cells[2].textContent.indexOf(d) >= 0);
-      const m = tr ? tr.cells[0].querySelector('span') : null;
+      const tr = rows.find(r => r.cells && r.cells[1] && r.cells[1].textContent.indexOf(d) >= 0);
+      const m = tr ? tr.cells[0].querySelector('.ep-wrong-r > span') : null;
       return { has: !!(m && m.classList.contains('ep-band')), colour: m ? m.style.background : '', tip: m ? (m.getAttribute('title') || '') : '(no cell)' };
     };
     const band = (d) => _epBandOf(_execActions().find(a => a.desc.indexOf(d) === 0));
@@ -132,7 +133,7 @@ await wait(page, 450);
       agrees: _epBandOf(_execActions().find(a => a.desc.indexOf('Write the fire') === 0))
         === _riskScore(S.riskProfile.find(r => r.id === 'v1')).priority };
   });
-  R.ok(/Band/.test(t.header || ''), 'the first column says what it is (' + t.header + ')');
+  R.ok(/What.s wrong/.test(t.header || ''), 'the first column says what it is (' + t.header + ')');
   R.ok(t.fire.has && t.fire.colour === 'rgb(220, 38, 38)' && t.fireBand === 'Critical',
     'a Critical action is marked in the Critical colour (' + t.fireBand + ')');
   R.ok(t.hand.has && t.hand.colour === 'rgb(245, 158, 11)' && t.handBand === 'Medium',
@@ -149,8 +150,8 @@ await wait(page, 450);
     r.likelihood = '1'; r.severity = '1';                 // make it Low
     renderExecPlan();
     const rows = [...document.querySelectorAll('#epYearCard tr')];
-    const tr = rows.find(x => x.cells && x.cells[2] && x.cells[2].textContent.indexOf('Re-lay the stores racking') >= 0);
-    const m = tr ? tr.cells[0].querySelector('span') : null;
+    const tr = rows.find(x => x.cells && x.cells[1] && x.cells[1].textContent.indexOf('Re-lay the stores racking') >= 0);
+    const m = tr ? tr.cells[0].querySelector('.ep-wrong-r > span') : null;
     const out = { band: _riskScore(r).priority, marked: !!(m && m.classList.contains('ep-band')),
       tip: m ? (m.getAttribute('title') || '') : '', anyGreen: [...document.querySelectorAll('#epYearCard .ep-band')].some(x => /22, 163, 74/.test(x.style.background)) };
     r.likelihood = '2'; r.severity = '3'; renderExecPlan();
@@ -165,7 +166,7 @@ await wait(page, 450);
 {
   const t = await page.evaluate(() => {
     const rows = [...document.querySelectorAll('#epYearCard tr')];
-    const find = (d) => rows.find(r => r.cells && r.cells[2] && r.cells[2].textContent.indexOf(d) >= 0);
+    const find = (d) => rows.find(r => r.cells && r.cells[1] && r.cells[1].textContent.indexOf(d) >= 0);
     const dateOf = (tr) => tr ? tr.querySelector('input[type="date"]') : null;
     const late = dateOf(find('Sign the second key customer'));      // due 2026-01-31, overdue
     const ok = dateOf(find('Service the extinguishers'));           // 2027-03-01, on track
@@ -183,20 +184,20 @@ await wait(page, 450);
 {
   const t = await page.evaluate(() => {
     const rows = [...document.querySelectorAll('#epYearCard tr')].filter(r => r.cells && r.cells.length > 5);
-    const refOf = (d) => { const tr = rows.find(r => r.cells[2] && r.cells[2].textContent.indexOf(d) >= 0);
-      return tr ? tr.cells[1].textContent.trim() : '(row not found)'; };
+    const refOf = (d) => { const tr = rows.find(r => r.cells[1] && r.cells[1].textContent.indexOf(d) >= 0);
+      return tr ? tr.cells[0].querySelector('.ep-ref').textContent.trim() : '(row not found)'; };
     const head = [...document.querySelectorAll('#epYearCard thead th')].map(x => x.textContent.trim());
     return { head,
       fire1: refOf('Write the fire'), fire2: refOf('Service the extinguishers'),
       height: refOf('Buy a proper roof-edge'), free: refOf('Renew the employers'),
       appRef: (S.riskProfile.find(r => r.id === 'v1') || {}).ref,
-      opens: (rows.find(r => r.cells[2] && r.cells[2].textContent.indexOf('Write the fire') >= 0)
-        .cells[1].querySelector('button') || {}).getAttribute
-        ? rows.find(r => r.cells[2] && r.cells[2].textContent.indexOf('Write the fire') >= 0)
-            .cells[1].querySelector('button').getAttribute('onclick') : '' };
+      opens: (rows.find(r => r.cells[1] && r.cells[1].textContent.indexOf('Write the fire') >= 0)
+        .cells[0].querySelector('button') || {}).getAttribute
+        ? rows.find(r => r.cells[1] && r.cells[1].textContent.indexOf('Write the fire') >= 0)
+            .cells[0].querySelector('button').getAttribute('onclick') : '' };
   });
-  R.ok(t.head[0] === 'Band' && t.head[1] === 'Ref' && t.head[2] === 'Action',
-    'Ref sits between Band and Action (' + t.head.slice(0, 3).join(' | ') + ')');
+  R.ok(/What.s wrong/.test(t.head[0]) && t.head[1] === 'How we fix it',
+    'the band mark and the reference open What\'s wrong, then How we fix it (' + t.head.slice(0, 3).join(' | ') + ')');
   R.ok(t.fire1 === t.fire2 && t.fire1 === t.appRef,
     'two actions on one risk carry the same reference, the register\'s own (' + t.fire1 + ')');
   R.ok(t.height !== t.fire1, 'an action on a different risk carries a different one (' + t.height + ')');
@@ -216,12 +217,12 @@ await wait(page, 450);
     _logAdd(o, 'comment', 'Second draft back');
     renderExecPlan();
     const tr = [...document.querySelectorAll('#epYearCard tr')]
-      .find(r => r.cells && r.cells[2] && r.cells[2].textContent.indexOf('Write the fire') >= 0);
+      .find(r => r.cells && r.cells[1] && r.cells[1].textContent.indexOf('Write the fire') >= 0);
     return { head, lastEmpty: head[head.length - 1] === '', cols: head.length, rows: rows.length,
-      mark: tr ? (tr.cells[2].querySelector('.ep-mark') || {}).textContent || '' : '',
+      mark: tr ? (tr.cells[1].querySelector('.ep-mark') || {}).textContent || '' : '',
       cells: tr ? tr.cells.length : 0 };
   });
-  R.ok(!t.lastEmpty && t.cols === 9, 'the empty arrow column is gone and the header ends on Status (' + t.cols + ' columns)');
+  R.ok(!t.lastEmpty && t.cols === 9, 'the empty arrow column is gone and the header ends on Top 5 (' + t.cols + ' columns)');
   R.ok(t.cells === 9, 'every row matches the header');
   R.ok(/2/.test(t.mark), 'the activity count moved beside the action it belongs to (' + t.mark.trim() + ')');
 }

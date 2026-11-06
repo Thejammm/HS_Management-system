@@ -69,6 +69,7 @@ const FREE = () => ([{ id: 'f1', desc: 'Mike - renew the insurance certificate',
 
 await seed(page, { riskProfile: RISKS(), actionPlan: FREE() }, 'execplan');
 await wait(page, 400);
+await page.evaluate(() => setEpGroupBy('theme'));      // the plan opens by risk level since 6 November 2026; the theme blocks these checks read are one click away
 
 // Small readers the steps share.
 await page.evaluate(() => {
@@ -83,7 +84,7 @@ await page.evaluate(() => {
     if (!root) return [];
     const acts = _execActions();
     return [...root.querySelectorAll('tbody tr')].filter(tr => tr.cells && tr.cells.length === 9)
-      .map(tr => { const t = tr.cells[2].textContent; return acts.find(a => a.desc && t.indexOf(a.desc) >= 0) || null; });
+      .map(tr => { const t = tr.cells[1].textContent; return acts.find(a => a.desc && t.indexOf(a.desc) >= 0) || null; });
   };
   window.__codes = root => __rows(root).map(__code);
   // The contract's sort, written out again here so the screen is checked
@@ -92,8 +93,10 @@ await page.evaluate(() => {
   window.__cmp = mode => (a, b) => {
     const ba = __band(a), bb = __band(b), R = __RANK;
     const tie = () => ((a.rag === 'red' ? 0 : 1) - (b.rag === 'red' ? 0 : 1)) || dk(a).localeCompare(dk(b));
-    if (mode === 'risk-high') return (R[ba] - R[bb]) || tie();
-    if (mode === 'risk-low') return (__LOW[ba] - __LOW[bb]) || tie();
+    // Highest risk first follows the ladder (6 November 2026): band, then the risk's place on the ladder, then the most pressing inside one risk
+    const lad = (x, low) => { const o = _riskDisplayOrder(), rk = _execRiskOf(x), L = rk ? o.indexOf(rk) : o.length; return (low && L !== o.length) ? o.length - L : L; };
+    if (mode === 'risk-high') return (R[ba] - R[bb]) || (lad(a) - lad(b)) || tie();
+    if (mode === 'risk-low') return (__LOW[ba] - __LOW[bb]) || (lad(a, true) - lad(b, true)) || tie();
     if (mode === 'due') return dk(a).localeCompare(dk(b)) || (R[ba] - R[bb]);
     if (mode === 'raised') { const ra = a.raisedAt || '', rb = b.raisedAt || ''; if (!ra !== !rb) return ra ? -1 : 1; return rb.localeCompare(ra) || (R[ba] - R[bb]); }
     return 0;
@@ -248,8 +251,8 @@ await page.evaluate(() => {
       ths: __themes().map(b => Object.assign(b, { reg: __regIdx(b.k) })) };
   });
   R.ok(t.did && t.value === 'risk-low' && t.sortVar === 'risk-low', 'choosing Lowest risk first redraws with the choice still showing');
-  R.ok(t.month.join(',') === 'Golf,Echo,Charlie,Alpha,Juliet,India',
-    'This month: Low, Medium, High, Critical - and not rated still last: ' + t.month.join(', '));
+  R.ok(t.month.join(',') === 'Golf,Echo,Charlie,Juliet,Alpha,India',
+    'This month: Low, Medium, High, Critical, the ladder turned round inside each band (6 November 2026) - and not rated still last: ' + t.month.join(', '));
   R.ok(!t.bad.length, 'every list on the plan is in that order' + (t.bad.length ? ' - out of order: ' + t.bad.join('; ') : ''));
   const rated = t.ths.filter(b => b.k && b.worst < 4);
   const LOWOF = [3, 2, 1, 0];   // worst open band (Critical 0 .. Low 3) read least serious first
@@ -471,7 +474,7 @@ await wait(page, 200);
   });
   R.ok(t.dateLocked, 'the read-only view is locked (its dates cannot be edited)');
   R.ok(t.shop && t.sel && !t.disabled && t.chips === 5 && t.spec, 'and the shopping bar is still there, every control live');
-  R.ok(t.sorted === 'Golf,Echo,Charlie,Alpha,Juliet,India' && t.lowOnly.length && t.lowOnly.every(c => ['Golf', 'Hotel'].includes(c)),
+  R.ok(t.sorted === 'Golf,Echo,Charlie,Juliet,Alpha,India' && t.lowOnly.length && t.lowOnly.every(c => ['Golf', 'Hotel'].includes(c)),
     'sorting and the chips work for a client looking at a locked plan');
 }
 

@@ -58,8 +58,8 @@ R.ok(/^loneworking Seen on site: Lone worker/.test(o3), 'a danger seen on site g
 // ── where it shows: the register, a risk, the cockpit ──
 await page.evaluate(() => switchTab('risk')); await wait(page, 500);
 const reg = await page.evaluate(() => { const th = [...document.querySelectorAll('table.rpt thead th')].map(x => x.textContent.trim());
-  const box = document.createElement('tbody'); box.innerHTML = _riskRowHTML(S.riskProfile); return { th, cells: [...box.querySelectorAll('tr')].map(tr => tr.children[2].textContent) }; });
-R.ok(reg.th[2] === 'Tier' && reg.cells.every(c => /^TIER [1-4]$/.test(c)), 'the register has a Tier column on every row (' + reg.cells.join(', ') + ')');
+  const box = document.createElement('tbody'); box.innerHTML = _riskRowHTML(S.riskProfile); return { th, cells: [...box.querySelectorAll('tr')].map(tr => tr.children[3].textContent) }; });
+R.ok(reg.th[3] === 'Tier' && reg.cells.every(c => /^TIER [1-4]$/.test(c)), 'the register has a Tier column on every row (' + reg.cells.join(', ') + ')');
 const box = await page.evaluate(async () => { const r = S.riskProfile.find(x => x.libKey === 'workequip'); _riskOpenModal(r.id); _riskDetailTab('summary'); await new Promise(z => setTimeout(z, 400));      // the Summary tab: a scored risk opens on its overview since Stage A
   const b = [...document.querySelectorAll('.dg-acts')].find(x => /^Priority/.test((x.querySelector('.dg-ah') || {}).textContent || ''));
   return { chip: (x => !!x && x.options[x.selectedIndex].text === 'TIER 1 · auto')(document.querySelector('select.rc-chip')), txt: b ? b.textContent.replace(/\s+/g, ' ') : '', sel: !!(b && b.querySelector('select')), inp: !!(b && b.querySelector('input[type=text]')) }; });
@@ -73,8 +73,8 @@ R.ok(hdr && hdr.before === 'TIER 3 · auto' && hdr.tier === '1 set by you' && hd
 await page.evaluate(() => { _riskModalOpen = false; switchTab('ladder'); }); await wait(page, 900);      // the ladder has its own tab (6 November 2026)
 const ck = await page.evaluate(() => { const p = document.querySelector('.ckx-panel.ckl'); if (!p) return null;
   const sug = [...p.querySelectorAll('div')].find(d => /^Suggested five/i.test((d.firstElementChild || {}).textContent || '') && d.querySelector('input[type=checkbox]'));
-  return { sug: sug ? sug.querySelectorAll('input[type=checkbox]').length : 0, first: sug ? sug.children[1].textContent : '', lines: p.querySelectorAll('.ckl-line').length, tiers: [...p.querySelectorAll('.ckl-meta')].filter(m => /TIER [1-4]/.test(m.textContent)).length }; });
-R.ok(ck && ck.sug === 5 && /Uninsured loss/.test(ck.first), 'the ladder shows the suggested five, first the missing legal duty (' + (ck && ck.first.slice(0, 60)) + ')');
+  return { sug: sug ? sug.querySelectorAll('input[type=checkbox]').length : 0, first: sug ? sug.textContent : '', top: _riskRefOf(S.riskProfile.slice().sort(_riskPrioCmp)[0]), lines: p.querySelectorAll('.ckl-line').length, tiers: [...p.querySelectorAll('.ckl-meta')].filter(m => /TIER [1-4]/.test(m.textContent)).length }; });
+R.ok(ck && ck.sug === 5 && /Uninsured loss/.test(ck.first) && ck.first.includes(ck.top), 'the rule still picks the missing legal duty first, and the five are listed in the ladder\'s order (6 November 2026)');
 R.ok(ck && ck.lines > 0 && ck.tiers === ck.lines, 'every ladder line shows its tier');
 
 await R.done(browser, errors);

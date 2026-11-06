@@ -90,14 +90,14 @@ R.ok(before.length === 1 && before[0].no === 1 && before[0].issuedAt === day(-29
     return { shown, label, open: !!ov, nav: ov ? ov.querySelectorAll('.t5-nb').length : 0, list: S.actionSheets.list.length,
       working: !!S.actionSheets.working, base: S.actionSheets.working.baseId === S.actionSheets.list[0].id, carried: S.actionSheets.working.items.map(i => i.ref.a).sort().join(),
       heads: [...ov.querySelectorAll('.t5-table th')].map(x => x.innerText.trim().toLowerCase()).join('|'),
-      tiles: [...ov.querySelectorAll('.t5-tile')].map(x => x.innerText.replace(/\s+/g, ' ')).join(' / '), haz: (ov.querySelector('.t5-haz') || {}).innerText || '', kick: (ov.querySelector('.t5-kick') || {}).innerText || '' };
+      tiles: [...ov.querySelectorAll('.t5-tile')].map(x => x.innerText.replace(/\s+/g, ' ')).join(' / '), haz: (ov.querySelector('.t5-haz') || {}).innerText || '', kick: (ov.querySelector('.t5-kick') || {}).innerText || '', head: (ov.querySelector('.t5-h') || {}).innerText || '' };
   });
   R.ok(t.shown && /Top 5/.test(t.label), 'a clear button at the top of the Front door group (Stage C moved it from the header): "' + t.label + '"');
   R.ok(t.open && t.nav === 5 && t.carried === 'r1,r2,r3,r4,r5', 'it opens on the five from the last sheet, a risk a screen');
   R.ok(t.list === 1 && t.working && t.base, 'a working copy that starts from sheet 1: no new sheet number until Send');
-  R.ok(t.heads === 'recommended action|comments|owner|target date|done', 'the table: recommended action, then Comments, Owner, Target date, Done (' + t.heads + ')');
+  R.ok(t.heads === 'how we fix it|who|by when|is it enough|comments|done', 'the table: the one column order, then Comments and Done (6 November 2026): ' + t.heads);
   R.ok(/CURRENT RISK RATING 25 CRITICAL/i.test(t.tiles) && /TARGET RISK RATING 6/i.test(t.tiles) && /Unprotected roof edges/.test(t.haz) && /Fatal injury/.test(t.haz), 'heading, current and target rating, hazard: as the PDF page (' + t.tiles + ')');
-  R.ok(/Priority 1 of 5/i.test(t.kick) && t.kick.includes(REF.r1), 'the page says which priority it is: ' + t.kick);
+  R.ok(/Priority 1 of 5/i.test(t.kick) && t.head.startsWith(REF.r1), 'the page says which priority it is, and the heading starts with the reference (6 November 2026): ' + t.kick + ' / ' + t.head);
 }
 // no red in anything new, and the word stays off the front door
 {
@@ -326,8 +326,8 @@ const answer = async (k, boxes, how) => {
   R.ok(t.meet === day(0), 'the new meeting is dated today until you say otherwise');
   R.ok(/Sheet 1, /.test(t.trail) && /Sheet 2, /.test(t.trail), 'the sheets as sent are a trail: ' + t.trail);
   await page.evaluate(() => { const b = document.querySelector('.t5-strip-add .btn'); b.click(); });
-  const after = await page.evaluate(() => ({ risks: S.actionSheets.working.items.map(i => i.ref.a).join(), at: _t5At, n: document.querySelectorAll('.t5-nb').length }));
-  R.ok(after.n === 3 && after.at === 2 && after.risks.split(',').length === 3, 'pressing Add puts it on the sheet and goes to it');
+  const after = await page.evaluate(() => ({ risks: S.actionSheets.working.items.map(i => i.ref.a).join(), at: S.actionSheets.working.items[_t5At].ref.a, n: document.querySelectorAll('.t5-nb').length }));
+  R.ok(after.n === 3 && !t.risks.includes(after.at) && after.risks.split(',').length === 3, 'pressing Add puts it on the sheet in the ladder\'s order, and goes to it (6 November 2026)');
   await page.evaluate(() => { document.getElementById('t5Ov').querySelector('.t5-off').click(); });
   R.ok((await page.evaluate(() => S.actionSheets.working.items.length)) === 2, 'and a risk can be taken off again, its actions staying on the plan');
   const fp = await page.evaluate(async () => { document.querySelector('.t5-strip-stick .t5-link').click(); const p = !!document.querySelector('#evidOverlay.t5-stick-ov'); document.querySelector('#evidOverlay input[value="none"]').click(); t5StickSave(); return { p, left: _t5StickList().length, stuck: !document.querySelector('.t5-strip-stick') }; });

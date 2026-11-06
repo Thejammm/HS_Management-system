@@ -38,7 +38,7 @@ R.ok(med.length === 4 && med.map(x => x.score).join() === '9,8,6,6' && /Manual h
 const ops = med.find(x => /key client/.test(x.name)), hs = med.find(x => /Contractor/.test(x.name));
 R.ok(ops && ops.ops && ops.tag && ops.out === 'dashed', 'an operational risk is outlined (dashed) and tagged Operational');
 R.ok(hs && !hs.ops && !hs.tag && hs.out !== 'dashed', 'a health and safety risk is not');
-R.ok(t.cols.join('|') === 'Ref|Risk|Score|Top 5|Sheet', 'the columns are labelled: ' + t.cols.join(' | '));
+R.ok(t.cols.join('|') === 'Now|Last|Mths|Move|Ref|Risk|Score|Top 5|Sheet', 'the columns are labelled, the chart\'s first (6 November 2026): ' + t.cols.join(' | '));
 R.ok(!t.overflow, 'the ladder never scrolls sideways');
 
 // narrow: no sideways scroll, the title still there

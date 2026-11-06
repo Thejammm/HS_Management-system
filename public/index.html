@@ -4548,6 +4548,35 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .ht-row{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px;margin-top:5px;font-size:12.8px;line-height:1.5;}
     .ht-row span{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);padding-top:3px;}
     .ht-row p{margin:0;}
+    /* One label, is it enough, and the ladder as a chart */
+    .ck-en{display:inline-block;font-size:12px;font-weight:700;line-height:1.25;white-space:normal;}
+    .ck-en small{display:block;font-size:10.5px;font-weight:500;color:var(--text-muted);}
+    .act-table tr:not(.act-grp)>td:nth-child(5),.act-table thead th:nth-child(5){min-width:108px;}
+    .act-table:not(.act-ctl) tr:not(.act-grp)>td:nth-child(6),.act-table:not(.act-ctl) thead th:nth-child(6){min-width:84px;}
+    .act-table .act-status{word-break:normal;overflow-wrap:normal;}
+    .ck-en-yes{color:var(--accent-dark,var(--accent));}.ck-en-no{color:var(--text);}.ck-en-none{color:var(--text-muted);font-weight:600;}
+    .ep-wrong{display:flex;flex-direction:column;gap:2px;white-space:normal;}
+    .ep-wrong-r{display:flex;align-items:center;gap:5px;}
+    .ep-wrong-t{font-weight:600;line-height:1.3;}
+    .t5-h .risk-ref{font-size:13px;vertical-align:4px;margin-right:6px;}
+    .rp-t .risk-ref{margin-right:5px;}
+    .ckl-c-pos{grid-area:pos;text-align:center}.ckl-c-last{grid-area:last;text-align:center}.ckl-c-mths{grid-area:mths;text-align:center}.ckl-c-move{grid-area:move;text-align:center}
+    .ckc-pos{grid-area:pos;font-size:15px;font-weight:800;line-height:22px;text-align:center;color:var(--text);}
+    .ckc-last,.ckc-mths{font-size:12px;line-height:22px;text-align:center;color:var(--text-muted);}
+    .ckc-last{grid-area:last}.ckc-mths{grid-area:mths}
+    .ckc-mv{grid-area:move;display:flex;justify-content:center;align-items:flex-start;line-height:22px;cursor:help;}
+    .ckc-move{font-size:13px;font-weight:800;line-height:22px;}
+    .ckc-up{color:var(--text)}.ckc-down{color:var(--accent-dark,var(--accent))}.ckc-same{color:#757575}.ckc-first{color:#757575}
+    .ckc-star{color:var(--accent-dark,var(--accent));font-size:16px;}
+    .ckc-new,.ckc-re{font-size:9.5px;letter-spacing:.04em;line-height:16px;padding:0 4px;border:1px solid currentColor;margin-top:3px;}
+    .ckc-new{color:var(--text)}.ckc-re{color:#757575}
+    .ckc-outs{border-left:4px solid var(--accent);border-top:1px solid var(--border);}
+    .ckc-outm{font-size:11.5px;font-weight:700;color:var(--accent-dark,var(--accent));}
+    .ckc-first-note{flex-basis:100%;font-size:11.5px;color:var(--text-muted);}
+    .ckc-key .ckc-move{line-height:1;font-size:12px;margin:0;}
+    .ckc-key .ckc-new,.ckc-key .ckc-re{margin:0;}
+    .ckl-key.ckc-key span{cursor:help;}
+    .ckl-key.ckc-key .ckl-key-note{cursor:default;}
     .wk-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px;}
     .wk-title{font-size:21px;font-weight:800;line-height:1.25;margin:2px 0 4px;}
     .wk-chips{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 8px;}
@@ -4569,10 +4598,10 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .slt-done-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
     @media (max-width:760px){ .slt-act,.slt-add{grid-template-columns:1fr;} .slt-cover,.slt-facts{margin-left:0;} }
     .ckl-headrow{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:-2px 0 8px;}
-    .ckl-head{margin-left:auto;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#B45309;}
+    .ckl-head{margin-left:auto;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text);}
     .ckl-ref:empty::before{content:'';}
-    .ckl-t5{flex:0 0 40px;display:flex;justify-content:center;align-items:center;color:#B45309;font-weight:800;}
-    .ckl-t5 input{width:16px;height:16px;margin:0;cursor:pointer;accent-color:#B45309;}
+    .ckl-t5{flex:0 0 40px;display:flex;justify-content:center;align-items:center;color:var(--text);font-weight:800;}
+    .ckl-t5 input{width:16px;height:16px;margin:0;cursor:pointer;accent-color:var(--text);}
     .t5r-row{display:grid;grid-template-columns:20px minmax(0,3fr) minmax(0,1.2fr) 140px minmax(0,1fr) 26px;gap:6px;align-items:center;margin-bottom:6px;}
     .t5r-row input[type=checkbox]{width:16px;height:16px;margin:0;cursor:pointer;accent-color:var(--accent);}
     .t5r-row input:not([type=checkbox]){font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:0;background:var(--surface);color:inherit;font-family:inherit;width:100%;min-width:0;}
@@ -4677,13 +4706,13 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .ckl{container-type:inline-size;}
     .ckl-sub{font-size:11.5px;color:var(--text-muted);}
     .ckl-wrap{border:1px solid var(--border);background:var(--surface);}
-    .ckl-cols,.ckl-line{display:grid;grid-template-columns:62px minmax(0,1fr) 46px 50px 50px;grid-template-areas:"ref main score t5 sh";column-gap:10px;}
+    .ckl-cols,.ckl-line{display:grid;grid-template-columns:34px 34px 34px 42px 62px minmax(0,1fr) 46px 50px 50px;grid-template-areas:"pos last mths move ref main score t5 sh";column-gap:8px;}
     .ckl-cols{padding:6px 10px 6px 16px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);background:var(--muted-bg);border-bottom:1px solid var(--border);}
-    .ckl-c-ref{grid-area:ref}.ckl-c-risk{grid-area:main}.ckl-c-sc{grid-area:score;text-align:center}.ckl-c-t5{grid-area:t5;text-align:center;color:#B45309}.ckl-c-sh{grid-area:sh;text-align:center;color:var(--accent-dark, var(--accent))}
+    .ckl-c-ref{grid-area:ref}.ckl-c-risk{grid-area:main}.ckl-c-sc{grid-area:score;text-align:center}.ckl-c-t5{grid-area:t5;text-align:center;color:var(--text)}.ckl-c-sh{grid-area:sh;text-align:center;color:var(--accent-dark, var(--accent))}
     .ckl-band{border-left:4px solid var(--band);}
     .ckl-band+.ckl-band{border-top:1px solid var(--border);}
     .ckl-band-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;padding:8px 10px 7px 12px;background:var(--surface);border-bottom:1px solid var(--border);}
-    .ckl-band-n{font-size:12px;font-weight:800;letter-spacing:.07em;color:var(--band);}
+    .ckl-band-n{font-size:12px;font-weight:800;letter-spacing:.07em;color:var(--text);}
     .ckl-band-c{font-size:12px;font-weight:700;color:var(--text);}
     .ckl-band-m{flex:1 1 220px;min-width:0;font-size:11.5px;color:var(--text-muted);}
     .ckl-band-r{font-size:11px;color:var(--text-muted);white-space:nowrap;}
@@ -4691,8 +4720,8 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .ckl-line{width:auto;align-items:start;padding:8px 10px 8px 12px;border-top:1px solid var(--border);}
     .ckl-band-h+.ckl-line{border-top:0;}
     .ckl-line:hover{background:var(--muted-bg);}
-    .ckl-line.ckl-on5{background:#B453090B;}
-    .ckl-line.ckl-on5:hover{background:#B4530914;}
+    .ckl-line.ckl-on5{background:var(--accent-light);}
+    .ckl-line.ckl-on5:hover{background:var(--accent-light);}
     .ckl-line.ckl-ops{outline:1px dashed #64748B;outline-offset:-4px;}
     .ckl-ref{grid-area:ref;display:flex;padding-top:1px;}
     .ckl-main{grid-area:main;min-width:0;}
@@ -4701,13 +4730,13 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .ckl-title{font-size:13.5px;font-weight:600;line-height:1.35;color:var(--text);overflow-wrap:anywhere;}
     .ckl-name:hover .ckl-title{text-decoration:underline;text-underline-offset:2px;}
     .ckl-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:0 0 auto;transform:translateY(-1px);margin-right:0;}
-    .ckl-dot-unc{background:#DC2626}.ckl-dot-part{background:#F59E0B}.ckl-dot-ok{background:#16A34A}.ckl-dot-rev{background:#D97706}
+    .ckl-dot-unc{background:var(--text)}.ckl-dot-part{background:#757575}.ckl-dot-ok{background:var(--accent)}.ckl-dot-rev{background:transparent;box-shadow:inset 0 0 0 2px var(--accent)}
     .ckl-meta{display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px;margin:3px 0 0 16px;}
     .ckl-cat{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);}
-    .ckl-cat i{display:inline-block;width:7px;height:7px;flex:0 0 auto;}
+    .ckl-cat i{display:inline-block;width:7px;height:7px;flex:0 0 auto;background:#757575!important;}
     .ckl-opstag{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#475569;border:1px solid #64748B;padding:0 5px;line-height:15px;}
-    .ckl-pick{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;margin:6px 0 0 16px;padding:5px 9px;border-left:3px solid #B45309;background:#B4530910;font-size:inherit;font-weight:400;color:inherit;overflow-wrap:anywhere;}
-    .ckl-pick-k{font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#B45309;white-space:nowrap;}
+    .ckl-pick{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;margin:6px 0 0 16px;padding:5px 9px;border-left:3px solid var(--accent);background:var(--accent-light);font-size:inherit;font-weight:400;color:inherit;overflow-wrap:anywhere;}
+    .ckl-pick-k{font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--accent-dark,var(--accent));white-space:nowrap;}
     .ckl-pick-t{font-size:12.5px;font-weight:500;color:var(--text);min-width:0;}
     .ckl-pick-m{font-size:11.5px;color:var(--text-muted);white-space:nowrap;}
     .ckl-score{grid-area:score;justify-self:center;min-width:32px;height:22px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;}
@@ -4720,7 +4749,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .ckl-key-ops{display:inline-block;width:16px;height:10px;border:1px dashed #64748B;margin-right:5px;vertical-align:-1px;}
     .ckl-key-note{flex-basis:100%;}
     @container (max-width:600px){
-      .ckl-cols,.ckl-line{grid-template-columns:minmax(0,1fr) 40px 44px 44px;grid-template-areas:"ref score t5 sh" "main main main main";row-gap:4px;}
+      .ckl-cols,.ckl-line{grid-template-columns:26px 26px 26px 34px minmax(0,1fr) 40px 44px 44px;grid-template-areas:"pos last mths move ref score t5 sh" "main main main main main main main main";column-gap:4px;row-gap:4px;}
       .ckl-c-risk{display:none}
       .ckl-line{padding:8px 8px 9px 10px;}
       .ckl-meta,.ckl-pick{margin-left:0;}
@@ -9896,6 +9925,7 @@ _checkAppVersion();
   document.addEventListener('scroll', _hide, true);
 })();
 function saveData(){
+  try{ _chartSnap(); }catch(e){}      // the ladder's monthly snapshot, kept current as records change (nothing else is touched)
   // Consultant working on a client (dial-in) is READ-WRITE: the edits go to the
   // client's server record (Auth.activeTenantId() is the client's tenant while
   // dialled in). We do NOT cache the client's data in the consultant's own
@@ -15875,42 +15905,53 @@ const COCKPIT_WIDGETS = {
       // each band held its risks in the order they were added to the register). Ties: the worse
       // severity, then could kill or seriously injure, then the likelier, then by name.
       const rank=(a,b)=>_riskRankCmp(a.r, b.r);
+      const CH=_chartView();      // this month's position, last month's, the months on the ladder and the move
       // the controls judgement each dot carries (the key at the foot says the same)
       const ctlOf=z=>z.unc?{ k:'unc', t:'Uncontrolled' }:(z.part?{ k:'part', t:'No residual target set' }:(z.reviewDue?{ k:'rev', t:'Controlled - review due' }:{ k:'ok', t:'Controlled as reasonably practicable' }));
       // One row a risk: its ref, the risk (title, then its theme - and, for an operational risk, a
       // dashed outline and its tag: not a health and safety risk), its Top 5 action right under it,
       // the current score in the band's colour, and the two ticks in columns of their own.
-      const row=(z,band)=>{
-        const pick=_riskTop5Picked(z.r, m5), onSh=shIds.has(z.id), ops=_riskMode(z.r)==='ops', c=ctlOf(z), col=_RISK_PRIO_COLOR[band];
+      const row=(z,band,gone)=>{
+        const pick=_riskTop5Picked(z.r, m5), onSh=shIds.has(z.id), ops=_riskMode(z.r)==='ops', c=ctlOf(z), col=_LADDER_BAND[band]||_LADDER_BAND[''];
+        const ch=gone?null:(CH.rows[z.id]||{}), left=gone?(CH.out[z.id]||{}):null;
         const mk=_riskMacroOf(z.r), cat=mk?('<span class="ckl-cat"><i style="background:'+_macroColour(mk)+';"></i>'+esc(_macroName(mk))+'</span>'):'';
-        const meta=(ops?'<span class="ckl-opstag" title="An operational (business) risk - not a health and safety risk">Operational</span>':'')+_riskTierTag(z.r)+cat;
+        const meta=(gone?('<span class="ckc-outm" title="Now under control: its current rating is at or below its target">'+esc(left.words||'')+'</span>'):'')+(ops?'<span class="ckl-opstag" title="An operational (business) risk - not a health and safety risk">Operational</span>':'')+_riskTierTag(z.r)+cat;
         return '<div class="ckl-line'+(ops?' ckl-ops':'')+(pick?' ckl-on5':'')+'">'
+          +(gone
+            ? ('<span class="ckc-pos" title="Not on the ladder: under control">–</span>'
+              +'<span class="ckc-last" title="'+(left.last?('Position at the end of '+esc(_top5MonthLabel(CH.prevKey))):'Not on the ladder last month')+'">'+(left.last||'–')+'</span>'
+              +'<span class="ckc-mths" title="Months it was on the ladder, counted from when the chart started in '+esc(_top5MonthLabel(CH.firstMonth))+'">'+(left.months||0)+'</span>'
+              +'<span class="ckc-mv"></span>')
+            : ('<span class="ckc-pos" title="'+esc(ch.posTip||'')+'">'+ch.pos+'</span>'
+              +'<span class="ckc-last" title="'+esc(ch.lastTip||'')+'">'+(ch.last||'–')+'</span>'
+              +'<span class="ckc-mths" title="'+esc(ch.monthsTip||'')+'">'+ch.months+'</span>'
+              +'<span class="ckc-mv" title="'+esc(ch.tip||'')+'"><span class="ckc-move ckc-'+esc(ch.k||'first')+'">'+esc(ch.sym||'–')+'</span></span>'))
           +'<span class="ckl-ref">'+_riskRefChip(z.r)+'</span>'
           +'<div class="ckl-main">'
-            +'<button type="button" class="ckl-name" onclick="_gotoRisk(\''+z.id+'\')" title="'+esc(c.t)+' - click to open">'
-              +'<span class="ckl-dot ckl-dot-'+c.k+'" aria-hidden="true"></span><span class="ckl-title">'+esc(z.name)+'</span></button>'
+            +'<button type="button" class="ckl-name" onclick="_gotoRisk(\''+z.id+'\')" title="'+(_riskFullTip(z.r)?(esc(_riskFullTip(z.r))+' - '):'')+esc(c.t)+' - click to open">'
+              +'<span class="ckl-dot ckl-dot-'+c.k+'" aria-hidden="true"></span><span class="ckl-title">'+esc(_riskShort(z.r))+'</span></button>'
             +(meta?('<div class="ckl-meta">'+meta+'</div>'):'')
             +(pick?('<div class="ckl-pick"><span class="ckl-pick-k">Top 5 action</span><span class="ckl-pick-t">'+esc(String(pick.desc||'').slice(0,160))+'</span>'
               +((pick.owner||pick.due)?('<span class="ckl-pick-m">'+[pick.owner?esc(pick.owner):'', pick.due?('by '+esc(fmtDate(pick.due))):''].filter(Boolean).join(' · ')+'</span>'):'')+'</div>'):'')
           +'</div>'
           +'<span class="ckl-score" style="background:'+col+';" title="Current rating '+esc(String(z.sc.rating||''))+' ('+esc(band)+')'+((z.sc.l&&z.sc.s)?(' - likelihood '+esc(String(z.sc.l))+' x severity '+esc(String(z.sc.s))):'')+'">'+esc(String(z.sc.rating||''))+'</span>'
-          +'<span class="ckl-t5">'+(t5ro?(pick?'★':'')
+          +'<span class="ckl-t5"'+((t5ro&&pick)?' title="One of the five priorities for this month"':'')+'>'+(t5ro?(pick?'✓':'')
             :('<input type="checkbox" '+(pick?'checked ':'')+'onchange="toggleRiskTop5(\''+z.id+'\')" aria-label="Top 5 for '+esc(_top5MonthLabel(m5))+': '+esc(z.name)+'" title="'+(pick?'One of the five for '+esc(_top5MonthLabel(m5))+' - untick to take it off':'Make this one of the five priorities for '+esc(_top5MonthLabel(m5))+' - its most pressing open action is marked on the execution plan')+'">'))+'</span>'
-          +'<span class="ckl-sh">'+(t5ro?(onSh?'★':'')
+          +'<span class="ckl-sh"'+((t5ro&&onSh)?' title="On the Risk Action Sheet for this month"':'')+'>'+(t5ro?(onSh?'✓':'')
             :('<input type="checkbox" '+(onSh?'checked ':'')+'onchange="toggleRiskSheet(\''+z.id+'\')" aria-label="Risk Action Sheet: '+esc(z.name)+'" title="Put this risk on the Risk Action Sheet for '+esc(_top5MonthLabel(m5))+' - as many as you like">'))+'</span>'
           +'</div>'; };
       // A band: its level in its colour, how many, what that level demands (the same rule _holdBreach
       // enforces) and the tenant's own score range - then its risks, worst first. The band's colour
-      // runs down its left edge, so the page still grades red to green as a ladder.
+      // runs down its left edge, AHS colours only, worst darkest.
       const MEAN={}, RANGE={};      // _bandRule / _bandRange: the action sheet's legend reads the same two
       ['Critical','High','Medium','Low'].forEach(b=>{ MEAN[b]=_bandRule(b); RANGE[b]=_bandRange(b); });
-      const band=b=>{ const on=B.rows.filter(z=>z.sc.priority===b).sort(rank);
-        return '<section class="ckl-band" style="--band:'+_RISK_PRIO_COLOR[b]+';">'
+      const band=b=>{ const on=B.rows.filter(z=>z.sc.priority===b && z.dep.ctl!=='In place').sort(rank);
+        return '<section class="ckl-band" style="--band:'+_LADDER_BAND[b]+';">'
           +'<div class="ckl-band-h"><span class="ckl-band-n">'+b.toUpperCase()+'</span><span class="ckl-band-c">'+on.length+' risk'+(on.length!==1?'s':'')+'</span>'
           +'<span class="ckl-band-m">'+MEAN[b]+'</span><span class="ckl-band-r">score '+RANGE[b]+'</span></div>'
           +(on.length?on.map(z=>row(z,b)).join(''):'<div class="ckl-none">None at this level.</div>')+'</section>'; };
       const unrated=B.rows.filter(z=>!z.sc.priority);
-      return '<div class="ckx-panel ckl"><h4>Risk ladder</h4><div class="ckl-headrow"><span class="ckl-sub">Ranked by current risk rating, highest first</span>'
+      return '<div class="ckx-panel ckl"><h4>Risk ladder</h4><div class="ckl-headrow"><span class="ckl-sub">Ranked by current risk rating, highest first. Falling is good news.</span>'
         +'<span class="ckl-head" title="This month’s five priorities - the same five as the Top 5 on the execution plan">Top 5 · '+n5+' of '+TOP5_MAX+' for '+esc(_top5MonthLabel(m5))+'</span>'
         +'<span class="ckl-head ckl-head-sh" title="The risks on the Risk Action Sheet for '+esc(_top5MonthLabel(m5))+' - tick as many as you like">Sheet · '+sh.length+'</span></div>'
         // One row of tools, so the cockpit is the only screen open in the meeting.
@@ -15920,10 +15961,16 @@ const COCKPIT_WIDGETS = {
           +'<button class="btn btn-outline btn-xs" onclick="openActionSheets(\'risk\')" title="The risks ticked in the Sheet column, one action each with the control you recommend, and what came up at the client meeting">Risk action sheet</button>'
           +'<button class="btn btn-outline btn-xs" onclick="openQuickMinutes()" title="Quick minutes for the client meeting - who is there, notes and actions; Done puts the actions on the plan">✎ Minutes</button></div>'):'')
         +(tools?_cklSuggestHTML(m5):'')
-        +'<div class="ckl-wrap"><div class="ckl-cols" aria-hidden="true"><span class="ckl-c-ref">Ref</span><span class="ckl-c-risk">Risk</span><span class="ckl-c-sc">Score</span>'
+        +(CH.isFirst?('<div class="ckc-first-note" style="margin:0 0 8px;">The chart starts in '+esc(_top5MonthLabel(CH.firstMonth))+'. Last month’s position and the moves show from next month.</div>'):'')
+        +'<div class="ckl-wrap"><div class="ckl-cols" aria-hidden="true"><span class="ckl-c-pos" title="This month’s position">Now</span><span class="ckl-c-last" title="Last month’s position">Last</span><span class="ckl-c-mths" title="How many months it has been on the ladder">Mths</span><span class="ckl-c-move" title="The move since last month. Falling is good news">Move</span><span class="ckl-c-ref">Ref</span><span class="ckl-c-risk">Risk</span><span class="ckl-c-sc">Score</span>'
         +'<span class="ckl-c-t5" title="This month’s five priorities">Top 5</span><span class="ckl-c-sh" title="The Risk Action Sheet">Sheet</span></div>'
-        +['Critical','High','Medium','Low'].map(band).join('')+'</div>'
+        +['Critical','High','Medium','Low'].map(band).join('')
+        +(()=>{ const gone=B.rows.filter(z=>z.sc.priority && z.dep.ctl==='In place').map(z=>({ z, m:(CH.out[z.id]||{}).month||'' })).sort((a,b)=>String(b.m).localeCompare(String(a.m))||_ladderCmp(a.z.r,b.z.r));
+          return '<section class="ckc-outs"><div class="ckl-band-h"><span class="ckl-band-n">DROPPED OUT</span><span class="ckl-band-c">'+gone.length+' risk'+(gone.length!==1?'s':'')+'</span><span class="ckl-band-m">Now under control: at or below their target, and off the ladder. Good news.</span></div>'
+            +(gone.length?gone.map(x=>row(x.z,x.z.sc.priority,true)).join(''):'<div class="ckl-none">Nothing has dropped out yet.</div>')+'</section>'; })()
+        +'</div>'
         +(unrated.length?('<div class="ckl-unrated">'+unrated.length+' risk'+(unrated.length!==1?'s':'')+' not yet rated - '+unrated.map(z=>esc(z.name)).join(', ')+'</div>'):'')
+        +_chartSymbolKeyHTML()
         +'<div class="ckl-key"><span><i class="ckl-dot ckl-dot-unc"></i>uncontrolled</span><span><i class="ckl-dot ckl-dot-part"></i>no residual target set</span>'
         +'<span><i class="ckl-dot ckl-dot-ok"></i>controlled as reasonably practicable</span><span><i class="ckl-dot ckl-dot-rev"></i>controlled - review due</span>'
         +'<span><i class="ckl-key-ops"></i>operational risk - not health and safety</span>'
@@ -15932,12 +15979,12 @@ const COCKPIT_WIDGETS = {
   boardFive: { id:'boardFive', label:'Putting us at risk today', group:'Board', render:x=>{
       const B=_boardModel(); const H=_holdSummary();
       if(!B.total) return '<div class="ckx-panel"><h4>Putting us at risk today</h4><div class="ck-pending">No risks recorded yet.</div></div>';
-      const top=H.breaches.concat(H.nextWorst).slice(0,5);
+      const top=H.breaches.concat(H.nextWorst).slice(0,5).sort((a,b)=>_ladderCmp(a.r,b.r));
       // ONE choosing mechanism (Simon): the Top 5 tick box on the execution
       // plan. The chosen risks are the risks behind this month's ticked five.
       const _m5=_top5Month();
       const _chosenIds=new Set(); (S.riskProfile||[]).forEach(rr=>{ if((rr.actions||[]).some(a=>!a.deleted&&a.top5===_m5)) _chosenIds.add(rr.id); });
-      const chosen=H.rows.filter(z=>_chosenIds.has(z.id)).sort((a,b)=>_riskPrioCmp(a.r,b.r)).slice(0,5);
+      const chosen=H.rows.filter(z=>_chosenIds.has(z.id)).sort((a,b)=>_riskPrioCmp(a.r,b.r)).slice(0,5).sort((a,b)=>_ladderCmp(a.r,b.r));
       const topIds=top.map(z=>z.id), choIds=chosen.map(z=>z.id);
       const word=z=>{ const bz=B.rows.find(b=>b.id===z.id); return (bz&&bz.atTarget)?(bz.reviewDue?'controlled - review due':'controlled as reasonably practicable'):(z.breach?'needs attention':z.hold.label.toLowerCase()); };
       const atT=z=>{ const bz=B.rows.find(b=>b.id===z.id); return !!(bz&&bz.atTarget); };
@@ -15946,7 +15993,7 @@ const COCKPIT_WIDGETS = {
         return '<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0;'+(i?'border-top:1px solid var(--border);':'')+'">'
         +'<span style="flex:0 0 16px;text-align:center;font-weight:800;color:var(--text-muted);font-size:12px;">'+(i+1)+'</span>'
         +'<span style="flex:0 0 12px;color:'+(other.includes(z.id)?'#7C3AED':'transparent')+';font-weight:800;" title="On both lists">\u25cf</span>'
-        +'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left;font-weight:600;color:'+(rvd(z)?'#B45309':(atT(z)?'#16A34A':'var(--text)'))+';">'+esc(z.name)+_macroTagHTML(z.r)+'</button>'
+        +'<button type="button" onclick="_gotoRisk(\''+z.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left;font-weight:600;color:'+(rvd(z)?'#B45309':(atT(z)?'#16A34A':'var(--text)'))+';">'+_riskRefChip(z.r)+' '+esc(_riskShort(z.r))+_macroTagHTML(z.r)+'</button>'
         +'<span style="flex:0 0 auto;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;background:'+c+';">'+(z.band||'-').toUpperCase()+'</span>'
         +'<span style="flex:0 0 auto;font-size:10.5px;color:'+(rvd(z)?'#B45309':(atT(z)?'#16A34A':'var(--text-muted)'))+';font-weight:'+(atT(z)?'700':'400')+';">'+word(z)+'</span></div>'; };
       return '<div class="ckx-panel"><h4>Putting us at risk today</h4>'
@@ -17500,6 +17547,11 @@ function _epRowMarksHTML(lc, evHTML){
     +(lc?('<span class="ep-mark" title="'+lc+' entr'+(lc!==1?'ies':'y')+' in the activity trail - click the action to read '+(lc!==1?'them':'it')+'">\u25cf '+lc+'</span>'):'')
     +(evHTML||'')+'</span>';
 }
+// What's wrong: the risk's band, its reference and its short title, in that order on every row.
+function _epWrongHTML(a, showTheme){
+  const r=_execRiskOf(a), tip=r?_riskFullTitle(r):String(a.sourceLabel||'');
+  return '<div class="ep-wrong"><span class="ep-wrong-r">'+_epBandMarkHTML(a)+_epRefCellHTML(a)+'</span><span class="ep-wrong-t"'+(tip?(' title="'+esc(tip)+'"'):'')+'>'+esc(r?_riskShort(r):String(a.sourceLabel||a.source||''))+'</span>'+(showTheme?_epThemeLabelHTML(a):'')+'</div>';
+}
 function _epThemeLabelHTML(a){
   const k=_epMacroOf(a); if(!k) return '';
   const c=_macroColour(k);
@@ -17528,7 +17580,8 @@ function _epThemeGroups(){
 // Clicking a theme name opens that category in the register, on its own.
 function _gotoRiskTheme(k){
   _riskFilter = { category:'', priority:'', trend:'', sif:false, highcrit:false, unit:'' };
-  _riskSearch=''; _riskModeFilter='all'; _riskGroupMode='macro'; _riskMacroLast=null;
+  _riskSearch=''; _riskModeFilter='all'; _riskGroupMode='flat'; _riskGroupSet=false; _riskMacroLast=null;
+  _riskGroupMode='macro';      // asked for a theme, so the register shows its themes; it opens flat otherwise
   _riskMacroOpen={}; if(k) _riskMacroOpen[k]=true; else _riskMacroOpen['_']=true;
   switchTab('risk');
   setTimeout(()=>{ const sec=document.getElementById('wfRegister'); if(sec && !sec.open) sec.open=true; renderRiskProfile(); },80);
@@ -17661,21 +17714,21 @@ function renderExecPlan(){
     const closed=(a.status==='Complete'||a.status==='Accepted');
     const resTip=closed?((a.status==='Accepted'?'Risk accepted':'Completed')+(a.resolvedDate?(' '+fmtDate(a.resolvedDate)):'')+(a.resolvedBy?(' by '+a.resolvedBy):'')):'';
     return `<tr style="border-top:1px solid var(--border);${_rkAt?'background:linear-gradient(100deg,#16A34A12,#16A34A05 62%,transparent);':''}">
-      <td>${_epBandMarkHTML(a)}</td>
-      <td>${_epRefCellHTML(a)}</td>
-      <td class="cas-req" style="font-weight:600;cursor:pointer;" onclick="toggleExecRow('${rk}')" title="Click to see exactly what to do, where it came from, and the activity log">${showTheme?_epThemeLabelHTML(a):''}${esc(a.desc||'(no description yet - add it in the source section)')}${_epRowMarksHTML(lc, closed?evChip(a):'')}</td>
-      <td title="${esc(a.source)}${a.sourceLabel?(' · '+esc(a.sourceLabel)):''}${_rkAt?' · controlled as reasonably practicable':''}">${_rkAt?`<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;" title="This risk is controlled as reasonably practicable">${esc(a.source)} \u2713</span>`:`<span class="badge badge-muted">${esc(a.source)}</span>`}</td>
+      <td class="cas-req">${_epWrongHTML(a,showTheme)}</td>
+      <td class="cas-req" style="font-weight:600;cursor:pointer;" onclick="toggleExecRow('${rk}')" title="Click to see exactly what to do, where it came from, and the activity log">${esc(a.desc||'(no description yet - add it in the source section)')}${_epRowMarksHTML(lc, closed?evChip(a):'')}</td>
       <td title="${esc(a.owner||'')}">${esc(a.owner||'-')}</td>
-      <td>${esc(a.priority||'-')}</td>
-      <td style="text-align:center;">${dis?(a.top5===_top5Month()?'★':''):`<input type="checkbox" title="Mark this as one of the five priorities for ${_top5MonthLabel(_top5Month())} - they lead the board report and get checked off next month" ${a.top5===_top5Month()?'checked':''} onchange="toggleTop5('${rk}')" style="width:16px;height:16px;cursor:pointer;accent-color:#B45309;vertical-align:middle;">`}</td>
       <td><input type="date"${dis} value="${a.due||''}" onchange="updateExecAction('${rk}','due',this.value)" title="${a.rag==='red'?'Overdue':a.rag==='amber'?(a.due?'Due this month':'No target date set'):a.rag==='grey'?'Risk accepted':'On track'}" style="width:100%;font-size:12px;padding:3px 4px;border:1px solid ${a.rag==='red'?RAG_COLOR.red:a.rag==='amber'?RAG_COLOR.amber:'var(--border)'};border-radius:6px;background:${a.rag==='red'?RAG_COLOR.red+'14':a.rag==='amber'?RAG_COLOR.amber+'14':'transparent'};color:${a.rag==='red'?RAG_COLOR.red:'inherit'};font-weight:${a.rag==='red'?'700':'400'};"></td>
+      <td>${_riskEnoughHTML(_rkR)}</td>
       <td title="${esc(resTip)}"><select${dis} onchange="updateExecAction('${rk}','status',this.value)" style="width:100%;font-size:12px;padding:4px 3px;border:1px solid var(--border);border-radius:6px;background:transparent;color:inherit;">${STATUSES.map(s=>`<option${s===a.raw?' selected':''}>${s}</option>`).join('')}</select></td>
-    </tr>${opn?`<tr><td></td><td colspan="8" style="white-space:normal;overflow:visible;">${resTip?`<div style="font-size:12px;color:#16A34A;font-weight:600;margin:2px 0 5px;">${esc(resTip)}</div>`:''}${_epWhatHTML(a)}${_epKeptHTML(a)}${_actionLogPanelHTML(a)}</td></tr>`:''}`;
+      <td>${esc(a.priority||'-')}</td>
+      <td title="${esc(a.source)}${a.sourceLabel?(' · '+esc(a.sourceLabel)):''}${_rkAt?' · controlled as reasonably practicable':''}">${_rkAt?`<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;" title="This risk is controlled as reasonably practicable">${esc(a.source)} \u2713</span>`:`<span class="badge badge-muted">${esc(a.source)}</span>`}</td>
+      <td style="text-align:center;">${dis?(a.top5===_top5Month()?'★':''):`<input type="checkbox" title="Mark this as one of the five priorities for ${_top5MonthLabel(_top5Month())} - they lead the board report and get checked off next month" ${a.top5===_top5Month()?'checked':''} onchange="toggleTop5('${rk}')" style="width:16px;height:16px;cursor:pointer;accent-color:#B45309;vertical-align:middle;">`}</td>
+    </tr>${opn?`<tr><td colspan="9" style="white-space:normal;overflow:visible;">${resTip?`<div style="font-size:12px;color:#16A34A;font-weight:600;margin:2px 0 5px;">${esc(resTip)}</div>`:''}${_epWhatHTML(a)}${_epKeptHTML(a)}${_actionLogPanelHTML(a)}</td></tr>`:''}`;
   };
   // The same colgroup on every list, so every column lines up everywhere.
   const epTable=(list,showTheme,noHead)=>list.length?`<div style="overflow-x:auto;"><table class="cas-grid ep-grid">
-    <colgroup><col style="width:4.5%;"><col style="width:7%;"><col style="width:31.5%;"><col style="width:10%;"><col style="width:9%;"><col style="width:8.5%;"><col style="width:5.5%;"><col style="width:12%;"><col style="width:12%;"></colgroup>
-    ${noHead?'':`<thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;"><th title="The band of the risk each action belongs to. Low risks are left unmarked.">Band</th><th title="The reference of the risk this action closes out - actions sharing a reference are all on the same risk. Click one to open it.">Ref</th><th>Action</th><th>${_epXFTh('Source','src')}</th><th>${_epXFTh('Owner','own')}</th><th>${_epXFTh('Priority','pri')}</th><th>Top 5</th><th>Target date</th><th>${_epXFTh('Status','sts')}</th></tr></thead>`}
+    <colgroup><col style="width:18.5%;"><col style="width:22%;"><col style="width:9%;"><col style="width:11.5%;"><col style="width:8.5%;"><col style="width:9.5%;"><col style="width:8.5%;"><col style="width:8%;"><col style="width:4.5%;"></colgroup>
+    ${noHead?'':`<thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;"><th title="The risk this action closes out: its band mark, reference and short title. Click the reference to open it. Low risks are left unmarked.">What’s wrong</th><th>How we fix it</th><th>${_epXFTh('Who','own')}</th><th>By when</th><th title="Does the risk's current rating meet its target yet? Read from the risk, and it changes when the risk is re-scored.">Is it enough</th><th>${_epXFTh('Status','sts')}</th><th>${_epXFTh('Priority','pri')}</th><th>${_epXFTh('Source','src')}</th><th>Top 5</th></tr></thead>`}
     <tbody>${list.map(a=>trow(a,showTheme)).join('')}</tbody></table></div>`:'';
   const fOverdue=overdue.filter(_epXFPass), fDueThis=dueThis.filter(_epXFPass);
   // Read the plan by theme or by date. A wall of instructions turns a client
@@ -17745,7 +17798,7 @@ function renderExecPlan(){
     ${_deletedActionsHTML()}`;
 }
 // How the plan is read. View state only, never saved - like the column filters.
-var _epGroupBy='theme';
+var _epGroupBy='level';      // one block a band: the ladder's order (Simon, 6 Nov 2026). Risk theme and Target date are a click away
 function setEpGroupBy(m){ _epGroupBy=(m==='month'||m==='level')?m:'theme'; renderExecPlan(); }
 // ── Sort and narrow the plan the way a shop does (Simon, 2026-10-07) ──
 // "Organised into the risk hierarchy from the highest to the lowest, or a
@@ -17773,14 +17826,16 @@ function _epBandColour(b){ return b==='Low' ? '' : (_RISK_PRIO_COLOR[b==='Not ra
 // Anything still level keeps the order it came in.
 function _epSortList(list){
   const hi=_epBandOrder('risk-high'), ord=_epBandOrder();
-  const rows=(list||[]).map((a,i)=>{ const b=_epBandName(a), r=hi.indexOf(b), p=ord.indexOf(b);
-    return { a, i, rank:(r<0?hi.length-1:r), pos:(p<0?ord.length-1:p), od:(a.rag==='red'?0:1), due:(a.due||''), raised:(a.raisedAt||'') }; });
+  const lad={}; _riskDisplayOrder().forEach((x,n)=>{ if(x) lad[x.id]=n; }), LAST=(S.riskProfile||[]).length;
+  const low=_epSort==='risk-low';
+  const rows=(list||[]).map((a,i)=>{ const b=_epBandName(a), r=hi.indexOf(b), p=ord.indexOf(b), rk=_execRiskOf(a), L=(rk&&lad[rk.id]!==undefined)?lad[rk.id]:LAST;
+    return { a, i, rank:(r<0?hi.length-1:r), pos:(p<0?ord.length-1:p), lad:(low&&L!==LAST)?(LAST-L):L, od:(a.rag==='red'?0:1), due:(a.due||''), raised:(a.raisedAt||'') }; });
   const cmp=(x,y)=>(x<y?-1:x>y?1:0);
   const byDue=(x,y)=>((x.due?0:1)-(y.due?0:1)) || cmp(x.due,y.due);
   rows.sort((x,y)=>{
     if(_epSort==='due') return byDue(x,y) || (x.rank-y.rank) || (x.i-y.i);
     if(_epSort==='raised') return ((x.raised?0:1)-(y.raised?0:1)) || cmp(y.raised,x.raised) || (x.rank-y.rank) || (x.i-y.i);
-    return (x.pos-y.pos) || (x.od-y.od) || byDue(x,y) || (x.i-y.i);
+    return (x.pos-y.pos) || (x.lad-y.lad) || (x.od-y.od) || byDue(x,y) || (x.i-y.i);      // the ladder's order, then inside one risk the most pressing first
   });
   return rows.map(x=>x.a);
 }
@@ -19158,7 +19213,7 @@ function updateRiskField(id, field, value){
     const f = document.getElementById('ractf-'+id);
     if(f && document.activeElement!==f) f.value = value;
     const lt = document.getElementById('rlt-'+id);      // split-view list row title
-    if(lt) lt.textContent = value || (r.hazard || 'New risk');
+    if(lt) lt.textContent = _riskShort({ activity:value, hazard:r.hazard });
   }
   // Hazard type / area / PDCA change the summary chips + colour band - re-render to refresh them.
   if(field === 'category' || field === 'area' || field === 'pdca' || field === 'reviewDue'){ _keepScroll(renderRiskProfile); return; }
@@ -19990,7 +20045,7 @@ function renderRiskJourney(){
     +'<div class="pw-good">'+good+'</div>'+_keptTrackerHTML()
     +'</div></div>'
     +(rows.length
-      ? (_riskGroupMode==='macro'
+      ? ((_riskGroupMode==='macro' || !_riskGroupSet)
           ? _riskMacroGroups(rows,p=>p.r).map((g,i,arr)=>((i===0||arr[i-1].origin!==g.origin)?('<div class="jny-band">'+esc(_ORIGIN_LABEL[g.origin])+'</div>'):'')
               +'<section class="pw-group">'+_macroHeadHTML(g)+(_journeyMacroOpen(g.k)?list(g.list,true):'')+'</section>').join('')
           : list(rows))
@@ -20950,7 +21005,7 @@ function _riskActionsHTML(r, dis, which){
   const acts=(r.actions||[]).filter(a=>!a.deleted).filter(a=> which==='ctl' ? !!a.hideFromPlan : which==='plan' ? !a.hideFromPlan : true);
   const stOpts=(cur)=>RISK_ACTION_STATUS.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
   const prOpts=(cur)=>['Critical','High','Medium','Low'].map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
-  const cols=(which==='ctl'?4:5)+(dis?0:2);
+  const cols=(which==='ctl'?5:6)+(dis?0:2);
   const ctls=(which==='plan')?_riskCtlRows(r):[];
   if(!dis) _ownerListEnsure();
   const rowHTML=(a, first, last)=>{
@@ -20965,6 +21020,7 @@ function _riskActionsHTML(r, dis, which){
       <td><textarea${dis} rows="2" id="actd-${r.id}-${a.id}" placeholder="${which==='ctl'?'High level control - in risk-assessment language':'Action description'}" oninput="updateRiskAction('${r.id}','${a.id}','desc',this.value)">${esc(a.desc||'')}</textarea>${which==='ctl'?_ctlLinkLineHTML(r,a,dis):_actForSelectHTML(r,a,dis,ctls)}</td>
       <td>${_ownerCellHTML(r.id, a.id, a.owner, dis)}</td>
       <td><input type="date"${dis} value="${esc(a.due||'')}" onchange="updateRiskAction('${r.id}','${a.id}','due',this.value)"></td>
+      <td>${_riskEnoughHTML(r)}</td>
       <td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','status',this.value)">${stOpts(a.status||'Not started')}</select><div class="act-status ${_actionStatusClass(st)}" id="actst-${r.id}-${a.id}" style="margin-top:4px;"><span>${st}</span>${evHtml}</div></td>
       ${which==='ctl'?'':`<td><select${dis} onchange="updateRiskAction('${r.id}','${a.id}','priority',this.value)"><option value="">-</option>${prOpts(a.priority||'')}</select></td>`}
       ${dis?'':`<td class="act-mv">${_rowMoveHTML(`_riskActionMove('${r.id}','${a.id}',-1,'${which||'all'}')`,`_riskActionMove('${r.id}','${a.id}',1,'${which||'all'}')`,first,last)}</td>`}
@@ -20988,8 +21044,8 @@ function _riskActionsHTML(r, dis, which){
       body+=loose.map((a,i)=>rowHTML(a,i===0,i===loose.length-1)).join('');
     }
   } else body=acts.map((a,i)=>rowHTML(a,i===0,i===acts.length-1)).join('');
-  return `<table class="act-table${which==='ctl'?' act-ctl':''}"><thead><tr><th>${which==='ctl'?'High level control':'Action'}</th><th>Owner</th><th>Target date</th><th>Status</th>${which==='ctl'?'':'<th>Priority</th>'}${dis?'':'<th class="act-mv" title="Move a row up or down - the order here is the order it prints in">Order</th><th style="width:34px;"></th>'}</tr></thead>
-    <tbody>${body || `<tr><td colspan="${(which==='ctl'?4:5)+(dis?0:2)}" style="color:var(--text-muted);">${which==='ctl'?'No controls listed yet - add them below.':which==='plan'?'Nothing raised to the plan yet.':'No actions yet.'}</td></tr>`}</tbody></table>
+  return `<table class="act-table${which==='ctl'?' act-ctl':''}"><thead><tr><th>${which==='ctl'?'High level control':'How we fix it'}</th><th>Who</th><th>By when</th><th>Is it enough</th><th>Status</th>${which==='ctl'?'':'<th>Priority</th>'}${dis?'':'<th class="act-mv" title="Move a row up or down - the order here is the order it prints in">Order</th><th style="width:34px;"></th>'}</tr></thead>
+    <tbody>${body || `<tr><td colspan="${(which==='ctl'?5:6)+(dis?0:2)}" style="color:var(--text-muted);">${which==='ctl'?'No controls listed yet - add them below.':which==='plan'?'Nothing raised to the plan yet.':'No actions yet.'}</td></tr>`}</tbody></table>
     ${dis?'':(which==='ctl'
       ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn btn-outline btn-xs no-print" onclick="addRiskControl('${r.id}')">＋ Add control</button>${_raStartBtnHTML(r)}</div>`
       : `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">${_riskRaisePillHTML(r)}${_riskPlanState(r).k==='accepted'?'':`<button class="btn btn-ghost btn-xs no-print" title="If the current controls are sufficient and no further action is justified, formally accept this risk - recorded with who and why on the acceptance register" onclick="openAcceptRisk('${r.id}')">≈ Accept this risk</button>`}</div>`)}`;
@@ -26062,6 +26118,7 @@ function _t5TicksOff(w){
 // ── the screen ──
 function openLiveTop5(){
   _t5Sent=null; _t5RO=null; _t5At=0; _t5Typed={};
+  try{ _t5SortItems(_t5W()); }catch(e){}      // the ladder's order, set as it opens: nothing moves while the meeting works on it
   let ov=document.getElementById('t5Ov');
   if(!ov){ ov=document.createElement('div'); ov.id='t5Ov'; ov.className='slt-ov'; document.body.appendChild(ov); }
   document.body.classList.add('slt-open');
@@ -26106,9 +26163,9 @@ function _t5StripsHTML(w, ro){
   const stick=_t5StickList();
   if(stick.length) out+='<div class="t5-strip t5-strip-stick"><b>Done, where it lives now still to be confirmed ('+stick.length+'):</b> '
     +stick.map((z,n)=>{ const ref=z.r?_riskRefOf(z.r):'', dz=String(z.o.desc||''), t=(ref?(ref+' '):'')+(dz.length>70?(dz.slice(0,70).replace(/\s+\S*$/,'')+'…'):dz); return ro?esc(t):('<button type="button" class="t5-link" onclick="t5StickAt('+n+')">'+esc(t)+'</button>'); }).join(' · ')+'</div>';
-  const sug=(w.items.length<AS_MAX) ? _t5Suggest(w).filter(s=>!s.on) : [];
+  const sug=(w.items.length<AS_MAX) ? _t5Suggest(w).filter(s=>!s.on).sort((a,b)=>_ladderCmp(a.r,b.r)) : [];
   if(sug.length && !ro) out+='<div class="t5-strip t5-strip-add"><b>Suggested for this month ('+sug.length+'):</b> '
-    +sug.map(s=>'<span class="t5-offer"><span>'+esc((_riskRefOf(s.r)?(_riskRefOf(s.r)+' '):'')+(s.r.activity||s.r.hazard||''))+' <i class="t5-why">'+esc(s.reason)+'</i></span><button type="button" class="btn btn-outline btn-xs" onclick="t5AddRisk('+_asQ(s.r.id)+')">＋ Add</button></span>').join('')
+    +sug.map(s=>'<span class="t5-offer"><span>'+esc((_riskRefOf(s.r)?(_riskRefOf(s.r)+' '):'')+_riskShort(s.r))+' <i class="t5-why">'+esc(s.reason)+'</i></span><button type="button" class="btn btn-outline btn-xs" onclick="t5AddRisk('+_asQ(s.r.id)+')">＋ Add</button></span>').join('')
     +(sug.length>1?'<button type="button" class="btn btn-primary btn-xs" onclick="t5AddAll()" title="Puts every suggested risk on the sheet">Add all</button>':'')+'</div>';
   const off=_t5TicksOff(w);
   if(off.length && !ro) out+='<div class="t5-strip">Ticked on the risk ladder for this month but not on this sheet: '+off.map(esc).join('; ')+'. Send takes that tick off, so the ladder and the sheet show the same five.</div>';
@@ -26122,26 +26179,26 @@ function _t5TileHTML(label, sc, none){
 // hazard, then the table of actions.
 function _t5PageHTML(w, it, i, ro, dis){
   const r=_execRiskOf({ ref:it.ref });
-  const name=r?(r.activity||r.hazard||'Risk'):(it.risk||'Action'), ref=r?_riskRefOf(r):'';
-  const kick='Priority '+(i+1)+' of '+w.items.length+(ref?(' · '+ref):'');
+  const name=r?_riskShort(r):(it.risk||'Action');
+  const kick='Priority '+(i+1)+' of '+w.items.length;
   const off=ro?'':'<button type="button" class="t5-link t5-off" onclick="t5RemoveRisk('+i+')" title="Takes this risk off the sheet. Its actions stay on the plan.">Take this risk off the sheet</button>';
   const why=_t5WhyOf(it);
   const wrong=r?_asRiskWrong(r):[];
   const top=r ? ('<div class="t5-top" id="t5Top">'+_t5TileHTML('Current risk rating', _riskScore(r), 'Not yet rated')+'<div class="t5-arrow">→</div>'+_t5TileHTML('Target risk rating', _riskTarget(r), 'Target not yet set')
-      +'<div class="t5-haz"><div class="t5-lab">Hazard and risk</div><ul>'+wrong.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul></div></div>')
+      +'<div class="t5-haz"><div class="t5-lab">What’s wrong</div><ul>'+wrong.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul></div></div>')
     : '<div class="slt-muted" style="margin-bottom:10px;">This action is not linked to a rated risk.</div>';
   const rows=_t5Rows(w, it);
   let n=0;
   const html=rows.map(x=>{
     if(x.head){ if(x.note) return ''; const h=x.c?String(x.text||''):'Other actions', ln=x.c?_asCtlLine(r,x.c):'';
-      return '<tr class="t5-head"><td colspan="5"><span class="t5-line"'+(x.c?(' id="t5h-'+esc(x.c.id)+'"'):'')+'>'+esc(ln)+'</span>'+esc(h)+'</td></tr>'; }
-    if(x.gap) return ro ? '<tr class="t5-gapr"><td colspan="5" class="slt-muted">No action yet</td></tr>' : _t5NewRowHTML(i, x.cid||'', x.cid?('c'+x.cid):'g', 'No action yet, add one');
+      return '<tr class="t5-head"><td colspan="6"><span class="t5-line"'+(x.c?(' id="t5h-'+esc(x.c.id)+'"'):'')+'>'+esc(ln)+'</span>'+esc(h)+'</td></tr>'; }
+    if(x.gap) return ro ? '<tr class="t5-gapr"><td colspan="6" class="slt-muted">No action yet</td></tr>' : _t5NewRowHTML(i, x.cid||'', x.cid?('c'+x.cid):'g', 'No action yet, add one');
     n++; return _t5RowHTML(i, x, n, ro, dis);
   }).join('');
   const more=(r && !ro) ? _t5NewRowHTML(i, '', 'm', 'Add another action') : '';
-  return '<section class="t5-page"><div class="t5-kicks"><div class="t5-kick">'+esc(kick)+(why?('<span class="t5-why-p">'+esc(why)+'</span>'):'')+'</div>'+off+'</div><h2 class="t5-h">'+esc(name)+'</h2>'+top
-    +'<table class="t5-table"><colgroup><col style="width:36%"><col style="width:27%"><col style="width:18%"><col style="width:13%"><col style="width:6%"></colgroup>'
-    +'<thead><tr><th>Recommended action</th><th>Comments</th><th>Owner</th><th>Target date</th><th class="t5-c">Done</th></tr></thead><tbody>'+html+more+'</tbody></table>'
+  return '<section class="t5-page"><div class="t5-kicks"><div class="t5-kick">'+esc(kick)+(why?('<span class="t5-why-p">'+esc(why)+'</span>'):'')+'</div>'+off+'</div><h2 class="t5-h"'+((r&&_riskFullTip(r))?(' title="'+esc(_riskFullTip(r))+'"'):'')+'>'+(r?_riskRefChip(r):'')+esc(name)+'</h2>'+top
+    +'<table class="t5-table"><colgroup><col style="width:31%"><col style="width:17%"><col style="width:12%"><col style="width:9%"><col style="width:26%"><col style="width:5%"></colgroup>'
+    +'<thead><tr><th>How we fix it</th><th>Who</th><th>By when</th><th>Is it enough</th><th>Comments</th><th class="t5-c">Done</th></tr></thead><tbody>'+html+more+'</tbody></table>'
     +'<div class="t5-pager">'+(i>0?'<button type="button" class="btn btn-ghost btn-sm" onclick="t5Go('+(i-1)+')">Previous risk</button>':'<span></span>')
     +(i<w.items.length-1?'<button type="button" class="btn btn-outline btn-sm" onclick="t5Go('+(i+1)+')">Next risk</button>':'<span></span>')+'</div></section>';
 }
@@ -26154,16 +26211,17 @@ function _t5RowHTML(i, x, n, ro, dis){
   const ask=(done && !ro && !_embedIsSet(a)) ? ('<button type="button" class="t5-link" onclick="t5StickAsk('+i+','+aid+')">Where does this live now?</button>') : (lives?('<div class="t5-st">'+esc(lives)+'</div>'):'');
   return '<tr class="t5-row'+(closed?' t5-closed':'')+'" id="t5r-'+esc(x.aid)+'">'
     +'<td><div class="t5-act"><span class="t5-no">'+n+'</span><div><div class="t5-desc">'+esc(x.text||'')+(x.own?' <span class="t5-pri">Priority</span>':'')+'</div><div class="t5-st" id="t5s-'+esc(x.aid)+'">'+esc(_t5StatusWords(a))+'</div>'+ask+'</div></div></td>'
-    +'<td><textarea rows="'+_t5CmtRows(a.meetingComment)+'" id="t5c-'+esc(x.aid)+'"'+dis+' placeholder="Comments" oninput="this.rows=_t5CmtRows(this.value)" onchange="t5Comment('+i+','+aid+',this.value)">'+esc(a.meetingComment||'')+'</textarea></td>'
     +'<td>'+_t5OwnerHTML(i, x.aid, a.owner, ro)+'</td>'
     +'<td><input type="date" id="t5d-'+esc(x.aid)+'"'+dis+' value="'+esc(String(a.due||''))+'" onchange="t5Due('+i+','+aid+',this.value)"></td>'
+    +'<td>'+_riskEnoughHTML((_t5W().items[i]) ? _execRiskOf({ ref:_t5W().items[i].ref }) : null)+'</td>'
+    +'<td><textarea rows="'+_t5CmtRows(a.meetingComment)+'" id="t5c-'+esc(x.aid)+'"'+dis+' placeholder="Comments" oninput="this.rows=_t5CmtRows(this.value)" onchange="t5Comment('+i+','+aid+',this.value)">'+esc(a.meetingComment||'')+'</textarea></td>'
     +'<td class="t5-c t5-done"><input type="checkbox" id="t5t-'+esc(x.aid)+'" aria-label="Done"'+(closed?' checked':'')+((ro||st==='Accepted')?' disabled':'')+(st==='Accepted'?' title="The risk is accepted on the plan"':'')+' onchange="t5Done('+i+','+aid+',this.checked)"></td></tr>';
 }
 // A row to say what is being done, who and by when - three boxes, then Add.
 function _t5NewRowHTML(i, cid, k, ph){
   const f='t5n-'+i+'-'+k;
-  return '<tr class="t5-newr"><td colspan="2"><textarea rows="1" id="'+f+'-d" placeholder="'+esc(ph)+'"></textarea></td>'
-    +'<td><input type="text" id="'+f+'-o" list="ownPeople" placeholder="Owner"></td><td><input type="date" id="'+f+'-t"></td>'
+  return '<tr class="t5-newr"><td><textarea rows="1" id="'+f+'-d" placeholder="'+esc(ph)+'"></textarea></td>'
+    +'<td><input type="text" id="'+f+'-o" list="ownPeople" placeholder="Who"></td><td><input type="date" id="'+f+'-t"></td><td colspan="2"></td>'
     +'<td class="t5-c"><button type="button" class="btn btn-outline btn-xs" onclick="t5Add('+i+','+_asQ(cid)+','+_asQ(k)+')">Add</button></td></tr>';
 }
 function _t5OwnerHTML(i, aid, owner, ro){
@@ -26299,7 +26357,7 @@ function t5AddRisk(rid){
   const sug=_t5Suggest(w).find(s=>s.r.id===r.id);
   const it=_t5ItemCopy({ ref, desc:a?a.desc:'', risk:r.activity||r.hazard||'', rec:'' }, 0); it.whyText=sug?sug.reason:'Added by hand';
   w.items.push(it);
-  _t5At=w.items.length-1; _t5Typed={};
+  _t5SortItems(w); _t5At=w.items.indexOf(it); _t5Typed={};      // it takes its place in the ladder's order, and the page goes to it
   scheduleAutoSave(); _t5Render();
 }
 function t5RemoveRisk(i){
@@ -26630,7 +26688,7 @@ function _rsLoopHTML(r, ro){
   const L=_rsRows(r), sc=_riskScore(r), tg=_riskTarget(r);
   const raised=(r.quick && r.quick.raisedBy) ? ('Raised by '+esc(r.quick.raisedBy)+(r.quick.raisedAt?(' on '+esc(fmtDate(r.quick.raisedAt))):'')) : (_attrLine(r,'created') ? ('Raised '+_attrLine(r,'created')) : '');
   const top='<div class="t5-top rs-top">'+_t5TileHTML('Current risk rating', sc, 'Not yet rated')+'<div class="t5-arrow">→</div>'+_t5TileHTML('Target risk rating', tg, 'Target not yet set')
-    +'<div class="t5-haz"><div class="t5-lab">The issue'+(r.reviewed?' <span class="rs-chip">Under control</span>':'')+'</div><ul>'+_asRiskWrong(r).map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul>'
+    +'<div class="t5-haz"><div class="t5-lab">The issue'+(_riskControlStatus(r)==='In place'?' <span class="rs-chip" title="Its current rating is at or below its target">Under control</span>':'')+'</div><ul>'+_asRiskWrong(r).map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul>'
     +(raised?('<div class="slt-muted" style="margin-top:4px;">'+raised+'</div>'):'')+'</div></div>';
   if(!ro) _ownerListEnsure();
   const rowOf=(x,n)=>{
@@ -26642,11 +26700,12 @@ function _rsLoopHTML(r, ro){
     return '<tr class="t5-row'+(closed?' t5-closed':'')+'" id="rsr-'+aid+'"><td><div class="t5-act"><span class="t5-no">'+n+'</span><div style="min-width:0;flex:1;">'+what+ask+'</div></div></td>'
       +'<td>'+_ownerCellHTML(r.id, a.id, a.owner, dis)+'</td>'
       +'<td><input type="date"'+dis+' value="'+esc(String(a.due||''))+'" onchange="updateRiskAction('+q+',\''+aid+'\',\'due\',this.value);rsAfter('+q+',\''+aid+'\')"></td>'
+      +'<td>'+_riskEnoughHTML(r)+'</td>'
       +'<td class="t5-c t5-done"><input type="checkbox" id="rst-'+aid+'" aria-label="Done"'+(closed?' checked':'')+((ro||st==='Accepted')?' disabled':'')+(st==='Accepted'?' title="Accepted on the plan"':'')+' onchange="rsDone('+q+',\''+aid+'\',this.checked)"></td></tr>';
   };
   const rows=L.doing.map((x,i)=>rowOf(x,i+1)).join('');
-  const table='<div class="rs-h">What we\'re doing about it</div><table class="t5-table"><colgroup><col style="width:48%"><col style="width:24%"><col style="width:20%"><col style="width:8%"></colgroup>'
-    +'<thead><tr><th>What</th><th>Owner</th><th>Target date</th><th class="t5-c">Done</th></tr></thead><tbody>'+(rows||'<tr><td colspan="4" class="slt-muted">Nothing still to do.</td></tr>')+'</tbody></table>'
+  const table='<div class="rs-h">What we\'re doing about it</div><table class="t5-table"><colgroup><col style="width:42%"><col style="width:22%"><col style="width:16%"><col style="width:13%"><col style="width:7%"></colgroup>'
+    +'<thead><tr><th>How we fix it</th><th>Who</th><th>By when</th><th>Is it enough</th><th class="t5-c">Done</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" class="slt-muted">Nothing still to do.</td></tr>')+'</tbody></table>'
     +(ro?'':'<div class="rs-add"><button type="button" class="btn btn-outline btn-sm" onclick="rsAdd('+q+')">＋ Add what we\'re doing</button> <button type="button" class="btn btn-ghost btn-sm" onclick="rsImportRA('+q+')" title="The file OpRAMS writes with Send to Compass: its notes become rows here, still to do or already in place">⬑ From a risk assessment</button></div>');
   const placed=L.placed.length ? ('<div class="rs-h">Already in place</div><ul class="rs-placed">'+L.placed.map(x=>'<li><b>'+esc(x.a.desc||'(no words)')+'</b><span>'+esc(x.line||'')+(_rsRaWords(x.a)?(' · '+esc(_rsRaWords(x.a))):'')+'</span></li>').join('')+'</ul>') : '';
   const log=Array.isArray(r.log) ? r.log.slice(-4).reverse() : [];
@@ -27092,16 +27151,18 @@ function _navBuild(){
 const _CK_MOVED=['boardLadder'];
 function renderLadder(){
   const cont=document.getElementById('ladderContainer'); if(!cont) return;
+  try{ if(_chartSnap()) scheduleAutoSave(); }catch(e){}
   const w=COCKPIT_WIDGETS.boardLadder; let body='';
   try{ body=w.render(_cockpitContext()); }catch(e){ body='<div class="ckx-panel"><div class="ck-pending">The risk ladder could not render - '+esc(String(e && e.message || e))+'</div></div>'; }
   cont.innerHTML='<div class="ck-head"><h2>'+esc(_cockpitClientName())+'</h2><span class="ck-sub">Risk ladder</span></div>'
-    +'<div class="slt-muted" style="margin:-6px 0 12px;">Every rated risk, ranked by its current rating within its band, with this month’s Top 5 and Risk Action Sheet ticks. Read it before the meeting. The first Top 5 sheet takes these ticks; after that the meeting opens from the last sheet and the five change there.</div>'
+    +'<div class="slt-muted" style="margin:-6px 0 12px;">The chart of every rated risk not yet under control, numbered from the highest current risk, with this month’s Top 5 and Risk Action Sheet ticks. Read it before the meeting. The first Top 5 sheet takes these ticks; after that the meeting opens from the last sheet and the five change there.</div>'
     +_ckTip('boardLadder', body);
 }
 function _ladderRepaint(){ try{ if(document.getElementById('tab-ladder').classList.contains('active')) _keepScroll(renderLadder); }catch(e){} }
 // What each block of the cockpit shows and why it is there - on the block as a
 // tooltip, so a hover answers the question without leaving the screen.
 const COCKPIT_TIPS={
+  boardLadder:'Risk ladder: every rated risk not yet under control, numbered from the highest current risk, like a music chart: this month’s position, last month’s, the months on the ladder and the move. Risks now under control drop out to the list at the foot. Here because it is the one order every other list follows, and falling is good news.',
   boardPicture:'Risk picture: every significant risk on the profile, counted by whether it is controlled (at or below its residual target), has no target set yet, or is still uncontrolled. Here so the leadership team see the whole picture before any detail.',
   boardJourney:'Risk journey: how far the rated risks have moved from where they were found towards their planned targets, and how much of the plan is now in place. Here to show progress month on month.',
   boardFive:'Putting us at risk today: the risks that need attention first, by the rule the board report uses (seen on site, then legal must-haves, then tier and score). Here so a meeting starts with the right five.',
@@ -27154,17 +27215,132 @@ function _ckTip(id, html){
 // Each step names the screen, what it is for, how it is used and what it feeds.
 // The order is the order the work is done. Written from the app as built; the
 // gaps it shows up are the point (Simon, 6 November 2026).
+// ══════════════════════════════════════════════════════════════
+//  ONE ORDER, ONE LABEL, AND THE LADDER AS A MONTHLY CHART (Simon, 6 Nov 2026)
+//  "One order everywhere ... the risk ladder's ranking with the highest current
+//  risk first. Each risk always shows its reference and the same short title in
+//  the same position." "The risk ladder reads like a music chart ... Falling is
+//  good news here." Display only: the one thing saved is S.ladderChart, a new
+//  optional section holding a position snapshot per month.
+// ══════════════════════════════════════════════════════════════
+// The one short title. Whole up to RISK_SHORT_MAX characters, cut at a word after that.
+const RISK_SHORT_MAX=60;
+function _riskFullTitle(r){ return String((r&&(r.activity||r.hazard))||'New risk').replace(/\s+/g,' ').trim()||'New risk'; }
+function _riskShort(r){
+  const t=_riskFullTitle(r); if(t.length<=RISK_SHORT_MAX) return t;
+  const cut=t.slice(0,RISK_SHORT_MAX+1).replace(/\s+\S*$/,'').replace(/[\s,;:.&-]+$/,'');
+  return (cut||t.slice(0,RISK_SHORT_MAX))+'…';
+}
+// The whole title as a tooltip, only where the short one has lost some of it.
+function _riskFullTip(r){ const t=_riskFullTitle(r); return t===_riskShort(r)?'':t; }
+// "Is it enough": read from the risk, never stored. Does the current rating meet the target?
+function _riskEnough(r){
+  if(!r) return { k:'none', t:'-', sub:'', tip:'This action is not tied to a rated risk, so there is nothing to measure it against' };
+  const now=_riskScore(r), tgt=_riskTarget(r);
+  if(!now.rating) return { k:'none', t:'Not rated', sub:'', tip:'The risk has no score yet, so there is nothing to measure this against' };
+  if(!tgt.rating) return { k:'none', t:'No target', sub:'now '+now.rating, tip:'The risk scores '+now.rating+' and has no target, so nothing says when it is enough. Set the target on the risk.' };
+  if(now.rating<=tgt.rating) return { k:'yes', t:'Yes', sub:now.rating+' at target '+tgt.rating, tip:'Under control: the risk scores '+now.rating+', at or below its target of '+tgt.rating };
+  return { k:'no', t:'Not yet', sub:now.rating+' to '+tgt.rating, tip:'Not yet: the risk scores '+now.rating+' and its target is '+tgt.rating+'. This changes when the risk is re-scored.' };
+}
+function _riskEnoughHTML(r){ const e=_riskEnough(r); return '<span class="ck-en ck-en-'+e.k+'" title="'+esc(e.tip)+'">'+esc(e.t)+(e.sub?('<small>'+esc(e.sub)+'</small>'):'')+'</span>'; }
+// The meeting holds its risks in the ladder's order. Sorted as it opens and when a risk is added, never while it is being worked on.
+function _t5SortItems(w){
+  if(!w || !Array.isArray(w.items)) return;
+  const order=_riskDisplayOrder(), at={}; order.forEach((r,i)=>{ if(r) at[r.id]=i; });
+  const idx=it=>{ const r=_execRiskOf({ ref:it.ref }); return (r && at[r.id]!==undefined) ? at[r.id] : order.length; };
+  w.items=w.items.map((it,i)=>({ it, i, k:idx(it) })).sort((a,b)=>(a.k-b.k)||(a.i-b.i)).map(x=>x.it);
+}
+// The ladder's colours: AHS only, worst darkest. The rest of the app keeps its bands.
+const _LADDER_BAND={ Critical:'#1F2937', High:'#4B5563', Medium:'#757575', Low:'var(--accent)', '':'#9CA3AF' };
+// ── The chart ──
+// On the ladder: rated and not yet under control. Under control means what it
+// means on the cockpit: the current rating is at or below the residual target.
+function _ladderRows(){ return _riskDisplayOrder().filter(r=>r && !r.deleted && _riskScore(r).rating && _riskControlStatus(r)!=='In place'); }
+function _ladderOutRows(){ return _riskDisplayOrder().filter(r=>r && !r.deleted && _riskScore(r).rating && _riskControlStatus(r)==='In place'); }
+function _chartStore(make){
+  if((!S.ladderChart || typeof S.ladderChart!=='object') && make) S.ladderChart={ months:{}, dropped:{} };
+  const c=S.ladderChart||{ months:{}, dropped:{} };
+  if(!c.months) c.months={};
+  if(!c.dropped) c.dropped={};
+  return c;
+}
+// Keeps this month's snapshot current, so a month closes on its last position. Returns true if it wrote.
+function _chartSnap(){
+  if(_roLocked() || (typeof _empView==='function' && _empView()) || !Array.isArray(S.riskProfile)) return false;
+  const on=_ladderRows(), out=_ladderOutRows();
+  if(!on.length && !out.length && !S.ladderChart) return false;      // first use, nothing rated: nothing is stored
+  const c=_chartStore(true), m=_top5Month(), cur=c.months[m]||null;
+  const hist=Object.keys(c.months).filter(k=>k<m).sort(), prev=hist.length?c.months[hist[hist.length-1]]:null;
+  const next={ on:on.map((r,i)=>({ id:r.id, pos:i+1, rating:_riskScore(r).rating })), out:out.map(r=>({ id:r.id, rating:_riskScore(r).rating })) };
+  let wrote=false;
+  const wasOn=new Set(); [cur,prev].forEach(x=>((x&&x.on)||[]).forEach(e=>wasOn.add(e.id)));
+  out.forEach(r=>{ if(wasOn.has(r.id) && !c.dropped[r.id]){ c.dropped[r.id]=m; wrote=true; } });
+  on.forEach(r=>{ if(c.dropped[r.id]){ delete c.dropped[r.id]; wrote=true; } });
+  if(!cur || JSON.stringify(cur.on)!==JSON.stringify(next.on) || JSON.stringify(cur.out)!==JSON.stringify(next.out)){
+    c.months[m]=Object.assign({ at:new Date().toISOString().slice(0,10) }, next); wrote=true; }
+  return wrote;
+}
+// What the ladder draws: read live, compared with the last month on record.
+function _chartView(){
+  const c=_chartStore(false), m=_top5Month(), lab=k=>_top5MonthLabel(k);
+  const hist=Object.keys(c.months).filter(k=>k<m).sort(), pk=hist.length?hist[hist.length-1]:'', first=hist.length?hist[0]:m;
+  const entry=(k,id,side)=>((c.months[k]&&c.months[k][side])||[]).find(x=>x&&x.id===id)||null;
+  const monthsOn=id=>hist.filter(k=>entry(k,id,'on')).length;
+  const rows={}, fallers=[], on=_ladderRows();
+  const pl=n=>n+' place'+(n===1?'':'s');
+  on.forEach((r,i)=>{
+    const pos=i+1, rating=_riskScore(r).rating, was=pk?entry(pk,r.id,'on'):null;
+    const o={ pos, last:was?was.pos:'', months:monthsOn(r.id)+1, k:'first', sym:'–', tip:'No movement to show yet: the chart starts in '+lab(first)+'.' };
+    if(pk && was){
+      const d=pos-was.pos;
+      const score=(rating<was.rating)?('Its score came down from '+was.rating+' to '+rating+'.'):(rating>was.rating)?('Its score went up from '+was.rating+' to '+rating+'.'):('Its score has not changed: other risks moved '+(d>0?'above':'below')+' it.');
+      if(d>0){ o.k='down'; o.sym='▼'; o.tip='Faller: down '+pl(d)+', from '+was.pos+' to '+pos+'. Falling is good news. '+score; if(rating<was.rating) fallers.push({ o, d, drop:was.rating-rating }); }
+      else if(d<0){ o.k='up'; o.sym='▲'; o.tip='Climber: up '+pl(-d)+', from '+was.pos+' to '+pos+'. '+score; }
+      else { o.k='same'; o.sym='='; o.tip='Non-mover: still at '+pos+', where it was at the end of '+lab(pk)+'.'; }
+    } else if(pk){
+      const outAt=hist.filter(k=>entry(k,r.id,'out')).pop(), onAt=hist.filter(k=>entry(k,r.id,'on')).pop();
+      if(outAt){ o.k='re'; o.sym='RE'; o.tip='Re-entry: was under control in '+lab(outAt)+' and has come back on the ladder.'; }
+      else if(onAt){ o.k='re'; o.sym='RE'; o.tip='Re-entry: last on the ladder in '+lab(onAt)+' and has come back.'; }
+      else { o.k='new'; o.sym='NEW'; o.tip='New entry: on the ladder for the first time this month.'; }
+    }
+    o.posTip='This month’s position: '+pos+' of '+on.length+' on the ladder';
+    o.lastTip=pk ? (was?('Position at the end of '+lab(pk)):('Not on the ladder at the end of '+lab(pk))) : ('The chart starts in '+lab(first)+', so there is no earlier position');
+    o.monthsTip='On the ladder for '+o.months+' month'+(o.months===1?'':'s')+', counted from when the chart started in '+lab(first);
+    rows[r.id]=o;
+  });
+  // The biggest faller: the most places down with the score really coming down. A risk pushed down by others climbing is not good news, so it gets no star.
+  if(fallers.length){ fallers.sort((a,b)=>(b.d-a.d)||(b.drop-a.drop)||(a.o.pos-b.o.pos)); const w=fallers[0].o; w.k='star'; w.sym='★'; w.tip='Biggest faller of the month. '+w.tip.replace(/^Faller: d/,'D'); }
+  const out={};
+  _ladderOutRows().forEach(r=>{
+    const was=pk?entry(pk,r.id,'on'):null; let month=c.dropped[r.id]||(was?m:'');
+    if(!month){ const h=Array.isArray(r.scoreHistory)?r.scoreHistory:[]; month=h.length?String(h[h.length-1].at||'').slice(0,7):''; }
+    out[r.id]={ month, words:month?('Dropped out '+lab(month)):('Dropped out before '+lab(first)), last:was?was.pos:'', months:monthsOn(r.id) };
+  });
+  return { month:m, prevKey:pk, firstMonth:first, isFirst:!pk, rows, out };
+}
+function _chartSymbolKeyHTML(){
+  const k=(cls,sym,word,tip)=>'<span title="'+esc(tip)+'"><b class="ckc-move ckc-'+cls+'">'+sym+'</b> '+word+'</span>';
+  return '<div class="ckl-key ckc-key">'
+    +k('up','▲','climber','Climber: higher up the ladder than last month')
+    +k('down','▼','faller','Faller: lower down the ladder than last month. Falling is good news')
+    +k('same','=','non-mover','Non-mover: the same position as last month')
+    +k('new','NEW','new entry','New entry: on the ladder for the first time')
+    +k('re','RE','re-entry','Re-entry: was under control and has come back on the ladder')
+    +k('star','★','biggest faller','Biggest faller of the month: the most places down with its score really coming down')
+    +'<span class="ckl-key-note">Falling is good news here: position 1 is the highest current risk, so a risk moving down is a risk getting smaller.</span></div>';
+}
+
 const HOWTO_STEPS=[
   { n:1, title:'Company setup', opens:[{tab:'company'}], what:'Who the client is: the company, the senior leadership team (with emails), key personnel and business units.', how:'Fill in Company identity first. Add the leadership team with their emails: the Top 5 email goes to them, and the leadership meeting starts with them in the room. Add key personnel by name: they feed the owner lists.', feeds:'Owner lists, the Top 5 email, the leadership meeting, every report header.' },
   { n:2, title:'Risk profile (Operation): the discovery questions', opens:[{tab:'risk'}], what:'The questions that tell Compass what the business does. Rules fire from the answers and suggest the risk themes.', how:'Answer them with the client, check the answers Compass flags (where the client’s own documents say otherwise, or two answers disagree), then build the profile. Get these right first: they drive the risks, the legal duties and the Top 5.', feeds:'The risk profile, the legal duties, the Top 5 order.' },
-  { n:3, title:'Risk profile (Operation): the register', opens:[{fn:function(){ _howtoRegister(); }}], what:'Every significant risk the business runs, each with its reference, tier, band and score. Add an issue in the sidebar captures something in one line; it waits at the top as To be assessed.', how:'Open a risk. A scored risk opens on its overview: the issue, its rating, What we’re doing about it and Already in place. Full detail gives the numbered tabs: 1 Identify, 2 People & impact, 3 Controls & rating (the standing arrangements), 4 Action delegation & timescale. Every risk needs a score, a target, and an owner and a date on each action.', feeds:'The Risk ladder, the Top 5, the Client execution plan, every report.' },
+  { n:3, title:'Risk profile (Operation): the register', opens:[{fn:function(){ _howtoRegister(); }}], what:'Every significant risk the business runs, each with its reference, tier, band and score. Add an issue in the sidebar captures something in one line; it waits at the top as To be assessed.', how:'The register runs in the ladder’s order; the Macro button groups it by theme when you want that. Open a risk. A scored risk opens on its overview: the issue, its rating, What we’re doing about it and Already in place. Full detail gives the numbered tabs: 1 Identify, 2 People & impact, 3 Controls & rating (the standing arrangements), 4 Action delegation & timescale. Every risk needs a score, a target, and an owner and a date on each action.', feeds:'The Risk ladder, the Top 5, the Client execution plan, every report.' },
   { n:4, title:'Legal duties', opens:[{tab:'requirements'}], what:'What the law requires of this business: the policy statement, the legal essentials and the duty headings.', how:'For each duty: is it in place, is it adequate, and what action is needed where it falls short. Tick the assessment criteria under each essential. A gap goes on the risk profile as a risk, so it is managed like any other.', feeds:'Risks on the profile, the Legal duties sheet, the suggested Top 5, the board report.' },
   { n:5, title:'Maturity level', opens:[{tab:'maturity'}], what:'The consultant’s judgement of the six HSG65 areas, in words, not scores.', how:'Mark each area Weak, Developing, Adequate or Strong with a one-line reason. For Weak or Developing, Raise action puts the area on the risk profile and raises the action onto the Client execution plan.', feeds:'Risks on the profile, the Client execution plan, the audit narrative and the review.' },
   { n:6, title:'Cockpit', opens:[{tab:'cockpit'}], what:'The whole position on one screen: the risk picture, the risk journey, the plan delivered and what is putting the business at risk today. Hover over any block and it says what it shows and why it is there.', how:'Start every visit here. Click a figure to open what is behind it. Customise chooses which blocks this client sees, and their order.', feeds:'Nothing: it only reads the records. A wrong figure here means a record behind it needs correcting.' },
-  { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'Every rated risk, worst first, with the suggested five, this month’s Top 5 ticks and the Sheet ticks for a Risk Action Sheet. Risks not yet rated are counted, not ranked.', how:'Read it before the meeting. The first Top 5 sheet takes these ticks; after that the meeting opens from the last sheet and the five change there. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The first Top 5 sheet, the Risk Action Sheet, the Top 5 banner on the Client execution plan.' },
-  { n:8, title:'This month’s Top 5 (the meeting)', opens:[{fn:function(){ openLiveTop5(); }}], what:'The front door. One risk a screen, laid out like the sheet the leadership team know, edited live in the meeting.', how:'Open it on the laptop. The first time, it holds the ladder’s ticks topped up in ranking order; after that it opens from the last sheet with everything still open. When the sheet has room, Compass offers the next risks with a reason each; Take this risk off the sheet makes room. Against each action: comments, owner, target date, Done. Done asks Where does this live now? Send saves the sheet as the record of the meeting, downloads the PDF and opens the email; attach the PDF in Outlook.', feeds:'The actions themselves (tab 4, the Client execution plan), the sheets as sent, How the client works now.' },
+  { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'The chart of every rated risk not yet under control, numbered from the highest current risk. This is the one order: the live Top 5, the suggested five, the Client execution plan and the risk profile all follow it, each risk showing its reference then the same short title. Risks not yet rated are counted, not ranked.', how:'Read it like a music chart. Now is this month’s position, Last is last month’s, Mths is the months on the ladder, and Move is the symbol: ▲ climber, ▼ faller, = non-mover, NEW new entry, RE re-entry (was under control, came back), ★ biggest faller of the month. Falling is good news. Hover over any symbol for what it means on that risk. A risk at or below its target drops out to the list at the foot, with the month it dropped out. Compass keeps a position snapshot each month by itself, so the moves show from the second month. The first Top 5 sheet takes the Top 5 ticks; after that the meeting opens from the last sheet and the five change there. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The first Top 5 sheet, the Risk Action Sheet, the Top 5 banner on the Client execution plan, and the order of every other list.' },
+  { n:8, title:'This month’s Top 5 (the meeting)', opens:[{fn:function(){ openLiveTop5(); }}], what:'The front door. One risk a screen, laid out like the sheet the leadership team know, edited live in the meeting.', how:'Open it on the laptop. Its risks run in the ladder’s order. The first time, it holds the ladder’s ticks topped up in ranking order; after that it opens from the last sheet with everything still open. When the sheet has room, Compass offers the next risks with a reason each; Take this risk off the sheet makes room. What’s wrong is above the table; against each action: How we fix it, Who, By when, Is it enough, Comments, Done. Done asks Where does this live now? Send saves the sheet as the record of the meeting, downloads the PDF and opens the email; attach the PDF in Outlook.', feeds:'The actions themselves (tab 4, the Client execution plan), the sheets as sent, How the client works now.' },
   { n:9, title:'Action sheets (back office)', opens:[{fn:function(){ openActionSheets('top5'); }}], what:'The Top 5, Legal duties and Risk action sheets as PDFs for the client to fill in, and what comes back.', how:'Use it for a Legal duties or Risk action sheet, or when a sheet comes back by email. Import a returned sheet, then decide each line: agree it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Agreed writes the owner, date and comment to the action.', feeds:'The actions, the next sheet.' },
-  { n:10, title:'Client execution plan', opens:[{label:'Client execution plan',tab:'execplan'},{label:'Actions',tab:'actions'}], what:'Every action across the business in one list, by month, with its owner, date and status. Actions holds what the Inspection app raises, and shows only when that app is linked.', how:'The client’s own to-do list. Change a date or owner here and it changes on the risk. Complete an action and the close-out asks where it lives now. When the last action on a risk closes, Compass asks Is this issue now under control?', feeds:'The risk’s score and sign-off, How the client works now.' },
+  { n:10, title:'Client execution plan', opens:[{label:'Client execution plan',tab:'execplan'},{label:'Actions',tab:'actions'}], what:'Every action across the business in one list, by month, with its owner, date and status. Actions holds what the Inspection app raises, and shows only when that app is linked.', how:'The client’s own to-do list, in the ladder’s order, one block a band. Its columns are the order every list of actions uses: What’s wrong, How we fix it, Who, By when, Is it enough. Is it enough reads the risk: Yes when its current rating is at or below its target, Not yet when it is above, No target when none is set. Change a date or owner here and it changes on the risk. Complete an action and the close-out asks where it lives now. When the last action on a risk closes, Compass asks Is this issue now under control?', feeds:'The risk’s score and sign-off, How the client works now.' },
   { n:11, title:'Records: where the answers are filed', opens:[{label:'Documents',tab:'documents'},{label:'Sign-off register',tab:'signoff'},{label:'Toolbox talks',tab:'toolbox'},{label:'CPD library',tab:'cpd'}], what:'Where the answers to Where does this live now? are filed: a document on Documents, a briefing or talk on the Sign-off register, a regular check on Assurance records, a named person on Company setup.', how:'Documents holds links to the client’s own files with their review dates; nothing is uploaded. The Sign-off register issues anything people must sign for: each person gets a link and confirms on their phone. Toolbox talks and CPD library suggest topics for this kind of work; Issue puts one on the Sign-off register.', feeds:'How the client works now, the Evidence register, the Risk pathway.' },
   { n:12, title:'How the client works now', opens:[{tab:'works'}], what:'The one record of what is now in place: where it lives, who owns it, which issue it came from, when it is next checked.', how:'Read it with the client; download the PDF for the board or an accreditation. Answer now clears anything done that has not said where it lives.', feeds:'The cockpit’s story and accreditation evidence.' },
   { n:13, title:'Risk assessments (OpRAMS)', opens:[{label:'Quick links',tab:'links'}], what:'The task risk assessments and method statements live in the RAMS app. Each hazard carries notes: what is already in place and what is still to arrange.', how:'In OpRAMS, press Send to Compass on the Actions arising tab. In Compass, open the risk and press From a risk assessment: still-to-arrange notes become rows to do, in-place notes go to Already in place, and the assessment goes on the RA register against the risk. OpRAMS shows on Quick links once it is ticked in Admin, in the client’s Config.', feeds:'The risk’s overview, the RA register, How the client works now.' },
@@ -27626,12 +27802,12 @@ function _riskRankCmp(a, b){
   return ((sb.rating||0)-(sa.rating||0)) || ((+sb.s||0)-(+sa.s||0)) || ((_riskFlagOn(b)?1:0)-(_riskFlagOn(a)?1:0))
     || ((+sb.l||0)-(+sa.l||0)) || String(a.activity||a.hazard||'').localeCompare(String(b.activity||b.hazard||''));
 }
-function _riskDisplayOrder(){
-  return (S.riskProfile||[]).slice().sort((a,b)=>{
-    const d = _RISK_PRIO_RANK[_riskScore(a).priority||''] - _RISK_PRIO_RANK[_riskScore(b).priority||''];
-    return d !== 0 ? d : _riskRankCmp(a, b);
-  });
+// The one order every list of risks runs in: the ladder's. Worst band first, the highest current risk first inside it, unrated last.
+function _ladderCmp(a, b){
+  const d = _RISK_PRIO_RANK[_riskScore(a).priority||''] - _RISK_PRIO_RANK[_riskScore(b).priority||''];
+  return d !== 0 ? d : _riskRankCmp(a, b);
 }
+function _riskDisplayOrder(){ return (S.riskProfile||[]).slice().sort(_ladderCmp); }
 
 // ── Split-view detail tabs. Summary reads the risk back as a one-screen
 //    report; the other four are the same editing fields as before, grouped
@@ -27747,7 +27923,7 @@ function _rpDigestHTML(r){
 //    click opens the five editing tabs in a modal with prev/next; Esc or
 //    Done returns to the list exactly where it was. ONE visibility pipeline
 //    (_riskVisibleRows) feeds the table, the modal stepper and the counts. ──
-var _riskModalOpen=false, _riskModeFilter='all', _riskSearch='', _riskKeysBound=false, _riskGroupMode='macro', _riskMacroOpen={}, _riskMacroLast=null;
+var _riskModalOpen=false, _riskModeFilter='all', _riskSearch='', _riskKeysBound=false, _riskGroupMode='flat', _riskGroupSet=false, _riskMacroOpen={}, _riskMacroLast=null;
 function _riskVisibleRows(){
   const all=_riskDisplayOrder();
   return all.filter(r=>{
@@ -27872,7 +28048,7 @@ function _macroOpenForRisk(r){
   const sec=document.getElementById('wfRegister'); if(sec && !sec.open) sec.open=true;
 }
 function _macroExpandAll(on){ _riskMacroOpen={}; if(on){ _riskMacroGroups(S.riskProfile||[]).forEach(g=>{ _riskMacroOpen[g.k||'_']=true; }); } else { _riskMacroLast=null; } _keepScroll(renderRiskProfile); }
-function setRiskGroupMode(m){ _riskGroupMode=m; _keepScroll(renderRiskProfile); }
+function setRiskGroupMode(m){ _riskGroupMode=m; _riskGroupSet=true; _keepScroll(renderRiskProfile); }
 // ── The risk reference ─────────────────────────────────────────────────
 // R-001, per client, assigned when the risk is created and never changed.
 // The sequence is a HIGH-WATER MARK, never a count: deleting a risk does
@@ -27977,11 +28153,11 @@ function _riskRowHTML(rows){
     const sc=_riskScore(r); const ops=_riskMode(r)==='ops'; const mk=_riskMacroOf(r); const cc=_macroColour(mk);
     const ctl=_riskControlStatus(r); const rvd=ctl==='In place'&&_riskReviewDue(r); const cdot=ctl==='None'?'#DC2626':(ctl==='Partial'?'#F59E0B':(rvd?'#D97706':'#16A34A'));
     const cword=ctl==='None'?'uncontrolled':(ctl==='Partial'?'no target set':(rvd?'controlled - review due':'controlled as reasonably practicable'));
-    return '<tr class="rpt-row'+(ctl==='In place'?' rpt-atline':'')+'" onclick="_riskOpenModal(\''+r.id+'\')" title="'+(ctl==='In place'?'Controlled as reasonably practicable - open this risk. Esc brings you straight back':'Open this risk - Esc brings you straight back')+'">'
-      +'<td onclick="event.stopPropagation()" style="white-space:nowrap;">'+RISK_MODES.map(m=>'<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:'+(_riskMode(r)===m.k?'700':'400')+';color:'+(_riskMode(r)===m.k?m.colour:'var(--text-muted)')+';cursor:pointer;line-height:1.5;"><input type="radio" name="kind_'+r.id+'" '+(_riskMode(r)===m.k?'checked':'')+' onchange="setRiskMode(\''+r.id+'\',\''+m.k+'\')" style="accent-color:'+m.colour+';width:12px;height:12px;cursor:pointer;">'+(m.k==='hs'?'H&S':'Ops')+'</label>').join('')+'</td>'
+    return '<tr class="rpt-row'+(ctl==='In place'?' rpt-atline':'')+'" onclick="_riskOpenModal(\''+r.id+'\')" title="'+(_riskFullTip(r)?(esc(_riskFullTip(r))+' - '):'')+(ctl==='In place'?'Controlled as reasonably practicable - open this risk. Esc brings you straight back':'Open this risk - Esc brings you straight back')+'">'
       +'<td>'+_riskRefChip(r)+'</td>'
+      +'<td style="font-weight:700;">'+esc(_riskShort(r))+(r.reviewed?' <span style="color:#16A34A;font-weight:700;font-size:11px;" title="Reviewed and completed">\u2713</span>':'')+(_riskToAssess(r)?' <span class="rs-tba" title="Captured as an issue - open it to assess it">To be assessed</span>':'')+'</td>'
+      +'<td onclick="event.stopPropagation()" style="white-space:nowrap;">'+RISK_MODES.map(m=>'<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:'+(_riskMode(r)===m.k?'700':'400')+';color:'+(_riskMode(r)===m.k?m.colour:'var(--text-muted)')+';cursor:pointer;line-height:1.5;"><input type="radio" name="kind_'+r.id+'" '+(_riskMode(r)===m.k?'checked':'')+' onchange="setRiskMode(\''+r.id+'\',\''+m.k+'\')" style="accent-color:'+m.colour+';width:12px;height:12px;cursor:pointer;">'+(m.k==='hs'?'H&S':'Ops')+'</label>').join('')+'</td>'
       +'<td style="font-size:11px;white-space:nowrap;">'+_riskTierTag(r)+'</td>'
-      +'<td style="font-weight:700;">'+esc(r.activity||r.hazard||'New risk')+(r.reviewed?' <span style="color:#16A34A;font-weight:700;font-size:11px;" title="Reviewed and completed">\u2713</span>':'')+(_riskToAssess(r)?' <span class="rs-tba" title="Captured as an issue - open it to assess it">To be assessed</span>':'')+'</td>'
       +'<td><span class="rc-chip" style="background:'+cc+'1a;color:'+cc+';">'+esc(mk?_macroName(mk):'-')+'</span>'+(ops?' <span class="rc-chip" style="background:#7C3AED1a;color:#7C3AED;">Operational</span>':'')+'</td>'
       +'<td style="font-size:12px;color:var(--text-muted);">'+esc(r.area||'-')+'</td>'
       +'<td style="text-align:center;">'+(_riskFlagOn(r)?('<span style="color:'+(ops?'#7C3AED':'#DC2626')+';font-weight:800;" title="'+esc(_rt(r,'flagChipTitle'))+'">\u26a0</span>'):'')+'</td>'
@@ -28089,7 +28265,7 @@ function renderRiskProfile(){
     if(_riskToAssess(r)) bits.unshift('<span class="rs-tba">To be assessed'+(r.quick.roughLevel?(' · looks '+esc(r.quick.roughLevel.toLowerCase())):'')+'</span>');
     return `<button type="button" class="rp-row${r.id===_riskSel?' on':''}" data-rid="${r.id}" role="option" aria-selected="${r.id===_riskSel?'true':'false'}" onclick="_selectRisk('${r.id}')" style="border-left-color:${htC};">
       <span style="min-width:0;flex:1 1 auto;">
-        <span class="rp-t" id="rlt-${r.id}">${r.activity ? esc(r.activity) : (r.hazard?esc(r.hazard):'New risk')}</span>
+        <span class="rp-t">${_riskRefChip(r)}<span id="rlt-${r.id}">${esc(_riskShort(r))}</span></span>
         <span class="rp-m">${bits.join(' · ')}</span>
       </span>
       <span onclick="event.stopPropagation();_riskChosenToggle('${r.id}')" title="${r.chosen?'In our five - click to unpin':'Pin to our chosen five (max 5) - shown on the cockpit'}" style="flex:0 0 auto;cursor:pointer;font-size:15px;line-height:1;color:${r.chosen?'#F59E0B':'var(--border)'};padding:0 2px;">${r.chosen?'\u2605':'\u2606'}</span>
@@ -28221,11 +28397,11 @@ function renderRiskProfile(){
     ? { cat:'Macro', flag:'Critical' }
     : _riskModeFilter==='hs' ? { cat:'Macro', flag:'SIF' }
     : { cat:'Macro', flag:'SIF' };
-  const table=`<div style="overflow-x:auto;"><table class="rpt"><colgroup><col style="width:64px"><col style="width:52px"><col style="width:58px"><col><col style="width:16%"><col style="width:12%"><col style="width:44px"><col style="width:84px"><col style="width:56px"><col style="width:15%"></colgroup><thead><tr>
-      <th title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
+  const table=`<div style="overflow-x:auto;"><table class="rpt"><colgroup><col style="width:52px"><col><col style="width:64px"><col style="width:58px"><col style="width:16%"><col style="width:12%"><col style="width:44px"><col style="width:84px"><col style="width:56px"><col style="width:15%"></colgroup><thead><tr>
       <th title="The letter is the risk theme, the number is the risk. A number is given once and never reused, so a reference always resolves to the same risk.">Ref</th>
-      <th title="The risk's tier: 1 could kill, enforced hard · 2 serious harm to health · 3 day-to-day arrangements · 4 later lessons">Tier</th>
       <th>Risk title</th>
+      <th title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
+      <th title="The risk's tier: 1 could kill, enforced hard · 2 serious harm to health · 3 day-to-day arrangements · 4 later lessons">Tier</th>
       <th>${_hh.cat}</th><th>Business area</th>
       <th style="text-align:center;" title="Could kill with today's controls (H&amp;S) / business-critical (operational)">${_hh.flag}</th>
       <th>Band</th><th style="text-align:center;">Level</th><th>Controlled?</th>
@@ -30111,16 +30287,16 @@ function _riskTierChip(r){
 }
 // On the cockpit ladder: the first five in the Top 5 order, for the consultant to tick or swap.
 function _cklSuggestHTML(m5){
-  const rs=(S.riskProfile||[]).filter(r=>r && !r.deleted).slice().sort(_riskPrioCmp).slice(0,5);
+  const rs=(S.riskProfile||[]).filter(r=>r && !r.deleted).slice().sort(_riskPrioCmp).slice(0,5).sort(_ladderCmp);      // the rule below picks the five; they are listed in the ladder's order
   if(!rs.length) return '';
   return '<div class="no-print" style="border:1px solid var(--border);margin:0 0 12px;">'
     +'<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:7px 12px;background:var(--muted-bg);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);">'
-    +'<span>Suggested five</span><span style="font-weight:600;letter-spacing:0;text-transform:none;">Seen on site, then legal must-haves missing, then not adequate, then tier 1 to 4 - could kill first, then the score</span></div>'
+    +'<span>Suggested five</span><span style="font-weight:600;letter-spacing:0;text-transform:none;">Picked by: seen on site, then legal must-haves missing, then not adequate, then tier 1 to 4 - could kill first, then the score. Listed in ladder order</span></div>'
     +rs.map((r,i)=>{ const p=_riskPrio(r), pick=_riskTop5Picked(r, m5), sc=_riskScore(r);
       return '<div style="display:flex;align-items:center;gap:9px;padding:6px 12px;border-top:1px solid var(--border);font-size:12.5px;">'
         +'<span style="flex:0 0 14px;font-weight:700;color:var(--text-muted);">'+(i+1)+'</span>'
         +'<span style="flex:0 0 auto;">'+_riskRefChip(r)+'</span>'
-        +'<button type="button" onclick="_gotoRisk(\''+r.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;" title="Open this risk"><b>'+esc(r.activity||r.hazard||'Risk')+'</b>'
+        +'<button type="button" onclick="_gotoRisk(\''+r.id+'\')" style="all:unset;cursor:pointer;flex:1;min-width:0;" title="'+esc(_riskFullTip(r)||'Open this risk')+'"><b>'+esc(_riskShort(r))+'</b>'
         +'<span style="display:block;font-size:11.5px;color:var(--text-muted);">'+esc(p.reason)+(p.sif?' · could kill':'')+(sc.rating?(' · score '+sc.rating):'')+'</span></button>'
         +'<input type="checkbox" '+(pick?'checked ':'')+'onchange="toggleRiskTop5(\''+r.id+'\')" aria-label="Top 5 for '+esc(_top5MonthLabel(m5))+': '+esc(r.activity||r.hazard||'')+'" title="'+(pick?'One of the five - untick to take it off':'Make this one of the five priorities for '+esc(_top5MonthLabel(m5)))+'">'
         +'</div>'; }).join('')
@@ -41534,7 +41710,7 @@ function exportEverything(){
    browser's local data) OR a per-client data file (-> merges the recognised
    client-data sections into the client you are currently working on, then
    saves; on the live app that writes to that client's tenant). */
-var _IMPORT_KEYS=['accred','actionSheets','company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','inspRegister','inspFolder','meetings','top5Resp','trainRegister','trainFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
+var _IMPORT_KEYS=['accred','actionSheets','ladderChart','company','riskDoc','riskConfig','requirements','riskProfile','actionPlan','riskAssurance','documents','monitoring','review','cas','acp','raRegister','raFolder','inspRegister','inspFolder','meetings','top5Resp','trainRegister','trainFolder','appLinks','linkedApps','profiler','audit','inspections','actions','docControl','training','actionArchive','siteInspections','importProfiles','policySignoff',
   // Added: these are the client's work too, and their absence made a round
   // trip through export/import quietly lossy.
   'incidents','trainingData','consultation','cpd','toolbox','policyDoc','units','decisions','supplyChain','healthSurveillance','buildingSafety','memberships',

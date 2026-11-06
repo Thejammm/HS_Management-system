@@ -10,14 +10,19 @@ const { browser, page, errors } = await openApp();
 // ── the register: three bands, macro groups, one row per risk ──
 await seed(page, { riskProfile: RISKS() }, 'risk');
 await openRegister(page);
+// the register opens flat, in the ladder's order, since 6 November 2026; these checks are about the Macro view
+R.ok(await page.evaluate(() => _riskGroupMode === 'flat'), 'the register opens flat, in the ladder\'s order');
+await page.evaluate(() => setRiskGroupMode('macro'));
+await wait(page, 300);
+await page.evaluate(() => _macroExpandAll(true));
 {
   const t = await page.evaluate(() => {
     const body = document.getElementById('rpTbody');
     return { bands: [...body.querySelectorAll('tr.rpt-band')].map(x => x.textContent.replace(/\s+/g, ' ').trim()),
       groups: [...body.querySelectorAll('tr.rpt-macro .rpt-mac-name')].map(x => x.textContent.trim()),
       rows: [...body.querySelectorAll('tr.rpt-row')].length,
-      titles: [...body.querySelectorAll('tr.rpt-row')].map(x => x.cells[3].textContent.trim()),   // cells[1] is the Ref column, cells[2] the Tier
-      refs: [...body.querySelectorAll('tr.rpt-row')].map(x => x.cells[1].textContent.trim()),
+      titles: [...body.querySelectorAll('tr.rpt-row')].map(x => x.cells[1].textContent.trim()),   // cells[0] is the Ref column: reference, then title, on every list
+      refs: [...body.querySelectorAll('tr.rpt-row')].map(x => x.cells[0].textContent.trim()),
       headers: [...document.querySelectorAll('#rpTbody')].length ? [...document.querySelectorAll('table thead th')].map(x => x.textContent.trim()).filter(Boolean) : [] };
   });
   R.ok(t.bands.length === 3 && /^Risk profile/.test(t.bands[0]) && /^Legal duties/.test(t.bands[1]) && /^Company maturity/.test(t.bands[2]),
@@ -183,7 +188,7 @@ await wait(page, 300);
       setTimeout(G(() => {
         const rows = [...document.querySelectorAll('#rpTbody tr.rpt-row')];
         const open = [...document.querySelectorAll('#rpTbody tr.rpt-macro.rpt-mac-open')].length;
-        res({ shutBefore, onScreen: rows.length, isNew: rows.some(r => /New risk/.test(r.cells[3].textContent)),
+        res({ shutBefore, onScreen: rows.length, isNew: rows.some(r => /New risk/.test(r.cells[1].textContent)),
           onlyItsOwn: open === 1, registerOpen: !!(document.getElementById('wfRegister') || {}).open });
       }), 500);
     }), 600);
@@ -218,7 +223,7 @@ await openRegister(page);
     _riskRefsEnsure();
     const refs = S.riskProfile.map(r => r.ref);
     const head = [...document.querySelectorAll('table.rpt thead th')].map(x => x.textContent.trim());
-    const cells = [...document.querySelectorAll('#rpTbody tr.rpt-row')].map(tr => tr.cells[1].textContent.trim());
+    const cells = [...document.querySelectorAll('#rpTbody tr.rpt-row')].map(tr => tr.cells[0].textContent.trim());
     return { refs, head, cells, seq: S.riskRefSeq, letters: S.macroLetters,
       nos: S.riskProfile.map(r => r.refNo),
       // the fixture's unrated risk has no macro category, so it is the X
@@ -226,7 +231,7 @@ await openRegister(page);
   });
   R.ok(t.refs.every(x => /^[A-Z]{1,2}-\d{3}$/.test(x)), 'a reference is a theme letter and a number (' + t.refs.join(' ') + ')');
   R.ok(t.nos.join(',') === t.nos.map((_, i) => i + 1).join(','), 'the numbers run in the order the risks were added');
-  R.ok(t.head[1] === 'Ref' && t.cells.every(c => /^[A-Z]{1,2}-\d{3}$/.test(c)), 'the register shows it in its own column');
+  R.ok(t.head[0] === 'Ref' && t.cells.every(c => /^[A-Z]{1,2}-\d{3}$/.test(c)), 'the register shows it in its own column');
   R.ok(t.seq === t.refs.length, 'the sequence is kept on the client as a high-water mark (' + t.seq + ')');
   R.ok(t.unlettered.every(x => /^X-/.test(x)), 'a risk with no category yet carries X until one is set (' + t.unlettered.join(' ') + ')');
   R.ok(new Set(Object.values(t.letters)).size === Object.keys(t.letters).length && !Object.values(t.letters).includes('X'),
@@ -253,12 +258,12 @@ await openRegister(page);
 // ── the whole point: re-scoring re-sorts the register, the references do not move ──
 {
   const t = await page.evaluate(() => {
-    const before = [...document.querySelectorAll('#rpTbody tr.rpt-row')].map(tr => tr.cells[1].textContent.trim());
+    const before = [...document.querySelectorAll('#rpTbody tr.rpt-row')].map(tr => tr.cells[0].textContent.trim());
     const r = S.riskProfile.find(x => x.id === 'v4');       // Medium, near the bottom
     const was = r.ref;
     r.likelihood = '5'; r.severity = '5';                   // now Critical, jumps up the list
     _macroExpandAll(true);
-    const after = [...document.querySelectorAll('#rpTbody tr.rpt-row')].map(tr => tr.cells[1].textContent.trim());
+    const after = [...document.querySelectorAll('#rpTbody tr.rpt-row')].map(tr => tr.cells[0].textContent.trim());
     return { was, now: r.ref, moved: before.join() !== after.join(),
       position: { before: before.indexOf(was), after: after.indexOf(was) } };
   });

@@ -48,12 +48,12 @@ await page.evaluate(d => { const st = _asState(); st.list.push({ id: 'as_last', 
   R.ok(one.on === 'r1,r7' && /^New: raised/.test(one.why) && /New: raised/i.test(one.page), 'Add puts the new issue on and keeps its reason on the page');
   R.ok(one.rows >= 1 && /Suggested for this month \(3\)/.test(one.left), 'an issue with nothing planned shows "No action yet, add one"; three are still suggested');
   await page.evaluate(() => t5AddAll());
-  const all = await page.evaluate(() => ({ on: S.actionSheets.working.items.map(i => i.ref.a).join(), strip: !!document.querySelector('.t5-strip-add'), whys: S.actionSheets.working.items.map(i => _t5WhyOf(i).replace(/\d+ \w{3} \d{4}/, 'DATE')) }));
-  R.ok(all.on === 'r1,r7,r2,r3,r4' && !all.strip, 'Add all fills the five, and the suggestion goes');
-  R.ok(all.whys.join(' | ') === 'Carried from last meeting | New: raised DATE | Check overdue: Fire alarm test (was due DATE) | Failed check DATE: Water temperature log | Highest open risk', 'every line carries its reason: ' + all.whys.join(' | '));
-  await page.evaluate(() => { t5Go(4); document.querySelector('.t5-off').click(); });
+  const all = await page.evaluate(() => ({ on: S.actionSheets.working.items.map(i => i.ref.a).join(), ladder: _riskDisplayOrder().map(r => r.id).filter(id => S.actionSheets.working.items.some(i => i.ref.a === id)).join(), strip: !!document.querySelector('.t5-strip-add'), whys: S.actionSheets.working.items.map(i => _t5WhyOf(i).replace(/\d+ \w{3} \d{4}/, 'DATE')) }));
+  R.ok(all.on.split(',').sort().join() === 'r1,r2,r3,r4,r7' && all.on === all.ladder && !all.strip, 'Add all fills the five in the ladder\'s order (6 November 2026), and the suggestion goes: ' + all.on);
+  R.ok(all.whys.slice().sort().join(' | ') === 'Carried from last meeting | Check overdue: Fire alarm test (was due DATE) | Failed check DATE: Water temperature log | Highest open risk | New: raised DATE', 'every line carries its reason: ' + all.whys.join(' | '));
+  await page.evaluate(() => { t5Go(S.actionSheets.working.items.findIndex(i => i.ref.a === 'r4')); document.querySelector('.t5-off').click(); });
   const off = await page.evaluate(() => ({ on: S.actionSheets.working.items.map(i => i.ref.a).join(), strip: (document.querySelector('.t5-strip-add') || {}).innerText || '' }));
-  R.ok(off.on === 'r1,r7,r2,r3' && /Suggested for this month \(1\)/.test(off.strip) && /Highest open risk/.test(off.strip), 'a risk taken off is suggested again; the ladder order stays the fallback');
+  R.ok(off.on.split(',').sort().join() === 'r1,r2,r3,r7' && /Suggested for this month \(1\)/.test(off.strip) && /Highest open risk/.test(off.strip), 'a risk taken off is suggested again; the ladder order stays the fallback');
   const red = await page.evaluate(() => { const rgb = c => { const m = /rgba?\((\d+), (\d+), (\d+)/.exec(c); return m ? [+m[1], +m[2], +m[3]] : null; }; const redish = c => { const x = rgb(c); return !!x && x[0] > 150 && x[1] < 110 && x[2] < 110; }; return [...document.querySelectorAll('#t5Ov .t5-strip-add *')].filter(e => { const s = getComputedStyle(e); return redish(s.color) || redish(s.backgroundColor); }).length; });
   R.ok(red === 0, 'no red');
   await page.evaluate(() => { closeLiveTop5(); delete S.actionSheets.working; });
@@ -61,7 +61,7 @@ await page.evaluate(d => { const st = _asState(); st.list.push({ id: 'as_last', 
 // ── the first meeting of all: the copy is the ladder's five, each with a reason ──
 {
   const t = await page.evaluate(() => { delete S.actionSheets; toggleRiskTop5('r5'); openLiveTop5(); const w = S.actionSheets.working; const out = { n: w.items.length, whys: w.items.map(i => _t5WhyOf(i)), strip: !!document.querySelector('.t5-strip-add') }; closeLiveTop5(); delete S.actionSheets; return out; });
-  R.ok(t.n === 4 && t.whys[0] === 'Ticked on the risk ladder' && t.whys.slice(1).every(x => x === 'Highest open risk') && t.strip, 'with no sheet yet the ladder\'s risks with open work are on (four here), tick first, each saying why, and the room is suggested: ' + t.whys.join(' | '));
+  R.ok(t.n === 4 && t.whys.filter(x => x === 'Ticked on the risk ladder').length === 1 && t.whys.filter(x => x === 'Highest open risk').length === 3 && t.strip, 'with no sheet yet the ladder\'s risks with open work are on (four here), in the ladder\'s order (6 November 2026), each saying why, and the room is suggested: ' + t.whys.join(' | '));
 }
 
 // ── C2: four plain groups, in order, every button kept ──

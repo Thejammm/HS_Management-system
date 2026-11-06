@@ -128,7 +128,7 @@ const before = await page.evaluate(() => ({ actions: JSON.stringify(S.riskProfil
       nos: [...o.querySelectorAll('.t5-table tbody tr.t5-row .t5-no')].map(x => x.innerText.trim()).join(), doing: [...o.querySelectorAll('.t5-table tbody tr.t5-row')].map(tr => tr.id.replace('rsr-', '')), placed: [...o.querySelectorAll('.rs-placed li b')].map(x => x.innerText), cols: [...o.querySelectorAll('.t5-table th')].map(x => x.innerText.trim().toLowerCase()).join('|'), raised: /Raised/.test(o.innerText) }; });
   R.ok(t.tab === 'loop' && !t.strip && t.full, 'a scored risk opens on the overview: no tab strip, a Full detail link');
   R.ok(/CURRENT RISK RATING 25 CRITICAL/i.test(t.tiles) && /TARGET RISK RATING 6/i.test(t.tiles), 'the issue in a few lines: current and target (' + t.tiles + ')');
-  R.ok(t.heads[0] === "WHAT WE'RE DOING ABOUT IT" && t.heads[1] === 'ALREADY IN PLACE' && t.cols === 'what|owner|target date|done', 'one list headed What we\'re doing about it, then Already in place (' + t.heads.join(', ') + ')');
+  R.ok(t.heads[0] === "WHAT WE'RE DOING ABOUT IT" && t.heads[1] === 'ALREADY IN PLACE' && t.cols === 'how we fix it|who|by when|is it enough|done', 'one list headed What we\'re doing about it, then Already in place (' + t.heads.join(', ') + ')');
   const all = ['a1', 'a2', 'a3', 'a4', 'c1', 'c2', 'c4', 'a5', 'c3'];
   R.ok(t.nos === '1,2,3,4,5,6,7', 'the rows are numbered from 1 (' + t.nos + ')');
   R.ok(t.doing.join() === 'a1,a2,a3,a4,c1,c2,c4' && t.placed.length === 2, 'every row appears exactly once: open actions, then the standing arrangements not in place (' + t.doing.join() + '); in place: ' + t.placed.join(' | '));

@@ -107,7 +107,7 @@ const ladder = () => page.evaluate(() => {
     window._roLocked = keep; renderLadder();
     return out;
   });
-  R.ok(t.boxes === 0 && t.star === '★', 'read-only, the column shows a star on the five and no boxes');
+  R.ok(t.boxes === 0 && t.star === '✓', 'read-only, the column shows a tick on the five and no boxes (on the ladder the star now means biggest faller, 6 November 2026)');
 }
 
 // ── no Top 5 Risks report any more ──

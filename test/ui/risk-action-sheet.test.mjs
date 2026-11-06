@@ -216,7 +216,7 @@ let riskShape = '', riskHeads = '';
     return out;
   }, month);
   R.ok(t.boxes === 0 && !t.tools, 'read-only: no boxes in either column, and no row of tools');
-  R.ok(t.shStar === '★' && t.shNone === '' && t.t5Star === '★', 'read-only: a star in the Sheet column for a risk on the sheet, and in the Top 5 column for a Top 5 risk');
+  R.ok(t.shStar === '✓' && t.shNone === '' && t.t5Star === '✓', 'read-only: a tick in the Sheet column for a risk on the sheet, and in the Top 5 column for a Top 5 risk (on the ladder the star now means biggest faller, 6 November 2026)');
   R.ok(t.back === 7, 'back in edit, the boxes are back');
 }
 

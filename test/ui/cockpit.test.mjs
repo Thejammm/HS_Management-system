@@ -25,7 +25,7 @@ await wait(page, 700);
     // the count on each rung must equal what the board model puts there - so
     // this holds whatever the fixture is, and catches a counter that drifts
     const rows = _boardModel().rows;
-    const want = ['Critical', 'High', 'Medium', 'Low'].map(b => ({ b, n: rows.filter(z => z.sc.priority === b).length }));
+    const want = ['Critical', 'High', 'Medium', 'Low'].map(b => ({ b, n: rows.filter(z => z.sc.priority === b && z.dep.ctl !== 'In place').length }));      // under control has dropped out of the ladder (6 November 2026)
     return { txt, want,
       counted: want.every(w => new RegExp(w.b.toUpperCase() + '\\s*' + w.n + ' risks?\\b').test(txt)) && /score \d+-\d+/.test(txt),
       demands: /first priority for resource/.test(txt) && /must never sit at 1 · Uncontrolled/.test(txt),

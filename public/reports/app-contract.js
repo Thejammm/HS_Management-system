@@ -292,10 +292,10 @@ export function hazardTypeOf(category, hazardText) {
 // _holdSummary - the consistency check diffs them.
 // ══════════════════════════════════════════════════════════════
 export const HOLD_STATES = {
-  held:     { k: 'held',     level: 4, label: 'Assured',      sub: 'Established & effective',      colour: '#3E9DAF', desc: 'Established and effective: controls recorded, and the plan delivered and signed off - or the risk formally accepted.' },
-  working:  { k: 'working',  level: 3, label: 'Managed',      sub: 'Established with gaps',        colour: '#757575', desc: 'Established with gaps: controls recorded and every gap has an owned, dated action - all on time.' },
-  slipping: { k: 'slipping', level: 2, label: 'Vulnerable',   sub: 'Deteriorating / at risk',      colour: '#4B5563', desc: 'Deteriorating: the plan is overdue, or actions are missing an owner or a date.' },
-  notheld:  { k: 'notheld',  level: 1, label: 'Uncontrolled', sub: 'Not established / ineffective', colour: '#1F2937', desc: 'Not established: above its residual target or not yet scored, with no plan and no formal acceptance.' },
+  held:     { k: 'held',     level: 4, label: 'Assured',      sub: 'Established & effective',      colour: '#16A34A', desc: 'Established and effective: controls recorded, and the plan delivered and signed off - or the risk formally accepted.' },
+  working:  { k: 'working',  level: 3, label: 'Managed',      sub: 'Established with gaps',        colour: '#F59E0B', desc: 'Established with gaps: controls recorded and every gap has an owned, dated action - all on time.' },
+  slipping: { k: 'slipping', level: 2, label: 'Vulnerable',   sub: 'Deteriorating / at risk',      colour: '#EA580C', desc: 'Deteriorating: the plan is overdue, or actions are missing an owner or a date.' },
+  notheld:  { k: 'notheld',  level: 1, label: 'Uncontrolled', sub: 'Not established / ineffective', colour: '#DC2626', desc: 'Not established: above its residual target or not yet scored, with no plan and no formal acceptance.' },
 };
 // "4 · Assured" - the level and the word together, for compact labels.
 export function hsLevel(k){ const st = HOLD_STATES[k]; return st ? (st.level + ' · ' + st.label) : ''; }
@@ -397,13 +397,13 @@ export function holdSummaryOf(state, tierOfRisk, opts = {}) {
   let pillT, pillC, verdict;
   if (!total) { pillT = 'no risks recorded'; pillC = '#8b949a'; verdict = 'Add the risks to the profile to see the position.'; }
   else if (breaches.length) {
-    pillT = breaches.length + ' need' + (breaches.length !== 1 ? '' : 's') + ' attention first'; pillC = '#1F2937';
+    pillT = breaches.length + ' need' + (breaches.length !== 1 ? '' : 's') + ' attention first'; pillC = '#DC2626';
     const names = breaches.slice(0, 2).map(b => b.name + ' (' + (b.hold.reasons[0] || b.breach) + ')');
     verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' identified. ' + breaches.length + ' need' + (breaches.length !== 1 ? '' : 's') + ' attention first: ' + names.join('; ') + (breaches.length > 2 ? ('; and ' + (breaches.length - 2) + ' more.') : '.');
   }
   else if (held === total) { pillT = 'all risks identified'; pillC = '#0f6f5c'; verdict = 'All ' + total + ' risk' + (total !== 1 ? 's are' : ' is') + ' identified - controls recorded, plans delivered and signed off, or formally accepted.'; }
   else {
-    pillT = 'working to plan'; pillC = '#4B5563';
+    pillT = 'working to plan'; pillC = '#c2740a';
     verdict = held + ' of ' + total + ' risk' + (total !== 1 ? 's' : '') + ' identified; ' + working + ' managed' + (slipping ? ('; ' + slipping + ' vulnerable') : '') + (notheld ? ('; ' + notheld + ' uncontrolled') : '') + '. Nothing needs attention first - every Critical and High risk is assured or managed on time.';
   }
   return { rows, total, held, working, slipping, notheld, breaches, nextWorst, pillT, pillC, verdict };

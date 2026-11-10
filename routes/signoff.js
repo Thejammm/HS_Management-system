@@ -134,8 +134,8 @@ function page(title, inner, extraHead) {
   button.sign:disabled{background:#b9bcbe;cursor:not-allowed;}
   .foot{font-size:12px;color:var(--muted);line-height:1.5;margin-top:14px;}
   .done{border-left:4px solid var(--accent);}
-  .bad{border-left:4px solid #4B5563;}
-  .err{color:#4B5563;font-weight:600;font-size:14px;margin-top:10px;min-height:20px;}
+  .bad{border-left:4px solid #B45309;}
+  .err{color:#B45309;font-weight:600;font-size:14px;margin-top:10px;min-height:20px;}
 </style></head><body><div class="wrap">${inner}</div></body></html>`;
 }
 

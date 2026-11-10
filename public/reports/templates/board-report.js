@@ -17,7 +17,7 @@ import '../accred-core.js';
 // state.reportPrefs['board-report'].hidden (locked sections always print).
 export const BOARD_SECTIONS = [
   { id: 'position',       label: 'Executive summary', locked: true, hsg: 'Headline, movement since the baseline, decisions required' },
-  { id: 'riskPicture',    label: 'Risk picture', hsg: 'How many risks, split by the controls judgement' },
+  { id: 'riskPicture',    label: 'Risk picture', hsg: 'How many risks, split red / amber / green by the controls judgement' },
   { id: 'riskJourney',    label: 'Risk journey', hsg: 'As-is to target: the company bar, the blue line, the improvement loop' },
   { id: 'riskLadder',     label: 'Risk ladder', hsg: 'Every named risk on the Critical-to-Low scale' },
   { id: 'fiveInHand',     label: 'Putting us at risk today', hsg: 'The worst five beside the five the business chose to work on' },
@@ -226,7 +226,7 @@ export function buildBoardReport(state, opts = {}) {
       { type: 'titleBlock', kicker: 'H&S dashboard', headline: 'The live picture, on one page.',
         standfirst: 'Every number here is derived from the live system as it stands today - the risk profile, the plan and the registers. Nothing is keyed in for the report.' },
       { type: 'kpiStrip', tiles: kpis },
-      { type: 'matrix5x5', counts: D.matrix, bands: D.bands, caption: 'Where every rated risk sits now, with controls in place (likelihood across, severity up; the number is how many risks sit in that square). Each square is shaded by its risk band: darkest for Critical, then High and Medium, teal for Low.' },
+      { type: 'matrix5x5', counts: D.matrix, bands: D.bands, caption: 'Where every rated risk sits now, with controls in place (likelihood across, severity up; the number is how many risks sit in that square). Each square is coloured by its risk band: red Critical, orange High, amber Medium, green Low.' },
       { type: 'distributionBars', title: 'How many risks sit in each band (with controls in place)', items: ['Critical', 'High', 'Medium', 'Low'].map(t => ({ label: t, n: D.byTier[t], colour: TIER_COLOURS[t] })) },
       expBars,
       { type: 'hierarchyStrip', title: 'How the risks are controlled - strongest measures first', items: D.hierarchy, total: D.hierTotal, protectDown: D.protectDown },
@@ -421,7 +421,7 @@ export function buildBoardReport(state, opts = {}) {
       ? { type: 'dataTable', title: 'RIDDOR reportable events',
           cols: [ { header: 'Date', w: '13%' }, { header: 'What happened', w: '52%' }, { header: 'Reported', w: '17%' }, { header: 'Status', w: '18%' } ],
           rows: incRid.slice(0, 6).map(i => [ fmtD(i.date), String(i.what || '(not recorded)').slice(0, 110),
-            { text: i.riddorDate ? fmtD(i.riddorDate) : 'not recorded', bold: true, color: i.riddorDate ? [22,120,60] : [31,41,55] },
+            { text: i.riddorDate ? fmtD(i.riddorDate) : 'not recorded', bold: true, color: i.riddorDate ? [22,120,60] : [197,32,32] },
             (i.status === 'Open' ? 'Open - under investigation' : (i.status || 'Closed')) ]),
           footnote: 'Reportable under RIDDOR 2013. The report date is the evidence the duty was discharged - an event without one needs checking.' }
       : { type: 'textBlock', title: 'RIDDOR reportable events', body: 'Nothing reportable under RIDDOR 2013 is recorded. Where a reportable event does occur the duty sits with the responsible person, and the date it was reported belongs on the incident register.' });
@@ -493,9 +493,9 @@ export function buildBoardReport(state, opts = {}) {
       ? { type: 'dataTable', title: 'Competence - where each person stands',
           cols: [ { header: 'Person', w: '30%' }, { header: 'Courses held', w: '16%' }, { header: 'Expired', w: '16%' }, { header: 'Expiring ≤60 days', w: '18%' }, { header: 'Position', w: '20%' } ],
           rows: people.slice(0, 10).map(p => [ p.name, String(p.held),
-            { text: String(p.expired), bold: !!p.expired, color: p.expired ? [31,41,55] : [110,110,110] },
-            { text: String(p.soon), color: p.soon ? [75,85,99] : [110,110,110] },
-            { text: p.expired ? 'lapsed' : (p.soon ? 'renewals due' : 'in date'), bold: true, color: p.expired ? [31,41,55] : (p.soon ? [75,85,99] : [22,128,60]) } ]),
+            { text: String(p.expired), bold: !!p.expired, color: p.expired ? [197,32,32] : [110,110,110] },
+            { text: String(p.soon), color: p.soon ? [180,110,10] : [110,110,110] },
+            { text: p.expired ? 'lapsed' : (p.soon ? 'renewals due' : 'in date'), bold: true, color: p.expired ? [197,32,32] : (p.soon ? [180,110,10] : [22,128,60]) } ]),
           footnote: (people.length > 10 ? ('Showing the 10 most pressing of ' + people.length + '. ') : '')
             + 'This reads what each person holds and whether it is in date. What each role SHOULD hold is not yet recorded - until the role requirements are set down, the required-versus-held gap cannot be evidenced.' }
       : { type: 'textBlock', title: 'Competence', body: 'No training matrix has been loaded, so nobody’s competence position can be evidenced yet. Load the matrix first; the next step after that is recording what each role should hold, so the gap between required and held can be shown.' });
@@ -519,7 +519,7 @@ export function buildBoardReport(state, opts = {}) {
         const od = rs.filter(r => r.nextDue && r.nextDue < todayIso).length;
         const label = ({ audiometry:'Audiometry (hearing)', havs:'Hand-arm vibration (HAVS)', respiratory:'Respiratory / lung function', skin:'Skin / dermatitis', asbestos:'Asbestos medical', lead:'Lead medical', radiation:'Ionising radiation medical', nightworker:'Night worker assessment', safetycrit:'Safety-critical medical', dse:'DSE eye and eyesight test', other:'Other surveillance' })[k] || k;
         const driver = ({ audiometry:'Control of Noise at Work Regulations 2005', havs:'Control of Vibration at Work Regulations 2005', respiratory:'COSHH 2002', skin:'COSHH 2002', asbestos:'Control of Asbestos Regulations 2012', lead:'Control of Lead at Work Regulations 2002', radiation:'Ionising Radiations Regulations 2017', nightworker:'Working Time Regulations 1998', dse:'Health and Safety (Display Screen Equipment) Regulations 1992' })[k] || '';
-        return [ label, String(rs.length), { text: String(od), color: od ? [31,41,55] : [110,110,110], bold: !!od }, { text: driver || '-', color: [110,110,110] } ];
+        return [ label, String(rs.length), { text: String(od), color: od ? [197,32,32] : [110,110,110], bold: !!od }, { text: driver || '-', color: [110,110,110] } ];
       });
       partnerOhBlocks.push({ type: 'dataTable', title: 'Surveillance programmes running',
         cols: [ { header: 'Programme', w: '34%' }, { header: 'People', w: '12%' }, { header: 'Overdue', w: '12%' }, { header: 'Why it is required', w: '42%' } ],
@@ -529,7 +529,7 @@ export function buildBoardReport(state, opts = {}) {
         cols: [ { header: 'Role', w: '24%' }, { header: 'Programme', w: '26%' }, { header: 'Outcome', w: '22%' }, { header: 'What is required', w: '28%' } ],
         rows: oh.act.slice(0, 6).map(r => [ r.role || '(role not recorded)',
           ({ audiometry:'Audiometry', havs:'HAVS', respiratory:'Respiratory', skin:'Skin', asbestos:'Asbestos medical', lead:'Lead medical', radiation:'Radiation medical', nightworker:'Night worker', safetycrit:'Safety-critical', dse:'DSE eye test', other:'Other' })[r.type || 'other'] || '-',
-          { text: r.outcome || '-', bold: true, color: (r.outcome === 'Not fit for the task' || r.outcome === 'Declined by employee') ? [31,41,55] : [75,85,99] },
+          { text: r.outcome || '-', bold: true, color: (r.outcome === 'Not fit for the task' || r.outcome === 'Declined by employee') ? [197,32,32] : [180,110,10] },
           String(r.restrictions || 'to be determined').slice(0, 90) ]),
         footnote: 'Named by role, not by person: the board needs to know an adjustment is required, not who it concerns.' });
     }
@@ -568,7 +568,7 @@ export function buildBoardReport(state, opts = {}) {
   // Accreditations and memberships actually held - the certificates a PQQ
   // asks for. Dates decide everything; nothing stores a status.
   const memAll = Array.isArray(state.memberships) ? state.memberships : [];
-  const memFlag = d => !d ? { t: 'no expiry recorded', c: [75,85,99] } : (d < todayIso ? { t: 'expired ' + fmtD(d), c: [31,41,55] } : (d <= soonIso ? { t: 'expires ' + fmtD(d), c: [75,85,99] } : { t: 'valid to ' + fmtD(d), c: [22,128,60] }));
+  const memFlag = d => !d ? { t: 'no expiry recorded', c: [180,110,10] } : (d < todayIso ? { t: 'expired ' + fmtD(d), c: [197,32,32] } : (d <= soonIso ? { t: 'expires ' + fmtD(d), c: [180,110,10] } : { t: 'valid to ' + fmtD(d), c: [22,128,60] }));
   if (!hide.memberships) {
     compBlocks.push(memAll.length
       ? { type: 'dataTable', title: 'Accreditation and memberships held',
@@ -649,9 +649,9 @@ export function buildBoardReport(state, opts = {}) {
         rows: bs.list.slice(0, 8).map(b => {
           const g = bs.gapsOf(b); const w = bs.waitOf(b);
           return [ b.name || '(unnamed)',
-            { text: b.duty || 'not recorded', color: b.duty ? [70, 70, 70] : [31, 41, 55] },
+            { text: b.duty || 'not recorded', color: b.duty ? [70, 70, 70] : [197, 32, 32] },
             (b.stage || 'not started') + (w ? (' \u00b7 ' + w.weeks + 'w') : ''),
-            { text: g.length ? g.join('; ') : 'nothing outstanding', color: g.length ? [31, 41, 55] : [22, 128, 60] } ];
+            { text: g.length ? g.join('; ') : 'nothing outstanding', color: g.length ? [197, 32, 32] : [22, 128, 60] } ];
         }),
         footnote: (bs.inScope > 8 ? ('Showing 8 of ' + bs.inScope + '. ') : '')
           + 'Building work on a higher-risk building must not start until Gateway 2 is approved, and it must not be occupied until Gateway 3 is passed. A stage shown with a week count is sitting with the regulator awaiting that decision.' });
@@ -675,7 +675,7 @@ export function buildBoardReport(state, opts = {}) {
       if (bad.length) partnerSupBlocks.push({ type: 'dataTable',
         cols: [ { header: 'Partner', w: '26%' }, { header: 'Type', w: '16%' }, { header: 'Status', w: '14%' }, { header: 'What is outstanding', w: '44%' } ],
         rows: bad.map(p => [ p.name || '(unnamed)', p.type || '-', p.status || '-',
-          { text: sup.gapsOf(p).join('; '), color: sup.gapsOf(p).some(g => g.indexOf('expired') >= 0) ? [31,41,55] : [110,110,110] } ]),
+          { text: sup.gapsOf(p).join('; '), color: sup.gapsOf(p).some(g => g.indexOf('expired') >= 0) ? [197,32,32] : [110,110,110] } ]),
         footnote: (sup.incomplete > 6 ? ('Showing 6 of ' + sup.incomplete + ' with something outstanding. ') : '')
           + 'A partner with expired insurance should not be working under the organisation’s control until it is renewed.' });
       if (sup.concerns.length) partnerSupBlocks.push({ type: 'dataTable', title: 'Performance concerns in the period',
@@ -713,7 +713,7 @@ export function buildBoardReport(state, opts = {}) {
   // overflow was cut at the page edge.
   const actRow = x => [ String(x.a.desc || '(no description)').slice(0, 90), x.parent || x.source,
     x.a.owner || 'no owner',
-    { text: x.a.due ? fmtD(x.a.due) : 'no date', bold: true, color: (x.a.due && x.a.due < todayIso) ? [31,41,55] : (x.a.due ? [110,110,110] : [75,85,99]) } ];
+    { text: x.a.due ? fmtD(x.a.due) : 'no date', bold: true, color: (x.a.due && x.a.due < todayIso) ? [197,32,32] : (x.a.due ? [110,110,110] : [180,110,10]) } ];
   const actCols = [ { header: 'Action', w: '42%' }, { header: 'From', w: '24%' }, { header: 'Owner', w: '17%' }, { header: 'By when', w: '17%' } ];
   const openRows = D.openActRows || [];
   if (!hide.outstanding) {
@@ -733,9 +733,9 @@ export function buildBoardReport(state, opts = {}) {
       ? { type: 'dataTable', title: 'High-risk actions - open on Critical and High risks',
           cols: [ { header: 'Action', w: '38%' }, { header: 'Risk', w: '24%' }, { header: 'Band', w: '10%' }, { header: 'Owner', w: '14%' }, { header: 'By when', w: '14%' } ],
           rows: hi.slice(0, 8).map(x => [ String(x.a.desc || '(no description)').slice(0, 80), x.parent || '-',
-            { text: x.tier, bold: true, color: x.tier === 'Critical' ? [31,41,55] : [75,85,99] },
+            { text: x.tier, bold: true, color: x.tier === 'Critical' ? [197,32,32] : [234,88,12] },
             x.a.owner || 'no owner',
-            { text: x.a.due ? fmtD(x.a.due) : 'no date', bold: true, color: (x.a.due && x.a.due < todayIso) ? [31,41,55] : [110,110,110] } ]),
+            { text: x.a.due ? fmtD(x.a.due) : 'no date', bold: true, color: (x.a.due && x.a.due < todayIso) ? [197,32,32] : [110,110,110] } ]),
           footnote: (hi.length > 8 ? ('Showing 8 of ' + hi.length + '. ') : '') + 'These carry the most risk of anything on the plan; they are the ones to ask about first.' }
       : { type: 'textBlock', title: 'High-risk actions', body: openRows.length ? 'No open action sits on a Critical or High risk - the work outstanding is on the lower-rated risks.' : 'Nothing is open on the plan.' });
   }
@@ -751,7 +751,7 @@ export function buildBoardReport(state, opts = {}) {
           rows: doneAll.slice(0, 12).map(w => [ String(w.desc).slice(0, 80), String(w.source || '-').slice(0, 36),
             w.created ? fmtD(w.created) : '-',
             w.when ? fmtD(w.when) : '-',
-            { text: w.accepted ? 'Risk accepted' : 'Delivered', bold: true, color: w.accepted ? [75,85,99] : [22,128,60] } ]),
+            { text: w.accepted ? 'Risk accepted' : 'Delivered', bold: true, color: w.accepted ? [180,110,10] : [22,128,60] } ]),
           footnote: (doneAll.length > 12 ? ('Showing the latest 12 of ' + doneAll.length + ' closed to date. ') : '')
             + 'Identified is when the action was raised; closed is when it was completed or the risk formally accepted. Delivered work stays on the plan as evidence.' }
       : { type: 'textBlock', title: 'Actions completed', body: 'Nothing has been closed off yet. If work is being done but not recorded as complete on the plan, the record undersells the business.' });
@@ -791,7 +791,7 @@ export function buildBoardReport(state, opts = {}) {
         ? { type: 'dataTable', title: 'Decisions still open - has this happened?',
             cols: [ { header: 'Decided', w: '12%' }, { header: 'Decision', w: '40%' }, { header: 'Where', w: '16%' }, { header: 'Owner', w: '16%' }, { header: 'By when', w: '16%' } ],
             rows: decOpen.map(d => [ fmtD(d.date), String(d.decision || '(not recorded)').slice(0, 110), d.forum || '-', d.owner || 'no owner',
-              { text: d.due ? fmtD(d.due) : 'no date', bold: true, color: (d.due && d.due < todayIso) ? [31,41,55] : [110,110,110] } ]),
+              { text: d.due ? fmtD(d.due) : 'no date', bold: true, color: (d.due && d.due < todayIso) ? [197,32,32] : [110,110,110] } ]),
             footnote: 'Each of these was agreed at an earlier meeting and is still open. The first item of business is to confirm whether it has happened, and to re-date or drop it if not.'
               + (dec.overdue ? (' ' + dec.overdue + ' ' + (dec.overdue !== 1 ? 'are' : 'is') + ' past the date given.') : '') }
         : { type: 'textBlock', title: 'Decisions still open', body: 'Nothing agreed at an earlier meeting is still outstanding - every decision taken has been delivered, superseded or consciously dropped.' });
@@ -852,10 +852,10 @@ export function buildBoardReport(state, opts = {}) {
             : (journey.pct != null ? (journey.pct + '% of the questions in scope are evidenced.') : 'Evidence under way.'),
           standfirst: 'Worked question by question on the Accreditation tab, against the scheme\u2019s own question sets. One answer covers every question that shares it, and the evidence behind each is checked for its date, its signature and its expiry.' + (renew ? ' ' + renew + '.' : '') },
         { type: 'distributionBars', title: 'The ' + journey.total + ' questions in scope', items: [
-          { label: 'Evidenced - in date', n: c.evidenced, colour: '#3E9DAF' },
-          { label: 'Due to expire within ' + AC.DUE_DAYS + ' days', n: c.due, colour: '#757575' },
-          { label: 'Rejected by the assessor', n: c.rejected, colour: '#1F2937' },
-          { label: 'Gap - nothing in date picked yet', n: c.gap, colour: '#1F2937' },
+          { label: 'Evidenced - in date', n: c.evidenced, colour: '#16A34A' },
+          { label: 'Due to expire within ' + AC.DUE_DAYS + ' days', n: c.due, colour: '#F59E0B' },
+          { label: 'Rejected by the assessor', n: c.rejected, colour: '#B42318' },
+          { label: 'Gap - nothing in date picked yet', n: c.gap, colour: '#DC2626' },
           { label: 'Not applicable, or answered elsewhere', n: c.na + c.elsewhere, colour: '#9CA3AF' },
         ] },
         { type: 'textBlock', title: 'The next step', body:
@@ -878,14 +878,14 @@ export function buildBoardReport(state, opts = {}) {
         standfirst: 'The Common Assessment Standard is the question set behind SSIP and principal-contractor approval. It is worked criterion by criterion on the Accreditation tab - this page is the running score, not the workload.' },
       ...(cas.assessed ? [
         { type: 'distributionBars', title: 'The ' + cas.assessed + ' criteria assessed so far', items: [
-          { label: 'Ready - evidence in place', n: cas.ready, colour: '#3E9DAF' },
-          { label: 'Partial - started, not finished', n: cas.partial, colour: '#757575' },
-          { label: 'Gap - nothing in place yet', n: cas.gap, colour: '#1F2937' },
+          { label: 'Ready - evidence in place', n: cas.ready, colour: '#16A34A' },
+          { label: 'Partial - started, not finished', n: cas.partial, colour: '#F59E0B' },
+          { label: 'Gap - nothing in place yet', n: cas.gap, colour: '#DC2626' },
           { label: 'Not applicable to this business', n: cas.na, colour: '#9CA3AF' },
         ] },
         { type: 'textBlock', title: 'The next step', body:
-          cas.gap ? ('Close the ' + countPhrase(cas.gap, 'gap', 'gaps') + ' before polishing anything partial - a single unanswered criterion holds the submission, a partial one only weakens it. Each gap on the Accreditation tab says what evidence it needs.')
-            : cas.partial ? ('No gaps are open - finish the ' + countPhrase(cas.partial, 'partial criterion', 'partial criteria') + ' and the assessment is done.')
+          cas.gap ? ('Close the ' + countPhrase(cas.gap, 'red criterion', 'red criteria') + ' before polishing anything amber - a single unanswered criterion holds the submission, a partial one only weakens it. Each red row on the Accreditation tab says what evidence it needs.')
+            : cas.partial ? ('No gaps are open - finish the ' + countPhrase(cas.partial, 'amber criterion', 'amber criteria') + ' and the assessment is done.')
             : 'Everything assessed so far is ready or not applicable. Keep going through the remaining criteria on the Accreditation tab; the submission pack builds itself from what is recorded.' },
       ] : [
         { type: 'textBlock', title: 'How this works', body: 'The standard is tackled a few criteria at a time on the Accreditation tab - each one asks for something the business either already holds (the app maps its own records to the criteria) or needs to put in place. Most clients find far more is already in place than they expected. Start with the sections the app has already mapped evidence for; this page then tracks the score as it climbs.' },
@@ -960,12 +960,12 @@ export function buildBoardReport(state, opts = {}) {
     picBlocks.push({ type: 'splitStrip',
       lead: { value: String(B.total), label: 'significant risks' },
       segments: [
-        { n: B.unc, label: 'uncontrolled', colour: '#1F2937' },
-        { n: B.part, label: 'no target set', colour: '#757575' },
-        { n: B.inplace, label: 'controlled', colour: '#3E9DAF' } ],
-      notes: [ { text: B.unc + ' of ' + B.total + ' uncontrolled - above the residual target', colour: '#1F2937' },
-               ...(B.part ? [{ text: B.part + ' with no residual target set', colour: '#4B5563' }] : []),
-               { text: B.inplace + ' controlled as reasonably practicable', colour: '#2B8FA6' } ] });
+        { n: B.unc, label: 'uncontrolled', colour: '#DC2626' },
+        { n: B.part, label: 'no target set', colour: '#F59E0B' },
+        { n: B.inplace, label: 'controlled', colour: '#16A34A' } ],
+      notes: [ { text: B.unc + ' of ' + B.total + ' uncontrolled - above the residual target', colour: '#DC2626' },
+               ...(B.part ? [{ text: B.part + ' with no residual target set', colour: '#B45309' }] : []),
+               { text: B.inplace + ' controlled as reasonably practicable', colour: '#15803d' } ] });
   }
   if (!hide.riskJourney) {
     // The celebration and the green fill require every rated risk to carry a
@@ -974,12 +974,12 @@ export function buildBoardReport(state, opts = {}) {
     picBlocks.push(B.rated
       ? { type: 'journeyStrip', fillPct: B.fillPct, tgtPct: B.tgtPct,
           atLine: jAtLine,
-          colour: jAtLine ? '#3E9DAF' : (TIER_COLOURS[B.nowBand] || '#b7b7ba'),
+          colour: jAtLine ? '#16A34A' : (TIER_COLOURS[B.nowBand] || '#b7b7ba'),
           flagLabel: (B.rated - B.tgtSet) ? ('Target line · drawn from the ' + B.tgtSet + ' risk' + (B.tgtSet !== 1 ? 's' : '') + ' with a planned score - ' + (B.rated - B.tgtSet) + ' of ' + B.rated + ' have none yet, so it moves as they are set') : 'Target line · every rated risk has a planned score',
           depPct: B.dep.total ? Math.round(B.dep.done / B.dep.total * 100) : null,
           depCounts: B.dep.total ? [
-            { value: B.dep.done + ' of ' + B.dep.total, label: 'planned controls and actions in place', colour: (B.dep.done === B.dep.total) ? '#3E9DAF' : undefined },
-            { value: String(B.overdue), label: countPhrase(B.overdue, 'action overdue', 'actions overdue').replace(/^\d+ /, ''), colour: B.overdue ? '#1F2937' : undefined } ] : null,
+            { value: B.dep.done + ' of ' + B.dep.total, label: 'planned controls and actions in place', colour: (B.dep.done === B.dep.total) ? '#16A34A' : undefined },
+            { value: String(B.overdue), label: countPhrase(B.overdue, 'action overdue', 'actions overdue').replace(/^\d+ /, ''), colour: B.overdue ? '#DC2626' : undefined } ] : null,
           counts: [
             { value: B.atTgt + ' of ' + B.rated, label: 'rated risks at their planned target', colour: '#2563EB' } ]
             .concat((B.total - B.rated) ? [{ value: String(B.total - B.rated), label: 'not yet rated' }] : []),
@@ -1007,7 +1007,7 @@ export function buildBoardReport(state, opts = {}) {
     const LAD_LINES = 22;
     const ladById = {}; ((state && state.riskProfile) || []).forEach(r => { if (r) ladById[r.id] = r; });
     const allRungs = TIER_ORDER.map(band => ({ band, colour: TIER_COLOURS[band], sub: LMEAN[band], range: LRANGE[band],
-      chips: B.rows.filter(z => z.tier === band).map(z => ({ name: z.name, dot: z.unc ? '#1F2937' : (z.part ? '#757575' : (z.reviewDue ? '#4B5563' : '#3E9DAF')), tick: z.atTarget, reviewDue: !!z.reviewDue, macro: macroOf(ladById[z.id], state) })) }));
+      chips: B.rows.filter(z => z.tier === band).map(z => ({ name: z.name, dot: z.unc ? '#DC2626' : (z.part ? '#F59E0B' : (z.reviewDue ? '#D97706' : '#16A34A')), tick: z.atTarget, reviewDue: !!z.reviewDue, macro: macroOf(ladById[z.id], state) })) }));
     const ladSlices = []; let _cur = []; let _used = 0;
     const _pushSlice = () => { if (_cur.length) { ladSlices.push(_cur); _cur = []; _used = 0; } };
     allRungs.forEach(r => {
@@ -1046,7 +1046,7 @@ export function buildBoardReport(state, opts = {}) {
     label: 'Risk ladder' + (ladBlocks.length > 1 ? (' · part ' + (i + 1) + ' of ' + ladBlocks.length) : ''), section: 'riskLadder', blocks: [ mast,
       { type: 'titleBlock', kicker: 'The risk ladder' + (ladBlocks.length > 1 ? (' \u00b7 part ' + (i + 1) + ' of ' + ladBlocks.length) : ''),
         headline: i === 0 ? 'Every named risk on the scale.' : 'The ladder, continued.',
-        standfirst: i === 0 ? 'Risk to the business from Critical down to Low, one line per risk. The dot carries the controls judgement - dark uncontrolled, grey no target set, teal controlled as reasonably practicable - and each level says what it demands.' : undefined },
+        standfirst: i === 0 ? 'Risk to the business from Critical down to Low, one line per risk. The dot carries the controls judgement - red uncontrolled, amber no target set, green controlled as reasonably practicable - and each level says what it demands.' : undefined },
       blk ],
   }));
   const fivePage = fiveBlocks.length ? {
@@ -1153,7 +1153,7 @@ export function buildBoardReport(state, opts = {}) {
     const insr = (Array.isArray(state.inspRegister) ? state.inspRegister : []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     const insOpen = insr.reduce((n, e) => n + (Number(((e.summary && e.summary.counts) || {}).open) || 0), 0);
     const insOver = insr.reduce((n, e) => n + (Number(((e.summary && e.summary.counts) || {}).overdue) || 0), 0);
-    const vCol = k => k === 'bad' ? [31,41,55] : k === 'warn' ? [75,85,99] : k === 'good' ? [22,128,60] : [110,110,110];
+    const vCol = k => k === 'bad' ? [197,32,32] : k === 'warn' ? [180,110,10] : k === 'good' ? [22,128,60] : [110,110,110];
     const p5 = item(5, insr.length ? (countPhrase(insr.length, 'inspection report', 'inspection reports') + ' on file, ' + noneOrCount(insOpen, 'finding still open', 'findings still open', 'no') + '.') : undefined, [
       { type: 'kpiStrip', tiles: [
         { value: String(X.siteDone), label: 'Site visits completed' },
@@ -1196,7 +1196,7 @@ export function buildBoardReport(state, opts = {}) {
         { value: psoOf ? (Math.round(psoOk / psoOf * 100) + '%') : '-', label: 'Sign-offs in place', note: psoOf ? (psoOk + ' of ' + psoOf) : 'nothing issued yet', tone: psoOf ? (psoOk === psoOf ? 'ok' : undefined) : 'muted' } ] },
       { type: 'dataTable', title: 'Signed for - the sign-off register',
         cols: [ { header: 'What has been issued', w: '46%' }, { header: 'Items', w: '14%' }, { header: 'Signed', w: '20%' }, { header: 'Still to sign', w: '20%' } ],
-        rows: psoGroups.map(r => [ r.label, String(r.n), r.of ? (r.ok + ' of ' + r.of) : '-', r.of ? { text: String(r.of - r.ok), bold: true, color: (r.of - r.ok) ? [75,85,99] : [22,128,60] } : '-' ]),
+        rows: psoGroups.map(r => [ r.label, String(r.n), r.of ? (r.ok + ' of ' + r.of) : '-', r.of ? { text: String(r.of - r.ok), bold: true, color: (r.of - r.ok) ? [180,110,10] : [22,128,60] } : '-' ]),
         footnote: psoStaff.length ? ('Across the ' + countPhrase(psoStaff.length, 'employee', 'employees') + ' on the register. A policy needs signing again after 12 months; a talk or CPD, once signed, stays signed.') : 'No employees are on the sign-off register yet.' },
       X.trnExpired.length ? { type: 'dataTable', title: 'Refreshers now due',
         cols: [ { header: 'Employee', w: '30%' }, { header: 'Course', w: '46%' }, { header: 'Expired', w: '24%' } ],
@@ -1225,7 +1225,7 @@ export function buildBoardReport(state, opts = {}) {
       nc.length
         ? { type: 'dataTable', title: 'Non-conformances - duties not in place or not adequate',
             cols: [ { header: 'Duty', w: '30%' }, { header: 'What is missing', w: '48%' }, { header: 'Standing', w: '22%' } ],
-            rows: nc.slice(0, 5).map(r => [ cut(r.duty, 40), cut(r.line, 90), { text: (r.nip ? 'Not in place' : 'Not adequate') + (r.due ? (' · by ' + fmtD(r.due)) : ''), bold: true, color: r.nip ? [31,41,55] : [75,85,99] } ]),
+            rows: nc.slice(0, 5).map(r => [ cut(r.duty, 40), cut(r.line, 90), { text: (r.nip ? 'Not in place' : 'Not adequate') + (r.due ? (' · by ' + fmtD(r.due)) : ''), bold: true, color: r.nip ? [197,32,32] : [180,110,10] } ]),
             footnote: nc.length > 5 ? ('5 of ' + nc.length + ' - the full list is on the Legal duties tab.') : undefined }
         : { type: 'textBlock', title: 'Non-conformances', body: legal.assessed ? 'Every assessed legal duty is in place and adequate.' : 'The Legal duties assessment has not been started, so non-conformances cannot be shown yet.' },
       { type: 'textBlock', title: 'Coming up', body: cut(comingUp || 'Nothing on the registers falls due in the next 60 days. Regulatory changes on the horizon are for discussion.', 420) },
@@ -1275,7 +1275,7 @@ export function buildBoardReport(state, opts = {}) {
       { type: 'decisionsPanel', title: 'Decisions required', items: decisions.slice(0, 4) },
       decOpenL.length ? { type: 'dataTable', title: 'Still open from earlier meetings - has this happened?',
         cols: [ { header: 'Decided', w: '14%' }, { header: 'Decision', w: '46%' }, { header: 'Owner', w: '20%' }, { header: 'By when', w: '20%' } ],
-        rows: decOpenL.slice(0, 4).map(d => [ fmtD(d.date), cut(d.decision || '(not recorded)', 90), d.owner || 'no owner', { text: d.due ? fmtD(d.due) : 'no date', bold: true, color: (d.due && d.due < todayIso) ? [31,41,55] : [110,110,110] } ]),
+        rows: decOpenL.slice(0, 4).map(d => [ fmtD(d.date), cut(d.decision || '(not recorded)', 90), d.owner || 'no owner', { text: d.due ? fmtD(d.due) : 'no date', bold: true, color: (d.due && d.due < todayIso) ? [197,32,32] : [110,110,110] } ]),
         footnote: decOpenL.length > 4 ? ('4 of ' + decOpenL.length + ' - the decisions register holds the rest.') : undefined } : null,
       { type: 'dataTable', title: 'Agreed in the meeting', cols: [ { header: 'Action / decision', w: '56%' }, { header: 'Who', w: '24%' }, { header: 'By when', w: '20%' } ],
         rows: [0, 1, 2, 3, 4, 5, 6].map(() => [' ', ' ', ' ']) },

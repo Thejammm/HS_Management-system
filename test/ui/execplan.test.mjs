@@ -136,9 +136,9 @@ await wait(page, 450);
         === _riskScore(S.riskProfile.find(r => r.id === 'v1')).priority };
   });
   R.ok(/What.s wrong/.test(t.header || ''), 'the first column says what it is (' + t.header + ')');
-  R.ok(t.fire.has && t.fire.colour === 'rgb(31, 41, 55)' && t.fireBand === 'Critical',
+  R.ok(t.fire.has && t.fire.colour === 'rgb(220, 38, 38)' && t.fireBand === 'Critical',
     'a Critical action is marked in the Critical colour (' + t.fireBand + ')');
-  R.ok(t.hand.has && t.hand.colour === 'rgb(117, 117, 117)' && t.handBand === 'Medium',
+  R.ok(t.hand.has && t.hand.colour === 'rgb(245, 158, 11)' && t.handBand === 'Medium',
     'a Medium action is marked in the Medium colour (' + t.handBand + ')');
   R.ok(t.agrees, 'the band is the register\'s own score, not a second opinion');
   R.ok(!t.free.has && /not tied to a rated risk/i.test(t.free.tip),
@@ -177,7 +177,7 @@ await wait(page, 450);
       lateTip: late ? (late.getAttribute('title') || '') : '',
       okBorder: ok ? (ok.getAttribute('style') || '') : '', okTip: ok ? (ok.getAttribute('title') || '') : '' };
   });
-  R.ok(/#1F2937/i.test(t.lateBorder) && t.lateWeight === '700' && /Overdue/.test(t.lateTip),
+  R.ok(/#DC2626/i.test(t.lateBorder) && t.lateWeight === '700' && /Overdue/.test(t.lateTip),
     'an overdue action shows it on its target date, not on a dot at the far left');
   R.ok(/var\(--border\)/.test(t.okBorder) && /On track/.test(t.okTip), 'an action on track leaves its date plain');
 }

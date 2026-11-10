@@ -78,7 +78,7 @@ await wait(page, 500);
   const left = await page.evaluate(() => { const said = ['tab-triage', 'tab-reports'].map(id => { switchTab(id.slice(4)); return document.getElementById(id).innerText; }).join(' '); switchTab('howto'); return said; });
   R.ok(!/cockpit.{0,3}s? (risk )?ladder|✎ Minutes on the cockpit|cockpit.s ✎ Minutes/i.test(left), 'Triage and Reports point at the Risk ladder, not the cockpit');
   const intro = await page.evaluate(() => { switchTab('ladder'); const t = document.querySelector('#ladderContainer .slt-muted').innerText; switchTab('howto'); return t; });
-  R.ok(/first Top 5 sheet takes these ticks/.test(intro) && !/pick the five here/.test(intro), 'the ladder says what its ticks really do: they feed the first sheet, and after that the five change on the sheet');
+  R.ok(/A Top 5 tick puts a risk on this month.s Top 5 whatever its rank/.test(intro) && !/pick the five here/.test(intro), 'the ladder says what its ticks really do: a ticked risk is on the Top 5 whatever its rank (Simon, 10 November 2026)');
   const words = await page.evaluate(() => document.getElementById('howtoContainer').innerText);
   R.ok(!/\bcontrol\b(?! measure)/i.test(words.replace(/under control|controlled|controls/gi, '')), 'its words: "under control", "controlled" and the back office\'s own "Controls and rating" only');
 }

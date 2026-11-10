@@ -93,7 +93,7 @@ R.ok(before.length === 1 && before[0].no === 1 && before[0].issuedAt === day(-29
       tiles: [...ov.querySelectorAll('.t5-tile')].map(x => x.innerText.replace(/\s+/g, ' ')).join(' / '), haz: (ov.querySelector('.t5-haz') || {}).innerText || '', kick: (ov.querySelector('.t5-kick') || {}).innerText || '', head: (ov.querySelector('.t5-h') || {}).innerText || '' };
   });
   R.ok(t.shown && /Top 5/.test(t.label), 'a clear button at the top of the Front door group (Stage C moved it from the header): "' + t.label + '"');
-  R.ok(t.open && t.nav === 5 && t.carried === 'r1,r2,r3,r4,r5', 'it opens on the five from the last sheet, a risk a screen');
+  R.ok(t.open && t.nav === 5 && t.carried === 'r1,r2,r3,r4,r6', 'it opens on the last sheet\'s five with the ladder\'s tick on in place of the lowest unticked (a tick is always on, Simon 10 November 2026), a risk a screen: ' + t.carried);
   R.ok(t.list === 1 && t.working && t.base, 'a working copy that starts from sheet 1: no new sheet number until Send');
   R.ok(t.heads === 'how we fix it|who|by when|is it enough|comments|done', 'the table: the one column order, then Comments and Done (6 November 2026): ' + t.heads);
   R.ok(/CURRENT RISK RATING 25 CRITICAL/i.test(t.tiles) && /TARGET RISK RATING 6/i.test(t.tiles) && /Unprotected roof edges/.test(t.haz) && /Fatal injury/.test(t.haz), 'heading, current and target rating, hazard: as the PDF page (' + t.tiles + ')');
@@ -256,7 +256,7 @@ const answer = async (k, boxes, how) => {
 // ── Send: the record, the PDF and the email ──
 {
   const noteMissing = await page.evaluate(() => (document.querySelector('.t5-strip:not(.t5-strip-stick):not(.t5-strip-add)') || {}).innerText || '');
-  R.ok(noteMissing.includes(REF.r6) && /takes that tick off/.test(noteMissing), 'a ladder tick not on this sheet is named before Send clears it');
+  R.ok(!/takes that tick off/.test(noteMissing), 'no ladder tick is left off the sheet, so Send has none to clear (Simon, 10 November 2026)');
   await page.evaluate(() => { window.__draw = []; });
   await page.evaluate(() => document.getElementById('t5SendBtn').click());
   await page.waitForFunction('window.__saved && window.__saved.length >= 1', { timeout: 20000 });
@@ -295,7 +295,7 @@ const answer = async (k, boxes, how) => {
   const one = s1.items.map(i => i.ref.b + ':' + i.decision).join();
   R.ok(s1.items.every(i => i.decision), 'sheet 1\'s lines read as what the meeting did with them, so an action is on one live sheet (' + one + ')');
   const ticks = await page.evaluate(m => ({ ticked: _top5List(m).map(a => a.ref.a).sort().join(), r6: _top5List(m).some(a => a.ref.a === 'r6') }), meet.slice(0, 7));
-  R.ok(!ticks.r6, 'Send sets the month\'s ladder ticks to the sheet: the odd tick is off');
+  R.ok(ticks.r6 && !ticks.ticked.split(',').includes('r5'), 'Send sets the month\'s ladder ticks to the sheet: the ticked risk on it stays ticked, the one it replaced is not (' + ticks.ticked + ')');
   const five = await page.evaluate(m => S.actionSheets.list.find(s => s.no === 2).items.map(i => ({ r: i.ref.a, o: _execOrigin(i.ref) })).filter(x => x.o && !_actClosed(x.o)).map(x => x.r).sort().join(), 0);
   R.ok(ticks.ticked === five, 'and the ladder shows the sheet\'s open risks (' + five + ')');
   R.ok(await page.evaluate(() => { openActionSheets('top5'); const t = document.getElementById('asOv').innerText, none = !document.querySelector('#asOv [onclick^="asDeleteSheet"]'); closeActionSheets(); return /Sheet 2/.test(t) && none; }), 'on the back office screen sheet 2 is a record: it cannot be deleted or rebuilt');
@@ -320,7 +320,7 @@ const answer = async (k, boxes, how) => {
   R.ok(t.baseNo === 2 && t.list === 2, 'it starts from sheet 2, and still no new number');
   R.ok(!t.a1Row, 'what was already done on the last sheet has dropped off the table');
   R.ok(!t.risks.includes('r2') && !t.risks.includes('r3') && !t.risks.includes('r4'), 'a risk with everything done is not carried: ' + t.risks);
-  R.ok(t.risks.includes('r1') && t.risks.includes('r5'), 'everything still open is');
+  R.ok(t.risks.includes('r1') && t.risks.includes('r6'), 'everything still open is, the ticked risk among it: ' + t.risks);
   R.ok(/still to be confirmed \(1\)/.test(t.strip) && t.strip.includes(REF.r4), 'done on a risk that has left the sheet: still asked about');
   R.ok(/Suggested for this month \(\d\)/.test(t.add) && /Highest open risk/.test(t.add) && t.add.includes('Add') && t.risks.split(',').length === 2, 'the next risk is suggested with its reason, not added: ' + t.add.replace(/\s+/g, ' ').slice(0, 90));
   R.ok(t.meet === day(0), 'the new meeting is dated today until you say otherwise');

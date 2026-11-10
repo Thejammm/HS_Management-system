@@ -3881,6 +3881,10 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .rpt td,.rpt th{overflow-wrap:anywhere;}
     .rpt th{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);text-align:left;padding:6px 8px;font-weight:600;border-bottom:1.5px solid var(--border);white-space:nowrap;}
     .rpt td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+    .rpt-t5 input{width:15px;height:15px;cursor:pointer;accent-color:var(--accent);}
+    .rp-t5{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border:1px solid var(--border);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);white-space:nowrap;cursor:pointer;}
+    .rp-t5:has(input:checked){border-color:var(--accent);color:var(--text);}
+    .rp-t5 input{margin:0;cursor:pointer;accent-color:var(--accent);}
     .rpt-row{cursor:pointer;}
     .rpt-row:hover td{background:var(--muted-bg);}
     .rpt-row.rpt-atline{background:linear-gradient(100deg,#16A34A14,#16A34A06 62%,transparent);}
@@ -17058,6 +17062,16 @@ function _riskTop5Action(r){
   const open=((r&&r.actions)||[]).filter(a=>a&&!a.deleted&&!a.hideFromPlan&&String(a.desc||'').trim()&&_actionStatus(a)!=='Complete'&&_actionStatus(a)!=='Accepted');
   return open.slice().sort((a,b)=>{ const ao=_actionStatus(a)==='Overdue'?0:1, bo=_actionStatus(b)==='Overdue'?0:1; if(ao!==bo) return ao-bo; return String(a.due||'9999').localeCompare(String(b.due||'9999')); })[0]||null;
 }
+// The Top 5 tick on the risk profile: the same mark as the ladder's tick, so either screen shows and changes
+// the one store (Simon, 10 November 2026: "add the top five radio button to the risk profile screen").
+function _riskT5BoxHTML(r, withWord){
+  const m5=_top5Month(), ml=esc(_top5MonthLabel(m5)), pick=_riskTop5Picked(r, m5), ro=_roLocked()||(typeof _empView==='function' && _empView());
+  const name=(_riskRefOf(r)?(_riskRefOf(r)+' '):'')+String(r.activity||r.hazard||'');
+  if(ro) return pick?('<span class="rp-t5-ro" title="On the Top 5 for '+ml+'">'+(withWord?'Top 5 ':'')+'\u2713</span>'):'';
+  const tip=pick?('On the Top 5 for '+ml+' - untick to take it off'):('Put this risk on the Top 5 for '+ml+', whatever its rank. Its most pressing open action is marked on the execution plan. Five at most.');
+  const box='<input type="checkbox" '+(pick?'checked ':'')+'onchange="toggleRiskTop5(\''+r.id+'\')" aria-label="Top 5 for '+ml+': '+esc(name)+'" title="'+tip+'">';
+  return withWord?('<label class="rp-t5 no-print" title="'+tip+'">'+box+'Top 5</label>'):box;
+}
 function _top5Repaint(){ saveData(); _refreshActionViews(); try{ if(document.getElementById('tab-cockpit').classList.contains('active')) _keepScroll(renderCockpit); }catch(e){} _ladderRepaint(); }
 function toggleRiskTop5(riskId){
   if(_blockIfReadOnly()) return;
@@ -24652,8 +24666,9 @@ function _asRiskOrder(){
   H.rows.slice().sort((a,b)=>_riskRankCmp(a.r,b.r)).forEach(add);
   return out;
 }
-// What goes on the next sheet, in order: anything carried back from the last
-// sheet; the actions marked Top 5 for the month; then one action a risk down
+// What goes on the next sheet, in order: the actions marked Top 5 for the
+// month (a tick outranks everything, Simon 10 November 2026); anything carried
+// back from the last sheet; then one action a risk down
 // the Top 5's ranking (its most pressing: overdue first, then soonest), so the
 // first sheet is the Top 5 itself; then the rest of each risk's actions a
 // round at a time; last, actions with no risk behind them.
@@ -24693,8 +24708,9 @@ function _asCandidates(exceptSheetId, kind){
   // the lines agreed with the client wait until everything else is out
   // ... except a line ticked for this month's Top 5: the tick outranks an earlier agreement
   const fresh=all.filter(c=>!c.agreed || c.top);
-  fresh.filter(c=>c.carry).sort(byRank).forEach(take);
+  // a tick for this month's Top 5 goes first, whatever its rank and whatever was carried (Simon, 10 November 2026)
   fresh.filter(c=>c.top).sort(byRank).forEach(take);
+  fresh.filter(c=>c.carry).sort(byRank).forEach(take);
   const perRisk={}; fresh.filter(c=>c.riskId && !used.has(c.key)).forEach(c=>{ (perRisk[c.riskId]=perRisk[c.riskId]||[]).push(c); });
   Object.keys(perRisk).forEach(id=>perRisk[id].sort(press));
   order.forEach(id=>{ if(!risksIn.has(id) && perRisk[id] && perRisk[id].length) take(perRisk[id].shift()); });
@@ -24769,7 +24785,7 @@ function _asRender(){
         +'<button class="btn btn-outline btn-sm" onclick="importActionSheet()" title="A sheet the client filled in on screen and sent back">⭱ Import a returned sheet</button>')
       +'<button class="btn btn-ghost btn-sm" onclick="closeActionSheets()">Close</button></div>'
     : '<div class="slt-bar">'+kinds+'<div class="slt-t"><div class="slt-k">Top 5 action sheet</div><div class="slt-h">'+esc(_sltClient())+'</div></div>'
-      +(ro?'':'<button class="btn btn-primary btn-sm" onclick="asNewSheet()"'+(draftOpen?' disabled title="Finish the draft sheet first"':' title="The Top 5 as ticked on the risk ladder, then on down the same ranking - anything carried back goes on first"')+'>＋ '+(sheets.length?'Next five':'First five')+'</button>'
+      +(ro?'':'<button class="btn btn-primary btn-sm" onclick="asNewSheet()"'+(draftOpen?' disabled title="Finish the draft sheet first"':' title="Every risk ticked for the Top 5 first, whatever its rank, then anything carried back, then on down the ladder"')+'>＋ '+(sheets.length?'Next five':'First five')+'</button>'
         +'<button class="btn btn-outline btn-sm" onclick="importActionSheet()" title="A sheet the client filled in on screen and sent back">⭱ Import a returned sheet</button>')
       +'<button class="btn btn-ghost btn-sm" onclick="closeActionSheets()">Close</button></div>';
   let intro;
@@ -26173,13 +26189,42 @@ function _t5TicksOff(w){
 }
 
 // ── the screen ──
+// Every risk ticked for this month's Top 5 is on the sheet as the meeting opens, whatever its rank
+// and whatever was carried from the last sheet (Simon, 10 November 2026: "if i tick it it should be in
+// the top 5"). To make room the lowest risk that is not ticked comes off; a ticked one never does.
+function _t5TickedRisks(month){
+  const seen=new Set(), out=[];
+  _top5List(month).forEach(a=>{ const r=_execRiskOf(a), o=_execOrigin(a.ref); if(r && o && !seen.has(r.id)){ seen.add(r.id); out.push({ r, a:o }); } });
+  return out.sort((x,y)=>_ladderCmp(x.r,y.r));      // the ladder's order
+}
+function _t5ApplyTicks(w){
+  if(!w || !Array.isArray(w.items)) return null;
+  const ticked=_t5TickedRisks(String(w.meetingDate||_asToday()).slice(0,7)); if(!ticked.length) return null;
+  const tick=new Set(ticked.map(z=>z.r.id)), order=_riskDisplayOrder(), added=[], off=[];
+  const name=r=>_riskRefOf(r)||_riskShort(r);
+  ticked.forEach(z=>{
+    if(w.items.some(it=>_t5RiskKey(it)===z.r.id)) return;
+    if(w.items.length>=AS_MAX){
+      let out=-1, low=-1;
+      w.items.forEach((it,i)=>{ const r=_execRiskOf({ ref:it.ref }); if(r && tick.has(r.id)) return; const k=r?order.indexOf(r):order.length; if(k>=low){ low=k; out=i; } });
+      if(out<0) return;
+      const gone=w.items.splice(out,1)[0], gr=_execRiskOf({ ref:gone.ref }); off.push({ k:gr?order.indexOf(gr):order.length, t:gr?name(gr):String(gone.risk||'a line') });
+    }
+    const it=_t5ItemCopy({ ref:{ t:'risk', a:z.r.id, b:z.a.id }, desc:z.a.desc||'', risk:z.r.activity||z.r.hazard||'', rec:'' }, 0);
+    it.whyText='Ticked for the Top 5';
+    w.items.push(it); added.push(name(z.r));
+  });
+  return added.length ? { added, off:off.sort((x,y)=>x.k-y.k).map(x=>x.t) } : null;
+}
 function openLiveTop5(){
   _t5Sent=null; _t5RO=null; _t5At=0; _t5Typed={};
-  try{ _t5SortItems(_t5W()); }catch(e){}      // the ladder's order, set as it opens: nothing moves while the meeting works on it
+  let ticks=null;
+  try{ const w=_t5W(); ticks=_t5ApplyTicks(w); if(ticks && !_roLocked()) scheduleAutoSave(); _t5SortItems(w); }catch(e){ console.error('Top 5 ticks',e); }      // the ladder's order, set as it opens: nothing moves while the meeting works on it
   let ov=document.getElementById('t5Ov');
   if(!ov){ ov=document.createElement('div'); ov.id='t5Ov'; ov.className='slt-ov'; document.body.appendChild(ov); }
   document.body.classList.add('slt-open');
   _t5Render(); ov.scrollTop=0;
+  if(ticks) showToast('Ticked for the Top 5, now on the sheet: '+ticks.added.join(', ')+(ticks.off.length?('. Taken off to make room: '+ticks.off.join(', ')+' ('+(ticks.off.length>1?'their':'its')+' actions stay on the plan)'):''),'info',7000);
 }
 function closeLiveTop5(){
   try{ const el=document.activeElement; if(el && el.blur) el.blur(); }catch(e){}
@@ -26239,7 +26284,7 @@ function _t5PageHTML(w, it, i, ro, dis){
   const r=_execRiskOf({ ref:it.ref });
   const name=r?_riskShort(r):(it.risk||'Action');
   const kick='Priority '+(i+1)+' of '+w.items.length;
-  const off=ro?'':'<button type="button" class="t5-link t5-off" onclick="t5RemoveRisk('+i+')" title="Takes this risk off the sheet. Its actions stay on the plan.">Take this risk off the sheet</button>';
+  const off=ro?'':'<button type="button" class="t5-link t5-off" onclick="t5RemoveRisk('+i+')" title="Takes this risk off the sheet, and off this month’s Top 5 ticks. Its actions stay on the plan.">Take this risk off the sheet</button>';
   const why=_t5WhyOf(it);
   const wrong=r?_asRiskWrong(r):[];
   const top=r ? ('<div class="t5-top" id="t5Top">'+_t5TileHTML('Current risk rating', _riskScore(r), 'Not yet rated')+'<div class="t5-arrow">→</div>'+_t5TileHTML('Target risk rating', _riskTarget(r), 'Target not yet set')
@@ -26420,8 +26465,14 @@ function t5AddRisk(rid){
 }
 function t5RemoveRisk(i){
   if(_blockIfReadOnly()) return;
-  const w=_t5W(); w.items.splice(i,1); _t5Typed={};
+  const w=_t5W(), it=w.items[i]; if(!it) return;
+  w.items.splice(i,1); _t5Typed={};
+  // a ticked risk taken off comes off the Top 5 ticks too, or it would be back when the meeting next opens (Simon, 10 November 2026)
+  const r=_execRiskOf({ ref:it.ref }), month=String(w.meetingDate||_asToday()).slice(0,7);
+  let unticked=false;
+  if(r) (r.actions||[]).forEach(a=>{ if(a && !a.deleted && a.top5===month){ a.top5=''; if(typeof _stamp==='function') _stamp(a,'updated'); unticked=true; } });
   scheduleAutoSave(); _t5Render();
+  if(unticked) showToast((_riskRefOf(r)||_riskShort(r))+' taken off the sheet, and its Top 5 tick with it. Its actions stay on the plan.','info');
 }
 
 // ── make it stick: one question, the close-out's own filing behind it ──
@@ -27214,7 +27265,7 @@ function renderLadder(){
   const w=COCKPIT_WIDGETS.boardLadder; let body='';
   try{ body=w.render(_cockpitContext()); }catch(e){ body='<div class="ckx-panel"><div class="ck-pending">The risk ladder could not render - '+esc(String(e && e.message || e))+'</div></div>'; }
   cont.innerHTML='<div class="ck-head"><h2>'+esc(_cockpitClientName())+'</h2><span class="ck-sub">Risk ladder</span></div>'
-    +'<div class="slt-muted" style="margin:-6px 0 12px;">The chart of every rated risk not yet under control, numbered from the highest current risk, with this month’s Top 5 and Risk Action Sheet ticks. Read it before the meeting. The first Top 5 sheet takes these ticks; after that the meeting opens from the last sheet and the five change there.</div>'
+    +'<div class="slt-muted" style="margin:-6px 0 12px;">The chart of every rated risk not yet under control, numbered from the highest current risk, with this month’s Top 5 and Risk Action Sheet ticks. Read it before the meeting. A Top 5 tick puts a risk on this month’s Top 5 whatever its rank: the meeting opens with every ticked risk on the sheet. Tick here or on the risk profile, five at most.</div>'
     +_ckTip('boardLadder', body);
 }
 function _ladderRepaint(){ try{ if(document.getElementById('tab-ladder').classList.contains('active')) _keepScroll(renderLadder); }catch(e){} }
@@ -27430,11 +27481,12 @@ function worksNote(rid, inPlace){
 // Gap 2: the ladder's top five against a full sheet. Named at the top of the
 // meeting, with a Swap. Nothing happens unless it is pressed.
 function _t5LadderMissing(w){ const on=new Set(w.items.map(_t5RiskKey)); return _ladderRows().slice(0,5).filter(r=>!on.has(r.id)); }
-// The lowest risk on the sheet that is not itself in the ladder's top five.
+// The lowest risk on the sheet that is neither in the ladder's top five nor ticked for the Top 5.
 function _t5SwapOut(w){
   const top=new Set(_ladderRows().slice(0,5).map(r=>r.id)), order=_riskDisplayOrder();
+  const tick=new Set(_t5TickedRisks(String(w.meetingDate||_asToday()).slice(0,7)).map(z=>z.r.id));      // a ticked risk is never swapped off (Simon, 10 November 2026)
   let out=-1, low=-1;
-  w.items.forEach((it,i)=>{ const r=_execRiskOf({ ref:it.ref }); if(r && top.has(r.id)) return; const k=r?order.indexOf(r):order.length; if(k>=low){ low=k; out=i; } });
+  w.items.forEach((it,i)=>{ const r=_execRiskOf({ ref:it.ref }); if(r && (top.has(r.id) || tick.has(r.id))) return; const k=r?order.indexOf(r):order.length; if(k>=low){ low=k; out=i; } });
   return out;
 }
 function _t5LadderStripHTML(w, ro){
@@ -27772,12 +27824,12 @@ async function downloadActionPlan(){
 const HOWTO_STEPS=[
   { n:1, title:'Company setup', opens:[{tab:'company'}], what:'Who the client is: the company, the senior leadership team (with emails), key personnel and business units.', how:'Fill in Company identity first. Add key personnel by name: they feed the owner lists. Then press From key personnel on the leadership team card to bring the directors across with their emails: the Top 5 email goes to them, and the leadership meeting starts with them in the room.', feeds:'Owner lists, the Top 5 email, the leadership meeting, every report header.' },
   { n:2, title:'Risk profile (Operation): the discovery questions', opens:[{tab:'risk'}], what:'The questions that tell Compass what the business does. Rules fire from the answers and suggest the risk themes.', how:'Answer them with the client, check the answers Compass flags (where the client’s own documents say otherwise, or two answers disagree), then build the profile. Get these right first: they drive the risks and the legal duties.', feeds:'The risk profile, the legal duties.' },
-  { n:3, title:'Risk profile (Operation): the register', opens:[{fn:function(){ _howtoRegister(); }}], what:'Every significant risk the business runs, each with its reference, tier, band and score. Add an issue in the sidebar captures something in one line; it waits at the top as To be assessed.', how:'The register runs in the ladder’s order; the Macro button groups it by theme when you want that. Open a risk. A scored risk opens on its overview: the issue, its rating, What we’re doing about it and Already in place. Full detail gives the numbered tabs: 1 Identify, 2 People & impact, 3 Controls & rating (the standing arrangements), 4 Action delegation & timescale. Every risk needs a score, a target, and an owner and a date on each action.', feeds:'The Risk ladder, the Top 5, the Client execution plan, every report.' },
+  { n:3, title:'Risk profile (Operation): the register', opens:[{fn:function(){ _howtoRegister(); }}], what:'Every significant risk the business runs, each with its reference, tier, band and score. Add an issue in the sidebar captures something in one line; it waits at the top as To be assessed.', how:'The register runs in the ladder’s order; the Macro button groups it by theme when you want that. Open a risk. A scored risk opens on its overview: the issue, its rating, What we’re doing about it and Already in place. Full detail gives the numbered tabs: 1 Identify, 2 People & impact, 3 Controls & rating (the standing arrangements), 4 Action delegation & timescale. Every risk needs a score, a target, and an owner and a date on each action. Tick Top 5, in the register’s last column or at the top of an open risk, to put it on this month’s Top 5 whatever its rank.', feeds:'The Risk ladder, the Top 5, the Client execution plan, every report.' },
   { n:4, title:'Legal duties', opens:[{tab:'requirements'}], what:'What the law requires of this business: the policy statement, the legal essentials and the duty headings.', how:'For each duty: is it in place, is it adequate, and what action is needed where it falls short. Tick the assessment criteria under each essential. A gap goes on the risk profile as a risk, so it is managed like any other.', feeds:'Risks on the profile, the Legal duties sheet, the board report.' },
   { n:5, title:'Maturity level', opens:[{tab:'maturity'}], what:'The consultant’s judgement of the six HSG65 areas, in words, not scores.', how:'Mark each area Weak, Developing, Adequate or Strong with a one-line reason. For Weak or Developing, Raise action puts the area on the risk profile and raises the action onto the Client execution plan.', feeds:'Risks on the profile, the Client execution plan, the audit narrative and the review.' },
   { n:6, title:'Cockpit', opens:[{tab:'cockpit'}], what:'The whole position on one screen: the risk picture, the risk journey, the plan delivered (it says what its total is made of) and what is putting the business at risk today. Hover over any block and it says what it shows and why it is there.', how:'Start every visit here. Click a figure to open what is behind it. Customise chooses which blocks this client sees, and their order.', feeds:'Nothing: it only reads the records. A wrong figure here means a record behind it needs correcting.' },
-  { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'The chart of every rated risk not yet under control, numbered from the highest current risk. This is the one order: the live Top 5, the Client execution plan and the risk profile all follow it, the suggested five are simply its top five, each risk showing its reference then the same short title. Risks with no score are flagged Not yet rated in their own section, off the chart. Risks with no target are listed under No target yet: they can never drop out until they have one.', how:'Read it like a music chart. Now is this month’s position, Last is last month’s, Mths is the months on the ladder, and Move is the symbol: ▲ climber, ▼ faller, = non-mover, NEW new entry, RE re-entry (was under control, came back), ★ biggest faller of the month. Falling is good news. Hover over any symbol for what it means on that risk. In the Not yet rated and No target yet sections, choose on the line and press Save: an unrated risk joins the chart. The boxes start empty and Compass suggests no score. A risk at or below its target drops out to the list at the foot, with the month it dropped out. Compass keeps a position snapshot each month by itself, so the moves show from the second month. The first Top 5 sheet takes the Top 5 ticks; after that the meeting opens from the last sheet and the five change there. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The first Top 5 sheet, the Risk Action Sheet, the Top 5 banner on the Client execution plan, and the order of every other list.' },
-  { n:8, title:'This month’s Top 5 (the meeting)', opens:[{fn:function(){ openLiveTop5(); }}], what:'The front door. One risk a screen, laid out like the sheet the leadership team know, edited live in the meeting.', how:'Open it on the laptop. Its risks run in the ladder’s order. The first time, it holds the ladder’s ticks topped up in ranking order; after that it opens from the last sheet with everything still open. When the sheet has room, Compass offers the next risks with a reason each; when it is full, a strip names the ladder’s top five not on it, and Swap takes the lowest risk off and puts that one on. Its actions stay on the plan. What’s wrong is above the table; against each action: How we fix it, Who, By when, Is it enough, Comments, Done. Done asks Where does this live now? Send saves the sheet as the record of the meeting, downloads the PDF in the same columns and opens the email; attach the PDF in Outlook.', feeds:'The actions themselves (tab 4, the Client execution plan), the sheets as sent, How the client works now.' },
+  { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'The chart of every rated risk not yet under control, numbered from the highest current risk. This is the one order: the live Top 5, the Client execution plan and the risk profile all follow it, the suggested five are simply its top five, each risk showing its reference then the same short title. Risks with no score are flagged Not yet rated in their own section, off the chart. Risks with no target are listed under No target yet: they can never drop out until they have one.', how:'Read it like a music chart. Now is this month’s position, Last is last month’s, Mths is the months on the ladder, and Move is the symbol: ▲ climber, ▼ faller, = non-mover, NEW new entry, RE re-entry (was under control, came back), ★ biggest faller of the month. Falling is good news. Hover over any symbol for what it means on that risk. In the Not yet rated and No target yet sections, choose on the line and press Save: an unrated risk joins the chart. The boxes start empty and Compass suggests no score. A risk at or below its target drops out to the list at the foot, with the month it dropped out. Compass keeps a position snapshot each month by itself, so the moves show from the second month. A Top 5 tick puts a risk on this month’s Top 5 whatever its rank, ahead of the suggested five and of anything carried from the last sheet. Tick here or on the risk profile, five at most. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The Top 5, the Risk Action Sheet, the Top 5 banner on the Client execution plan, and the order of every other list.' },
+  { n:8, title:'This month’s Top 5 (the meeting)', opens:[{fn:function(){ openLiveTop5(); }}], what:'The front door. One risk a screen, laid out like the sheet the leadership team know, edited live in the meeting.', how:'Open it on the laptop. Its risks run in the ladder’s order. Every risk ticked for the Top 5 is on it, whatever its rank. Any room left holds, the first time, the ladder’s top risks and, after that, what is still open from the last sheet. A risk ticked later goes on when the meeting next opens; if the sheet is full, the lowest unticked risk comes off to make room. Taking a risk off the sheet takes its tick off too. When the sheet has room, Compass offers the next risks with a reason each; when it is full, a strip names the ladder’s top five not on it, and Swap takes the lowest unticked risk off and puts that one on. Its actions stay on the plan. What’s wrong is above the table; against each action: How we fix it, Who, By when, Is it enough, Comments, Done. Done asks Where does this live now? Send saves the sheet as the record of the meeting, downloads the PDF in the same columns and opens the email; attach the PDF in Outlook.', feeds:'The actions themselves (tab 4, the Client execution plan), the sheets as sent, How the client works now.' },
   { n:9, title:'Action sheets (back office)', opens:[{fn:function(){ openActionSheets('top5'); }}], what:'The Top 5, Legal duties and Risk action sheets as PDFs for the client to fill in, and what comes back.', how:'Use it for a Legal duties or Risk action sheet, or when a sheet comes back by email. Import a returned sheet, then decide each line: agree it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Agreed writes the owner, date and comment to the action.', feeds:'The actions, the next sheet.' },
   { n:10, title:'Client execution plan', opens:[{label:'Client execution plan',tab:'execplan'},{label:'Actions',tab:'actions'}], what:'Every action across the business, under the risk it belongs to, highest current risk first. Each risk is a block: its reference, title, current and target score and one line of What’s wrong, then its numbered actions. Actions holds what the Inspection app raises, and shows only when that app is linked.', how:'The client’s own to-do list. Its columns are the order every list of actions uses: What’s wrong, How we fix it, Who, By when, Is it enough. Is it enough reads the risk: Yes when its current rating is at or below its target, Not yet when it is above, No target when none is set. When an action is done it says Done and where it now lives. Mark done closes one and asks where it lives. Print / PDF gives the same blocks as an A4 PDF, with the client name, date and page numbers. Click a figure at the top to narrow the list to it. Detail, for the consultant, shows Status, Priority, Source and the Top 5 tick. Change a date here and it changes on the risk. When the last action on a risk closes, Compass asks Is this issue now under control?', feeds:'The risk’s score and sign-off, How the client works now.' },
   { n:11, title:'Records: where the answers are filed', opens:[{label:'Documents',tab:'documents'},{label:'Sign-off register',tab:'signoff'},{label:'Toolbox talks',tab:'toolbox'},{label:'CPD library',tab:'cpd'}], what:'Where the answers to Where does this live now? are filed: a document on Documents, a briefing or talk on the Sign-off register, a regular check on Assurance records, a named person on Company setup.', how:'Documents holds links to the client’s own files with their review dates; nothing is uploaded. The Sign-off register issues anything people must sign for: each person gets a link and confirms on their phone. Toolbox talks and CPD library suggest topics for this kind of work; Issue puts one on the Sign-off register.', feeds:'How the client works now, the Evidence register, the Risk pathway.' },
@@ -28562,7 +28614,7 @@ function _macroKeys(){ const seen=[]; HAZARD_LIBRARY.forEach(t=>{ if(t.macroKey&
   return seen; }
 function _riskTableRowsHTML(){
   const rows=_riskVisibleRows();
-  if(!rows.length) return '<tr><td colspan="10" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
+  if(!rows.length) return '<tr><td colspan="11" style="padding:14px;color:var(--text-muted);font-size:12.5px;">No risks match this view - adjust the mode chips, the search or the filters.</td></tr>';
   if(_riskGroupMode==='macro'){
     // The macro layer: ONE grouping derivation (_riskMacroGroups) presented as
     // header rows here, headings on the pathway, subheads in the PDF.
@@ -28571,7 +28623,7 @@ function _riskTableRowsHTML(){
       const open=_macroIsOpen(g.k) || g.list.some(rr=>rr.id===_riskMacroLast);
       const head='<tr class="rpt-macro'+(g.allAt?' rpt-mac-at':'')+(open?' rpt-mac-open':' rpt-mac-closed')+'" onclick="_macroToggle(\''+g.k+'\')" title="Click to expand or collapse this category">'
         +'<td colspan="9" style="font-weight:700;"><span class="rpt-mac-chev" style="display:inline-block;width:14px;color:var(--text-muted);">'+(open?'\u25be':'\u25b8')+'</span><span class="rpt-mac-name">'+esc(g.name)+'</span>'+(g.allRev?' <span class="rpt-mac-rev" style="color:#16A34A;font-weight:700;font-size:11px;" title="All '+g.list.length+' risk'+(g.list.length!==1?'s':'')+' under this category reviewed and completed">\u2713</span>':'')+((g.k&&!_roLocked())?' <button type="button" class="btn btn-ghost btn-xs no-print" style="padding:1px 6px;font-size:11px;" onclick="_macroRenameStart(event,\''+g.k+'\')" title="Rename this macro category - the high level label, the detail stays on each risk">\u270e</button>':'')+'</td>'
-        +'<td style="text-align:left;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(g.atT?'#15803d':'var(--text-muted)')+';">'
+        +'<td colspan="2" style="text-align:left;font-size:11.5px;font-weight:600;white-space:nowrap;color:'+(g.atT?'#15803d':'var(--text-muted)')+';">'
         +((g.k&&g.worst)?_riskPrioBadge(g.worst,null)+' ':'')+esc(g.roll)+'</td></tr>';
       return head+(open?_riskRowHTML(g.list):'');
     };
@@ -28580,9 +28632,9 @@ function _riskTableRowsHTML(){
       const gs=groups.filter(g=>g.origin===o);
       const cnt=gs.reduce((s,g)=>s+g.list.length,0);
       const anyOpen=gs.some(g=>_macroIsOpen(g.k)||g.list.some(rr=>rr.id===_riskMacroLast));
-      const band='<tr class="rpt-band" onclick="_bandToggle(\''+o+'\')" title="Click to '+(anyOpen?'collapse':'expand')+' every category in this section"><td colspan="10">'+esc(_ORIGIN_LABEL[o])+(cnt?'<span class="rpt-band-n">'+cnt+' risk'+(cnt!==1?'s':'')+'</span>':'')+'</td></tr>';
+      const band='<tr class="rpt-band" onclick="_bandToggle(\''+o+'\')" title="Click to '+(anyOpen?'collapse':'expand')+' every category in this section"><td colspan="11">'+esc(_ORIGIN_LABEL[o])+(cnt?'<span class="rpt-band-n">'+cnt+' risk'+(cnt!==1?'s':'')+'</span>':'')+'</td></tr>';
       const filtered=!!_riskSearch||(_riskModeFilter&&_riskModeFilter!=='all')||Object.keys(_riskFilter||{}).some(k=>!!_riskFilter[k]);
-      return band+(gs.length?gs.map(groupHTML).join(''):(filtered?'<tr class="rpt-band-empty"><td colspan="10">Nothing in this section matches the current view.</td></tr>':'<tr class="rpt-band-empty"><td colspan="10">'+esc(_ORIGIN_EMPTY[o])+'</td></tr>'));
+      return band+(gs.length?gs.map(groupHTML).join(''):(filtered?'<tr class="rpt-band-empty"><td colspan="11">Nothing in this section matches the current view.</td></tr>':'<tr class="rpt-band-empty"><td colspan="11">'+esc(_ORIGIN_EMPTY[o])+'</td></tr>'));
     }).join('');
   }
   return _riskRowHTML(rows);
@@ -28603,6 +28655,7 @@ function _riskRowHTML(rows){
       +'<td>'+_riskPrioBadge(sc.priority,null)+'</td>'
       +'<td style="text-align:center;font-weight:800;">'+(sc.rating||'-')+'</td>'
       +'<td><span style="display:inline-flex;align-items:flex-start;gap:6px;font-size:12px;font-weight:600;"><i style="width:9px;height:9px;border-radius:50%;background:'+cdot+';display:inline-block;flex:0 0 auto;margin-top:4px;"></i><span>'+cword+'</span></span>'+((ctl==='In place'&&r.reviewDue&&!rvd)?'<div style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">review '+esc(fmtDate(r.reviewDue))+'</div>':'')+'</td>'
+      +'<td class="rpt-t5" onclick="event.stopPropagation()" style="text-align:center;">'+_riskT5BoxHTML(r,false)+'</td>'
       +'</tr>'; }).join('');
 }
 function _riskOpenModal(id){ const _r=(S.riskProfile||[]).find(x=>x.id===id); if(_r) _riskModeFilter=_riskMode(_r); _riskSel=id; _riskMacroLast=id; _riskSelTab=_rsDefaultTab(_r); _riskModalOpen=true; const sec=document.getElementById('wfRegister'); if(sec&&!sec.open) sec.open=true; _keepScroll(renderRiskProfile); }
@@ -28835,14 +28888,14 @@ function renderRiskProfile(){
     ? { cat:'Macro', flag:'Critical' }
     : _riskModeFilter==='hs' ? { cat:'Macro', flag:'SIF' }
     : { cat:'Macro', flag:'SIF' };
-  const table=`<div style="overflow-x:auto;"><table class="rpt"><colgroup><col style="width:52px"><col><col style="width:64px"><col style="width:58px"><col style="width:16%"><col style="width:12%"><col style="width:44px"><col style="width:84px"><col style="width:56px"><col style="width:15%"></colgroup><thead><tr>
+  const table=`<div style="overflow-x:auto;"><table class="rpt"><colgroup><col style="width:52px"><col><col style="width:64px"><col style="width:58px"><col style="width:16%"><col style="width:12%"><col style="width:44px"><col style="width:84px"><col style="width:56px"><col style="width:15%"><col style="width:52px"></colgroup><thead><tr>
       <th title="The letter is the risk theme, the number is the risk. A number is given once and never reused, so a reference always resolves to the same risk.">Ref</th>
       <th>Risk title</th>
       <th title="Health &amp; safety or Operational - tick to set what this risk IS; clicking the risk opens it as whatever is ticked">Kind</th>
       <th title="The risk's tier: 1 could kill, enforced hard · 2 serious harm to health · 3 day-to-day arrangements · 4 later lessons">Tier</th>
       <th>${_hh.cat}</th><th>Business area</th>
       <th style="text-align:center;" title="Could kill with today's controls (H&amp;S) / business-critical (operational)">${_hh.flag}</th>
-      <th>Band</th><th style="text-align:center;">Level</th><th>Controlled?</th>
+      <th>Band</th><th style="text-align:center;">Level</th><th>Controlled?</th><th style="text-align:center;" title="Tick to put this risk on this month’s Top 5, whatever its rank. Five at most; untick to take it off.">Top 5</th>
     </tr></thead><tbody id="rpTbody">${_riskTableRowsHTML()}</tbody></table></div>`;
   let modal='';
   if(_riskModalOpen && selR){
@@ -28860,6 +28913,7 @@ function renderRiskProfile(){
           <input class="rp-name" id="ract-${selR.id}" value="${esc(selR.activity||'')}" placeholder="Name the risk - what we are talking about"${ro?' disabled':''} oninput="updateRiskField('${selR.id}','activity',this.value)" title="The risk's title. Typing here and the Risk title field on the Identify tab are the same thing.">
           <span style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
             ${_riskControlStatus(selR)==='In place'?('<span class="badge" style="border-color:#16A34A;color:#16A34A;background:#16A34A1a;font-weight:700;white-space:nowrap;">Controlled as reasonably practicable \u2713</span>'+(selR.reviewDue?(_riskReviewDue(selR)?'<span class="badge" style="border-color:#D97706;color:#B45309;background:#D9770614;font-weight:700;white-space:nowrap;">Review due '+esc(fmtDate(selR.reviewDue))+'</span>':'<span class="badge badge-muted" style="white-space:nowrap;">Review '+esc(fmtDate(selR.reviewDue))+'</span>'):'')):''}
+            ${_riskT5BoxHTML(selR,true)}
             <span id="rprio-${selR.id}">${_riskPrioBadge(selSc.priority, selSc.rating)}</span>
             ${ro?'':`<button class="btn btn-ghost btn-xs no-print" title="Delete this risk" onclick="deleteRiskEntry('${selR.id}')">${_ic('trash',14)}</button>`}
           </span>

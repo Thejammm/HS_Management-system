@@ -97,7 +97,7 @@ await go();
   R.ok(!v.ro && !v.client && v.back, 'only the consultant sees the list: not a read-only login, not the client\'s view');
   // the guide says all this
   const g = await page.evaluate(() => { switchTab('howto'); const t = document.getElementById('howtoContainer').innerText; switchTab('cockpit'); return t; });
-  R.ok(/From key personnel/.test(g) && /Swap takes the lowest risk off/.test(g) && /Nothing typed reaches the record/.test(g), 'the guide covers all three');
+  R.ok(/From key personnel/.test(g) && /Swap takes the lowest unticked risk off/.test(g) && /Nothing typed reaches the record/.test(g), 'the guide covers all three');
 }
 // ── gap 4: not yet rated, flagged on the ladder with the boxes inline. Simon: "do not set any likelihood, severity or target scores yourself" ──
 {

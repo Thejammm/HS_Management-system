@@ -610,7 +610,7 @@ let s2;
   s2 = await sheet(2);
   // the two carried lines lead, in the Top 5's ranking as it stands now (it moves as risks are dealt with)
   const want = await page.evaluate(() => { const o = _asRiskOrder(); return ['a1', 'a5'].sort((x, y) => o.indexOf(x === 'a1' ? 'r1' : 'r3') - o.indexOf(y === 'a1' ? 'r1' : 'r3')).join(','); });
-  R.ok(s2 && s2.items.slice(0, 2).map(i => i.ref.b).join(',') === want, 'the next sheet leads with what was carried back, then carries on down the Top 5 (' + (s2 && s2.items.map(i => i.ref.b).join(',')) + ')');
+  R.ok(s2 && s2.items.slice(0, 3).map(i => i.ref.b).join(',') === 'a3,' + want, 'the next sheet leads with this month\'s Top 5 tick (a tick outranks a carry, Simon 10 November 2026), then what was carried back, then carries on down the Top 5 (' + (s2 && s2.items.map(i => i.ref.b).join(',')) + ')');
   const c1 = s2.items.find(i => i.ref.b === 'a1'), c5 = s2.items.find(i => i.ref.b === 'a5');
   R.ok(c1.rec === COMPROMISE && c1.carriedFrom === 1, 'the compromise goes out as that action’s recommended control');
   R.ok(c5.rec === RECS[2] && c5.carriedFrom === 1, 'a carried line keeps its recommendation');

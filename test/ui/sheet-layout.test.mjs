@@ -46,7 +46,7 @@ const { browser, page, errors } = await openApp();
 // ── the page as buildActionSheetPDF sets it out ──
 const W = 595.28, H = 841.89, ML = 40, MR = W - 40, CW = MR - ML, BOT = 60, TOPIN = H - 58;
 const INK = '1D1F20', ACC = '5980A6', GROUND = 'F2F2F3', PANEL = 'E6EDF4';
-const BANDC = { Critical: 'DC2626', High: 'EA580C', Medium: 'F59E0B', Low: '16A34A', '': '9CA3AF' };
+const BANDC = { Critical: '1F2937', High: '4B5563', Medium: '757575', Low: '3E9DAF', '': '9CA3AF' };
 // one line in the action column (the orchestrator, after the rendered pages): the same words under a control
 // not yet in place and for a risk with nothing open and no controls
 const GAP_CTL = 'No action identified - please propose';

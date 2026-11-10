@@ -142,29 +142,29 @@ test('attention list lives on its own page, never the front page', () => {
 test('five-list rows celebrate only at the residual target', () => {
   const html = twinPanels({
     left: { title: 'Highest-rated risks', empty: '-', rows: [
-      { name: 'Work at height', band: 'MEDIUM', bandColour: '#F59E0B', word: 'controlled as reasonably practicable', atTarget: true, both: false },
-      { name: 'Driving for work', band: 'HIGH', bandColour: '#EA580C', word: 'needs attention', atTarget: false, both: false } ] },
+      { name: 'Work at height', band: 'MEDIUM', bandColour: '#757575', word: 'controlled as reasonably practicable', atTarget: true, both: false },
+      { name: 'Driving for work', band: 'HIGH', bandColour: '#4B5563', word: 'needs attention', atTarget: false, both: false } ] },
     right: { title: 'This month’s five priorities', empty: '-', rows: [] } });
-  assert.match(html, /style="color:#16A34A">Work at height/);
-  assert.match(html, /color:#16A34A;font-weight:700">controlled as reasonably practicable/);
-  assert.doesNotMatch(html, /color:#16A34A">Driving for work/);
+  assert.match(html, /style="color:#3E9DAF">Work at height/);
+  assert.match(html, /color:#3E9DAF;font-weight:700">controlled as reasonably practicable/);
+  assert.doesNotMatch(html, /color:#3E9DAF">Driving for work/);
 });
 
 test('journey strip celebrates only at the planned target line', () => {
-  const at = journeyStrip({ fillPct: 71, tgtPct: 71, colour: '#16A34A', atLine: true, counts: [] });
+  const at = journeyStrip({ fillPct: 71, tgtPct: 71, colour: '#3E9DAF', atLine: true, counts: [] });
   assert.match(at, /Controlled as reasonably practicable/);
-  const short = journeyStrip({ fillPct: 57, tgtPct: 71, colour: '#EA580C', atLine: false, counts: [] });
+  const short = journeyStrip({ fillPct: 57, tgtPct: 71, colour: '#4B5563', atLine: false, counts: [] });
   assert.doesNotMatch(short, /Controlled as reasonably practicable/);
 });
 
 test('matrix squares are coloured by their band, on the tenant bands', () => {
   const html = matrix5x5({ counts: { '5|5': 2, '1|1': 1 }, bands: { med: 5, high: 10, crit: 16 } });
-  assert.match(html, /border-color:#DC2626;background:#DC2626/);  // 5x5 occupied = Critical red fill
-  assert.match(html, /border-color:#16A34A;background:#16A34A/);  // 1x1 occupied = Low green fill
-  assert.match(html, /style="border-color:#F59E0B"/);             // an empty Medium square keeps its border
+  assert.match(html, /border-color:#1F2937;background:#1F2937/);  // 5x5 occupied = Critical fill
+  assert.match(html, /border-color:#3E9DAF;background:#3E9DAF/);  // 1x1 occupied = Low green fill
+  assert.match(html, /style="border-color:#757575"/);             // an empty Medium square keeps its border
   // Tenant bands are honoured: crit at 4 turns a 2x2 square red.
   const custom = matrix5x5({ counts: { '2|2': 1 }, bands: { med: 2, high: 3, crit: 4 } });
-  assert.match(custom, /border-color:#DC2626;background:#DC2626/);
+  assert.match(custom, /border-color:#1F2937;background:#1F2937/);
 });
 
 // ── Document control: every report pulls its details from the register ──
@@ -448,9 +448,9 @@ test('macroOf: theme category, direct placement, tenant rename, none', () => {
 });
 
 test('ladder and twin panels carry the macro tag', () => {
-  const lad = riskLadder({ rungs: [{ band: 'High', colour: '#EA580C', sub: '', range: '', chips: [{ name: 'X', dot: '#DC2626', macro: 'Fire & explosion' }] }], unrated: [] });
+  const lad = riskLadder({ rungs: [{ band: 'High', colour: '#4B5563', sub: '', range: '', chips: [{ name: 'X', dot: '#1F2937', macro: 'Fire & explosion' }] }], unrated: [] });
   assert.ok(lad.includes('r-mac">Fire &amp; explosion'), 'ladder chip carries the tag');
-  const twin = twinPanels({ left: { title: 'L', rows: [{ name: 'X', band: 'HIGH', bandColour: '#EA580C', word: 'needs attention', atTarget: false, macro: 'Work at height' }] }, right: { title: 'R', rows: [] } });
+  const twin = twinPanels({ left: { title: 'L', rows: [{ name: 'X', band: 'HIGH', bandColour: '#4B5563', word: 'needs attention', atTarget: false, macro: 'Work at height' }] }, right: { title: 'R', rows: [] } });
   assert.ok(twin.includes('r-mac">Work at height'), 'twin row carries the tag');
 });
 
@@ -467,8 +467,8 @@ test('review due: the risk-level review date has passed on a controlled risk', (
 });
 
 test('ladder and twin panels render review due in amber wording', () => {
-  const lad = riskLadder({ rungs: [{ band: 'Low', colour: '#16A34A', sub: '', range: '', chips: [{ name: 'Fire', dot: '#D97706', reviewDue: true }] }], unrated: [] });
-  assert.ok(lad.includes('color:#B45309') && lad.includes('controlled - review due'), 'ladder chip amber, key names the state');
-  const twin = twinPanels({ left: { title: 'L', rows: [{ name: 'Fire', band: 'LOW', bandColour: '#16A34A', word: 'controlled - review due', atTarget: true, reviewDue: true }] }, right: { title: 'R', rows: [] } });
-  assert.ok(twin.includes('color:#B45309') && twin.includes('controlled - review due'), 'twin row amber');
+  const lad = riskLadder({ rungs: [{ band: 'Low', colour: '#3E9DAF', sub: '', range: '', chips: [{ name: 'Fire', dot: '#4B5563', reviewDue: true }] }], unrated: [] });
+  assert.ok(lad.includes('color:#4B5563') && lad.includes('controlled - review due'), 'ladder chip amber, key names the state');
+  const twin = twinPanels({ left: { title: 'L', rows: [{ name: 'Fire', band: 'LOW', bandColour: '#3E9DAF', word: 'controlled - review due', atTarget: true, reviewDue: true }] }, right: { title: 'R', rows: [] } });
+  assert.ok(twin.includes('color:#4B5563') && twin.includes('controlled - review due'), 'twin row amber');
 });

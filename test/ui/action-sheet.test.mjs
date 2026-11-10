@@ -209,7 +209,7 @@ const GAP = 'No action identified - please propose';      // one line in the act
 
 // ── the sheet itself ──
 const pdfPath = path.join(os.tmpdir(), 'action-sheet-test.pdf');
-const BAND = { Critical: 'DC2626', High: 'EA580C', Medium: 'F59E0B', Low: '16A34A' };
+const BAND = { Critical: '1F2937', High: '4B5563', Medium: '757575', Low: '3E9DAF' };
 {
   const t = await page.evaluate(async sid => {
     const b = await __build(sid), s = _asSheet(sid);

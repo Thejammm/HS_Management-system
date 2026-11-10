@@ -111,7 +111,7 @@ export function buildManagementPlan(state, opts = {}) {
   // ── 3 · Planning ─────────────────────────────────────────────
   const dutyRows = P.duties.sections.map(d => ([
     d.heading, String(d.items), String(d.assessed),
-    d.gaps ? { text: String(d.gaps), colour: '#DC2626', bold: true } : '0',
+    d.gaps ? { text: String(d.gaps), colour: '#1F2937', bold: true } : '0',
     String(d.compliant),
   ]));
   const page3 = {
@@ -120,7 +120,7 @@ export function buildManagementPlan(state, opts = {}) {
       sec(3, 'What we found'),
       { type: 'textBlock', body: 'Every risk is rated on likelihood against severity, both as it would be without controls and as it stands with them. The matrix below is where the risks sit now, with the controls in place.' },
       { type: 'matrix5x5', counts: D.matrix, bands: D.bands,
-        caption: 'Where each risk sits now, with controls in place (likelihood x severity). Red Critical, orange High, amber Medium, green Low.' },
+        caption: 'Where each risk sits now, with controls in place (likelihood x severity). Darkest for Critical, then High and Medium, teal for Low.' },
       { type: 'kpiStrip', tiles: [
         { value: String(D.byTier.Critical), label: 'Critical', tone: D.byTier.Critical ? 'bad' : 'ok' },
         { value: String(D.byTier.High), label: 'High', tone: D.byTier.High ? 'warn' : 'ok' },
@@ -296,7 +296,7 @@ export function buildManagementPlan(state, opts = {}) {
   const routineRows = P.routines.slice(0, 14).map(r => ([
     r.item, r.frequency || '-', r.owner || r.area || '-',
     r.last ? fmtD(r.last) : '-',
-    r.due ? { text: fmtD(r.due), colour: (r.due < P.today ? '#DC2626' : undefined), bold: r.due < P.today } : '-',
+    r.due ? { text: fmtD(r.due), colour: (r.due < P.today ? '#1F2937' : undefined), bold: r.due < P.today } : '-',
   ]));
   const page6 = {
     label: 'Checking', blocks: [
@@ -332,7 +332,7 @@ export function buildManagementPlan(state, opts = {}) {
       String(x.a.desc || '(no description)'),
       x.label || x.source,
       String(x.a.owner || '-'),
-      x.a.due ? { text: fmtD(x.a.due), colour: (x.a.due < P.today ? '#DC2626' : undefined), bold: x.a.due < P.today } : 'no date',
+      x.a.due ? { text: fmtD(x.a.due), colour: (x.a.due < P.today ? '#1F2937' : undefined), bold: x.a.due < P.today } : 'no date',
     ]));
   const page7 = {
     label: 'Improvement', blocks: [

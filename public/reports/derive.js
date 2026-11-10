@@ -37,7 +37,7 @@ export function tierFor(score, bands = DEFAULT_BANDS) {
 // The SAME band colours the app shows on screen (_RISK_PRIO_COLOR) - red,
 // orange, amber, green. The report used to carry its own editorial palette
 // (blue Low); a director comparing screen and paper saw two colour languages.
-export const TIER_COLOURS = { Critical: '#DC2626', High: '#EA580C', Medium: '#F59E0B', Low: '#16A34A' };
+export const TIER_COLOURS = { Critical: '#1F2937', High: '#4B5563', Medium: '#757575', Low: '#3E9DAF' };
 export const TIER_ORDER = ['Critical', 'High', 'Medium', 'Low'];
 
 // ── Scores ──

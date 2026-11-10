@@ -329,7 +329,7 @@ await page.evaluate(() => {
   R.ok(t.mode === 'level' && /Risk level/.test(t.on), 'Risk level is on once chosen (' + t.mode + ')');
   const bandsOf = L => L.map(l => l.bands.length === 1 ? l.bands[0] : ('mixed:' + l.bands.join('+')));
   R.ok(bandsOf(t.high).join(',') === 'Critical,High,Medium,Low,Not rated', 'one block a band, worst first: ' + bandsOf(t.high).join(', '));
-  const RGB = { Critical: '220, 38, 38', High: '234, 88, 12', Medium: '245, 158, 11' };
+  const RGB = { Critical: '31, 41, 55', High: '75, 85, 99', Medium: '117, 117, 117' };
   const heads = t.high.map(l => {
     const b = l.bands[0], hasName = l.head.toLowerCase().indexOf(String(b).toLowerCase()) >= 0;
     const hasN = new RegExp('(^|\\D)' + l.n + '(\\D|$)').test(l.head);

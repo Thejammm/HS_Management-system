@@ -299,7 +299,7 @@ export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note, atLi
     ${atLine ? '<div class="r-jny-alarp">Controlled as reasonably practicable &#10003; - the position has reached the planned target line</div>' : ''}
     <div class="r-jny-counts">${counts.map(c => `<span><b${c.colour ? ` style="color:${c.colour}"` : ''}>${esc(c.value)}</b> ${esc(c.label)}</span>`).join('')}</div>
     ${depPct == null ? '' : `<div class="r-jny-dep"><div class="r-jny-deph">Plan delivered <i>what is in place now</i></div>
-      <div class="r-jny-track r-jny-track2"><i class="r-jny-fill" style="width:${Math.max(depPct ? 2 : 0, depPct)}%;background:${depPct >= 100 ? '#16A34A' : '#0E8F7E'}"></i></div>
+      <div class="r-jny-track r-jny-track2"><i class="r-jny-fill" style="width:${Math.max(depPct ? 2 : 0, depPct)}%;background:${depPct >= 100 ? '#3E9DAF' : '#0E8F7E'}"></i></div>
       <div class="r-jny-counts">${(depCounts || []).map(c => `<span><b${c.colour ? ` style="color:${c.colour}"` : ''}>${esc(c.value)}</b> ${esc(c.label)}</span>`).join('')}</div></div>`}
     ${note ? `<div class="r-footnote">${esc(note)}</div>` : ''}
     ${loop ? `<div class="r-jny-loop">${esc(loop)}</div>` : ''}
@@ -314,9 +314,9 @@ export function riskLadder({ rungs, unrated }) {
     return `<div class="r-lad-row" style="background:linear-gradient(100deg,${r.colour}${wa},${r.colour}08 62%,transparent);border-radius:4px;">
       <span class="r-lad-frame"><i class="r-lad-rail" style="background:${r.colour}55"></i><i class="r-lad-rail r-lad-rail2" style="background:${r.colour}55"></i><i class="r-lad-bar" style="background:${r.colour}"></i></span>
       <span class="r-lad-label"><b style="color:${r.colour}">${(r.count === 0 || r.count) ? `<i style="font-size:13px;font-style:normal;">${esc(String(r.count))}</i> ` : ''}${esc(String(r.band).toUpperCase())}</b><i class="r-lad-range"> · score ${esc(r.range || '')}</i><span class="r-lad-sub">${esc(r.sub || '')}</span></span>
-      <span class="r-lad-chips">${r.chips.length ? r.chips.map(c => `<span class="r-lad-line"${c.reviewDue ? ' style="color:#B45309"' : (c.dot === '#16A34A' ? ' style="color:#16A34A"' : '')}><i style="background:${c.dot}"></i>${esc(c.name)}${c.macro ? `<em class="r-mac">${esc(c.macro)}</em>` : ''}</span>`).join('') : '<span class="r-footnote">None at this level.</span>'}</span>
+      <span class="r-lad-chips">${r.chips.length ? r.chips.map(c => `<span class="r-lad-line"${c.reviewDue ? ' style="color:#4B5563"' : (c.dot === '#3E9DAF' ? ' style="color:#3E9DAF"' : '')}><i style="background:${c.dot}"></i>${esc(c.name)}${c.macro ? `<em class="r-mac">${esc(c.macro)}</em>` : ''}</span>`).join('') : '<span class="r-footnote">None at this level.</span>'}</span>
     </div>`; }).join('');
-  const key = `<div class="r-lad-key"><span><i style="background:#DC2626"></i>uncontrolled</span><span><i style="background:#F59E0B"></i>no residual target set</span><span><i style="background:#16A34A"></i>controlled as reasonably practicable</span><span><i style="background:#D97706"></i>controlled - review due</span></div>`;
+  const key = `<div class="r-lad-key"><span><i style="background:#1F2937"></i>uncontrolled</span><span><i style="background:#757575"></i>no residual target set</span><span><i style="background:#3E9DAF"></i>controlled as reasonably practicable</span><span><i style="background:#4B5563"></i>controlled - review due</span></div>`;
   return `<div class="r-lad">${rows || '<div class="r-footnote">No rated risks yet.</div>'}
     ${unrated && unrated.length ? `<div class="r-footnote">${unrated.length} risk${unrated.length !== 1 ? 's' : ''} not yet rated - ${unrated.map(esc).join(', ')}</div>` : ''}
     ${key}</div>`;
@@ -367,9 +367,9 @@ export function twinPanels({ left, right, footnote }) {
     ${p.rows.length ? p.rows.map((r, i) => `<div class="r-twin-row">
       <b class="r-twin-rank">${i + 1}</b>
       <i class="r-twin-both"${r.both ? '' : ' style="visibility:hidden"'}>&#9679;</i>
-      <span class="r-twin-name"${r.reviewDue ? ' style="color:#B45309"' : (r.atTarget ? ' style="color:#16A34A"' : '')}>${esc(r.name)}${r.macro ? `<em class="r-mac">${esc(r.macro)}</em>` : ''}</span>
+      <span class="r-twin-name"${r.reviewDue ? ' style="color:#4B5563"' : (r.atTarget ? ' style="color:#3E9DAF"' : '')}>${esc(r.name)}${r.macro ? `<em class="r-mac">${esc(r.macro)}</em>` : ''}</span>
       <span class="r-twin-band" style="background:${r.bandColour}">${esc(r.band)}</span>
-      <span class="r-twin-word"${r.reviewDue ? ' style="color:#B45309;font-weight:700"' : (r.atTarget ? ' style="color:#16A34A;font-weight:700"' : '')}>${esc(r.word)}</span>
+      <span class="r-twin-word"${r.reviewDue ? ' style="color:#4B5563;font-weight:700"' : (r.atTarget ? ' style="color:#3E9DAF;font-weight:700"' : '')}>${esc(r.word)}</span>
     </div>`).join('') : `<div class="r-footnote">${esc(p.empty || 'Nothing yet.')}</div>`}</div>`;
   return `<div class="r-twin">${panel(left)}${panel(right)}</div>${footnote ? `<div class="r-footnote">${esc(footnote)}</div>` : ''}`;
 }

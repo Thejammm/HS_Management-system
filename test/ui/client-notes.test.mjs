@@ -75,6 +75,8 @@ await page.evaluate(() => {
   window.__cell = c => (c == null ? '' : (typeof c === 'object' ? String(c.text !== undefined ? c.text : (c.pill !== undefined ? c.pill : '')) : String(c)));
   window.__colour = c => (c && typeof c === 'object' && Array.isArray(c.color)) ? c.color : null;
   window.__red = c => { const k = __colour(c); return !!k && k[0] > 150 && k[1] < 90 && k[2] < 90; };
+  // overdue, since no red (Simon, 6 November 2026): the ladder's ink, in bold
+  window.__late = c => { const k = __colour(c); return !!k && k.join() === '31,41,55' && !!(c && c.bold); };
   // Watch the report being built: every heading, line of text, key-value and
   // table it draws through the PDF kit, in order, plus any text drawn on the
   // page directly (a heading the kit was not used for).
@@ -149,8 +151,8 @@ await page.evaluate(() => {
       // the notes may be drawn as text or as a Notes key-value - either way after Present
       noteIdx: ms.map(m => m.seg.findIndex(e => e.k !== 'table' && !(e.k === 'kv' && /^Present:/.test(e.s)) && /Still talking about the paint store|Walked the yard with Jo|No notes\./.test(e.s))),
       tables: ms.map(m => __table(m.seg)),
-      redOld1: (() => { const tb = __table((ms[2] || { seg: [] }).seg); const r = tb && tb.rows.find(x => /forklift route/.test(x.cells[0])); return r ? __red(r.raw[2]) : null; })(),
-      redOld2: (() => { const tb = __table((ms[2] || { seg: [] }).seg); const r = tb && tb.rows.find(x => /racking labels/.test(x.cells[0])); return r ? __red(r.raw[2]) : null; })(),
+      redOld1: (() => { const tb = __table((ms[2] || { seg: [] }).seg); const r = tb && tb.rows.find(x => /forklift route/.test(x.cells[0])); return r ? __late(r.raw[2]) : null; })(),
+      redOld2: (() => { const tb = __table((ms[2] || { seg: [] }).seg); const r = tb && tb.rows.find(x => /racking labels/.test(x.cells[0])); return r ? __late(r.raw[2]) : null; })(),
       due: { old1: fmtDate(D.OLD1DUE), old2: fmtDate(D.OLD2DUE), open1: fmtDate(D.OPEN1DUE) },
     };
   }, { TODAY, MID, OLD, EMPTY, OLD1DUE: day(-10), OLD2DUE: day(20), OPEN1DUE: day(15) });
@@ -180,7 +182,7 @@ await page.evaluate(() => {
   R.ok(!!(old2 && old2[1] === 'Jo Fine' && old2[2] === t.due.old2 && (old2[3] === 'On the plan' || old2[3] === 'In progress')),
     'an action raised onto the plan says so - or where its plan action now stands: ' + (old2 || []).join(' | '));
   R.ok(!!(mid1 && (mid1[3] === 'On the plan' || mid1[3] === 'Not started')), 'every raised action does: ' + (mid1 || []).join(' | '));
-  R.ok(t.redOld1 === true && t.redOld2 === false, 'a date that has passed on an open action prints in red; one still to come does not');
+  R.ok(t.redOld1 === true && t.redOld2 === false, 'a date that has passed on an open action prints in bold ink (no red); one still to come does not');
 }
 
 // ── 3. Download: saved through the one door, with a word to say so ──

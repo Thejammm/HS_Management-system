@@ -284,7 +284,7 @@ export function splitStrip({ lead, segments, notes }) {
 
 // The company journey: started -> now (fill, band colour) -> blue target
 // line -> fully controlled, with the counts and the improvement loop beneath.
-export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note, atLine, flagLabel, startPct, depPct, depCounts }) {
+export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note, atLine, flagLabel, startPct, depPct, depCounts, depNote }) {
   const line = (tgtPct == null) ? '' : `<i class="r-jny-line" style="left:${tgtPct}%"></i>`;
   // The two ends are the only things above the gauge; the line gets an arrow
   // in a row of its own beneath it, and the sentences sit left-aligned under
@@ -300,7 +300,7 @@ export function journeyStrip({ fillPct, tgtPct, colour, counts, loop, note, atLi
     <div class="r-jny-counts">${counts.map(c => `<span><b${c.colour ? ` style="color:${c.colour}"` : ''}>${esc(c.value)}</b> ${esc(c.label)}</span>`).join('')}</div>
     ${depPct == null ? '' : `<div class="r-jny-dep"><div class="r-jny-deph">Plan delivered <i>what is in place now</i></div>
       <div class="r-jny-track r-jny-track2"><i class="r-jny-fill" style="width:${Math.max(depPct ? 2 : 0, depPct)}%;background:${depPct >= 100 ? '#16A34A' : '#0E8F7E'}"></i></div>
-      <div class="r-jny-counts">${(depCounts || []).map(c => `<span><b${c.colour ? ` style="color:${c.colour}"` : ''}>${esc(c.value)}</b> ${esc(c.label)}</span>`).join('')}</div></div>`}
+      <div class="r-jny-counts">${(depCounts || []).map(c => `<span><b${c.colour ? ` style="color:${c.colour}"` : ''}>${esc(c.value)}</b> ${esc(c.label)}</span>`).join('')}</div>${depNote ? `<div class="r-footnote">${esc(depNote)}</div>` : ''}</div>`}
     ${note ? `<div class="r-footnote">${esc(note)}</div>` : ''}
     ${loop ? `<div class="r-jny-loop">${esc(loop)}</div>` : ''}
   </div>`;

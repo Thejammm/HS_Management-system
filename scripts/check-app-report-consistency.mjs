@@ -29,7 +29,7 @@ const require = createRequire(import.meta.url);
 const here = path.dirname(url.fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
 const puppeteer = require(path.join(repo, 'node_modules', 'puppeteer-core'));
-const { deriveBoard, deriveBoardExtras, boardModelOf } = await import(url.pathToFileURL(path.join(repo, 'public', 'reports', 'derive.js')));
+const { deriveBoard, deriveBoardExtras, boardModelOf, depPartsWordsOf } = await import(url.pathToFileURL(path.join(repo, 'public', 'reports', 'derive.js')));
 const contract = await import(url.pathToFileURL(path.join(repo, 'public', 'reports', 'app-contract.js')));
 const planDerive = await import(url.pathToFileURL(path.join(repo, 'public', 'reports', 'plan-derive.js')));
 
@@ -121,7 +121,7 @@ const app = await page.evaluate((STATE) => {
     docBoard: _docFor('boardReport'), docRisk: _docFor('riskProfile'),
     liveHoldStates: HOLD_STATES, liveHoldOrder: HOLD_ORDER,
     // The director's risk picture - the cockpit's _boardModel as the SCREEN computes it.
-    board: (function () { const B = _boardModel(); return { total: B.total, unc: B.unc, part: B.part, inplace: B.inplace, atTgt: B.atTgt, dep: B.dep, rated: B.rated, fillPct: B.fillPct, tgtPct: B.tgtPct, nowBand: B.nowBand || null, overdue: B.overdue,
+    board: (function () { const B = _boardModel(); return { total: B.total, unc: B.unc, part: B.part, inplace: B.inplace, atTgt: B.atTgt, dep: B.dep, depWords: _depPartsWords(B.dep), rated: B.rated, fillPct: B.fillPct, tgtPct: B.tgtPct, nowBand: B.nowBand || null, overdue: B.overdue,
       rows: B.rows.map(z => ({ id: z.id, tier: z.sc.priority || null, unc: z.unc, part: z.part, atTarget: z.atTarget })) }; })(),
     liveDomains: PROF_LIBRARY.domains.filter(d => d.type === 'maturity').map(d => ({ id: d.id, name: d.name, items: d.items.map(it => ({ id: it.id, crit: !!it.crit })) })),
     // What keeps a completed action in place: the management plan prints these
@@ -203,6 +203,7 @@ const BM = boardModelOf(STATE, { today: TODAY });
 eq('board: control split', { t: app.board.total, u: app.board.unc, p: app.board.part, i: app.board.inplace }, { t: BM.total, u: BM.unc, p: BM.part, i: BM.inplace });
 eq('board: at-target count', app.board.atTgt, BM.atTgt);
 eq('board: dependents rollup', app.board.dep, BM.dep);
+eq('board: what the total is made of', app.board.depWords, depPartsWordsOf(BM.dep));
 eq('board: rated count', app.board.rated, BM.rated);
 eq('board: journey fill', app.board.fillPct, BM.fillPct);
 eq('board: journey target line', app.board.tgtPct, BM.tgtPct);

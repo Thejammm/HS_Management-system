@@ -1,6 +1,6 @@
 // Board report template - Signal (data-forward) and Brief (editorial) formats.
 // Both build the SAME content; format changes the skin class only.
-import { deriveBoard, deriveBoardExtras, boardModelOf, bandsFrom, noneOrCount, countPhrase, hasHave, TIER_COLOURS, TIER_ORDER, HOLD_STATES, HOLD_ORDER, docFor, producerOf , trainingRowsOf } from '../derive.js';
+import { deriveBoard, deriveBoardExtras, boardModelOf, bandsFrom, noneOrCount, countPhrase, hasHave, TIER_COLOURS, TIER_ORDER, HOLD_STATES, HOLD_ORDER, docFor, producerOf , trainingRowsOf, depPartsWordsOf } from '../derive.js';
 import { holdWorstFirst, macroOf } from '../app-contract.js';
 import { esc, tierWord, planBar } from '../blocks.js';
 import { paginateRows } from '../engine.js';
@@ -980,6 +980,7 @@ export function buildBoardReport(state, opts = {}) {
           depCounts: B.dep.total ? [
             { value: B.dep.done + ' of ' + B.dep.total, label: 'planned controls and actions in place', colour: (B.dep.done === B.dep.total) ? '#16A34A' : undefined },
             { value: String(B.overdue), label: countPhrase(B.overdue, 'action overdue', 'actions overdue').replace(/^\d+ /, ''), colour: B.overdue ? '#DC2626' : undefined } ] : null,
+          depNote: B.dep.total ? depPartsWordsOf(B.dep) : undefined,
           counts: [
             { value: B.atTgt + ' of ' + B.rated, label: 'rated risks at their planned target', colour: '#2563EB' } ]
             .concat((B.total - B.rated) ? [{ value: String(B.total - B.rated), label: 'not yet rated' }] : []),

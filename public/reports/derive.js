@@ -119,11 +119,20 @@ export function journeyGaugeOf(risk) {
 // What powers a risk's bar: the controls slot (judged by controlStatusOf,
 // the app's one truth - In place / Partial / None) plus every action.
 export function journeyDepCountsOf(risk) {
-  const acts = ((risk && risk.actions) || []).filter(a => a && !a.deleted && (a.desc || a.owner || a.due));
+  const live = ((risk && risk.actions) || []).filter(a => a && !a.deleted && (a.desc || a.owner || a.due));
   const ctl = controlStatusOf(risk);
-  const total = acts.length + ((ctl !== 'None' || acts.length) ? 1 : 0);
-  const done = acts.filter(a => a.status === 'Complete' || a.status === 'Accepted').length + (ctl === 'In place' ? 1 : 0);
-  return { acts, ctl, done, total };
+  const delivered = new Set(live.filter(a => !a.hideFromPlan && a.forCtl).map(a => String(a.forCtl)));
+  const acts = live.filter(a => !(a.hideFromPlan && delivered.has(String(a.id))));
+  const onPlan = acts.filter(a => !a.hideFromPlan).length, rows = acts.length - onPlan, merged = live.length - acts.length;
+  const done = acts.filter(a => a.status === 'Complete' || a.status === 'Accepted').length;
+  return { acts, ctl, done, total: acts.length, onPlan, rows, merged };
+}
+// The words under the total, the app's _depPartsWords.
+export function depPartsWordsOf(d) {
+  const n = (x, one, many) => x + ' ' + (x === 1 ? one : many);
+  const parts = [d.onPlan ? n(d.onPlan, 'action on the plan', 'actions on the plan') : '', d.rows ? n(d.rows, 'standing arrangement', 'standing arrangements') : ''].filter(Boolean);
+  return 'Made up of ' + parts.join(' and ') + '.'
+    + (d.merged === 1 ? ' The one arrangement an action delivers is counted once, as that action.' : (d.merged ? (' The ' + d.merged + ' arrangements an action delivers are counted once, as that action.') : ''));
 }
 export function boardModelOf(state, opts = {}) {
   const bands = bandsFrom(state);
@@ -141,7 +150,7 @@ export function boardModelOf(state, opts = {}) {
   const unc = rows.filter(z => z.unc).length;
   const part = rows.filter(z => z.part).length;
   const atTgt = rows.filter(z => z.atTarget).length;
-  const dep = rows.reduce((a, z) => ({ done: a.done + z.dep.done, total: a.total + z.dep.total }), { done: 0, total: 0 });
+  const dep = rows.reduce((a, z) => ({ done: a.done + z.dep.done, total: a.total + z.dep.total, onPlan: a.onPlan + z.dep.onPlan, rows: a.rows + z.dep.rows, merged: a.merged + z.dep.merged }), { done: 0, total: 0, onPlan: 0, rows: 0, merged: 0 });
   let inh = 0, now = 0, tgt = 0, anyTgt = false;
   const rated = rows.filter(z => z.gauge);
   rated.forEach(z => { inh += z.gauge.inh.score; now += z.gauge.now.score;

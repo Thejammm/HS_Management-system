@@ -15671,7 +15671,7 @@ function _boardModel(){
   const unc=rows.filter(z=>z.unc).length;
   const part=rows.filter(z=>z.part).length;
   const atTgt=rows.filter(z=>z.atTarget).length;
-  const dep=rows.reduce((a,z)=>({done:a.done+z.dep.done,total:a.total+z.dep.total}),{done:0,total:0});
+  const dep=rows.reduce((a,z)=>({done:a.done+z.dep.done,total:a.total+z.dep.total,onPlan:a.onPlan+z.dep.onPlan,rows:a.rows+z.dep.rows,merged:a.merged+z.dep.merged}),{done:0,total:0,onPlan:0,rows:0,merged:0});
   let inh=0, now=0, tgt=0, anyTgt=false;
   const rated=rows.filter(z=>z.g);
   rated.forEach(z=>{ inh+=z.g.inh.rating; now+=z.g.now.rating; if(z.g.tgt.rating){ anyTgt=true; tgt+=z.g.tgt.rating; } else tgt+=z.g.now.rating; });
@@ -15924,7 +15924,7 @@ const COCKPIT_WIDGETS = {
             +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+B.depPct+'%;'+(B.dep.done?'min-width:10px;':'')+'background:'+(B.depPct>=100?'#16A34A':'#0E8F7E')+';border-radius:'+(B.depPct>=98?'6px':'6px 0 0 6px')+';"></div></div>'
           +'<div style="display:flex;gap:22px;flex-wrap:wrap;font-size:12.5px;color:var(--text-muted);">'
           +'<span><b style="font-size:16px;color:'+(B.depPct>=100?'#16A34A':'var(--text)')+';">'+B.dep.done+' of '+B.dep.total+'</b> planned controls and actions in place</span>'
-          +(()=>{ const acts=B.rows.reduce((n,z)=>n+z.dep.acts.filter(a=>!a.hideFromPlan).length,0), rows=B.rows.reduce((n,z)=>n+z.dep.acts.filter(a=>a.hideFromPlan).length,0), risks=B.rows.reduce((n,z)=>n+(z.dep.total-z.dep.acts.length),0); return B.dep.total?('<span style="flex-basis:100%;order:3;" class="ck-dep-parts">Made up of '+acts+' action'+(acts!==1?'s':'')+' on the plan, '+rows+' standing arrangement'+(rows!==1?'s':'')+' and '+risks+' risk'+(risks!==1?'s':'')+' reaching their target.</span>'):''; })()
+          +(B.dep.total?('<span style="flex-basis:100%;order:3;" class="ck-dep-parts">'+esc(_depPartsWords(B.dep))+'</span>'):'')
           +(B.overdue?('<span><b style="font-size:16px;color:#DC2626;">'+B.overdue+'</b> action'+(B.overdue!==1?'s':'')+' overdue</span>'):'<span style="align-self:center;">nothing overdue</span>')
           +'</div></div>'):'')
         +(B.tgtPct===null?'<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">No projected scores set yet - add them on the risk cards and the blue target line appears.</div>':'')
@@ -19797,12 +19797,24 @@ function _journeyBarHTML(r){
 }
 // The dependents under the parent risk: the controls in place and every
 // action, each with its status - what actually powers the bar.
+// What the plan delivered total counts (Simon, 6 November 2026): the actions on the plan, plus the
+// standing arrangements no action delivers. A control and the action that delivers it are one thing,
+// counted as the action. A risk is not a thing delivered: reaching target is the risk journey's job.
 function _journeyDepCounts(r){
-  const acts=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due));
+  const live=(r.actions||[]).filter(a=>!a.deleted && (a.desc||a.owner||a.due));
   const ctl=_riskControlStatus(r);
-  const total=acts.length+((ctl!=='None'||acts.length)?1:0);
-  const done=acts.filter(a=>{const st=_actionStatus(a);return st==='Complete'||st==='Accepted';}).length+(ctl==='In place'?1:0);
-  return { acts, ctl, done, total };
+  const delivered=new Set(live.filter(a=>!a.hideFromPlan && a.forCtl).map(a=>String(a.forCtl)));
+  const acts=live.filter(a=>!(a.hideFromPlan && delivered.has(String(a.id))));
+  const onPlan=acts.filter(a=>!a.hideFromPlan).length, rows=acts.length-onPlan, merged=live.length-acts.length;
+  const done=acts.filter(a=>{const st=_actionStatus(a);return st==='Complete'||st==='Accepted';}).length;
+  return { acts, ctl, done, total:acts.length, onPlan, rows, merged };
+}
+// The words under the total, on the cockpit and in the board report alike.
+function _depPartsWords(d){
+  const n=(x,one,many)=>x+' '+(x===1?one:many);
+  const parts=[d.onPlan?n(d.onPlan,'action on the plan','actions on the plan'):'', d.rows?n(d.rows,'standing arrangement','standing arrangements'):''].filter(Boolean);
+  return 'Made up of '+parts.join(' and ')+'.'
+    +(d.merged===1?' The one arrangement an action delivers is counted once, as that action.':(d.merged?(' The '+d.merged+' arrangements an action delivers are counted once, as that action.'):''));
 }
 function _journeyOpenRisk(id){ _gotoRisk(id); }   // same jump as the review tab - one derivation
 // ══════════════════════════════════════════════════════════════
@@ -27827,7 +27839,7 @@ const HOWTO_STEPS=[
   { n:3, title:'Risk profile (Operation): the register', opens:[{fn:function(){ _howtoRegister(); }}], what:'Every significant risk the business runs, each with its reference, tier, band and score. Add an issue in the sidebar captures something in one line; it waits at the top as To be assessed.', how:'The register runs in the ladder’s order; the Macro button groups it by theme when you want that. Open a risk. A scored risk opens on its overview: the issue, its rating, What we’re doing about it and Already in place. Full detail gives the numbered tabs: 1 Identify, 2 People & impact, 3 Controls & rating (the standing arrangements), 4 Action delegation & timescale. Every risk needs a score, a target, and an owner and a date on each action. Tick Top 5, in the register’s last column or at the top of an open risk, to put it on this month’s Top 5 whatever its rank.', feeds:'The Risk ladder, the Top 5, the Client execution plan, every report.' },
   { n:4, title:'Legal duties', opens:[{tab:'requirements'}], what:'What the law requires of this business: the policy statement, the legal essentials and the duty headings.', how:'For each duty: is it in place, is it adequate, and what action is needed where it falls short. Tick the assessment criteria under each essential. A gap goes on the risk profile as a risk, so it is managed like any other.', feeds:'Risks on the profile, the Legal duties sheet, the board report.' },
   { n:5, title:'Maturity level', opens:[{tab:'maturity'}], what:'The consultant’s judgement of the six HSG65 areas, in words, not scores.', how:'Mark each area Weak, Developing, Adequate or Strong with a one-line reason. For Weak or Developing, Raise action puts the area on the risk profile and raises the action onto the Client execution plan.', feeds:'Risks on the profile, the Client execution plan, the audit narrative and the review.' },
-  { n:6, title:'Cockpit', opens:[{tab:'cockpit'}], what:'The whole position on one screen: the risk picture, the risk journey, the plan delivered (it says what its total is made of) and what is putting the business at risk today. Hover over any block and it says what it shows and why it is there.', how:'Start every visit here. Click a figure to open what is behind it. Customise chooses which blocks this client sees, and their order.', feeds:'Nothing: it only reads the records. A wrong figure here means a record behind it needs correcting.' },
+  { n:6, title:'Cockpit', opens:[{tab:'cockpit'}], what:'The whole position on one screen: the risk picture, the risk journey, the plan delivered (the actions on the plan plus the standing arrangements no action delivers, each counted once) and what is putting the business at risk today. Hover over any block and it says what it shows and why it is there.', how:'Start every visit here. Click a figure to open what is behind it. Customise chooses which blocks this client sees, and their order.', feeds:'Nothing: it only reads the records. A wrong figure here means a record behind it needs correcting.' },
   { n:7, title:'Risk ladder', opens:[{tab:'ladder'}], what:'The chart of every rated risk not yet under control, numbered from the highest current risk. This is the one order: the live Top 5, the Client execution plan and the risk profile all follow it, the suggested five are simply its top five, each risk showing its reference then the same short title. Risks with no score are flagged Not yet rated in their own section, off the chart. Risks with no target are listed under No target yet: they can never drop out until they have one.', how:'Read it like a music chart. Now is this month’s position, Last is last month’s, Mths is the months on the ladder, and Move is the symbol: ▲ climber, ▼ faller, = non-mover, NEW new entry, RE re-entry (was under control, came back), ★ biggest faller of the month. Falling is good news. Hover over any symbol for what it means on that risk. In the Not yet rated and No target yet sections, choose on the line and press Save: an unrated risk joins the chart. The boxes start empty and Compass suggests no score. A risk at or below its target drops out to the list at the foot, with the month it dropped out. Compass keeps a position snapshot each month by itself, so the moves show from the second month. A Top 5 tick puts a risk on this month’s Top 5 whatever its rank, ahead of the suggested five and of anything carried from the last sheet. Tick here or on the risk profile, five at most. Tick the Sheet column for a Risk Action Sheet. The buttons open the three sheets, and ✎ Minutes takes a quick note of a client meeting.', feeds:'The Top 5, the Risk Action Sheet, the Top 5 banner on the Client execution plan, and the order of every other list.' },
   { n:8, title:'This month’s Top 5 (the meeting)', opens:[{fn:function(){ openLiveTop5(); }}], what:'The front door. One risk a screen, laid out like the sheet the leadership team know, edited live in the meeting.', how:'Open it on the laptop. Its risks run in the ladder’s order. Every risk ticked for the Top 5 is on it, whatever its rank. Any room left holds, the first time, the ladder’s top risks and, after that, what is still open from the last sheet. A risk ticked later goes on when the meeting next opens; if the sheet is full, the lowest unticked risk comes off to make room. Taking a risk off the sheet takes its tick off too. When the sheet has room, Compass offers the next risks with a reason each; when it is full, a strip names the ladder’s top five not on it, and Swap takes the lowest unticked risk off and puts that one on. Its actions stay on the plan. What’s wrong is above the table; against each action: How we fix it, Who, By when, Is it enough, Comments, Done. Done asks Where does this live now? Send saves the sheet as the record of the meeting, downloads the PDF in the same columns and opens the email; attach the PDF in Outlook.', feeds:'The actions themselves (tab 4, the Client execution plan), the sheets as sent, How the client works now.' },
   { n:9, title:'Action sheets (back office)', opens:[{fn:function(){ openActionSheets('top5'); }}], what:'The Top 5, Legal duties and Risk action sheets as PDFs for the client to fill in, and what comes back.', how:'Use it for a Legal duties or Risk action sheet, or when a sheet comes back by email. Import a returned sheet, then decide each line: agree it, go back with a compromise, record that the client accepts the risk, or carry it to the next sheet. Agreed writes the owner, date and comment to the action.', feeds:'The actions, the next sheet.' },

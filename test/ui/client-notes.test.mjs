@@ -275,6 +275,11 @@ await page.evaluate(() => {
   R.ok((t.saved || []).length === 1 && /^client-meeting-notes-/.test(t.saved[0]), 'and its button saves the notes (' + (t.saved || []).join(', ') + ')');
   R.ok(/^Nothing minuted yet/.test(t.emptyMeta) && /Minutes on the Risk ladder/.test(t.emptyMeta), 'with nothing minuted, it says where to take them: ' + t.emptyMeta);
 }
+// ── the Download PDF buttons: a small icon beside the words, never one that fills the button (Simon, 10 November 2026) ──
+{
+  const t = await page.evaluate(() => { switchTab('reports'); const btns = [...document.querySelectorAll('#tab-reports .rep-btn')]; const sz = btns.map(b => { const i = b.querySelector('svg'), r = i ? i.getBoundingClientRect() : { width: 0, height: 0 }; return { w: Math.round(r.width), h: Math.round(r.height), bh: Math.round(b.getBoundingClientRect().height) }; }); switchTab('cockpit'); return { n: btns.length, big: sz.filter(x => x.w > 20 || x.h > 20 || x.bh > 48), first: sz[0] }; });
+  R.ok(t.n > 5 && !t.big.length, 'every Download PDF button has a small icon (' + t.n + ' buttons, icon ' + (t.first ? t.first.w + 'x' + t.first.h + ', button ' + t.first.bh + 'px high' : '-') + ')');
+}
 
 // ── 7. nothing minuted at all ──
 {

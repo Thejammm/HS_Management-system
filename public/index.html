@@ -4466,10 +4466,10 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .t5-tile b{font-size:27px;line-height:1.1;}
     .t5-tile i{font-style:normal;font-size:11.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;}
     .t5-tile small{font-size:10px;margin-top:1px;}
-    .t5-b-Critical{background:#1D1F20;}
-    .t5-b-High{background:#4A4F55;}
-    .t5-b-Medium{background:#757575;}
-    .t5-b-Low{background:#C4C7CA;color:#1D1F20;}
+    .t5-b-Critical{background:#DC2626;}
+    .t5-b-High{background:#EA580C;}
+    .t5-b-Medium{background:#F59E0B;}
+    .t5-b-Low{background:#16A34A;}
     .t5-b-none{background:var(--muted-bg);color:var(--text-muted);}
     .t5-arrow{align-self:center;text-align:center;font-size:17px;color:var(--text-muted);}
     .t5-haz{border-left:1px solid var(--border);padding:1px 0 1px 12px;font-size:13px;line-height:1.4;min-width:0;}
@@ -4760,7 +4760,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .ckl-band{border-left:4px solid var(--band);}
     .ckl-band+.ckl-band{border-top:1px solid var(--border);}
     .ckl-band-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;padding:8px 10px 7px 12px;background:var(--surface);border-bottom:1px solid var(--border);}
-    .ckl-band-n{font-size:12px;font-weight:800;letter-spacing:.07em;color:var(--text);}
+    .ckl-band-n{font-size:12px;font-weight:800;letter-spacing:.07em;color:var(--band);}
     .ckl-band-c{font-size:12px;font-weight:700;color:var(--text);}
     .ckl-band-m{flex:1 1 220px;min-width:0;font-size:11.5px;color:var(--text-muted);}
     .ckl-band-r{font-size:11px;color:var(--text-muted);white-space:nowrap;}
@@ -4778,7 +4778,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
     .ckl-title{font-size:13.5px;font-weight:600;line-height:1.35;color:var(--text);overflow-wrap:anywhere;}
     .ckl-name:hover .ckl-title{text-decoration:underline;text-underline-offset:2px;}
     .ckl-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:0 0 auto;transform:translateY(-1px);margin-right:0;}
-    .ckl-dot-unc{background:var(--text)}.ckl-dot-part{background:#757575}.ckl-dot-ok{background:var(--accent)}.ckl-dot-rev{background:transparent;box-shadow:inset 0 0 0 2px var(--accent)}
+    .ckl-dot-unc{background:#DC2626}.ckl-dot-part{background:#F59E0B}.ckl-dot-ok{background:#16A34A}.ckl-dot-rev{background:#D97706}
     .ckl-meta{display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px;margin:3px 0 0 16px;}
     .ckl-cat{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);}
     .ckl-cat i{display:inline-block;width:7px;height:7px;flex:0 0 auto;background:#757575!important;}
@@ -15986,7 +15986,7 @@ const COCKPIT_WIDGETS = {
           +'</div>'; };
       // A band: its level in its colour, how many, what that level demands (the same rule _holdBreach
       // enforces) and the tenant's own score range - then its risks, worst first. The band's colour
-      // runs down its left edge, AHS colours only, worst darkest.
+      // runs down its left edge in the band's own colour.
       const MEAN={}, RANGE={};      // _bandRule / _bandRange: the action sheet's legend reads the same two
       ['Critical','High','Medium','Low'].forEach(b=>{ MEAN[b]=_bandRule(b); RANGE[b]=_bandRange(b); });
       const band=b=>{ const on=B.rows.filter(z=>z.sc.priority===b && z.dep.ctl!=='In place').sort(rank);
@@ -27372,8 +27372,9 @@ function _t5SortItems(w){
   const idx=it=>{ const r=_execRiskOf({ ref:it.ref }); return (r && at[r.id]!==undefined) ? at[r.id] : order.length; };
   w.items=w.items.map((it,i)=>({ it, i, k:idx(it) })).sort((a,b)=>(a.k-b.k)||(a.i-b.i)).map(x=>x.it);
 }
-// The ladder's colours: AHS only, worst darkest. The rest of the app keeps its bands.
-const _LADDER_BAND={ Critical:'#1F2937', High:'#4B5563', Medium:'#757575', Low:'var(--accent)', '':'#9CA3AF' };
+// The ladder's colours: the app's own band colours, as they were before 6 November (Simon, 10 November 2026:
+// "just bring back what they were before").
+const _LADDER_BAND=_RISK_PRIO_COLOR;
 // ── The chart ──
 // On the ladder: rated and not yet under control. Under control means what it
 // means on the cockpit: the current rating is at or below the residual target.

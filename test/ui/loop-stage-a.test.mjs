@@ -135,7 +135,7 @@ const before = await page.evaluate(() => ({ actions: JSON.stringify(S.riskProfil
   R.ok([...t.doing, 'a5', 'c3'].sort().join() === all.sort().join() && !t.doing.includes('a6'), 'nothing lost, nothing doubled, the deleted one stays gone');
   const words = await modalWords();
   R.ok(!/control/i.test(words), 'the overview\'s own words never say "control"');
-  R.ok(!(await noRed('#riskModalOverlay .rs-loop')).length, 'no red on the overview');
+  R.ok(await page.evaluate(() => { const hex = h => { const n = parseInt(h.slice(1), 16); return 'rgb(' + (n >> 16 & 255) + ', ' + (n >> 8 & 255) + ', ' + (n & 255) + ')'; }; const ts = [...document.querySelectorAll('#riskModalOverlay .rs-loop .t5-tile')].map(e => ({ k: (/t5-b-(\w+)/.exec(e.className) || [])[1], bg: getComputedStyle(e).backgroundColor })).filter(x => _RISK_PRIO_COLOR[x.k]); return ts.length > 0 && ts.every(x => x.bg === hex(_RISK_PRIO_COLOR[x.k])); }), 'the overview\'s rating tiles take the app\'s band colours (Simon, 10 November 2026: "bring back the colours")');
   const after = await page.evaluate(() => ({ actions: JSON.stringify(S.riskProfile.find(r => r.id === 'r1').actions), ctl: _riskActionsHTML(S.riskProfile.find(r => r.id === 'r1'), '', 'ctl'), plan: _riskActionsHTML(S.riskProfile.find(r => r.id === 'r1'), '', 'plan') }));
   R.ok(after.actions === before.actions && after.ctl === before.ctl && after.plan === before.plan, 'opening the overview changes no data: tabs 3 and 4 read exactly as before');
   // Full detail: the tabs as they were, Overview first to come back

@@ -129,11 +129,14 @@ const WANT = ORDER.map(x => refs[x]).join();
   R.ok(b[stairs].sym === 'RE' && /was under control in/.test(b[stairs].tip), 'RE re-entry, was under control and came back: ' + b[stairs].tip);
   R.ok(b[boil].sym === '★' && /Biggest faller of the month/.test(b[boil].tip) && /came down from 16 to 12/.test(b[boil].tip), '★ the biggest faller whose score really came down: ' + b[boil].tip);
   R.ok(before.key.length === 6 && before.key.every(k => /=true$/.test(k)), 'the key lists all six symbols, each with a tooltip: ' + before.key.map(k => k.split('=')[0]).join(', '));
-  // no red anywhere on the ladder, and no words from any programme
-  const col = await page.evaluate(() => { const bad = []; const hot = c => { const m = /rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)/.exec(c); if (!m) return false; const r = +m[1], g = +m[2], b = +m[3], a = m[4] === undefined ? 1 : +m[4]; return a > 0.05 && r > 150 && r - b > 90 && g < r - 50; };
-    document.querySelectorAll('#ladderContainer, #ladderContainer *').forEach(el => { const s = getComputedStyle(el); for (const k of ['color', 'backgroundColor', 'borderLeftColor', 'accentColor']) { if (k.startsWith('border') && s.borderLeftWidth === '0px') continue; if (hot(s[k])) bad.push(el.className + ' ' + k + ' ' + s[k]); } });
-    return { bad: [...new Set(bad)].slice(0, 6), text: document.getElementById('ladderContainer').innerText }; });
-  R.ok(!col.bad.length, 'no red or near-red anywhere on the ladder' + (col.bad.length ? ': ' + col.bad.join(' | ') : ''));
+  // the ladder in the app's own band colours, as before 6 November (Simon, 10 November 2026: "just bring back what they were before"), and no words from any programme
+  const col = await page.evaluate(() => { const hex = h => { const n = parseInt(h.slice(1), 16); return 'rgb(' + (n >> 16 & 255) + ', ' + (n >> 8 & 255) + ', ' + (n & 255) + ')'; }; const bad = []; let n = 0;
+    document.querySelectorAll('#ladderContainer .ckl-band').forEach(sec => { const hd = sec.querySelector('.ckl-band-n'), name = hd ? hd.innerText.trim() : '', k = name.charAt(0) + name.slice(1).toLowerCase(), want = _RISK_PRIO_COLOR[k]; if (!want || !k) return; const w = hex(want); n++;
+      if (getComputedStyle(sec).borderLeftColor !== w) bad.push(k + ' edge'); if (getComputedStyle(hd).color !== w) bad.push(k + ' heading');
+      sec.querySelectorAll('.ckl-score').forEach(sc => { if (getComputedStyle(sc).backgroundColor !== w) bad.push(k + ' score ' + getComputedStyle(sc).backgroundColor); }); });
+    const dot = document.querySelector('#ladderContainer .ckl-dot-unc'); if (dot && getComputedStyle(dot).backgroundColor !== hex('#DC2626')) bad.push('uncontrolled dot ' + getComputedStyle(dot).backgroundColor);
+    return { bad: [...new Set(bad)].slice(0, 6), n, text: document.getElementById('ladderContainer').innerText }; });
+  R.ok(col.n > 0 && !col.bad.length, 'the ladder\'s bands, scores and dots are in the app\'s band colours, as before 6 November (Simon, 10 November 2026)' + (col.bad.length ? ': ' + col.bad.join(' | ') : ': ' + col.n + ' bands'));
   R.ok(!/top of the pops|\bTOTP\b/i.test(col.text), 'generic chart words only');
   // a risk re-scored to its target drops out, this month
   const t = await page.evaluate(() => { const r = S.riskProfile.find(x => x.id === 'hi'); r.likelihood = '2'; r.severity = '3'; saveData(); switchTab('ladder'); const lines = [...document.querySelectorAll('#tab-ladder .ckc-outs .ckl-line')]; const f = lines.find(l => /Falls from roofs/.test(l.textContent));

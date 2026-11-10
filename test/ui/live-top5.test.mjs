@@ -102,12 +102,11 @@ R.ok(before.length === 1 && before[0].no === 1 && before[0].issuedAt === day(-29
 // no red in anything new, and the word stays off the front door
 {
   const t = await page.evaluate(() => {
-    const rgb = c => { const m = /rgba?\((\d+), (\d+), (\d+)/.exec(c); return m ? [+m[1], +m[2], +m[3]] : null; };
-    const redish = c => { const x = rgb(c); return !!x && x[0] > 150 && x[1] < 110 && x[2] < 110; };
-    const bad = [...document.querySelectorAll('#t5Ov *')].filter(e => { const s = getComputedStyle(e); return redish(s.color) || redish(s.backgroundColor) || redish(s.borderTopColor); }).map(e => e.className || e.tagName);
-    return { bad: bad.slice(0, 5) };
+    const hex = h => { const n = parseInt(h.slice(1), 16); return 'rgb(' + (n >> 16 & 255) + ', ' + (n >> 8 & 255) + ', ' + (n & 255) + ')'; };
+    const tiles = [...document.querySelectorAll('#t5Ov .t5-tile')].map(e => { const k = (/t5-b-(\w+)/.exec(e.className) || [])[1]; return { k, bg: getComputedStyle(e).backgroundColor, want: _RISK_PRIO_COLOR[k] ? hex(_RISK_PRIO_COLOR[k]) : '' }; }).filter(x => x.want);
+    return { bad: tiles.filter(x => x.bg !== x.want).map(x => x.k + ' ' + x.bg), n: tiles.length };
   });
-  R.ok(!t.bad.length, 'no red and no orange near red on the screen ' + t.bad.join());
+  R.ok(t.n > 0 && !t.bad.length, 'the rating tiles take the app\'s band colours, as on the printed sheet (Simon, 10 November 2026: "bring back the colours"): ' + (t.bad.join() || t.n + ' tiles'));
   R.ok(!/control/i.test(await allWords('#t5Ov')), 'the word "control" does not appear on the front door');
 }
 

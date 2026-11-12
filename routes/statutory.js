@@ -6,8 +6,7 @@
 const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { parse, build, buildFresh } = require('../lib/statutory-xlsx');
-const { peek: xlsxPeek } = require('../lib/training-xlsx');   // generic sheet preview
+const { parse, build, buildFresh, peekLayout, parseLayout, buildLayout } = require('../lib/statutory-xlsx');
 
 const router = express.Router();
 const rawBody = express.raw({ type: () => true, limit: '25mb' });
@@ -24,8 +23,10 @@ router.post('/parse', requireAuth, rawBody, async (req, res) => {
     const headerRow = parseInt((req.query && req.query.headerRow) || '', 10) || 0;   // 'where the table starts' override
     let mapping = null;   // DRM-style explicit column mapping from the in-app wizard
     try { if(req.query && req.query.mapping) mapping = JSON.parse(String(req.query.mapping)); } catch(e){ return res.status(400).json({ error: 'bad_mapping' }); }
-    const opts = Object.assign({}, headerRow ? { headerRow } : {}, mapping ? { fixed: mapping.fixed || null, skip: mapping.skip || [] } : {});
-    const model = await parse(req.body, opts);
+    // the client's own columns, each in or out (12 November 2026); the older field mapping stays for anything else
+    const model = (mapping && mapping.layout)
+      ? await parseLayout(req.body, { headerRow: headerRow || 1, layout: mapping.layout })
+      : await parse(req.body, Object.assign({}, headerRow ? { headerRow } : {}, mapping ? { fixed: mapping.fixed || null, skip: mapping.skip || [] } : {}));
     if(!model.items.length) return res.status(422).json({ error: 'no_items_found' });
     res.json(model);
   } catch(err){
@@ -73,8 +74,16 @@ router.post('/export', requireAuth, rawBody, async (req, res) => {
   try { state = JSON.parse(req.body.toString('utf8')).state; } catch(e){ return res.status(400).json({ error: 'bad_state' }); }
   try {
     const r = await pool.query(`SELECT filename, data FROM statutory_workbook WHERE tenant_id = $1`, [tenantId]);
-    // No stored workbook (rows typed in or pasted): build a fresh file.
-    const buf = r.rows.length
+    // No stored workbook (rows typed in or pasted): build a fresh file. A client
+    // imported with its own layout gets only its changed cells written back.
+    let buf;
+    if(r.rows.length && state && state.layout){
+      const out = await buildLayout(Buffer.from(r.rows[0].data, 'base64'), state);
+      buf = out.buffer;
+      res.setHeader('X-Not-Removed', String(out.notRemoved));
+      res.setHeader('X-Cells-Changed', String(out.changed));
+      res.setHeader('X-Rows-Added', String(out.appended));
+    } else buf = r.rows.length
       ? await build(Buffer.from(r.rows[0].data, 'base64'), state)
       : await buildFresh(state);
     const base = String((r.rows[0] && r.rows[0].filename) || 'Statutory Register.xlsx').replace(/\.xlsx?$/i, '');
@@ -96,11 +105,12 @@ router.delete('/workbook', requireAuth, async (req, res) => {
   catch(err){ console.error('statutory/delete error:', err.message); res.status(500).json({ error: 'server_error' }); }
 });
 
-// First rows of each sheet, as strings - the Map & import preview.
+// First rows of each sheet, as strings - the Map & import preview - with which
+// cells hold formulas and the merges, so the mapping screen can show them.
 router.post('/peek', requireAuth, rawBody, async (req, res) => {
   if(!_resolveTenant(req)) return res.status(400).json({ error: 'tenant_required' });
   if(!req.body || !req.body.length) return res.status(400).json({ error: 'no_file' });
-  try { res.json(await xlsxPeek(req.body)); }
+  try { res.json(await peekLayout(req.body)); }
   catch(err){ console.error('statutory/peek error:', err.message); res.status(422).json({ error: 'could_not_read_workbook' }); }
 });
 

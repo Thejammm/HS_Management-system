@@ -31936,6 +31936,7 @@ function addRegItem(secId){
   const s = _regSection(secId); if(!s) return;
   if(!Array.isArray(s.items)) s.items = [];
   const it={ id:_reqUid('reg'), item:'', area:'', frequency:'', resultDate:'', dueDate:'', result:'', certRef:'', notes:'' };
+  if(_statL()){ it.cols={}; it.sheet=s.sheet||((s.items||[]).find(i=>i.sheet)||{}).sheet||_statL().sheets[0].name; }   // goes below the last row of its tab on export
   s.items.push(it);
   saveData(); renderMonitoring();
   regEditItem(secId, it.id);   // straight into the edit modal, like the matrix
@@ -31955,6 +31956,7 @@ function regEditItem(secId, id){
   if(_roLocked()) return;
   const sec=_regSection(secId); if(!sec) return;
   const r=(sec.items||[]).find(x=>x.id===id); if(!r) return;
+  if(r.cols && _statL()) return _statEditItem(secId, sec, r);   // the client's own columns
   const old=document.getElementById('regEditOv'); if(old) old.remove();
   const ov=document.createElement('div'); ov.id='regEditOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:28px 12px;overflow:auto;';
@@ -32023,7 +32025,8 @@ function _regNextDue(lastDone, freq){
 // The only honest way out of a statutory examination that is not doing it:
 // the thing has gone, or is out of use, or is covered by another line. It
 // needs a reason, because that reason is what an auditor asks for.
-function _regNAKey(sec, it){ return String((it&&it.sheet)||(sec&&sec.name)||'')+'|'+String((it&&it.item)||'').trim().toLowerCase(); }
+function _regNAKey(sec, it){ const k=String((it&&it.sheet)||(sec&&sec.name)||'')+'|'+String((it&&it.item)||'').trim().toLowerCase();
+  return (it && it.cols && it.row) ? (k+'|r'+it.row) : k; }   // a client's own sheet repeats names (15 fire extinguishers): the reason keeps to its row
 function _regNAMap(){ if(!S.monitoring||typeof S.monitoring!=='object') S.monitoring={};
   if(!S.monitoring.regNA||typeof S.monitoring.regNA!=='object') S.monitoring.regNA={}; return S.monitoring.regNA; }
 function _regIsNA(it){ return !!(it && it.na && String(it.na.reason||'').trim()); }
@@ -32197,12 +32200,14 @@ function statutoryUploadXlsx(){
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
     try{
       const buf=await f.arrayBuffer();
-      await _xlsxParseOrWizard('statutory', f.name, buf, (parsed)=>_statutoryApplyParsed(parsed, f.name, buf));
+      // always the mapping screen: the automatic read dropped columns (Simon, 12 November 2026)
+      await _xlsxOpenWizard('statutory', f.name, buf, (parsed)=>_statutoryApplyParsed(parsed, f.name, buf));
     }catch(e){ console.error('statutory import',e); alert('Import failed: '+e.message); }
   };
   inp.click();
 }
 async function _statutoryApplyParsed(parsed, fname, buf){
+  if(parsed && parsed.layout) return _statApplyLayout(parsed, fname, buf);
   const cur=_regSections().reduce((n,s)=>n+((s.items||[]).length),0);
   if(!confirm(`Import "${fname}"?\n\nThis REPLACES the whole regulatory tracker from the spreadsheet:\n  • ${parsed.items.length} items across ${parsed.sheets.length} sheet${parsed.sheets.length!==1?'s':''} (each sheet becomes a section)\n  • the ${cur} item${cur!==1?'s':''} currently here will be replaced\n\nThe spreadsheet becomes the source of truth.`)) return;
   const sres=await _tApiRaw('/api/statutory/store', buf, {'X-Filename':fname});
@@ -32219,6 +32224,7 @@ async function _statutoryApplyParsed(parsed, fname, buf){
 }
 async function statutoryExportXlsx(){
   if(!_tOnline()){ alert('Sign in first to export the spreadsheet.'); return; }
+  if(_statL()) return _statExportLayout();
   try{
     const items=_regSections().flatMap(s=>(s.items||[]).map(it=>({ sheet:it.sheet||s.name, row:it.row||null, item:it.item, area:it.area, frequency:it.frequency, resultDate:it.resultDate, dueDate:it.dueDate, result:it.result, certRef:it.certRef, notes:it.notes })));
     const res=await _tApiRaw('/api/statutory/export', JSON.stringify({ state:{ items } }));
@@ -34082,7 +34088,254 @@ const _XLSX_FIELDS = {
     { k:'skip',      label:'Skip this column' },
   ],
 };
+// ── Statutory: the client's own columns, each simply in or out (Simon, 12 November 2026:
+// "a way to map an excel spreadsheet so that it matches exactly", "surly the drop down just
+// needs to say include or dont include"). Step 1 is the same live preview; step 2 lists
+// every column under its own heading, ticked, and asks only where the item name and the
+// due date are. The training matrix keeps its own wizard, unchanged.
+const _STAT_ITEM_GUESS=/^(item|statutory item|inspection|description|equipment|plant|asset|name)$/i;
+const _STAT_DUE_GUESS=/^(next|due|renewal|expiry)/i;
+function _statColNo(l){ return String(l).toUpperCase().split('').reduce((n,ch)=>n*26+ch.charCodeAt(0)-64,0); }
+function _statColLetter(n){ let s=''; n=+n||0; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; }
+function _statSig(sh, hr){ return ((sh.rows||[])[hr-1]||[]).map(v=>String(v==null?'':v).trim().toLowerCase()).filter(Boolean).join('\u0001'); }
+// A tab is brought in when its headings row holds the same headings as the first tab's.
+function _statTabs(peek, hr){
+  const all=peek.sheets||[], sig=all[0]?_statSig(all[0],hr):'', inT=[], outT=[];
+  all.forEach((s,i)=>{ (i===0 || (sig && _statSig(s,hr)===sig) ? inT : outT).push(s.name); });
+  return { inT, outT };
+}
+function _statTabsLine(peek, hr){
+  const t=_statTabs(peek,hr);
+  return 'Brought in: '+(t.inT.map(esc).join(', ')||'none')+(t.outT.length?(' &nbsp;·&nbsp; Not brought in - headings don’t match: '+t.outT.map(esc).join(', ')):'');
+}
+// Headings merged down over several rows: the data starts below the merge.
+function _statDataStart(sh, hr){
+  let bottom=hr;
+  (sh.merges||[]).forEach(rg=>{ const m=/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/i.exec(rg); if(!m) return; const top=+m[2], bot=+m[4];
+    if(top>hr || bot<hr || bot<=bottom) return;
+    const master=((sh.rows||[])[top-1]||[])[_statColNo(m[1])-1];
+    if(String(master==null?'':master).trim()) bottom=bot; });
+  return bottom+1;
+}
+// The columns as the mapping screen lists them: heading, sample values, formula or not.
+function _statPeekColumns(sh, hr){
+  const heads=(sh.rows||[])[hr-1]||[], start=_statDataStart(sh,hr), data=(sh.rows||[]).slice(start-1), fl=(sh.f||[]).slice(start-1);
+  const n=Math.max(heads.length, 0, ...data.map(r=>r.length)), out=[];
+  for(let c=1;c<=n;c++){
+    const h=String(heads[c-1]==null?'':heads[c-1]).trim();
+    const samples=data.map(r=>r[c-1]).filter(v=>v!==''&&v!=null).slice(0,3);
+    const formula=fl.some(r=>r&&r[c-1]);
+    if(!h && !samples.length && !formula) continue;
+    out.push({ col:c, heading:h, samples, formula });
+  }
+  return out;
+}
+function _statHeading(c){ return (c&&c.heading) || ('(no heading) column '+_statColLetter(c&&c.col)); }
+// A cell as the client sees it in Excel: dates day/month/year.
+function _statShow(x){
+  if(!x || x.v==null || x.v==='') return '';
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(x.v));
+  if(m && x.type!=='text') return m[3]+'/'+m[2]+'/'+m[1];
+  return String(x.v);
+}
+function _statMapWizard(peek, fname, buf, onMapping){
+  const sh=(peek.sheets||[])[0]||{name:'',rows:[]};
+  const old=document.getElementById('xlsxMapOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='xlsxMapOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;';
+  document.body.appendChild(ov);
+  const close=()=>ov.remove();
+  _backdropClose(ov, close);
+  const memAll=(S.importProfiles=S.importProfiles||{}); const mem=(memAll.xlsx_statutory=memAll.xlsx_statutory||{});
+  const step1=()=>{
+    const rows=(sh.rows||[]).map((r,i)=>`<tr data-row="${i+1}" style="cursor:pointer;"><td style="padding:4px 8px;color:var(--text-muted);font-weight:700;border-bottom:1px solid var(--border);">${i+1}</td>${r.map(c=>`<td style="padding:4px 8px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;">${esc(c)}</td>`).join('')}</tr>`).join('');
+    ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:860px;width:96%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+      <div style="font-weight:700;margin-bottom:4px;">Import - ${esc(fname)} <span style="font-weight:400;color:var(--text-muted);font-size:12px;">step 1 of 2</span></div>
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">Click the row that holds the <b>column headings</b>${(peek.sheets||[]).length>1?` (showing "${esc(sh.name)}")`:''}.</div>
+      <div style="overflow:auto;max-height:340px;border:1px solid var(--border);border-radius:8px;"><table style="border-collapse:collapse;font-size:11.5px;min-width:100%;"><tbody>${rows||'<tr><td style="padding:8px;">The sheet looks empty.</td></tr>'}</tbody></table></div>
+      <div id="_mwTabs" style="font-size:12px;color:var(--text-muted);margin-top:8px;">Point at the headings row to see which tabs are brought in.</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;"><button class="btn btn-ghost btn-sm" id="_mwCancel">Cancel</button></div>
+    </div>`;
+    ov.querySelector('#_mwCancel').onclick=close;
+    const tabs=ov.querySelector('#_mwTabs');
+    ov.querySelectorAll('tr[data-row]').forEach(tr=>{
+      tr.onmouseenter=()=>{ tr.style.background='var(--muted-bg)'; if(tabs) tabs.innerHTML=_statTabsLine(peek, parseInt(tr.dataset.row,10)); };
+      tr.onmouseleave=()=>{ tr.style.background=''; };
+      tr.onclick=()=>step2(parseInt(tr.dataset.row,10));
+    });
+  };
+  const step2=(hr)=>{
+    const cols=_statPeekColumns(sh, hr);
+    if(!cols.some(c=>c.heading)){ alert('That row has no headings. Click the row your column headings are on.'); step1(); return; }
+    const key=c=>String(c.heading||('column '+_statColLetter(c.col))).trim().toLowerCase();
+    const rem=(mem.layout && mem.layout.headerRow===hr) ? mem.layout : null;
+    const on={}; cols.forEach(c=>{ on[c.col]=!(rem && rem.off && rem.off[key(c)]); });
+    const byKey=k=>{ const c=cols.find(x=>key(x)===k); return c?c.col:null; };
+    let itemCol, dueCol;
+    if(rem){ itemCol=rem.item?byKey(rem.item):null; dueCol=rem.noDue?null:(rem.due?byKey(rem.due):null); }
+    else { const g=cols.find(c=>_STAT_ITEM_GUESS.test(c.heading)); itemCol=g?g.col:null; const d=cols.find(c=>_STAT_DUE_GUESS.test(c.heading)); dueCol=d?d.col:null; }
+    const td='padding:5px 8px;border-bottom:1px solid var(--border);';
+    const draw=()=>{
+      const box=ov.querySelector('#_mwList'), top=box?box.scrollTop:0;
+      const inc=cols.filter(c=>on[c.col]);
+      if(itemCol && !on[itemCol]) itemCol=null;
+      if(dueCol && !on[dueCol]) dueCol=null;
+      const opt=(sel)=>inc.map(c=>`<option value="${c.col}"${c.col===sel?' selected':''}>${esc(_statHeading(c))}</option>`).join('');
+      const out=cols.filter(c=>!on[c.col]);
+      const check=!itemCol ? 'Pick the column that holds the item name'
+        : (out.length ? `${inc.length} of ${cols.length} columns included - not included: ${out.map(c=>esc(_statHeading(c))).join(', ')}` : `All ${cols.length} columns included`);
+      ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:760px;width:96%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+        <div style="font-weight:700;margin-bottom:4px;">Choose what to bring in <span style="font-weight:400;color:var(--text-muted);font-size:12px;">step 2 of 2 - headings on row ${hr}</span></div>
+        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:8px;">Every column is brought in and shown as it is in the spreadsheet. Untick any column you don't want. Changes you make in Compass are written back into the same spreadsheet when you export.</div>
+        <div id="_mwTabs2" style="font-size:12px;margin-bottom:10px;">${_statTabsLine(peek, hr)}</div>
+        <div id="_mwList" style="overflow:auto;max-height:320px;border:1px solid var(--border);border-radius:8px;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead><tr style="color:var(--text-muted);text-transform:uppercase;font-size:10px;letter-spacing:.04em;"><th style="text-align:left;padding:6px 8px;">Column</th><th style="padding:6px 8px;">Include</th><th style="text-align:left;padding:6px 8px;">Sample values</th></tr></thead><tbody>
+        ${cols.map(c=>`<tr><td style="${td}max-width:240px;"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(_statHeading(c))}">${esc(_statHeading(c))}</div>${c.formula?'<div class="st-f" style="font-size:10.5px;color:var(--text-muted);margin-top:1px;">Formula - shown, not changed</div>':''}</td>
+          <td style="${td}text-align:center;"><input type="checkbox" data-col="${c.col}"${on[c.col]?' checked':''} aria-label="Include ${esc(_statHeading(c))}"></td>
+          <td style="${td}color:var(--text-muted);font-size:11px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.samples.map(v=>_statShow({ v, type:'' })).join(' · '))}</td></tr>`).join('')}
+        </tbody></table></div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12.5px;">
+          <label style="display:flex;flex-direction:column;gap:3px;font-weight:600;">Item name is in…<select id="_mwItem" style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface,#fff);color:inherit;font-size:12px;min-width:200px;"><option value="">- Choose -</option>${opt(itemCol)}</select></label>
+          <label style="display:flex;flex-direction:column;gap:3px;font-weight:600;">Due date is in…<select id="_mwDue" style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface,#fff);color:inherit;font-size:12px;min-width:200px;"><option value="">No due date column</option>${opt(dueCol)}</select></label>
+        </div>
+        <div id="_mwCheck" style="margin-top:10px;font-size:12.5px;font-weight:600;${itemCol?'':'color:var(--text-muted);'}">${check}</div>
+        <div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px;"><button class="btn btn-ghost btn-sm" id="_mwBack">← Back</button><div style="display:flex;gap:8px;"><button class="btn btn-ghost btn-sm" id="_mwCancel2">Cancel</button><button class="btn btn-primary btn-sm" id="_mwGo"${itemCol?'':' disabled'}>Import</button></div></div>
+      </div>`;
+      const nb=ov.querySelector('#_mwList'); if(nb) nb.scrollTop=top;
+      ov.querySelectorAll('input[data-col]').forEach(cb=>{ cb.onchange=()=>{ on[parseInt(cb.dataset.col,10)]=cb.checked; draw(); }; });
+      ov.querySelector('#_mwItem').onchange=e=>{ itemCol=parseInt(e.target.value,10)||null; draw(); };
+      ov.querySelector('#_mwDue').onchange=e=>{ dueCol=parseInt(e.target.value,10)||null; draw(); };
+      ov.querySelector('#_mwBack').onclick=step1;
+      ov.querySelector('#_mwCancel2').onclick=close;
+      ov.querySelector('#_mwGo').onclick=()=>{
+        if(!itemCol) return;
+        const ic=cols.find(c=>c.col===itemCol), dc=cols.find(c=>c.col===dueCol);
+        mem.layout={ headerRow:hr, off:Object.fromEntries(cols.filter(c=>!on[c.col]).map(c=>[key(c),true])), item:key(ic), due:dc?key(dc):'', noDue:!dc };
+        scheduleAutoSave();
+        close();
+        onMapping({ headerRow:hr, layout:{ include:cols.filter(c=>on[c.col]).map(c=>c.col), itemCol, dueCol:dueCol||null } });
+      };
+    };
+    draw();
+  };
+  // choices remembered for this client open straight on the columns, already set
+  const remRow=mem.layout && mem.layout.headerRow;
+  if(remRow && ((sh.rows||[])[remRow-1]||[]).some(v=>String(v==null?'':v).trim())) step2(remRow); else step1();
+}
+// The tracker, drawn as the client's own sheet when it was imported that way.
+function _statL(){ const L=S.monitoring && S.monitoring.statLayout; return (L && Array.isArray(L.sheets) && L.sheets.length) ? L : null; }
+function _statColsFor(sec){
+  const L=_statL(); if(!L) return [];
+  const name=(sec && (sec.sheet || ((sec.items||[]).find(i=>i.sheet)||{}).sheet)) || '';
+  const sh=L.sheets.find(x=>x.name===name) || L.sheets[0];
+  return (sh.columns||[]).filter(c=>c.included);
+}
+const _STAT_RAG_C={ red:'#DC2626', amber:'#F59E0B', green:'#16A34A', grey:'#9CA3AF', na:'#6B7280' };
+const _STAT_RAG_W={ red:'Overdue', amber:'Due soon', green:'In date', grey:'No due date', na:'No longer applies' };
+const _STAT_STICK='position:sticky;left:0;background:var(--surface,#fff);';
+function _statHeadHTML(sec, ro){
+  const L=_statL(), cols=_statColsFor(sec);
+  return cols.map((c,i)=>`<th style="text-align:${c.col===L.dueCol?'center':'left'};padding:6px 8px;white-space:nowrap;${i===0?(_STAT_STICK+'z-index:2;'):''}">${esc(_statHeading(c))}</th>`).join('')+(ro?'':'<th></th>');
+}
+function _statItemRow(secId, r, ro){
+  const L=_statL(), sec=_regSection(secId), cols=_statColsFor(sec);
+  const g=_regItemRag(r), gl=_STAT_RAG_W[g], inPlan=_regItemInPlan(r.id);
+  const tds=cols.map((c,i)=>{
+    const x=(r.cols||{})[c.col], v=_statShow(x), stick=i===0?(_STAT_STICK+'z-index:1;'):'';
+    if(c.col===L.dueCol) return `<td style="padding:5px 6px;text-align:center;${stick}"><span title="${gl}" style="display:inline-block;min-width:58px;padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:600;color:#fff;background:${_STAT_RAG_C[g]};">${esc(v||gl)}</span></td>`;
+    const isItem=c.col===L.itemCol;
+    return `<td style="padding:5px 8px;white-space:nowrap;${isItem?'font-weight:600;':''}color:${v?'inherit':'var(--text-muted)'};${stick}">${esc(v||'-')}${isItem&&r.notes?` <span title="${esc(r.notes)}" style="color:var(--text-muted);font-weight:400;">✎</span>`:''}${isItem&&g==='na'?`<div class="reg-na">No longer applies - ${esc(r.na.reason)}${r.na.by?(' ('+esc(r.na.by)+', '+esc(fmtDate(r.na.at))+')'):''}</div>`:''}</td>`;
+  }).join('');
+  return `<tr${ro?'':` style="cursor:pointer;" title="Click to edit" onclick="regEditItem('${secId}','${r.id}')"`}>${tds}
+    ${ro?'':`<td style="white-space:nowrap;text-align:right;" onclick="event.stopPropagation();">${(g==='red'||g==='amber')?(inPlan?'<span style="font-size:10.5px;font-weight:700;color:var(--success);">✓ in plan</span> ':`<button class="btn btn-ghost btn-xs no-print" title="Raise into the plan" onclick="raiseRegItemAction('${secId}','${r.id}')">↗ plan</button>`):''}${g==='na'
+      ?`<button class="btn btn-ghost btn-xs no-print" title="Put it back in the register - it counts again" onclick="regClearNA('${secId}','${r.id}')">↺ back in</button>`
+      :`<button class="btn btn-ghost btn-xs no-print" title="This examination no longer applies - disposed of, out of service, or covered by another line. A reason is required." onclick="regMarkNA('${secId}','${r.id}')">n/a</button>`}<button class="btn btn-ghost btn-xs no-print" title="Delete item" onclick="deleteRegItem('${secId}','${r.id}')">${_ic('trash',13)}</button></td>`}
+  </tr>`;
+}
+// The edit pop-up as the client's own columns: one field a column, formula cells
+// shown but never changed - Compass does not work the spreadsheet's formulas out.
+function _statEditItem(secId, sec, r){
+  const L=_statL(), cols=_statColsFor(sec);
+  const old=document.getElementById('regEditOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='regEditOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:28px 12px;overflow:auto;';
+  const inPlan=_regItemInPlan(r.id);
+  const inp='width:100%;padding:8px;border:1px solid var(--border,#ccc);border-radius:8px;margin-top:3px;background:var(--surface,#fff);color:inherit;font-size:13px;';
+  const typeOf=c=>{ const x=(r.cols||{})[c.col]; if(x && x.type && x.v!=='' && x.v!=null) return x.type;
+    const n={}; (sec.items||[]).forEach(it=>{ const y=(it.cols||{})[c.col]; if(y && y.v!=='' && y.v!=null && y.type) n[y.type]=(n[y.type]||0)+1; });
+    return Object.keys(n).sort((a,b)=>n[b]-n[a])[0] || 'text'; };
+  const isF=c=>{ const x=(r.cols||{})[c.col]; return r.row ? !!(x && x.formula) : !!c.formula; };   // a new row takes the column's formula on export
+  const field=c=>{
+    const x=(r.cols||{})[c.col]||{}, t=typeOf(c), v=x.v==null?'':x.v;
+    const lab=`<label style="font-size:12px;font-weight:600;" for="_rsc${c.col}">${esc(_statHeading(c))}</label>`;
+    if(isF(c)) return `<div>${lab}<input id="_rsc${c.col}" style="${inp}background:var(--muted-bg);" value="${esc(_statShow({ v, type:t }))}" readonly aria-readonly="true" tabindex="-1"><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Worked out by the spreadsheet</div>${c.col===L.dueCol?'<div style="font-size:11px;color:var(--text-muted);">This date is worked out in the spreadsheet. It updates when the file is next imported.</div>':''}</div>`;
+    return `<div>${lab}<input id="_rsc${c.col}" type="${t==='date'?'date':(t==='number'?'number':'text')}" data-col="${c.col}" data-type="${t}" style="${inp}" value="${esc(String(v))}"></div>`;
+  };
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:640px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+    <div style="font-weight:700;margin-bottom:10px;">${r.row?'Edit item':'New item'} <span style="font-weight:400;color:var(--text-muted);font-size:12px;">${esc(sec.name||'')}${r.row?(' - row '+r.row+' of the spreadsheet'):''}</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 12px;">${cols.map(field).join('')}</div>
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:16px;align-items:center;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button type="button" id="_reDel" class="btn btn-ghost btn-sm" style="color:#DC2626;">Delete</button>
+        ${inPlan?'<span style="font-size:11.5px;font-weight:700;color:var(--success);">✓ In the plan</span>':'<button type="button" id="_reRaise" class="btn btn-outline btn-sm">↗ Raise into the plan</button>'}
+      </div>
+      <div style="display:flex;gap:8px;"><button type="button" id="_reCancel" class="btn btn-ghost btn-sm">Cancel</button><button type="button" id="_reSave" class="btn btn-primary btn-sm">Save</button></div>
+    </div></div>`;
+  document.body.appendChild(ov); const close=()=>ov.remove();
+  _backdropClose(ov, close);
+  ov.querySelector('#_reCancel').onclick=close;
+  ov.querySelector('#_reDel').onclick=()=>{ close(); deleteRegItem(secId, r.id); };
+  const raiseBtn=ov.querySelector('#_reRaise'); if(raiseBtn) raiseBtn.onclick=()=>{ close(); raiseRegItemAction(secId, r.id); };
+  ov.querySelector('#_reSave').onclick=()=>{
+    if(_blockIfReadOnly()) return;
+    r.cols=r.cols||{};
+    ov.querySelectorAll('input[data-col]').forEach(el=>{ const c=parseInt(el.dataset.col,10), t=el.dataset.type; let v=el.value;
+      v=(t==='number') ? (String(v).trim()===''?'':Number(v)) : String(v).trim();
+      r.cols[c]={ v, type:t, formula:false }; });
+    if(L.itemCol && r.cols[L.itemCol]) r.item=String(r.cols[L.itemCol].v==null?'':r.cols[L.itemCol].v).trim();
+    if(L.dueCol){ const d=r.cols[L.dueCol]; if(d && !d.formula) r.dueDate=(/^\d{4}-\d{2}-\d{2}$/.test(String(d.v)) && d.type!=='text') ? d.v : ''; }
+    if(typeof _stamp==='function') _stamp(r,'updated');
+    saveData(); renderMonitoring(); close();
+  };
+}
+async function _statApplyLayout(parsed, fname, buf){
+  const L=parsed.layout, first=(L.sheets||[])[0]||{ columns:[] };
+  const all=first.columns.length, inc=first.columns.filter(c=>c.included).length, cw=(inc===all)?('all '+all):(inc+' of '+all);
+  const cur=_regSections().reduce((n,s)=>n+((s.items||[]).length),0);
+  const sk=parsed.skipped||[], many=(L.sheets||[]).length>1;
+  const skTxt=sk.length?`\n  • ${sk.length} row${sk.length!==1?'s':''} skipped - no item name (row${sk.length!==1?'s':''} ${sk.map(x=>(many?(x.sheet+' '):'')+x.row).join(', ')})`:'';
+  const outTxt=(L.notBrought||[]).length?`\n  • not brought in - headings don't match: ${L.notBrought.join(', ')}`:'';
+  if(!confirm(`Import "${fname}"?\n\nThis REPLACES the whole regulatory tracker from the spreadsheet:\n  • ${parsed.items.length} items across ${(L.sheets||[]).length} sheet${(L.sheets||[]).length!==1?'s':''} (each sheet becomes a section)\n  • ${cw} columns brought in, under the spreadsheet's own headings${skTxt}${outTxt}\n  • the ${cur} item${cur!==1?'s':''} currently here will be replaced\n\nThe spreadsheet becomes the source of truth.`)) return;
+  const sres=await _tApiRaw('/api/statutory/store', buf, {'X-Filename':fname});
+  if(!sres.ok){ showToast('Imported, but could not save the template for export','warn'); }
+  // what was typed on a line in Compass before stays with that line
+  const keep=['area','frequency','resultDate','result','certRef','notes'], prev={};
+  _regSections().forEach(s=>(s.items||[]).forEach(it=>{ if(it.row) prev[(it.sheet||s.name)+'|'+it.row+'|'+String(it.item||'').trim().toLowerCase()]=it; }));
+  S.monitoring.regSections=(L.sheets||[]).filter(sh=>parsed.items.some(it=>it.sheet===sh.name)).map(sh=>({ id:_reqUid('regsec'), name:sh.name, sheet:sh.name,
+    items:parsed.items.filter(it=>it.sheet===sh.name).map(it=>{ const p=prev[it.sheet+'|'+it.row+'|'+String(it.item||'').trim().toLowerCase()]||{};
+      const o={ id:_reqUid('reg'), sheet:it.sheet, row:it.row, item:it.item, dueDate:it.dueDate||'', cols:it.cols||{} }; keep.forEach(k=>{ o[k]=p[k]||''; }); return o; }) }));
+  S.monitoring.statLayout={ file:fname, headerRow:L.headerRow, sheets:L.sheets, itemCol:L.itemCol, dueCol:L.dueCol||null, notBrought:L.notBrought||[] };
+  S.monitoring.regSeeded=true; S.monitoring.statFile=fname;
+  const back=_regNAApply();   // the reasons outlive the replace
+  saveData(); renderMonitoring();
+  if(back) showToast(back+' item'+(back!==1?'s':'')+' still marked as no longer applying','info',5000);
+  showToast('✓ Imported '+parsed.items.length+' statutory items from '+fname+' - '+cw+' columns','success');
+}
+async function _statExportLayout(){
+  try{
+    const L=_statL();
+    const items=_regSections().flatMap(s=>(s.items||[]).filter(it=>it.row || String(it.item||'').trim()).map(it=>({ sheet:it.sheet||s.sheet||s.name, row:it.row||null, item:it.item,
+      cols:it.cols || (L.itemCol ? { [L.itemCol]:{ v:it.item||'', type:'text' } } : {}) })));
+    const res=await _tApiRaw('/api/statutory/export', JSON.stringify({ state:{ layout:L, items } }));
+    if(!res.ok){ const e=await res.json().catch(()=>({})); alert(e.error==='no_template'?'Import the client\'s spreadsheet first, then export.':'Export failed: '+(e.error||('HTTP '+res.status))); return; }
+    const blob=await res.blob(); const cd=res.headers.get('content-disposition')||''; const m=/filename="([^"]+)"/.exec(cd); const name=m?m[1]:'Statutory Register.xlsx';
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+    const n=parseInt(res.headers.get('X-Not-Removed')||'0',10)||0;
+    // an item deleted in Compass is never deleted from the client's file: say so
+    showToast('✓ Exported '+name+(n?('. '+(n===1?'1 item deleted in Compass is still in the spreadsheet - remove it there if it should go':(n+' items deleted in Compass are still in the spreadsheet - remove them there if they should go'))):''), n?'info':'success', n?9000:undefined);
+  }catch(e){ console.error('statutory export',e); alert('Export failed: '+e.message); }
+}
 function _xlsxMapWizard(kind, peek, fname, buf, onMapping){
+  if(kind==='statutory') return _statMapWizard(peek, fname, buf, onMapping);   // the client's own columns (12 November 2026); training below is unchanged
   const sh=(peek.sheets||[])[0]||{name:'',rows:[]};
   const fields=_XLSX_FIELDS[kind];
   const old=document.getElementById('xlsxMapOv'); if(old) old.remove();
@@ -34150,7 +34403,7 @@ async function _xlsxOpenWizard(kind, fname, buf, applyFn){
   if(!pk.ok){ alert('Could not read that file.'); return; }
   _xlsxMapWizard(kind, await pk.json(), fname, buf, async(mapping)=>{
     try{
-      const q='headerRow='+mapping.headerRow+'&mapping='+encodeURIComponent(JSON.stringify({fixed:mapping.fixed, skip:mapping.skip}));
+      const q='headerRow='+mapping.headerRow+'&mapping='+encodeURIComponent(JSON.stringify(mapping.layout?{layout:mapping.layout}:{fixed:mapping.fixed, skip:mapping.skip}));
       const res=await _tApiRaw('/api/'+kind+'/parse?'+q, buf);
       if(!res.ok){ const e=await res.json().catch(()=>({})); alert('That mapping did not produce any rows ('+(e.error||('HTTP '+res.status))+').\n\nCheck the headings row and the name/item column, then try again.'); return; }
       await applyFn(await res.json());
@@ -34317,7 +34570,7 @@ async function trainingDeleteAll(){
 async function statutoryDeleteAll(){
   if(_blockIfReadOnly()) return;
   if(!confirm('Delete ALL statutory inspection data - every section, every item, and the stored spreadsheet? This cannot be undone.')) return;
-  S.monitoring.regSections=[]; S.monitoring.regSeeded=true;
+  S.monitoring.regSections=[]; S.monitoring.regSeeded=true; delete S.monitoring.statLayout;
   if(_tOnline()){ try{ await fetch('/api/statutory/workbook?tenantId='+encodeURIComponent(Auth.activeTenantId()),{method:'DELETE',credentials:'include'}); }catch(e){} }
   saveData(); renderMonitoring(); showToast('Statutory data deleted','info');
 }
@@ -36084,6 +36337,7 @@ function renderMonitoring(){
   // One compact row per item - the whole register reads like the training
   // matrix. Click a row to edit everything in one modal (regEditItem).
   const itemRow = (secId, r) => {
+    if(_statL()) return _statItemRow(secId, r, ro);   // the client's own columns
     const g=_regItemRag(r); const gl={red:'Overdue',amber:'Due soon',green:'In date',grey:'No due date',na:'No longer applies'}[g];
     const inPlan=_regItemInPlan(r.id);
     const td=(v)=>`<td style="padding:5px 6px;color:${v?'inherit':'var(--text-muted)'};">${esc(v||'-')}</td>`;
@@ -36101,9 +36355,9 @@ function renderMonitoring(){
   };
   const sectionBlock = (s) => {
     const items = s.items || [];
-    const head=`<tr><th style="text-align:left;padding:6px 8px;">Item</th><th style="text-align:left;padding:6px;">Area</th><th style="text-align:left;padding:6px;">Frequency</th><th style="padding:6px;text-align:center;">Last done</th><th style="padding:6px;text-align:center;">Next due</th><th style="padding:6px;text-align:center;">Result</th><th style="text-align:left;padding:6px;">Cert ref</th>${ro?'':'<th></th>'}</tr>`;
+    const head=_statL()?('<tr>'+_statHeadHTML(s, ro)+'</tr>'):`<tr><th style="text-align:left;padding:6px 8px;">Item</th><th style="text-align:left;padding:6px;">Area</th><th style="text-align:left;padding:6px;">Frequency</th><th style="padding:6px;text-align:center;">Last done</th><th style="padding:6px;text-align:center;">Next due</th><th style="padding:6px;text-align:center;">Result</th><th style="text-align:left;padding:6px;">Cert ref</th>${ro?'':'<th></th>'}</tr>`;
     const itemsHtml = items.length
-      ? `<div style="overflow-x:auto;" data-keepscroll="reg-${s.id}"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em;border-bottom:1.5px solid var(--border);font-size:10.5px;">${head}</thead><tbody>${items.map(r => itemRow(s.id, r)).join('')}</tbody></table></div>`
+      ? `<div style="overflow-x:auto;" data-keepscroll="reg-${s.id}"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);${_statL()?'':'text-transform:uppercase;letter-spacing:.02em;'}border-bottom:1.5px solid var(--border);font-size:10.5px;">${head}</thead><tbody>${items.map(r => itemRow(s.id, r)).join('')}</tbody></table></div>`
       : `<div class="ck-pending" style="padding:4px 0;">No statutory items in this section yet.</div>`;
     return `<div style="border:1.5px solid var(--border);border-radius:10px;padding:14px 14px 12px;margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;">

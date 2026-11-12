@@ -32194,13 +32194,28 @@ function runCoverageCheck(){
 //  the tracker (sheet = section, rows anchored for export); export
 //  writes current values back into a copy of their exact file.
 // ══════════════════════════════════════════════════════════════
+// An old Excel file (.xls, from before 2007) - or an .xlsx locked with a
+// password, which Excel stores the same way - cannot be read here. Say what
+// to do, instead of "Could not read that file" (Simon, 12 November 2026: a
+// client's training matrix was an .xls).
+function _xlsxUnreadable(buf, fname){
+  const b=new Uint8Array(buf, 0, Math.min(8, (buf && buf.byteLength) || 0));
+  const sig=[0xD0,0xCF,0x11,0xE0,0xA1,0xB1,0x1A,0xE1];
+  if(b.length<8 || !sig.every((x,i)=>b[i]===x)) return false;
+  const name=String(fname||'This file');
+  alert(/\.xls$/i.test(name)
+    ? '"'+name+'" is an older Excel file (.xls), which Compass cannot read.\n\nOpen it in Excel, choose File > Save As > Excel Workbook (.xlsx), then import that copy.'
+    : '"'+name+'" is protected with a password, so Compass cannot read it.\n\nOpen it in Excel, take the password off (File > Info > Protect Workbook > Encrypt with Password, and clear it), save it, then import it again.');
+  return true;
+}
 function statutoryUploadXlsx(){
   if(_blockIfReadOnly()) return;
   if(!_tOnline()){ alert('Sign in first - the spreadsheet round-trip runs on the server.'); return; }
-  const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx';
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xls';   // an .xls can be picked, and is told what to do
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
     try{
       const buf=await f.arrayBuffer();
+      if(_xlsxUnreadable(buf, f.name)) return;
       // always the mapping screen: the automatic read dropped columns (Simon, 12 November 2026)
       await _xlsxOpenWizard('statutory', f.name, buf, (parsed)=>_statutoryApplyParsed(parsed, f.name, buf));
     }catch(e){ console.error('statutory import',e); alert('Import failed: '+e.message); }
@@ -34741,10 +34756,11 @@ async function _trainingApplyParsed(parsed, fname, buf){
 function trainingUploadXlsx(){
   if(_roLocked()) return;
   if(!_tOnline()){ alert('Sign in first - the spreadsheet round-trip runs on the server.'); return; }
-  const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx';
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xls';   // an .xls can be picked, and is told what to do
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
     try{
       const buf=await f.arrayBuffer();
+      if(_xlsxUnreadable(buf, f.name)) return;
       await _xlsxParseOrWizard('training', f.name, buf, (parsed)=>_trainingApplyParsed(parsed, f.name, buf));
     }catch(e){ console.error('training import',e); alert('Import failed: '+e.message); }
   };
@@ -34773,10 +34789,11 @@ function _xlsxPeekModal_dead(peek, fname, onPick){   // superseded by _xlsxMapWi
 function xlsxMappedImport(kind){
   if(kind==='statutory' ? _blockIfReadOnly() : _roLocked()) return;
   if(!_tOnline()){ alert('Sign in first - the spreadsheet round-trip runs on the server.'); return; }
-  const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx';
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xls';   // an .xls can be picked, and is told what to do
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
     try{
       const buf=await f.arrayBuffer();
+      if(_xlsxUnreadable(buf, f.name)) return;
       const applyFn=(parsed)=> kind==='training' ? _trainingApplyParsed(parsed, f.name, buf) : _statutoryApplyParsed(parsed, f.name, buf);
       await _xlsxOpenWizard(kind, f.name, buf, applyFn);
     }catch(e){ alert('Import failed: '+e.message); }

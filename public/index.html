@@ -34803,7 +34803,9 @@ function xlsxMappedImport(kind){
 async function trainingExportXlsx(){
   if(!_tOnline()){ alert('Sign in first to export the spreadsheet.'); return; }
   try{
-    const res=await _tApiRaw('/api/training/export', JSON.stringify({ state:{ people:_trainingData().people } }));
+    // the layout it was imported with goes too, so a matrix mapped by hand (headings
+    // below a title block, one Name column) has its changes written back (12 November 2026)
+    const res=await _tApiRaw('/api/training/export', JSON.stringify({ state:{ people:_trainingData().people, sheets:_trainingData().sheets||[] } }));
     if(!res.ok){ const e=await res.json().catch(()=>({})); alert(e.error==='no_template'?'Import your spreadsheet first, then export.':'Export failed: '+(e.error||('HTTP '+res.status))); return; }
     const blob=await res.blob(); const cd=res.headers.get('content-disposition')||''; const m=/filename="([^"]+)"/.exec(cd); const name=m?m[1]:'Training Matrix.xlsx';
     const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);

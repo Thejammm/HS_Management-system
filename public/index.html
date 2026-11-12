@@ -23479,6 +23479,7 @@ const REPORT_DOCS = [
   { key:'riskAcceptance',   title:'Risk Acceptance Register',     code:'RAC' },
   { key:'audit',            title:'Health & Safety Audit',        code:'AUD' },
   { key:'assuranceMonthly', title:'Monthly Assurance Report',     code:'MAR' },
+  { key:'statutoryMonthly', title:'Statutory FM Compliance Report', code:'SFM' },
   { key:'toolboxTalks',     title:'Toolbox Talk Sheet',            code:'TBT' },
   { key:'siteInspections',  title:'Process Assurance',            code:'SIT' },
   { key:'feedback',         title:'Consultant Review & Feedback', code:'CR'  },
@@ -31956,7 +31957,7 @@ function regEditItem(secId, id){
   if(_roLocked()) return;
   const sec=_regSection(secId); if(!sec) return;
   const r=(sec.items||[]).find(x=>x.id===id); if(!r) return;
-  if(r.cols && _statL()) return _statEditItem(secId, sec, r);   // the client's own columns
+  if(r.cols && _statL()) return r.row ? _statCard(secId, sec, r, false) : _statEditItem(secId, sec, r);   // the client's own sheet: the card for its lines, the columns for a line added here
   const old=document.getElementById('regEditOv'); if(old) old.remove();
   const ov=document.createElement('div'); ov.id='regEditOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:28px 12px;overflow:auto;';
@@ -33546,6 +33547,7 @@ function _assuranceSync(){
     if(!_assuranceHas(kind)) return;
     const def=ASSURANCE_RISKS[kind];
     const r=_assuranceRiskEnsure(kind); if(!r) return;
+    if(kind==='statutory' && _statL()) return;   // the client's own FM sheet is kept in its own view, never on the plan (Simon, 12 November 2026)
     if(!Array.isArray(r.actions)) r.actions=[];
     const st=_assuranceState(kind);
     const perItem=_assuranceItemActions(kind).length;
@@ -34123,6 +34125,7 @@ function _statPeekColumns(sh, hr){
   const n=Math.max(heads.length, 0, ...data.map(r=>r.length)), out=[];
   for(let c=1;c<=n;c++){
     const h=String(heads[c-1]==null?'':heads[c-1]).trim();
+    if(/^document$/i.test(h)) continue;   // Compass's own Document column: read back as links on import
     const samples=data.map(r=>r[c-1]).filter(v=>v!==''&&v!=null).slice(0,3);
     const formula=fl.some(r=>r&&r[c-1]);
     if(!h && !samples.length && !formula) continue;
@@ -34230,23 +34233,37 @@ function _statColsFor(sec){
   return (sh.columns||[]).filter(c=>c.included);
 }
 const _STAT_RAG_C={ red:'#DC2626', amber:'#F59E0B', green:'#16A34A', grey:'#9CA3AF', na:'#6B7280' };
-const _STAT_RAG_W={ red:'Overdue', amber:'Due soon', green:'In date', grey:'No due date', na:'No longer applies' };
+const _STAT_RAG_W={ red:'Expired', amber:'Due soon', green:'In date', grey:'No due date', na:'No longer applies' };
 const _STAT_STICK='position:sticky;left:0;background:var(--surface,#fff);';
+// The FM register's rows (Simon, 12 November 2026): a tick on the left to
+// complete the line, the client's own columns, a Document column, and nothing
+// that puts work on the plan ("this process should not put actions in to the
+// compass app its just for keeping in this view for the client").
+const _STAT_TICK_W=44;
+const _STAT_TICK='position:sticky;left:0;background:var(--surface,#fff);width:'+_STAT_TICK_W+'px;min-width:'+_STAT_TICK_W+'px;max-width:'+_STAT_TICK_W+'px;';
+const _STAT_STICK2='position:sticky;left:'+_STAT_TICK_W+'px;background:var(--surface,#fff);';
 function _statHeadHTML(sec, ro){
   const L=_statL(), cols=_statColsFor(sec);
-  return cols.map((c,i)=>`<th style="text-align:${c.col===L.dueCol?'center':'left'};padding:6px 8px;white-space:nowrap;${i===0?(_STAT_STICK+'z-index:2;'):''}">${esc(_statHeading(c))}</th>`).join('')+(ro?'':'<th></th>');
+  return `<th style="text-align:center;padding:6px 4px;${_STAT_TICK}z-index:2;">Done</th>`
+    + cols.map((c,i)=>`<th style="text-align:${c.col===L.dueCol?'center':'left'};padding:6px 8px;white-space:nowrap;${i===0?(_STAT_STICK2+'z-index:2;'):''}">${esc(_statHeading(c))}</th>`).join('')
+    + '<th style="text-align:left;padding:6px 8px;">Document</th>'+(ro?'':'<th></th>');
 }
 function _statItemRow(secId, r, ro){
   const L=_statL(), sec=_regSection(secId), cols=_statColsFor(sec);
-  const g=_regItemRag(r), gl=_STAT_RAG_W[g], inPlan=_regItemInPlan(r.id);
+  const g=_regItemRag(r), gl=_STAT_RAG_W[g];
+  const tick=(ro||g==='na')
+    ? `<td style="${_STAT_TICK}z-index:1;"></td>`
+    : `<td style="padding:5px 4px;text-align:center;${_STAT_TICK}z-index:1;" onclick="event.stopPropagation();"><input type="checkbox" class="stat-tick" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);" title="Tick when it has been done: records the date done and works out the next due date" aria-label="Mark ${esc(r.item||'this item')} done" onclick="event.preventDefault();statTickDone('${secId}','${r.id}')"></td>`;
   const tds=cols.map((c,i)=>{
-    const x=(r.cols||{})[c.col], v=_statShow(x), stick=i===0?(_STAT_STICK+'z-index:1;'):'';
-    if(c.col===L.dueCol) return `<td style="padding:5px 6px;text-align:center;${stick}"><span title="${gl}" style="display:inline-block;min-width:58px;padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:600;color:#fff;background:${_STAT_RAG_C[g]};">${esc(v||gl)}</span></td>`;
-    const isItem=c.col===L.itemCol;
+    const x=(r.cols||{})[c.col], stick=i===0?(_STAT_STICK2+'z-index:1;'):'';
+    if(c.col===L.dueCol){ const v=_statShow(x); return `<td style="padding:5px 6px;text-align:center;${stick}"><span title="${gl}" style="display:inline-block;min-width:58px;padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:600;color:#fff;background:${_STAT_RAG_C[g]};">${esc(v||gl)}</span></td>`; }
+    // ticked done in Compass since the last import: the sheet's other formulas are worked out again in Excel
+    if(r.cmp && x && x.formula) return `<td style="padding:5px 8px;white-space:nowrap;color:var(--text-muted);${stick}" title="Worked out again by the spreadsheet when the exported file is opened">-</td>`;
+    const v=_statShow(x), isItem=c.col===L.itemCol;
     return `<td style="padding:5px 8px;white-space:nowrap;${isItem?'font-weight:600;':''}color:${v?'inherit':'var(--text-muted)'};${stick}">${esc(v||'-')}${isItem&&r.notes?` <span title="${esc(r.notes)}" style="color:var(--text-muted);font-weight:400;">✎</span>`:''}${isItem&&g==='na'?`<div class="reg-na">No longer applies - ${esc(r.na.reason)}${r.na.by?(' ('+esc(r.na.by)+', '+esc(fmtDate(r.na.at))+')'):''}</div>`:''}</td>`;
   }).join('');
-  return `<tr${ro?'':` style="cursor:pointer;" title="Click to edit" onclick="regEditItem('${secId}','${r.id}')"`}>${tds}
-    ${ro?'':`<td style="white-space:nowrap;text-align:right;" onclick="event.stopPropagation();">${(g==='red'||g==='amber')?(inPlan?'<span style="font-size:10.5px;font-weight:700;color:var(--success);">✓ in plan</span> ':`<button class="btn btn-ghost btn-xs no-print" title="Raise into the plan" onclick="raiseRegItemAction('${secId}','${r.id}')">↗ plan</button>`):''}${g==='na'
+  return `<tr${ro?'':` style="cursor:pointer;" title="Click to open" onclick="regEditItem('${secId}','${r.id}')"`}>${tick}${tds}<td style="padding:5px 8px;white-space:nowrap;" onclick="event.stopPropagation();">${_statDocCtl(secId, sec, r)}</td>
+    ${ro?'':`<td style="white-space:nowrap;text-align:right;" onclick="event.stopPropagation();">${g==='na'
       ?`<button class="btn btn-ghost btn-xs no-print" title="Put it back in the register - it counts again" onclick="regClearNA('${secId}','${r.id}')">↺ back in</button>`
       :`<button class="btn btn-ghost btn-xs no-print" title="This examination no longer applies - disposed of, out of service, or covered by another line. A reason is required." onclick="regMarkNA('${secId}','${r.id}')">n/a</button>`}<button class="btn btn-ghost btn-xs no-print" title="Delete item" onclick="deleteRegItem('${secId}','${r.id}')">${_ic('trash',13)}</button></td>`}
   </tr>`;
@@ -34258,7 +34275,6 @@ function _statEditItem(secId, sec, r){
   const old=document.getElementById('regEditOv'); if(old) old.remove();
   const ov=document.createElement('div'); ov.id='regEditOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:28px 12px;overflow:auto;';
-  const inPlan=_regItemInPlan(r.id);
   const inp='width:100%;padding:8px;border:1px solid var(--border,#ccc);border-radius:8px;margin-top:3px;background:var(--surface,#fff);color:inherit;font-size:13px;';
   const typeOf=c=>{ const x=(r.cols||{})[c.col]; if(x && x.type && x.v!=='' && x.v!=null) return x.type;
     const n={}; (sec.items||[]).forEach(it=>{ const y=(it.cols||{})[c.col]; if(y && y.v!=='' && y.v!=null && y.type) n[y.type]=(n[y.type]||0)+1; });
@@ -34276,7 +34292,6 @@ function _statEditItem(secId, sec, r){
     <div style="display:flex;justify-content:space-between;gap:8px;margin-top:16px;align-items:center;">
       <div style="display:flex;gap:8px;align-items:center;">
         <button type="button" id="_reDel" class="btn btn-ghost btn-sm" style="color:#DC2626;">Delete</button>
-        ${inPlan?'<span style="font-size:11.5px;font-weight:700;color:var(--success);">✓ In the plan</span>':'<button type="button" id="_reRaise" class="btn btn-outline btn-sm">↗ Raise into the plan</button>'}
       </div>
       <div style="display:flex;gap:8px;"><button type="button" id="_reCancel" class="btn btn-ghost btn-sm">Cancel</button><button type="button" id="_reSave" class="btn btn-primary btn-sm">Save</button></div>
     </div></div>`;
@@ -34284,7 +34299,6 @@ function _statEditItem(secId, sec, r){
   _backdropClose(ov, close);
   ov.querySelector('#_reCancel').onclick=close;
   ov.querySelector('#_reDel').onclick=()=>{ close(); deleteRegItem(secId, r.id); };
-  const raiseBtn=ov.querySelector('#_reRaise'); if(raiseBtn) raiseBtn.onclick=()=>{ close(); raiseRegItemAction(secId, r.id); };
   ov.querySelector('#_reSave').onclick=()=>{
     if(_blockIfReadOnly()) return;
     r.cols=r.cols||{};
@@ -34296,6 +34310,281 @@ function _statEditItem(secId, sec, r){
     if(typeof _stamp==='function') _stamp(r,'updated');
     saveData(); renderMonitoring(); close();
   };
+}
+// ══════════════════════════════════════════════════════════════
+//  THE FM REGISTER, MONTH BY MONTH (Simon, 12 November 2026)
+//  "the spreadsheet import view needs to be displayed month by month from
+//  date of expiry", "when i click a item the modal should give me a location
+//  of where to store the file like in the polices and the next due date thats
+//  it", "a check to complete the item and move it from expired to completed
+//  and then track it on a monthly report", "this process should not put
+//  actions in to the compass app".
+//  Ticking done records the date done in the client's own "last serviced"
+//  column and works the next due date out the way their spreadsheet does
+//  (last done + lifespan in months, read from their EDATE formula). The tick,
+//  and the document location, are also kept apart from the items so they
+//  outlive a re-import, as the n/a reasons do.
+// ══════════════════════════════════════════════════════════════
+const _STAT_CARD_ST={ red:['overdue','Expired'], amber:['due','Due soon'], green:['ok','In date'], grey:['none','No due date'], na:['none','No longer applies'] };
+function _statToday(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _statAddMonths(ym, n){ const y=+String(ym).slice(0,4), m=+String(ym).slice(5,7)-1+n; return (y+Math.floor(m/12))+'-'+String(((m%12)+12)%12+1).padStart(2,'0'); }
+function _statMonthName(ym, short){ try{ return new Date(ym+'-01T12:00:00').toLocaleDateString('en-GB',{month:short?'short':'long',year:'numeric'}); }catch(e){ return ym; } }
+// Excel's EDATE: whole months on, the day held, or the month's last day when it has fewer
+function _statEdate(iso, months){
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||'')); const n=Math.trunc(Number(months));
+  if(!m || !isFinite(n)) return '';
+  const mo=+m[2]-1+n, ty=+m[1]+Math.floor(mo/12), tm=((mo%12)+12)%12;
+  const last=new Date(Date.UTC(ty, tm+1, 0)).getUTCDate();
+  return ty+'-'+String(tm+1).padStart(2,'0')+'-'+String(Math.min(+m[3], last)).padStart(2,'0');
+}
+function _statSheetOf(sec){ const L=_statL(); if(!L) return null; const name=(sec && (sec.sheet || ((sec.items||[]).find(i=>i.sheet)||{}).sheet)) || ''; return L.sheets.find(x=>x.name===name) || L.sheets[0]; }
+function _statAllColsFor(sec){ const sh=_statSheetOf(sec); return (sh && sh.columns) || []; }
+// How the next due date is worked out: read from the client's formula at import;
+// a register imported before that was read (12 November 2026) is matched by its headings.
+const _STAT_DONE_HEAD=/^(date\s+)?last\s+(serviced|service|inspected|inspection|examined|examination|tested|test|checked|check|done)\b/i;
+const _STAT_LIFE_HEAD=/(life\s*span|^life\b|interval|frequency).*month/i;
+function _statRule(sec){
+  const L=_statL(); if(!L || !L.dueCol) return null;
+  const sh=_statSheetOf(sec);
+  if(sh && sh.rule) return sh.rule;
+  if(L.rule) return L.rule;
+  const cols=(sh && sh.columns) || [], due=cols.find(c=>c.col===L.dueCol);
+  if(!due || !due.formula) return null;
+  const done=cols.find(c=>_STAT_DONE_HEAD.test(String(c.heading||'').trim())), life=cols.find(c=>_STAT_LIFE_HEAD.test(String(c.heading||'').trim()));
+  return (done && life) ? { doneCol:done.col, lifeCol:life.col, unit:'months' } : null;
+}
+function _statDoneColGuess(sec){ const c=_statAllColsFor(sec).find(x=>_STAT_DONE_HEAD.test(String(x.heading||'').trim()) && !x.formula); return c ? c.col : null; }
+function _statDocMap(){ if(!S.monitoring.statDocs || typeof S.monitoring.statDocs!=='object') S.monitoring.statDocs={}; return S.monitoring.statDocs; }
+function _statDoneLog(){ if(!Array.isArray(S.monitoring.statDone)) S.monitoring.statDone=[]; return S.monitoring.statDone; }
+// Windows "Copy as path" wraps the path in quotes: they are taken off
+function _statCleanLoc(v){ return String(v==null?'':v).trim().replace(/^["']+|["']+$/g,'').trim(); }
+function _statDocOf(sec, r){ return _statCleanLoc(r && r.doc) || _statCleanLoc(_statDocMap()[_regNAKey(sec, r)]); }
+function _statSetDoc(sec, r, v){ v=_statCleanLoc(v); const k=_regNAKey(sec, r), m=_statDocMap(); r.doc=v; if(v) m[k]=v; else delete m[k]; }
+function _statCopy(loc){ navigator.clipboard.writeText(_statCleanLoc(loc)).then(()=>showToast('Location copied - paste into File Explorer','success'), ()=>showToast('Could not copy','error')); }
+function statCopyDoc(secId, id){ const sec=_regSection(secId); const r=sec && (sec.items||[]).find(x=>x.id===id); if(r) _statCopy(_statDocOf(sec, r)); }
+function _statDocCtl(secId, sec, r){
+  const loc=_statDocOf(sec, r); if(!loc) return '<span style="color:var(--text-muted);">-</span>';
+  if(_raLocIsUrl(loc)) return `<a class="rar-open" style="padding:3px 9px;font-size:11px;" href="${esc(loc)}" target="_blank" rel="noopener" title="${esc(loc)}">Open &#8599;</a>`;
+  return `<button type="button" class="rar-copy no-print" style="padding:3px 9px;font-size:11px;" title="${esc(loc)}" onclick="statCopyDoc('${secId}','${r.id}')">Copy location</button>`;
+}
+// the first column shown when it is not the item name - an asset number, usually
+function _statRefOf(sec, r){
+  const L=_statL(); if(!L) return '';
+  const c=_statColsFor(sec).find(x=>x.col!==L.dueCol); if(!c || c.col===L.itemCol) return '';
+  return _statShow((r.cols||{})[c.col]);
+}
+function _statItemLabel(sec, r){ const ref=_statRefOf(sec, r); return (ref ? (ref+'  ') : '')+(r.item||'(unnamed)'); }
+
+function statTickDone(secId, id){ const sec=_regSection(secId); if(!sec) return; const r=(sec.items||[]).find(x=>x.id===id); if(!r) return; _statCard(secId, sec, r, true); }
+// Done: the date goes into the client's own column, the next due date is worked
+// out, and the line is written to the record the monthly report reads.
+function _statComplete(sec, r, o){
+  const L=_statL(), rule=_statRule(sec); r.cols=r.cols||{};
+  const clone=x=>(x==null?null:JSON.parse(JSON.stringify(x)));
+  const prev={ cols:{}, dueDate:r.dueDate||'', cmp:r.cmp||null };
+  const touch=c=>{ if(c && !Object.prototype.hasOwnProperty.call(prev.cols, c)) prev.cols[c]=clone(r.cols[c]); };
+  let next='';
+  if(rule){
+    touch(rule.doneCol); r.cols[rule.doneCol]={ v:o.doneOn, type:'date', formula:false };
+    let life=Number((r.cols[rule.lifeCol]||{}).v);
+    if(!(life>0) && Number(o.life)>0){ touch(rule.lifeCol); life=Number(o.life); r.cols[rule.lifeCol]={ v:life, type:'number', formula:false }; }
+    next=_statEdate(o.doneOn, life);
+  } else {
+    next=o.next||'';
+    const dc=_statDoneColGuess(sec); if(dc){ touch(dc); r.cols[dc]={ v:o.doneOn, type:'date', formula:false }; }
+  }
+  if(L.dueCol){ touch(L.dueCol); const was=r.cols[L.dueCol]||{}; r.cols[L.dueCol]=Object.assign({}, was, { v:next, type:'date', formula:!!was.formula }); }
+  r.dueDate=next;
+  const e={ id:_reqUid('done'), key:_regNAKey(sec, r), sheet:r.sheet||sec.sheet||sec.name||'', row:r.row||null, item:r.item||'', ref:_statRefOf(sec, r),
+    dueWas:prev.dueDate, doneOn:o.doneOn, nextDue:next, by:(typeof _actor==='function'?(_actor().name||''):''), at:new Date().toISOString(), doc:_statDocOf(sec, r), prev };
+  r.cmp=e.id; _statDoneLog().push(e);
+  return e;
+}
+function statUndoDone(id){
+  if(_blockIfReadOnly()) return;
+  const log=_statDoneLog(), e=log.find(x=>x.id===id); if(!e) return;
+  let hit=null; _regSections().forEach(sec=>(sec.items||[]).forEach(r=>{ if(r.cmp===id) hit=r; }));
+  if(!confirm('Undo "'+(e.item||'this item')+'" done on '+fmtDate(e.doneOn)+'?\n\n'+(hit
+    ? 'Its dates go back to how they were before it was ticked.'
+    : 'The spreadsheet has been imported since, so its dates stay as the spreadsheet has them - change them there if they were wrong.'))) return;
+  if(hit){
+    Object.keys(e.prev.cols||{}).forEach(c=>{ if(e.prev.cols[c]==null) delete hit.cols[c]; else hit.cols[c]=e.prev.cols[c]; });
+    hit.dueDate=e.prev.dueDate||''; if(e.prev.cmp) hit.cmp=e.prev.cmp; else delete hit.cmp;
+    if(typeof _stamp==='function') _stamp(hit,'updated');
+  }
+  S.monitoring.statDone=log.filter(x=>x.id!==id);
+  saveData(); renderMonitoring();
+  showToast('Undone - '+(e.item||'the item')+' is back as it was','info');
+}
+// The pop-up: the RA register's card, as it is - the next due date, a tick
+// to complete it, and where the certificate or report is kept.
+function _statCard(secId, sec, r, wantDone){
+  const L=_statL(); if(!L) return;
+  const old=document.getElementById('regEditOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='regEditOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:48px 12px;overflow:auto;';
+  const ro=_roLocked(), dis=ro?' disabled':'';
+  const g=_regItemRag(r), st=_STAT_CARD_ST[g], rule=_statRule(sec), cols=r.cols||{};
+  const all=_statAllColsFor(sec), hd=c=>{ const x=all.find(y=>y.col===c); return x ? _statHeading(x) : ('column '+_statColLetter(c)); };
+  const life=rule ? Number((cols[rule.lifeCol]||{}).v) : NaN, hasLife=!!rule && life>0;
+  const dueF=!L.dueCol || !!(cols[L.dueCol]||{}).formula;
+  const today=_statToday(), doc=_statDocOf(sec, r);
+  const sub=[(L.sheets.length>1 ? (r.sheet||sec.name||'') : ''), (r.row ? ('row '+r.row+' of the spreadsheet') : 'new - goes into the spreadsheet on export'), _statRefOf(sec, r)].filter(Boolean).join(' · ');
+  ov.innerHTML=`<div class="rar-card rar-${st[0]}" style="max-width:440px;width:94%;" role="dialog" aria-modal="true" aria-labelledby="_scT">
+    <div class="rar-top"><div class="rar-icon">${_RA_DOC_ICON}</div>
+      <div style="flex:1;min-width:0;"><div id="_scT" class="rar-title" style="padding:4px 2px 0;">${esc(r.item||'(unnamed)')}</div><div style="font-size:11.5px;color:var(--text-muted);padding:1px 2px 0;">${esc(sub)}</div></div>
+      <button type="button" id="_scX" class="btn btn-ghost btn-xs" aria-label="Close" title="Close" style="font-size:16px;line-height:1;">&times;</button></div>
+    <div class="rar-meta">
+      <div class="rar-fld"><label for="_scDue">Next due</label><input type="date" id="_scDue" value="${esc(r.dueDate||'')}"${(dueF||ro)?' disabled':''}></div>
+      <div class="rar-fld"><label>Status</label><div style="padding-top:4px;"><span class="rar-status rar-${st[0]}">${st[1]}</span></div></div>
+    </div>
+    ${(L.dueCol && dueF) ? `<div style="font-size:11px;color:var(--text-muted);margin-top:-4px;">${rule ? ('Worked out in the spreadsheet from '+esc(hd(rule.doneCol))+' and '+esc(hd(rule.lifeCol))+'.') : 'Worked out in the spreadsheet.'}</div>` : ''}
+    ${g==='na' ? `<div class="reg-na" style="font-size:12px;">No longer applies - ${esc(r.na.reason)}</div>` : `<div style="border-top:1px solid var(--border);padding-top:10px;display:flex;flex-direction:column;gap:8px;">
+      <label style="display:flex;gap:8px;align-items:center;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="_scDone" style="width:16px;height:16px;accent-color:var(--accent);"${wantDone?' checked':''}${dis}> Completed</label>
+      <div id="_scDoneF" class="rar-meta" style="display:${wantDone?'grid':'none'};">
+        <div class="rar-fld"><label for="_scOn">Date done</label><input type="date" id="_scOn" value="${today}" max="${today}"${dis}></div>
+        ${(rule && !hasLife) ? `<div class="rar-fld"><label for="_scLife">${esc(hd(rule.lifeCol))}</label><input type="number" id="_scLife" min="1" step="1" placeholder="months"${dis}></div>` : ''}
+        ${!rule ? `<div class="rar-fld"><label for="_scNext">New next due</label><input type="date" id="_scNext"${dis}></div>` : ''}
+      </div>
+      <div id="_scNew" style="font-size:12px;color:var(--text-muted);"></div>
+    </div>`}
+    <div class="rar-loc"><label for="_scDoc">Document location</label>
+      <div class="rar-loc-row"><input class="rar-loc-input" id="_scDoc" value="${esc(doc)}" placeholder="https://...  or  S:\\H&S\\FM\\certificate.pdf"${dis}><span id="_scDocCtl" style="display:contents;"></span></div></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;"><button type="button" id="_scCancel" class="btn btn-ghost btn-sm">Cancel</button>${ro?'':'<button type="button" id="_scSave" class="btn btn-primary btn-sm">Save</button>'}</div>
+  </div>`;
+  document.body.appendChild(ov); const close=()=>ov.remove(); _backdropClose(ov, close);
+  const q=s=>ov.querySelector(s);
+  q('#_scX').onclick=close; q('#_scCancel').onclick=close;
+  const ctl=()=>{ const v=_statCleanLoc(q('#_scDoc').value), box=q('#_scDocCtl');
+    box.innerHTML=!v ? '' : (_raLocIsUrl(v) ? `<a class="rar-open" href="${esc(v)}" target="_blank" rel="noopener">Open &#8599;</a>` : '<button type="button" class="rar-copy" id="_scCopy">Copy</button>');
+    const cp=q('#_scCopy'); if(cp) cp.onclick=()=>_statCopy(v); };
+  ctl(); q('#_scDoc').oninput=ctl;
+  // what Save will do with the tick, said before it is pressed
+  const plan=()=>{
+    const box=q('#_scNew'), tk=q('#_scDone'); if(!box || !tk) return null;
+    q('#_scDoneF').style.display=tk.checked?'grid':'none';
+    if(!tk.checked){ box.textContent=''; return null; }
+    const d=q('#_scOn').value, say=t=>{ box.textContent=t; return { err:t }; };
+    if(!d) return say('Enter the date it was done.');
+    if(d>today) return say('The date done cannot be in the future.');
+    let next='', months=null;
+    if(rule){ months=hasLife ? life : Number((q('#_scLife')||{}).value); if(!(months>0)) return say('Enter the '+hd(rule.lifeCol)+' so the next due date can be worked out.'); next=_statEdate(d, months); }
+    else { next=(q('#_scNext')||{}).value||''; if(!next) return say('Enter the new next due date.'); if(next<=d) return say('The next due date must be after the date done.'); }
+    box.textContent='Next due becomes '+fmtDate(next)+(months?(' ('+months+' month'+(months!==1?'s':'')+' on)'):'')+'. It moves to '+_statMonthName(next.slice(0,7))+'.';
+    return { doneOn:d, life:(rule && !hasLife) ? months : null, next };
+  };
+  ['#_scDone','#_scOn','#_scLife','#_scNext'].forEach(s=>{ const el=q(s); if(el){ el.addEventListener('change', plan); el.addEventListener('input', plan); } });
+  plan();
+  const save=q('#_scSave'); if(save) save.onclick=()=>{
+    if(_blockIfReadOnly()) return;
+    const p=plan(); if(p && p.err){ showToast(p.err,'info'); return; }
+    _statSetDoc(sec, r, q('#_scDoc').value);
+    if(!p && !dueF){ const nd=q('#_scDue').value; if(nd!==(r.dueDate||'')){ r.cols=r.cols||{}; r.cols[L.dueCol]={ v:nd, type:'date', formula:false }; r.dueDate=nd; } }
+    const e=p ? _statComplete(sec, r, p) : null;
+    if(typeof _stamp==='function') _stamp(r,'updated');
+    saveData(); renderMonitoring(); close();
+    showToast(e ? ('✓ '+(r.item||'Item')+' done - next due '+fmtDate(e.nextDue)) : '✓ Saved', 'success');
+  };
+  if(wantDone){ const f=q('#_scOn'); if(f) f.focus(); }
+}
+// The register as the client works it: what has expired, then month by month
+// by the date each line falls due, with what has been done this month.
+function _statMonthGroups(){
+  const G={ expired:[], months:{}, none:[], na:[] };
+  _regSections().forEach(sec=>(sec.items||[]).forEach(r=>{
+    const g=_regItemRag(r), x={ sec, r };
+    if(g==='na') G.na.push(x); else if(g==='red') G.expired.push(x); else if(g==='grey') G.none.push(x);
+    else { const ym=String(r.dueDate).slice(0,7); (G.months[ym]=G.months[ym]||[]).push(x); }
+  }));
+  const byDue=(a,b)=>String(a.r.dueDate||'').localeCompare(String(b.r.dueDate||'')) || String(a.r.item||'').localeCompare(String(b.r.item||''));
+  G.expired.sort(byDue); Object.values(G.months).forEach(l=>l.sort(byDue));
+  return G;
+}
+function _statDoneThisMonth(){ const m=_statToday().slice(0,7); return _statDoneLog().filter(e=>String(e.doneOn||'').slice(0,7)===m || String(e.at||'').slice(0,7)===m).sort((a,b)=>String(b.at||'').localeCompare(String(a.at||''))); }
+function _statMonthViewHTML(ro){
+  const secs=_regSections(), first=secs.find(s=>(s.items||[]).length) || secs[0];
+  if(!first || !secs.some(s=>(s.items||[]).length)) return `<div class="ck-pending" style="padding:6px 0;">No items yet - import the client's spreadsheet.</div>`;
+  const cols=_statColsFor(first), N=cols.length+2+(ro?0:1);
+  const G=_statMonthGroups(), thisM=_statToday().slice(0,7), nextM=_statAddMonths(thisM,1);
+  const band=(text, n, colour, key)=>`<tr class="stat-band" data-group="${key}"><td colspan="${N}" style="padding:14px 8px 6px;border-bottom:1.5px solid var(--border);"><span style="position:sticky;left:8px;"><span style="font-weight:700;font-size:13px;color:${colour||'var(--text)'};">${esc(text)}</span> <span style="font-size:11.5px;font-weight:600;color:var(--text-muted);margin-left:6px;">${n} item${n!==1?'s':''}</span></span></td></tr>`;
+  const rows=l=>l.map(x=>_statItemRow(x.sec.id, x.r, ro)).join('');
+  const done=_statDoneThisMonth();
+  const doneBlock=()=>!done.length ? '' : band('Completed this month', done.length, '#15803D', 'done')+done.map(e=>`<tr class="stat-done-row" data-done="${e.id}"><td style="${_STAT_TICK}text-align:center;color:#15803D;font-weight:700;">✓</td>
+      <td colspan="${N-1-(ro?0:1)}" style="padding:6px 8px;font-size:12px;"><b>${esc((e.ref?(e.ref+'  '):'')+(e.item||'(unnamed)'))}</b> <span style="color:var(--text-muted);">- done ${esc(fmtDate(e.doneOn))}${e.by?(' by '+esc(e.by)):''} · was due ${esc(e.dueWas?fmtDate(e.dueWas):'-')} · next due ${esc(e.nextDue?fmtDate(e.nextDue):'-')}${e.doc?(' · '+esc(e.doc)):''}</span></td>
+      ${ro?'':`<td style="text-align:right;white-space:nowrap;"><button class="btn btn-ghost btn-xs no-print" title="Ticked by mistake? Puts the dates back" onclick="statUndoDone('${e.id}')">Undo</button></td>`}</tr>`).join('');
+  let body='';
+  if(G.expired.length) body+=band('Expired', G.expired.length, '#B91C1C', 'expired')+rows(G.expired);
+  const months=Object.keys(G.months).sort();
+  if(G.months[thisM]) body+=band(_statMonthName(thisM)+' - this month', G.months[thisM].length, null, thisM)+rows(G.months[thisM]);
+  body+=doneBlock();
+  months.filter(m=>m>thisM).forEach(m=>{ body+=band(_statMonthName(m)+(m===nextM?' - next month':''), G.months[m].length, null, m)+rows(G.months[m]); });
+  if(G.none.length) body+=band('No due date', G.none.length, 'var(--text-muted)', 'none')+rows(G.none);
+  if(G.na.length) body+=band('No longer applies', G.na.length, 'var(--text-muted)', 'na')+rows(G.na);
+  return `<div style="font-size:12.5px;color:var(--text-muted);margin:0 0 6px;">By the month each item falls due. Tick <b>Done</b> when an item has been carried out: the date goes into the spreadsheet, the next due date is worked out, and the item moves on. Nothing here goes onto the plan.</div>
+    <div style="overflow-x:auto;" data-keepscroll="reg-months"><table class="stat-months" style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead style="color:var(--text-muted);border-bottom:1.5px solid var(--border);font-size:10.5px;"><tr>${_statHeadHTML(first, ro)}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+// ── The monthly report: completed, expired, coming next - as at the day it is made ──
+function openStatFmReportPicker(){
+  const cur=_statToday().slice(0,7), opts=[]; for(let i=0;i<12;i++) opts.push(_statAddMonths(cur,-i));
+  const old=document.getElementById('statFmRptOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='statFmRptOv'; ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99999;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:360px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+    <div style="font-weight:700;margin-bottom:4px;">Monthly FM report</div>
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">What was completed in the month, what has expired, and what is due next. Expired and due items are as at today.</div>
+    <select id="_sfrMonth" style="width:100%;padding:8px;border:1px solid var(--border,#ccc);border-radius:8px;background:var(--surface,#fff);color:inherit;">${opts.map(k=>`<option value="${k}">${_statMonthName(k)}${k===cur?' (current)':''}</option>`).join('')}</select>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;"><button class="btn btn-ghost btn-sm" id="_sfrCancel">Cancel</button><button class="btn btn-primary btn-sm" id="_sfrGo">Create the report</button></div>
+  </div>`;
+  document.body.appendChild(ov); const close=()=>ov.remove(); _backdropClose(ov, close);
+  ov.querySelector('#_sfrCancel').onclick=close;
+  ov.querySelector('#_sfrGo').onclick=()=>{ const m=ov.querySelector('#_sfrMonth').value; close(); downloadStatFmReport(m); };
+}
+function downloadStatFmReport(month){
+  if(!_statL()){ showToast('Import the client\'s spreadsheet first','info'); return; }
+  try { _statFmReportPDF(month || _statToday().slice(0,7)); showToast('✓ Monthly FM report created','success'); }
+  catch(e){ console.error('FM report failed', e); showToast('Could not build the PDF - see console','error'); }
+}
+function _statFmReportPDF(month){
+  const L=_statL(), client=(_consultantView&&_consultantView.name)||_cockpitClientName();
+  const d=_docFor('statutoryMonthly'), today=_statToday(), nextM=_statAddMonths(month,1);
+  const RED=[185,28,28], GREEN=[22,120,60], AMBER=[180,110,10], NAVY=[30,58,95], GREY=[110,110,110];
+  const all=[]; _regSections().forEach(sec=>(sec.items||[]).forEach(r=>{ if(String(r.item||'').trim()) all.push({ sec, r, g:_regItemRag(r) }); }));
+  const byDue=(a,b)=>String(a.r.dueDate||'').localeCompare(String(b.r.dueDate||''));
+  const live=all.filter(x=>x.g!=='na'), na=all.filter(x=>x.g==='na');
+  const expired=live.filter(x=>x.g==='red').sort(byDue), inDate=live.filter(x=>x.g==='green'||x.g==='amber'), noDate=live.filter(x=>x.g==='grey');
+  const stillDue=live.filter(x=>x.g!=='red' && String(x.r.dueDate||'').slice(0,7)===month).sort(byDue);
+  const coming=live.filter(x=>String(x.r.dueDate||'').slice(0,7)===nextM).sort(byDue);
+  const done=_statDoneLog().filter(e=>String(e.doneOn||'').slice(0,7)===month).sort((a,b)=>String(a.doneOn).localeCompare(String(b.doneOn)));
+  const pct=live.length ? Math.round(inDate.length/live.length*100) : 0;
+  const days=iso=>Math.max(0, Math.round((new Date(today+'T12:00:00')-new Date(String(iso)+'T12:00:00'))/86400000));
+  const lab=x=>_statItemLabel(x.sec, x.r);
+  const K=_mkPdf('Statutory FM Compliance Report', client, d, _statMonthName(month)+' - statutory and facilities inspections: what was done, what has expired and what is due next.');
+  K.text('As at '+fmtDate(today)+'. Taken from the client\'s own register'+(L.file?(' ('+L.file+')'):'')+'.', 9, {color:GREY, gap:2});
+  K.tiles([
+    { num:pct+'%', label:'In date', color:expired.length?RED:(pct===100?GREEN:AMBER), sub:inDate.length+' of '+live.length+' items' },
+    { num:done.length, label:'Completed in '+_statMonthName(month,true), color:GREEN },
+    { num:expired.length, label:'Expired', color:expired.length?RED:GREY, sub:'as at '+fmtDate(today) },
+    { num:coming.length, label:'Due in '+_statMonthName(nextM,true), color:AMBER }
+  ]);
+  K.section('Completed in '+_statMonthName(month), GREEN);
+  if(done.length) K.table([{header:'ITEM',w:50},{header:'WAS DUE',w:20},{header:'DONE ON',w:20},{header:'NEXT DUE',w:20},{header:'DOCUMENT',w:52}],
+    done.map(e=>[{text:(e.ref?(e.ref+'  '):'')+(e.item||'(unnamed)'), bold:true}, e.dueWas?fmtDate(e.dueWas):'-', fmtDate(e.doneOn), e.nextDue?fmtDate(e.nextDue):'-', {text:e.doc||'-', color:e.doc?[55,55,55]:GREY}]));
+  else K.text('Nothing recorded as completed in '+_statMonthName(month)+'.', 9.5, {color:GREY});
+  K.section('Expired - still to be done', RED);
+  if(expired.length) K.table([{header:'ITEM',w:90},{header:'WAS DUE',w:30},{header:'DAYS OVER',w:24,align:'right'}],
+    expired.map(x=>[{text:lab(x), bold:true}, fmtDate(x.r.dueDate), {text:String(days(x.r.dueDate)), color:RED, bold:true}]));
+  else K.text('Nothing has expired.', 9.5, {color:GREEN});
+  if(stillDue.length){ K.section('Still due in '+_statMonthName(month), AMBER);
+    K.table([{header:'ITEM',w:110},{header:'DUE',w:34}], stillDue.map(x=>[{text:lab(x), bold:true}, fmtDate(x.r.dueDate)])); }
+  K.section('Coming next month - '+_statMonthName(nextM), NAVY);
+  if(coming.length) K.table([{header:'ITEM',w:110},{header:'DUE',w:34}], coming.map(x=>[{text:lab(x), bold:true}, fmtDate(x.r.dueDate)]));
+  else K.text('Nothing falls due in '+_statMonthName(nextM)+'.', 9.5, {color:GREY});
+  if(noDate.length){ K.section('No due date', GREY);
+    K.text(noDate.length+' item'+(noDate.length!==1?'s have':' has')+' no due date in the spreadsheet: '+noDate.map(lab).join(', ')+'.', 9, {color:GREY}); }
+  if(na.length){ K.section('No longer applies', GREY);
+    K.table([{header:'ITEM',w:70},{header:'REASON',w:74}], na.map(x=>[lab(x), String((x.r.na||{}).reason||'-')])); }
+  _pdfFooter(K, d, 'Statutory FM Compliance Report');
+  K.doc.save('statutory-fm-report-'+month+'-'+String(client).replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.pdf');
 }
 async function _statApplyLayout(parsed, fname, buf){
   const L=parsed.layout, first=(L.sheets||[])[0]||{ columns:[] };
@@ -34312,18 +34601,32 @@ async function _statApplyLayout(parsed, fname, buf){
   _regSections().forEach(s=>(s.items||[]).forEach(it=>{ if(it.row) prev[(it.sheet||s.name)+'|'+it.row+'|'+String(it.item||'').trim().toLowerCase()]=it; }));
   S.monitoring.regSections=(L.sheets||[]).filter(sh=>parsed.items.some(it=>it.sheet===sh.name)).map(sh=>({ id:_reqUid('regsec'), name:sh.name, sheet:sh.name,
     items:parsed.items.filter(it=>it.sheet===sh.name).map(it=>{ const p=prev[it.sheet+'|'+it.row+'|'+String(it.item||'').trim().toLowerCase()]||{};
-      const o={ id:_reqUid('reg'), sheet:it.sheet, row:it.row, item:it.item, dueDate:it.dueDate||'', cols:it.cols||{} }; keep.forEach(k=>{ o[k]=p[k]||''; }); return o; }) }));
-  S.monitoring.statLayout={ file:fname, headerRow:L.headerRow, sheets:L.sheets, itemCol:L.itemCol, dueCol:L.dueCol||null, notBrought:L.notBrought||[] };
+      const o={ id:_reqUid('reg'), sheet:it.sheet, row:it.row, item:it.item, dueDate:it.dueDate||'', cols:it.cols||{} }; keep.forEach(k=>{ o[k]=p[k]||''; }); if(it.doc) o.doc=_statCleanLoc(it.doc); return o; }) }));
+  S.monitoring.statLayout=Object.assign({ file:fname, headerRow:L.headerRow, sheets:L.sheets, itemCol:L.itemCol, dueCol:L.dueCol||null, notBrought:L.notBrought||[] }, L.rule?{ rule:L.rule }:{}, L.docCol?{ docCol:L.docCol }:{});
   S.monitoring.regSeeded=true; S.monitoring.statFile=fname;
   const back=_regNAApply();   // the reasons outlive the replace
+  // a document location and a tick done in Compass outlive it too: a link typed in Compass wins,
+  // and a tick newer than the spreadsheet's own date is kept (the file was not saved in Excel since)
+  const docs=_statDocMap(), latest={}; let kept=0;
+  _statDoneLog().forEach(e=>{ if(!latest[e.key] || String(e.doneOn)>String(latest[e.key].doneOn)) latest[e.key]=e; });
+  _regSections().forEach(sec=>(sec.items||[]).forEach(o=>{
+    const k=_regNAKey(sec,o), dl=_statCleanLoc(docs[k])||o.doc||''; if(dl){ o.doc=dl; docs[k]=dl; }
+    const e=latest[k]; if(!e || !e.nextDue) return;
+    const rule=_statRule(sec), sd=rule?String((o.cols[rule.doneCol]||{}).v||''):'';
+    if(String(e.doneOn)>=sd && String(e.nextDue)>String(o.dueDate||'')){
+      if(rule) o.cols[rule.doneCol]={ v:e.doneOn, type:'date', formula:false };
+      o.dueDate=e.nextDue; if(L.dueCol){ const w=o.cols[L.dueCol]||{}; o.cols[L.dueCol]=Object.assign({}, w, { v:e.nextDue, type:'date', formula:!!w.formula }); }
+      o.cmp=e.id; kept++; }
+  }));
   saveData(); renderMonitoring();
+  if(kept) showToast(kept+' item'+(kept!==1?'s':'')+' ticked done in Compass kept - newer than the spreadsheet','info',6000);
   if(back) showToast(back+' item'+(back!==1?'s':'')+' still marked as no longer applying','info',5000);
   showToast('✓ Imported '+parsed.items.length+' statutory items from '+fname+' - '+cw+' columns','success');
 }
 async function _statExportLayout(){
   try{
     const L=_statL();
-    const items=_regSections().flatMap(s=>(s.items||[]).filter(it=>it.row || String(it.item||'').trim()).map(it=>({ sheet:it.sheet||s.sheet||s.name, row:it.row||null, item:it.item,
+    const items=_regSections().flatMap(s=>(s.items||[]).filter(it=>it.row || String(it.item||'').trim()).map(it=>({ sheet:it.sheet||s.sheet||s.name, row:it.row||null, item:it.item, doc:_statDocOf(s, it),
       cols:it.cols || (L.itemCol ? { [L.itemCol]:{ v:it.item||'', type:'text' } } : {}) })));
     const res=await _tApiRaw('/api/statutory/export', JSON.stringify({ state:{ layout:L, items } }));
     if(!res.ok){ const e=await res.json().catch(()=>({})); alert(e.error==='no_template'?'Import the client\'s spreadsheet first, then export.':'Export failed: '+(e.error||('HTTP '+res.status))); return; }
@@ -36369,25 +36672,26 @@ function renderMonitoring(){
       ${ro?'':`<button class="btn btn-outline btn-sm no-print" onclick="addRegItem('${s.id}')">＋ Add statutory item</button>`}
     </div>`;
   };
-  const regBody = regSecs.length ? regSecs.map(sectionBlock).join('') : `<div class="ck-pending" style="padding:6px 0;">No sections yet.</div>`;
+  const regBody = _statL() ? _statMonthViewHTML(ro) : (regSecs.length ? regSecs.map(sectionBlock).join('') : `<div class="ck-pending" style="padding:6px 0;">No sections yet.</div>`);   // the client's own sheet reads month by month
 
   cont.innerHTML = familyCards + `
     <div class="card">
-      <div class="card-band"><h3><span class="dot">●</span> Regulatory tracker (statutory &amp; FM inspections)</h3>${(function(){ const c=_regCounts(); return c.total?`<span class="badge badge-muted">${c.total} items${c.overdue?(' · '+c.overdue+' overdue'):''}</span>`:''; })()}</div>
+      <div class="card-band"><h3><span class="dot">●</span> Regulatory tracker (statutory &amp; FM inspections)</h3>${(function(){ const c=_regCounts(); return c.total?`<span class="badge badge-muted">${c.total} items${c.overdue?(' · '+c.overdue+(_statL()?' expired':' overdue')):''}</span>`:''; })()}</div>
       <div class="card-body">
         ${(function(){ const c=_regCounts(); if(!c.total) return ''; return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
           <span class="badge badge-muted">${c.total} items</span>
-          <span class="badge" style="background:${c.overdue?'#FEE2E2':'var(--muted-bg)'};color:${c.overdue?'#B91C1C':'var(--text-muted)'};font-weight:700;">${c.overdue} overdue</span>
+          <span class="badge" style="background:${c.overdue?'#FEE2E2':'var(--muted-bg)'};color:${c.overdue?'#B91C1C':'var(--text-muted)'};font-weight:700;">${c.overdue} ${_statL()?'expired':'overdue'}</span>
           <span class="badge" style="background:${c.soon?'#FEF3C7':'var(--muted-bg)'};color:${c.soon?'#B45309':'var(--text-muted)'};font-weight:700;">${c.soon} due within 60 days</span></div>`; })()}
         ${regBody}
         ${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:2px;">
-          <button class="btn btn-primary btn-sm no-print" onclick="addRegSection()">＋ Add section</button>
+          ${_statL()?`<button class="btn btn-primary btn-sm no-print" onclick="addRegItem('${((_regSections().find(s=>(s.items||[]).length)||_regSections()[0])||{}).id}')">＋ Add item</button>`:'<button class="btn btn-primary btn-sm no-print" onclick="addRegSection()">＋ Add section</button>'}
           <button class="btn btn-outline btn-sm no-print" onclick="statutoryUploadXlsx()"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⭱ Import / update (overwrite)</button>
           <button class="btn btn-outline btn-sm no-print" onclick="statutoryExportXlsx()"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⭳ Export spreadsheet</button>
+          ${_statL()?'<button class="btn btn-outline btn-sm no-print" onclick="openStatFmReportPicker()" title="Completed this month, expired, and coming next - as a PDF">⭳ Monthly FM report</button>':''}
           <button class="btn btn-ghost btn-sm no-print" onclick="openImportWizard('statutory')">⎘ Paste from Excel</button>
           <button class="btn btn-ghost btn-sm no-print" title="Pick the file, see the first rows, click the row your column headings are on" onclick="xlsxMappedImport('statutory')"${_tOnline()?'':' disabled title="Sign in to sync the spreadsheet"'}>⚙ Map &amp; import</button>
           <button class="btn btn-ghost btn-sm no-print" onclick="downloadStatutoryTemplate()">⭳ Template</button>
-          ${(function(){ const n=_statDueCount(); const onPlan=(S.actionPlan||[]).some(a=>a.regKey&&a.status!=='Complete'&&a.status!=='Accepted');
+          ${_statL()?'':(function(){ const n=_statDueCount(); const onPlan=(S.actionPlan||[]).some(a=>a.regKey&&a.status!=='Complete'&&a.status!=='Accepted');
             if(!n&&onPlan) return `<button class="btn btn-ghost btn-sm no-print btn-raised" disabled title="Everything due is already on the execution plan">✓ Due items on the plan</button>`;
             return `<button class="btn btn-ghost btn-sm no-print" onclick="raiseStatutoryDue()"${n?'':' disabled'}>Raise due actions${n?(' ('+n+')'):''}</button>`; })()}
           ${(function(){ const g=(typeof _covGaps==='function')?_covGaps().length:0; return `<button class="btn btn-ghost btn-sm no-print" onclick="runCoverageCheck()" title="Compare what the discovery answers imply against the statutory tracker and training matrix - gaps become actions, never rows">🛡 Coverage check${g?(' ('+g+')'):''}</button>`; })()}

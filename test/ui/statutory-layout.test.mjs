@@ -72,7 +72,7 @@ const toasts = () => page.evaluate(() => { const t = window.__toasts.slice(); wi
 async function chooseFile(sel){ const [fc] = await Promise.all([page.waitForFileChooser({ timeout: 10000 }), page.evaluate(s => { const b = document.querySelector(s); b.scrollIntoView({ block: 'center' }); b.click(); }, sel)]);
   const tmp = require('node:path').join(require('node:os').tmpdir(), 'compass-stat-layout-test.xlsx'); require('node:fs').writeFileSync(tmp, FILE); await fc.accept([tmp]); await page.waitForSelector('#xlsxMapOv', { timeout: 10000 }); await wait(page, 200); }
 const tracker = () => page.evaluate(() => { const t = document.querySelector('#tab-monitoring tr[onclick^="regEditItem("]'); const tb = t && t.closest('table');
-  return { heads: tb ? [...tb.querySelectorAll('thead th')].map(th => th.innerText.trim()).filter(Boolean) : [], rows: tb ? [...tb.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.innerText.trim())) : [] }; });
+  return { heads: tb ? [...tb.querySelectorAll('thead th')].map(th => th.innerText.trim()).filter(Boolean) : [], rows: tb ? [...tb.querySelectorAll('tbody tr[onclick^="regEditItem("]')].map(tr => [...tr.children].map(td => td.innerText.trim())) : [] }; });
 
 await seed(page, { company: { tradingName: 'Testing Client Ltd' }, monitoring: { months: {}, meta: {}, regulatory: [], regSections: [] } }, 'monitoring');
 await bridge();
@@ -110,28 +110,31 @@ await wait(page, 400);
 await wait(page, 600);
 {
   const t = await tracker();
-  R.ok(t.heads.join(' | ') === 'Asset ID | Description | Location | Status | Last service | Life (months) | Next due', 'the tracker shows the sheet\'s own headings, in its order, without Section: ' + t.heads.join(' | '));
-  R.ok(t.rows.length === 4 && t.rows[0][0] === 'A1' && t.rows[0][4] === dmy(LAST.A1), 'one row a line of the sheet, dates as the sheet shows them: ' + t.rows[0].slice(0, 7).join(' | '));
-  const badges = await page.evaluate(() => [...document.querySelectorAll('#tab-monitoring tr[onclick^="regEditItem("]')].map(tr => tr.children[6].querySelector('span').title));
-  R.ok(badges.join() === 'In date,Overdue,Due soon,No due date', 'the due column carries the traffic light; no date is grey: ' + badges.join());
+  // moved 12 November 2026 to the agreed month view: a Done tick first and a Document column last
+  R.ok(t.heads.join(' | ') === 'Done | Asset ID | Description | Location | Status | Last service | Life (months) | Next due | Document', 'the tracker shows the sheet\'s own headings, in its order, without Section, between the Done tick and the Document column: ' + t.heads.join(' | '));
+  const a1 = t.rows.find(r => r[1] === 'A1');
+  R.ok(t.rows.length === 4 && a1 && a1[5] === dmy(LAST.A1), 'one row a line of the sheet, dates as the sheet shows them: ' + (a1 || []).slice(0, 8).join(' | '));
+  // grouped by when each line falls due: expired first, then the months, then no date ("Expired" is the client's word, 12 November 2026)
+  const badges = await page.evaluate(() => [...document.querySelectorAll('#tab-monitoring tr[onclick^="regEditItem("]')].map(tr => tr.children[0 + 7].querySelector('span').title));
+  R.ok(badges.join() === 'Expired,Due soon,In date,No due date', 'the due column carries the traffic light; no date is grey: ' + badges.join());
   const sticky = await page.evaluate(() => getComputedStyle(document.querySelector('#tab-monitoring tr[onclick^="regEditItem("]').children[0]).position);
   R.ok(sticky === 'sticky', 'the first column stays put when the table scrolls sideways');
 }
-// ── edit a date: the formula cells are read-only ──
+// ── a line of their sheet opens the card; ticking it done writes the date done (moved 12 November 2026:
+//    the pop-up is the card - next due, a tick, the document - not one field a column) ──
+const DONE = iso(new Date(T.getFullYear(), T.getMonth(), T.getDate()));
 {
-  await page.evaluate(() => [...document.querySelectorAll('#tab-monitoring tr[onclick^="regEditItem("]')][2].click()); await wait(page, 200);
-  const e = await page.evaluate(() => { const ov = document.querySelector('#regEditOv'); return { labels: [...ov.querySelectorAll('label')].map(l => l.innerText).join(' | '), date: ov.querySelector('#_rsc6').type + ' ' + ov.querySelector('#_rsc6').value, num: ov.querySelector('#_rsc7').type, ro: [5, 8].map(c => ov.querySelector('#_rsc' + c).readOnly), text: ov.innerText }; });
-  R.ok(e.labels === 'Asset ID | Description | Location | Status | Last service | Life (months) | Next due', 'the pop-up has one field a column, under the sheet\'s headings');
-  R.ok(e.date === 'date ' + iso(LAST.B1) && e.num === 'number', 'a date is a date field and a number a number field');
-  R.ok(e.ro.every(Boolean) && /Worked out by the spreadsheet/.test(e.text) && /This date is worked out in the spreadsheet\. It updates when the file is next imported\./.test(e.text), 'formula cells are read-only, and say so');
-  await page.$eval('#_rsc6', el => { el.value = '2026-07-15'; }); await page.click('#_reSave'); await wait(page, 300);
-  const t = await tracker(); R.ok(t.rows[2][4] === '15/07/2026', 'saved, the tracker shows the new date');
+  await page.evaluate(() => [...document.querySelectorAll('#tab-monitoring tr[onclick^="regEditItem("]')].find(r => r.children[1].innerText.trim() === 'B1').click()); await wait(page, 200);
+  const e = await page.evaluate(() => { const ov = document.querySelector('#regEditOv'); return { card: !!ov.querySelector('.rar-card'), due: ov.querySelector('#_scDue').disabled, text: ov.innerText }; });
+  R.ok(e.card && e.due && /Worked out in the spreadsheet from Last service and Life \(months\)\./.test(e.text), 'the next due date is the spreadsheet\'s formula: shown, not typed over, and says so');
+  await page.click('#_scDone'); await page.$eval('#_scOn', (el, d) => { el.value = d; el.dispatchEvent(new Event('input')); }, DONE); await page.click('#_scSave'); await wait(page, 300);
+  const t = await tracker(); const b1 = t.rows.find(r => r[1] === 'B1'); R.ok(b1 && b1[5] === dmy(new Date(DONE + 'T12:00:00Z')), 'ticked done, the tracker shows the new date in Last service');
 }
 // ── reload ──
 await page.reload({ waitUntil: 'networkidle0' }); await page.waitForFunction('typeof S === "object" && typeof switchTab === "function"'); await wait(page, 300);
 await page.evaluate(() => switchTab('monitoring')); await wait(page, 300); await bridge();
 {
-  const t = await tracker(); R.ok(t.rows.length === 4 && t.rows[2][4] === '15/07/2026' && t.heads.length === 7, 'after a reload the layout and the edit are as left');
+  const t = await tracker(); const b1 = t.rows.find(r => r[1] === 'B1'); R.ok(t.rows.length === 4 && b1 && b1[5] === dmy(new Date(DONE + 'T12:00:00Z')) && t.heads.length === 9, 'after a reload the layout and the edit are as left');
 }
 // ── export: only that cell ──
 {
@@ -149,7 +152,7 @@ await page.evaluate(() => switchTab('monitoring')); await wait(page, 300); await
   R.ok(/^New item/.test(t.title) && t.ro.every(Boolean), 'Add opens the same pop-up; the formula columns are read-only there too');
   await page.$eval('#_rsc1', el => { el.value = 'D1'; }); await page.$eval('#_rsc3', el => { el.value = 'Fire blanket'; }); await page.$eval('#_rsc6', el => { el.value = '2026-11-01'; }); await page.$eval('#_rsc7', el => { el.value = '12'; });
   await page.click('#_reSave'); await wait(page, 300);
-  await page.evaluate(() => { const tr = [...document.querySelectorAll('#tab-monitoring tr[onclick^="regEditItem("]')].find(r => r.children[0].innerText.trim() === 'A2'); tr.querySelector('button[onclick^="deleteRegItem("]').click(); }); await wait(page, 300);
+  await page.evaluate(() => { const tr = [...document.querySelectorAll('#tab-monitoring tr[onclick^="regEditItem("]')].find(r => r.children[1].innerText.trim() === 'A2'); tr.querySelector('button[onclick^="deleteRegItem("]').click(); }); await wait(page, 300);
   await toasts();
   await page.evaluate(() => { const b = document.querySelector('button[onclick="statutoryExportXlsx()"]'); b.scrollIntoView({ block: 'center' }); b.click(); }); await wait(page, 800);
   const tt = await toasts();

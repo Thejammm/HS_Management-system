@@ -48,7 +48,9 @@ await seed(page, { company: { legalName: 'Example Design Ltd', shortName: 'EDL' 
     R.ok(wb.worksheets.map(w => w.name).join(',') === sheets, f + ' opens, with ' + sheets);
   }
   const pdf = (await p.zip.file(rootName + 'Client Issue/00 EDL CL Submission Tracker - Client Issue.pdf').async('nodebuffer')).toString('latin1');
-  const P = /\/P (-?\d+)/.exec(pdf), perm = P ? (+P[1] >>> 0) : 0;
+  // the /P flag of the encryption dictionary itself: the encrypted streams are random bytes and can
+  // hold "/P <digits>" by chance, which made this check fail now and then (found 12 November 2026)
+  const P = [...pdf.matchAll(/\/P (-?\d+)/g)].find(m => pdf.slice(Math.max(0, m.index - 300), m.index + 300).includes('/Standard')), perm = P ? (+P[1] >>> 0) : 0;
   const pages = (pdf.match(/\/Type \/Page\b/g) || []).length, images = (pdf.match(/\/Subtype \/Image/g) || []).length;
   R.ok(pdf.startsWith('%PDF') && /\/Encrypt/.test(pdf), 'the client issue PDF is protected');
   R.ok((perm & 4) && !(perm & 8) && !(perm & 16) && !(perm & 32), 'printing is allowed; changing, copying and annotating are not (P ' + (P && P[1]) + ')');

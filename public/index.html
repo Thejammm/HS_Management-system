@@ -34809,8 +34809,29 @@ async function trainingExportXlsx(){
     if(!res.ok){ const e=await res.json().catch(()=>({})); alert(e.error==='no_template'?'Import your spreadsheet first, then export.':'Export failed: '+(e.error||('HTTP '+res.status))); return; }
     const blob=await res.blob(); const cd=res.headers.get('content-disposition')||''; const m=/filename="([^"]+)"/.exec(cd); const name=m?m[1]:'Training Matrix.xlsx';
     const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
-    showToast('✓ Exported '+name,'success');
+    let rep=null; try{ const h=res.headers.get('X-Export-Report'); if(h) rep=JSON.parse(decodeURIComponent(h)); }catch(e){}
+    const said=_trainingExportNotes(rep);
+    showToast('✓ Exported '+name+(said.length?('. '+said.join(' ')):''), said.length?'info':'success', said.length?12000:undefined);
   }catch(e){ console.error('training export',e); alert('Export failed: '+e.message); }
+}
+// What the export did with the people moved to Left, or deleted, in Compass
+// (Simon, 12-13 November 2026: the export had the "wrong content"). Someone
+// marked as left now moves to the Left tab, as the app always said they
+// would; someone deleted in Compass is never deleted from the client's own
+// file, so it says they are still there - the same rule as the statutory
+// register.
+function _trainingExportNotes(rep){
+  const out=[]; if(!rep||typeof rep!=='object') return out;
+  const n=rep.moved||0, names=Array.isArray(rep.movedNames)?rep.movedNames:[];
+  if(n===1) out.push((names[0]||'1 person')+' moved to the Left tab.');
+  else if(n>1) out.push(n+' people moved to the Left tab'+(names.length===n?(': '+names.join(', ')):'')+'.');
+  const noTab=rep.noLeftTab||0, other=(rep.notMoved||0)-noTab;
+  if(noTab) out.push((noTab===1?'1 person marked as left is':(noTab+' people marked as left are'))+' still on their tab - the spreadsheet has no Left tab.');
+  if(other>0) out.push((other===1?'1 person marked as left':(other+' people marked as left'))+' could not be moved - check the spreadsheet.');
+  if(rep.dropped) out.push((rep.dropped===1?'1 entry was':(rep.dropped+' entries were'))+' not carried over - the Left tab has no column for '+(rep.dropped===1?'it':'them')+'.');
+  if(rep.notRemoved) out.push((rep.notRemoved===1?'1 person deleted in Compass is':(rep.notRemoved+' people deleted in Compass are'))+' still in the spreadsheet - remove them there if they should go.');
+  if(rep.formulaKept) out.push((rep.formulaKept===1?'1 change was':(rep.formulaKept+' changes were'))+' not written - the spreadsheet works '+(rep.formulaKept===1?'that cell':'those cells')+' out itself.');
+  return out;
 }
 function trainingEditCellEl(el){ if(el&&el.dataset) trainingEditCell(el.dataset.pid, el.dataset.course); }
 function trainingEditCell(pid, course){
@@ -42357,14 +42378,16 @@ function renderCPD(){
   + promptTools + logBlock
   + '</div></div>';
 }
-function showToast(msg,type='success'){
+function showToast(msg,type='success',ms){
   const t = document.getElementById('toast');
   if(!t) return;
   t.textContent = msg || '';
   t.className = type==='error'?'error':type==='info'?'info':'';
   t.classList.add('show');
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(()=>t.classList.remove('show'), 3200);
+  // a message with something to act on stays up for as long as its caller asks (the
+  // exports pass 9 to 12 seconds, which used to be ignored: it went after 3)
+  _toastTimer = setTimeout(()=>t.classList.remove('show'), (typeof ms==='number' && ms>0) ? ms : 3200);
 }
 </script>
 

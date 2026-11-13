@@ -13,7 +13,7 @@
 const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { parse, build, buildFresh, peek: xlsxPeek } = require('../lib/training-xlsx');
+const { parse, buildReport, buildFresh, peek: xlsxPeek } = require('../lib/training-xlsx');
 
 const router = express.Router();
 const rawBody = express.raw({ type: () => true, limit: '25mb' });
@@ -86,13 +86,20 @@ router.post('/export', requireAuth, rawBody, async (req, res) => {
     const r = await pool.query(`SELECT filename, data FROM training_workbook WHERE tenant_id = $1`, [tenantId]);
     // No stored workbook (the data came in by paste or was typed in): build a
     // fresh workbook straight from the app's model instead of failing.
-    const buf = r.rows.length
-      ? await build(Buffer.from(r.rows[0].data, 'base64'), state)
-      : await buildFresh(state);
+    let buf, report = null;
+    if(r.rows.length){
+      const out = await buildReport(Buffer.from(r.rows[0].data, 'base64'), state);
+      buf = out.buffer;
+      // what the export did with people moved, added or deleted in Compass, for the app to say
+      // (names are sent URI-encoded: a header holds plain ASCII only)
+      report = { moved: out.moved.length, movedNames: out.moved.slice(0, 6), notMoved: out.notMoved.length, noLeftTab: out.notMoved.filter(x => x.why === 'no Left tab').length,
+        dropped: out.dropped.length, added: out.added, notRemoved: out.notRemoved, formulaKept: out.formulaKept };
+    } else buf = await buildFresh(state);
     const base = String((r.rows[0] && r.rows[0].filename) || 'Training Matrix.xlsx').replace(/\.xlsx?$/i, '');
     const rev = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${base} (rev ${rev}).xlsx"`);
+    if(report) res.setHeader('X-Export-Report', encodeURIComponent(JSON.stringify(report)));
     res.send(Buffer.from(buf));
   } catch(err){
     console.error('training/export error:', err.message);

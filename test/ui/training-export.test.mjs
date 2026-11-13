@@ -15,6 +15,7 @@ import { createRequire } from 'node:module';
 import { openApp, seed, wait, reporter } from './harness.mjs';
 const require = createRequire(import.meta.url);
 const ExcelJS = require('exceljs');
+const JSZip = require('jszip');
 const { parse, build, buildFresh, peek } = require('../../lib/training-xlsx.js');
 
 const R = reporter('Training matrix - the export writes back what was changed');
@@ -128,6 +129,28 @@ await page.evaluate(() => switchTab('monitoring')); await wait(page, 300); await
   await page.$eval('#_tED', el => { el.value = '2030-01-31'; }); await page.click('#_tESave'); await wait(page, 300);
   const wb = await exportNow();
   R.ok(!(await page.$('#xlsxMapOv')) && show(wb.getWorksheet('Staff').getCell('D2')) === '2030-01-31' && (await diff(AUTO, wb)).join() === 'D2', 'a matrix with Last Name / First Name headings imports straight in and exports its change as before');
+}
+// ── a matrix whose Staff tab is an Excel table with a cell note on it (13 November 2026): the export used
+//    to come out as a file Excel would not open - the table lost its header row, and the notes were written
+//    after the table ──
+{
+  const wb0 = new ExcelJS.Workbook(); const ws0 = wb0.addWorksheet('Staff');
+  ws0.addTable({ name: 'Table1', ref: 'A1', headerRow: true, columns: ['Last Name', 'First Name', 'Job', 'First Aid'].map(n => ({ name: n, filterButton: true })), rows: [['Morgan', 'Alex', 'Driver', D(2027, 5, 1)], ['Kerr', 'Sam', 'Escort', 'N/A']] });
+  ws0.getCell('D2').numFmt = 'dd/mm/yyyy'; ws0.getCell('B3').note = 'Returning in the spring';
+  const z0 = await JSZip.loadAsync(Buffer.from(await wb0.xlsx.writeBuffer()));   // as Excel saves it: no headerRowCount, no filterColumn entries
+  z0.file('xl/tables/table1.xml', (await z0.file('xl/tables/table1.xml').async('string')).replace(/ headerRowCount="\d"/, '').replace(/<filterColumn [^>]*\/>/g, ''));
+  const TABLED = await z0.generateAsync({ type: 'nodebuffer' });
+  await seed(page, { company: { tradingName: 'Testing Client Ltd' } }, 'monitoring'); await bridge();
+  await upload(TABLED);
+  const id = await page.evaluate(() => (S.trainingData.people.find(p => p.lastName === 'Kerr') || {}).id);
+  await page.click(cellOf(id, 'First Aid')); await wait(page, 200);
+  await page.$eval('#_tED', el => { el.value = '2029-06-30'; }); await page.click('#_tESave'); await wait(page, 300);
+  const wb = await exportNow();
+  const z = await JSZip.loadAsync(exports[exports.length - 1]);
+  const table = await z.file('xl/tables/table1.xml').async('string'), sheet = await z.file('xl/worksheets/sheet1.xml').async('string');
+  R.ok(!/headerRowCount="0"/.test(table) && !/hiddenButton="1"/.test(table), 'a Staff tab that is an Excel table exports with its header row and its filter buttons: ' + (/<table [^>]*>/.exec(table) || [''])[0].replace(/xmlns[^ ]*="[^"]*" ?/g, '').slice(0, 120));
+  R.ok(sheet.indexOf('<legacyDrawing') > 0 && sheet.indexOf('<legacyDrawing') < sheet.indexOf('<tableParts'), 'the cell notes are written before the table, the order Excel requires - the file opens');
+  R.ok(show(wb.getWorksheet('Staff').getCell('D3')) === '2029-06-30' && !!wb.getWorksheet('Staff').getCell('B3').note, 'the change is in the table and the note is still on its cell');
 }
 // ── read only ──
 {

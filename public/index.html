@@ -34021,7 +34021,7 @@ function _tGroupTable(sec){
   const courses=_tCoursesForSection(sec), label=sec.label;
   const people=(d.people||[]).filter(p=>p.status==='active' && _tSectionOf(p)===sec.key).sort((a,b)=>(((a.lastName||'')+a.firstName).toLowerCase()).localeCompare(((b.lastName||'')+b.firstName).toLowerCase()));
   if(!people.length && !courses.length) return '';
-  const head=`<tr><th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--surface);z-index:1;">Name</th>${courses.map(c=>`<th style="padding:6px 6px;font-size:10.5px;text-align:center;white-space:nowrap;">${esc(c)}</th>`).join('')}${ro?'':'<th></th>'}</tr>`;
+  const head=`<tr><th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--surface);z-index:1;">Name</th>${courses.map(c=>`<th style="padding:6px 6px;font-size:10.5px;text-align:center;${String(c).length>24?'white-space:normal;min-width:120px;max-width:170px;line-height:1.25;vertical-align:bottom;':'white-space:nowrap;'}">${esc(c)}</th>`).join('')}${ro?'':'<th></th>'}</tr>`;
   const body=people.map(p=>`<tr>
     <td style="padding:5px 8px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--surface);">${esc(p.lastName)}${p.lastName&&p.firstName?', ':''}${esc(p.firstName)}${p.badge?` <span style="font-weight:400;color:var(--text-muted);font-size:11px;">${esc(p.badge)}</span>`:''}</td>
     ${courses.map(c=>{ const rc=_tRagCell(p.cells[c]); const clk=ro?'':` data-pid="${esc(p.id)}" data-course="${esc(c)}" onclick="trainingEditCellEl(this)" style="cursor:pointer;`;
@@ -34090,7 +34090,7 @@ const _XLSX_FIELDS = {
     { k:'first',  label:'First name',              guess:/^(first\s*name|forename|firstname)$/i },
     { k:'full',   label:'Full name (one column)',  guess:/^(name|employee|staff|person|full\s*name)$/i },
     { k:'badge',  label:'Badge / number',          guess:/^badge/i },
-    { k:'job',    label:'Job / role',              guess:/^(job|role|position)$/i },
+    { k:'job',    label:'Job / role',              guess:/^(job|job\s*title|title|role|position|occupation)$/i },
     { k:'skip',   label:'Skip this column' },
   ],
   statutory: [
@@ -34652,8 +34652,135 @@ async function _statExportLayout(){
     showToast('✓ Exported '+name+(n?('. '+(n===1?'1 item deleted in Compass is still in the spreadsheet - remove it there if it should go':(n+' items deleted in Compass are still in the spreadsheet - remove them there if they should go'))):''), n?'info':'success', n?9000:undefined);
   }catch(e){ console.error('statutory export',e); alert('Export failed: '+e.message); }
 }
+// ══════════════════════════════════════════════════════════════
+//  THE TRAINING MATRIX'S OWN MAPPING SCREEN (Simon, 12 November 2026:
+//  "Yes, fix the import"). The shared screen read every tab with the first
+//  tab's layout, so a workbook of real matrices came in wrong three ways:
+//    - other tabs (qualifications, certificates) and the key under the table
+//      came in as "people";
+//    - three dated tabs of the same list came in as the same people three
+//      times, and the first tab - the oldest - set the layout;
+//    - headings over two rows ran several columns together under one name,
+//      and a heading that was a date came in as "Wed Jan 01 2025 00:00:00".
+//  Step 1 now picks the TAB as well as the headings row. Step 2 shows the
+//  tabs with a tick each - the chosen one, any other laid out the same way
+//  (unticked when it lists the same people: another version of the list),
+//  and the ones that are left alone - then the columns under the names they
+//  will carry. The server names the columns and judges the tabs
+//  (/api/training/layout), so the screen and the import cannot disagree.
+// ══════════════════════════════════════════════════════════════
+function _trnMapWizard(peek, fname, buf, onMapping){
+  const sheets=((peek&&peek.sheets)||[]).filter(s=>s&&s.name!=null);
+  const fields=_XLSX_FIELDS.training;
+  const old=document.getElementById('xlsxMapOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='xlsxMapOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;';
+  document.body.appendChild(ov);
+  const close=()=>ov.remove();
+  _backdropClose(ov, close);
+  const key=h=>String(h==null?'':h).trim().toLowerCase();
+  const guessFor=h=>{ const t=String(h==null?'':h).trim(); if(!t) return 'skip'; for(const f of fields){ if(f.guess && f.guess.test(t)) return f.k; } return 'course'; };
+  const memAll=(S.importProfiles=S.importProfiles||{}); const mem=(memAll.xlsx_training=memAll.xlsx_training||{});
+  const ML=(mem._layout && typeof mem._layout==='object') ? mem._layout : null;   // what was chosen last time for this client
+  let cur=Math.max(0, sheets.findIndex(s=>ML && s.name===ML.tab));
+  const box=(w, inner)=>`<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:12px;padding:18px;max-width:${w}px;width:96%;box-shadow:0 10px 40px rgba(0,0,0,.3);">${inner}</div>`;
+  const nameFixed=sel=>{ const fx={ last:null, first:null, full:null }; Object.keys(sel).map(Number).sort((a,b)=>a-b).forEach(c=>{ const v=sel[c]; if((v==='last'||v==='first'||v==='full') && fx[v]==null) fx[v]=c; }); return fx; };
+
+  const step1=()=>{
+    const sh=sheets[cur]||{ name:'', rows:[] };
+    const rows=(sh.rows||[]).map((r,i)=>`<tr data-row="${i+1}" style="cursor:pointer;"><td style="padding:4px 8px;color:var(--text-muted);font-weight:700;border-bottom:1px solid var(--border);">${i+1}</td>${r.map(c=>`<td style="padding:4px 8px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;">${esc(c)}</td>`).join('')}</tr>`).join('');
+    const strip=sheets.length>1 ? `<div id="_twStrip" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;"><span style="font-size:12px;font-weight:600;">Tab</span>${sheets.map((s,i)=>`<button type="button" class="btn btn-xs ${i===cur?'btn-primary':'btn-outline'}" data-sheet="${i}"${i===cur?' aria-pressed="true"':''}>${esc(s.name)}</button>`).join('')}</div>` : '';
+    ov.innerHTML=box(860, `
+      <div style="font-weight:700;margin-bottom:4px;">Import - ${esc(fname)} <span style="font-weight:400;color:var(--text-muted);font-size:12px;">step 1 of 2</span></div>
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">${sheets.length>1?'Pick the tab the matrix is on, then click':'Click'} the row that holds the <b>column headings</b>.</div>
+      ${strip}
+      <div style="overflow:auto;max-height:340px;border:1px solid var(--border);border-radius:8px;"><table style="border-collapse:collapse;font-size:11.5px;min-width:100%;"><tbody>${rows||'<tr><td style="padding:8px;">This tab looks empty.</td></tr>'}</tbody></table></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;"><button class="btn btn-ghost btn-sm" id="_mwCancel">Cancel</button></div>`);
+    ov.querySelector('#_mwCancel').onclick=close;
+    ov.querySelectorAll('button[data-sheet]').forEach(b=>{ b.onclick=()=>{ cur=parseInt(b.dataset.sheet,10); step1(); }; });
+    ov.querySelectorAll('tr[data-row]').forEach(tr=>{
+      tr.onmouseenter=()=>{ tr.style.background='var(--muted-bg)'; }; tr.onmouseleave=()=>{ tr.style.background=''; };
+      tr.onclick=()=>step2(parseInt(tr.dataset.row,10), {});
+    });
+  };
+
+  // st: { sel:{col:field}, tabs:{name:bool}, headRows } - what has been chosen on this screen so far
+  const step2=async(headerRow, st)=>{
+    const sh=sheets[cur]; if(!sh) return step1();
+    st.tabs=st.tabs||{};
+    // before the server has named the columns, the name column is guessed from the row that was clicked
+    const first=!st.sel;
+    const guess={}; if(first){ ((sh.rows||[])[headerRow-1]||[]).forEach((h,i)=>{ guess[i+1]=mem[key(h)]||guessFor(h); }); }
+    ov.innerHTML=box(420, '<div style="font-size:13px;color:var(--text-muted);">Reading the columns…</div>');
+    const load=async(fx)=>{
+      const q='sheet='+encodeURIComponent(sh.name)+'&headerRow='+headerRow+(st.headRows?('&headRows='+st.headRows):'')+'&fixed='+encodeURIComponent(JSON.stringify(fx));
+      const res=await _tApiRaw('/api/training/layout?'+q, buf);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      return res.json();
+    };
+    let L;
+    try{
+      L=await load(nameFixed(first?guess:st.sel));
+      if(first){
+        st.sel={}; (L.columns||[]).forEach(c=>{ st.sel[c.col]= c.name ? (mem[key(c.name)]||mem[key(c.top)]||guessFor(c.top||c.name)) : (mem[key(c.top)]||'skip'); });
+        if(JSON.stringify(nameFixed(st.sel))!==JSON.stringify(nameFixed(guess))) L=await load(nameFixed(st.sel));   // the remembered name column was another one
+      }
+    }catch(e){ if(document.body.contains(ov)){ alert('Could not read that tab ('+e.message+').'); step1(); } return; }
+    if(!document.body.contains(ov)) return;   // closed while it was reading
+    const cols=L.columns||[], tabs=L.tabs||[], fx=nameFixed(st.sel), named=!!(fx.last||fx.first||fx.full);
+    cols.forEach(c=>{ if(!(c.col in st.sel)) st.sel[c.col]= c.name ? guessFor(c.top||c.name) : 'skip'; });
+    const repeat=t=>!t.chosen && t.people>=2 && (t.same/t.people)>=0.6;
+    const tabOn=t=>t.chosen ? true : !t.fits ? false : (t.name in st.tabs) ? !!st.tabs[t.name]
+      : (ML && ML.tab===sh.name && ML.tabs && (t.name in ML.tabs)) ? !!ML.tabs[t.name] : !repeat(t);
+    const ppl=n=>n+' '+(n===1?'person':'people');
+    const nameHead=(()=>{ const c=cols.find(x=>x.col===(fx.full||fx.last||fx.first)); return (c && (c.top||c.name)) || 'name'; })();
+    const fitTabs=tabs.filter(t=>t.fits), outTabs=tabs.filter(t=>!t.fits);
+    const tabsHtml=tabs.length<2 ? '' : `<div id="_twTabs" style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:12.5px;">
+        <div style="font-weight:700;margin-bottom:4px;">Tabs to bring in</div>
+        ${!named ? '<div style="color:var(--text-muted);">Choose which column holds the name below, and the tabs that can be brought in show here.</div>' : fitTabs.map(t=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:2px 0;${t.chosen?'':'cursor:pointer;'}"><input type="checkbox" data-tab="${esc(t.name)}"${tabOn(t)?' checked':''}${t.chosen?' disabled':''} style="margin-top:2px;"><span><b>${esc(t.name)}</b> <span style="color:var(--text-muted);">- ${t.chosen?'this tab, ':''}${ppl(t.people)}${t.status==='left'?', read as people who have left':''}${(!t.chosen && t.same)?(', '+(t.same===t.people?(t.people===1?'also':'all')+' ':(t.same+' '))+'also on "'+esc(sh.name)+'"'):''}${repeat(t)?' - looks like another version of the same list':''}</span></span></label>`).join('')}
+        ${(named && outTabs.length)?`<div id="_twOut" style="color:var(--text-muted);margin-top:4px;">Not brought in - no "${esc(nameHead)}" column on row ${headerRow}: ${outTabs.map(t=>esc(t.name)).join(', ')}</div>`:''}
+      </div>`;
+    const rowsHtml=cols.map(c=>{
+      const opts=fields.map(f=>`<option value="${f.k}"${f.k===st.sel[c.col]?' selected':''}>${esc(f.label)}</option>`).join('');
+      return `<tr><td style="padding:5px 8px;font-weight:600;border-bottom:1px solid var(--border);max-width:260px;white-space:normal;line-height:1.3;" title="${esc(c.name)}">${esc(c.name||'(blank)')}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid var(--border);"><select data-col="${c.col}" style="width:100%;padding:5px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface,#fff);color:inherit;font-size:12px;">${opts}</select></td>
+        <td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text-muted);font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc((c.samples||[]).join(' · '))}</td></tr>`;
+    }).join('');
+    ov.innerHTML=box(760, `
+      <div style="font-weight:700;margin-bottom:4px;">Map the columns <span style="font-weight:400;color:var(--text-muted);font-size:12px;">step 2 of 2 - ${sheets.length>1?('"'+esc(sh.name)+'", '):''}headings on row ${headerRow}${L.headRows===2?(' and '+(headerRow+1)):''}</span></div>
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">Say what each column is - anything left as a course column shows on the matrix (dates traffic-light, text shows as written). Your choices are remembered for this client.</div>
+      ${tabsHtml}
+      <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin-bottom:8px;cursor:pointer;"><input type="checkbox" id="_twTwo"${L.headRows===2?' checked':''}> The headings run over two rows (rows ${headerRow} and ${headerRow+1}) - each column takes both</label>
+      <div style="overflow:auto;max-height:330px;border:1px solid var(--border);border-radius:8px;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead><tr style="color:var(--text-muted);text-transform:uppercase;font-size:10px;letter-spacing:.04em;"><th style="text-align:left;padding:6px 8px;">Their column</th><th style="text-align:left;padding:6px 8px;">Reads as</th><th style="text-align:left;padding:6px 8px;">Sample data</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>
+      <div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px;"><button class="btn btn-ghost btn-sm" id="_mwBack">← Back</button><div style="display:flex;gap:8px;"><button class="btn btn-ghost btn-sm" id="_mwCancel2">Cancel</button><button class="btn btn-primary btn-sm" id="_mwGo">Import</button></div></div>`);
+    ov.querySelector('#_mwBack').onclick=step1;
+    ov.querySelector('#_mwCancel2').onclick=close;
+    ov.querySelectorAll('input[data-tab]').forEach(cb=>{ cb.onchange=()=>{ st.tabs[cb.dataset.tab]=cb.checked; }; });
+    ov.querySelector('#_twTwo').onchange=e=>{ st.headRows=e.target.checked?2:1; step2(headerRow, st); };
+    ov.querySelectorAll('select[data-col]').forEach(sel=>{ sel.onchange=()=>{
+      const c=parseInt(sel.dataset.col,10), was=st.sel[c]; st.sel[c]=sel.value;
+      if(['last','first','full'].includes(was) || ['last','first','full'].includes(sel.value)) step2(headerRow, st);   // the tabs are judged by the name column
+    }; });
+    ov.querySelector('#_mwGo').onclick=()=>{
+      const fixed={}, skip=[];
+      cols.forEach(c=>{ const v=st.sel[c.col]; if(c.name) mem[key(c.name)]=v;
+        if(v==='skip') skip.push(c.col); else if(v!=='course'){ if(fixed[v]==null) fixed[v]=c.col; } });
+      if(fixed.last==null && fixed.first==null && fixed.full==null){ alert('Map at least one name column (Surname, First name or Full name).'); return; }
+      mem._layout={ tab:sh.name, headerRow, headRows:L.headRows, tabs:Object.fromEntries(fitTabs.map(t=>[t.name, tabOn(t)])), seen:sheets.map(s=>s.name) };
+      scheduleAutoSave();
+      close();
+      onMapping({ headerRow, fixed, skip, sheet:sh.name, headRows:L.headRows, tabs:fitTabs.filter(tabOn).map(t=>t.name) });
+    };
+  };
+  // the same workbook as last time (the same tabs): straight to the columns, as they were left
+  const sameTabs=!!ML && Array.isArray(ML.seen) && ML.seen.length===sheets.length && sheets.every(s=>ML.seen.includes(s.name));
+  const rowThere=!!ML && !!sheets[cur] && (((sheets[cur].rows||[])[ML.headerRow-1])||[]).some(v=>String(v==null?'':v).trim());
+  if(ML && sheets[cur] && sheets[cur].name===ML.tab && sameTabs && rowThere) step2(ML.headerRow, { headRows:(ML.headRows===2?2:1) });
+  else step1();
+}
 function _xlsxMapWizard(kind, peek, fname, buf, onMapping){
-  if(kind==='statutory') return _statMapWizard(peek, fname, buf, onMapping);   // the client's own columns (12 November 2026); training below is unchanged
+  if(kind==='statutory') return _statMapWizard(peek, fname, buf, onMapping);   // the client's own columns (12 November 2026)
+  if(kind==='training') return _trnMapWizard(peek, fname, buf, onMapping);     // its own screen (13 November 2026): pick the tab, tick the tabs
   const sh=(peek.sheets||[])[0]||{name:'',rows:[]};
   const fields=_XLSX_FIELDS[kind];
   const old=document.getElementById('xlsxMapOv'); if(old) old.remove();
@@ -34721,7 +34848,7 @@ async function _xlsxOpenWizard(kind, fname, buf, applyFn){
   if(!pk.ok){ alert('Could not read that file.'); return; }
   _xlsxMapWizard(kind, await pk.json(), fname, buf, async(mapping)=>{
     try{
-      const q='headerRow='+mapping.headerRow+'&mapping='+encodeURIComponent(JSON.stringify(mapping.layout?{layout:mapping.layout}:{fixed:mapping.fixed, skip:mapping.skip}));
+      const q='headerRow='+mapping.headerRow+'&mapping='+encodeURIComponent(JSON.stringify(mapping.layout?{layout:mapping.layout}:Object.assign({fixed:mapping.fixed, skip:mapping.skip}, mapping.sheet!=null?{sheet:mapping.sheet}:{}, mapping.headRows?{headRows:mapping.headRows}:{}, Array.isArray(mapping.tabs)?{tabs:mapping.tabs}:{})));
       const res=await _tApiRaw('/api/'+kind+'/parse?'+q, buf);
       if(!res.ok){ const e=await res.json().catch(()=>({})); alert('That mapping did not produce any rows ('+(e.error||('HTTP '+res.status))+').\n\nCheck the headings row and the name/item column, then try again.'); return; }
       await applyFn(await res.json());
@@ -34746,7 +34873,12 @@ async function _trainingApplyParsed(parsed, fname, buf){
   const curSet=new Set(cur.map(keyf)), newSet=new Set(parsed.people.map(keyf));
   const adding=parsed.people.filter(p=>!curSet.has(keyf(p))).length;
   const removing=cur.filter(p=>!newSet.has(keyf(p))).length;
-  if(!confirm(`Import "${fname}"?\n\nThis REPLACES the whole training matrix from the spreadsheet:\n  • ${parsed.people.length} people in the sheet\n  • ${adding} added, ${removing} removed vs what is here now\n\nThe spreadsheet becomes the source of truth.`)) return;
+  // which tabs they came from, which were left alone, and any line under a table that is a note, not a person
+  const tabsIn=[...new Set((parsed.sheets||[]).map(s=>s.name))], out=parsed.notBrought||[], sk=parsed.skipped||[], nt=parsed.notTicked||[];
+  const tabTxt=(tabsIn.length>1||out.length||nt.length)?`\n  • from ${tabsIn.length===1?('the "'+tabsIn[0]+'" tab'):(tabsIn.length+' tabs: '+tabsIn.join(', '))}`:'';
+  const outTxt=(nt.length?`\n  • not ticked: ${nt.join(', ')}`:'')+(out.length?`\n  • not brought in - laid out differently: ${out.join(', ')}`:'');
+  const skTxt=sk.length?`\n  • ${sk.length} line${sk.length!==1?'s':''} skipped - a note, not a person (${sk.slice(0,4).map(x=>(tabsIn.length>1?(x.sheet+' '):'')+'row '+x.row).join(', ')}${sk.length>4?', ...':''})`:'';
+  if(!confirm(`Import "${fname}"?\n\nThis REPLACES the whole training matrix from the spreadsheet:\n  • ${parsed.people.length} people in the sheet${tabTxt}${outTxt}${skTxt}\n  • ${adding} added, ${removing} removed vs what is here now\n\nThe spreadsheet becomes the source of truth.`)) return;
   const sres=await _tApiRaw('/api/training/store', buf, {'X-Filename':fname});
   if(!sres.ok){ showToast('Imported, but could not save the template for export','warn'); }
   S.trainingData={ sheets:parsed.sheets, people:parsed.people, filename:fname };

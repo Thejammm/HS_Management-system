@@ -16,7 +16,7 @@ import { openApp, seed, wait, reporter } from './harness.mjs';
 const require = createRequire(import.meta.url);
 const ExcelJS = require('exceljs');
 const JSZip = require('jszip');
-const { parse, build, buildFresh, peek } = require('../../lib/training-xlsx.js');
+const { parse, layout, build, buildFresh, peek } = require('../../lib/training-xlsx.js');
 
 const R = reporter('Training matrix - the export writes back what was changed');
 const { browser, page, errors } = await openApp({ width: 1366, height: 900 });
@@ -44,8 +44,10 @@ await page.exposeFunction('__trnApi', async (path, b64) => {
   const body = Buffer.from(b64 || '', 'base64'), u = new URL('http://x' + path), q = Object.fromEntries(u.searchParams);
   if (u.pathname === '/api/training/peek') return { status: 200, json: await peek(body) };
   if (u.pathname === '/api/training/parse') { const m = q.mapping ? JSON.parse(q.mapping) : null; const hr = parseInt(q.headerRow || '', 10) || 0;
-    const model = await parse(body, Object.assign({}, hr ? { headerRow: hr } : {}, m ? { fixed: m.fixed || null, skip: m.skip || [] } : {}));
+    const model = await parse(body, Object.assign({}, hr ? { headerRow: hr } : {}, m ? { fixed: m.fixed || null, skip: m.skip || [], sheet: m.sheet, headRows: m.headRows, tabs: m.tabs } : {}));
     return model.people.length ? { status: 200, json: model } : { status: 422, json: { error: 'no_people_found' } }; }
+  if (u.pathname === '/api/training/layout') { const hr2 = parseInt(q.headRows || '', 10);   // the mapping screen's own route (13 November 2026)
+    return { status: 200, json: await layout(body, { sheet: q.sheet || '', headerRow: parseInt(q.headerRow || '', 10) || 1, headRows: (hr2 === 1 || hr2 === 2) ? hr2 : undefined, fixed: q.fixed ? JSON.parse(q.fixed) : {} }) }; }
   if (u.pathname === '/api/training/store') { stored = body; return { status: 200, json: { ok: true } }; }
   if (u.pathname === '/api/training/export') { const state = JSON.parse(body.toString('utf8')).state;
     const buf = Buffer.from(stored ? await build(stored, state) : await buildFresh(state)); exports.push(buf);

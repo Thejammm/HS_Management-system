@@ -2,6 +2,7 @@
 //  /api/training — Excel round-trip for the training matrix
 //
 //  POST /parse   (raw .xlsx bytes)      -> { sheets, people }   (no side effects)
+//  POST /layout  (raw .xlsx bytes)      -> the chosen tab's columns and every tab, for the mapping screen
 //  POST /store   (raw .xlsx bytes)      -> stores the template workbook for the tenant
 //  GET  /status                         -> { hasWorkbook, filename, updatedAt }
 //  POST /export  (raw JSON: {state})    -> the client's workbook with current values (xlsx download)
@@ -13,7 +14,7 @@
 const express = require('express');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { parse, buildReport, buildFresh, peek: xlsxPeek } = require('../lib/training-xlsx');
+const { parse, layout, buildReport, buildFresh, peek: xlsxPeek } = require('../lib/training-xlsx');
 
 const router = express.Router();
 const rawBody = express.raw({ type: () => true, limit: '25mb' });
@@ -32,7 +33,12 @@ router.post('/parse', requireAuth, rawBody, async (req, res) => {
     const headerRow = parseInt((req.query && req.query.headerRow) || '', 10) || 0;   // 'where the table starts' override
     let mapping = null;   // DRM-style explicit column mapping from the in-app wizard
     try { if(req.query && req.query.mapping) mapping = JSON.parse(String(req.query.mapping)); } catch(e){ return res.status(400).json({ error: 'bad_mapping' }); }
-    const opts = Object.assign({}, headerRow ? { headerRow } : {}, mapping ? { fixed: mapping.fixed || null, skip: mapping.skip || [] } : {});
+    // the mapping screen also says which tab the matrix is on, whether its headings run
+    // over two rows, and which tabs were ticked to bring in
+    const opts = Object.assign({}, headerRow ? { headerRow } : {}, mapping ? { fixed: mapping.fixed || null, skip: mapping.skip || [] } : {},
+      (mapping && typeof mapping.sheet === 'string') ? { sheet: mapping.sheet } : {},
+      (mapping && (mapping.headRows === 1 || mapping.headRows === 2)) ? { headRows: mapping.headRows } : {},
+      (mapping && Array.isArray(mapping.tabs)) ? { tabs: mapping.tabs.map(String) } : {});
     const model = await parse(req.body, opts);
     if(!model.people.length) return res.status(422).json({ error: 'no_people_found' });
     res.json(model);
@@ -113,6 +119,21 @@ router.delete('/workbook', requireAuth, async (req, res) => {
   if(!tenantId) return res.status(400).json({ error: 'tenant_required' });
   try { await pool.query('DELETE FROM training_workbook WHERE tenant_id = $1', [tenantId]); res.json({ ok: true }); }
   catch(err){ console.error('training/delete error:', err.message); res.status(500).json({ error: 'server_error' }); }
+});
+
+// The mapping screen, once the headings row is clicked: the chosen tab's columns under the
+// names they will carry, and every tab - whether it holds people the same way, how many,
+// and how many of them are also on the chosen tab. Reads only; stores nothing.
+router.post('/layout', requireAuth, rawBody, async (req, res) => {
+  if(!_resolveTenant(req)) return res.status(400).json({ error: 'tenant_required' });
+  if(!req.body || !req.body.length) return res.status(400).json({ error: 'no_file' });
+  try {
+    const q = req.query || {};
+    let fixed = {}; try { if(q.fixed) fixed = JSON.parse(String(q.fixed)) || {}; } catch(e){ return res.status(400).json({ error: 'bad_mapping' }); }
+    const headRows = parseInt(q.headRows || '', 10);
+    res.json(await layout(req.body, { sheet: q.sheet == null ? '' : String(q.sheet), headerRow: parseInt(q.headerRow || '', 10) || 1,
+      headRows: (headRows === 1 || headRows === 2) ? headRows : undefined, fixed }));
+  } catch(err){ console.error('training/layout error:', err.message); res.status(422).json({ error: 'could_not_read_workbook' }); }
 });
 
 // First rows of each sheet, as strings - the Map & import preview.

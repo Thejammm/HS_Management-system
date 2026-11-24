@@ -443,7 +443,7 @@ await page.evaluate(() => closeActionSheets());
 
 // ── 7. the quick minute taker ──
 const NOTE = 'Yard gate is broken and forklift training is overdue.';
-const ACTS = [{ what: 'Fence off the yard', who: 'Jo Fine', due: '2026-11-15' }, { what: 'Book forklift training', who: 'Sam Line', due: '2026-12-01' }];
+const ACTS = [{ what: 'Fence off the yard', who: 'Jo Fine', due: day(20) }, { what: 'Book forklift training', who: 'Sam Line', due: day(36) }];
 let qm1 = '', qm2 = '';
 {
   const t = await page.evaluate(() => {

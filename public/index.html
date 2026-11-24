@@ -3255,7 +3255,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
 </div>
 
 <!-- Drill-down modal -->
-<div class="drilldown-bg" id="drilldownBg" onmousedown="this._downSelf=(event.target===this)" onclick="if(this._downSelf&&event.target===this)closeDrilldown();this._downSelf=false;">
+<div class="drilldown-bg" id="drilldownBg" onmousedown="this._downSelf=(event.target===this)" onmouseup="if(event.target!==this)this._downSelf=false" onclick="if(this._downSelf&&event.target===this)closeDrilldown();this._downSelf=false;">
   <div class="drilldown-modal">
     <div class="drilldown-header">
       <div class="drilldown-title" id="drilldownTitle"></div>
@@ -3838,7 +3838,7 @@ details.as-old>summary{cursor:pointer;font-weight:700;font-size:13.5px}
 
       <!-- Analysis - the deep views on demand: risks by macro category and the
            SIF register / energy analysis. Opened by the Analysis button. -->
-      <div id="riskAnalysisOverlay" class="no-print" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9990;align-items:flex-start;justify-content:center;padding:24px;overflow:auto;" onmousedown="this._downSelf=(event.target===this)" onclick="if(this._downSelf&&event.target===this)closeRiskAnalysis();this._downSelf=false;">
+      <div id="riskAnalysisOverlay" class="no-print" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9990;align-items:flex-start;justify-content:center;padding:24px;overflow:auto;" onmousedown="this._downSelf=(event.target===this)" onmouseup="if(event.target!==this)this._downSelf=false" onclick="if(this._downSelf&&event.target===this)closeRiskAnalysis();this._downSelf=false;">
         <div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;max-width:1080px;width:100%;box-shadow:0 18px 60px rgba(0,0,0,.35);padding:16px 22px 20px;margin:auto 0;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
             <h3 style="margin:0;font-size:16px;">Analysis - the deep views</h3>
@@ -9528,7 +9528,7 @@ function openModal(title,bodyHtml,actionsHtml){
   setTimeout(()=>document.querySelector('#modalBody input, #modalBody textarea')?.focus(),50);
 }
 function closeModal(){document.getElementById('modal').classList.remove('open');}
-document.getElementById('modal').addEventListener('click',e=>{if(e.target===document.getElementById('modal'))closeModal();});
+_backdropClose(document.getElementById('modal'), ()=>closeModal());
 
 // ══════════════════════════════════════════════════════════════
 //  BRANDING
@@ -11483,7 +11483,7 @@ function setReportStatusFilter(value){
 // Close login modal on background click
 document.addEventListener('DOMContentLoaded', () => {
   const lm = document.getElementById('loginModal');
-  if(lm) lm.addEventListener('click', e => { if(e.target === lm) closeLoginModal(); });
+  if(lm) _backdropClose(lm, ()=>closeLoginModal());
   // Pre-fill the email if arriving from an onboarding QR / link (?u=email).
   const _pu=_urlLoginEmail();
   if(_pu){ setTimeout(()=>{ const e=document.getElementById('loginEmail'); if(e && !e.value){ e.value=_pu; const p=document.getElementById('loginPassword'); if(p) p.focus(); } }, 400); }
@@ -14814,13 +14814,14 @@ function _roLocked(){ return !!(_consultantView && !_consultantEdit); }
 
 // ── THE SELECTION RULE (Simon, 2026-09-03: "make sure it doesnt happen ever
 //    again in this app"): a backdrop click closes an overlay ONLY when the
-//    press STARTED on the backdrop. Drag-selecting text out of an input and
+//    press STARTED AND ENDED on the backdrop. Drag-selecting text out of an input and
 //    releasing over the backdrop fires a click on the overlay (the browser
 //    targets the common ancestor of mousedown and mouseup) - that must never
 //    close the box under the user's hands. EVERY overlay uses this guard;
 //    never write a bare click-to-close backdrop again. ──
 function _backdropClose(ov, fn){
-  ov.addEventListener('mousedown', function(e){ ov._downSelf = (e.target === ov); });
+  ov.addEventListener('mousedown', function(e){ ov._downSelf = (e.target === ov); }, true);
+  ov.addEventListener('mouseup', function(e){ if(e.target !== ov) ov._downSelf = false; }, true);
   ov.addEventListener('click', function(e){ if(ov._downSelf && e.target === ov) fn(); ov._downSelf = false; });
 }
 function _blockIfReadOnly(){
@@ -28914,7 +28915,7 @@ function renderRiskProfile(){
     </tr></thead><tbody id="rpTbody">${_riskTableRowsHTML()}</tbody></table></div>`;
   let modal='';
   if(_riskModalOpen && selR){
-    modal = `<div id="riskModalOverlay" class="no-print" onmousedown="this._downSelf=(event.target===this)" onclick="if(this._downSelf&&event.target===this)_riskCloseModal();this._downSelf=false;" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9980;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;">
+    modal = `<div id="riskModalOverlay" class="no-print" onmousedown="this._downSelf=(event.target===this)" onmouseup="if(event.target!==this)this._downSelf=false" onclick="if(this._downSelf&&event.target===this)_riskCloseModal();this._downSelf=false;" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9980;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;">
     <div style="max-width:1180px;width:100%;margin:auto 0;background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.4);height:calc(100vh - 40px);max-height:calc(100vh - 40px);display:flex;flex-direction:column;overflow:hidden;">
       <div class="rp-head" style="padding:12px 16px 0;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
